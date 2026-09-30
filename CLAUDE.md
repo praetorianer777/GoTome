@@ -16,6 +16,18 @@ frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgr
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
   under `docs/decisions/`. No search or embedding feature work starts before them.
 
+## Layout and toolchain
+
+- `backend/` is the Go module; `cmd/gotome` is the one binary (`serve`,
+  `healthcheck`, `version`). Configuration is `GOTOME_*` environment variables only.
+- `make` runs the Go toolchain in a container (`mk/go.mk`), with caches under
+  `.cache/`. `make help` lists the targets; `make check-go` is the backend gate.
+- Go is pinned to 1.27 (`golang:1.27-bookworm`). A sibling project pins 1.26 because
+  1.27 killed its test binaries on this host; that was checked here on 2026-09-30
+  with a five-second test, plain and with `-race`, on the host and in the container,
+  and did not reproduce. If it shows up, `make check-go GO_IMAGE=golang:1.26-bookworm`
+  is the way to tell the toolchain apart from the code.
+
 ## Testing
 
 `./run-tests.sh` is the push gate: the branch guard runs it before every `git push`,

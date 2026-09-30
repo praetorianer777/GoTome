@@ -1,9 +1,18 @@
+# Each area brings its own targets in mk/<area>.mk; run-tests.sh calls the
+# gate targets (check-go, check-web, stack-up, test-integration, test-e2e,
+# stack-down) when they exist.
 .DEFAULT_GOAL := help
 
-.PHONY: help test
+ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+VERSION := $(shell cat $(ROOT)/VERSION)
+UID_GID := $(shell id -u):$(shell id -g)
 
+include $(wildcard $(ROOT)/mk/*.mk)
+
+.PHONY: test
+test: ## The whole gate, exactly as CI and the push hook run it
+	$(ROOT)/run-tests.sh
+
+.PHONY: help
 help:
-	@grep -E '^[a-z][a-z-]*:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
-
-test: ## Run the push gate
-	./run-tests.sh
+	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | sort
