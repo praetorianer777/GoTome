@@ -132,3 +132,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   exist: 404, same body.
 - Managed libraries live under `GOTOME_DATA_DIR` (`/data` in the image, a volume);
   external ones are folders mounted into the container.
+
+## Catalogue
+
+- A **book** is the title a person shelves, rates and reads; a **book file** is one
+  file on disk. A book has any number of files or none. Another edition or a
+  translation is another book, linked through `book_relations`. Metadata and
+  everything per user attach to the book; hashes, extraction state and the path
+  attach to the file.
+- Names are compared by `catalog.Key` (lower case, no accents or punctuation), which
+  is what the `*_key` columns hold. Authors, series, publishers and tags are found
+  by key and keep the spelling that arrived first.
+- Identifiers are stored in their compared form (`catalog.NormalizeIdentifier`): an
+  ISBN as 13 digits, checked.
