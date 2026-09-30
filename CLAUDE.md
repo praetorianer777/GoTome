@@ -145,3 +145,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   by key and keep the spelling that arrived first.
 - Identifiers are stored in their compared form (`catalog.NormalizeIdentifier`): an
   ISBN as 13 digits, checked.
+
+## Background jobs
+
+- `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
+  inside the app process; there is no separate worker container.
+- A feature defines its job as an args type with a `Kind()` and a worker, registers
+  the worker in `cmd/gotome` with `river.AddWorker`, and enqueues through the
+  `jobs.Runner`. Use `InsertTx` when the job follows from a change in the same
+  transaction, and `Unique` for work that must not be queued twice.
+- Queues: `scan`, `extract`, `metadata`, `embed`, `notify`, and `default` for
+  housekeeping. A job may run twice (after a crash or a cancelled shutdown), so it
+  must be safe to repeat.

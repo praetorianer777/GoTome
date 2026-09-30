@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/migrations"
 )
 
@@ -144,6 +145,9 @@ func ensureTemplate(admin string) (string, error) {
 		return "", err
 	}
 	_, err = db.Migrate(ctx, pool)
+	if err == nil {
+		err = jobs.Migrate(ctx, pool)
+	}
 	// A database with open connections can be neither renamed nor copied.
 	pool.Close()
 	if err != nil {
@@ -170,6 +174,8 @@ func migrationsHash() (string, error) {
 		fmt.Fprintf(h, "%s\x00%d\x00", name, len(data))
 		h.Write(data)
 	}
+	// The job queue's tables are part of the template too.
+	fmt.Fprintf(h, "river\x00%d\x00", jobs.SchemaVersion())
 	return hex.EncodeToString(h.Sum(nil))[:12], nil
 }
 

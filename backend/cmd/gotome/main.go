@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/config"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
@@ -35,6 +37,10 @@ const (
 	idleTimeout       = 120 * time.Second
 	shutdownGrace     = 25 * time.Second
 	healthcheckWait   = 3 * time.Second
+	// jobsShutdownWait is longer than the grace the job runner gives its
+	// running jobs, so that its own cancelling of them still happens.
+	jobsShutdownWait     = 40 * time.Second
+	sessionSweepInterval = time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -101,6 +107,32 @@ func serve() error {
 	if err != nil {
 		return err
 	}
+	// Background work runs in this process, on the same database.
+	workers := jobs.NewWorkers()
+	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
+	runner, err := jobs.New(pool, jobs.Config{
+		Logger:  log,
+		Workers: workers,
+		Periodic: []*river.PeriodicJob{
+			jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if err := runner.Start(ctx); err != nil {
+		return err
+	}
+	// Stopped last, after the HTTP server has drained: a request in flight may
+	// still enqueue a job.
+	defer func() {
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), jobsShutdownWait)
+		defer cancel()
+		if err := runner.Stop(stopCtx); err != nil {
+			log.Warn("background jobs did not stop cleanly", "error", err)
+		}
+	}()
+
 	server := &httpapi.Server{
 		Log:       log,
 		DB:        pool,
@@ -163,6 +195,10 @@ func openDatabase(ctx context.Context, cfg config.Config, log *slog.Logger) (*pg
 	}
 	applied, err := db.Migrate(ctx, pool)
 	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	if err := jobs.Migrate(ctx, pool); err != nil {
 		pool.Close()
 		return nil, err
 	}
