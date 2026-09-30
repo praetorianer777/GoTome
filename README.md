@@ -31,6 +31,19 @@ Self-hosted library manager for ebooks, PDFs and audiobooks.
 Go backend, React and Tailwind CSS frontend, PostgreSQL. A deployment is two
 containers: the app and the database.
 
+## Running it
+
+There is no release yet, so the image is built from the checkout:
+
+```bash
+git clone https://github.com/praetorianer777/GoTome.git && cd GoTome
+POSTGRES_PASSWORD=choose-one docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Then open <http://localhost:8080> and create the first account. The database
+password is fixed once the volume exists, so choose it before the first start.
+Once a release is published, the same file pulls the image instead of building it.
+
 ## Development
 
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;

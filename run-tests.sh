@@ -19,6 +19,7 @@ export FULL
 
 echo "🐚 Shell script tests"
 .claude/hooks/tests/branch-guard-test.sh
+tests/test-release.sh
 
 # Each layer joins the gate in the change that introduces it, through a
 # Makefile target of the same name, so this file only decides the order.

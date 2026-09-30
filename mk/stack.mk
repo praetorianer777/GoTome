@@ -67,6 +67,10 @@ clean: ## Stop the stack and delete its volumes
 logs: ## Follow the stack's logs: make logs S=app for one service
 	docker compose logs -f $(S)
 
+.PHONY: stack-logs
+stack-logs: ## Print the stack's logs so far and return
+	docker compose logs --no-color
+
 .PHONY: psql
 psql: ## Open psql in the running stack's database
 	docker compose exec db psql -U gotome -d gotome
@@ -92,6 +96,8 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		|| { echo "expected exactly the services app and db to run:"; docker compose ps; exit 1; }
 	@docker compose exec -T app gotome healthcheck \
 		|| { echo "the app does not answer its health check"; exit 1; }
+	@test "$$(docker compose exec -T app gotome version | cut -d' ' -f1)" = "$(VERSION)" \
+		|| { echo "the image does not report the version in VERSION ($(VERSION))"; exit 1; }
 	@curl -fsS http://localhost:$(GOTOME_PORT)/ | grep -q 'id="root"' \
 		|| { echo "the app does not serve the web app at /"; exit 1; }
 	@curl -fsS http://localhost:$(GOTOME_PORT)/api/v1/version | grep -q '"version"' \

@@ -111,3 +111,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `@smoke` only when it guards the path every user takes; the rest runs in CI.
 - The suite sets a fresh stack up with its own account. On a stack someone else set
   up it fails and says so: `make clean`, then `make up`.
+
+## Releases and the changelog
+
+- `CHANGELOG.md` is written for someone who runs or uses GOtome. A change they would
+  notice gets a line under `## [Unreleased]` in the same pull request; internal work
+  does not.
+- A release is cut by the owner with `./release.sh <version>` on `main`. It moves the
+  Unreleased entries under the version, writes `VERSION`, commits and tags, and pushes
+  nothing. Pushing the tag runs `.github/workflows/release.yml`.

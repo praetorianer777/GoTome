@@ -1,0 +1,162 @@
+name: Release
+
+# Pushing a version tag (made by ./release.sh) builds the image for amd64 and
+# arm64, publishes both under one name on GHCR, and creates the GitHub release
+# with the notes the tag carries.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/praetorianer777/gotome
+
+jobs:
+  check:
+    name: tag matches VERSION
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The binary says the version in the VERSION file. A tag that says
+      # something else would publish an image that misreports itself.
+      - id: version
+        run: |
+          version="$(cat VERSION)"
+          if [[ "${GITHUB_REF_NAME}" != "v${version}" ]]; then
+            echo "The tag is ${GITHUB_REF_NAME}, but VERSION says ${version}. Cut releases with ./release.sh." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: image (${{ matrix.arch }})
+    needs: check
+    # Each architecture on a runner of its own kind: emulating arm64 on amd64
+    # takes several times as long.
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pushed by digest, without a tag: the manifest job gives the two
+      # images their shared names once both exist.
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          build-args: COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.check.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=AGPL-3.0-only
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      # The image that was just pushed must at least say which release it is.
+      - name: Check the image reports the release
+        run: |
+          reported="$(docker run --rm "${IMAGE}@${{ steps.build.outputs.digest }}" version)"
+          echo "$reported"
+          [[ "$reported" == "${{ needs.check.outputs.version }} "* ]]
+
+      - name: Hand the digest to the manifest job
+        run: |
+          mkdir -p digests
+          touch "digests/$(echo '${{ steps.build.outputs.digest }}' | cut -d: -f2)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  manifest:
+    name: multi-arch image
+    needs: [check, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # One name for both architectures: the full version, its minor line,
+      # and latest, which is what the compose file pulls by default.
+      - name: Publish the manifest list
+        working-directory: digests
+        run: |
+          version="${{ needs.check.outputs.version }}"
+          docker buildx imagetools create \
+            -t "${IMAGE}:${version}" \
+            -t "${IMAGE}:${version%.*}" \
+            -t "${IMAGE}:latest" \
+            $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools inspect "${IMAGE}:${version}"
+
+  release:
+    name: GitHub release
+    needs: [check, manifest]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The notes are the tag's own message; a default checkout replaces
+          # the annotated tag with a lightweight one.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          # The tag message is a subject line and then the notes.
+          git tag -l --format='%(contents:body)' "${GITHUB_REF_NAME}" > notes.md
+          {
+            echo
+            echo "## Image"
+            echo
+            echo '```'
+            echo "docker pull ${IMAGE}:${{ needs.check.outputs.version }}"
+            echo '```'
+          } >> notes.md
+          gh release create "${GITHUB_REF_NAME}" --title "GOtome ${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag
