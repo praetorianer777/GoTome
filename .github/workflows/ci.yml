@@ -49,3 +49,26 @@ jobs:
             e2e/test-results
           if-no-files-found: ignore
           retention-days: 14
+
+  # Home servers are often arm64. Building the image and starting the stack on
+  # an arm64 runner finds what only breaks there before a release does.
+  arm64:
+    name: image builds and boots on arm64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image and start the stack
+        run: make stack-up
+
+      - name: Check the running stack
+        run: make stack-check
+
+      - name: Show the logs
+        if: failure()
+        run: make stack-logs || true
+
+      - name: Tear down
+        if: always()
+        run: make stack-down || true

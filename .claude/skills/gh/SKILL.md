@@ -113,8 +113,10 @@ gh run view <run-id> --log-failed
 
 ## Releases
 
-Cutting a release (tagging `main`) is the user's job, not part of issue work; the
-release workflow arrives with #11. Read-only:
+Cutting a release is the user's job, not part of issue work. `./release.sh <version>`
+moves the changelog's Unreleased entries under the version, commits and tags on `main`
+and prints the push command; pushing the `v*` tag makes `release.yml` build the amd64
+and arm64 images, publish them on GHCR and create the GitHub release. Read-only:
 
 ```bash
 gh release list --limit 5
