@@ -50,6 +50,7 @@ type Book struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	PrimaryTextFileID  *uuid.UUID
+	AuthorSort         string
 }
 
 type BookContributor struct {

@@ -64,6 +64,7 @@ func Spec() *openapi.Document {
 				Name: m[1], In: "path", Required: true, Schema: &openapi.Schema{Type: "string"},
 			})
 		}
+		op.Parameters = append(op.Parameters, queryParameters(rt.Query)...)
 		if rt.Request != nil {
 			op.RequestBody = &openapi.RequestBody{
 				Required: true,

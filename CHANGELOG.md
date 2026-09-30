@@ -26,13 +26,16 @@ What changes for someone who runs or uses GOtome. The format follows
   and audio files, keeps the formats of one title and the parts of an audiobook
   together as one book, follows files that were moved or renamed, and marks
   files that are gone as missing. It never deletes, moves or changes a file.
-  The books it finds cannot be browsed yet.
 - Book details are read from EPUB, PDF, MOBI, AZW and AZW3 files: title,
   authors, series, publisher, language, description, tags, ISBN, page count
   and cover. A PDF without a text layer (a scan) is imported and marked as
   such. A Kindle file protected by DRM is imported with its details and cover
   and marked as protected; its text is not read. The app image now includes
   poppler to read PDFs.
+- Browsing. The library page shows the books of every library, or of one,
+  with their covers or as a list, sorted by title, author or when they were
+  added, and loads more as you scroll. A book's page shows what is known about
+  it and its files, which can be downloaded; an interrupted download resumes.
 - Audiobooks in M4B, M4A, MP3, FLAC, Ogg and Opus: title, author, narrator,
   genre, duration, chapters and cover are read from their tags. The parts of a
   book in several files are put in order by their track and disc numbers. The

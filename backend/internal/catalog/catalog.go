@@ -128,6 +128,12 @@ type File struct {
 	SHA256       []byte
 	PartIndex    *int32
 	ExtractState string
+	// Missing is set when the last scan did not find the file.
+	Missing    bool
+	DurationMS *int64
+	PageCount  *int32
+	HasText    *bool
+	DRM        bool
 }
 
 // BookIdentifier is an identifier and, when it belongs to one format only,
@@ -158,6 +164,9 @@ type Book struct {
 	Tags               []string
 	Identifiers        []BookIdentifier
 	Files              []File
+	// CoverKey names the cover in the cover store; empty without one.
+	CoverKey string
+	AddedAt  time.Time
 }
 
 // Service reads and writes the catalogue.
@@ -232,6 +241,9 @@ func CreateBookTx(ctx context.Context, tx pgx.Tx, in NewBook) (uuid.UUID, error)
 	}
 
 	if err := addContributors(ctx, q, book.ID, in.Contributors); err != nil {
+		return uuid.Nil, err
+	}
+	if err := q.RefreshAuthorSort(ctx, book.ID); err != nil {
 		return uuid.Nil, err
 	}
 	if err := addTags(ctx, q, book.ID, in.Tags); err != nil {
@@ -356,6 +368,7 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 		Subtitle: deref(row.Subtitle), Description: deref(row.Description), Language: deref(row.Language),
 		PublishedOn: row.PublishedOn, PublishedPrecision: deref(row.PublishedPrecision),
 		SeriesIndex: row.SeriesIndex, PageCount: row.PageCount,
+		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt,
 	}
 	if row.SeriesID != nil {
 		series, err := q.GetSeries(ctx, *row.SeriesID)
@@ -403,6 +416,7 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 		book.Files = append(book.Files, File{
 			ID: f.ID, Kind: f.Kind, Format: f.Format, RelPath: f.RelPath, Size: f.SizeBytes,
 			ModifiedAt: f.ModifiedAt, SHA256: f.Sha256, PartIndex: f.PartIndex, ExtractState: f.ExtractState,
+			Missing: f.MissingAt != nil, DurationMS: f.DurationMs, PageCount: f.PageCount, HasText: f.HasText, DRM: f.Drm,
 		})
 	}
 	return book, nil

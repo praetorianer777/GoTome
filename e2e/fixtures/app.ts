@@ -17,3 +17,16 @@ export async function openSignedIn(page: Page): Promise<void> {
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
 }
+
+/**
+ * Narrows the library page to one library. Every browser project adds its
+ * own to the one stack, so the page usually offers a choice.
+ */
+export async function chooseLibrary(page: Page, name: string): Promise<void> {
+	// The list of books is there once the libraries are known.
+	await expect(page.getByRole("region", { name: "Books" })).toBeVisible();
+	const choice = page.getByRole("combobox", { name: "Library", exact: true });
+	if (await choice.isVisible()) {
+		await choice.selectOption({ label: name });
+	}
+}

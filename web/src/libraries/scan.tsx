@@ -69,6 +69,9 @@ export function ScanStatus({
 					}
 				>
 					{describe(library.lastScan)}
+					{library.filesPending > 0 &&
+						!scanIsActive(library.lastScan) &&
+						` ${t("scan.reading", { count: library.filesPending })}`}
 				</p>
 				{canScan && (
 					<button

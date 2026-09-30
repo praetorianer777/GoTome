@@ -26,6 +26,10 @@ type Route struct {
 	ID      string
 	Summary string
 	Tag     string
+	// Query is the zero value of a struct whose fields, tagged query:"name",
+	// are the route's query parameters; enum:"a,b" lists the values one may
+	// take. Handlers read them with decodeQuery into the same type.
+	Query any
 	// Request and Response are zero values of the JSON bodies; nil means the
 	// route has none.
 	Request  any
@@ -137,6 +141,22 @@ func (s *Server) routes() []Route {
 			Permission: auth.StorageManage, Handler: s.deleteLibraryMember,
 		},
 
+		{
+			Method: http.MethodGet, Path: "/books", ID: "listBooks",
+			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
+			Query: listBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listBooks,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}", ID: "getBook",
+			Summary: "One book with everything that describes it and its files", Tag: "books",
+			Response: bookDetail{}, Permission: auth.LibraryRead, Handler: s.getBook,
+		},
+		{
+			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
+			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
+			Produces: "application/octet-stream", Status: http.StatusOK,
+			Permission: auth.LibraryRead, Handler: s.downloadFile,
+		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
 			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",

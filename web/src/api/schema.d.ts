@@ -55,6 +55,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One page of the books the caller may see, in one library or all */
+        get: operations["listBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One book with everything that describes it and its files */
+        get: operations["getBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/covers/{size}": {
         parameters: {
             query?: never;
@@ -64,6 +98,23 @@ export interface paths {
         };
         /** A book's cover as a JPEG; size is small or large */
         get: operations["getBookCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's file as it lies on disk; answers range requests */
+        get: operations["downloadFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -209,9 +260,71 @@ export interface components {
             message: string;
             requestId?: string;
         };
+        BookDetail: {
+            /** Format: date-time */
+            addedAt: string;
+            contributors: components["schemas"]["Contributor"][];
+            coverKey?: string;
+            description?: string;
+            durationMs?: number;
+            files: components["schemas"]["BookFile"][];
+            /** Format: uuid */
+            id: string;
+            identifiers: components["schemas"]["Identifier"][];
+            language?: string;
+            /** Format: uuid */
+            libraryId: string;
+            pageCount?: number;
+            published?: string;
+            publisher?: string;
+            series?: string;
+            seriesIndex?: number;
+            subtitle?: string;
+            tags: string[];
+            title: string;
+        };
+        BookFile: {
+            drm: boolean;
+            durationMs?: number;
+            format: string;
+            hasText?: boolean;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            missing: boolean;
+            name: string;
+            pageCount?: number;
+            part?: number;
+            relPath?: string;
+            size: number;
+        };
+        BookList: {
+            books: components["schemas"]["BookSummary"][];
+            nextCursor?: string;
+        };
+        BookSummary: {
+            /** Format: date-time */
+            addedAt: string;
+            authors: string[];
+            coverKey?: string;
+            formats: string[];
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            libraryId: string;
+            publishedYear?: number;
+            series?: string;
+            seriesIndex?: number;
+            subtitle?: string;
+            title: string;
+        };
         BuildInfo: {
             commit?: string;
             version: string;
+        };
+        Contributor: {
+            name: string;
+            role: string;
         };
         CreateLibraryRequest: {
             mode: string;
@@ -231,12 +344,17 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
+        Identifier: {
+            type: string;
+            value: string;
+        };
         LibraryList: {
             libraries: components["schemas"]["LibraryResponse"][];
         };
         LibraryResponse: {
             /** Format: date-time */
             createdAt: string;
+            filesPending: number;
             /** Format: uuid */
             id: string;
             lastScan?: components["schemas"]["Scan"];
@@ -403,6 +521,77 @@ export interface operations {
             };
         };
     };
+    listBooks: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description What the books are ordered by; title when left out. */
+                sort?: "title" | "author" | "added";
+                /** @description The direction; asc when left out. */
+                order?: "asc" | "desc";
+                /** @description The nextCursor of the page before. */
+                cursor?: string;
+                /** @description How many books a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getBookCover: {
         parameters: {
             query?: never;
@@ -422,6 +611,37 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    downloadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
             /** @description The request failed. */

@@ -36,6 +36,46 @@ func (q *Queries) AddFileChapter(ctx context.Context, arg AddFileChapterParams) 
 	return err
 }
 
+const countPendingFiles = `-- name: CountPendingFiles :many
+SELECT library_id, count(*)::int AS pending
+FROM book_files
+WHERE extract_state = 'pending'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+GROUP BY library_id
+`
+
+type CountPendingFilesParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type CountPendingFilesRow struct {
+	LibraryID uuid.UUID
+	Pending   int32
+}
+
+// Per library the viewer may see, how many files found are still to be read.
+func (q *Queries) CountPendingFiles(ctx context.Context, arg CountPendingFilesParams) ([]CountPendingFilesRow, error) {
+	rows, err := q.db.Query(ctx, countPendingFiles, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountPendingFilesRow{}
+	for rows.Next() {
+		var i CountPendingFilesRow
+		if err := rows.Scan(&i.LibraryID, &i.Pending); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteFileChapters = `-- name: DeleteFileChapters :exec
 DELETE FROM audio_chapters WHERE file_id = $1
 `

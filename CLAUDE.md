@@ -146,6 +146,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Identifiers are stored in their compared form (`catalog.NormalizeIdentifier`): an
   ISBN as 13 digits, checked.
 
+## Listing books
+
+- Lists are cut into pages by the sort keys of the last row (keyset), never by an
+  offset: `catalog.List` builds the query from `orderKeys`, and the cursor it
+  hands out carries those keys. A new order needs its keys there, an index that
+  covers them, and, if it sorts by something derived, a column kept current on
+  write, as `books.author_sort` is by `RefreshAuthorSort`.
+- A route's query parameters are a struct in the route table (`Route.Query`, tags
+  `query`, `enum`, `doc`), read with `decodeQuery`; the OpenAPI document and the
+  web client's types come from the same struct.
+- Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
+  and without the server's write deadline.
+
 ## Scanning
 
 - `internal/ingest` brings a library folder's files into the catalogue. It only

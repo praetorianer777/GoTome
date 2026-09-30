@@ -378,10 +378,9 @@ describe("libraries", () => {
 		const { unmount } = renderApp("/");
 
 		const section = within(await screen.findByRole("region", { name: "Novels" }));
-		expect(section.getByRole("heading", { name: "No books yet" })).toBeInTheDocument();
+		expect(await screen.findByRole("heading", { name: "No books yet" })).toBeInTheDocument();
 		await person.click(section.getByRole("button", { name: "Scan now" }));
-		expect(await section.findByText("The last scan found 3 files in this library's folder.")).toBeInTheDocument();
-		expect(section.getByRole("status")).toHaveTextContent(/3 files, 3 new\.$/);
+		await waitFor(() => expect(section.getByRole("status")).toHaveTextContent(/3 files, 3 new\.$/));
 		unmount();
 
 		server.signedInAs("Rita");
@@ -389,5 +388,131 @@ describe("libraries", () => {
 		const forReader = within(await screen.findByRole("region", { name: "Novels" }));
 		expect(forReader.getByRole("status")).toHaveTextContent(/3 files, 3 new\.$/);
 		expect(forReader.queryByRole("button", { name: "Scan now" })).not.toBeInTheDocument();
+	});
+});
+
+describe("books", () => {
+	// The text of each book's card, leaving out the stand-in for a missing
+	// cover, which carries the title again for the eye only.
+	const cards = (books: ReturnType<typeof within>) =>
+		books.getAllByRole("link").map((l: HTMLElement) => l.lastElementChild?.textContent);
+
+	function withShelf() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withLibrary("Audio")
+			.withBook("Persuasion", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				files: [{ id: "file-1", kind: "ebook", format: "epub", name: "Persuasion.epub", size: 1_400_000, missing: false, drm: false }],
+			})
+			.withBook("Dune", {
+				subtitle: "Deluxe Edition",
+				contributors: [
+					{ name: "Frank Herbert", role: "author" },
+					{ name: "Scott Brick", role: "narrator" },
+				],
+				series: "Dune Chronicles",
+				seriesIndex: 1,
+				published: "1965",
+				publisher: "Chilton",
+				description: "A desert planet.\n\nAnd a boy.",
+				tags: ["Science Fiction"],
+				identifiers: [{ type: "isbn", value: "9780441013593" }],
+				durationMs: 21 * 3600_000 + 2 * 60_000,
+				files: [
+					{ id: "file-2", kind: "audio", format: "mp3", name: "Dune 1.mp3", size: 400_000_000, missing: false, drm: false, part: 0, durationMs: 11 * 3600_000 },
+					{ id: "file-3", kind: "audio", format: "mp3", name: "Dune 2.mp3", size: 380_000_000, missing: true, drm: false, part: 1 },
+				],
+			}, "Audio")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] });
+	}
+
+	it("shows every library's books, and one library's on request", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+
+		const books = within(await screen.findByRole("region", { name: "Books" }));
+		await waitFor(() => expect(cards(books)).toEqual([
+			"DuneFrank Herbert", "EmmaJane Austen", "PersuasionJane Austen",
+		]));
+
+		await person.selectOptions(screen.getByLabelText("Library"), "Audio");
+		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(1));
+		expect(router.state.location.search).toEqual({ library: "lib-2" });
+		expect(screen.getByRole("heading", { name: "Audio", level: 2 })).toBeInTheDocument();
+		// A reader is shown the scan, not the button that starts one.
+		expect(screen.queryByRole("button", { name: "Scan now" })).not.toBeInTheDocument();
+	});
+
+	it("sorts, and lists instead of showing covers", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		renderApp("/");
+		const books = within(await screen.findByRole("region", { name: "Books" }));
+		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(3));
+
+		await person.selectOptions(screen.getByLabelText("Sort by"), "Author");
+		await waitFor(() => expect(cards(books)).toEqual([
+			"DuneFrank Herbert", "EmmaJane Austen", "PersuasionJane Austen",
+		]));
+		expect(server.requests.some((r) => r.path.includes("sort=author") && r.path.includes("order=asc"))).toBe(true);
+
+		await person.selectOptions(screen.getByLabelText("Sort by"), "Recently added");
+		await waitFor(() => expect(cards(books)).toEqual([
+			"EmmaJane Austen", "DuneFrank Herbert", "PersuasionJane Austen",
+		]));
+
+		await person.click(screen.getByRole("button", { name: "List" }));
+		expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+		const rows = within(books.getByRole("table")).getAllByRole("row");
+		expect(rows[1]).toHaveTextContent("Emma");
+		expect(rows[2]).toHaveTextContent("Dune");
+	});
+
+	it("loads a large library a page at a time", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		for (let i = 0; i < 70; i++) {
+			server.withBook(`Book ${String(i).padStart(2, "0")}`);
+		}
+		renderApp("/");
+		const books = within(await screen.findByRole("region", { name: "Books" }));
+		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(60));
+
+		await person.click(books.getByRole("button", { name: "Show more" }));
+		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(70));
+		expect(books.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+	});
+
+	it("opens a book with what is known about it and its files", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: /^Dune/ }));
+
+		expect(await screen.findByRole("heading", { name: "Dune", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-2");
+		for (const text of ["Deluxe Edition", "by Frank Herbert", "Read by Scott Brick", "Book 1 of Dune Chronicles",
+			"Chilton", "1965", "21 h 2 min", "ISBN 9780441013593", "Science Fiction"]) {
+			expect(screen.getByText(text)).toBeInTheDocument();
+		}
+		const files = within(screen.getByRole("region", { name: "Files" }));
+		const download = files.getByRole("link", { name: "Download Dune 1.mp3" });
+		expect(download).toHaveAttribute("href", "/api/v1/files/file-2/download");
+		expect(files.getByText(/Part 2 · Not in the folder any more/)).toBeInTheDocument();
+		// A file that is gone cannot be downloaded.
+		expect(files.queryByRole("link", { name: "Download Dune 2.mp3" })).not.toBeInTheDocument();
+
+		await person.click(screen.getByRole("link", { name: "Back to the library" }));
+		expect(await screen.findByRole("region", { name: "Books" })).toBeInTheDocument();
+	});
+
+	it("says so when a book is not there", async () => {
+		withShelf();
+		renderApp("/books/book-99");
+		expect(await screen.findByText("There is no such book, or it is in a library you may not see.")).toBeInTheDocument();
 	});
 });

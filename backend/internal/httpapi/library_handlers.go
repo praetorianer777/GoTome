@@ -28,6 +28,28 @@ type libraryResponse struct {
 	// LastScan is the newest scan of the library's folder, which may still
 	// be waiting or running. A library never scanned has none.
 	LastScan *ingest.Scan `json:"lastScan,omitempty"`
+	// FilesPending is how many files the scans found that are still to be
+	// read for their title, cover and text.
+	FilesPending int32 `json:"filesPending"`
+}
+
+// scanState is what the library responses add from the scans: the newest
+// scan and the files still to be read, by library.
+type scanState struct {
+	latest  map[uuid.UUID]ingest.Scan
+	pending map[uuid.UUID]int32
+}
+
+func (s *Server) scanState(r *http.Request, scope library.Scope) (scanState, error) {
+	latest, err := s.Scans.Latest(r.Context(), scope)
+	if err != nil {
+		return scanState{}, err
+	}
+	pending, err := s.Scans.Pending(r.Context(), scope)
+	if err != nil {
+		return scanState{}, err
+	}
+	return scanState{latest: latest, pending: pending}, nil
 }
 
 type libraryList struct {
@@ -57,12 +79,12 @@ type updateLibraryRequest struct {
 	Writable   *bool   `json:"writable,omitempty"`
 }
 
-func toLibraryResponse(l library.Library, viewer *auth.User, scans map[uuid.UUID]ingest.Scan) libraryResponse {
+func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
-		Visibility: l.Visibility, CreatedAt: l.CreatedAt,
+		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
 	}
-	if scan, ok := scans[l.ID]; ok {
+	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
 	}
 	if auth.Allows(viewer.Role, auth.StorageManage) {
@@ -103,7 +125,7 @@ func (s *Server) listLibraries(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	scans, err := s.Scans.Latest(r.Context(), scope)
+	scans, err := s.scanState(r, scope)
 	if err != nil {
 		return err
 	}
@@ -126,7 +148,7 @@ func (s *Server) getLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return libraryError(err)
 	}
-	scans, err := s.Scans.Latest(r.Context(), scope)
+	scans, err := s.scanState(r, scope)
 	if err != nil {
 		return err
 	}
@@ -173,11 +195,11 @@ func (s *Server) createLibrary(w http.ResponseWriter, r *http.Request) error {
 	// A folder that already holds books is looked through at once. The
 	// library exists either way, so a scan that cannot be queued is no reason
 	// to answer that adding it failed.
-	scans := map[uuid.UUID]ingest.Scan{}
+	scans := scanState{latest: map[uuid.UUID]ingest.Scan{}}
 	if scan, err := s.Scans.Request(r.Context(), l.ID, &user.ID); err != nil {
 		s.Log.Warn("the new library's first scan could not be queued", "library", l.Name, "error", err)
 	} else {
-		scans[l.ID] = scan
+		scans.latest[l.ID] = scan
 	}
 	writeJSON(w, r, http.StatusCreated, toLibraryResponse(l, user, scans))
 	return nil
@@ -197,7 +219,7 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 		return libraryError(err)
 	}
 	user := UserFrom(r.Context())
-	scans, err := s.Scans.Latest(r.Context(), library.ScopeOf(*user))
+	scans, err := s.scanState(r, library.ScopeOf(*user))
 	if err != nil {
 		return err
 	}

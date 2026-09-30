@@ -103,7 +103,7 @@ INSERT INTO books (
     field_sources
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id
+RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort
 `
 
 type CreateBookParams struct {
@@ -165,6 +165,7 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
+		&i.AuthorSort,
 	)
 	return i, err
 }
@@ -291,7 +292,7 @@ func (q *Queries) GetSeries(ctx context.Context, id uuid.UUID) (Series, error) {
 }
 
 const getVisibleBook = `-- name: GetVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
@@ -333,6 +334,7 @@ func (q *Queries) GetVisibleBook(ctx context.Context, arg GetVisibleBookParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
+		&i.AuthorSort,
 	)
 	return i, err
 }
@@ -359,6 +361,49 @@ func (q *Queries) GetVisibleBookCover(ctx context.Context, arg GetVisibleBookCov
 	var cover_key *string
 	err := row.Scan(&cover_key)
 	return cover_key, err
+}
+
+const getVisibleFile = `-- name: GetVisibleFile :one
+SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, l.root_path
+FROM book_files f
+JOIN books b ON b.id = f.book_id
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1
+  AND f.trashed_at IS NULL
+  AND b.deleted_at IS NULL
+  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+`
+
+type GetVisibleFileParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type GetVisibleFileRow struct {
+	ID        uuid.UUID
+	BookID    uuid.UUID
+	Format    string
+	RelPath   string
+	Sha256    []byte
+	MissingAt *time.Time
+	RootPath  string
+}
+
+// A file of a book the viewer may see, with where it lies.
+func (q *Queries) GetVisibleFile(ctx context.Context, arg GetVisibleFileParams) (GetVisibleFileRow, error) {
+	row := q.db.QueryRow(ctx, getVisibleFile, arg.ID, arg.Viewer, arg.SeesAll)
+	var i GetVisibleFileRow
+	err := row.Scan(
+		&i.ID,
+		&i.BookID,
+		&i.Format,
+		&i.RelPath,
+		&i.Sha256,
+		&i.MissingAt,
+		&i.RootPath,
+	)
+	return i, err
 }
 
 const listBookContributors = `-- name: ListBookContributors :many
@@ -529,7 +574,7 @@ func (q *Queries) ListBookTags(ctx context.Context, bookID uuid.UUID) ([]ListBoo
 }
 
 const lockBookOfFile = `-- name: LockBookOfFile :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
 FROM books b
 JOIN book_files f ON f.book_id = b.id
 WHERE f.id = $1
@@ -565,8 +610,27 @@ func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
+		&i.AuthorSort,
 	)
 	return i, err
+}
+
+const refreshAuthorSort = `-- name: RefreshAuthorSort :exec
+UPDATE books b
+SET author_sort = COALESCE((
+    SELECT a.sort_name
+    FROM book_contributors c
+    JOIN authors a ON a.id = c.author_id
+    WHERE c.book_id = b.id AND c.role = 'author'
+    ORDER BY c.position
+    LIMIT 1
+), '')
+WHERE b.id = $1
+`
+
+func (q *Queries) RefreshAuthorSort(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, refreshAuthorSort, id)
+	return err
 }
 
 const updateBookDescribed = `-- name: UpdateBookDescribed :exec
