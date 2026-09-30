@@ -489,6 +489,53 @@
         "x-permission": "storage:manage"
       }
     },
+    "/libraries/{libraryId}/scans": {
+      "post": {
+        "operationId": "scanLibrary",
+        "summary": "Look through a library's folder for new, changed and missing files",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "libraryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scan"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
     "/setup": {
       "get": {
         "operationId": "getSetup",
@@ -736,6 +783,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "lastScan": {
+            "$ref": "#/components/schemas/Scan"
+          },
           "mode": {
             "type": "string"
           },
@@ -817,6 +867,75 @@
         },
         "required": [
           "members"
+        ]
+      },
+      "Scan": {
+        "type": "object",
+        "properties": {
+          "booksAdded": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "filesAdded": {
+            "type": "integer"
+          },
+          "filesChanged": {
+            "type": "integer"
+          },
+          "filesMissing": {
+            "type": "integer"
+          },
+          "filesMoved": {
+            "type": "integer"
+          },
+          "filesRestored": {
+            "type": "integer"
+          },
+          "filesSeen": {
+            "type": "integer"
+          },
+          "filesSkipped": {
+            "type": "integer"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "libraryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "libraryId",
+          "state",
+          "requestedAt",
+          "filesSeen",
+          "filesAdded",
+          "filesChanged",
+          "filesMoved",
+          "filesRestored",
+          "filesMissing",
+          "filesSkipped",
+          "booksAdded"
         ]
       },
       "SetupRequest": {

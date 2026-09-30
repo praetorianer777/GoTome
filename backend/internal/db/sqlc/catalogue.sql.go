@@ -77,9 +77,10 @@ func (q *Queries) AddBookTag(ctx context.Context, arg AddBookTagParams) error {
 const createBook = `-- name: CreateBook :one
 INSERT INTO books (
     library_id, title, sort_title, title_key, subtitle, description, language,
-    published_on, published_precision, publisher_id, series_id, series_index, page_count
+    published_on, published_precision, publisher_id, series_id, series_index, page_count,
+    field_sources
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id
 `
 
@@ -97,6 +98,7 @@ type CreateBookParams struct {
 	SeriesID           *uuid.UUID
 	SeriesIndex        *float64
 	PageCount          *int32
+	FieldSources       []byte
 }
 
 func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, error) {
@@ -114,6 +116,7 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, e
 		arg.SeriesID,
 		arg.SeriesIndex,
 		arg.PageCount,
+		arg.FieldSources,
 	)
 	var i Book
 	err := row.Scan(

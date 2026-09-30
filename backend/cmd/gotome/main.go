@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/version"
@@ -108,18 +109,25 @@ func serve() error {
 		return err
 	}
 	// Background work runs in this process, on the same database.
+	libraries := library.NewService(pool, cfg.DataDir)
+	scans := ingest.NewService(pool, libraries, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
-	runner, err := jobs.New(pool, jobs.Config{
-		Logger:  log,
-		Workers: workers,
-		Periodic: []*river.PeriodicJob{
-			jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
-		},
-	})
+	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
+	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
+	periodic := []*river.PeriodicJob{
+		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
+	}
+	if cfg.ScanInterval > 0 {
+		// Also once at start: what changed on disk while GOtome was down is
+		// found now, and an unchanged library costs a walk.
+		periodic = append(periodic, jobs.Every(cfg.ScanInterval, true, ingest.ScanAllArgs{}, jobs.QueueDefault))
+	}
+	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: periodic})
 	if err != nil {
 		return err
 	}
+	scans.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -138,7 +146,8 @@ func serve() error {
 		DB:        pool,
 		Auth:      accounts,
 		Logins:    httpapi.NewLoginLimits(time.Now),
-		Libraries: library.NewService(pool, cfg.DataDir),
+		Libraries: libraries,
+		Scans:     scans,
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

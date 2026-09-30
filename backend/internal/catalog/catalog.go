@@ -6,6 +6,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -88,7 +89,18 @@ type NewBook struct {
 	Contributors []NewContributor
 	Tags         []string
 	Identifiers  []Identifier
+	// Source says where these values come from, such as SourceFilename. It is
+	// recorded per field, so that a better source may later replace a guess
+	// and nothing replaces what a person typed.
+	Source string
 }
+
+// Where a field's value came from, as recorded with the book.
+const (
+	// SourceFilename is a title read off the name of a file or its folder,
+	// for want of anything better.
+	SourceFilename = "filename"
+)
 
 // NewFile is a file found on disk or uploaded.
 type NewFile struct {
@@ -163,13 +175,16 @@ func (s *Service) CreateBook(ctx context.Context, in NewBook) (uuid.UUID, error)
 	var id uuid.UUID
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		id, err = createBook(ctx, sqlc.New(tx), in)
+		id, err = CreateBookTx(ctx, tx, in)
 		return err
 	})
 	return id, err
 }
 
-func createBook(ctx context.Context, q *sqlc.Queries, in NewBook) (uuid.UUID, error) {
+// CreateBookTx is CreateBook inside a transaction the caller runs, for an
+// import that adds a book and its files together or not at all.
+func CreateBookTx(ctx context.Context, tx pgx.Tx, in NewBook) (uuid.UUID, error) {
+	q := sqlc.New(tx)
 	title := strings.Join(strings.Fields(in.Title), " ")
 	if title == "" {
 		return uuid.Nil, errors.New("a book needs a title")
@@ -205,6 +220,11 @@ func createBook(ctx context.Context, q *sqlc.Queries, in NewBook) (uuid.UUID, er
 		// A position in no series means nothing.
 		params.SeriesIndex = nil
 	}
+	sources, err := json.Marshal(fieldSources(params, in.Source))
+	if err != nil {
+		return uuid.Nil, err
+	}
+	params.FieldSources = sources
 
 	book, err := q.CreateBook(ctx, params)
 	if err != nil {
@@ -260,32 +280,27 @@ func createBook(ctx context.Context, q *sqlc.Queries, in NewBook) (uuid.UUID, er
 // AddFile attaches a file to a book. The file lands in the book's library:
 // the database refuses any other.
 func (s *Service) AddFile(ctx context.Context, bookID, libraryID uuid.UUID, in NewFile) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		id, err = AddFileTx(ctx, tx, bookID, libraryID, in)
+		return err
+	})
+	return id, err
+}
+
+// AddFileTx is AddFile inside a transaction the caller runs.
+func AddFileTx(ctx context.Context, tx pgx.Tx, bookID, libraryID uuid.UUID, in NewFile) (uuid.UUID, error) {
 	format := strings.ToLower(strings.TrimPrefix(in.Format, "."))
 	kind, ok := KindOf(format)
 	if !ok {
 		return uuid.Nil, fmt.Errorf("%q is not a format GOtome knows", in.Format)
 	}
-	var id uuid.UUID
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
-		file, err := q.CreateBookFile(ctx, sqlc.CreateBookFileParams{
-			BookID: bookID, LibraryID: libraryID, Kind: kind, Format: format,
-			RelPath: in.RelPath, SizeBytes: in.Size, ModifiedAt: in.ModifiedAt,
-			Sha256: in.SHA256, PartIndex: in.PartIndex, UploadedBy: in.UploadedBy,
-		})
-		if err != nil {
-			return err
-		}
-		id = file.ID
-		for _, ident := range in.Identifiers {
-			err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{
-				BookID: bookID, FileID: &file.ID, Type: ident.Type, Value: ident.Value,
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+	q := sqlc.New(tx)
+	file, err := q.CreateBookFile(ctx, sqlc.CreateBookFileParams{
+		BookID: bookID, LibraryID: libraryID, Kind: kind, Format: format,
+		RelPath: in.RelPath, SizeBytes: in.Size, ModifiedAt: in.ModifiedAt,
+		Sha256: in.SHA256, PartIndex: in.PartIndex, UploadedBy: in.UploadedBy,
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -297,7 +312,18 @@ func (s *Service) AddFile(ctx context.Context, bookID, libraryID uuid.UUID, in N
 			return uuid.Nil, ErrNotFound
 		}
 	}
-	return id, err
+	if err != nil {
+		return uuid.Nil, err
+	}
+	for _, ident := range in.Identifiers {
+		err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{
+			BookID: bookID, FileID: &file.ID, Type: ident.Type, Value: ident.Value,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+	}
+	return file.ID, nil
 }
 
 // Get returns a book the scope may see, with its files and credits, or
@@ -377,6 +403,30 @@ func (b Book) Authors() []string {
 		}
 	}
 	return names
+}
+
+// fieldSources names the source for every field the new book has a value in.
+func fieldSources(p sqlc.CreateBookParams, source string) map[string]string {
+	sources := map[string]string{}
+	if source == "" {
+		return sources
+	}
+	set := map[string]bool{
+		"title":       true,
+		"subtitle":    p.Subtitle != nil,
+		"description": p.Description != nil,
+		"language":    p.Language != nil,
+		"published":   p.PublishedOn != nil,
+		"publisher":   p.PublisherID != nil,
+		"series":      p.SeriesID != nil,
+		"pageCount":   p.PageCount != nil,
+	}
+	for field, has := range set {
+		if has {
+			sources[field] = source
+		}
+	}
+	return sources
 }
 
 func clean(s string) string { return strings.Join(strings.Fields(s), " ") }

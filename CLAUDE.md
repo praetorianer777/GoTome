@@ -146,6 +146,26 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Identifiers are stored in their compared form (`catalog.NormalizeIdentifier`): an
   ISBN as 13 digits, checked.
 
+## Scanning
+
+- `internal/ingest` brings a library folder's files into the catalogue. It only
+  reads the folder: a file that is gone is marked missing (`missing_at`), and
+  nothing on disk is deleted, moved or written.
+- A file is unchanged when its size and modification time are what is stored, and
+  is then not read. A new file whose SHA-256 is that of a file no longer at its
+  path is that file, moved. Which files of a folder are one book is decided in
+  `grouping.go` from their names alone; only new files are assigned, so what a
+  person later merges or splits stays as they left it.
+- A book made from a file name carries `field_sources.title = "filename"`, which
+  tells extraction that the title is a guess it may replace.
+- `library_scans` holds one row per scan and, through a partial unique index, the
+  rule that a library has one scan waiting or running. Ask for a scan with
+  `ingest.Service.Request`, never by enqueueing the job directly.
+- A scan job works for a bounded time and then snoozes; the next run continues.
+  Anything added to the scan must leave it safe to stop between two folders.
+- The development stack mounts `e2e/fixtures/books` into the app container as
+  `/fixtures/books-<browser project>` (`deploy/docker-compose.dev.yml`).
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

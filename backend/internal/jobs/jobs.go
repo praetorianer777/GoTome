@@ -245,7 +245,21 @@ func fromRow(row *rivertype.JobRow) Job {
 	return job
 }
 
-// Get returns one job.
+// ErrNotFound is returned by Get for a job that does not exist, or no longer:
+// finished jobs are cleared away after a while.
+var ErrNotFound = river.ErrNotFound
+
+// Finished reports whether the job will not run again: it completed, was
+// cancelled, or failed for the last time.
+func (j Job) Finished() bool {
+	switch rivertype.JobState(j.State) {
+	case rivertype.JobStateCompleted, rivertype.JobStateCancelled, rivertype.JobStateDiscarded:
+		return true
+	}
+	return false
+}
+
+// Get returns one job, or ErrNotFound.
 func (r *Runner) Get(ctx context.Context, id int64) (Job, error) {
 	row, err := r.client.JobGet(ctx, id)
 	if err != nil {

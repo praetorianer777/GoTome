@@ -16,6 +16,9 @@ services:
       GOTOME_ENV: ${GOTOME_ENV:-production}
       GOTOME_HTTP_ADDR: ":8080"
       GOTOME_LOG_LEVEL: ${GOTOME_LOG_LEVEL:-info}
+      # How often every library's folder is looked through for changes; 0
+      # leaves scanning to the "Scan now" button.
+      GOTOME_SCAN_INTERVAL: ${GOTOME_SCAN_INTERVAL:-6h}
       # The password goes into a URL: keep to letters, digits, - and _, or
       # percent-encode it here.
       GOTOME_DATABASE_URL: postgres://gotome:${POSTGRES_PASSWORD:-gotome}@db:5432/gotome?sslmode=disable
@@ -35,6 +38,9 @@ services:
       timeout: 4s
       retries: 12
       start_period: 5s
+    # Longer than the time the app gives requests and background jobs to
+    # finish, so that a stop lets a running scan put down what it holds.
+    stop_grace_period: 75s
     restart: unless-stopped
 
   db:

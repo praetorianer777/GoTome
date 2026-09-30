@@ -329,4 +329,65 @@ describe("libraries", () => {
 		await waitFor(() => expect(screen.queryByRole("listitem", { name: "NAS" })).not.toBeInTheDocument());
 		expect(server.libraries.map((l) => l.name)).toEqual(["Fiction"]);
 	});
+
+	it("lets an administrator scan a library and says what the scan found", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve").withLibrary("Novels");
+		server.scanFinds = { filesSeen: 12, filesAdded: 10, filesMissing: 2, booksAdded: 9 };
+		renderApp("/admin/libraries");
+
+		const row = within(await screen.findByRole("listitem", { name: "Novels" }));
+		expect(row.getByRole("status")).toHaveTextContent("Not scanned yet.");
+		await person.click(row.getByRole("button", { name: "Scan now" }));
+
+		await waitFor(() => expect(row.getByRole("status")).toHaveTextContent(/^Scanned .+: 12 files, 10 new, 2 missing\.$/));
+		expect(server.requests).toContainEqual({ method: "POST", path: "/libraries/lib-1/scans", body: undefined });
+	});
+
+	it("shows a scan that is under way and one that failed", async () => {
+		const scan = {
+			id: "scan-1", libraryId: "lib-1", requestedAt: "2026-01-02T10:00:00Z",
+			filesSeen: 0, filesAdded: 0, filesChanged: 0, filesMoved: 0,
+			filesRestored: 0, filesMissing: 0, filesSkipped: 0, booksAdded: 0,
+		};
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("Novels", { lastScan: { ...scan, state: "running" } })
+			.withLibrary("NAS", { lastScan: { ...scan, state: "failed", error: "The library's folder could not be read." } });
+		renderApp("/admin/libraries");
+
+		const novels = within(await screen.findByRole("listitem", { name: "Novels" }));
+		expect(novels.getByRole("status")).toHaveTextContent("Scanning…");
+		// One scan at a time: the button waits for the one under way.
+		expect(novels.getByRole("button", { name: "Scan now" })).toBeDisabled();
+
+		const nas = within(screen.getByRole("listitem", { name: "NAS" }));
+		expect(nas.getByRole("status")).toHaveTextContent(/failed\. The library's folder could not be read\.$/);
+		expect(nas.getByRole("button", { name: "Scan now" })).toBeEnabled();
+	});
+
+	it("lets an editor scan from the library page, and a reader only look", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Edith")
+			.withLibrary("Novels");
+		server.scanFinds = { filesSeen: 3, filesAdded: 3, booksAdded: 2 };
+		const { unmount } = renderApp("/");
+
+		const section = within(await screen.findByRole("region", { name: "Novels" }));
+		expect(section.getByRole("heading", { name: "No books yet" })).toBeInTheDocument();
+		await person.click(section.getByRole("button", { name: "Scan now" }));
+		expect(await section.findByText("The last scan found 3 files in this library's folder.")).toBeInTheDocument();
+		expect(section.getByRole("status")).toHaveTextContent(/3 files, 3 new\.$/);
+		unmount();
+
+		server.signedInAs("Rita");
+		renderApp("/");
+		const forReader = within(await screen.findByRole("region", { name: "Novels" }));
+		expect(forReader.getByRole("status")).toHaveTextContent(/3 files, 3 new\.$/);
+		expect(forReader.queryByRole("button", { name: "Scan now" })).not.toBeInTheDocument();
+	});
 });
