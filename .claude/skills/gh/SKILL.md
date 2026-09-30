@@ -3,7 +3,7 @@ name: gh
 description: Use the GitHub CLI (gh) for this repo — find or create issues, create issue branches, open and update PRs, check CI runs and releases. Use before starting any code change (every change needs an issue and an issue branch) and whenever GitHub issues, PRs, Actions or releases are involved.
 ---
 
-# GitHub CLI (`gh`) for GoTome
+# GitHub CLI (`gh`) for GOtome
 
 Repo: `praetorianer777/GoTome`, default branch `main`.
 

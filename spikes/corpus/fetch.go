@@ -29,7 +29,7 @@ const (
 	// two languages the search spike has to stem.
 	DefaultLanguages = "en:1200,de:600,fr:200"
 
-	userAgent = "GoTome-corpus/0.1 (+https://github.com/praetorianer777/GoTome)"
+	userAgent = "GOtome-corpus/0.1 (+https://github.com/praetorianer777/GoTome)"
 	// EPUBs without images are a few hundred kilobytes; anything near this is
 	// not a book the benchmark wants.
 	maxEPUBBytes = 64 << 20

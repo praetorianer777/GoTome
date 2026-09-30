@@ -1,4 +1,4 @@
-// Package version says which build of GoTome is running, for the log line that
+// Package version says which build of GOtome is running, for the log line that
 // opens the process and for the version subcommand.
 package version
 

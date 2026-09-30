@@ -1,4 +1,4 @@
-# GoTome
+# GOtome
 
 Self-hosted ebook, PDF and audiobook library manager. Go backend, React + Tailwind
 frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgres.
