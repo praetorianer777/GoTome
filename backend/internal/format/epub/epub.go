@@ -6,6 +6,8 @@ package epub
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -52,6 +54,10 @@ type Book struct {
 	// DRM reports that the content is encrypted. Metadata and cover are
 	// still read; the text cannot be.
 	DRM bool
+	// ContentHash is the SHA-256 of the spine's documents as stored, in
+	// reading order. Two files that differ only in their metadata or cover
+	// have the same one. Nil when the content is encrypted or there is none.
+	ContentHash []byte
 }
 
 // Chapter is one document of the spine.
@@ -129,6 +135,7 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 	}
 
 	titles := a.contents(opfPath, pkg)
+	content := sha256.New()
 	var total int64
 	offset := 0
 	for _, item := range pkg.spineItems() {
@@ -148,6 +155,10 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 			}
 			continue
 		}
+		// The length goes in first, so that where one document ends and the
+		// next begins is part of what is hashed.
+		_ = binary.Write(content, binary.BigEndian, uint64(len(doc)))
+		content.Write(doc)
 		text, heading := extractText(doc)
 		total += int64(len(text))
 		if total > limits.MaxTextBytes {
@@ -162,6 +173,9 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 		}
 		book.Chapters = append(book.Chapters, Chapter{Href: href, Title: title, Text: text, Offset: offset})
 		offset += utf8.RuneCountInString(text)
+	}
+	if len(book.Chapters) > 0 {
+		book.ContentHash = content.Sum(nil)
 	}
 	return book, nil
 }

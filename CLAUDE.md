@@ -166,6 +166,24 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - The development stack mounts `e2e/fixtures/books` into the app container as
   `/fixtures/books-<browser project>` (`deploy/docker-compose.dev.yml`).
 
+## Extraction
+
+- After every pass of a scan, each file that is still `pending` and whose format
+  has a reader gets an `ingest.extract_file` job. A reader is an `ingest.Extractor`
+  registered in the `extractors` map; files of formats without one stay `pending`
+  and are picked up by the first scan after a reader exists.
+- An extractor wraps `ingest.ErrUnreadable` for a file that is broken; that is
+  recorded on the file (`extract_state = failed`) and not retried. Any other error
+  is retried by the queue.
+- What a file says about its book goes through `catalog.ApplyFileMetadataTx`, the
+  one place that decides whether a field may be overwritten: only when it is empty,
+  was guessed from a file name, or was last set by the same file. Locked fields and
+  values from other sources stay. New sources of metadata follow the same rule
+  through `field_sources`.
+- Covers live in `internal/covers` under `GOTOME_DATA_DIR/covers`, stored once per
+  image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
+  is that hash. A route that sends something other than JSON declares `Produces`.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

@@ -18,7 +18,9 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/config"
+	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
@@ -110,11 +112,13 @@ func serve() error {
 	}
 	// Background work runs in this process, on the same database.
 	libraries := library.NewService(pool, cfg.DataDir)
-	scans := ingest.NewService(pool, libraries, log)
+	coverStore := covers.NewStore(cfg.DataDir)
+	scans := ingest.NewService(pool, libraries, coverStore, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
+	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 	}
@@ -148,6 +152,8 @@ func serve() error {
 		Logins:    httpapi.NewLoginLimits(time.Now),
 		Libraries: libraries,
 		Scans:     scans,
+		Books:     catalog.NewService(pool),
+		Covers:    coverStore,
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

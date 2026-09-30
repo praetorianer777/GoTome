@@ -96,3 +96,58 @@ SELECT * FROM series WHERE id = $1;
 
 -- name: GetPublisher :one
 SELECT * FROM publishers WHERE id = $1;
+
+-- name: LockBookOfFile :one
+-- Locked, because two files of one book may be read at the same time and
+-- both decide what the book is called.
+SELECT b.*
+FROM books b
+JOIN book_files f ON f.book_id = b.id
+WHERE f.id = $1
+FOR UPDATE OF b;
+
+-- name: UpdateBookDescribed :exec
+-- Every field that describes the book, as worked out by the caller from what
+-- was there and what a source says.
+UPDATE books
+SET title               = sqlc.arg(title),
+    sort_title          = sqlc.arg(sort_title),
+    title_key           = sqlc.arg(title_key),
+    subtitle            = sqlc.narg(subtitle),
+    description         = sqlc.narg(description),
+    language            = sqlc.narg(language),
+    published_on        = sqlc.narg(published_on),
+    published_precision = sqlc.narg(published_precision),
+    publisher_id        = sqlc.narg(publisher_id),
+    series_id           = sqlc.narg(series_id),
+    series_index        = sqlc.narg(series_index),
+    page_count          = sqlc.narg(page_count),
+    cover_key           = sqlc.narg(cover_key),
+    field_sources       = sqlc.arg(field_sources),
+    updated_at          = now()
+WHERE id = $1;
+
+-- name: CountBookContributors :one
+SELECT count(*) FROM book_contributors WHERE book_id = $1;
+
+-- name: DeleteBookContributors :exec
+DELETE FROM book_contributors WHERE book_id = $1;
+
+-- name: CountBookTags :one
+SELECT count(*) FROM book_tags WHERE book_id = $1;
+
+-- name: DeleteBookTags :exec
+DELETE FROM book_tags WHERE book_id = $1;
+
+-- name: DeleteFileIdentifiers :exec
+DELETE FROM book_identifiers WHERE file_id = $1;
+
+-- name: GetVisibleBookCover :one
+-- The cover of a book the viewer may see; no row for a book that is hidden,
+-- gone, or has none.
+SELECT b.cover_key
+FROM books b
+WHERE b.id = $1
+  AND b.deleted_at IS NULL
+  AND b.cover_key IS NOT NULL
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));

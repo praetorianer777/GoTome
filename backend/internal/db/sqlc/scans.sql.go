@@ -29,6 +29,40 @@ func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) error {
 	return err
 }
 
+const getFileForExtraction = `-- name: GetFileForExtraction :one
+SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1
+`
+
+type GetFileForExtractionRow struct {
+	ID        uuid.UUID
+	BookID    uuid.UUID
+	Format    string
+	RelPath   string
+	Sha256    []byte
+	MissingAt *time.Time
+	TrashedAt *time.Time
+	RootPath  string
+}
+
+func (q *Queries) GetFileForExtraction(ctx context.Context, id uuid.UUID) (GetFileForExtractionRow, error) {
+	row := q.db.QueryRow(ctx, getFileForExtraction, id)
+	var i GetFileForExtractionRow
+	err := row.Scan(
+		&i.ID,
+		&i.BookID,
+		&i.Format,
+		&i.RelPath,
+		&i.Sha256,
+		&i.MissingAt,
+		&i.TrashedAt,
+		&i.RootPath,
+	)
+	return i, err
+}
+
 const latestVisibleScans = `-- name: LatestVisibleScans :many
 SELECT DISTINCT ON (s.library_id) s.id, s.library_id, s.state, s.requested_by, s.requested_at, s.job_id, s.started_at, s.finished_at, s.files_seen, s.files_added, s.files_changed, s.files_moved, s.files_restored, s.files_missing, s.files_skipped, s.books_added, s.error
 FROM library_scans s
@@ -140,6 +174,43 @@ SELECT id FROM libraries ORDER BY id
 
 func (q *Queries) ListLibraryIDs(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listLibraryIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingExtractions = `-- name: ListPendingExtractions :many
+SELECT id FROM book_files
+WHERE library_id = $1
+  AND extract_state = 'pending'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND sha256 IS NOT NULL
+  AND format = ANY($2::text[])
+ORDER BY id
+`
+
+type ListPendingExtractionsParams struct {
+	LibraryID uuid.UUID
+	Formats   []string
+}
+
+// Files of the library that are there, have been hashed, and that nothing
+// has been read out of yet, of the formats there is a reader for.
+func (q *Queries) ListPendingExtractions(ctx context.Context, arg ListPendingExtractionsParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPendingExtractions, arg.LibraryID, arg.Formats)
 	if err != nil {
 		return nil, err
 	}
@@ -341,6 +412,64 @@ func (q *Queries) RestoreFile(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const setFileExtractFailed = `-- name: SetFileExtractFailed :exec
+UPDATE book_files
+SET extract_state = 'failed', extract_error = $2, updated_at = now()
+WHERE id = $1 AND sha256 = $3
+`
+
+type SetFileExtractFailedParams struct {
+	ID     uuid.UUID
+	Error  *string
+	Sha256 []byte
+}
+
+func (q *Queries) SetFileExtractFailed(ctx context.Context, arg SetFileExtractFailedParams) error {
+	_, err := q.db.Exec(ctx, setFileExtractFailed, arg.ID, arg.Error, arg.Sha256)
+	return err
+}
+
+const setFileExtracted = `-- name: SetFileExtracted :execrows
+UPDATE book_files
+SET content_sha256  = $2,
+    drm             = $3,
+    has_text        = $4,
+    page_count      = $5,
+    pages_estimated = $6,
+    extract_state   = 'done',
+    extract_error   = NULL,
+    updated_at      = now()
+WHERE id = $1 AND sha256 = $7
+`
+
+type SetFileExtractedParams struct {
+	ID             uuid.UUID
+	ContentSha256  []byte
+	Drm            bool
+	HasText        *bool
+	PageCount      *int32
+	PagesEstimated bool
+	Sha256         []byte
+}
+
+// Only while the file is still the one that was read: a scan that found it
+// changed in the meantime has asked for it to be read again.
+func (q *Queries) SetFileExtracted(ctx context.Context, arg SetFileExtractedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setFileExtracted,
+		arg.ID,
+		arg.ContentSha256,
+		arg.Drm,
+		arg.HasText,
+		arg.PageCount,
+		arg.PagesEstimated,
+		arg.Sha256,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setFilePartIndex = `-- name: SetFilePartIndex :exec
 UPDATE book_files
 SET part_index = $2, updated_at = now()
@@ -354,6 +483,23 @@ type SetFilePartIndexParams struct {
 
 func (q *Queries) SetFilePartIndex(ctx context.Context, arg SetFilePartIndexParams) error {
 	_, err := q.db.Exec(ctx, setFilePartIndex, arg.ID, arg.PartIndex)
+	return err
+}
+
+const setPrimaryTextFile = `-- name: SetPrimaryTextFile :exec
+UPDATE books
+SET primary_text_file_id = $2
+WHERE id = $1 AND primary_text_file_id IS NULL
+`
+
+type SetPrimaryTextFileParams struct {
+	ID                uuid.UUID
+	PrimaryTextFileID *uuid.UUID
+}
+
+// The first file of a book that has text is the one its text is read from.
+func (q *Queries) SetPrimaryTextFile(ctx context.Context, arg SetPrimaryTextFileParams) error {
+	_, err := q.db.Exec(ctx, setPrimaryTextFile, arg.ID, arg.PrimaryTextFileID)
 	return err
 }
 

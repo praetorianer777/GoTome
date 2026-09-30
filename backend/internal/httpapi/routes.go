@@ -30,6 +30,9 @@ type Route struct {
 	// route has none.
 	Request  any
 	Response any
+	// Produces is the media type of a success that is not JSON, such as an
+	// image. The handler writes it itself.
+	Produces string
 	// Status is what success answers; zero means 200, or 204 without a Response.
 	Status int
 	// Permission is what the caller must hold: auth.Public, auth.SignedIn, or
@@ -132,6 +135,13 @@ func (s *Server) routes() []Route {
 			Method: http.MethodDelete, Path: "/libraries/{libraryId}/members/{userId}", ID: "removeLibraryMember",
 			Summary: "Take a private library away from a user again", Tag: "libraries",
 			Permission: auth.StorageManage, Handler: s.deleteLibraryMember,
+		},
+
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
+			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",
+			Produces: "image/jpeg", Status: http.StatusOK,
+			Permission: auth.LibraryRead, Handler: s.getBookCover,
 		},
 	}
 }

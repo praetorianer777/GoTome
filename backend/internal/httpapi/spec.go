@@ -71,8 +71,13 @@ func Spec() *openapi.Document {
 			}
 		}
 		success := &openapi.Response{Description: http.StatusText(rt.successStatus())}
-		if rt.Response != nil {
+		switch {
+		case rt.Response != nil:
 			success.Content = map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(rt.Response)}}
+		case rt.Produces != "":
+			success.Content = map[string]openapi.MediaType{
+				rt.Produces: {Schema: &openapi.Schema{Type: "string", Format: "binary"}},
+			}
 		}
 		op.Responses[strconv.Itoa(rt.successStatus())] = success
 
