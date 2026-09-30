@@ -16,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/config"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
@@ -95,7 +96,17 @@ func serve() error {
 	}
 	defer pool.Close()
 
-	server := &httpapi.Server{Log: log, DB: pool, Web: webui.Handler()}
+	accounts, err := auth.NewService(pool, auth.DefaultPasswordParams(), auth.DefaultSessionTTL)
+	if err != nil {
+		return err
+	}
+	server := &httpapi.Server{
+		Log:    log,
+		DB:     pool,
+		Auth:   accounts,
+		Logins: httpapi.NewLoginLimits(time.Now),
+		Web:    webui.Handler(),
+	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           server.Routes(),

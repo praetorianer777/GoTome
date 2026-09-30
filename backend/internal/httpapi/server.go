@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -32,6 +34,9 @@ type Database interface {
 type Server struct {
 	Log *slog.Logger
 	DB  Database
+	// Auth signs people in; Logins slows down guessing at passwords.
+	Auth   *auth.Service
+	Logins *LoginLimits
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler
@@ -47,8 +52,13 @@ func (s *Server) Routes() http.Handler {
 	r.Get(HealthPath, s.health)
 	r.Get(ReadyPath, s.ready)
 	r.Route(APIPrefix, func(api chi.Router) {
+		api.Use(sameOrigin, s.authenticate)
 		for _, rt := range s.routes() {
-			api.Method(rt.Method, rt.Path, handle(rt.Handler))
+			h := rt.Handler
+			if !rt.Public {
+				h = requireUser(h)
+			}
+			api.Method(rt.Method, rt.Path, handle(h))
 		}
 	})
 	return r
