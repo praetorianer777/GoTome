@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
+import type { BookDetail } from "@/books/api";
 import type { Library, Scan } from "@/libraries/api";
 import { makeRouter } from "@/router";
 
@@ -55,6 +56,7 @@ export class FakeServer {
 	session: CurrentUser | null = null;
 	requests: { method: string; path: string; body: unknown }[] = [];
 	libraries: Library[] = [];
+	books: BookDetail[] = [];
 	/** What the next scan of a library finds; a scan is finished at once. */
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
@@ -82,6 +84,25 @@ export class FakeServer {
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
+			filesPending: 0,
+			...overrides,
+		});
+		return this;
+	}
+
+	/** Adds a book to the library of that name, or the first library. */
+	withBook(title: string, overrides: Partial<BookDetail> = {}, libraryName?: string): this {
+		const library = this.libraries.find((l) => l.name === libraryName) ?? this.libraries[0];
+		const n = this.books.length + 1;
+		this.books.push({
+			id: `book-${n}`,
+			libraryId: library?.id ?? "lib-1",
+			title,
+			contributors: [],
+			tags: [],
+			identifiers: [],
+			files: [],
+			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 		});
 		return this;
@@ -98,12 +119,16 @@ export class FakeServer {
 				throw new TypeError("Failed to fetch");
 			}
 			const request = input as Request;
-			const path = new URL(request.url).pathname.replace(/^\/api\/v1/, "");
+			const url = new URL(request.url);
+			const path = url.pathname.replace(/^\/api\/v1/, "");
 			const body: unknown =
 				request.method === "GET"
 					? undefined
 					: await request.json().catch(() => undefined);
-			this.requests.push({ method: request.method, path, body });
+			this.requests.push({ method: request.method, path: path + url.search, body });
+			if (path === "/books" || path.startsWith("/books/")) {
+				return this.answerBooks(path, url.searchParams);
+			}
 			return this.answer(
 				request.method,
 				path,
@@ -178,6 +203,45 @@ export class FakeServer {
 				return refuse(404, "not_found", "There is nothing at this address.");
 		}
 	}
+	private answerBooks(path: string, query: URLSearchParams): Response {
+		if (!this.session) {
+			return Response.json({ error: { code: "unauthorized", message: "Sign in to continue." } }, { status: 401 });
+		}
+		if (path !== "/books") {
+			const book = this.books.find((b) => `/books/${b.id}` === path);
+			return book
+				? Response.json(book)
+				: Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+		}
+		const authorOf = (b: BookDetail) => b.contributors.find((c) => c.role === "author")?.name ?? "";
+		const sort = query.get("sort") ?? "title";
+		const key = (b: BookDetail) =>
+			sort === "author" ? `${authorOf(b)}\u0000${b.title}` : sort === "added" ? b.addedAt : b.title;
+		const sorted = this.books
+			.filter((b) => !query.get("library") || b.libraryId === query.get("library"))
+			.sort((a, b) => key(a).localeCompare(key(b)));
+		if (query.get("order") === "desc") {
+			sorted.reverse();
+		}
+		// The cursor is how many books came before; the real one is not, but
+		// a client cannot tell.
+		const start = Number(query.get("cursor") || 0);
+		const limit = Number(query.get("limit") || 50);
+		const page = sorted.slice(start, start + limit);
+		return Response.json({
+			books: page.map((b) => ({
+				id: b.id,
+				libraryId: b.libraryId,
+				title: b.title,
+				authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name),
+				coverKey: b.coverKey,
+				formats: [...new Set(b.files.map((f) => f.format))],
+				addedAt: b.addedAt,
+			})),
+			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
+		});
+	}
+
 	private answerLibraries(
 		method: string,
 		id: string,

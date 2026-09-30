@@ -151,3 +151,26 @@ WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
   AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+
+-- name: RefreshAuthorSort :exec
+UPDATE books b
+SET author_sort = COALESCE((
+    SELECT a.sort_name
+    FROM book_contributors c
+    JOIN authors a ON a.id = c.author_id
+    WHERE c.book_id = b.id AND c.role = 'author'
+    ORDER BY c.position
+    LIMIT 1
+), '')
+WHERE b.id = $1;
+
+-- name: GetVisibleFile :one
+-- A file of a book the viewer may see, with where it lies.
+SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, l.root_path
+FROM book_files f
+JOIN books b ON b.id = f.book_id
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1
+  AND f.trashed_at IS NULL
+  AND b.deleted_at IS NULL
+  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));

@@ -162,3 +162,12 @@ VALUES ($1, $2, $3, $4, $5);
 SELECT id, rel_path, part_index, track_number, disc_number
 FROM book_files
 WHERE book_id = $1 AND kind = 'audio' AND part_index IS NOT NULL AND trashed_at IS NULL;
+
+-- name: CountPendingFiles :many
+-- Per library the viewer may see, how many files found are still to be read.
+SELECT library_id, count(*)::int AS pending
+FROM book_files
+WHERE extract_state = 'pending'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY library_id;

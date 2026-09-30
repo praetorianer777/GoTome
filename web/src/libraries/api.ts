@@ -16,6 +16,11 @@ export function scanIsActive(scan: Scan | undefined): boolean {
 	return scan?.state === "queued" || scan?.state === "running";
 }
 
+/** Whether books are still arriving in the library. */
+export function libraryIsBusy(library: Library): boolean {
+	return scanIsActive(library.lastScan) || library.filesPending > 0;
+}
+
 const SCAN_POLL_MS = 2000;
 
 /** The libraries the signed-in person may see, by name. */
@@ -23,12 +28,10 @@ export const librariesQuery = queryOptions({
 	queryKey: ["libraries"],
 	queryFn: async (): Promise<Library[]> =>
 		(await api.GET("/libraries")).data?.libraries ?? [],
-	// A scan reports nothing on its own, so while one is under way the list
-	// is asked for again until it has finished.
+	// A scan reports nothing on its own, so while one is under way, or files
+	// it found are still being read, the list is asked for again.
 	refetchInterval: (query) =>
-		query.state.data?.some((library) => scanIsActive(library.lastScan))
-			? SCAN_POLL_MS
-			: false,
+		query.state.data?.some(libraryIsBusy) ? SCAN_POLL_MS : false,
 });
 
 function useInvalidate() {

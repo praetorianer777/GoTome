@@ -164,6 +164,9 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 		if err := addContributors(ctx, q, book.ID, credited); err != nil {
 			return err
 		}
+		if err := q.RefreshAuthorSort(ctx, book.ID); err != nil {
+			return err
+		}
 	}
 	had, err = q.CountBookTags(ctx, book.ID)
 	if err != nil {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { chooseLibrary, openSignedIn } from "../fixtures/app";
 
 test("an administrator adds a library, sees it, and removes it again", async ({ page }, testInfo) => {
 	// Every browser project runs against the same stack, so each needs a name
@@ -26,6 +26,7 @@ test("an administrator adds a library, sees it, and removes it again", async ({ 
 	await expect(form.getByText("Another library already has this name.")).toBeVisible();
 
 	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Library", exact: true }).click();
+	await chooseLibrary(page, name);
 	await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
 
 	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
@@ -64,10 +65,26 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	await row.getByRole("button", { name: "Scan now" }).click();
 	await expect(row.getByRole("status")).toHaveText(/^Scanned .+: 3 files, nothing new\.$/);
 
+	// The books, with what their files say about them once they are read.
 	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Library", exact: true }).click();
-	await expect(
-		page.getByRole("region", { name }).getByText("The last scan found 3 files in this library's folder."),
-	).toBeVisible();
+	await chooseLibrary(page, name);
+	const books = page.getByRole("region", { name: "Books" });
+	await expect(books.getByRole("link", { name: /^Emma/ })).toBeVisible();
+	await expect(books.getByRole("link", { name: /^Persuasion/ })).toBeVisible();
+	await expect(books.getByRole("link", { name: /^Emma/ })).toContainText("Jane Austen", { timeout: 15_000 });
+
+	await books.getByRole("link", { name: /^Emma/ }).click();
+	await expect(page.getByRole("heading", { name: "Emma", level: 1 })).toBeVisible();
+	await expect(page.getByText("by Jane Austen")).toBeVisible();
+	const files = page.getByRole("region", { name: "Files" });
+	await expect(files.getByRole("link", { name: "Download Emma.epub" })).toBeVisible();
+	await expect(files.getByRole("link", { name: "Download Emma.pdf" })).toBeVisible();
+
+	// A download goes on where it broke off.
+	const href = await files.getByRole("link", { name: "Download Emma.pdf" }).getAttribute("href");
+	const part = await page.request.get(href ?? "", { headers: { Range: "bytes=0-7" } });
+	expect(part.status()).toBe(206);
+	expect(await part.text()).toBe("%PDF-1.4");
 
 	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
 	await row.getByRole("button", { name: "Remove" }).click();

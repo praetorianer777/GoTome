@@ -189,6 +189,22 @@ func (s *Service) Latest(ctx context.Context, scope library.Scope) (map[uuid.UUI
 	return scans, nil
 }
 
+// Pending returns, per library the scope may see, how many of the files its
+// scans found are still waiting to be read. Libraries with none are left out.
+func (s *Service) Pending(ctx context.Context, scope library.Scope) (map[uuid.UUID]int32, error) {
+	rows, err := sqlc.New(s.pool).CountPendingFiles(ctx, sqlc.CountPendingFilesParams{
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return nil, err
+	}
+	pending := make(map[uuid.UUID]int32, len(rows))
+	for _, row := range rows {
+		pending[row.LibraryID] = row.Pending
+	}
+	return pending, nil
+}
+
 // Run makes one pass of the library's scan and records it. complete is false
 // when the pass stopped at its budget and another has to follow.
 func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (complete bool, err error) {

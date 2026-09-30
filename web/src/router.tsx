@@ -12,7 +12,8 @@ import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { AdminLibraries } from "@/routes/admin-libraries";
-import { Library } from "@/routes/library";
+import { Book } from "@/routes/book";
+import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
 import { RouteError } from "@/routes/route-error";
@@ -87,11 +88,40 @@ const appRoute = createRoute({
 	},
 });
 
+const SORTS = ["title", "author", "added"] as const;
+const VIEWS = ["grid", "list"] as const;
+
+function oneOf<T extends string>(values: readonly T[], value: unknown): T | undefined {
+	return values.find((v) => v === value);
+}
+
 const libraryRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/",
+	validateSearch: (search): LibrarySearch => ({
+		library: typeof search.library === "string" ? search.library : undefined,
+		sort: oneOf(SORTS, search.sort),
+		view: oneOf(VIEWS, search.view),
+	}),
 	component: function LibraryPage() {
-		return <Library user={useRouteContext({ from: "/app" }).user} />;
+		const navigate = libraryRoute.useNavigate();
+		return (
+			<Library
+				user={useRouteContext({ from: "/app" }).user}
+				search={libraryRoute.useSearch()}
+				onSearch={(change) =>
+					navigate({ search: (previous) => ({ ...previous, ...change }), replace: true })
+				}
+			/>
+		);
+	},
+});
+
+const bookRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/books/$bookId",
+	component: function BookRoute() {
+		return <Book id={bookRoute.useParams().bookId} />;
 	},
 });
 
@@ -111,7 +141,7 @@ const adminLibrariesRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, adminLibrariesRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, adminLibrariesRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
