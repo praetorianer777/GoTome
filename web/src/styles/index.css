@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  /* The logo's two colours: its night-blue ground and the gopher's blue. */
+  --color-ink: #020c16;
+  --color-brand: #2fa8d5;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-ink text-slate-100 antialiased;
+}

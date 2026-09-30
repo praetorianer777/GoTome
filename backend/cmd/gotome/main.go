@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/version"
+	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
 
 // Server timeouts. Downloads and streams set their own deadlines when they
@@ -94,7 +95,7 @@ func serve() error {
 	}
 	defer pool.Close()
 
-	server := &httpapi.Server{Log: log, DB: pool}
+	server := &httpapi.Server{Log: log, DB: pool, Web: webui.Handler()}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           server.Routes(),

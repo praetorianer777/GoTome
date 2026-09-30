@@ -65,3 +65,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Integration tests live in `backend/test` behind the `integration` build tag and run
   with `make test-integration` against the running stack (`make up` first). Each test
   gets its own database from `dbtest.New(t)`, copied from a migrated template.
+
+## Web app
+
+- `web/` is the browser app: Vite, React, TypeScript, Tailwind CSS, TanStack Query and
+  Router. Node runs in a container (`mk/web.mk`); `make check-web` is its gate and
+  `make web-dev` a dev server that proxies `/api` to this checkout's running stack.
+- API calls go through `web/src/api/client.ts`, typed from `web/src/api/schema.d.ts`,
+  which is generated from `api/openapi.json` and checked in. After `make openapi`,
+  run `make web-schema`; `make check-web` fails when the types are stale.
+- The Go binary embeds the built app from `backend/internal/webui/dist` and serves it
+  for every path outside `/api`. That directory is empty in a checkout; the image
+  build and `make web-embed` fill it.
+- TypeScript stays on 5.x while `openapi-typescript` requires it.

@@ -1,5 +1,14 @@
-# The one application image. Stages: toolchain (what compiles and tests the
-# backend), build, runtime. The web stage joins with the web app.
+# The one application image. Stages: web (the browser app, built to static
+# files), toolchain (what compiles and tests the backend), build, runtime.
+
+FROM node:24-alpine AS web
+WORKDIR /src/web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+# The app's API types are generated from the document one level up.
+COPY api/ /src/api/
+COPY web/ ./
+RUN npm run build
 
 FROM golang:1.27-bookworm AS toolchain
 ENV GOFLAGS=-buildvcs=false GOTOOLCHAIN=local
@@ -13,6 +22,8 @@ COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
 
 COPY backend/ ./
+# The binary embeds the web app from this directory.
+COPY --from=web /src/web/dist/ ./internal/webui/dist/
 COPY VERSION /VERSION
 ARG COMMIT=""
 RUN PKG=github.com/praetorianer777/gotome/backend/internal/version && \

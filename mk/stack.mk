@@ -87,17 +87,21 @@ test-integration: | $(GO_CACHE) ## Run the integration suite against this checko
 # The pinned database image is what promises pg_search and pgvector; this fails
 # the gate when a new pin no longer carries them.
 .PHONY: stack-check
-stack-check: ## Check the running stack: two services, app answering, extensions available
+stack-check: ## Check the running stack: two services, web app and API answering, extensions available
 	@test "$$(docker compose ps --status running --services | sort | tr '\n' ' ')" = "app db " \
 		|| { echo "expected exactly the services app and db to run:"; docker compose ps; exit 1; }
 	@docker compose exec -T app gotome healthcheck \
 		|| { echo "the app does not answer its health check"; exit 1; }
+	@curl -fsS http://localhost:$(GOTOME_PORT)/ | grep -q 'id="root"' \
+		|| { echo "the app does not serve the web app at /"; exit 1; }
+	@curl -fsS http://localhost:$(GOTOME_PORT)/api/v1/version | grep -q '"version"' \
+		|| { echo "the app does not serve the API under /api/v1"; exit 1; }
 	@for ext in pg_search vector; do \
 		docker compose exec -T db psql -U gotome -d gotome -Atc \
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
 	done
-	@echo "stack ok: app and db healthy, pg_search and vector available"
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available"
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
