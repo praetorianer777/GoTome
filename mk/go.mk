@@ -43,7 +43,7 @@ test-go: | $(GO_CACHE) ## Run the Go unit tests with the race detector
 	$(DOCKER_GO) go test -race $(TESTFLAGS) ./...
 
 .PHONY: build
-build: | $(GO_CACHE) ## Build the gotome binary into backend/bin, stamped with VERSION
+build: | $(GO_CACHE) ## Build the gotome binary into backend/bin; run make web-embed first to include the web app
 	$(DOCKER_GO) go build -trimpath -ldflags '$(GO_LDFLAGS)' -o bin/ ./cmd/...
 
 .PHONY: tidy

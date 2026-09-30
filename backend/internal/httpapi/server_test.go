@@ -194,3 +194,27 @@ func TestReadinessFollowsTheDatabase(t *testing.T) {
 		t.Errorf("liveness with the database down: status = %d, want 200", alive.Code)
 	}
 }
+
+func TestWebAppAnswersWhatIsNotTheAPI(t *testing.T) {
+	srv := testServer()
+	srv.Web = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("app:" + r.URL.Path))
+	})
+	h := srv.Routes()
+
+	for _, path := range []string{"/", "/books/42", "/apiary"} {
+		if rec := do(t, h, http.MethodGet, path); rec.Body.String() != "app:"+path {
+			t.Errorf("%s: %d %q, want the web app", path, rec.Code, rec.Body)
+		}
+	}
+	// A mistyped API address must not come back as a page of HTML.
+	for _, path := range []string{"/api", "/api/", "/api/v1/nothing-here", "/api/v2/version"} {
+		rec := do(t, h, http.MethodGet, path)
+		if rec.Code != http.StatusNotFound || decodeError(t, rec).Code != "not_found" {
+			t.Errorf("%s: %d %q, want the error envelope", path, rec.Code, rec.Body)
+		}
+	}
+	if rec := do(t, h, http.MethodGet, HealthPath); strings.HasPrefix(rec.Body.String(), "app:") {
+		t.Error("the probe was answered by the web app")
+	}
+}

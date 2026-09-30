@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,13 +32,16 @@ type Database interface {
 type Server struct {
 	Log *slog.Logger
 	DB  Database
+	// Web serves the web app for every path that is not the API's. Nil
+	// answers those paths as not found, which is what the API tests want.
+	Web http.Handler
 }
 
 // Routes is the handler for every path the server answers.
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(requestID, logging(s.Log), recovery)
-	r.NotFound(notFound)
+	r.NotFound(s.notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 
 	r.Get(HealthPath, s.health)
@@ -59,7 +63,16 @@ func handle(h HandlerFunc) http.Handler {
 	})
 }
 
-func notFound(w http.ResponseWriter, r *http.Request) { writeError(w, r, ErrNotFound("")) }
+// notFound answers what no route matched. Under /api that is an error in the
+// envelope; anywhere else it is an address of the web app, which routes in the
+// browser.
+func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
+	if s.Web == nil || r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+		writeError(w, r, ErrNotFound(""))
+		return
+	}
+	s.Web.ServeHTTP(w, r)
+}
 
 func methodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	writeError(w, r, ErrMethodNotAllowed())

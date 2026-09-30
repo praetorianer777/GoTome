@@ -27,5 +27,12 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
+      - name: Cache the npm download cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/npm
+          key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
       - name: Run the test suite
         run: ./run-tests.sh
