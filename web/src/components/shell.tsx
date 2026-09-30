@@ -5,6 +5,7 @@ import {
 	type Permission,
 	useLogout,
 } from "@/auth/session";
+import mark from "@/assets/mark.webp";
 import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 
@@ -58,8 +59,12 @@ export function Shell({ user }: { user: CurrentUser }) {
 			</a>
 			<header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
 				<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-					<Link to="/" className="text-xl font-bold tracking-tight">
-						<span className="text-brand-strong dark:text-brand">GO</span>tome
+					<Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight">
+						{/* Decorative: the name beside it is the link's text. */}
+						<img src={mark} width={28} height={28} alt="" className="rounded-md" />
+						<span>
+							<span className="text-brand-strong dark:text-brand">GO</span>tome
+						</span>
 					</Link>
 					<nav aria-label={t("nav.main")} className="flex gap-4">
 						{visibleNavItems(NAV_ITEMS, user).map((item) => (

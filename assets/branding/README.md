@@ -6,9 +6,13 @@ binary `gotome`, the Go module path, `GOTOME_*` variables, the repository URL.
 | File | Size | Use |
 |---|---|---|
 | `banner.jpg` | 1024 × 1024 | Top of the repository README |
-| `artwork.jpg` | 1024 × 1054 | Illustration for the web app's login and setup pages (#82) |
+| `artwork.jpg` | 1024 × 1054 | Illustration for the web app's login and setup pages |
 | `logo.jpg` | 1024 × 1051 | Logo with wordmark |
-| `icon.png` | 800 × 800 | The logo's mark alone, square; source for the favicon and app icons (#82) |
+| `icon.png` | 800 × 800 | The logo's mark alone, square; source for the favicon and app icons |
+
+The web app's icons, header mark and sign-in illustration are generated from
+these files by `web/scripts/branding.sh` and checked in under `web/public` and
+`web/src/assets`. Run the script again after replacing an original.
 
 The three JPEG files are the originals. `icon.png` is cut from `logo.jpg` and
 padded to a square with the logo's own background colour, `rgb(2, 12, 22)`.
