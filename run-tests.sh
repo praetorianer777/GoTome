@@ -11,7 +11,7 @@ echo "🐚 Shell script tests"
 # Makefile target of the same name, so this file only decides the order.
 has_target() { make -n "$1" >/dev/null 2>&1; }
 
-for layer in check-go check-web; do
+for layer in check-go fuzz-go check-web; do
   if has_target "$layer"; then
     echo "🔍 $layer"
     make "$layer"
