@@ -4,6 +4,7 @@ import { type CurrentUser, can } from "@/auth/session";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
 import { librariesQuery } from "@/libraries/api";
+import { ScanStatus } from "@/libraries/scan";
 
 export function Library({ user }: { user: CurrentUser }) {
 	const libraries = useQuery(librariesQuery);
@@ -44,11 +45,23 @@ export function Library({ user }: { user: CurrentUser }) {
 					<h2 id={`library-${library.id}`} className="text-lg font-medium">
 						{library.name}
 					</h2>
+					<ScanStatus
+						library={library}
+						canScan={can(user, "index:rebuild")}
+					/>
 					<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
-						<h3 className="font-medium">{t("library.empty.title")}</h3>
-						<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
-							{t("library.empty.body")}
-						</p>
+						{library.lastScan?.filesSeen ? (
+							<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
+								{t("library.found", { count: library.lastScan.filesSeen })}
+							</p>
+						) : (
+							<>
+								<h3 className="font-medium">{t("library.empty.title")}</h3>
+								<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
+									{t("library.empty.body")}
+								</p>
+							</>
+						)}
 					</div>
 				</section>
 			))}

@@ -115,6 +115,26 @@ type LibraryMember struct {
 	AddedAt   time.Time
 }
 
+type LibraryScan struct {
+	ID            uuid.UUID
+	LibraryID     uuid.UUID
+	State         string
+	RequestedBy   *uuid.UUID
+	RequestedAt   time.Time
+	JobID         *int64
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
+	FilesSeen     int32
+	FilesAdded    int32
+	FilesChanged  int32
+	FilesMoved    int32
+	FilesRestored int32
+	FilesMissing  int32
+	FilesSkipped  int32
+	BooksAdded    int32
+	Error         *string
+}
+
 type Publisher struct {
 	ID      uuid.UUID
 	Name    string

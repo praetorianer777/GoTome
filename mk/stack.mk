@@ -25,7 +25,9 @@ GOTOME_ENV ?= development
 # the same default.
 POSTGRES_PASSWORD ?= gotome
 
-export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
+# The deployment's compose file, and on top of it what only development and
+# the tests need.
+export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml:$(ROOT)/deploy/docker-compose.dev.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
 export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV POSTGRES_PASSWORD
 

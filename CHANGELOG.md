@@ -20,3 +20,10 @@ What changes for someone who runs or uses GOtome. The format follows
   points GOtome at an existing folder, which it only reads unless allowed to
   change files. A library is shared with everybody or private to its owner and
   members. Removing a library from GOtome never deletes its folder or files.
+- Scanning. GOtome looks through a library's folder when the library is added,
+  every six hours (`GOTOME_SCAN_INTERVAL`, `0` to switch it off), and when an
+  Editor or Administrator presses "Scan now". It takes in EPUB, PDF, MOBI, AZW3
+  and audio files, keeps the formats of one title and the parts of an audiobook
+  together as one book, follows files that were moved or renamed, and marks
+  files that are gone as missing. It never deletes, moves or changes a file.
+  The books it finds cannot be browsed yet.

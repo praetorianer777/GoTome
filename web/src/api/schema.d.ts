@@ -127,6 +127,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/libraries/{libraryId}/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look through a library's folder for new, changed and missing files */
+        post: operations["scanLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -205,6 +222,7 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             id: string;
+            lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
             /** Format: uuid */
@@ -227,6 +245,28 @@ export interface components {
         };
         MemberList: {
             members: components["schemas"]["Member"][];
+        };
+        Scan: {
+            booksAdded: number;
+            error?: string;
+            filesAdded: number;
+            filesChanged: number;
+            filesMissing: number;
+            filesMoved: number;
+            filesRestored: number;
+            filesSeen: number;
+            filesSkipped: number;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            libraryId: string;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            startedAt?: string;
+            state: string;
         };
         SetupRequest: {
             email?: string;
@@ -582,6 +622,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    scanLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scan"];
+                };
             };
             /** @description The request failed. */
             default: {

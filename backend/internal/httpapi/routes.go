@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -110,6 +111,12 @@ func (s *Server) routes() []Route {
 			Method: http.MethodDelete, Path: "/libraries/{libraryId}", ID: "deleteLibrary",
 			Summary: "Remove a library from GOtome; its folder and files stay", Tag: "libraries",
 			Permission: auth.StorageManage, Handler: s.deleteLibrary,
+		},
+		{
+			Method: http.MethodPost, Path: "/libraries/{libraryId}/scans", ID: "scanLibrary",
+			Summary: "Look through a library's folder for new, changed and missing files", Tag: "libraries",
+			Response: ingest.Scan{}, Status: http.StatusAccepted,
+			Permission: auth.IndexRebuild, Handler: s.scanLibrary,
 		},
 		{
 			Method: http.MethodGet, Path: "/libraries/{libraryId}/members", ID: "listLibraryMembers",

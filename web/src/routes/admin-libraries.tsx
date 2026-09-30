@@ -9,6 +9,7 @@ import {
 	useDeleteLibrary,
 	useUpdateLibrary,
 } from "@/libraries/api";
+import { ScanStatus } from "@/libraries/scan";
 
 const selectClass =
 	"rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -100,6 +101,8 @@ function LibraryRow({ library }: { library: Library }) {
 					{t(external ? "libraries.mode.external" : "libraries.mode.managed")}
 				</dd>
 			</dl>
+
+			<ScanStatus library={library} canScan />
 
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
 				<label className="flex items-center gap-2">

@@ -28,9 +28,10 @@ RETURNING *;
 -- name: CreateBook :one
 INSERT INTO books (
     library_id, title, sort_title, title_key, subtitle, description, language,
-    published_on, published_precision, publisher_id, series_id, series_index, page_count
+    published_on, published_precision, publisher_id, series_id, series_index, page_count,
+    field_sources
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING *;
 
 -- name: GetVisibleBook :one

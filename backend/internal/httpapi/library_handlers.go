@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -24,6 +25,9 @@ type libraryResponse struct {
 	// lie on the server is nothing a reader needs to be told.
 	RootPath *string    `json:"rootPath,omitempty"`
 	OwnerID  *uuid.UUID `json:"ownerId,omitempty"`
+	// LastScan is the newest scan of the library's folder, which may still
+	// be waiting or running. A library never scanned has none.
+	LastScan *ingest.Scan `json:"lastScan,omitempty"`
 }
 
 type libraryList struct {
@@ -53,10 +57,13 @@ type updateLibraryRequest struct {
 	Writable   *bool   `json:"writable,omitempty"`
 }
 
-func toLibraryResponse(l library.Library, viewer *auth.User) libraryResponse {
+func toLibraryResponse(l library.Library, viewer *auth.User, scans map[uuid.UUID]ingest.Scan) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt,
+	}
+	if scan, ok := scans[l.ID]; ok {
+		out.LastScan = &scan
 	}
 	if auth.Allows(viewer.Role, auth.StorageManage) {
 		out.RootPath = &l.RootPath
@@ -91,13 +98,18 @@ func pathID(r *http.Request, name, what string) (uuid.UUID, error) {
 
 func (s *Server) listLibraries(w http.ResponseWriter, r *http.Request) error {
 	user := UserFrom(r.Context())
-	libraries, err := s.Libraries.List(r.Context(), library.ScopeOf(*user))
+	scope := library.ScopeOf(*user)
+	libraries, err := s.Libraries.List(r.Context(), scope)
+	if err != nil {
+		return err
+	}
+	scans, err := s.Scans.Latest(r.Context(), scope)
 	if err != nil {
 		return err
 	}
 	out := libraryList{Libraries: make([]libraryResponse, len(libraries))}
 	for i, l := range libraries {
-		out.Libraries[i] = toLibraryResponse(l, user)
+		out.Libraries[i] = toLibraryResponse(l, user, scans)
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
@@ -109,11 +121,35 @@ func (s *Server) getLibrary(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	user := UserFrom(r.Context())
-	l, err := s.Libraries.Get(r.Context(), library.ScopeOf(*user), id)
+	scope := library.ScopeOf(*user)
+	l, err := s.Libraries.Get(r.Context(), scope, id)
 	if err != nil {
 		return libraryError(err)
 	}
-	writeJSON(w, r, http.StatusOK, toLibraryResponse(l, user))
+	scans, err := s.Scans.Latest(r.Context(), scope)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, toLibraryResponse(l, user, scans))
+	return nil
+}
+
+// scanLibrary asks for a scan. It answers at once with the scan that will do
+// it, which is the one already waiting or running if there is one.
+func (s *Server) scanLibrary(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "libraryId", "library")
+	if err != nil {
+		return err
+	}
+	user := UserFrom(r.Context())
+	if _, err := s.Libraries.Get(r.Context(), library.ScopeOf(*user), id); err != nil {
+		return libraryError(err)
+	}
+	scan, err := s.Scans.Request(r.Context(), id, &user.ID)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusAccepted, scan)
 	return nil
 }
 
@@ -134,7 +170,16 @@ func (s *Server) createLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return libraryError(err)
 	}
-	writeJSON(w, r, http.StatusCreated, toLibraryResponse(l, user))
+	// A folder that already holds books is looked through at once. The
+	// library exists either way, so a scan that cannot be queued is no reason
+	// to answer that adding it failed.
+	scans := map[uuid.UUID]ingest.Scan{}
+	if scan, err := s.Scans.Request(r.Context(), l.ID, &user.ID); err != nil {
+		s.Log.Warn("the new library's first scan could not be queued", "library", l.Name, "error", err)
+	} else {
+		scans[l.ID] = scan
+	}
+	writeJSON(w, r, http.StatusCreated, toLibraryResponse(l, user, scans))
 	return nil
 }
 
@@ -151,7 +196,12 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return libraryError(err)
 	}
-	writeJSON(w, r, http.StatusOK, toLibraryResponse(l, UserFrom(r.Context())))
+	user := UserFrom(r.Context())
+	scans, err := s.Scans.Latest(r.Context(), library.ScopeOf(*user))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, toLibraryResponse(l, user, scans))
 	return nil
 }
 

@@ -1,0 +1,12 @@
+# Additions for the stack that make runs for development and the test gate
+# (mk/stack.mk). A deployment uses docker-compose.yml alone.
+services:
+  app:
+    volumes:
+      # The browser tests add this folder as an external library. Two libraries
+      # cannot share a folder, and the browser projects run side by side, so
+      # each project gets the folder under a name of its own.
+      - ../e2e/fixtures/books:/fixtures/books-chromium:ro
+      - ../e2e/fixtures/books:/fixtures/books-firefox:ro
+      - ../e2e/fixtures/books:/fixtures/books-webkit:ro
+      - ../e2e/fixtures/books:/fixtures/books-phone:ro

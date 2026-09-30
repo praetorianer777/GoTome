@@ -22,6 +22,8 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -35,6 +37,7 @@ type app struct {
 	pool *pgxpool.Pool
 	// dataDir is where this app's managed libraries are created.
 	dataDir string
+	scans   *ingest.Service
 	now     time.Time
 	mu      sync.Mutex
 }
@@ -59,12 +62,23 @@ func newApp(t *testing.T) *app {
 		t.Fatal(err)
 	}
 	a.dataDir = t.TempDir()
+	quiet := slog.New(slog.DiscardHandler)
+	libraries := library.NewService(a.pool, a.dataDir)
+	a.scans = ingest.NewService(a.pool, libraries, quiet)
+	// Jobs are queued and left there; a test that wants them worked calls
+	// workJobs.
+	queue, err := jobs.New(a.pool, jobs.Config{Logger: quiet, InsertOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.scans.Queue = queue
 	server := &httpapi.Server{
-		Log:       slog.New(slog.DiscardHandler),
+		Log:       quiet,
 		DB:        a.pool,
 		Auth:      accounts.WithClock(a.clock),
 		Logins:    httpapi.NewLoginLimits(a.clock),
-		Libraries: library.NewService(a.pool, a.dataDir),
+		Libraries: libraries,
+		Scans:     a.scans,
 	}
 	srv := httptest.NewServer(server.Routes())
 	t.Cleanup(srv.Close)

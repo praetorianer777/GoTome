@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
-import type { Library } from "@/libraries/api";
+import type { Library, Scan } from "@/libraries/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -55,6 +55,8 @@ export class FakeServer {
 	session: CurrentUser | null = null;
 	requests: { method: string; path: string; body: unknown }[] = [];
 	libraries: Library[] = [];
+	/** What the next scan of a library finds; a scan is finished at once. */
+	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
 
@@ -192,6 +194,33 @@ export class FakeServer {
 
 		if (method === "GET" && id === "") {
 			return Response.json({ libraries: this.libraries.map(shown) });
+		}
+		if (method === "POST" && id.endsWith("/scans")) {
+			const library = this.libraries.find((l) => `${l.id}/scans` === id);
+			if (!this.session.permissions.includes("index:rebuild")) {
+				return refuse(403, "forbidden", "You do not have permission to do that.");
+			}
+			if (!library) {
+				return refuse(404, "not_found", "There is no such library.");
+			}
+			library.lastScan = {
+				id: `scan-${library.id}`,
+				libraryId: library.id,
+				state: "done",
+				requestedAt: "2026-01-02T10:00:00Z",
+				startedAt: "2026-01-02T10:00:00Z",
+				finishedAt: "2026-01-02T10:00:01Z",
+				filesSeen: 0,
+				filesAdded: 0,
+				filesChanged: 0,
+				filesMoved: 0,
+				filesRestored: 0,
+				filesMissing: 0,
+				filesSkipped: 0,
+				booksAdded: 0,
+				...this.scanFinds,
+			};
+			return Response.json(library.lastScan, { status: 202 });
 		}
 		if (!manages) {
 			return refuse(403, "forbidden", "You do not have permission to do that.");

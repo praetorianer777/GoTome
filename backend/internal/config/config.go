@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Environments a deployment may declare itself as.
@@ -26,6 +27,9 @@ const (
 	// DefaultDataDir is where the image keeps what GOtome itself stores:
 	// managed libraries, covers. The compose file mounts a volume there.
 	DefaultDataDir = "/data"
+	// DefaultScanInterval is how often every library's folder is looked
+	// through for changes.
+	DefaultScanInterval = 6 * time.Hour
 )
 
 // Config is the fully resolved configuration of the process.
@@ -38,6 +42,9 @@ type Config struct {
 	DatabaseURL string
 	// DataDir is the directory GOtome keeps its own files in.
 	DataDir string
+	// ScanInterval is how often the libraries are scanned on their own; zero
+	// leaves scanning to whoever asks for it.
+	ScanInterval time.Duration
 }
 
 // RequireDatabase is the error a command that needs the database starts with
@@ -77,6 +84,11 @@ func load(getenv func(string) string) (Config, error) {
 	}
 	if !filepath.IsAbs(cfg.DataDir) {
 		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
+	}
+	interval := get("GOTOME_SCAN_INTERVAL", DefaultScanInterval.String())
+	var err error
+	if cfg.ScanInterval, err = time.ParseDuration(interval); err != nil || (cfg.ScanInterval != 0 && cfg.ScanInterval < time.Minute) {
+		return Config{}, fmt.Errorf("GOTOME_SCAN_INTERVAL is %q, want a duration of a minute or more such as 6h, or 0 to switch scheduled scans off", interval)
 	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
