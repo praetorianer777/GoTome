@@ -13,3 +13,6 @@ node_modules/
 # Filled by the image build and by make web-embed; only the placeholder is kept.
 /backend/internal/webui/dist/*
 !/backend/internal/webui/dist/.gitkeep
+
+/e2e/test-results/
+/e2e/playwright-report/
