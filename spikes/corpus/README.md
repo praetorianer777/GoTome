@@ -38,7 +38,12 @@ the mirror links it returns, identifies itself in the user agent, and refuses a
 shorter pause. At that pace the default corpus takes a little over an hour.
 
 A run can be interrupted and started again: books already on disk count towards
-the quota. A file that is not an EPUB is skipped and reported.
+the quota. A file that is not an EPUB is skipped and reported; twenty failed
+downloads in a row end the run, because that is the mirror and not the books.
+
+The harvest links to `aleph.gutenberg.org`, which presents the certificate of
+`aleph.pglaf.org`. The tool fetches from the name on the certificate instead of
+switching verification off.
 
 ## 50k corpus
 

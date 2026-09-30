@@ -129,6 +129,44 @@ func TestFetchStopsWhenTheHarvestEnds(t *testing.T) {
 	}
 }
 
+func TestHarvestLinksUseTheHostTheCertificateNames(t *testing.T) {
+	page := `<a href="https://aleph.gutenberg.org/cache/epub/50/pg50.epub">a</a>
+<a href="https://example.org/cache/epub/51/pg51.epub">b</a>`
+	files, _, err := parseHarvest(HarvestURL+"?langs[]=de", []byte(page))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"https://aleph.pglaf.org/cache/epub/50/pg50.epub", "https://example.org/cache/epub/51/pg51.epub"}
+	if len(files) != 2 || files[0].String() != want[0] || files[1].String() != want[1] {
+		t.Errorf("files = %v, want %v", files, want)
+	}
+}
+
+func TestFetchGivesUpOnAMirrorThatFailsEveryDownload(t *testing.T) {
+	var downloads atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/robot/harvest", func(w http.ResponseWriter, r *http.Request) {
+		for id := 1; id <= 3*maxFailuresInARow; id++ {
+			fmt.Fprintf(w, `<p><a href="http://%s/cache/epub/%d/pg%d.epub">book</a></p>`, r.Host, id, id)
+		}
+	})
+	mux.HandleFunc("/cache/epub/", func(w http.ResponseWriter, r *http.Request) {
+		downloads.Add(1)
+		http.Error(w, "down", http.StatusBadGateway)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	f := &Fetcher{Dir: t.TempDir(), Harvest: srv.URL + "/robot/harvest", Client: srv.Client(), Log: io.Discard}
+
+	err := f.Fetch(context.Background(), []Quota{{Lang: "de", Count: 5}})
+	if err == nil || !strings.Contains(err.Error(), "502") {
+		t.Fatalf("Fetch = %v, want an error naming the mirror's answer", err)
+	}
+	if got := downloads.Load(); got != maxFailuresInARow {
+		t.Errorf("tried %d downloads, want it to stop at %d", got, maxFailuresInARow)
+	}
+}
+
 func TestParseLanguages(t *testing.T) {
 	got, err := ParseLanguages("en:1200, de:600")
 	if err != nil {

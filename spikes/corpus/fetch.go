@@ -34,7 +34,18 @@ const (
 	// not a book the benchmark wants.
 	maxEPUBBytes = 64 << 20
 	maxPageBytes = 4 << 20
+	// A mirror that is down fails every download; a book that is broken fails
+	// one. This many in a row is the mirror.
+	maxFailuresInARow = 20
 )
+
+// certifiedHost maps a mirror name the harvest links to onto the name that
+// mirror's certificate is issued for. The harvest lists aleph.gutenberg.org,
+// which answers with the certificate of aleph.pglaf.org, the same machine
+// under the name of the foundation that runs it.
+var certifiedHost = map[string]string{
+	"aleph.gutenberg.org": "aleph.pglaf.org",
+}
 
 // Quota is how many books of one language the corpus should hold.
 type Quota struct {
@@ -97,6 +108,7 @@ func (f *Fetcher) fetchLanguage(ctx context.Context, q Quota) error {
 		return err
 	}
 	have := len(existing)
+	failed := 0
 
 	page := f.Harvest + "?" + url.Values{
 		"filetypes[]": {"epub.noimages"},
@@ -126,8 +138,12 @@ func (f *Fetcher) fetchLanguage(ctx context.Context, q Quota) error {
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
+				if failed++; failed >= maxFailuresInARow {
+					return fmt.Errorf("%d downloads in a row failed, the last one with: %w", failed, err)
+				}
 				continue
 			}
+			failed = 0
 			have++
 			if have%50 == 0 || have == q.Count {
 				fmt.Fprintf(f.Log, "%s: %d/%d\n", q.Lang, have, q.Count)
@@ -157,6 +173,9 @@ func parseHarvest(pageURL string, body []byte) (files []*url.URL, next string, e
 		}
 		switch {
 		case strings.HasSuffix(ref.Path, ".epub"):
+			if host, ok := certifiedHost[ref.Host]; ok {
+				ref.Host = host
+			}
 			files = append(files, ref)
 		case ref.Host == base.Host && ref.Path == base.Path && ref.Query().Has("offset"):
 			next = ref.String()
