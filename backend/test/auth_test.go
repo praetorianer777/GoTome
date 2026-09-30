@@ -20,6 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -38,6 +40,7 @@ type app struct {
 	// dataDir is where this app's managed libraries are created.
 	dataDir string
 	scans   *ingest.Service
+	covers  *covers.Store
 	now     time.Time
 	mu      sync.Mutex
 }
@@ -64,7 +67,8 @@ func newApp(t *testing.T) *app {
 	a.dataDir = t.TempDir()
 	quiet := slog.New(slog.DiscardHandler)
 	libraries := library.NewService(a.pool, a.dataDir)
-	a.scans = ingest.NewService(a.pool, libraries, quiet)
+	a.covers = covers.NewStore(a.dataDir)
+	a.scans = ingest.NewService(a.pool, libraries, a.covers, quiet)
 	// Jobs are queued and left there; a test that wants them worked calls
 	// workJobs.
 	queue, err := jobs.New(a.pool, jobs.Config{Logger: quiet, InsertOnly: true})
@@ -79,6 +83,8 @@ func newApp(t *testing.T) *app {
 		Logins:    httpapi.NewLoginLimits(a.clock),
 		Libraries: libraries,
 		Scans:     a.scans,
+		Books:     catalog.NewService(a.pool),
+		Covers:    a.covers,
 	}
 	srv := httptest.NewServer(server.Routes())
 	t.Cleanup(srv.Close)

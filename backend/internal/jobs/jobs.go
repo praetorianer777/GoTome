@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -214,6 +215,32 @@ func (r *Runner) InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, op
 		return Inserted{}, err
 	}
 	return Inserted{ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate}, nil
+}
+
+// insertBatch keeps one bulk insert well below the number of parameters a
+// statement may carry.
+const insertBatch = 500
+
+// InsertMany enqueues one job per argument with the same options, and returns
+// how many were new: with Unique, those already waiting are passed over.
+func (r *Runner) InsertMany(ctx context.Context, args []river.JobArgs, opts InsertOpts) (int, error) {
+	inserted := 0
+	for batch := range slices.Chunk(args, insertBatch) {
+		params := make([]river.InsertManyParams, len(batch))
+		for i, a := range batch {
+			params[i] = river.InsertManyParams{Args: a, InsertOpts: opts.river()}
+		}
+		results, err := r.client.InsertMany(ctx, params)
+		if err != nil {
+			return inserted, err
+		}
+		for _, res := range results {
+			if !res.UniqueSkippedAsDuplicate {
+				inserted++
+			}
+		}
+	}
+	return inserted, nil
 }
 
 // Job is a job as a status page shows it.

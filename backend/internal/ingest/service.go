@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -89,6 +90,7 @@ func scanFromRow(row sqlc.LibraryScan) Scan {
 // Queue is the part of the job runner the service uses.
 type Queue interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
+	InsertMany(ctx context.Context, args []river.JobArgs, opts jobs.InsertOpts) (int, error)
 	Get(ctx context.Context, id int64) (jobs.Job, error)
 }
 
@@ -98,16 +100,17 @@ type Service struct {
 	log       *slog.Logger
 	libraries *library.Service
 	scanner   *Scanner
+	covers    *covers.Store
 	// Queue is set once the job runner exists: the runner is built from the
 	// workers, and the workers from this service.
 	Queue Queue
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.
-func NewService(pool *pgxpool.Pool, libraries *library.Service, log *slog.Logger) *Service {
+func NewService(pool *pgxpool.Pool, libraries *library.Service, store *covers.Store, log *slog.Logger) *Service {
 	scanner := NewScanner(pool, log)
 	scanner.Budget = passBudget
-	return &Service{pool: pool, log: log, libraries: libraries, scanner: scanner}
+	return &Service{pool: pool, log: log, libraries: libraries, scanner: scanner, covers: store}
 }
 
 // Request asks for the library to be scanned and returns the scan that will
@@ -216,6 +219,13 @@ func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (co
 	})
 	if err != nil {
 		return false, err
+	}
+	// After every pass, not only the last: the books a long first scan has
+	// taken in so far get their titles and covers while it goes on.
+	if ctx.Err() == nil {
+		if err := s.EnqueuePending(ctx, libraryID); err != nil {
+			return false, err
+		}
 	}
 
 	switch {

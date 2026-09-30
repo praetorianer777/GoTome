@@ -74,6 +74,28 @@ func (q *Queries) AddBookTag(ctx context.Context, arg AddBookTagParams) error {
 	return err
 }
 
+const countBookContributors = `-- name: CountBookContributors :one
+SELECT count(*) FROM book_contributors WHERE book_id = $1
+`
+
+func (q *Queries) CountBookContributors(ctx context.Context, bookID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countBookContributors, bookID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countBookTags = `-- name: CountBookTags :one
+SELECT count(*) FROM book_tags WHERE book_id = $1
+`
+
+func (q *Queries) CountBookTags(ctx context.Context, bookID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countBookTags, bookID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBook = `-- name: CreateBook :one
 INSERT INTO books (
     library_id, title, sort_title, title_key, subtitle, description, language,
@@ -212,6 +234,33 @@ func (q *Queries) CreateBookFile(ctx context.Context, arg CreateBookFileParams) 
 	return i, err
 }
 
+const deleteBookContributors = `-- name: DeleteBookContributors :exec
+DELETE FROM book_contributors WHERE book_id = $1
+`
+
+func (q *Queries) DeleteBookContributors(ctx context.Context, bookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteBookContributors, bookID)
+	return err
+}
+
+const deleteBookTags = `-- name: DeleteBookTags :exec
+DELETE FROM book_tags WHERE book_id = $1
+`
+
+func (q *Queries) DeleteBookTags(ctx context.Context, bookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteBookTags, bookID)
+	return err
+}
+
+const deleteFileIdentifiers = `-- name: DeleteFileIdentifiers :exec
+DELETE FROM book_identifiers WHERE file_id = $1
+`
+
+func (q *Queries) DeleteFileIdentifiers(ctx context.Context, fileID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteFileIdentifiers, fileID)
+	return err
+}
+
 const getPublisher = `-- name: GetPublisher :one
 SELECT id, name, name_key FROM publishers WHERE id = $1
 `
@@ -284,6 +333,30 @@ func (q *Queries) GetVisibleBook(ctx context.Context, arg GetVisibleBookParams) 
 		&i.PrimaryTextFileID,
 	)
 	return i, err
+}
+
+const getVisibleBookCover = `-- name: GetVisibleBookCover :one
+SELECT b.cover_key
+FROM books b
+WHERE b.id = $1
+  AND b.deleted_at IS NULL
+  AND b.cover_key IS NOT NULL
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+`
+
+type GetVisibleBookCoverParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+// The cover of a book the viewer may see; no row for a book that is hidden,
+// gone, or has none.
+func (q *Queries) GetVisibleBookCover(ctx context.Context, arg GetVisibleBookCoverParams) (*string, error) {
+	row := q.db.QueryRow(ctx, getVisibleBookCover, arg.ID, arg.Viewer, arg.SeesAll)
+	var cover_key *string
+	err := row.Scan(&cover_key)
+	return cover_key, err
 }
 
 const listBookContributors = `-- name: ListBookContributors :many
@@ -449,6 +522,108 @@ func (q *Queries) ListBookTags(ctx context.Context, bookID uuid.UUID) ([]ListBoo
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockBookOfFile = `-- name: LockBookOfFile :one
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id
+FROM books b
+JOIN book_files f ON f.book_id = b.id
+WHERE f.id = $1
+FOR UPDATE OF b
+`
+
+// Locked, because two files of one book may be read at the same time and
+// both decide what the book is called.
+func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error) {
+	row := q.db.QueryRow(ctx, lockBookOfFile, id)
+	var i Book
+	err := row.Scan(
+		&i.ID,
+		&i.LibraryID,
+		&i.Title,
+		&i.SortTitle,
+		&i.TitleKey,
+		&i.Subtitle,
+		&i.Description,
+		&i.Language,
+		&i.PublishedOn,
+		&i.PublishedPrecision,
+		&i.PublisherID,
+		&i.SeriesID,
+		&i.SeriesIndex,
+		&i.ExternalRating,
+		&i.PageCount,
+		&i.CoverKey,
+		&i.LockedFields,
+		&i.FieldSources,
+		&i.MergedIntoID,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PrimaryTextFileID,
+	)
+	return i, err
+}
+
+const updateBookDescribed = `-- name: UpdateBookDescribed :exec
+UPDATE books
+SET title               = $2,
+    sort_title          = $3,
+    title_key           = $4,
+    subtitle            = $5,
+    description         = $6,
+    language            = $7,
+    published_on        = $8,
+    published_precision = $9,
+    publisher_id        = $10,
+    series_id           = $11,
+    series_index        = $12,
+    page_count          = $13,
+    cover_key           = $14,
+    field_sources       = $15,
+    updated_at          = now()
+WHERE id = $1
+`
+
+type UpdateBookDescribedParams struct {
+	ID                 uuid.UUID
+	Title              string
+	SortTitle          string
+	TitleKey           string
+	Subtitle           *string
+	Description        *string
+	Language           *string
+	PublishedOn        *time.Time
+	PublishedPrecision *string
+	PublisherID        *uuid.UUID
+	SeriesID           *uuid.UUID
+	SeriesIndex        *float64
+	PageCount          *int32
+	CoverKey           *string
+	FieldSources       []byte
+}
+
+// Every field that describes the book, as worked out by the caller from what
+// was there and what a source says.
+func (q *Queries) UpdateBookDescribed(ctx context.Context, arg UpdateBookDescribedParams) error {
+	_, err := q.db.Exec(ctx, updateBookDescribed,
+		arg.ID,
+		arg.Title,
+		arg.SortTitle,
+		arg.TitleKey,
+		arg.Subtitle,
+		arg.Description,
+		arg.Language,
+		arg.PublishedOn,
+		arg.PublishedPrecision,
+		arg.PublisherID,
+		arg.SeriesID,
+		arg.SeriesIndex,
+		arg.PageCount,
+		arg.CoverKey,
+		arg.FieldSources,
+	)
+	return err
 }
 
 const upsertAuthor = `-- name: UpsertAuthor :one

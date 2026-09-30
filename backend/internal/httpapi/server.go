@@ -12,6 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
@@ -43,6 +45,9 @@ type Server struct {
 	Libraries *library.Service
 	// Scans looks through library folders for new and changed files.
 	Scans *ingest.Service
+	// Books is the catalogue; Covers holds the cover images it points at.
+	Books  *catalog.Service
+	Covers *covers.Store
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

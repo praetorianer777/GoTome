@@ -231,7 +231,23 @@ func CreateBookTx(ctx context.Context, tx pgx.Tx, in NewBook) (uuid.UUID, error)
 		return uuid.Nil, fmt.Errorf("book: %w", err)
 	}
 
-	for position, c := range in.Contributors {
+	if err := addContributors(ctx, q, book.ID, in.Contributors); err != nil {
+		return uuid.Nil, err
+	}
+	if err := addTags(ctx, q, book.ID, in.Tags); err != nil {
+		return uuid.Nil, err
+	}
+	for _, ident := range in.Identifiers {
+		err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{BookID: book.ID, Type: ident.Type, Value: ident.Value})
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("identifier %s: %w", ident.Type, err)
+		}
+	}
+	return book.ID, nil
+}
+
+func addContributors(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID, contributors []NewContributor) error {
+	for position, c := range contributors {
 		name := clean(c.Name)
 		if Key(name) == "" {
 			continue
@@ -242,39 +258,37 @@ func CreateBookTx(ctx context.Context, tx pgx.Tx, in NewBook) (uuid.UUID, error)
 		}
 		author, err := q.UpsertAuthor(ctx, sqlc.UpsertAuthorParams{Name: name, SortName: sortName, NameKey: Key(name)})
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("author %q: %w", name, err)
+			return fmt.Errorf("author %q: %w", name, err)
 		}
 		role := c.Role
 		if role == "" {
 			role = RoleAuthor
 		}
 		err = q.AddBookContributor(ctx, sqlc.AddBookContributorParams{
-			BookID: book.ID, AuthorID: author.ID, Role: role, Position: int32(position),
+			BookID: bookID, AuthorID: author.ID, Role: role, Position: int32(position),
 		})
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("contributor %q: %w", name, err)
+			return fmt.Errorf("contributor %q: %w", name, err)
 		}
 	}
-	for _, name := range in.Tags {
+	return nil
+}
+
+func addTags(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID, tags []string) error {
+	for _, name := range tags {
 		name = clean(name)
 		if Key(name) == "" {
 			continue
 		}
 		tag, err := q.UpsertTag(ctx, sqlc.UpsertTagParams{Name: name, NameKey: Key(name)})
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("tag %q: %w", name, err)
+			return fmt.Errorf("tag %q: %w", name, err)
 		}
-		if err := q.AddBookTag(ctx, sqlc.AddBookTagParams{BookID: book.ID, TagID: tag.ID}); err != nil {
-			return uuid.Nil, err
-		}
-	}
-	for _, ident := range in.Identifiers {
-		err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{BookID: book.ID, Type: ident.Type, Value: ident.Value})
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("identifier %s: %w", ident.Type, err)
+		if err := q.AddBookTag(ctx, sqlc.AddBookTagParams{BookID: bookID, TagID: tag.ID}); err != nil {
+			return err
 		}
 	}
-	return book.ID, nil
+	return nil
 }
 
 // AddFile attaches a file to a book. The file lands in the book's library:

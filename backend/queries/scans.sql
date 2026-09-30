@@ -104,3 +104,45 @@ WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND missing_at IS NULL;
 UPDATE book_files
 SET part_index = $2, updated_at = now()
 WHERE id = $1;
+
+-- name: ListPendingExtractions :many
+-- Files of the library that are there, have been hashed, and that nothing
+-- has been read out of yet, of the formats there is a reader for.
+SELECT id FROM book_files
+WHERE library_id = $1
+  AND extract_state = 'pending'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND sha256 IS NOT NULL
+  AND format = ANY(sqlc.arg(formats)::text[])
+ORDER BY id;
+
+-- name: GetFileForExtraction :one
+SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1;
+
+-- name: SetFileExtracted :execrows
+-- Only while the file is still the one that was read: a scan that found it
+-- changed in the meantime has asked for it to be read again.
+UPDATE book_files
+SET content_sha256  = sqlc.arg(content_sha256),
+    drm             = sqlc.arg(drm),
+    has_text        = sqlc.arg(has_text),
+    page_count      = sqlc.arg(page_count),
+    pages_estimated = sqlc.arg(pages_estimated),
+    extract_state   = 'done',
+    extract_error   = NULL,
+    updated_at      = now()
+WHERE id = $1 AND sha256 = sqlc.arg(sha256);
+
+-- name: SetFileExtractFailed :exec
+UPDATE book_files
+SET extract_state = 'failed', extract_error = sqlc.arg(error), updated_at = now()
+WHERE id = $1 AND sha256 = sqlc.arg(sha256);
+
+-- name: SetPrimaryTextFile :exec
+-- The first file of a book that has text is the one its text is read from.
+UPDATE books
+SET primary_text_file_id = $2
+WHERE id = $1 AND primary_text_file_id IS NULL;

@@ -445,12 +445,14 @@ func TestScanInPassesReachesTheSameResult(t *testing.T) {
 	}
 }
 
-// workJobs starts a job runner that works the app's queued scans.
+// workJobs starts a job runner that works the app's queued scans and the
+// reading of the files they find.
 func (a *app) workJobs() {
 	a.t.Helper()
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &ingest.ScanWorker{Service: a.scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: a.scans})
+	river.AddWorker(workers, &ingest.ExtractWorker{Service: a.scans})
 	runner, err := jobs.New(a.pool, jobs.Config{Logger: slog.New(slog.DiscardHandler), Workers: workers})
 	if err != nil {
 		a.t.Fatal(err)
