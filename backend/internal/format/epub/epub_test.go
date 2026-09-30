@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/praetorianer777/gotome/backend/internal/format/markup"
 )
 
 // entry is one file of a test EPUB, in archive order.
@@ -419,7 +421,7 @@ func FuzzDocuments(f *testing.F) {
 	f.Add([]byte(`<html><body><h1>T</h1><p>a<br/>b &amp; c</p><script>x</script></body></html>`), []byte(epub3OPF))
 	f.Add([]byte(`<nav epub:type="toc"><a href="a#b">x</a></nav>`), []byte(epub2OPF))
 	f.Fuzz(func(t *testing.T, doc, opf []byte) {
-		text, heading := extractText(doc)
+		text, heading := markup.Text(doc)
 		if !utf8.ValidString(text) || !utf8.ValidString(heading) {
 			t.Error("extracted text is not valid UTF-8")
 		}

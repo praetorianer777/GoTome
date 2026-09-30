@@ -14,6 +14,8 @@ import (
 	"path"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/praetorianer777/gotome/backend/internal/format/markup"
 )
 
 var (
@@ -159,7 +161,7 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 		// next begins is part of what is hashed.
 		_ = binary.Write(content, binary.BigEndian, uint64(len(doc)))
 		content.Write(doc)
-		text, heading := extractText(doc)
+		text, heading := markup.Text(doc)
 		total += int64(len(text))
 		if total > limits.MaxTextBytes {
 			return nil, fmt.Errorf("%w: more than %d bytes of text", ErrTooLarge, limits.MaxTextBytes)

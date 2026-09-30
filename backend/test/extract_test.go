@@ -404,3 +404,63 @@ func TestAnEPUBOutranksAPDFOfTheSameBook(t *testing.T) {
 		t.Errorf("the book is %q by %v", book.Title, book.Authors())
 	}
 }
+
+func TestKindleFilesAreRead(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	books := t.TempDir()
+	for from, to := range map[string]string{
+		"persuasion.mobi": "mobi/Persuasion.mobi",
+		"persuasion.azw3": "azw3/Persuasion.azw3",
+		"protected.azw":   "azw/Persuasion.azw",
+	} {
+		data, err := os.ReadFile(filepath.Join("..", "internal", "format", "mobi", "testdata", from))
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.MkdirAll(filepath.Dir(filepath.Join(books, to)), 0o755)
+		if err := os.WriteFile(filepath.Join(books, to), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id := a.externalLibrary(admin, "Kindle", "shared", books)
+	a.scanNow(id)
+	for _, f := range a.shelfFiles() {
+		a.extract(f.ID)
+	}
+
+	files := a.shelfFiles()
+	for _, path := range []string{"mobi/Persuasion.mobi", "azw3/Persuasion.azw3"} {
+		f := files[path]
+		if f.State != "done" || f.HasText == nil || !*f.HasText || len(f.ContentSHA256) != 32 {
+			t.Errorf("%s after extraction: %+v", path, f)
+		}
+		book := a.book(f.BookID)
+		if book.Title != "Persuasion" || book.Publisher != "Penguin" || book.Language != "en" ||
+			len(book.Contributors) != 1 || book.Contributors[0].Name != "Jane Austen" {
+			t.Errorf("%s: book %+v", path, book)
+		}
+		var cover *string
+		if err := a.pool.QueryRow(ctx, "SELECT cover_key FROM books WHERE id = $1", f.BookID).Scan(&cover); err != nil || cover == nil {
+			t.Errorf("%s: no cover (%v)", path, err)
+		}
+	}
+	// The same text in both formats.
+	if !bytes.Equal(files["mobi/Persuasion.mobi"].ContentSHA256, files["azw3/Persuasion.azw3"].ContentSHA256) {
+		t.Error("the MOBI and the AZW3 of one text have different content hashes")
+	}
+
+	protected := files["azw/Persuasion.azw"]
+	var drm bool
+	if err := a.pool.QueryRow(ctx, "SELECT drm FROM book_files WHERE id = $1", protected.ID).Scan(&drm); err != nil {
+		t.Fatal(err)
+	}
+	if !drm || protected.HasText == nil || *protected.HasText || protected.ContentSHA256 != nil || protected.State != "done" {
+		t.Errorf("the protected file: drm %v, %+v; want it flagged, with no text read", drm, protected)
+	}
+	if book := a.book(protected.BookID); book.Title != "Persuasion" {
+		t.Errorf("the protected file's book is called %q; its metadata is not protected", book.Title)
+	}
+}
