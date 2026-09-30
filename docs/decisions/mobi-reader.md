@@ -40,7 +40,8 @@ installed in the test toolchain image, where it checks the reader's fixtures.
 - Protected files are catalogued with their metadata and cover, which Kindle
   files keep in the clear, and flagged. Their text is not read.
 - The fixtures are built by the tests, not taken from Kindle tools or real
-  books. Real files from the benchmark corpus are the next check; if one is
-  read wrongly, it goes into `testdata` with the fix.
+  books. The benchmark corpus holds EPUBs only; real Kindle files, such as the
+  ones Project Gutenberg also offers, are the check still to be made. A file
+  that is read wrongly goes into `testdata` with the fix.
 - Only the first flow of a KF8 file is read as text. Tables of contents and
   chapter boundaries are not extracted, so the text is one section.
