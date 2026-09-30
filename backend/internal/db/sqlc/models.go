@@ -3,3 +3,30 @@
 //   sqlc v1.31.1
 
 package sqlc
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Session struct {
+	TokenHash  []byte
+	UserID     uuid.UUID
+	UserAgent  string
+	CreatedAt  time.Time
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+}
+
+type User struct {
+	ID           uuid.UUID
+	Username     string
+	Email        *string
+	PasswordHash *string
+	Role         string
+	QuotaBytes   *int64
+	DisabledAt   *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}

@@ -80,3 +80,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   for every path outside `/api`. That directory is empty in a checkout; the image
   build and `make web-embed` fill it.
 - TypeScript stays on 5.x while `openapi-typescript` requires it.
+
+## Authentication
+
+- `internal/auth` owns accounts and sessions: argon2id hashes, opaque session tokens
+  stored only as SHA-256. The cookie is `gotome_session`, HttpOnly, SameSite=Lax, and
+  Secure when the request came over HTTPS.
+- A route in the table is for signed-in users unless it says `Public: true`.
+  `UserFrom(ctx)` is the signed-in user. State-changing requests from another origin
+  are refused before they reach a handler.
+- First-run setup (`POST /api/v1/setup`) creates the one initial administrator and
+  then refuses for good.

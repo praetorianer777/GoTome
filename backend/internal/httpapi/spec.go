@@ -16,6 +16,9 @@ const specVersion = "1"
 
 const jsonMedia = "application/json"
 
+// sessionScheme names the security scheme of routes that need a session.
+const sessionScheme = "session"
+
 var pathParam = regexp.MustCompile(`\{([^}/]+)\}`)
 
 // Spec is the OpenAPI document of the API, derived from the route table.
@@ -46,6 +49,9 @@ func Spec() *openapi.Document {
 			Tags:        []string{rt.Tag},
 			Responses:   map[string]*openapi.Response{"default": failure},
 		}
+		if !rt.Public {
+			op.Security = []map[string][]string{{sessionScheme: {}}}
+		}
 		for _, m := range pathParam.FindAllStringSubmatch(rt.Path, -1) {
 			op.Parameters = append(op.Parameters, openapi.Parameter{
 				Name: m[1], In: "path", Required: true, Schema: &openapi.Schema{Type: "string"},
@@ -74,5 +80,11 @@ func Spec() *openapi.Document {
 		doc.Tags = append(doc.Tags, openapi.Tag{Name: name})
 	}
 	doc.Components.Schemas = b.Components()
+	doc.Components.SecuritySchemes = map[string]openapi.SecurityScheme{
+		sessionScheme: {
+			Type: "apiKey", In: "cookie", Name: SessionCookie,
+			Description: "The session cookie that signing in sets.",
+		},
+	}
 	return doc
 }

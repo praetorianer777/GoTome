@@ -3,7 +3,10 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 // APIError is the single error shape every endpoint returns, so that clients
@@ -22,6 +25,8 @@ type APIError struct {
 
 	// cause is logged but never sent to the client.
 	cause error
+	// retryAfter is sent as the Retry-After header, in seconds.
+	retryAfter time.Duration
 }
 
 func (e *APIError) Error() string {
@@ -49,6 +54,29 @@ func ErrValidation(fields map[string]string) *APIError {
 		Message: "Some fields need attention.",
 		Fields:  fields,
 	}
+}
+
+func ErrUnauthorized(message string) *APIError {
+	if message == "" {
+		message = "Sign in to continue."
+	}
+	return &APIError{Status: http.StatusUnauthorized, Code: "unauthorized", Message: message}
+}
+
+func ErrForbidden(message string) *APIError {
+	if message == "" {
+		message = "You do not have permission to do that."
+	}
+	return &APIError{Status: http.StatusForbidden, Code: "forbidden", Message: message}
+}
+
+func ErrConflict(message string) *APIError {
+	return &APIError{Status: http.StatusConflict, Code: "conflict", Message: message}
+}
+
+// ErrTooManyRequests tells the client how long to wait before trying again.
+func ErrTooManyRequests(message string, retryAfter time.Duration) *APIError {
+	return &APIError{Status: http.StatusTooManyRequests, Code: "too_many_requests", Message: message, retryAfter: retryAfter}
 }
 
 func ErrNotFound(message string) *APIError {
@@ -89,6 +117,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	if apiErr.Status >= http.StatusInternalServerError {
 		loggerFrom(r.Context()).Error("request failed", "error", apiErr.Error())
+	}
+	if apiErr.retryAfter > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(apiErr.retryAfter.Seconds()))))
 	}
 	sent := *apiErr
 	sent.RequestID = RequestIDFrom(r.Context())
