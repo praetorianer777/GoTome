@@ -36,7 +36,7 @@ RUN PKG=github.com/praetorianer777/gotome/backend/internal/version && \
 # test toolchain (toolchain.Dockerfile) installs the same ones.
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates tzdata poppler-utils && \
+    apt-get install -y --no-install-recommends ca-certificates tzdata poppler-utils ffmpeg && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --uid 10001 --create-home gotome && \
     install -d -o gotome -g gotome /data

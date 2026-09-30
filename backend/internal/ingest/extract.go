@@ -56,6 +56,10 @@ type Extracted struct {
 	// Pages is nil when the format has none and none can be worked out.
 	Pages          *int32
 	PagesEstimated bool
+	// DurationMS, Track, Disc and Chapters are an audio file's.
+	DurationMS  *int64
+	Track, Disc *int32
+	Chapters    []Chapter
 }
 
 // ErrUnreadable is what an Extractor wraps when the file is not what its
@@ -74,6 +78,12 @@ var extractors = map[string]Extractor{
 	"mobi": extractMOBI,
 	"azw3": extractMOBI,
 	"azw":  extractMOBI,
+	"m4b":  extractAudio,
+	"m4a":  extractAudio,
+	"mp3":  extractAudio,
+	"flac": extractAudio,
+	"ogg":  extractAudio,
+	"opus": extractAudio,
 }
 
 // EnqueuePending asks for every file of the library that is still to be read
@@ -150,6 +160,7 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		n, err := q.SetFileExtracted(ctx, sqlc.SetFileExtractedParams{
 			ID: fileID, Sha256: file.Sha256, ContentSha256: got.ContentSHA256, Drm: got.DRM,
 			HasText: &got.HasText, PageCount: got.Pages, PagesEstimated: got.PagesEstimated,
+			DurationMs: got.DurationMS, TrackNumber: got.Track, DiscNumber: got.Disc,
 		})
 		if err != nil || n == 0 {
 			return err
@@ -157,11 +168,67 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
 			return err
 		}
+		if err := q.DeleteFileChapters(ctx, fileID); err != nil {
+			return err
+		}
+		for i, c := range got.Chapters {
+			err := q.AddFileChapter(ctx, sqlc.AddFileChapterParams{
+				FileID: fileID, Position: int32(i), Title: c.Title, StartMs: c.StartMS, EndMs: c.EndMS,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		// The book is locked by now, so the parts of one audiobook are put in
+		// order by one file's job at a time.
+		if err := orderParts(ctx, q, file.BookID); err != nil {
+			return err
+		}
 		if !got.HasText {
 			return nil
 		}
 		return q.SetPrimaryTextFile(ctx, sqlc.SetPrimaryTextFileParams{ID: file.BookID, PrimaryTextFileID: &fileID})
 	})
+}
+
+// orderParts puts the parts of a book's audiobook in the order of their
+// disc and track tags, once every part has a track tag. Until then, and in a
+// book whose parts carry none, the order the scan read off the names stays.
+func orderParts(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID) error {
+	parts, err := q.ListBookParts(ctx, bookID)
+	if err != nil || len(parts) < 2 {
+		return err
+	}
+	for _, p := range parts {
+		if p.TrackNumber == nil {
+			return nil
+		}
+	}
+	disc := func(p sqlc.ListBookPartsRow) int32 {
+		if p.DiscNumber == nil {
+			return 0
+		}
+		return *p.DiscNumber
+	}
+	slices.SortFunc(parts, func(a, b sqlc.ListBookPartsRow) int {
+		if d := disc(a) - disc(b); d != 0 {
+			return int(d)
+		}
+		if t := *a.TrackNumber - *b.TrackNumber; t != 0 {
+			return int(t)
+		}
+		return compareNatural(a.RelPath, b.RelPath)
+	})
+	for i, p := range parts {
+		if *p.PartIndex == int32(i) {
+			continue
+		}
+		index := int32(i)
+		if err := q.SetFilePartIndex(ctx, sqlc.SetFilePartIndexParams{ID: p.ID, PartIndex: &index}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // safely runs the extractor and turns a panic into a failure of that one

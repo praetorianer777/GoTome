@@ -109,11 +109,11 @@ stack-check: ## Check the running stack: two services, web app and API answering
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
 	done
-	@for program in pdfinfo pdftotext pdftoppm prlimit; do \
+	@for program in pdfinfo pdftotext pdftoppm ffprobe ffmpeg prlimit; do \
 		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
 			|| { echo "the app image has no $$program"; exit 1; }; \
 	done
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler installed"
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler and ffmpeg installed"
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
