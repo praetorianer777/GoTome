@@ -1,0 +1,62 @@
+// Package config loads and validates process configuration from the
+// environment. Every setting is a GOTOME_* variable; there is no file.
+package config
+
+import (
+	"fmt"
+	"log/slog"
+	"net"
+	"os"
+	"strings"
+)
+
+// Environments a deployment may declare itself as.
+const (
+	EnvDevelopment = "development"
+	EnvProduction  = "production"
+)
+
+// Defaults, named so the tests and the documentation can quote them.
+const (
+	DefaultEnv      = EnvProduction
+	DefaultHTTPAddr = ":8080"
+	DefaultLogLevel = "info"
+)
+
+// Config is the fully resolved configuration of the process.
+type Config struct {
+	Env      string
+	HTTPAddr string
+	LogLevel slog.Level
+}
+
+// IsProduction reports whether the deployment declared itself as production.
+func (c Config) IsProduction() bool { return c.Env == EnvProduction }
+
+// Load reads the configuration from the process environment.
+func Load() (Config, error) { return load(os.Getenv) }
+
+func load(getenv func(string) string) (Config, error) {
+	get := func(key, fallback string) string {
+		if v := strings.TrimSpace(getenv(key)); v != "" {
+			return v
+		}
+		return fallback
+	}
+
+	cfg := Config{
+		Env:      get("GOTOME_ENV", DefaultEnv),
+		HTTPAddr: get("GOTOME_HTTP_ADDR", DefaultHTTPAddr),
+	}
+	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
+		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)
+	}
+	if _, _, err := net.SplitHostPort(cfg.HTTPAddr); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_HTTP_ADDR is %q, want host:port such as %s: %w", cfg.HTTPAddr, DefaultHTTPAddr, err)
+	}
+	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
+	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
+	}
+	return cfg, nil
+}

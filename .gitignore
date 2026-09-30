@@ -2,3 +2,7 @@
 .claude/settings.local.json
 
 .cache/
+
+/backend/bin/
+*.test
+coverage.out

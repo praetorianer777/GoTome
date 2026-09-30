@@ -20,5 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache the Go module and build caches
+        uses: actions/cache@v4
+        with:
+          path: .cache/go
+          key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
       - name: Run the test suite
         run: ./run-tests.sh
