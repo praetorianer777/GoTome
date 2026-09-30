@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
+import type { Library } from "@/libraries/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -53,6 +54,7 @@ export class FakeServer {
 	accounts = new Map<string, Account>();
 	session: CurrentUser | null = null;
 	requests: { method: string; path: string; body: unknown }[] = [];
+	libraries: Library[] = [];
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
 
@@ -64,6 +66,21 @@ export class FakeServer {
 		this.accounts.set(username.toLowerCase(), {
 			password,
 			user: user(username, role),
+		});
+		return this;
+	}
+
+	withLibrary(name: string, overrides: Partial<Library> = {}): this {
+		const id = `lib-${this.libraries.length + 1}`;
+		this.libraries.push({
+			id,
+			name,
+			mode: "managed",
+			writable: true,
+			visibility: "shared",
+			rootPath: `/data/libraries/${id}`,
+			createdAt: "2026-01-01T00:00:00Z",
+			...overrides,
 		});
 		return this;
 	}
@@ -94,11 +111,7 @@ export class FakeServer {
 		return this;
 	}
 
-	private answer(
-		method: string,
-		path: string,
-		body: Record<string, string> = {},
-	): Response {
+	private answer(method: string, path: string, body: Record<string, string> = {}): Response {
 		const refuse = (
 			status: number,
 			code: string,
@@ -109,6 +122,10 @@ export class FakeServer {
 				{ error: { code, message, fields, requestId: "req-1" } },
 				{ status },
 			);
+
+		if (path === "/libraries" || path.startsWith("/libraries/")) {
+			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
+		}
 
 		switch (`${method} ${path}`) {
 			case "GET /setup":
@@ -158,6 +175,68 @@ export class FakeServer {
 			default:
 				return refuse(404, "not_found", "There is nothing at this address.");
 		}
+	}
+	private answerLibraries(
+		method: string,
+		id: string,
+		body: Record<string, unknown>,
+		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+	): Response {
+		if (!this.session) {
+			return refuse(401, "unauthorized", "Sign in to continue.");
+		}
+		const manages = this.session.permissions.includes("storage:manage");
+		// What a reader is shown leaves out where the files lie.
+		const shown = (library: Library): Library =>
+			manages ? library : { ...library, rootPath: undefined, ownerId: undefined };
+
+		if (method === "GET" && id === "") {
+			return Response.json({ libraries: this.libraries.map(shown) });
+		}
+		if (!manages) {
+			return refuse(403, "forbidden", "You do not have permission to do that.");
+		}
+		const invalid = (fields: Record<string, string>) =>
+			refuse(422, "validation_failed", "Some fields need attention.", fields);
+		const nameTaken = (name: string, except?: string) =>
+			this.libraries.some((l) => l.id !== except && l.name.toLowerCase() === name.toLowerCase());
+
+		if (method === "POST" && id === "") {
+			const name = String(body.name ?? "").trim();
+			if (name === "") {
+				return invalid({ name: "Give the library a name." });
+			}
+			if (nameTaken(name)) {
+				return invalid({ name: "Another library already has this name." });
+			}
+			if (body.mode === "external" && !String(body.rootPath ?? "").startsWith("/")) {
+				return invalid({ rootPath: "Give the folder as a full path, such as /books." });
+			}
+			this.withLibrary(name, {
+				mode: body.mode as string,
+				visibility: body.visibility as string,
+				writable: body.mode === "managed",
+				...(body.mode === "external" ? { rootPath: body.rootPath as string } : {}),
+			});
+			return Response.json(this.libraries.at(-1), { status: 201 });
+		}
+
+		const library = this.libraries.find((l) => l.id === id);
+		if (!library) {
+			return refuse(404, "not_found", "There is no such library.");
+		}
+		if (method === "PATCH") {
+			if (typeof body.name === "string" && nameTaken(body.name.trim(), id)) {
+				return invalid({ name: "Another library already has this name." });
+			}
+			Object.assign(library, body);
+			return Response.json(library);
+		}
+		if (method === "DELETE") {
+			this.libraries = this.libraries.filter((l) => l.id !== id);
+			return new Response(null, { status: 204 });
+		}
+		return refuse(404, "not_found", "There is nothing at this address.");
 	}
 }
 

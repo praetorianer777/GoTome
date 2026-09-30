@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -32,8 +33,10 @@ type app struct {
 	t    *testing.T
 	url  string
 	pool *pgxpool.Pool
-	now  time.Time
-	mu   sync.Mutex
+	// dataDir is where this app's managed libraries are created.
+	dataDir string
+	now     time.Time
+	mu      sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -55,11 +58,13 @@ func newApp(t *testing.T) *app {
 	if err != nil {
 		t.Fatal(err)
 	}
+	a.dataDir = t.TempDir()
 	server := &httpapi.Server{
-		Log:    slog.New(slog.DiscardHandler),
-		DB:     a.pool,
-		Auth:   accounts.WithClock(a.clock),
-		Logins: httpapi.NewLoginLimits(a.clock),
+		Log:       slog.New(slog.DiscardHandler),
+		DB:        a.pool,
+		Auth:      accounts.WithClock(a.clock),
+		Logins:    httpapi.NewLoginLimits(a.clock),
+		Libraries: library.NewService(a.pool, a.dataDir),
 	}
 	srv := httptest.NewServer(server.Routes())
 	t.Cleanup(srv.Close)
@@ -104,6 +109,30 @@ func (a *app) call(c *http.Client, method, path string, body any) (int, map[stri
 		}
 	}
 	return resp.StatusCode, decoded, resp.Header
+}
+
+// signedIn creates an account with the role and returns a browser signed in
+// as it. The account goes straight into the database: creating users through
+// the API is its own feature.
+func (a *app) signedIn(username, role string) (*http.Client, string) {
+	a.t.Helper()
+	const password = "a long password"
+	hash, err := auth.HashPassword(password, fastHash)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	var id string
+	err = a.pool.QueryRow(context.Background(),
+		"INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id::text",
+		username, hash, role).Scan(&id)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	c := a.browser()
+	if status, body, _ := a.call(c, http.MethodPost, "/auth/login", map[string]any{"username": username, "password": password}); status != 200 {
+		a.t.Fatalf("sign in as %s: %d %v", username, status, body)
+	}
+	return c, id
 }
 
 func errorCode(body map[string]any) string {
@@ -335,4 +364,9 @@ func TestCrossSiteWriteIsRefused(t *testing.T) {
 	if status, status2, _ := a.call(a.browser(), http.MethodGet, "/setup", nil); status != 200 || status2["needed"] != true {
 		t.Errorf("the refused request changed something: %d %v", status, status2)
 	}
+}
+
+func toJSON(v any) string {
+	encoded, _ := json.Marshal(v)
+	return string(encoded)
 }

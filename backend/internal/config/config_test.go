@@ -15,7 +15,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo}
+	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data"}
 	if cfg != want {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -29,11 +29,12 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_ENV":       "development",
 		"GOTOME_HTTP_ADDR": " 127.0.0.1:9000 ",
 		"GOTOME_LOG_LEVEL": "DEBUG",
+		"GOTOME_DATA_DIR":  "/srv/gotome",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome"}
 	if cfg != want {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -44,6 +45,7 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_ENV", "staging"},
 		{"GOTOME_HTTP_ADDR", "8080"},
 		{"GOTOME_LOG_LEVEL", "loud"},
+		{"GOTOME_DATA_DIR", "data"},
 	}
 	for _, c := range cases {
 		_, err := load(env(map[string]string{c.key: c.value}))

@@ -10,6 +10,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type Library struct {
+	ID         uuid.UUID
+	Name       string
+	RootPath   string
+	Mode       string
+	Writable   bool
+	Visibility string
+	OwnerID    *uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type LibraryMember struct {
+	LibraryID uuid.UUID
+	UserID    uuid.UUID
+	AddedAt   time.Time
+}
+
 type Session struct {
 	TokenHash  []byte
 	UserID     uuid.UUID

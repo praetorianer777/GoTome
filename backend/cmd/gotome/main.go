@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -101,11 +102,12 @@ func serve() error {
 		return err
 	}
 	server := &httpapi.Server{
-		Log:    log,
-		DB:     pool,
-		Auth:   accounts,
-		Logins: httpapi.NewLoginLimits(time.Now),
-		Web:    webui.Handler(),
+		Log:       log,
+		DB:        pool,
+		Auth:      accounts,
+		Logins:    httpapi.NewLoginLimits(time.Now),
+		Libraries: library.NewService(pool, cfg.DataDir),
+		Web:       webui.Handler(),
 	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

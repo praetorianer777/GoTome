@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -28,7 +28,7 @@ describe("a fresh installation", () => {
 		);
 
 		expect(
-			await screen.findByRole("heading", { name: "No books yet" }),
+			await screen.findByRole("heading", { name: "No library yet" }),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/");
 		expect(screen.getByText("Signed in as Steve")).toBeInTheDocument();
@@ -223,5 +223,110 @@ describe("a server that does not answer", () => {
 		expect(
 			await screen.findByRole("heading", { name: "Library" }),
 		).toBeInTheDocument();
+	});
+});
+
+describe("libraries", () => {
+	it("tells an administrator with no library how to get started", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		const { router } = renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Add a library" }));
+		expect(await screen.findByRole("heading", { name: "Libraries", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/admin/libraries");
+	});
+
+	it("tells a reader with no library that there is none to see", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/");
+
+		expect(await screen.findByRole("heading", { name: "No library yet" })).toBeInTheDocument();
+		expect(screen.getByText(/An administrator can add one/)).toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: "Add a library" })).not.toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: "Libraries" })).not.toBeInTheDocument();
+	});
+
+	it("keeps a reader out of the administration page", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		const { router } = renderApp("/admin/libraries");
+
+		expect(await screen.findByRole("heading", { name: "Novels" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+	});
+
+	it("adds a managed library and shows it on the library page", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/libraries");
+
+		expect(await screen.findByText("There is no library yet.")).toBeInTheDocument();
+		const form = within(screen.getByRole("region", { name: "Add a library" }));
+		await person.type(form.getByLabelText("Name"), "Novels");
+		await person.click(form.getByRole("button", { name: "Add the library" }));
+
+		const row = await screen.findByRole("listitem", { name: "Novels" });
+		expect(within(row).getByText("Managed by GOtome")).toBeInTheDocument();
+		expect(form.getByLabelText("Name")).toHaveValue("");
+		expect(server.requests).toContainEqual({
+			method: "POST",
+			path: "/libraries",
+			body: { name: "Novels", mode: "managed", visibility: "shared" },
+		});
+
+		await person.click(screen.getByRole("link", { name: "Library" }));
+		expect(await screen.findByRole("heading", { name: "Novels" })).toBeInTheDocument();
+	});
+
+	it("asks for the folder of an existing one and shows what the server says about it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/libraries");
+
+		const form = within(await screen.findByRole("region", { name: "Add a library" }));
+		expect(form.queryByLabelText("Folder")).not.toBeInTheDocument();
+		await person.selectOptions(form.getByLabelText("Kind"), "An existing folder");
+		await person.type(form.getByLabelText("Name"), "NAS");
+		await person.type(form.getByLabelText("Folder"), "books");
+		await person.click(form.getByRole("button", { name: "Add the library" }));
+
+		await waitFor(() => expect(form.getByLabelText("Folder")).toBeInvalid());
+		expect(form.getByLabelText("Folder")).toHaveAccessibleDescription("Give the folder as a full path, such as /books.");
+	});
+
+	it("renames, changes who sees it, and removes only after being asked twice", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("Novels")
+			.withLibrary("NAS", { mode: "external", writable: false, rootPath: "/books" });
+		renderApp("/admin/libraries");
+
+		const novels = within(await screen.findByRole("listitem", { name: "Novels" }));
+		// Only a folder GOtome does not manage can be read-only.
+		expect(novels.queryByRole("checkbox")).not.toBeInTheDocument();
+		await person.clear(novels.getByLabelText("Name"));
+		await person.type(novels.getByLabelText("Name"), "Fiction");
+		await person.click(novels.getByRole("button", { name: "Rename" }));
+		const fiction = within(await screen.findByRole("listitem", { name: "Fiction" }));
+
+		await person.selectOptions(fiction.getByLabelText("Who sees it"), "Only its members");
+		await waitFor(() => expect(server.libraries[0]?.visibility).toBe("private"));
+
+		const nas = within(screen.getByRole("listitem", { name: "NAS" }));
+		expect(nas.getByText("/books")).toBeInTheDocument();
+		await person.click(nas.getByRole("checkbox", { name: "GOtome may change files here" }));
+		await waitFor(() => expect(server.libraries[1]?.writable).toBe(true));
+
+		await person.click(nas.getByRole("button", { name: "Remove" }));
+		expect(server.libraries).toHaveLength(2);
+		expect(nas.getByText("Remove it from GOtome? The folder and its files stay.")).toBeInTheDocument();
+		await person.click(nas.getByRole("button", { name: "Keep" }));
+		await person.click(nas.getByRole("button", { name: "Remove" }));
+		await person.click(nas.getByRole("button", { name: "Remove" }));
+
+		await waitFor(() => expect(screen.queryByRole("listitem", { name: "NAS" })).not.toBeInTheDocument());
+		expect(server.libraries.map((l) => l.name)).toEqual(["Fiction"]);
 	});
 });

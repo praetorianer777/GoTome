@@ -120,3 +120,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - A release is cut by the owner with `./release.sh <version>` on `main`. It moves the
   Unreleased entries under the version, writes `VERSION`, commits and tags, and pushes
   nothing. Pushing the tag runs `.github/workflows/release.yml`.
+
+## Libraries and visibility
+
+- The library is the access boundary. The rule for who sees which library is written
+  once, in the SQL function `visible_library_ids(viewer, sees_all)`. Every query
+  that returns anything belonging to a library filters through it, with the two
+  arguments from `library.ScopeOf(user)`. Do not restate the rule in Go or in
+  another query.
+- Something the viewer may not see is answered exactly like something that does not
+  exist: 404, same body.
+- Managed libraries live under `GOTOME_DATA_DIR` (`/data` in the image, a volume);
+  external ones are folders mounted into the container.

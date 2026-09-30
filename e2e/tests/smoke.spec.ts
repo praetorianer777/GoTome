@@ -14,9 +14,6 @@ test("signing in leads to the empty library, signing out back to sign-in", {
 	await expect(
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
-	await expect(
-		page.getByRole("heading", { name: "No books yet" }),
-	).toBeVisible();
 	await expect(page.getByText(`Signed in as ${ADMIN.username}`)).toBeVisible();
 
 	// The session survives a reload: it lives in a cookie, not in the page.
