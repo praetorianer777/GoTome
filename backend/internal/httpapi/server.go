@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -53,15 +54,21 @@ func (s *Server) Routes() http.Handler {
 	r.Get(ReadyPath, s.ready)
 	r.Route(APIPrefix, func(api chi.Router) {
 		api.Use(sameOrigin, s.authenticate)
-		for _, rt := range s.routes() {
-			h := rt.Handler
-			if !rt.Public {
-				h = requireUser(h)
-			}
-			api.Method(rt.Method, rt.Path, handle(h))
-		}
+		mount(api, s.routes())
 	})
 	return r
+}
+
+// mount puts the routes of a table on the router, each behind its permission.
+func mount(api chi.Router, routes []Route) {
+	for _, rt := range routes {
+		// A route without a declared permission is a mistake in the table,
+		// and must not be found out by whoever calls it first.
+		if !auth.Known(rt.Permission) {
+			panic(fmt.Sprintf("httpapi: route %s %s declares no known permission (%q)", rt.Method, rt.Path, rt.Permission))
+		}
+		api.Method(rt.Method, rt.Path, handle(require(rt.Permission, rt.Handler)))
+	}
 }
 
 // handle adapts a HandlerFunc, turning the error it returns into the envelope.

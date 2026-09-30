@@ -107,6 +107,14 @@ export interface components {
             commit?: string;
             version: string;
         };
+        CurrentUser: {
+            email?: string;
+            /** Format: uuid */
+            id: string;
+            permissions: ("library:read" | "personal:manage" | "books:upload" | "metadata:edit" | "index:rebuild" | "users:manage" | "settings:manage" | "storage:manage")[];
+            role: string;
+            username: string;
+        };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
@@ -213,7 +221,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["User"];
+                    "application/json": components["schemas"]["CurrentUser"];
                 };
             };
             /** @description The request failed. */

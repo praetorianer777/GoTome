@@ -57,7 +57,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "public"
       }
     },
     "/auth/logout": {
@@ -81,7 +82,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "public"
       }
     },
     "/auth/me": {
@@ -97,7 +99,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/CurrentUser"
                 }
               }
             }
@@ -117,7 +119,8 @@
           {
             "session": []
           }
-        ]
+        ],
+        "x-permission": "signed-in"
       }
     },
     "/setup": {
@@ -148,7 +151,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "public"
       },
       "post": {
         "operationId": "completeSetup",
@@ -187,7 +191,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "public"
       }
     },
     "/version": {
@@ -218,7 +223,8 @@
               }
             }
           }
-        }
+        },
+        "x-permission": "public"
       }
     }
   },
@@ -261,6 +267,46 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "CurrentUser": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "library:read",
+                "personal:manage",
+                "books:upload",
+                "metadata:edit",
+                "index:rebuild",
+                "users:manage",
+                "settings:manage",
+                "storage:manage"
+              ]
+            }
+          },
+          "role": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "role",
+          "permissions"
         ]
       },
       "ErrorEnvelope": {

@@ -31,10 +31,11 @@ type Route struct {
 	Response any
 	// Status is what success answers; zero means 200, or 204 without a Response.
 	Status int
-	// Public routes answer without a session. Every other route refuses a
-	// request nobody is signed in for.
-	Public  bool
-	Handler HandlerFunc
+	// Permission is what the caller must hold: auth.Public, auth.SignedIn, or
+	// one of the permissions a role is made of. Every route declares one; the
+	// router refuses to start with a route that does not.
+	Permission auth.Permission
+	Handler    HandlerFunc
 }
 
 func (rt Route) successStatus() int {
@@ -54,33 +55,33 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/version", ID: "getVersion",
 			Summary: "Which build of GOtome is running", Tag: "system",
-			Response: buildInfo{}, Public: true, Handler: s.getVersion,
+			Response: buildInfo{}, Permission: auth.Public, Handler: s.getVersion,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
 			Summary: "Whether the first account still has to be created", Tag: "auth",
-			Response: setupStatus{}, Public: true, Handler: s.getSetup,
+			Response: setupStatus{}, Permission: auth.Public, Handler: s.getSetup,
 		},
 		{
 			Method: http.MethodPost, Path: "/setup", ID: "completeSetup",
 			Summary: "Create the first account, an administrator, and sign in as it", Tag: "auth",
 			Request: setupRequest{}, Response: auth.User{}, Status: http.StatusCreated,
-			Public: true, Handler: s.postSetup,
+			Permission: auth.Public, Handler: s.postSetup,
 		},
 		{
 			Method: http.MethodPost, Path: "/auth/login", ID: "login",
 			Summary: "Sign in with user name and password", Tag: "auth",
-			Request: loginRequest{}, Response: auth.User{}, Public: true, Handler: s.postLogin,
+			Request: loginRequest{}, Response: auth.User{}, Permission: auth.Public, Handler: s.postLogin,
 		},
 		{
 			Method: http.MethodPost, Path: "/auth/logout", ID: "logout",
 			Summary: "End the session", Tag: "auth",
-			Public: true, Handler: s.postLogout,
+			Permission: auth.Public, Handler: s.postLogout,
 		},
 		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
-			Response: auth.User{}, Handler: s.getMe,
+			Response: currentUser{}, Permission: auth.SignedIn, Handler: s.getMe,
 		},
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -206,8 +207,14 @@ func TestLoginLogout(t *testing.T) {
 			t.Errorf("Set-Cookie %q lacks %s", cookie, attr)
 		}
 	}
-	if status, me, _ := a.call(c, http.MethodGet, "/auth/me", nil); status != 200 || me["role"] != "admin" {
+	status, me, _ := a.call(c, http.MethodGet, "/auth/me", nil)
+	if status != 200 || me["role"] != "admin" {
 		t.Errorf("signed in: %d %v", status, me)
+	}
+	// The answer says what the role allows, so the web app need not guess.
+	permissions, _ := me["permissions"].([]any)
+	if !slices.Contains(permissions, any("users:manage")) || !slices.Contains(permissions, any("library:read")) {
+		t.Errorf("an administrator's permissions = %v", permissions)
 	}
 
 	// The database holds a hash of the token, never the token.
