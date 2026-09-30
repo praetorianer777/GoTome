@@ -33,3 +33,7 @@ What changes for someone who runs or uses GOtome. The format follows
   such. A Kindle file protected by DRM is imported with its details and cover
   and marked as protected; its text is not read. The app image now includes
   poppler to read PDFs.
+- Audiobooks in M4B, M4A, MP3, FLAC, Ogg and Opus: title, author, narrator,
+  genre, duration, chapters and cover are read from their tags. The parts of a
+  book in several files are put in order by their track and disc numbers. The
+  app image now includes FFmpeg, which makes it about 600 MB larger.

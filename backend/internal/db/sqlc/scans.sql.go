@@ -12,6 +12,39 @@ import (
 	"github.com/google/uuid"
 )
 
+const addFileChapter = `-- name: AddFileChapter :exec
+INSERT INTO audio_chapters (file_id, position, title, start_ms, end_ms)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type AddFileChapterParams struct {
+	FileID   uuid.UUID
+	Position int32
+	Title    string
+	StartMs  int64
+	EndMs    int64
+}
+
+func (q *Queries) AddFileChapter(ctx context.Context, arg AddFileChapterParams) error {
+	_, err := q.db.Exec(ctx, addFileChapter,
+		arg.FileID,
+		arg.Position,
+		arg.Title,
+		arg.StartMs,
+		arg.EndMs,
+	)
+	return err
+}
+
+const deleteFileChapters = `-- name: DeleteFileChapters :exec
+DELETE FROM audio_chapters WHERE file_id = $1
+`
+
+func (q *Queries) DeleteFileChapters(ctx context.Context, fileID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteFileChapters, fileID)
+	return err
+}
+
 const finishScan = `-- name: FinishScan :exec
 UPDATE library_scans
 SET state = $2, error = $3, finished_at = now()
@@ -103,6 +136,47 @@ func (q *Queries) LatestVisibleScans(ctx context.Context, arg LatestVisibleScans
 			&i.FilesSkipped,
 			&i.BooksAdded,
 			&i.Error,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookParts = `-- name: ListBookParts :many
+SELECT id, rel_path, part_index, track_number, disc_number
+FROM book_files
+WHERE book_id = $1 AND kind = 'audio' AND part_index IS NOT NULL AND trashed_at IS NULL
+`
+
+type ListBookPartsRow struct {
+	ID          uuid.UUID
+	RelPath     string
+	PartIndex   *int32
+	TrackNumber *int32
+	DiscNumber  *int32
+}
+
+// The parts of a book's audiobook, which are its audio files with a place.
+func (q *Queries) ListBookParts(ctx context.Context, bookID uuid.UUID) ([]ListBookPartsRow, error) {
+	rows, err := q.db.Query(ctx, listBookParts, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookPartsRow{}
+	for rows.Next() {
+		var i ListBookPartsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RelPath,
+			&i.PartIndex,
+			&i.TrackNumber,
+			&i.DiscNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -436,10 +510,13 @@ SET content_sha256  = $2,
     has_text        = $4,
     page_count      = $5,
     pages_estimated = $6,
+    duration_ms     = $7,
+    track_number    = $8,
+    disc_number     = $9,
     extract_state   = 'done',
     extract_error   = NULL,
     updated_at      = now()
-WHERE id = $1 AND sha256 = $7
+WHERE id = $1 AND sha256 = $10
 `
 
 type SetFileExtractedParams struct {
@@ -449,6 +526,9 @@ type SetFileExtractedParams struct {
 	HasText        *bool
 	PageCount      *int32
 	PagesEstimated bool
+	DurationMs     *int64
+	TrackNumber    *int32
+	DiscNumber     *int32
 	Sha256         []byte
 }
 
@@ -462,6 +542,9 @@ func (q *Queries) SetFileExtracted(ctx context.Context, arg SetFileExtractedPara
 		arg.HasText,
 		arg.PageCount,
 		arg.PagesEstimated,
+		arg.DurationMs,
+		arg.TrackNumber,
+		arg.DiscNumber,
 		arg.Sha256,
 	)
 	if err != nil {

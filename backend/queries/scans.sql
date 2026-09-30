@@ -131,6 +131,9 @@ SET content_sha256  = sqlc.arg(content_sha256),
     has_text        = sqlc.arg(has_text),
     page_count      = sqlc.arg(page_count),
     pages_estimated = sqlc.arg(pages_estimated),
+    duration_ms     = sqlc.narg(duration_ms),
+    track_number    = sqlc.narg(track_number),
+    disc_number     = sqlc.narg(disc_number),
     extract_state   = 'done',
     extract_error   = NULL,
     updated_at      = now()
@@ -146,3 +149,16 @@ WHERE id = $1 AND sha256 = sqlc.arg(sha256);
 UPDATE books
 SET primary_text_file_id = $2
 WHERE id = $1 AND primary_text_file_id IS NULL;
+
+-- name: DeleteFileChapters :exec
+DELETE FROM audio_chapters WHERE file_id = $1;
+
+-- name: AddFileChapter :exec
+INSERT INTO audio_chapters (file_id, position, title, start_ms, end_ms)
+VALUES ($1, $2, $3, $4, $5);
+
+-- name: ListBookParts :many
+-- The parts of a book's audiobook, which are its audio files with a place.
+SELECT id, rel_path, part_index, track_number, disc_number
+FROM book_files
+WHERE book_id = $1 AND kind = 'audio' AND part_index IS NOT NULL AND trashed_at IS NULL;

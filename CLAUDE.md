@@ -169,8 +169,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 ## Extraction
 
 - Readers exist for EPUB (`format/epub`), MOBI, AZW and AZW3 (`format/mobi`, see
-  `docs/decisions/mobi-reader.md`), and PDF (poppler). HTML to text goes through
-  `format/markup` for all of them.
+  `docs/decisions/mobi-reader.md`), PDF (poppler), and audio (ffprobe; ffmpeg for
+  the cover). HTML to text goes through `format/markup`. FFmpeg is always run with
+  the `untrusted` options in `ingest/audio.go`, which keep it to one local file of
+  an audio format: a playlist could otherwise point it anywhere.
+- The parts of an audiobook are first ordered by their names (the scan), then by
+  their disc and track tags once every part's tags are read (`orderParts`).
 - After every pass of a scan, each file that is still `pending` and whose format
   has a reader gets an `ingest.extract_file` job. A reader is an `ingest.Extractor`
   registered in the `extractors` map; files of formats without one stay `pending`
@@ -183,7 +187,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   was guessed from a file name, or was last set by the same file. Locked fields and
   values from other sources stay. New sources of metadata follow the same rule
   through `field_sources`.
-- Programs that read untrusted files (poppler now, ffprobe later) run through
+- Programs that read untrusted files (poppler, ffprobe, ffmpeg) run through
   `internal/procexec`: timeout, memory and CPU limits, output cap, own process
   group. A failure, crash or timeout of such a program is the file's fault and
   is recorded as `ErrUnreadable`. They are installed in the app image and in the

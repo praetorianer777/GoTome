@@ -10,6 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type AudioChapter struct {
+	FileID   uuid.UUID
+	Position int32
+	Title    string
+	StartMs  int64
+	EndMs    int64
+}
+
 type Author struct {
 	ID        uuid.UUID
 	Name      string
@@ -76,6 +84,8 @@ type BookFile struct {
 	TrashedAt      *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	TrackNumber    *int32
+	DiscNumber     *int32
 }
 
 type BookIdentifier struct {

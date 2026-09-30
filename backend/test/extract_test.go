@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -462,5 +463,105 @@ func TestKindleFilesAreRead(t *testing.T) {
 	}
 	if book := a.book(protected.BookID); book.Title != "Persuasion" {
 		t.Errorf("the protected file's book is called %q; its metadata is not protected", book.Title)
+	}
+}
+
+// writeTone makes an audio file of the length with the tags, and with
+// chapters when there are any, by asking ffmpeg for a tone.
+func writeTone(t *testing.T, path string, seconds float64, tags map[string]string, chapters ...string) {
+	t.Helper()
+	var meta strings.Builder
+	meta.WriteString(";FFMETADATA1\n")
+	for k, v := range tags {
+		fmt.Fprintf(&meta, "%s=%s\n", k, v)
+	}
+	step := int(seconds * 1000 / float64(max(len(chapters), 1)))
+	for i, title := range chapters {
+		fmt.Fprintf(&meta, "[CHAPTER]\nTIMEBASE=1/1000\nSTART=%d\nEND=%d\ntitle=%s\n", i*step, (i+1)*step, title)
+	}
+	metaPath := filepath.Join(t.TempDir(), "meta.txt")
+	os.WriteFile(metaPath, []byte(meta.String()), 0o644)
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	args := []string{"-v", "error", "-f", "lavfi", "-i", fmt.Sprintf("sine=duration=%g", seconds), "-i", metaPath,
+		"-map_metadata", "1", "-map_chapters", "1"}
+	if strings.HasSuffix(path, ".m4b") {
+		args = append(args, "-c:a", "aac", "-f", "ipod")
+	}
+	if out, err := exec.Command("ffmpeg", append(args, path)...).CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg: %v\n%s", err, out)
+	}
+}
+
+func TestAudiobooksAreRead(t *testing.T) {
+	t.Parallel()
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg is not installed here; the toolchain image has it")
+	}
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	books := t.TempDir()
+	// The names say one order, the tags another; the tags are right.
+	for name, track := range map[string]string{"Emma 1.mp3": "2", "Emma 2.mp3": "3", "Emma 3.mp3": "1"} {
+		writeTone(t, filepath.Join(books, "Austen", name), 1, map[string]string{
+			"album": "Emma", "artist": "Jane Austen", "title": "Part " + track, "track": track,
+		})
+	}
+	writeTone(t, filepath.Join(books, "Herbert", "Dune.m4b"), 3, map[string]string{"title": "Dune", "artist": "Frank Herbert"},
+		"Book One", "Book Two", "Book Three")
+
+	id := a.externalLibrary(admin, "Audio", "shared", books)
+	a.scanNow(id)
+	files := a.shelfFiles()
+	for _, f := range files {
+		a.extract(f.ID)
+	}
+
+	parts := map[string]int32{}
+	var total int64
+	rows, err := a.pool.Query(ctx, `SELECT rel_path, part_index, duration_ms FROM book_files WHERE book_id = $1`, files["Austen/Emma 1.mp3"].BookID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var path string
+		var part int32
+		var duration int64
+		if err := rows.Scan(&path, &part, &duration); err != nil {
+			t.Fatal(err)
+		}
+		parts[path] = part
+		total += duration
+	}
+	if want := map[string]int32{"Austen/Emma 3.mp3": 0, "Austen/Emma 1.mp3": 1, "Austen/Emma 2.mp3": 2}; fmt.Sprint(parts) != fmt.Sprint(want) {
+		t.Errorf("parts = %v, want the order of the track tags %v", parts, want)
+	}
+	if total < 2900 || total > 3300 {
+		t.Errorf("the book lasts %d ms, want about 3000", total)
+	}
+	if book := a.book(files["Austen/Emma 1.mp3"].BookID); book.Title != "Emma" || len(book.Authors()) != 1 {
+		t.Errorf("the book of the parts: %q by %v", book.Title, book.Authors())
+	}
+
+	dune := files["Herbert/Dune.m4b"]
+	var chapters []string
+	rows, err = a.pool.Query(ctx, "SELECT title || ' ' || start_ms || '-' || end_ms FROM audio_chapters WHERE file_id = $1 ORDER BY position", dune.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var c string
+		rows.Scan(&c)
+		chapters = append(chapters, c)
+	}
+	if want := []string{"Book One 0-1000", "Book Two 1000-2000", "Book Three 2000-3000"}; !slices.Equal(chapters, want) {
+		t.Errorf("chapters = %v, want %v", chapters, want)
+	}
+	// Reading the file again gives the same chapters, not twice as many.
+	a.extract(dune.ID)
+	var n int
+	a.pool.QueryRow(ctx, "SELECT count(*) FROM audio_chapters WHERE file_id = $1", dune.ID).Scan(&n)
+	if n != 3 {
+		t.Errorf("%d chapters after reading the file again, want 3", n)
 	}
 }

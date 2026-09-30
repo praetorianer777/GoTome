@@ -175,7 +175,7 @@ INSERT INTO book_files (
     sha256, original_sha256, part_index, uploaded_by
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10)
-RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at
+RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number
 `
 
 type CreateBookFileParams struct {
@@ -230,6 +230,8 @@ func (q *Queries) CreateBookFile(ctx context.Context, arg CreateBookFileParams) 
 		&i.TrashedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TrackNumber,
+		&i.DiscNumber,
 	)
 	return i, err
 }
@@ -402,7 +404,7 @@ func (q *Queries) ListBookContributors(ctx context.Context, bookID uuid.UUID) ([
 }
 
 const listBookFiles = `-- name: ListBookFiles :many
-SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at FROM book_files
+SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number FROM book_files
 WHERE book_id = $1 AND trashed_at IS NULL
 ORDER BY kind, part_index NULLS FIRST, rel_path
 `
@@ -441,6 +443,8 @@ func (q *Queries) ListBookFiles(ctx context.Context, bookID uuid.UUID) ([]BookFi
 			&i.TrashedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TrackNumber,
+			&i.DiscNumber,
 		); err != nil {
 			return nil, err
 		}
