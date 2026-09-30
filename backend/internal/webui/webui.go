@@ -5,6 +5,7 @@ package webui
 import (
 	"embed"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path"
 	"strings"
@@ -15,6 +16,12 @@ import (
 //
 //go:embed all:dist
 var embedded embed.FS
+
+func init() {
+	// Go's table does not know the web app manifest, and a browser ignores
+	// one served as plain text.
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 // Handler serves the embedded web app.
 func Handler() http.Handler {

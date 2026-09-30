@@ -19,6 +19,8 @@ func built() fstest.MapFS {
 		"assets/index-abc.js":  {Data: []byte("console.log(1)")},
 		"assets/index-abc.css": {Data: []byte("body{}")},
 		"favicon.ico":          {Data: []byte("icon")},
+		"manifest.webmanifest": {Data: []byte("{}")},
+		"assets/art-abc.webp":  {Data: []byte("RIFF....WEBP")},
 	}
 }
 
@@ -42,6 +44,8 @@ func TestServesTheApp(t *testing.T) {
 		{"/assets/index-abc.js", "console.log(1)", forever, "javascript"},
 		{"/assets/index-abc.css", "body{}", forever, "text/css"},
 		{"/favicon.ico", "icon", revalidate, ""},
+		{"/manifest.webmanifest", "{}", revalidate, "application/manifest+json"},
+		{"/assets/art-abc.webp", "RIFF....WEBP", forever, "image/webp"},
 	}
 	for _, c := range cases {
 		rec := get(t, h, http.MethodGet, c.path)

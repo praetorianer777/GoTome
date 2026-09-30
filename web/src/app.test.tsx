@@ -56,6 +56,14 @@ describe("a fresh installation", () => {
 		);
 	});
 
+	it("shows the artwork without shifting the page when it loads", async () => {
+		renderApp("/setup");
+		const artwork = await screen.findByRole("img", { name: "GOtome" });
+		// The size is reserved up front; without it the form would jump.
+		expect(artwork).toHaveAttribute("width", "640");
+		expect(artwork).toHaveAttribute("height", "659");
+	});
+
 	it("sends the sign-in page to setup", async () => {
 		const { router } = renderApp("/login");
 		expect(
