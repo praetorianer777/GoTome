@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -33,15 +34,37 @@ type FileMetadata struct {
 	Identifiers []Identifier
 	// CoverKey names the cover in the cover store.
 	CoverKey string
+	// Format is the file's, which decides whose word counts when two files
+	// of a book say different things.
+	Format string
 }
 
+// formatRanks orders formats by how much their metadata is worth. An EPUB
+// says what its publisher meant it to; a PDF's title is as often the name of
+// the word processor's document.
+var formatRanks = map[string]int{"epub": 3, "azw3": 2, "mobi": 2, "azw": 2, "pdf": 1}
+
 // FileSource is the source recorded for fields that a file filled in.
-func FileSource(fileID uuid.UUID) string { return "file:" + fileID.String() }
+func FileSource(format string, fileID uuid.UUID) string {
+	return "file:" + format + ":" + fileID.String()
+}
+
+// fileRank is the rank of the format a file source names, or -1 for a
+// source that is no file.
+func fileRank(source string) int {
+	rest, ok := strings.CutPrefix(source, "file:")
+	if !ok {
+		return -1
+	}
+	format, _, _ := strings.Cut(rest, ":")
+	return formatRanks[format]
+}
 
 // ApplyFileMetadataTx describes a file's book with what the file says. A
 // field is only written when nothing better is there: it is empty, was
-// guessed from a file name, or was last set by this same file. What a person
-// locked, and what another file or a provider said, stays.
+// guessed from a file name, was last set by this same file, or by a file of a
+// format whose metadata is worth less. What a person locked, what a provider
+// said, and what another file of the same rank said first, stays.
 func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m FileMetadata) error {
 	q := sqlc.New(tx)
 	book, err := q.LockBookOfFile(ctx, fileID)
@@ -55,19 +78,22 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 	if err := json.Unmarshal(book.FieldSources, &sources); err != nil {
 		return fmt.Errorf("field sources of book %s: %w", book.ID, err)
 	}
-	own := FileSource(fileID)
+	own := FileSource(m.Format, fileID)
+	rank := formatRanks[m.Format]
 	// take reports whether the file's value for the field is to be used, and
 	// notes the file as the field's source when it is.
 	take := func(field string, says, empty bool) bool {
 		if !says || slices.Contains(book.LockedFields, field) {
 			return false
 		}
-		switch sources[field] {
-		case SourceFilename, own:
-		case "":
+		switch source := sources[field]; {
+		case source == SourceFilename, source == own:
+		case source == "":
 			if !empty {
 				return false
 			}
+		case fileRank(source) >= 0 && fileRank(source) < rank:
+			// A file of a format whose metadata is worth more.
 		default:
 			return false
 		}

@@ -70,6 +70,7 @@ func extractEPUB(_ context.Context, path string) (Extracted, error) {
 	chars := 0
 	for _, ch := range book.Chapters {
 		chars += utf8.RuneCountInString(ch.Text)
+		out.Sections = append(out.Sections, Section{Label: ch.Title, Text: ch.Text})
 	}
 	if chars > 0 {
 		pages := int32((chars + charsPerPage - 1) / charsPerPage)

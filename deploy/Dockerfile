@@ -31,11 +31,12 @@ RUN PKG=github.com/praetorianer777/gotome/backend/internal/version && \
       -ldflags="-s -w -X $PKG.Version=$(cat /VERSION) -X $PKG.Commit=$COMMIT" \
       -o /out/gotome ./cmd/gotome
 
-# Debian rather than scratch or alpine: text extraction and audio probing will
-# run poppler and ffprobe from this image, and both come as Debian packages.
+# Debian rather than scratch or alpine: text extraction and audio probing run
+# poppler and ffprobe from this image, and both come as Debian packages. The
+# test toolchain (toolchain.Dockerfile) installs the same ones.
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates tzdata && \
+    apt-get install -y --no-install-recommends ca-certificates tzdata poppler-utils && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --uid 10001 --create-home gotome && \
     install -d -o gotome -g gotome /data

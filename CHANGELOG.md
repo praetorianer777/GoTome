@@ -27,3 +27,7 @@ What changes for someone who runs or uses GOtome. The format follows
   together as one book, follows files that were moved or renamed, and marks
   files that are gone as missing. It never deletes, moves or changes a file.
   The books it finds cannot be browsed yet.
+- Book details are read from EPUB and PDF files: title, authors, series,
+  publisher, language, description, tags, ISBN, page count and cover. A PDF
+  without a text layer (a scan) is imported and marked as such. The app image
+  now includes poppler to read PDFs.

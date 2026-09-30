@@ -27,7 +27,7 @@ frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgr
 - Go is pinned to 1.27 (`golang:1.27-bookworm`). A sibling project pins 1.26 because
   1.27 killed its test binaries on this host; that was checked here on 2026-09-30
   with a five-second test, plain and with `-race`, on the host and in the container,
-  and did not reproduce. If it shows up, `make check-go GO_IMAGE=golang:1.26-bookworm`
+  and did not reproduce. If it shows up, `make check-go GO_BASE=golang:1.26-bookworm`
   is the way to tell the toolchain apart from the code.
 - `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
@@ -180,6 +180,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   was guessed from a file name, or was last set by the same file. Locked fields and
   values from other sources stay. New sources of metadata follow the same rule
   through `field_sources`.
+- Programs that read untrusted files (poppler now, ffprobe later) run through
+  `internal/procexec`: timeout, memory and CPU limits, output cap, own process
+  group. A failure, crash or timeout of such a program is the file's fault and
+  is recorded as `ErrUnreadable`. They are installed in the app image and in the
+  test toolchain image (`deploy/toolchain.Dockerfile`), which `mk/go.mk` builds
+  on demand; `make stack-check` fails when the app image lacks one.
+- When two files of one book say different things, the format decides: EPUB over
+  MOBI and AZW3 over PDF (`formatRanks` in `catalog`); within a rank, the file
+  read first.
 - Covers live in `internal/covers` under `GOTOME_DATA_DIR/covers`, stored once per
   image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
   is that hash. A route that sends something other than JSON declares `Produces`.

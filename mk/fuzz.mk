@@ -8,7 +8,7 @@ FUZZ_TIME ?= 8s
 # sources and run in turn. A failing input is written to the package's
 # testdata/fuzz directory; commit it with the fix so it stays a regression test.
 .PHONY: fuzz-go
-fuzz-go: | $(GO_CACHE) ## Fuzz every Fuzz* target for FUZZ_TIME each
+fuzz-go: | $(GO_CACHE) go-toolchain ## Fuzz every Fuzz* target for FUZZ_TIME each
 	@$(DOCKER_GO) bash -c 'set -eo pipefail; \
 		for file in $$(grep -rl "^func Fuzz" --include="*_test.go" .); do \
 			pkg=$$(dirname $$file); \
