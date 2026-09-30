@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Every installation gets its own random database password on its first
+  start, written by a short-lived `init` container and kept in the `secrets`
+  volume. There is no default password any more. An installation that set
+  `POSTGRES_PASSWORD` before keeps it: leave the variable set for the first
+  start after upgrading, and `init` writes that one instead.
+
 - GOtome runs as two containers, the app and its database, started with one
   `docker compose` file. Images are published for amd64 and arm64.
 - First-run setup creates the administrator account in the browser.

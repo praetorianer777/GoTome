@@ -1,4 +1,6 @@
-# GOtome is two containers: the app and its database. There is no third.
+# GOtome is two containers: the app and its database. A third, init, runs
+# once before them and exits: it gives a new installation its own random
+# database password, which both of them read from the secrets volume.
 #
 # For development and the test gate, run it through make (mk/stack.mk), which
 # names the project and picks the host port from the checkout's path so that
@@ -7,6 +9,19 @@
 name: gotome
 
 services:
+  init:
+    image: ${GOTOME_IMAGE:-ghcr.io/praetorianer777/gotome:latest}
+    command: ["init"]
+    # Root, to write into the volume docker creates owned by root.
+    user: "0"
+    environment:
+      # Only for an installation that set its own password before: init then
+      # writes that one instead of a random one. Leave it unset otherwise.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - secrets:/secrets
+    restart: "no"
+
   app:
     image: ${GOTOME_IMAGE:-ghcr.io/praetorianer777/gotome:latest}
     build:
@@ -19,17 +34,19 @@ services:
       # How often every library's folder is looked through for changes; 0
       # leaves scanning to the "Scan now" button.
       GOTOME_SCAN_INTERVAL: ${GOTOME_SCAN_INTERVAL:-6h}
-      # The password goes into a URL: keep to letters, digits, - and _, or
-      # percent-encode it here.
-      GOTOME_DATABASE_URL: postgres://gotome:${POSTGRES_PASSWORD:-gotome}@db:5432/gotome?sslmode=disable
+      GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
+      GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
     volumes:
       - app-data:/data
+      - secrets:/secrets:ro
       # A folder of books you already have becomes an "external" library.
       # Mount it here, read-only unless GOtome should write metadata back:
       # - /path/to/your/books:/books:ro
     ports:
       - "${GOTOME_PORT:-8080}:8080"
     depends_on:
+      init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     healthcheck:
@@ -51,11 +68,13 @@ services:
     environment:
       POSTGRES_USER: gotome
       POSTGRES_DB: gotome
-      # The database is reachable from the app container only. Set your own
-      # password before the first start; it is fixed once the volume exists.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gotome}
+      POSTGRES_PASSWORD_FILE: /secrets/db-password
     volumes:
       - db-data:/var/lib/postgresql
+      - secrets:/secrets:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
     healthcheck:
       # Over TCP on purpose: the image's first-boot server listens on the
       # socket only, so this passes once the init scripts have run.
@@ -68,3 +87,5 @@ services:
 volumes:
   app-data:
   db-data:
+  # The database password, written once by init.
+  secrets:

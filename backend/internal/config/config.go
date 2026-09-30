@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,5 +95,30 @@ func load(getenv func(string) string) (Config, error) {
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
 	}
+	if file := get("GOTOME_DATABASE_PASSWORD_FILE", ""); file != "" {
+		if cfg.DatabaseURL, err = withPassword(cfg.DatabaseURL, file); err != nil {
+			return Config{}, err
+		}
+	}
 	return cfg, nil
+}
+
+// withPassword puts the password kept in the file into the database URL. The
+// compose file keeps it there, written once by gotome init, so that it is in
+// no environment variable that docker inspect would show.
+func withPassword(databaseURL, file string) (string, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return "", fmt.Errorf("GOTOME_DATABASE_PASSWORD_FILE: %w", err)
+	}
+	password := strings.TrimSpace(string(data))
+	if password == "" {
+		return "", fmt.Errorf("GOTOME_DATABASE_PASSWORD_FILE: %s is empty", file)
+	}
+	u, err := url.Parse(databaseURL)
+	if err != nil || u.Scheme == "" || u.User == nil {
+		return "", errors.New("GOTOME_DATABASE_PASSWORD_FILE needs GOTOME_DATABASE_URL with a user name, such as postgres://gotome@db:5432/gotome")
+	}
+	u.User = url.UserPassword(u.User.Username(), password)
+	return u.String(), nil
 }

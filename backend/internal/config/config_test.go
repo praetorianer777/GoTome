@@ -2,6 +2,8 @@ package config
 
 import (
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -80,5 +82,33 @@ func TestDatabaseURL(t *testing.T) {
 	}
 	if with.DatabaseURL != "postgres://u:p@db:5432/gotome" || with.RequireDatabase() != nil {
 		t.Errorf("with a URL: %+v, %v", with, with.RequireDatabase())
+	}
+}
+
+func TestDatabasePasswordFromAFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "db-password")
+	if err := os.WriteFile(file, []byte("s3cr/t+?&\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := load(env(map[string]string{
+		"GOTOME_DATABASE_URL":           "postgres://gotome@db:5432/gotome?sslmode=disable",
+		"GOTOME_DATABASE_PASSWORD_FILE": file,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Characters that mean something in a URL are escaped.
+	if want := "postgres://gotome:s3cr%2Ft+%3F&@db:5432/gotome?sslmode=disable"; cfg.DatabaseURL != want {
+		t.Errorf("DatabaseURL = %q, want %q", cfg.DatabaseURL, want)
+	}
+
+	for why, vars := range map[string]map[string]string{
+		"no such file":  {"GOTOME_DATABASE_URL": "postgres://gotome@db/gotome", "GOTOME_DATABASE_PASSWORD_FILE": file + ".missing"},
+		"no user name":  {"GOTOME_DATABASE_URL": "postgres://db/gotome", "GOTOME_DATABASE_PASSWORD_FILE": file},
+		"no URL at all": {"GOTOME_DATABASE_PASSWORD_FILE": file},
+	} {
+		if _, err := load(env(vars)); err == nil || !strings.Contains(err.Error(), "GOTOME_DATABASE_PASSWORD_FILE") {
+			t.Errorf("%s: err = %v", why, err)
+		}
 	}
 }

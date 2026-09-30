@@ -2,6 +2,10 @@
 
 Self-hosted ebook, PDF and audiobook library manager. Go backend, React + Tailwind
 frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgres.
+A third, `init` (the app image running `gotome init`), runs once before them and exits:
+it writes a random database password into the `secrets` volume, which Postgres reads
+through `POSTGRES_PASSWORD_FILE` and the app through `GOTOME_DATABASE_PASSWORD_FILE`.
+The password is never in the compose file or an environment variable.
 
 ## Workflow
 
