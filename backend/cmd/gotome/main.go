@@ -1,4 +1,4 @@
-// Command gotome is the GoTome server and its maintenance subcommands.
+// Command gotome is the GOtome server and its maintenance subcommands.
 package main
 
 import (

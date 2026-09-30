@@ -1,4 +1,8 @@
-# GoTome
+<p align="center">
+  <img src="assets/branding/banner.png" alt="GOtome: a gopher with headphones reading a glowing book" width="341">
+</p>
+
+# GOtome
 
 Self-hosted library manager for ebooks, PDFs and audiobooks.
 
@@ -35,3 +39,7 @@ see [CLAUDE.md](CLAUDE.md). `./run-tests.sh` is the gate that must pass before a
 ## Licence
 
 [AGPL-3.0](LICENSE)
+
+The artwork is based on the Go gopher, designed by
+[Renée French](https://go.dev/blog/gopher) and licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
