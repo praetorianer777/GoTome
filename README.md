@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/branding/banner.png" alt="GOtome: a gopher with headphones reading a glowing book" width="341">
+  <img src="assets/branding/banner.jpg" alt="GOtome: a gopher with headphones reading a glowing book" width="480">
 </p>
 
 # GOtome
