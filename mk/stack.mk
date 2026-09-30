@@ -85,7 +85,7 @@ stack-up: stack-env ## The gate's stack: build and start it, and wait until both
 # the gate never starts a second database. Each test gets a database copied
 # from a migrated template (internal/db/dbtest), so tests do not see each other.
 .PHONY: test-integration
-test-integration: | $(GO_CACHE) ## Run the integration suite against this checkout's running stack
+test-integration: | $(GO_CACHE) go-toolchain ## Run the integration suite against this checkout's running stack
 	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
@@ -93,7 +93,7 @@ test-integration: | $(GO_CACHE) ## Run the integration suite against this checko
 # The pinned database image is what promises pg_search and pgvector; this fails
 # the gate when a new pin no longer carries them.
 .PHONY: stack-check
-stack-check: ## Check the running stack: two services, web app and API answering, extensions available
+stack-check: ## Check the running stack: two services, web app and API answering, extensions and programs available
 	@test "$$(docker compose ps --status running --services | sort | tr '\n' ' ')" = "app db " \
 		|| { echo "expected exactly the services app and db to run:"; docker compose ps; exit 1; }
 	@docker compose exec -T app gotome healthcheck \
@@ -109,7 +109,11 @@ stack-check: ## Check the running stack: two services, web app and API answering
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
 	done
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available"
+	@for program in pdfinfo pdftotext pdftoppm prlimit; do \
+		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
+			|| { echo "the app image has no $$program"; exit 1; }; \
+	done
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler installed"
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes

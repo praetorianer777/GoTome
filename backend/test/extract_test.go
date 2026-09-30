@@ -352,3 +352,55 @@ func TestWhatAFileSaysYieldsToBetterSources(t *testing.T) {
 		t.Errorf("identifiers after reading the file again = %+v, want no duplicates", book.Identifiers)
 	}
 }
+
+func TestAnEPUBOutranksAPDFOfTheSameBook(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	books := t.TempDir()
+	for _, name := range []string{"Emma.epub", "Emma.pdf"} {
+		data, err := os.ReadFile(filepath.Join("..", "..", "e2e", "fixtures", "books", "Jane Austen", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(books, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A PDF's page one says what the book is called in its own words.
+	id := a.externalLibrary(admin, "Shelf", "shared", books)
+	a.scanNow(id)
+	files := a.shelfFiles()
+	pdf, epub := files["Emma.pdf"], files["Emma.epub"]
+	if pdf.BookID != epub.BookID {
+		t.Fatal("the EPUB and the PDF of Emma are not one book")
+	}
+	source := func() string {
+		var s string
+		if err := a.pool.QueryRow(ctx, "SELECT field_sources->>'title' FROM books WHERE id = $1", pdf.BookID).Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+
+	a.extract(pdf.ID)
+	if got := source(); !strings.HasPrefix(got, "file:pdf:") {
+		t.Fatalf("after the PDF the title comes from %q", got)
+	}
+	file := a.shelfFiles()["Emma.pdf"]
+	if file.State != "done" || file.HasText == nil || !*file.HasText || file.Pages == nil || *file.Pages != 1 {
+		t.Errorf("the PDF after extraction: %+v", file)
+	}
+	a.extract(epub.ID)
+	if got := source(); !strings.HasPrefix(got, "file:epub:") {
+		t.Errorf("after the EPUB the title comes from %q, want the EPUB", got)
+	}
+	a.extract(pdf.ID)
+	if got := source(); !strings.HasPrefix(got, "file:epub:") {
+		t.Errorf("after reading the PDF again the title comes from %q, want the EPUB still", got)
+	}
+	if book := a.book(pdf.BookID); book.Title != "Emma" || len(book.Authors()) != 1 || book.Authors()[0] != "Jane Austen" {
+		t.Errorf("the book is %q by %v", book.Title, book.Authors())
+	}
+}

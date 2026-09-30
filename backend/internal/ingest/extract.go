@@ -32,9 +32,20 @@ const (
 	maxErrorLen     = 500
 )
 
+// Section is a stretch of a file's text: an EPUB's chapter, a PDF's page.
+type Section struct {
+	// Label names the section for a person: a chapter's title, a page's
+	// number. It may be empty.
+	Label string
+	Text  string
+}
+
 // Extracted is what reading one file yields.
 type Extracted struct {
 	Metadata catalog.FileMetadata
+	// Sections are the text in reading order. Nothing keeps them yet; the
+	// full-text search will.
+	Sections []Section
 	// Cover is the cover image as the file holds it, or nil.
 	Cover []byte
 	// ContentSHA256 is the hash of the content without the metadata, for
@@ -59,6 +70,7 @@ type Extractor func(ctx context.Context, path string) (Extracted, error)
 // wait as pending until there is one.
 var extractors = map[string]Extractor{
 	"epub": extractEPUB,
+	"pdf":  extractPDF,
 }
 
 // EnqueuePending asks for every file of the library that is still to be read
@@ -99,6 +111,7 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 	path := filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath))
 
 	got, err := safely(ctx, extract, path)
+	got.Metadata.Format = file.Format
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		// Gone since the scan; the next scan marks it missing.
