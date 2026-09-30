@@ -10,6 +10,93 @@ import (
 	"github.com/google/uuid"
 )
 
+type Author struct {
+	ID        uuid.UUID
+	Name      string
+	SortName  string
+	NameKey   string
+	CreatedAt time.Time
+}
+
+type Book struct {
+	ID                 uuid.UUID
+	LibraryID          uuid.UUID
+	Title              string
+	SortTitle          string
+	TitleKey           string
+	Subtitle           *string
+	Description        *string
+	Language           *string
+	PublishedOn        *time.Time
+	PublishedPrecision *string
+	PublisherID        *uuid.UUID
+	SeriesID           *uuid.UUID
+	SeriesIndex        *float64
+	ExternalRating     *float64
+	PageCount          *int32
+	CoverKey           *string
+	LockedFields       []string
+	FieldSources       []byte
+	MergedIntoID       *uuid.UUID
+	DeletedAt          *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	PrimaryTextFileID  *uuid.UUID
+}
+
+type BookContributor struct {
+	BookID   uuid.UUID
+	AuthorID uuid.UUID
+	Role     string
+	Position int32
+}
+
+type BookFile struct {
+	ID             uuid.UUID
+	BookID         uuid.UUID
+	LibraryID      uuid.UUID
+	Kind           string
+	Format         string
+	RelPath        string
+	SizeBytes      int64
+	ModifiedAt     time.Time
+	Sha256         []byte
+	OriginalSha256 []byte
+	ContentSha256  []byte
+	PartIndex      *int32
+	DurationMs     *int64
+	PageCount      *int32
+	PagesEstimated bool
+	HasText        *bool
+	Drm            bool
+	ExtractState   string
+	ExtractError   *string
+	UploadedBy     *uuid.UUID
+	MissingAt      *time.Time
+	TrashedAt      *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type BookIdentifier struct {
+	ID     uuid.UUID
+	BookID uuid.UUID
+	FileID *uuid.UUID
+	Type   string
+	Value  string
+}
+
+type BookRelation struct {
+	BookA uuid.UUID
+	BookB uuid.UUID
+	Kind  string
+}
+
+type BookTag struct {
+	BookID uuid.UUID
+	TagID  uuid.UUID
+}
+
 type Library struct {
 	ID         uuid.UUID
 	Name       string
@@ -28,6 +115,19 @@ type LibraryMember struct {
 	AddedAt   time.Time
 }
 
+type Publisher struct {
+	ID      uuid.UUID
+	Name    string
+	NameKey string
+}
+
+type Series struct {
+	ID        uuid.UUID
+	Name      string
+	NameKey   string
+	CreatedAt time.Time
+}
+
 type Session struct {
 	TokenHash  []byte
 	UserID     uuid.UUID
@@ -35,6 +135,12 @@ type Session struct {
 	CreatedAt  time.Time
 	LastSeenAt time.Time
 	ExpiresAt  time.Time
+}
+
+type Tag struct {
+	ID      uuid.UUID
+	Name    string
+	NameKey string
 }
 
 type User struct {
