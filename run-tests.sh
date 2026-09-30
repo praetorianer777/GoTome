@@ -18,4 +18,18 @@ for layer in check-go check-web; do
   fi
 done
 
+if has_target stack-up; then
+  # One compose project and port per checkout, so gates running in parallel
+  # worktrees never share a database or a port.
+  trap 'make stack-down >/dev/null 2>&1 || true' EXIT
+  echo "🐳 Stack"
+  make stack-up
+  for layer in stack-check test-integration test-e2e; do
+    if has_target "$layer"; then
+      echo "🧪 $layer"
+      make "$layer"
+    fi
+  done
+fi
+
 echo "✅ All tests passed"

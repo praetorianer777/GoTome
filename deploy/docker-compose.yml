@@ -1,0 +1,55 @@
+# GOtome is two containers: the app and its database. There is no third.
+#
+# For development and the test gate, run it through make (mk/stack.mk), which
+# names the project and picks the host port from the checkout's path so that
+# parallel worktrees never share a database or collide on a port. The defaults
+# below are what a bare `docker compose -f deploy/docker-compose.yml up` gets.
+name: gotome
+
+services:
+  app:
+    image: ${GOTOME_IMAGE:-ghcr.io/praetorianer777/gotome:latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      GOTOME_ENV: ${GOTOME_ENV:-production}
+      GOTOME_HTTP_ADDR: ":8080"
+      GOTOME_LOG_LEVEL: ${GOTOME_LOG_LEVEL:-info}
+    ports:
+      - "${GOTOME_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "gotome", "healthcheck"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  db:
+    # ParadeDB is Postgres 18 with pg_search and pgvector. Pinned by digest: the
+    # extensions are pre-1.0 and an index may need rebuilding across versions,
+    # so the image only changes in a commit that says so.
+    image: paradedb/paradedb:0.25.11-pg18@sha256:a9cbdcfd8a1c349ab21590fd6d6dcbe7da489878df6502922d032dd64c1a7ae7
+    environment:
+      POSTGRES_USER: gotome
+      POSTGRES_DB: gotome
+      # The database is reachable from the app container only. Set your own
+      # password before the first start; it is fixed once the volume exists.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gotome}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP on purpose: the image's first-boot server listens on the
+      # socket only, so this passes once the init scripts have run.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U gotome -d gotome"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    restart: unless-stopped
+
+volumes:
+  db-data:

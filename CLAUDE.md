@@ -27,6 +27,14 @@ frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgr
   with a five-second test, plain and with `-race`, on the host and in the container,
   and did not reproduce. If it shows up, `make check-go GO_IMAGE=golang:1.26-bookworm`
   is the way to tell the toolchain apart from the code.
+- `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
+  whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
+  `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit
+  about that.
+- `make up` builds and starts the stack for this checkout and prints its URL;
+  `make down`, `make clean`, `make logs`, `make psql` go with it. Project name and
+  port come from the checkout path (`mk/stack.mk`) and are written to
+  `.cache/stack.env`. The gate uses `stack-up`, `stack-check` and `stack-down`.
 
 ## Testing
 
