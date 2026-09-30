@@ -14,7 +14,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/praetorianer777/gotome/backend/internal/config"
+	"github.com/praetorianer777/gotome/backend/internal/db"
+	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
@@ -33,8 +37,9 @@ const (
 const usage = `Usage: gotome <command>
 
 Commands:
-  serve        Run the server
-  healthcheck  Probe a running server; exits non-zero unless it is healthy
+  serve        Bring the database schema up to date, then run the server
+  healthcheck  Probe a running server; exits non-zero unless it is ready
+  migrate      Bring the database schema up to date and exit
   openapi      Write the API's OpenAPI document to the given file, or to stdout
   version      Print the version
 `
@@ -56,6 +61,8 @@ func run(args []string) error {
 		return serve()
 	case "healthcheck":
 		return healthcheck()
+	case "migrate":
+		return migrate()
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -81,7 +88,13 @@ func serve() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	server := &httpapi.Server{Log: log}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	server := &httpapi.Server{Log: log, DB: pool}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           server.Routes(),
@@ -124,6 +137,53 @@ func serve() error {
 	return nil
 }
 
+// openDatabase connects and brings the schema up to date. The server migrates
+// on every start, so an upgrade is a new image and nothing else.
+func openDatabase(ctx context.Context, cfg config.Config, log *slog.Logger) (*pgxpool.Pool, error) {
+	if err := cfg.RequireDatabase(); err != nil {
+		return nil, err
+	}
+	pool, err := db.Open(ctx, cfg.DatabaseURL, log)
+	if err != nil {
+		return nil, err
+	}
+	applied, err := db.Migrate(ctx, pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	schema, err := db.SchemaVersion(ctx, pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	postgres, err := sqlc.New(pool).ServerVersion(ctx)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	log.Info("database ready", "postgres", postgres, "schemaVersion", schema, "migrationsApplied", applied)
+	return pool, nil
+}
+
+// migrate brings the schema up to date without serving, for a deployment that
+// wants the step on its own.
+func migrate() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	pool.Close()
+	return nil
+}
+
 func writeOpenAPI(args []string) error {
 	encoded, err := httpapi.Spec().MarshalIndent()
 	if err != nil {
@@ -145,9 +205,9 @@ func newLogger(cfg config.Config) *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
 
-// healthcheck probes the local health endpoint. The container health check runs
-// the binary itself, so the image needs no curl and the probe cannot drift from
-// what the server answers.
+// healthcheck probes the local readiness endpoint. The container health check
+// runs the binary itself, so the image needs no curl and the probe cannot drift
+// from what the server answers.
 func healthcheck() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -159,7 +219,7 @@ func healthcheck() error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("health returned %s", resp.Status)
+		return fmt.Errorf("readiness returned %s", resp.Status)
 	}
 	return nil
 }
@@ -174,5 +234,5 @@ func healthURL(addr string) string {
 	if strings.Contains(host, ":") {
 		host = "[" + host + "]"
 	}
-	return "http://" + host + ":" + port + httpapi.HealthPath
+	return "http://" + host + ":" + port + httpapi.ReadyPath
 }

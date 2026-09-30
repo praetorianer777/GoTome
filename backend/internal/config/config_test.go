@@ -56,3 +56,21 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		}
 	}
 }
+
+func TestDatabaseURL(t *testing.T) {
+	without, err := load(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := without.RequireDatabase(); err == nil || !strings.Contains(err.Error(), "GOTOME_DATABASE_URL") {
+		t.Errorf("without a URL: err = %v, want one naming the variable", err)
+	}
+
+	with, err := load(env(map[string]string{"GOTOME_DATABASE_URL": "postgres://u:p@db:5432/gotome"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if with.DatabaseURL != "postgres://u:p@db:5432/gotome" || with.RequireDatabase() != nil {
+		t.Errorf("with a URL: %+v, %v", with, with.RequireDatabase())
+	}
+}

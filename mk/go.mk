@@ -8,7 +8,9 @@ GO_CACHE := $(ROOT)/.cache/go
 GO_PKG   := github.com/praetorianer777/gotome/backend
 GO_LDFLAGS := -X $(GO_PKG)/internal/version.Version=$(VERSION)
 
-DOCKER_GO = docker run --rm \
+# The argument is extra docker options: the integration suite adds the stack's
+# network and the database URL (mk/stack.mk).
+go_run = docker run --rm \
 	-u $(UID_GID) \
 	-v $(ROOT):/work \
 	-v $(GO_CACHE):/cache \
@@ -17,7 +19,9 @@ DOCKER_GO = docker run --rm \
 	-e GOMODCACHE=/cache/mod \
 	-e GOFLAGS=-buildvcs=false \
 	-e GOTOOLCHAIN=local \
+	$(1) \
 	-w /work/backend $(GO_IMAGE)
+DOCKER_GO = $(call go_run,)
 
 $(GO_CACHE):
 	@mkdir -p $@
@@ -32,7 +36,7 @@ fmt-check: | $(GO_CACHE) ## Fail when a Go file is not gofmt-clean
 
 .PHONY: vet
 vet: | $(GO_CACHE) ## Run go vet over the backend
-	$(DOCKER_GO) go vet ./...
+	$(DOCKER_GO) go vet -tags integration ./...
 
 .PHONY: test-go
 test-go: | $(GO_CACHE) ## Run the Go unit tests with the race detector
@@ -57,4 +61,4 @@ openapi-check: | $(GO_CACHE) ## Fail when api/openapi.json differs from what the
 		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
 
 .PHONY: check-go
-check-go: fmt-check vet test-go openapi-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI drift
+check-go: fmt-check vet test-go openapi-check sqlc-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift
