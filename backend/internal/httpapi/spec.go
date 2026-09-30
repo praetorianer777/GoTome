@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
 )
 
@@ -25,6 +26,11 @@ var pathParam = regexp.MustCompile(`\{([^}/]+)\}`)
 func Spec() *openapi.Document {
 	b := openapi.NewBuilder()
 	b.Descriptions[reflect.TypeOf(APIError{})] = "Why a request failed."
+	var permissions []string
+	for _, p := range auth.Permissions(auth.RoleAdmin) {
+		permissions = append(permissions, string(p))
+	}
+	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
 	failure := &openapi.Response{
 		Description: "The request failed.",
 		Content:     map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(errorEnvelope{})}},
@@ -49,7 +55,8 @@ func Spec() *openapi.Document {
 			Tags:        []string{rt.Tag},
 			Responses:   map[string]*openapi.Response{"default": failure},
 		}
-		if !rt.Public {
+		op.Permission = string(rt.Permission)
+		if rt.Permission != auth.Public {
 			op.Security = []map[string][]string{{sessionScheme: {}}}
 		}
 		for _, m := range pathParam.FindAllStringSubmatch(rt.Path, -1) {

@@ -129,8 +129,16 @@ func (s *Server) postLogout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// currentUser is the signed-in user and what their role allows, so the web
+// app can leave out what the server would refuse anyway.
+type currentUser struct {
+	auth.User
+	Permissions []auth.Permission `json:"permissions"`
+}
+
 func (s *Server) getMe(w http.ResponseWriter, r *http.Request) error {
-	writeJSON(w, r, http.StatusOK, UserFrom(r.Context()))
+	user := UserFrom(r.Context())
+	writeJSON(w, r, http.StatusOK, currentUser{User: *user, Permissions: auth.Permissions(user.Role)})
 	return nil
 }
 
@@ -213,11 +221,20 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// requireUser refuses a request nobody is signed in for.
-func requireUser(next HandlerFunc) HandlerFunc {
+// require lets a request through when its caller holds the permission: 401
+// when nobody is signed in, 403 when somebody is and their role does not
+// reach that far.
+func require(permission auth.Permission, next HandlerFunc) HandlerFunc {
+	if permission == auth.Public {
+		return next
+	}
 	return func(w http.ResponseWriter, r *http.Request) error {
-		if UserFrom(r.Context()) == nil {
+		user := UserFrom(r.Context())
+		if user == nil {
 			return ErrUnauthorized("")
+		}
+		if permission != auth.SignedIn && !auth.Allows(user.Role, permission) {
+			return ErrForbidden("")
 		}
 		return next(w, r)
 	}

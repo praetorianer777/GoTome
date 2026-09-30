@@ -46,6 +46,9 @@ type Operation struct {
 	RequestBody *RequestBody          `json:"requestBody,omitempty"`
 	Responses   map[string]*Response  `json:"responses"`
 	Security    []map[string][]string `json:"security,omitempty"`
+	// Permission is what the caller must hold. OpenAPI has no field for it,
+	// so it travels as an extension.
+	Permission string `json:"x-permission,omitempty"`
 }
 
 type Parameter struct {

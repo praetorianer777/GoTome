@@ -75,28 +75,6 @@ func TestSessionCookie(t *testing.T) {
 	}
 }
 
-func TestRoutesNeedASessionUnlessPublic(t *testing.T) {
-	h := testServer().Routes()
-	rec := do(t, h, http.MethodGet, APIPrefix+"/auth/me")
-	if rec.Code != http.StatusUnauthorized || decodeError(t, rec).Code != "unauthorized" {
-		t.Errorf("without a session: %d %s", rec.Code, rec.Body)
-	}
-	if rec := do(t, h, http.MethodGet, APIPrefix+"/version"); rec.Code != http.StatusOK {
-		t.Errorf("a public route without a session: %d", rec.Code)
-	}
-
-	doc := Spec()
-	for _, rt := range testServer().routes() {
-		op := doc.Paths[rt.Path][map[string]string{"GET": "get", "POST": "post"}[rt.Method]]
-		if (len(op.Security) == 0) != rt.Public {
-			t.Errorf("%s %s: public %v, but the document's security is %v", rt.Method, rt.Path, rt.Public, op.Security)
-		}
-	}
-	if doc.Components.SecuritySchemes[sessionScheme].Name != SessionCookie {
-		t.Error("the document does not describe the session cookie")
-	}
-}
-
 func TestClientAddress(t *testing.T) {
 	for remote, want := range map[string]string{
 		"192.0.2.7:51234": "192.0.2.7",

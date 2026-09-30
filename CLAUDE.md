@@ -86,8 +86,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `internal/auth` owns accounts and sessions: argon2id hashes, opaque session tokens
   stored only as SHA-256. The cookie is `gotome_session`, HttpOnly, SameSite=Lax, and
   Secure when the request came over HTTPS.
-- A route in the table is for signed-in users unless it says `Public: true`.
-  `UserFrom(ctx)` is the signed-in user. State-changing requests from another origin
+- Every route in the table declares a `Permission`: `auth.Public`, `auth.SignedIn`, or
+  one of the permissions in `internal/auth/permissions.go` that the roles are made
+  of (Reader ⊂ Editor ⊂ Admin). The router refuses to start with a route that declares
+  none. A new permission goes into that file and into the table in
+  `permission_test.go`, which says who may use it.
+- `UserFrom(ctx)` is the signed-in user. State-changing requests from another origin
   are refused before they reach a handler.
 - First-run setup (`POST /api/v1/setup`) creates the one initial administrator and
   then refuses for good.
