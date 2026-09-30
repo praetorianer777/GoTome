@@ -35,7 +35,7 @@ test("the first account is created through the setup page", {
 	// Setup signs the new administrator in and shows the empty library.
 	await expect(page).toHaveURL(/\/$/);
 	await expect(
-		page.getByRole("heading", { name: "No books yet" }),
+		page.getByRole("heading", { name: "No library yet" }),
 	).toBeVisible();
 	await expect(page.getByText(`Signed in as ${ADMIN.username}`)).toBeVisible();
 

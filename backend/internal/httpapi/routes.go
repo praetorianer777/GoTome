@@ -83,6 +83,49 @@ func (s *Server) routes() []Route {
 			Summary: "Who is signed in", Tag: "auth",
 			Response: currentUser{}, Permission: auth.SignedIn, Handler: s.getMe,
 		},
+
+		{
+			Method: http.MethodGet, Path: "/libraries", ID: "listLibraries",
+			Summary: "The libraries the caller may see", Tag: "libraries",
+			Response: libraryList{}, Permission: auth.LibraryRead, Handler: s.listLibraries,
+		},
+		{
+			Method: http.MethodPost, Path: "/libraries", ID: "createLibrary",
+			Summary: "Add a library", Tag: "libraries",
+			Request: createLibraryRequest{}, Response: libraryResponse{}, Status: http.StatusCreated,
+			Permission: auth.StorageManage, Handler: s.createLibrary,
+		},
+		{
+			Method: http.MethodGet, Path: "/libraries/{libraryId}", ID: "getLibrary",
+			Summary: "One library, if the caller may see it", Tag: "libraries",
+			Response: libraryResponse{}, Permission: auth.LibraryRead, Handler: s.getLibrary,
+		},
+		{
+			Method: http.MethodPatch, Path: "/libraries/{libraryId}", ID: "updateLibrary",
+			Summary: "Change a library's name, visibility or whether GOtome may write to it", Tag: "libraries",
+			Request: updateLibraryRequest{}, Response: libraryResponse{},
+			Permission: auth.StorageManage, Handler: s.updateLibrary,
+		},
+		{
+			Method: http.MethodDelete, Path: "/libraries/{libraryId}", ID: "deleteLibrary",
+			Summary: "Remove a library from GOtome; its folder and files stay", Tag: "libraries",
+			Permission: auth.StorageManage, Handler: s.deleteLibrary,
+		},
+		{
+			Method: http.MethodGet, Path: "/libraries/{libraryId}/members", ID: "listLibraryMembers",
+			Summary: "Who may see a private library besides its owner", Tag: "libraries",
+			Response: memberList{}, Permission: auth.StorageManage, Handler: s.listLibraryMembers,
+		},
+		{
+			Method: http.MethodPut, Path: "/libraries/{libraryId}/members/{userId}", ID: "addLibraryMember",
+			Summary: "Let a user see a private library", Tag: "libraries",
+			Permission: auth.StorageManage, Handler: s.putLibraryMember,
+		},
+		{
+			Method: http.MethodDelete, Path: "/libraries/{libraryId}/members/{userId}", ID: "removeLibraryMember",
+			Summary: "Take a private library away from a user again", Tag: "libraries",
+			Permission: auth.StorageManage, Handler: s.deleteLibraryMember,
+		},
 	}
 }
 

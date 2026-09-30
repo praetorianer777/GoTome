@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -36,8 +37,9 @@ type Server struct {
 	Log *slog.Logger
 	DB  Database
 	// Auth signs people in; Logins slows down guessing at passwords.
-	Auth   *auth.Service
-	Logins *LoginLimits
+	Auth      *auth.Service
+	Logins    *LoginLimits
+	Libraries *library.Service
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

@@ -37,9 +37,13 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates tzdata && \
     rm -rf /var/lib/apt/lists/* && \
-    useradd --uid 10001 --create-home gotome
+    useradd --uid 10001 --create-home gotome && \
+    install -d -o gotome -g gotome /data
 COPY --from=build /out/gotome /usr/local/bin/gotome
 USER gotome
+# What GOtome itself stores: managed libraries, covers. A volume mounted here
+# inherits the directory's owner, so the app can write to it.
+VOLUME /data
 EXPOSE 8080
 # The binary probes itself, so the image needs no curl.
 HEALTHCHECK --interval=10s --timeout=4s --start-period=10s --retries=6 CMD ["gotome", "healthcheck"]

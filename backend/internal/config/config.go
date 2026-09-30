@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -22,6 +23,9 @@ const (
 	DefaultEnv      = EnvProduction
 	DefaultHTTPAddr = ":8080"
 	DefaultLogLevel = "info"
+	// DefaultDataDir is where the image keeps what GOtome itself stores:
+	// managed libraries, covers. The compose file mounts a volume there.
+	DefaultDataDir = "/data"
 )
 
 // Config is the fully resolved configuration of the process.
@@ -32,6 +36,8 @@ type Config struct {
 	// DatabaseURL is the Postgres connection string. Commands that never
 	// touch the database run without it; see RequireDatabase.
 	DatabaseURL string
+	// DataDir is the directory GOtome keeps its own files in.
+	DataDir string
 }
 
 // RequireDatabase is the error a command that needs the database starts with
@@ -61,12 +67,16 @@ func load(getenv func(string) string) (Config, error) {
 		Env:         get("GOTOME_ENV", DefaultEnv),
 		HTTPAddr:    get("GOTOME_HTTP_ADDR", DefaultHTTPAddr),
 		DatabaseURL: get("GOTOME_DATABASE_URL", ""),
+		DataDir:     get("GOTOME_DATA_DIR", DefaultDataDir),
 	}
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
 		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)
 	}
 	if _, _, err := net.SplitHostPort(cfg.HTTPAddr); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_HTTP_ADDR is %q, want host:port such as %s: %w", cfg.HTTPAddr, DefaultHTTPAddr, err)
+	}
+	if !filepath.IsAbs(cfg.DataDir) {
+		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
 	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {

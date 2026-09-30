@@ -19,6 +19,11 @@ services:
       # The password goes into a URL: keep to letters, digits, - and _, or
       # percent-encode it here.
       GOTOME_DATABASE_URL: postgres://gotome:${POSTGRES_PASSWORD:-gotome}@db:5432/gotome?sslmode=disable
+    volumes:
+      - app-data:/data
+      # A folder of books you already have becomes an "external" library.
+      # Mount it here, read-only unless GOtome should write metadata back:
+      # - /path/to/your/books:/books:ro
     ports:
       - "${GOTOME_PORT:-8080}:8080"
     depends_on:
@@ -55,4 +60,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  app-data:
   db-data:

@@ -8,9 +8,10 @@ import {
 	redirect,
 	useRouteContext,
 } from "@tanstack/react-router";
-import { currentUserQuery, setupNeededQuery } from "@/auth/session";
+import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
+import { AdminLibraries } from "@/routes/admin-libraries";
 import { Library } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
@@ -89,13 +90,28 @@ const appRoute = createRoute({
 const libraryRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/",
-	component: Library,
+	component: function LibraryPage() {
+		return <Library user={useRouteContext({ from: "/app" }).user} />;
+	},
+});
+
+const adminLibrariesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/libraries",
+	// The server refuses what the person may not do; this only keeps them
+	// from landing on a page whose every request would be refused.
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "storage:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: AdminLibraries,
 });
 
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute]),
+	appRoute.addChildren([libraryRoute, adminLibrariesRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

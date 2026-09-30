@@ -16,3 +16,7 @@ What changes for someone who runs or uses GOtome. The format follows
 - Three roles: Administrator, Editor and Reader.
 - A web app with light and dark colours that also works on a phone. The library
   view is still empty: importing books comes next.
+- Libraries. An administrator adds a library that GOtome manages itself, or
+  points GOtome at an existing folder, which it only reads unless allowed to
+  change files. A library is shared with everybody or private to its owner and
+  members. Removing a library from GOtome never deletes its folder or files.

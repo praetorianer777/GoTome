@@ -10,7 +10,7 @@ import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 
 export interface NavItem {
-	to: "/";
+	to: "/" | "/admin/libraries";
 	label: MessageKey;
 	/** What the person must be allowed to do for the entry to be offered. */
 	permission: Permission;
@@ -22,6 +22,7 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
 	{ to: "/", label: "nav.library", permission: "library:read" },
+	{ to: "/admin/libraries", label: "nav.libraries", permission: "storage:manage" },
 ];
 
 export function visibleNavItems(
@@ -71,6 +72,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 							<Link
 								key={item.to}
 								to={item.to}
+								activeOptions={{ exact: true }}
 								className="rounded px-1 py-0.5 text-slate-600 hover:text-slate-900 data-[status=active]:font-semibold data-[status=active]:text-slate-900 dark:text-slate-300 dark:hover:text-white dark:data-[status=active]:text-white"
 							>
 								{t(item.label)}
