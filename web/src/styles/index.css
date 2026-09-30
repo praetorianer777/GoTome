@@ -1,15 +1,40 @@
 @import "tailwindcss";
 
+/* Dark when the person chose dark, or left the choice to a device that is. */
+@custom-variant dark {
+	&:where([data-theme="dark"], [data-theme="dark"] *) {
+		@slot;
+	}
+	@media (prefers-color-scheme: dark) {
+		&:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+			@slot;
+		}
+	}
+}
+
 @theme {
-  /* The logo's two colours: its night-blue ground and the gopher's blue. */
-  --color-ink: #020c16;
-  --color-brand: #2fa8d5;
+	/* The logo's two colours: its night-blue ground and the gopher's blue. */
+	--color-ink: #020c16;
+	--color-brand: #2fa8d5;
+	/* The same blue, dark enough to read as text on white. */
+	--color-brand-strong: #0b6f96;
 }
 
 :root {
-  color-scheme: dark;
+	color-scheme: light dark;
+}
+:root[data-theme="light"] {
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
 }
 
 body {
-  @apply bg-ink text-slate-100 antialiased;
+	@apply bg-slate-50 text-slate-900 antialiased dark:bg-ink dark:text-slate-100;
+}
+
+/* One focus ring everywhere, visible on both grounds. */
+:focus-visible {
+	@apply outline-2 outline-offset-2 outline-brand;
 }
