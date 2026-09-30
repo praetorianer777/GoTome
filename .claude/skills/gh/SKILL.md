@@ -12,7 +12,9 @@ Repo: `praetorianer777/GoTome`, default branch `main`.
 - Every change starts from a GitHub issue and lives on a branch `<type>/<issue>-<slug>`
   (`feat|fix|chore|docs|refactor|test|perf|ci|build|revert`, slug lowercase with dashes).
   `.claude/hooks/branch-guard.sh` blocks edits, commits and pushes anywhere else.
-- Never push to `main`, never merge a PR yourself — the user merges.
+- Never push to `main`. Merge your own pull request once its CI is green (the owner's
+  standing decision); leave anyone else's, and any with failing or missing checks,
+  to the owner.
 - `gh` runs non-interactively here: always pass `--title`/`--body` (or `--body-file`),
   never rely on prompts or an editor. Prefer `--json … --jq …` for reading.
 - Creating issues, PRs or comments is outward-facing: confirm with the user first
@@ -87,6 +89,18 @@ gh pr comment --body "…"
 ```
 
 Always put `Closes #<issue>` in the PR body.
+
+## 5. Merge and close
+
+```bash
+gh pr checks 17 --watch
+gh pr merge 17 --squash --delete-branch
+gh issue close 42 --reason completed --comment "Done in #17."
+git switch main && git pull --ff-only
+```
+
+Close the issue yourself: in this repository a merged pull request does not close
+the issue its body names.
 
 ## Reading feedback and CI
 

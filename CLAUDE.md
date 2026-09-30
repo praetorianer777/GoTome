@@ -9,8 +9,10 @@ frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgr
   `<type>/<issue>-<slug>` (`feat|fix|chore|docs|refactor|test|perf|ci|build|revert`).
   `.claude/hooks/branch-guard.sh` blocks edits, commits and pushes anywhere else.
   Use the `gh` skill for issues, branches and pull requests.
-- One issue, one pull request, with `Closes #<issue>` in the body. Merging is the
-  owner's decision.
+- One issue, one pull request, with `Closes #<issue>` in the body. Once CI is green,
+  the author squash-merges it and closes the issue with a pointer to the pull
+  request: merging alone does not close issues in this repository. Pull requests by
+  anyone else, and any with failing or missing checks, are left to the owner.
 - The backlog is filed as issues in milestones `M0`–`M10`. An issue names its
   dependencies; do not start it before they are merged.
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
