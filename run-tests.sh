@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 # The push gate: .claude/hooks/branch-guard.sh runs this before every git push,
 # and CI runs the same script. Exits non-zero on the first failing stage.
+#
+# ./run-tests.sh --full runs everything: the browser suite in every browser
+# rather than the smoke tests in one. CI does that; a push does not, so that a
+# push stays quick.
 set -euo pipefail
 cd "$(dirname "$0")"
+
+FULL=
+for arg in "$@"; do
+  case "$arg" in
+    --full) FULL=1 ;;
+    *) echo "usage: $0 [--full]" >&2; exit 2 ;;
+  esac
+done
+export FULL
 
 echo "🐚 Shell script tests"
 .claude/hooks/tests/branch-guard-test.sh

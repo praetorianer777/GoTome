@@ -100,3 +100,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   are refused before they reach a handler.
 - First-run setup (`POST /api/v1/setup`) creates the one initial administrator and
   then refuses for good.
+
+## Browser tests
+
+- `e2e/` is the Playwright suite, run in Playwright's own image against the running
+  stack: `make up`, then `make test-e2e` (smoke tests in Chromium) or
+  `make test-e2e FULL=1` (every test in Chromium, Firefox, WebKit and a phone).
+  `make e2e-report` serves the last run's report and traces.
+- The push gate runs the smoke selection; CI runs `./run-tests.sh --full`. Tag a test
+  `@smoke` only when it guards the path every user takes; the rest runs in CI.
+- The suite sets a fresh stack up with its own account. On a stack someone else set
+  up it fails and says so: `make clean`, then `make up`.
