@@ -1,0 +1,105 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GOtome API",
+    "version": "1",
+    "description": "Every failure is answered with the ErrorEnvelope, whatever the status."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "tags": [
+    {
+      "name": "system"
+    }
+  ],
+  "paths": {
+    "/version": {
+      "get": {
+        "operationId": "getVersion",
+        "summary": "Which build of GOtome is running",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildInfo"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIError": {
+        "type": "object",
+        "description": "Why a request failed.",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "BuildInfo": {
+        "type": "object",
+        "properties": {
+          "commit": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/APIError"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
+}

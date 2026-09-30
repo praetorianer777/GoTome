@@ -35,6 +35,7 @@ const usage = `Usage: gotome <command>
 Commands:
   serve        Run the server
   healthcheck  Probe a running server; exits non-zero unless it is healthy
+  openapi      Write the API's OpenAPI document to the given file, or to stdout
   version      Print the version
 `
 
@@ -55,6 +56,8 @@ func run(args []string) error {
 		return serve()
 	case "healthcheck":
 		return healthcheck()
+	case "openapi":
+		return writeOpenAPI(args[1:])
 	case "version":
 		fmt.Println(version.Current())
 		return nil
@@ -119,6 +122,19 @@ func serve() error {
 	}
 	log.Info("stopped cleanly")
 	return nil
+}
+
+func writeOpenAPI(args []string) error {
+	encoded, err := httpapi.Spec().MarshalIndent()
+	if err != nil {
+		return err
+	}
+	encoded = append(encoded, '\n')
+	if len(args) == 0 {
+		_, err = os.Stdout.Write(encoded)
+		return err
+	}
+	return os.WriteFile(args[0], encoded, 0o644)
 }
 
 func newLogger(cfg config.Config) *slog.Logger {

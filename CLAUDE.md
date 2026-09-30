@@ -44,3 +44,12 @@ work in parallel git worktrees, so it may not rely on fixed ports or fixed compo
 project names. An issue that adds something testable adds its stage to the script.
 
 The hook has its own tests in `.claude/hooks/tests/`; run them after changing a hook.
+
+## API
+
+- Every endpoint is a `Route` in the table in `backend/internal/httpapi/routes.go`.
+  The router and the OpenAPI document are both built from that table. Handlers return
+  an error instead of writing one; every failure goes out as the one error envelope.
+- `api/openapi.json` is generated and checked in. After changing a route or a type
+  it sends, run `make openapi` and commit the result; `make check-go` fails when the
+  file is stale.

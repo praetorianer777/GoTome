@@ -46,5 +46,15 @@ build: | $(GO_CACHE) ## Build the gotome binary into backend/bin, stamped with V
 tidy: | $(GO_CACHE) ## Run go mod tidy
 	$(DOCKER_GO) go mod tidy
 
+.PHONY: openapi
+openapi: | $(GO_CACHE) ## Regenerate api/openapi.json from the route table
+	@mkdir -p $(ROOT)/api
+	$(DOCKER_GO) go run ./cmd/gotome openapi ../api/openapi.json
+
+.PHONY: openapi-check
+openapi-check: | $(GO_CACHE) ## Fail when api/openapi.json differs from what the code generates
+	@$(DOCKER_GO) sh -c 'go run ./cmd/gotome openapi /tmp/openapi.json && diff -u ../api/openapi.json /tmp/openapi.json' \
+		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
+
 .PHONY: check-go
-check-go: fmt-check vet test-go ## The backend gate: formatting, vet, race-checked tests
+check-go: fmt-check vet test-go openapi-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI drift
