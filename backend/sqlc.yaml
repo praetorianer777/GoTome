@@ -1,0 +1,13 @@
+version: "2"
+sql:
+  - engine: postgresql
+    # The migrations are the schema: sqlc reads the Up half of each goose file.
+    schema: migrations
+    queries: queries
+    gen:
+      go:
+        package: sqlc
+        out: internal/db/sqlc
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        emit_empty_slices: true

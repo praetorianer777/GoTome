@@ -21,9 +21,18 @@ GOTOME_PORT := $(call stack_port,0)
 GOTOME_IMAGE := $(STACK_PROJECT)-app
 GOTOME_ENV ?= development
 
+# The password of the throwaway development stack; the compose file carries
+# the same default.
+POSTGRES_PASSWORD ?= gotome
+
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV
+export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV POSTGRES_PASSWORD
+
+# The Go toolchain container on the stack's network, with the database URL the
+# integration suite makes its own databases through.
+DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
+	-e GOTOME_TEST_DATABASE_URL='postgres://gotome:$(POSTGRES_PASSWORD)@db:5432/gotome?sslmode=disable')
 
 # What the stack publishes, for the browser suite and for people: a shell can
 # source it, and so can a Playwright config.
@@ -65,6 +74,15 @@ psql: ## Open psql in the running stack's database
 .PHONY: stack-up
 stack-up: stack-env ## The gate's stack: build and start it, and wait until both services are healthy
 	docker compose up -d --build --wait --quiet-pull
+
+# The suite runs against the stack's Postgres rather than one of its own, so
+# the gate never starts a second database. Each test gets a database copied
+# from a migrated template (internal/db/dbtest), so tests do not see each other.
+.PHONY: test-integration
+test-integration: | $(GO_CACHE) ## Run the integration suite against this checkout's running stack
+	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
+		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
+	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
 
 # The pinned database image is what promises pg_search and pgvector; this fails
 # the gate when a new pin no longer carries them.

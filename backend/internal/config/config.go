@@ -3,6 +3,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -28,6 +29,18 @@ type Config struct {
 	Env      string
 	HTTPAddr string
 	LogLevel slog.Level
+	// DatabaseURL is the Postgres connection string. Commands that never
+	// touch the database run without it; see RequireDatabase.
+	DatabaseURL string
+}
+
+// RequireDatabase is the error a command that needs the database starts with
+// when none is configured.
+func (c Config) RequireDatabase() error {
+	if c.DatabaseURL == "" {
+		return errors.New("GOTOME_DATABASE_URL is not set, want a Postgres URL such as postgres://gotome:secret@db:5432/gotome")
+	}
+	return nil
 }
 
 // IsProduction reports whether the deployment declared itself as production.
@@ -45,8 +58,9 @@ func load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg := Config{
-		Env:      get("GOTOME_ENV", DefaultEnv),
-		HTTPAddr: get("GOTOME_HTTP_ADDR", DefaultHTTPAddr),
+		Env:         get("GOTOME_ENV", DefaultEnv),
+		HTTPAddr:    get("GOTOME_HTTP_ADDR", DefaultHTTPAddr),
+		DatabaseURL: get("GOTOME_DATABASE_URL", ""),
 	}
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
 		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)

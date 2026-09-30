@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -15,7 +16,11 @@ import (
 
 var errSecret = errors.New("password=hunter2 in dsn")
 
-func testServer() *Server { return &Server{Log: slog.New(slog.DiscardHandler)} }
+type fakeDB struct{ err error }
+
+func (f fakeDB) Ping(context.Context) error { return f.err }
+
+func testServer() *Server { return &Server{Log: slog.New(slog.DiscardHandler), DB: fakeDB{}} }
 
 func do(t *testing.T, h http.Handler, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
@@ -165,5 +170,27 @@ func TestDecodeJSON(t *testing.T) {
 				t.Errorf("body %.40q: err = %v, want a 400 APIError", c.body, err)
 			}
 		}
+	}
+}
+
+func TestReadinessFollowsTheDatabase(t *testing.T) {
+	up := do(t, testServer().Routes(), http.MethodGet, ReadyPath)
+	if up.Code != http.StatusOK {
+		t.Errorf("with the database answering: status = %d, want 200", up.Code)
+	}
+
+	srv := testServer()
+	srv.DB = fakeDB{err: errSecret}
+	h := srv.Routes()
+	down := do(t, h, http.MethodGet, ReadyPath)
+	if down.Code != http.StatusServiceUnavailable {
+		t.Fatalf("with the database down: status = %d, want 503", down.Code)
+	}
+	if got := decodeError(t, down); got.Code != "unavailable" || strings.Contains(down.Body.String(), errSecret.Error()) {
+		t.Errorf("error = %+v, body %s", got, down.Body)
+	}
+	// Alive is not the same as ready: the process still answers.
+	if alive := do(t, h, http.MethodGet, HealthPath); alive.Code != http.StatusOK {
+		t.Errorf("liveness with the database down: status = %d, want 200", alive.Code)
 	}
 }

@@ -66,6 +66,10 @@ func ErrMethodNotAllowed() *APIError {
 	}
 }
 
+func ErrUnavailable(message string) *APIError {
+	return &APIError{Status: http.StatusServiceUnavailable, Code: "unavailable", Message: message}
+}
+
 // ErrInternal hides the cause from the client and keeps it for the log.
 func ErrInternal(cause error) *APIError {
 	return &APIError{
