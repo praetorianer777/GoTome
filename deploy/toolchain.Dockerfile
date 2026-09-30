@@ -4,5 +4,5 @@
 ARG GO_BASE=golang:1.27-bookworm
 FROM ${GO_BASE}
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends poppler-utils && \
+    apt-get install -y --no-install-recommends poppler-utils libmobi-tools && \
     rm -rf /var/lib/apt/lists/*

@@ -71,6 +71,9 @@ type Extractor func(ctx context.Context, path string) (Extracted, error)
 var extractors = map[string]Extractor{
 	"epub": extractEPUB,
 	"pdf":  extractPDF,
+	"mobi": extractMOBI,
+	"azw3": extractMOBI,
+	"azw":  extractMOBI,
 }
 
 // EnqueuePending asks for every file of the library that is still to be read

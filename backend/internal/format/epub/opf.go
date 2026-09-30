@@ -3,6 +3,8 @@ package epub
 import (
 	"strconv"
 	"strings"
+
+	"github.com/praetorianer777/gotome/backend/internal/format/markup"
 )
 
 // Metadata is what the package document says about the book.
@@ -245,7 +247,7 @@ func (p *opfPackage) metadata() Metadata {
 	if d := first(p.Metadata.Descriptions); d != "" {
 		// Descriptions often carry the publisher's HTML.
 		if strings.ContainsAny(d, "<&") {
-			d, _ = extractText([]byte(d))
+			d, _ = markup.Text([]byte(d))
 		}
 		md.Description = d
 	}

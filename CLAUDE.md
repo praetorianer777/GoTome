@@ -168,6 +168,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 
 ## Extraction
 
+- Readers exist for EPUB (`format/epub`), MOBI, AZW and AZW3 (`format/mobi`, see
+  `docs/decisions/mobi-reader.md`), and PDF (poppler). HTML to text goes through
+  `format/markup` for all of them.
 - After every pass of a scan, each file that is still `pending` and whose format
   has a reader gets an `ingest.extract_file` job. A reader is an `ingest.Extractor`
   registered in the `extractors` map; files of formats without one stay `pending`
