@@ -6,6 +6,7 @@ export const en = {
 	"app.name": "GOtome",
 
 	"nav.library": "Library",
+	"nav.upload": "Add books",
 	"nav.main": "Main",
 	"nav.skip": "Skip to the content",
 
@@ -56,6 +57,28 @@ export const en = {
 	"library.column.authors": "Authors",
 	"library.column.formats": "Formats",
 	"library.column.added": "Added",
+	"upload.title": "Add books",
+	"upload.intro":
+		"Each file is stored in the library and read there: the title, the authors and the cover come from the file itself. A file the library already has is not added twice.",
+	"upload.library": "Into the library",
+	"upload.none.admin":
+		"Books are added to a managed library, one whose folder GOtome arranges, and there is none yet.",
+	"upload.none.other":
+		"Books are added to a managed library, and there is none you may see. An administrator can add one or share one with you.",
+	"upload.dropZone": "Files to add",
+	"upload.drop": "Drop files here to add them to {library}, or",
+	"upload.choose": "Choose files",
+	"upload.formats":
+		"EPUB, PDF, MOBI, AZW and AZW3; audiobooks as M4B, M4A, MP3, FLAC, OGG or Opus.",
+	"upload.files": "Uploads",
+	"upload.progress": "Progress of {name}",
+	"upload.waiting": "Waiting",
+	"upload.sending": "Sending, {percent} %",
+	"upload.added": "Added.",
+	"upload.duplicate": "Already in the library as “{title}”, so not added again.",
+	"upload.open": "Open the book",
+	"upload.clear": "Clear the finished ones",
+
 	"library.none.title": "No library yet",
 	"library.none.admin": "A library is a folder of books. Add one to get started.",
 	"library.none.other": "There is no library you may see yet. An administrator can add one or share one with you.",

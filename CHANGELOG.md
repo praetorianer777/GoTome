@@ -46,3 +46,11 @@ What changes for someone who runs or uses GOtome. The format follows
   genre, duration, chapters and cover are read from their tags. The parts of a
   book in several files are put in order by their track and disc numbers. The
   app image now includes FFmpeg, which makes it about 600 MB larger.
+- Uploads. Editors and Administrators add books on the new "Add books" page,
+  by picking files or dropping them on it, and see each one's progress. A file
+  goes into a managed library, into a folder named after its book, next to the
+  book's other formats and parts. A file the uploader can already see in any
+  library is not stored again; the page points to the book that has it. An
+  upload that breaks off leaves nothing behind. One file may be up to 4 GiB
+  (`GOTOME_UPLOAD_LIMIT_MB`); a reverse proxy in front of GOtome needs to
+  allow that much too (nginx: `client_max_body_size`).

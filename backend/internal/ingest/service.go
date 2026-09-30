@@ -104,6 +104,8 @@ type Service struct {
 	// Queue is set once the job runner exists: the runner is built from the
 	// workers, and the workers from this service.
 	Queue Queue
+	// UploadLimit is the largest file Upload takes, in bytes.
+	UploadLimit int64
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.

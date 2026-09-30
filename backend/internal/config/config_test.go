@@ -18,7 +18,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ScanInterval: 6 * time.Hour}
+	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
 	if cfg != want {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -34,12 +34,13 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_LOG_LEVEL": "DEBUG",
 		"GOTOME_DATA_DIR":  "/srv/gotome",
 		// Zero switches scheduled scans off.
-		"GOTOME_SCAN_INTERVAL": "0",
+		"GOTOME_SCAN_INTERVAL":   "0",
+		"GOTOME_UPLOAD_LIMIT_MB": "100",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome"}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", UploadLimit: 100 << 20}
 	if cfg != want {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -54,6 +55,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_SCAN_INTERVAL", "often"},
 		{"GOTOME_SCAN_INTERVAL", "5s"},
 		{"GOTOME_SCAN_INTERVAL", "-6h"},
+		{"GOTOME_UPLOAD_LIMIT_MB", "0"},
+		{"GOTOME_UPLOAD_LIMIT_MB", "2GB"},
 	}
 	for _, c := range cases {
 		_, err := load(env(map[string]string{c.key: c.value}))

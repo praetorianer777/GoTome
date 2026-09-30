@@ -117,6 +117,7 @@ func serve() error {
 	libraries := library.NewService(pool, cfg.DataDir)
 	coverStore := covers.NewStore(cfg.DataDir)
 	scans := ingest.NewService(pool, libraries, coverStore, log)
+	scans.UploadLimit = cfg.UploadLimit
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})

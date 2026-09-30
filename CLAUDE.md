@@ -183,6 +183,23 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - The development stack mounts `e2e/fixtures/books` into the app container as
   `/fixtures/books-<browser project>` (`deploy/docker-compose.dev.yml`).
 
+## Uploads
+
+- `ingest.Service.Upload` is the one writer into a library, and only into a
+  managed one. The file is streamed into `<library>/.uploads/` (the scan skips
+  dot folders), hashed on the way, and moved into place by a rename inside the
+  transaction that records it; a failed commit takes the file back out. An
+  interrupted upload leaves only a staged part, removed at once or, after a
+  crash, by the first upload once the part is a day old.
+- Uploads and scans both choose new paths in a library under the advisory lock
+  `LockLibraryFiles`. A scan that finds a path it took as new already has a row
+  leaves that folder to the next scan (`errTaken`).
+- A duplicate is the same SHA-256 in a library the uploader may see: nothing
+  is stored and the answer points to that book. What the uploader may not see
+  does not count, or the answer would tell what a private library holds.
+- The web app sends uploads with `XMLHttpRequest` (`web/src/books/upload.ts`)
+  for the progress, not through the typed client; the fake server stubs it.
+
 ## Extraction
 
 - Readers exist for EPUB (`format/epub`), MOBI, AZW and AZW3 (`format/mobi`, see

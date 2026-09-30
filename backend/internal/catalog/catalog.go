@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,6 +52,9 @@ var kindOf = map[string]string{
 	"epub": KindEbook, "pdf": KindEbook, "mobi": KindEbook, "azw3": KindEbook, "azw": KindEbook,
 	"m4b": KindAudio, "m4a": KindAudio, "mp3": KindAudio, "flac": KindAudio, "ogg": KindAudio, "opus": KindAudio,
 }
+
+// Formats lists the formats GOtome knows, in no particular order.
+func Formats() []string { return slices.Collect(maps.Keys(kindOf)) }
 
 // KindOf returns the kind of a format, and whether GOtome knows the format.
 func KindOf(format string) (string, bool) {

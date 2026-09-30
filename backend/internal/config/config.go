@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +32,9 @@ const (
 	// DefaultScanInterval is how often every library's folder is looked
 	// through for changes.
 	DefaultScanInterval = 6 * time.Hour
+	// DefaultUploadLimitMB is the largest file one upload may carry, in
+	// mebibytes: room for an audiobook in one file.
+	DefaultUploadLimitMB = 4096
 )
 
 // Config is the fully resolved configuration of the process.
@@ -46,6 +50,8 @@ type Config struct {
 	// ScanInterval is how often the libraries are scanned on their own; zero
 	// leaves scanning to whoever asks for it.
 	ScanInterval time.Duration
+	// UploadLimit is the largest file one upload may carry, in bytes.
+	UploadLimit int64
 }
 
 // RequireDatabase is the error a command that needs the database starts with
@@ -91,6 +97,12 @@ func load(getenv func(string) string) (Config, error) {
 	if cfg.ScanInterval, err = time.ParseDuration(interval); err != nil || (cfg.ScanInterval != 0 && cfg.ScanInterval < time.Minute) {
 		return Config{}, fmt.Errorf("GOTOME_SCAN_INTERVAL is %q, want a duration of a minute or more such as 6h, or 0 to switch scheduled scans off", interval)
 	}
+	limit := get("GOTOME_UPLOAD_LIMIT_MB", strconv.Itoa(DefaultUploadLimitMB))
+	mb, err := strconv.ParseInt(limit, 10, 64)
+	if err != nil || mb < 1 || mb > 1<<20 {
+		return Config{}, fmt.Errorf("GOTOME_UPLOAD_LIMIT_MB is %q, want a whole number of mebibytes from 1 to 1048576, such as %d", limit, DefaultUploadLimitMB)
+	}
+	cfg.UploadLimit = mb << 20
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)

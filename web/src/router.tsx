@@ -18,6 +18,7 @@ import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
 import { RouteError } from "@/routes/route-error";
 import { Setup } from "@/routes/setup";
+import { Upload } from "@/routes/upload";
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -125,6 +126,19 @@ const bookRoute = createRoute({
 	},
 });
 
+const uploadRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/upload",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "books:upload")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function UploadPage() {
+		return <Upload user={useRouteContext({ from: "/app" }).user} />;
+	},
+});
+
 const adminLibrariesRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/admin/libraries",
@@ -141,7 +155,7 @@ const adminLibrariesRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, adminLibrariesRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

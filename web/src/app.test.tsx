@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -514,5 +514,84 @@ describe("books", () => {
 		withShelf();
 		renderApp("/books/book-99");
 		expect(await screen.findByText("There is no such book, or it is in a library you may not see.")).toBeInTheDocument();
+	});
+});
+
+describe("uploads", () => {
+	const book = (name: string, content: string) => new File([content], name);
+
+	it("adds the files an editor picks, and says which the library had already", async () => {
+		const person = userEvent.setup({ applyAccept: false });
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			// External libraries are only read, so they are not offered.
+			.withLibrary("Archive", { mode: "external", writable: false });
+		const { router } = renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Add books" }));
+		expect(await screen.findByRole("heading", { name: "Add books", level: 1 })).toBeInTheDocument();
+		expect(screen.getByText("Drop files here to add them to Novels, or")).toBeInTheDocument();
+		expect(screen.queryByRole("combobox", { name: "Into the library" })).not.toBeInTheDocument();
+
+		await person.upload(screen.getByLabelText("Choose files"), [
+			book("Emma.epub", "an epub"),
+			book("Emma copy.epub", "an epub"),
+			book("notes.txt", "not a book"),
+		]);
+
+		const emma = within(await screen.findByRole("listitem", { name: "Emma.epub" }));
+		expect(await emma.findByText("Added.")).toBeInTheDocument();
+		const copy = within(screen.getByRole("listitem", { name: "Emma copy.epub" }));
+		expect(await copy.findByText("Already in the library as “Emma”, so not added again.")).toBeInTheDocument();
+		expect(copy.getByRole("link", { name: "Open the book" })).toHaveAttribute("href", "/books/book-1");
+		const notes = within(screen.getByRole("listitem", { name: "notes.txt" }));
+		expect(await notes.findByText("GOtome does not read this kind of file.")).toBeInTheDocument();
+		expect(server.requests.filter((r) => r.path === "/libraries/lib-1/uploads")).toHaveLength(3);
+
+		await person.click(screen.getByRole("button", { name: "Clear the finished ones" }));
+		expect(screen.queryByRole("listitem", { name: "Emma.epub" })).not.toBeInTheDocument();
+
+		await person.click(screen.getByRole("link", { name: "Library" }));
+		expect(await screen.findByRole("link", { name: /^Emma/ })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+	});
+
+	it("takes files dropped on the page, into the library chosen", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withLibrary("Poetry");
+		const person = userEvent.setup();
+		renderApp("/upload");
+
+		await person.selectOptions(await screen.findByRole("combobox", { name: "Into the library" }), "Poetry");
+		fireEvent.drop(screen.getByRole("region", { name: "Files to add" }), {
+			dataTransfer: { files: [book("Odes.pdf", "a pdf")] },
+		});
+
+		const odes = within(await screen.findByRole("listitem", { name: "Odes.pdf" }));
+		expect(await odes.findByText("Added.")).toBeInTheDocument();
+		expect(server.requests).toContainEqual({ method: "POST", path: "/libraries/lib-2/uploads", body: { file: "Odes.pdf" } });
+	});
+
+	it("says what to do when there is no library to add to", async () => {
+		server.withAccount("Steve", "a long password").signedInAs("Steve").withLibrary("Archive", { mode: "external" });
+		renderApp("/upload");
+
+		expect(await screen.findByText(/there is none yet/)).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Add a library" })).toBeInTheDocument();
+		expect(screen.queryByLabelText("Choose files")).not.toBeInTheDocument();
+	});
+
+	it("keeps a reader out", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		const { router } = renderApp("/upload");
+
+		expect(await screen.findByRole("heading", { name: "Novels" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(screen.queryByRole("link", { name: "Add books" })).not.toBeInTheDocument();
 	});
 });
