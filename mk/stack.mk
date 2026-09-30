@@ -21,20 +21,17 @@ GOTOME_PORT := $(call stack_port,0)
 GOTOME_IMAGE := $(STACK_PROJECT)-app
 GOTOME_ENV ?= development
 
-# The password of the throwaway development stack; the compose file carries
-# the same default.
-POSTGRES_PASSWORD ?= gotome
-
 # The deployment's compose file, and on top of it what only development and
 # the tests need.
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml:$(ROOT)/deploy/docker-compose.dev.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV POSTGRES_PASSWORD
+export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV
 
 # The Go toolchain container on the stack's network, with the database URL the
-# integration suite makes its own databases through.
+# integration suite makes its own databases through. The password is the one
+# the stack's init wrote, read when the recipe runs.
 DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
-	-e GOTOME_TEST_DATABASE_URL='postgres://gotome:$(POSTGRES_PASSWORD)@db:5432/gotome?sslmode=disable')
+	-e GOTOME_TEST_DATABASE_URL="postgres://gotome:$$(docker compose exec -T db cat /secrets/db-password)@db:5432/gotome?sslmode=disable")
 
 # What the stack publishes, for the browser suite and for people: a shell can
 # source it, and so can a Playwright config.

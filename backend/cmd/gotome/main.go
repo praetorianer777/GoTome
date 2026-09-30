@@ -50,6 +50,7 @@ const usage = `Usage: gotome <command>
 
 Commands:
   serve        Bring the database schema up to date, then run the server
+  init         Write the database password for a new installation, once
   healthcheck  Probe a running server; exits non-zero unless it is ready
   migrate      Bring the database schema up to date and exit
   openapi      Write the API's OpenAPI document to the given file, or to stdout
@@ -71,6 +72,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "serve":
 		return serve()
+	case "init":
+		return runInit()
 	case "healthcheck":
 		return healthcheck()
 	case "migrate":
