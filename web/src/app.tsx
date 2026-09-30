@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ApiError } from "@/api/client";
 import { makeRouter } from "@/router";
 
-function makeQueryClient() {
+export function makeQueryClient() {
 	return new QueryClient({
 		defaultOptions: {
 			queries: {
@@ -18,12 +18,15 @@ function makeQueryClient() {
 	});
 }
 
-export function App({
-	router = makeRouter(),
-}: {
+interface AppProps {
+	/** Tests pass a client without retries and a router on a memory history. */
+	queryClient?: QueryClient;
 	router?: ReturnType<typeof makeRouter>;
-}) {
-	const [queryClient] = useState(makeQueryClient);
+}
+
+export function App(props: AppProps) {
+	const [queryClient] = useState(() => props.queryClient ?? makeQueryClient());
+	const [router] = useState(() => props.router ?? makeRouter(queryClient));
 	return (
 		<QueryClientProvider client={queryClient}>
 			<RouterProvider router={router} />

@@ -80,6 +80,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   for every path outside `/api`. That directory is empty in a checkout; the image
   build and `make web-embed` fill it.
 - TypeScript stays on 5.x while `openapi-typescript` requires it.
+- Text a person reads comes from `web/src/i18n/en.ts` through `t(key)`, never from a
+  literal in a component. Which page someone lands on (setup, sign-in, the app) is
+  decided by the route guards in `web/src/router.tsx`.
+- A navigation entry is listed in `NAV_ITEMS` with the permission its page needs.
+- App tests render the whole app against `web/src/test/fake-server.ts`.
 
 ## Authentication
 
