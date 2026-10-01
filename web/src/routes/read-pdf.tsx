@@ -362,7 +362,10 @@ function Page({
 		if (!el) return;
 		setWidth(el.clientWidth);
 		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(() => setWidth(el.clientWidth));
+		// A few pixels are not worth drawing the page again for.
+		const observer = new ResizeObserver(() =>
+			setWidth((was) => (Math.abs(was - el.clientWidth) < 8 ? was : el.clientWidth)),
+		);
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, []);
