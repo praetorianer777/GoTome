@@ -40,19 +40,28 @@ test("a large PDF opens at its first page from a part of the file, and reopens w
 	await page.getByRole("button", { name: "Next page" }).click();
 	await expect(shown).toHaveAttribute("data-page", "2");
 	const saved = page.waitForResponse(
-		(r) => r.url().includes("/progress/ebook") && r.request().method() === "PUT",
+		(r) =>
+			r.url().includes("/progress/ebook") &&
+			r.request().method() === "PUT" &&
+			r.request().postDataJSON().locator === "page:3",
 	);
 	await page.keyboard.press("ArrowRight");
 	await expect(shown).toHaveAttribute("data-page", "3");
 	expect((await (await saved).json()).progress.locator).toBe("page:3");
 
+	// Listening before the page turns: the save follows the page, and may
+	// come before the page is drawn.
+	const savedLast = page.waitForResponse(
+		(r) =>
+			r.url().includes("/progress/ebook") &&
+			r.request().method() === "PUT" &&
+			r.request().postDataJSON().locator === "page:150",
+	);
 	await page.getByRole("textbox", { name: "Page number" }).fill("150");
 	await page.getByRole("textbox", { name: "Page number" }).press("Enter");
 	await expect(shown).toHaveAttribute("data-page", "150");
 	await expect(page.getByText("Page 150", { exact: true })).toBeAttached();
-	await page.waitForResponse(
-		(r) => r.url().includes("/progress/ebook") && r.request().method() === "PUT",
-	);
+	await savedLast;
 
 	await page.reload();
 	await expect(shown).toHaveAttribute("data-page", "150", { timeout: 15_000 });
