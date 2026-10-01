@@ -50,22 +50,41 @@ func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e
 		if !e.ChangesValues() {
 			return nil
 		}
-		files, err := sqlc.New(tx).ListFilesToWriteBack(ctx, id)
-		if err != nil {
-			return err
-		}
-		for _, file := range files {
-			// Not unique: a job already running may have read the book
-			// before this edit, and the one after it must write it again.
-			_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: file}, jobs.InsertOpts{
-				Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		_, err := s.WriteBackTx(ctx, tx, id)
+		return err
 	})
+}
+
+// ChangeTx makes one book's part of a bulk change, as catalog.ChangeTx
+// does, inside a transaction the caller runs, and has what it changed
+// written into the book's EPUBs as Edit does.
+func (s *Service) ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error) {
+	changed, err := catalog.ChangeTx(ctx, tx, scope, id, c)
+	if err != nil || !changed.Values {
+		return changed, err
+	}
+	_, err = s.WriteBackTx(ctx, tx, id)
+	return changed, err
+}
+
+// WriteBackTx queues the writing of the book's metadata into each of its
+// EPUBs in a library GOtome may change, and says how many it queued.
+func (s *Service) WriteBackTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) (int, error) {
+	files, err := sqlc.New(tx).ListFilesToWriteBack(ctx, bookID)
+	if err != nil {
+		return 0, err
+	}
+	for _, file := range files {
+		// Not unique: a job already running may have read the book before
+		// this change, and the one after it must write it again.
+		_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: file}, jobs.InsertOpts{
+			Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
+		})
+		if err != nil {
+			return 0, err
+		}
+	}
+	return len(files), nil
 }
 
 // catalogRoles are the MARC relator codes of the roles the catalogue knows.

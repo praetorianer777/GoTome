@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Edit, look up or write into their files many books at once, as a job */
+        post: operations["startBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/facets": {
         parameters: {
             query?: never;
@@ -270,6 +287,23 @@ export interface paths {
         };
         /** A book's cover as a JPEG; size is small or large */
         get: operations["getBookCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bulk/{bulkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A bulk change the caller asked for, and what it came to for each book so far */
+        get: operations["getBulk"];
         put?: never;
         post?: never;
         delete?: never;
@@ -814,6 +848,60 @@ export interface components {
         BuildInfo: {
             commit?: string;
             version: string;
+        };
+        BulkChange: {
+            addAuthors?: string[];
+            addTags?: string[];
+            authors?: string[];
+            includeLocked?: boolean;
+            language?: string;
+            locks?: {
+                [key: string]: boolean;
+            };
+            published?: string;
+            publisher?: string;
+            removeAuthors?: string[];
+            removeTags?: string[];
+            series?: string;
+            tags?: string[];
+        };
+        BulkRequest: {
+            /** @enum {string} */
+            action: "edit" | "fetch" | "writeBack";
+            books?: string[];
+            change?: components["schemas"]["BulkChange"];
+            filter?: string;
+            library?: string;
+        };
+        BulkResult: {
+            /** Format: uuid */
+            bookId: string;
+            message?: string;
+            /** @enum {string} */
+            outcome?: "changed" | "unchanged" | "locked" | "review" | "notFound" | "failed";
+            skipped: string[];
+            title: string;
+        };
+        BulkStarted: {
+            /** Format: uuid */
+            id: string;
+            total: number;
+        };
+        BulkStatus: {
+            /** @enum {string} */
+            action: "edit" | "fetch" | "writeBack";
+            books: components["schemas"]["BulkResult"][];
+            counts: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            done: number;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            total: number;
         };
         CandidateList: {
             candidates: components["schemas"]["CandidateView"][];
@@ -1403,6 +1491,39 @@ export interface operations {
             };
         };
     };
+    startBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listBookFacets: {
         parameters: {
             query?: {
@@ -1724,6 +1845,37 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bulkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkStatus"];
                 };
             };
             /** @description The request failed. */

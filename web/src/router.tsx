@@ -16,6 +16,7 @@ import { AdminLibraries } from "@/routes/admin-libraries";
 import { AdminSettings } from "@/routes/admin-settings";
 import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
+import { BulkProgress } from "@/routes/bulk";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
 import { Review } from "@/routes/review";
@@ -209,6 +210,19 @@ const reviewRoute = createRoute({
 	component: Review,
 });
 
+const bulkRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/bulk/$bulkId",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function BulkRoute() {
+		return <BulkProgress id={bulkRoute.useParams().bulkId} />;
+	},
+});
+
 const jobsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/jobs",
@@ -244,7 +258,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

@@ -332,6 +332,21 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   only through `GET /metadata/covers/{token}`: tokens are HMACs the process
   signs, so the server never fetches an address a client made up.
 
+## Bulk changes
+
+- `internal/bulk` makes one change to many books (`POST /books/bulk`): an
+  edit (`catalog.Change`), a lookup (`enrich.Service.Fetch`) or the queueing
+  of write-back. The books are fixed when it is asked for, from IDs or from
+  a library and filter through `catalog.Service.Select` (at most
+  `catalog.MaxSelection`), and kept with their outcome in
+  `bulk_change_books`. The `bulk.change` job works through them a book at a
+  time, recording each outcome in the transaction that changes the book, so
+  a repeated run does each once; a book that fails is recorded and the rest
+  go on. Only who asked sees it (`GET /bulk/{id}`).
+- A bulk edit is a person's edit, recorded as `manual` and locked, but it
+  leaves fields locked before as they are and reports them (`skipped`),
+  unless `includeLocked`.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

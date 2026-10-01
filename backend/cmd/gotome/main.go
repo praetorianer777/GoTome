@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/config"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
@@ -150,8 +151,10 @@ func serve() error {
 	})
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
 	scans.OnExtracted = matches.EnqueueTx
+	changes := bulk.NewService(pool, scans, matches, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
+	river.AddWorker(workers, &bulk.Worker{Service: changes})
 	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
@@ -171,6 +174,7 @@ func serve() error {
 	}
 	scans.Queue = runner
 	matches.Queue = runner
+	changes.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -196,6 +200,7 @@ func serve() error {
 		Covers:    coverStore,
 		Metadata:  meta,
 		Matches:   matches,
+		Bulk:      changes,
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

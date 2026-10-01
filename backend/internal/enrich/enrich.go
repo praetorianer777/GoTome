@@ -97,63 +97,87 @@ func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) er
 	return err
 }
 
-// errBusy is every provider asked having asked to be left alone.
-var errBusy = errors.New("the providers ask to be asked later")
+// ErrBusy is every provider asked having asked to be left alone.
+var ErrBusy = errors.New("the providers ask to be asked later")
 
-// Match looks a book up. The best candidate, when its score reaches the
-// threshold, fills in the fields the book lacks; otherwise the best few are
-// kept as pending. Run again, it finds the same and changes nothing more.
+// What looking a book up came to, as Fetch reports it.
+const (
+	// OutcomeApplied is a match sure enough that filled in what the book
+	// lacked.
+	OutcomeApplied = "applied"
+	// OutcomeComplete is a match sure enough that had nothing the book
+	// lacked.
+	OutcomeComplete = "complete"
+	// OutcomeReview is matches kept for a person to review.
+	OutcomeReview = "review"
+	// OutcomeNotFound is nothing found worth a look.
+	OutcomeNotFound = "notFound"
+)
+
+// Match looks a book up, as Fetch does.
 func (s *Service) Match(ctx context.Context, bookID uuid.UUID) error {
-	book, err := catalog.NewService(s.pool).Get(ctx, library.Scope{SeesAll: true}, bookID)
+	_, err := s.Fetch(ctx, bookID)
 	if errors.Is(err, catalog.ErrNotFound) {
 		return nil
 	}
+	return err
+}
+
+// Fetch looks a book up. The best candidate, when its score reaches the
+// threshold, fills in the fields the book lacks; otherwise the best few are
+// kept as pending. Run again, it finds the same and changes nothing more.
+func (s *Service) Fetch(ctx context.Context, bookID uuid.UUID) (string, error) {
+	book, err := catalog.NewService(s.pool).Get(ctx, library.Scope{SeesAll: true}, bookID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	threshold, err := s.threshold(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	found, err := s.meta.Candidates(ctx, book)
 	if err != nil {
 		if ctx.Err() != nil {
-			return err
+			return "", err
 		}
 		if len(found) == 0 && errors.Is(err, metadata.ErrBusy) {
-			return errBusy
+			return "", ErrBusy
 		}
 		s.log.Warn("metadata lookup", "book", bookID, "error", err)
 		if len(found) == 0 {
-			return err
+			return "", err
 		}
 	}
 	if len(found) == 0 {
-		return nil
+		return OutcomeNotFound, nil
 	}
 
 	best := found[0]
 	if best.Score >= threshold {
 		edit, err := s.gaps(ctx, book, best.Record)
 		if err != nil {
-			return err
+			return "", err
 		}
+		outcome := OutcomeComplete
 		if edit.ChangesValues() {
 			if err := s.editor.Edit(ctx, library.Scope{SeesAll: true}, bookID, edit); err != nil {
-				return fmt.Errorf("apply %s %s: %w", best.Provider, best.ID, err)
+				return "", fmt.Errorf("apply %s %s: %w", best.Provider, best.ID, err)
 			}
+			outcome = OutcomeApplied
 		}
-		return s.record(ctx, bookID, best, StateApplied)
+		return outcome, s.record(ctx, bookID, best, StateApplied)
 	}
+	outcome := OutcomeNotFound
 	for i, c := range found {
 		if i == pendingPerBook || c.Score < keepAtLeast {
 			break
 		}
 		if err := s.record(ctx, bookID, c, StatePending); err != nil {
-			return err
+			return "", err
 		}
+		outcome = OutcomeReview
 	}
-	return nil
+	return outcome, nil
 }
 
 func (s *Service) threshold(ctx context.Context) (float64, error) {
@@ -262,7 +286,7 @@ type MatchWorker struct {
 
 func (w *MatchWorker) Work(ctx context.Context, job *river.Job[MatchArgs]) error {
 	err := w.Service.Match(ctx, job.Args.BookID)
-	if errors.Is(err, errBusy) {
+	if errors.Is(err, ErrBusy) {
 		// Not a failure: the providers said when to come back, roughly.
 		return river.JobSnooze(busyWait)
 	}

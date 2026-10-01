@@ -6,6 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
+import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
@@ -79,6 +80,8 @@ export class FakeServer {
 	review: ReviewBook[] = [];
 	/** What the metadata providers know, by book. */
 	candidates: Record<string, { candidates: Candidate[]; failures: { provider: string; message: string }[] }> = {};
+	/** The bulk changes asked for, each finished as soon as it is asked for. */
+	bulks: BulkStatus[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -157,6 +160,9 @@ export class FakeServer {
 					? undefined
 					: await request.json().catch(() => undefined);
 			this.requests.push({ method: request.method, path: path + url.search, body });
+			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
+				return this.answerBulk(path, body as BulkRequest);
+			}
 			if (path.startsWith("/matches")) {
 				return this.answerMatches(request.method, path, body as CandidateApply);
 			}
@@ -441,6 +447,58 @@ export class FakeServer {
 		);
 		const q = typed.toLowerCase();
 		return [...new Set(all)].filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)));
+	}
+
+	/**
+	 * A bulk edit sets the series and adds and removes tags, leaving locked
+	 * fields unless told otherwise; the other actions change nothing here.
+	 */
+	private answerBulk(path: string, req: BulkRequest): Response {
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+		}
+		if (path !== "/books/bulk") {
+			const status = this.bulks.find((b) => `/bulk/${b.id}` === path);
+			return status
+				? Response.json(status)
+				: Response.json({ error: { code: "not_found", message: "There is no such bulk change." } }, { status: 404 });
+		}
+		const chosen = this.books.filter((b) =>
+			req.books?.length
+				? req.books.includes(b.id)
+				: (!req.library || b.libraryId === req.library) && (!req.filter || matches(b, JSON.parse(req.filter))),
+		);
+		const change = req.change ?? {};
+		const results: BulkResult[] = chosen.map((book) => {
+			const skipped = (["series", "tags"] as const).filter(
+				(f) => (f === "series" ? change.series !== undefined : !!change.addTags || !!change.removeTags) &&
+					book.fields[f]?.locked && !change.includeLocked,
+			);
+			let changed = false;
+			if (change.series !== undefined && !skipped.includes("series") && book.series !== change.series) {
+				book.series = change.series || undefined;
+				book.fields.series = { source: "manual", locked: true };
+				changed = true;
+			}
+			if ((change.addTags || change.removeTags) && !skipped.includes("tags")) {
+				const tags = [...book.tags, ...(change.addTags ?? [])].filter((t) => !change.removeTags?.includes(t));
+				changed ||= tags.join() !== book.tags.join();
+				book.tags = [...new Set(tags)];
+				book.fields.tags = { source: "manual", locked: true };
+			}
+			const outcome = changed ? "changed" : skipped.length > 0 ? "locked" : "unchanged";
+			return { bookId: book.id, title: book.title, outcome, skipped };
+		});
+		const counts: Record<string, number> = {};
+		for (const r of results) {
+			counts[r.outcome ?? ""] = (counts[r.outcome ?? ""] ?? 0) + 1;
+		}
+		const id = `bulk-${this.bulks.length + 1}`;
+		this.bulks.push({
+			id, action: req.action, createdAt: "2026-01-04T00:00:00Z", finishedAt: "2026-01-04T00:00:01Z",
+			total: results.length, done: results.length, counts, books: results,
+		});
+		return Response.json({ id, total: results.length }, { status: 202 });
 	}
 
 	private answerMatches(method: string, path: string, body: CandidateApply): Response {

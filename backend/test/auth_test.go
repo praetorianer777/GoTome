@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
@@ -142,6 +143,8 @@ func newApp(t *testing.T) *app {
 		Books:     catalog.NewService(a.pool),
 		Covers:    a.covers,
 	}
+	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
+	a.server.Bulk.Queue = queue
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL
