@@ -36,6 +36,9 @@ services:
       GOTOME_SCAN_INTERVAL: ${GOTOME_SCAN_INTERVAL:-6h}
       # The largest file one upload may carry, in MiB.
       GOTOME_UPLOAD_LIMIT_MB: ${GOTOME_UPLOAD_LIMIT_MB:-4096}
+      # true asks no metadata source on the internet, for a server that must
+      # not reach out.
+      GOTOME_OFFLINE: ${GOTOME_OFFLINE:-false}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
       # Encrypts the secrets kept in the database, such as provider keys.

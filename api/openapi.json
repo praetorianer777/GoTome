@@ -3012,6 +3012,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "bookTitle": {
+            "type": "string"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"

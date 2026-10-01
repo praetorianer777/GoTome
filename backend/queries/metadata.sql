@@ -10,3 +10,15 @@ ON CONFLICT (provider, request_key) DO UPDATE
 SET url = EXCLUDED.url, status = EXCLUDED.status, body = EXCLUDED.body,
     fetched_at = now(), expires_at = EXCLUDED.expires_at;
 
+
+-- name: RecordMatch :exec
+-- A match found again keeps what became of it: a dismissed one is not
+-- brought back, an applied one not made pending.
+INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (book_id, provider, record_id) DO UPDATE
+SET score = EXCLUDED.score, record = EXCLUDED.record, updated_at = now(),
+    state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END;
+
+-- name: ListBookMatches :many
+SELECT * FROM metadata_matches WHERE book_id = $1 ORDER BY score DESC, created_at;

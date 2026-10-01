@@ -313,6 +313,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
   It is not a check on pull requests.
 - Providers: `openlibrary` (no key, 400 ms between requests).
+- `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
+  `enrich.match_book` job (unique, 30 s later) when a file is read and
+  `metadata.autoMatch` is on. A best candidate at or above
+  `metadata.matchThreshold` fills only gaps (empty fields, a filename title,
+  missing identifiers, no cover) through `ingest.Service.Edit` with a
+  provider source; the rest are kept in `metadata_matches` as pending. A
+  match found again keeps its state. `metadata.providers` names the sources
+  asked. `GOTOME_OFFLINE=true` registers none; the development stack sets
+  it, so the gate never reaches a provider.
 - `GET /books/{id}/candidates` asks the providers; `POST .../candidates/apply`
   takes chosen values as an edit with `Source` `provider:<name>`, which skips
   locked fields and locks nothing. A candidate's cover reaches the browser
@@ -327,11 +336,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the worker in `cmd/gotome` with `river.AddWorker`, and enqueues through the
   `jobs.Runner`. Use `InsertTx` when the job follows from a change in the same
   transaction, and `Unique` for work that must not be queued twice.
-- The jobs page reads `river_job` directly (`ingest/jobs.go`), joined to the file
-  or library a job is about by its kind's arguments, and filtered through
-  `visible_library_ids`; a job about no library is shown to everyone with
-  `index:rebuild`. A job kind that is about a library or file needs its join
-  there, or its jobs show without one. Retry and cancel go through River's
+- The jobs page reads `river_job` directly (`ingest/jobs.go`), joined to the
+  library, book or file a job names in its arguments as `libraryId`, `bookId`
+  or `fileId`, and filtered through `visible_library_ids`; a job about no
+  library is shown to everyone with `index:rebuild`. A job about one of those
+  must name it by that argument, or it shows without one. Retry and cancel go through River's
   client, after the same visibility check.
 - Queues: `scan`, `extract`, `metadata`, `embed`, `notify`, and `default` for
   housekeeping. A job may run twice (after a crash or a cancelled shutdown), so it

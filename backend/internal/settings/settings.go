@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,14 @@ const (
 	MetadataLanguage = "metadata.language"
 	GoogleBooksKey   = "metadata.googleBooksKey"
 	HardcoverToken   = "metadata.hardcoverToken"
+	// AutoMatch is "on" or "off": whether new books are looked up by
+	// themselves.
+	AutoMatch = "metadata.autoMatch"
+	// MatchThreshold is the score from 0.5 to 1 above which a match found
+	// by itself is taken without asking.
+	MatchThreshold = "metadata.matchThreshold"
+	// Providers lists the metadata providers asked, comma-separated.
+	Providers = "metadata.providers"
 )
 
 // maxValueLen bounds a value; no key or token comes near it.
@@ -59,6 +68,9 @@ var Definitions = []Definition{
 	{Key: MetadataLanguage, Kind: KindText, Default: "en", Check: languageCode},
 	{Key: GoogleBooksKey, Kind: KindSecret},
 	{Key: HardcoverToken, Kind: KindSecret},
+	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
+	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
+	{Key: Providers, Kind: KindText, Default: "openlibrary", Check: names},
 }
 
 func definition(key string) (Definition, bool) {
@@ -75,6 +87,42 @@ func languageCode(v string) (string, error) {
 		return "", errors.New("Give a language as its two-letter code, such as en or de.")
 	}
 	return v, nil
+}
+
+func onOff(v string) (string, error) {
+	switch v = strings.ToLower(strings.TrimSpace(v)); v {
+	case "on", "off":
+		return v, nil
+	}
+	return "", errors.New("Say on or off.")
+}
+
+func threshold(v string) (string, error) {
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil || f < 0.5 || f > 1 {
+		return "", errors.New("Give a number from 0.5 to 1, such as 0.95.")
+	}
+	return strconv.FormatFloat(f, 'f', -1, 64), nil
+}
+
+// names keeps a list of provider names in one spelling: "openlibrary,google".
+// Which names exist is the metadata package's to know; an unknown one is
+// asked nothing.
+func names(v string) (string, error) {
+	var out []string
+	for name := range strings.SplitSeq(strings.ToLower(v), ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if strings.IndexFunc(name, func(r rune) bool { return (r < 'a' || r > 'z') && (r < '0' || r > '9') }) >= 0 {
+			return "", errors.New("List the sources by name, separated by commas, such as openlibrary,google.")
+		}
+		if !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	return strings.Join(out, ","), nil
 }
 
 var (

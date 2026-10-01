@@ -39,10 +39,12 @@ type jobView struct {
 	LastError   string     `json:"lastError,omitempty"`
 	LibraryID   *uuid.UUID `json:"libraryId,omitempty"`
 	LibraryName string     `json:"libraryName,omitempty"`
-	// FileID, FilePath and BookID are the file a reading job reads.
-	FileID   *uuid.UUID `json:"fileId,omitempty"`
-	FilePath string     `json:"filePath,omitempty"`
-	BookID   *uuid.UUID `json:"bookId,omitempty"`
+	// FileID and FilePath are the file a job reads or writes, BookID and
+	// BookTitle the book it is about or the file's.
+	FileID    *uuid.UUID `json:"fileId,omitempty"`
+	FilePath  string     `json:"filePath,omitempty"`
+	BookID    *uuid.UUID `json:"bookId,omitempty"`
+	BookTitle string     `json:"bookTitle,omitempty"`
 }
 
 type jobList struct {
@@ -67,7 +69,7 @@ func toJobView(j ingest.JobStatus) jobView {
 		ID: j.ID, Kind: j.Kind, State: j.State, Attempt: j.Attempt, MaxAttempts: j.MaxAttempts,
 		CreatedAt: j.CreatedAt, ScheduledAt: j.ScheduledAt, AttemptedAt: j.AttemptedAt, FinalizedAt: j.FinalizedAt,
 		LastError: j.LastError, LibraryID: j.LibraryID, LibraryName: j.LibraryName,
-		FileID: j.FileID, FilePath: j.FilePath, BookID: j.BookID,
+		FileID: j.FileID, FilePath: j.FilePath, BookID: j.BookID, BookTitle: j.BookTitle,
 	}
 }
 

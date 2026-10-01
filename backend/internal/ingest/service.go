@@ -108,6 +108,9 @@ type Service struct {
 	Queue Queue
 	// UploadLimit is the largest file Upload takes, in bytes.
 	UploadLimit int64
+	// OnExtracted, when set, runs in the transaction that records what a
+	// file says about its book: looking the book up starts there.
+	OnExtracted func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.

@@ -19,6 +19,18 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.hardcoverToken",
 		hint: "settings.hardcoverToken.hint",
 	},
+	"metadata.autoMatch": {
+		label: "settings.autoMatch",
+		hint: "settings.autoMatch.hint",
+	},
+	"metadata.matchThreshold": {
+		label: "settings.matchThreshold",
+		hint: "settings.matchThreshold.hint",
+	},
+	"metadata.providers": {
+		label: "settings.providers",
+		hint: "settings.providers.hint",
+	},
 };
 
 export function AdminSettings() {

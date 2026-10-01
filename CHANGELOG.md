@@ -108,3 +108,11 @@ What changes for someone who runs or uses GOtome. The format follows
   fields stay, and each field taken says which source it came from. Covers
   are shown through GOtome, so the browser contacts nobody else. Works for
   books without files too.
+- New books are looked up by themselves once their files are read. A sure
+  match (by default one with the same ISBN, or nearly as good) fills in what
+  the book is missing — description, date, publisher, people, cover and the
+  like — and changes nothing it already has or that is locked; a doubtful
+  one waits for review. The administrator's settings switch this off, set
+  how sure is sure enough, and choose the sources.
+- `GOTOME_OFFLINE=true` keeps GOtome from asking any metadata source on the
+  internet.

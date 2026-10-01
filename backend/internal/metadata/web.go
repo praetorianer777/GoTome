@@ -74,6 +74,9 @@ type Options struct {
 	// Language is the BCP 47 tag asked for when a book has none, read on
 	// every search: an administrator may change it. Nil asks for none.
 	Language func(context.Context) string
+	// Enabled names the providers to ask, read on every search. Nil asks
+	// them all.
+	Enabled func(context.Context) []string
 	// AllowPrivate lets requests reach addresses inside the server's own
 	// network. Only tests set it, for a provider served on the loopback.
 	AllowPrivate bool
@@ -84,6 +87,7 @@ type Service struct {
 	providers []Provider
 	webs      map[string]Web
 	language  func(context.Context) string
+	enabled   func(context.Context) []string
 	// tokenKey signs cover tokens. It is new with every start: a token is
 	// good for as long as the page that holds it.
 	tokenKey []byte
@@ -93,7 +97,7 @@ type Service struct {
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language, tokenKey: make([]byte, 32)}
+	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
 	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)
