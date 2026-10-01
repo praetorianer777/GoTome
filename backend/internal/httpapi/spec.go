@@ -48,6 +48,13 @@ func Spec() *openapi.Document {
 		b.FieldOverrides[field] = roles
 	}
 	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
+	b.FieldOverrides["CoverForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
+	b.FieldOverrides["Contributor.role"] = &openapi.Schema{Type: "string", Enum: []string{
+		catalog.RoleAuthor, catalog.RoleNarrator, catalog.RoleTranslator, catalog.RoleEditor, catalog.RoleIllustrator,
+	}}
+	b.FieldOverrides["FieldState.source"] = &openapi.Schema{Type: "string", Enum: []string{
+		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider,
+	}}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},
 	}

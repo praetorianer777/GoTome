@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/names": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Author, series, publisher or tag names in use that begin as typed */
+        get: operations["listNames"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/search": {
         parameters: {
             query?: never;
@@ -186,6 +203,25 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        /** Change how a book is described, and lock what was changed */
+        patch: operations["editBook"];
+        trace?: never;
+    };
+    "/books/{bookId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Give a book another cover, and lock it */
+        put: operations["putBookCover"];
+        post?: never;
+        /** Take a book's cover away, and lock it so */
+        delete: operations["deleteBookCover"];
         options?: never;
         head?: never;
         patch?: never;
@@ -577,10 +613,13 @@ export interface components {
             coverKey?: string;
             description?: string;
             durationMs?: number;
+            fields: {
+                [key: string]: components["schemas"]["FieldState"];
+            };
             files: components["schemas"]["BookFile"][];
             /** Format: uuid */
             id: string;
-            identifiers: components["schemas"]["Identifier"][];
+            identifiers: components["schemas"]["BookIdentifier"][];
             language?: string;
             /** Format: uuid */
             libraryId: string;
@@ -609,6 +648,11 @@ export interface components {
             part?: number;
             relPath?: string;
             size: number;
+        };
+        BookIdentifier: {
+            fromFile: boolean;
+            type: string;
+            value: string;
         };
         BookList: {
             books: components["schemas"]["BookSummary"][];
@@ -640,7 +684,12 @@ export interface components {
         };
         Contributor: {
             name: string;
-            role: string;
+            /** @enum {string} */
+            role: "author" | "narrator" | "translator" | "editor" | "illustrator";
+        };
+        CoverForm: {
+            /** Format: binary */
+            file: string;
         };
         CreateAccountRequest: {
             email?: string;
@@ -665,6 +714,22 @@ export interface components {
             role: "admin" | "editor" | "reader";
             username: string;
         };
+        EditBookRequest: {
+            contributors?: components["schemas"]["Contributor"][];
+            description?: string;
+            identifiers?: components["schemas"]["Identifier"][];
+            language?: string;
+            locks?: {
+                [key: string]: boolean;
+            };
+            pageCount?: number;
+            published?: string;
+            publisher?: string;
+            series?: components["schemas"]["SeriesPlace"];
+            subtitle?: string;
+            tags?: string[];
+            title?: string;
+        };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
@@ -680,6 +745,12 @@ export interface components {
             count: number;
             label: string;
             value: string;
+        };
+        FieldState: {
+            detail?: string;
+            locked: boolean;
+            /** @enum {string} */
+            source?: "file" | "filename" | "manual" | "provider";
         };
         Identifier: {
             type: string;
@@ -746,6 +817,9 @@ export interface components {
         MemberList: {
             members: components["schemas"]["Member"][];
         };
+        NameList: {
+            names: string[];
+        };
         RereadLibraryRequest: {
             failedOnly: boolean;
         };
@@ -794,6 +868,10 @@ export interface components {
         };
         SearchResult: {
             books: components["schemas"]["SearchHit"][];
+        };
+        SeriesPlace: {
+            index?: number;
+            name: string;
         };
         SessionList: {
             sessions: components["schemas"]["SessionView"][];
@@ -1167,6 +1245,42 @@ export interface operations {
             };
         };
     };
+    listNames: {
+        parameters: {
+            query?: {
+                /** @description Which names to look in. */
+                kind?: "author" | "series" | "publisher" | "tag";
+                /** @description The beginning of a word of the name. */
+                q?: string;
+                /** @description How many names to return, at most 50; 10 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchBooks: {
         parameters: {
             query?: {
@@ -1202,6 +1316,107 @@ export interface operations {
         };
     };
     getBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    editBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditBookRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putBookCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["CoverForm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteBookCover: {
         parameters: {
             query?: never;
             header?: never;

@@ -443,6 +443,75 @@
         "x-permission": "library:read"
       }
     },
+    "/books/names": {
+      "get": {
+        "operationId": "listNames",
+        "summary": "Author, series, publisher or tag names in use that begin as typed",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Which names to look in.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "author",
+                "series",
+                "publisher",
+                "tag"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "The beginning of a word of the name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many names to return, at most 50; 10 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NameList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/books/search": {
       "get": {
         "operationId": "searchBooks",
@@ -543,6 +612,163 @@
           }
         ],
         "x-permission": "library:read"
+      },
+      "patch": {
+        "operationId": "editBook",
+        "summary": "Change how a book is described, and lock what was changed",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditBookRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/books/{bookId}/cover": {
+      "delete": {
+        "operationId": "deleteBookCover",
+        "summary": "Take a book's cover away, and lock it so",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      },
+      "put": {
+        "operationId": "putBookCover",
+        "summary": "Give a book another cover, and lock it",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
       }
     },
     "/books/{bookId}/covers/{size}": {
@@ -1913,6 +2139,12 @@
           "durationMs": {
             "type": "integer"
           },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldState"
+            }
+          },
           "files": {
             "type": "array",
             "items": {
@@ -1926,7 +2158,7 @@
           "identifiers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Identifier"
+              "$ref": "#/components/schemas/BookIdentifier"
             }
           },
           "language": {
@@ -1972,7 +2204,8 @@
           "tags",
           "identifiers",
           "files",
-          "addedAt"
+          "addedAt",
+          "fields"
         ]
       },
       "BookFile": {
@@ -2031,6 +2264,25 @@
           "missing",
           "drm",
           "extractState"
+        ]
+      },
+      "BookIdentifier": {
+        "type": "object",
+        "properties": {
+          "fromFile": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "fromFile"
         ]
       },
       "BookList": {
@@ -2141,12 +2393,31 @@
             "type": "string"
           },
           "role": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "author",
+              "narrator",
+              "translator",
+              "editor",
+              "illustrator"
+            ]
           }
         },
         "required": [
           "name",
           "role"
+        ]
+      },
+      "CoverForm": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
         ]
       },
       "CreateAccountRequest": {
@@ -2246,6 +2517,59 @@
           "permissions"
         ]
       },
+      "EditBookRequest": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "locks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "series": {
+            "$ref": "#/components/schemas/SeriesPlace"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "ErrorEnvelope": {
         "type": "object",
         "properties": {
@@ -2314,6 +2638,29 @@
           "value",
           "label",
           "count"
+        ]
+      },
+      "FieldState": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "file",
+              "filename",
+              "manual",
+              "provider"
+            ]
+          }
+        },
+        "required": [
+          "locked"
         ]
       },
       "Identifier": {
@@ -2530,6 +2877,20 @@
           "members"
         ]
       },
+      "NameList": {
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "names"
+        ]
+      },
       "RereadLibraryRequest": {
         "type": "object",
         "properties": {
@@ -2697,6 +3058,20 @@
         },
         "required": [
           "books"
+        ]
+      },
+      "SeriesPlace": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "SessionList": {
