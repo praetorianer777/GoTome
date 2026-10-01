@@ -6,7 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
-import type { BookEdit } from "@/books/edit";
+import type { BookEdit, Candidate, CandidateApply } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
@@ -75,6 +75,8 @@ export class FakeServer {
 	];
 	/** The jobs the jobs page lists, newest first. */
 	jobs: Job[] = [];
+	/** What the metadata providers know, by book. */
+	candidates: Record<string, { candidates: Candidate[]; failures: { provider: string; message: string }[] }> = {};
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -370,6 +372,13 @@ export class FakeServer {
 		if (path === "/books/names") {
 			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
 		}
+		const asked = /^\/books\/([^/]+)\/candidates(\/apply)?$/.exec(path);
+		if (asked && !asked[2]) {
+			return Response.json(this.candidates[asked[1] ?? ""] ?? { candidates: [], failures: [] });
+		}
+		if (asked?.[2]) {
+			return this.applyCandidate(asked[1] ?? "", body as CandidateApply);
+		}
 		if (method !== "GET") {
 			return this.editBook(method, path, body as BookEdit | undefined);
 		}
@@ -427,6 +436,27 @@ export class FakeServer {
 		);
 		const q = typed.toLowerCase();
 		return [...new Set(all)].filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)));
+	}
+
+	/** Takes a candidate's values the way the server does: locked fields stay. */
+	private applyCandidate(id: string, body: CandidateApply): Response {
+		const book = this.books.find((b) => b.id === id);
+		if (!book) {
+			return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+		}
+		const { provider, coverToken, ...values } = body;
+		const fields = Object.keys(values).filter((f) => !book.fields[f]?.locked);
+		const edit: Record<string, unknown> = {};
+		for (const f of fields) edit[f] = values[f as keyof typeof values];
+		this.editBook("PATCH", `/books/${id}`, edit as BookEdit);
+		for (const f of fields) {
+			book.fields[f] = { source: "provider", detail: provider, locked: false };
+		}
+		if (coverToken && !book.fields.cover?.locked) {
+			book.coverKey = `cover-${coverToken}`;
+			book.fields.cover = { source: "provider", detail: provider, locked: false };
+		}
+		return Response.json(book);
 	}
 
 	private editBook(method: string, path: string, edit: BookEdit | undefined): Response {

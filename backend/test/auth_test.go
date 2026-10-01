@@ -80,7 +80,10 @@ type app struct {
 	// dataDir is where this app's managed libraries are created.
 	dataDir string
 	scans   *ingest.Service
-	covers  *covers.Store
+	// server is the app's; a test may give it what most tests do without,
+	// such as metadata providers, before its first request.
+	server *httpapi.Server
+	covers *covers.Store
 	// box seals this app's secrets; settings keeps them.
 	box      *secret.Box
 	settings *settings.Store
@@ -126,7 +129,7 @@ func newApp(t *testing.T) *app {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &httpapi.Server{
+	a.server = &httpapi.Server{
 		// Everything the server logs, so that a test can look for what must
 		// not be in it.
 		Log:       slog.New(slog.NewTextHandler(&a.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
@@ -139,7 +142,7 @@ func newApp(t *testing.T) *app {
 		Books:     catalog.NewService(a.pool),
 		Covers:    a.covers,
 	}
-	srv := httptest.NewServer(server.Routes())
+	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL
 	return a

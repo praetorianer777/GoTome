@@ -124,13 +124,22 @@ function BookPage({ book }: { book: BookDetail }) {
 							</p>
 						)}
 						{can(user, "metadata:edit") && (
-							<Link
-								to="/books/$bookId/edit"
-								params={{ bookId: book.id }}
-								className="mt-2 self-start rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
-							>
-								{t("book.edit")}
-							</Link>
+							<div className="mt-2 flex flex-wrap gap-2">
+								<Link
+									to="/books/$bookId/edit"
+									params={{ bookId: book.id }}
+									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+								>
+									{t("book.edit")}
+								</Link>
+								<Link
+									to="/books/$bookId/find"
+									params={{ bookId: book.id }}
+									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+								>
+									{t("book.find")}
+								</Link>
+							</div>
 						)}
 					</header>
 

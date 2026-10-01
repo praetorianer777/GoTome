@@ -669,6 +669,110 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/candidates": {
+      "get": {
+        "operationId": "listCandidates",
+        "summary": "What the metadata providers know about a book, the best fit first",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/books/{bookId}/candidates/apply": {
+      "post": {
+        "operationId": "applyCandidate",
+        "summary": "Take chosen values from a provider's record; locked fields stay",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyCandidateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/books/{bookId}/cover": {
       "delete": {
         "operationId": "deleteBookCover",
@@ -1601,6 +1705,54 @@
         "x-permission": "books:upload"
       }
     },
+    "/metadata/covers/{token}": {
+      "get": {
+        "operationId": "getCandidateCover",
+        "summary": "A provider's cover for a candidate, fetched through the server",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "listSettings",
@@ -2117,6 +2269,68 @@
           "users"
         ]
       },
+      "ApplyCandidateRequest": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "locks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "series": {
+            "$ref": "#/components/schemas/SeriesPlace"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ]
+      },
       "BookDetail": {
         "type": "object",
         "properties": {
@@ -2369,6 +2583,98 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "CandidateList": {
+        "type": "object",
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CandidateView"
+            }
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderFailure"
+            }
+          }
+        },
+        "required": [
+          "candidates",
+          "failures"
+        ]
+      },
+      "CandidateView": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "id",
+          "score",
+          "title",
+          "contributors",
+          "tags",
+          "identifiers"
         ]
       },
       "ChangePasswordRequest": {
@@ -2889,6 +3195,21 @@
         },
         "required": [
           "names"
+        ]
+      },
+      "ProviderFailure": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "message"
         ]
       },
       "RereadLibraryRequest": {

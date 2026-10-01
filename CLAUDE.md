@@ -313,6 +313,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
   It is not a check on pull requests.
 - Providers: `openlibrary` (no key, 400 ms between requests).
+- `GET /books/{id}/candidates` asks the providers; `POST .../candidates/apply`
+  takes chosen values as an edit with `Source` `provider:<name>`, which skips
+  locked fields and locks nothing. A candidate's cover reaches the browser
+  only through `GET /metadata/covers/{token}`: tokens are HMACs the process
+  signs, so the server never fetches an address a client made up.
 
 ## Background jobs
 

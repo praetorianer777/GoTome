@@ -1038,3 +1038,58 @@ describe("editing a book", () => {
 		expect(screen.queryByRole("link", { name: "Edit details" })).not.toBeInTheDocument();
 	});
 });
+
+describe("finding details online", () => {
+	it("compares a result with the book and takes the ticked, unlocked fields", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma (my copy)", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				identifiers: [{ type: "isbn", value: "9780141439587", fromFile: false }],
+				fields: { title: { source: "manual", locked: true } },
+			});
+		server.candidates["book-1"] = {
+			candidates: [
+				{
+					provider: "openlibrary", id: "OL1M", score: 1, title: "Emma", publisher: "Penguin", published: "2003",
+					description: "A comedy of manners.", contributors: [{ name: "Jane Austen", role: "author" }], tags: [],
+					identifiers: [{ type: "isbn", value: "9780141439587" }, { type: "openlibrary", value: "OL1M" }],
+				},
+				{
+					provider: "openlibrary", id: "OL2W", score: 0.4, title: "Emma: A Play", contributors: [], tags: [], identifiers: [],
+				},
+			],
+			failures: [{ provider: "google", message: "It asks to be asked again later." }],
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Find details online" }));
+
+		expect(await screen.findByText("google did not answer: It asks to be asked again later.")).toBeInTheDocument();
+		const results = screen.getByRole("list", { name: "What the sources found" });
+		expect(within(results).getByText("Same ISBN")).toBeInTheDocument();
+		expect(within(results).getByText("40% match")).toBeInTheDocument();
+		await person.click(within(results).getAllByRole("button")[0] as HTMLElement);
+
+		const take = (field: string) => screen.getByRole("checkbox", { name: `Take ${field}` });
+		expect(take("Title")).toBeDisabled();
+		expect(take("Publisher")).toBeChecked();
+		await person.click(take("Description"));
+		await person.click(screen.getByRole("button", { name: "Take what is ticked" }));
+
+		expect(await screen.findByText("Penguin")).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-1");
+		expect(server.requests.find((r) => r.path.endsWith("/candidates/apply"))?.body).toEqual({
+			provider: "openlibrary",
+			publisher: "Penguin",
+			published: "2003",
+			identifiers: [
+				{ type: "isbn", value: "9780141439587" },
+				{ type: "openlibrary", value: "OL1M" },
+			],
+		});
+		expect(screen.getByRole("heading", { name: "Emma (my copy)", level: 1 })).toBeInTheDocument();
+	});
+});

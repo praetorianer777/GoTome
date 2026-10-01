@@ -102,3 +102,9 @@ What changes for someone who runs or uses GOtome. The format follows
   chosen by hand. The book's text is never touched, and a file is only
   replaced once the new one is complete and checked. Files in read-only
   libraries keep what they say.
+- Finding details online. On a book's page, "Find details online" asks
+  OpenLibrary what it knows, ranks the results by how well they fit, and
+  shows field by field what one would change. Tick what to take; locked
+  fields stay, and each field taken says which source it came from. Covers
+  are shown through GOtome, so the browser contacts nobody else. Works for
+  books without files too.

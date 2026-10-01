@@ -27,6 +27,8 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/version"
@@ -173,7 +175,13 @@ func serve() error {
 		Scans:     scans,
 		Books:     catalog.NewService(pool),
 		Covers:    coverStore,
-		Web:       webui.Handler(),
+		Metadata: metadata.NewService(pool, []metadata.Provider{openlibrary.New()}, metadata.Options{
+			Language: func(ctx context.Context) string {
+				lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
+				return lang
+			},
+		}),
+		Web: webui.Handler(),
 	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
