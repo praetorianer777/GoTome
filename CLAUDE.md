@@ -306,8 +306,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   title and authors where that finds nothing, and ranks with `Score`: 1 only
   for a shared identifier.
 - Provider tests run against `metadata.NewFixtures`, recorded answers in the
-  provider's `testdata`; a missing one fails the test. Record with
-  `GOTOME_RECORD_FIXTURES=1`, by hand. The gate never reaches a provider.
+  provider's `testdata`; a missing one fails the test. `make record-fixtures`
+  records what is missing from the live APIs; the owner runs it, as the agent
+  does not download from outside. The gate never reaches a provider.
+- Each provider has a `TestLiveContract`, skipped unless `GOTOME_LIVE` is
+  set; `make contract-test` and the nightly `contract.yml` workflow run them.
+  It is not a check on pull requests.
+- Providers: `openlibrary` (no key, 400 ms between requests).
 
 ## Background jobs
 

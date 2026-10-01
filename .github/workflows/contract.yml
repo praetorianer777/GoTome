@@ -1,0 +1,30 @@
+name: Provider contracts
+
+# Asks the live metadata APIs whether they still answer as the recorded
+# fixtures say. It is not a check on pull requests: a provider's bad night
+# must not block anyone's merge. A failure here means the fixtures, and
+# perhaps the provider's code, need looking at.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the Go module and build caches
+        uses: actions/cache@v4
+        with:
+          path: .cache/go
+          key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Ask the live providers
+        run: make contract-test

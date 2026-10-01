@@ -73,3 +73,12 @@ openapi-check: | $(GO_CACHE) go-toolchain ## Fail when api/openapi.json differs 
 
 .PHONY: check-go
 check-go: fmt-check vet test-go openapi-check sqlc-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift
+
+# Both reach the internet, which nothing in the gate does.
+.PHONY: record-fixtures
+record-fixtures: | $(GO_CACHE) go-toolchain ## Record the provider answers their tests replay that are missing (asks the live APIs)
+	$(call go_run,-e GOTOME_RECORD_FIXTURES=1) go test -count=1 ./internal/metadata/...
+
+.PHONY: contract-test
+contract-test: | $(GO_CACHE) go-toolchain ## Ask the live metadata providers whether they still answer as the fixtures say
+	$(call go_run,-e GOTOME_LIVE=1) go test -count=1 -run Live -v ./internal/metadata/...
