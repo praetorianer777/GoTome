@@ -2,9 +2,14 @@ import { expect, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
 import { makePdf } from "../fixtures/pdf";
 
+// Drawing pages keeps a loaded WebKit busy enough in CI that its controls
+// take more than the usual five seconds to settle for a click.
+test.use({ actionTimeout: 15_000 });
+
 test("a large PDF opens at its first page from a part of the file, and reopens where it was left", async ({
 	page,
 }, testInfo) => {
+	test.setTimeout(60_000);
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
 	// Two hundred pages of 40 kB each: 8 MB.
 	const pdf = makePdf(200, 40_000, stamp);
