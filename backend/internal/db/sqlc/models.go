@@ -146,6 +146,16 @@ type LibraryScan struct {
 	Error         *string
 }
 
+type ProviderRecord struct {
+	Provider   string
+	RequestKey []byte
+	Url        string
+	Status     int32
+	Body       []byte
+	FetchedAt  time.Time
+	ExpiresAt  time.Time
+}
+
 type Publisher struct {
 	ID      uuid.UUID
 	Name    string
