@@ -35,6 +35,10 @@ type Account struct {
 	LastSeenAt *time.Time
 	// Sessions is how many live sessions the account has.
 	Sessions int
+	// QuotaBytes is how much the account may upload; nil is no limit.
+	QuotaBytes *int64
+	// UsedBytes is what its uploads take up now.
+	UsedBytes int64
 }
 
 // NewAccount is what creating an account takes.
@@ -84,9 +88,20 @@ func (s *Service) Accounts(ctx context.Context) ([]Account, error) {
 	for _, u := range use {
 		byUser[u.UserID] = u
 	}
+	storage, err := q.ListStorageUse(ctx)
+	if err != nil {
+		return nil, err
+	}
+	used := map[uuid.UUID]int64{}
+	for _, u := range storage {
+		if u.UserID != nil {
+			used[*u.UserID] = u.UsedBytes
+		}
+	}
 	out := make([]Account, len(rows))
 	for i, row := range rows {
 		out[i] = toAccount(row)
+		out[i].UsedBytes = used[row.ID]
 		if u, ok := byUser[row.ID]; ok {
 			out[i].LastSeenAt = &u.LastSeenAt
 			out[i].Sessions = int(u.Live)
@@ -96,7 +111,23 @@ func (s *Service) Accounts(ctx context.Context) ([]Account, error) {
 }
 
 func toAccount(row sqlc.User) Account {
-	return Account{User: toUser(row), Disabled: row.DisabledAt != nil, CreatedAt: row.CreatedAt}
+	return Account{User: toUser(row), Disabled: row.DisabledAt != nil, CreatedAt: row.CreatedAt, QuotaBytes: row.QuotaBytes}
+}
+
+// SetQuota sets how much the account may upload; nil is no limit. What it
+// has uploaded already stays, even when that is more.
+func (s *Service) SetQuota(ctx context.Context, id uuid.UUID, quotaBytes *int64) (Account, error) {
+	if quotaBytes != nil && *quotaBytes < 0 {
+		return Account{}, &ValidationError{Fields: map[string]string{"quotaBytes": "A quota is zero or more."}}
+	}
+	row, err := sqlc.New(s.pool).SetQuota(ctx, sqlc.SetQuotaParams{ID: id, QuotaBytes: quotaBytes})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Account{}, ErrNoUser
+	}
+	if err != nil {
+		return Account{}, err
+	}
+	return toAccount(row), nil
 }
 
 // CreateAccount adds an account with a password.

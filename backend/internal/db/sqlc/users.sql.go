@@ -134,6 +134,30 @@ func (q *Queries) ListSessionUse(ctx context.Context, now time.Time) ([]ListSess
 	return items, nil
 }
 
+const listStorageUse = `-- name: ListStorageUse :many
+SELECT user_id, used_bytes FROM storage_use
+`
+
+func (q *Queries) ListStorageUse(ctx context.Context) ([]StorageUse, error) {
+	rows, err := q.db.Query(ctx, listStorageUse)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StorageUse{}
+	for rows.Next() {
+		var i StorageUse
+		if err := rows.Scan(&i.UserID, &i.UsedBytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users ORDER BY lower(username)
 `
@@ -220,6 +244,33 @@ type SetPasswordParams struct {
 func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error {
 	_, err := q.db.Exec(ctx, setPassword, arg.ID, arg.PasswordHash)
 	return err
+}
+
+const setQuota = `-- name: SetQuota :one
+UPDATE users SET quota_bytes = $2, updated_at = now() WHERE id = $1
+RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+`
+
+type SetQuotaParams struct {
+	ID         uuid.UUID
+	QuotaBytes *int64
+}
+
+func (q *Queries) SetQuota(ctx context.Context, arg SetQuotaParams) (User, error) {
+	row := q.db.QueryRow(ctx, setQuota, arg.ID, arg.QuotaBytes)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.QuotaBytes,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUser = `-- name: UpdateUser :one

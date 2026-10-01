@@ -837,3 +837,38 @@ describe("profile", () => {
 		expect(server.accounts.get("rita")?.password).toBe("a new long password");
 	});
 });
+
+describe("quotas", () => {
+	it("lets an administrator set a quota, which the uploader sees and meets", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Steve")
+			.withLibrary("Novels");
+		const { unmount } = renderApp("/admin/users");
+
+		const edith = within(await screen.findByRole("listitem", { name: "Edith" }));
+		expect(edith.getByText("Uploads take up 0 B; no limit.")).toBeInTheDocument();
+		await person.type(edith.getByLabelText("Upload quota in GB"), "lots");
+		await person.click(edith.getByRole("button", { name: "Set the quota" }));
+		expect(edith.getByText("Give a number of gigabytes, or nothing for no limit.")).toBeInTheDocument();
+		await person.clear(edith.getByLabelText("Upload quota in GB"));
+		await person.type(edith.getByLabelText("Upload quota in GB"), "0,00001");
+		await person.click(edith.getByRole("button", { name: "Set the quota" }));
+		expect(await edith.findByText("Uploads take up 0 B of 10 KB.")).toBeInTheDocument();
+		expect(server.accounts.get("edith")?.quotaBytes).toBe(10_000);
+		unmount();
+
+		server.signedInAs("Edith");
+		renderApp("/upload");
+		expect(await screen.findByText("Your uploads take up 0 B of the 10 KB you may use.")).toBeInTheDocument();
+		await person.upload(screen.getByLabelText("Choose files"), [
+			new File(["x".repeat(6000)], "Small.pdf"),
+			new File(["y".repeat(6000)], "Second.pdf"),
+		]);
+		expect(await within(await screen.findByRole("listitem", { name: "Small.pdf" })).findByText("Added.")).toBeInTheDocument();
+		expect(await within(screen.getByRole("listitem", { name: "Second.pdf" })).findByText("This file does not fit into your storage.")).toBeInTheDocument();
+		expect(await screen.findByText("Your uploads take up 6 KB of the 10 KB you may use.")).toBeInTheDocument();
+	});
+});

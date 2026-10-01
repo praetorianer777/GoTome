@@ -10,6 +10,9 @@ export const en = {
 	"nav.main": "Main",
 	"nav.skip": "Skip to the content",
 
+	"storage.unlimited": "Your uploads take up {used}. There is no limit.",
+	"storage.limited": "Your uploads take up {used} of the {quota} you may use.",
+
 	"search.label": "Search books",
 	"search.placeholder": "Title, author or series  ( / )",
 	"search.results": "Books found",
@@ -128,6 +131,11 @@ export const en = {
 		"At least 8 characters. Every session of the account ends; tell them the new one.",
 	"users.newPassword.save": "Save the password",
 	"users.cancel": "Cancel",
+	"users.quota": "Upload quota in GB",
+	"users.quota.invalid": "Give a number of gigabytes, or nothing for no limit.",
+	"users.quota.save": "Set the quota",
+	"users.quota.used": "Uploads take up {used}; no limit.",
+	"users.quota.usedOf": "Uploads take up {used} of {quota}.",
 	"users.add": "Add a user",
 	"users.add.passwordHint": "At least 8 characters. They can change it on their own page.",
 	"users.add.submit": "Add the user",
@@ -135,6 +143,7 @@ export const en = {
 
 	"profile.title": "Your account",
 	"profile.who": "Signed in as {name}, {role}.",
+	"profile.storage": "Storage",
 	"profile.password": "Password",
 	"profile.password.current": "Current password",
 	"profile.password.new": "New password",

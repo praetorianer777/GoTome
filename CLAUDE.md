@@ -231,6 +231,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - A duplicate is the same SHA-256 in a library the uploader may see: nothing
   is stored and the answer points to that book. What the uploader may not see
   does not count, or the answer would tell what a private library holds.
+- What a user's uploads take up is the view `storage_use` (their files that are
+  neither missing nor trashed); `users.quota_bytes` NULL is no limit. An upload is
+  checked three times: against the request's length before the body is read, by
+  the room left while it streams, and under the per-user lock `LockUserStorage` in
+  the transaction that records it, which two parallel uploads cannot both pass.
 - The web app sends uploads with `XMLHttpRequest` (`web/src/books/upload.ts`)
   for the progress, not through the typed client; the fake server stubs it.
 

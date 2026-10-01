@@ -54,6 +54,25 @@ func (q *Queries) GetBookTitle(ctx context.Context, id uuid.UUID) (string, error
 	return title, err
 }
 
+const getUserStorage = `-- name: GetUserStorage :one
+SELECT u.quota_bytes, COALESCE(s.used_bytes, 0)::bigint AS used_bytes
+FROM users u
+LEFT JOIN storage_use s ON s.user_id = u.id
+WHERE u.id = $1
+`
+
+type GetUserStorageRow struct {
+	QuotaBytes *int64
+	UsedBytes  int64
+}
+
+func (q *Queries) GetUserStorage(ctx context.Context, id uuid.UUID) (GetUserStorageRow, error) {
+	row := q.db.QueryRow(ctx, getUserStorage, id)
+	var i GetUserStorageRow
+	err := row.Scan(&i.QuotaBytes, &i.UsedBytes)
+	return i, err
+}
+
 const listFolderFiles = `-- name: ListFolderFiles :many
 SELECT id, book_id, rel_path, part_index
 FROM book_files
@@ -139,5 +158,15 @@ SELECT pg_advisory_xact_lock(hashtextextended('book_files:' || $1::uuid::text, 0
 // it, and sees every path the other has taken.
 func (q *Queries) LockLibraryFiles(ctx context.Context, libraryID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, lockLibraryFiles, libraryID)
+	return err
+}
+
+const lockUserStorage = `-- name: LockUserStorage :exec
+SELECT pg_advisory_xact_lock(hashtextextended('storage:' || $1::uuid::text, 0))
+`
+
+// Two uploads of one user at once must not both find room for themselves.
+func (q *Queries) LockUserStorage(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, lockUserStorage, userID)
 	return err
 }

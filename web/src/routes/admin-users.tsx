@@ -3,11 +3,12 @@ import { type FormEvent, useState } from "react";
 import type { CurrentUser } from "@/auth/session";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatSize } from "@/lib/format";
 import {
 	type Account,
 	useCreateUser,
 	useEndUserSessions,
+	useSetQuota,
 	useUpdateUser,
 	usersQuery,
 } from "@/users/api";
@@ -163,6 +164,7 @@ function UserRow({ account, isMe }: { account: Account; isMe: boolean }) {
 					</button>
 				</form>
 			)}
+			<Quota account={account} />
 			{!errors.password && (
 				<FormError error={update.error ?? endSessions.error} />
 			)}
@@ -251,5 +253,55 @@ function CreateUser() {
 				</div>
 			</form>
 		</section>
+	);
+}
+
+/** A gigabyte as the sizes on this page count it, by the thousand. */
+const GB = 1_000_000_000;
+
+function Quota({ account }: { account: Account }) {
+	const setQuota = useSetQuota();
+	const [gb, setGb] = useState(
+		account.quotaBytes === undefined ? "" : String(account.quotaBytes / GB),
+	);
+	const errors = fieldErrors(setQuota.error);
+	const typed = gb.trim().replace(",", ".");
+	const invalid = typed !== "" && !(Number(typed) >= 0);
+
+	function submit(event: FormEvent) {
+		event.preventDefault();
+		if (invalid) {
+			return;
+		}
+		setQuota.mutate({
+			id: account.id,
+			quotaBytes: typed === "" ? null : Math.round(Number(typed) * GB),
+		});
+	}
+
+	return (
+		<form onSubmit={submit} className="flex flex-wrap items-end gap-3" noValidate>
+			<div className="w-40">
+				<Field
+					label={t("users.quota")}
+					inputMode="decimal"
+					value={gb}
+					onChange={(e) => setGb(e.target.value)}
+					error={invalid ? t("users.quota.invalid") : errors.quotaBytes}
+				/>
+			</div>
+			<button type="submit" disabled={setQuota.isPending} className={quietButton}>
+				{t("users.quota.save")}
+			</button>
+			<p className="pb-1 text-sm text-slate-600 dark:text-slate-400">
+				{account.quotaBytes === undefined
+					? t("users.quota.used", { used: formatSize(account.usedBytes) })
+					: t("users.quota.usedOf", {
+							used: formatSize(account.usedBytes),
+							quota: formatSize(account.quotaBytes),
+						})}
+			</p>
+			<FormError error={Object.keys(errors).length === 0 ? setQuota.error : undefined} />
+		</form>
 	);
 }

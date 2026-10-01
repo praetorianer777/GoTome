@@ -62,6 +62,49 @@ const (
 	maxNameTries = 100
 )
 
+// Storage is what a user's uploads take up, and how much they may.
+type Storage struct {
+	UsedBytes int64
+	// QuotaBytes is nil for no limit.
+	QuotaBytes *int64
+}
+
+// QuotaError is an upload that would take its uploader past their quota.
+type QuotaError struct {
+	Storage
+}
+
+func (e *QuotaError) Error() string {
+	return fmt.Sprintf("the upload would pass the quota: %d of %d bytes used", e.UsedBytes, *e.QuotaBytes)
+}
+
+// Storage returns what the user's uploads take up and may.
+func (s *Service) Storage(ctx context.Context, userID uuid.UUID) (Storage, error) {
+	return storageOf(ctx, sqlc.New(s.pool), userID)
+}
+
+func storageOf(ctx context.Context, q *sqlc.Queries, userID uuid.UUID) (Storage, error) {
+	row, err := q.GetUserStorage(ctx, userID)
+	if err != nil {
+		return Storage{}, err
+	}
+	return Storage{UsedBytes: row.UsedBytes, QuotaBytes: row.QuotaBytes}, nil
+}
+
+// CheckRoom returns a *QuotaError when a file of the size would not fit
+// into the user's quota, so that an upload is refused before its body is
+// read. Upload checks again with the size the file turns out to have.
+func (s *Service) CheckRoom(ctx context.Context, userID uuid.UUID, size int64) error {
+	st, err := s.Storage(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if st.QuotaBytes != nil && st.UsedBytes+size > *st.QuotaBytes {
+		return &QuotaError{Storage: st}
+	}
+	return nil
+}
+
 // Uploaded is what became of one uploaded file.
 type Uploaded struct {
 	// Outcome is added, or duplicate when a library the uploader can see
@@ -80,7 +123,8 @@ type Uploaded struct {
 // the catalogue. It lands in a folder named after the book the file name
 // suggests, with the other formats and parts of that book. A file whose
 // exact bytes the uploader can already see in any library is not stored
-// again.
+// again. A file that would take the uploader past their quota is refused
+// with a *QuotaError.
 //
 // The file is written to the library's staging folder first and moved into
 // place in the same transaction that records it, so an upload that fails or
@@ -106,10 +150,20 @@ func (s *Service) Upload(ctx context.Context, lib library.Library, scope library
 	staged := tmp.Name()
 	defer os.Remove(staged)
 
+	// The file may be as large as uploads may be, or as there is room left
+	// for, whichever is less; reading stops one byte past that.
+	storage, err := s.Storage(ctx, scope.Viewer)
+	if err != nil {
+		return Uploaded{}, err
+	}
+	room, tooLarge := s.UploadLimit, error(ErrUploadTooLarge)
+	if q := storage.QuotaBytes; q != nil && max(*q-storage.UsedBytes, 0) < room {
+		room, tooLarge = max(*q-storage.UsedBytes, 0), &QuotaError{Storage: storage}
+	}
 	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(body, s.UploadLimit+1))
-	if err == nil && n > s.UploadLimit {
-		err = ErrUploadTooLarge
+	n, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(body, room+1))
+	if err == nil && n > room {
+		err = tooLarge
 	}
 	if err == nil {
 		err = tmp.Sync()
@@ -144,6 +198,19 @@ func (s *Service) Upload(ctx context.Context, lib library.Library, scope library
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
+		}
+
+		// Under the uploader's own lock: another of their uploads may have
+		// taken the room since the file began to arrive.
+		if err := q.LockUserStorage(ctx, scope.Viewer); err != nil {
+			return err
+		}
+		st, err := storageOf(ctx, q, scope.Viewer)
+		if err != nil {
+			return err
+		}
+		if st.QuotaBytes != nil && st.UsedBytes+info.Size() > *st.QuotaBytes {
+			return &QuotaError{Storage: st}
 		}
 
 		folder := folderFor(stem, format)

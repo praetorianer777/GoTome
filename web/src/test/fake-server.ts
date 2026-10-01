@@ -48,6 +48,8 @@ interface Account {
 	password: string;
 	user: CurrentUser;
 	disabled?: boolean;
+	quotaBytes?: number;
+	usedBytes?: number;
 }
 
 /**
@@ -228,6 +230,13 @@ export class FakeServer {
 		if (known) {
 			return Response.json({ ...known, outcome: "duplicate", fileId: undefined });
 		}
+		const me = this.accounts.get(this.session.username.toLowerCase());
+		if (me?.quotaBytes !== undefined && (me.usedBytes ?? 0) + file.size > me.quotaBytes) {
+			return refuse(413, "over_quota", "This file does not fit into your storage.");
+		}
+		if (me) {
+			me.usedBytes = (me.usedBytes ?? 0) + file.size;
+		}
 		const title = file.name.slice(0, dot);
 		this.withBook(title, {}, library.name);
 		const book = this.books.at(-1) as BookDetail;
@@ -258,7 +267,7 @@ export class FakeServer {
 			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
 		}
 
-		if (path === "/users" || path.startsWith("/users/") || path.startsWith("/auth/sessions") || path === "/auth/password") {
+		if (path === "/users" || path.startsWith("/users/") || path.startsWith("/auth/sessions") || path === "/auth/password" || path === "/auth/storage") {
 			return this.answerAccounts(method, path, body as Record<string, unknown>, refuse);
 		}
 		if (path === "/settings") {
@@ -382,6 +391,9 @@ export class FakeServer {
 			this.sessions = this.sessions.filter((s) => s.current);
 			return new Response(null, { status: 204 });
 		}
+		if (path === "/auth/storage") {
+			return Response.json({ usedBytes: me?.usedBytes ?? 0, quotaBytes: me?.quotaBytes });
+		}
 		if (path === "/auth/sessions") {
 			return Response.json({ sessions: this.sessions });
 		}
@@ -399,6 +411,8 @@ export class FakeServer {
 			createdAt: "2026-01-01T00:00:00Z",
 			sessions: a.disabled ? 0 : 1,
 			lastSeenAt: "2026-01-02T00:00:00Z",
+			usedBytes: a.usedBytes ?? 0,
+			quotaBytes: a.quotaBytes,
 		});
 		if (path === "/users" && method === "GET") {
 			return Response.json({ users: [...this.accounts.values()].map(view) });
@@ -426,6 +440,10 @@ export class FakeServer {
 		}
 		if (path.endsWith("/sessions")) {
 			return new Response(null, { status: 204 });
+		}
+		if (path.endsWith("/quota")) {
+			target.quotaBytes = (body.quotaBytes as number | null) ?? undefined;
+			return Response.json(view(target));
 		}
 		const role = (body.role as CurrentUser["role"] | undefined) ?? target.user.role;
 		const disabled = (body.disabled as boolean | undefined) ?? target.disabled;

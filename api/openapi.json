@@ -252,6 +252,43 @@
         "x-permission": "signed-in"
       }
     },
+    "/auth/storage": {
+      "get": {
+        "operationId": "getOwnStorage",
+        "summary": "What the caller's uploads take up, and how much they may",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Storage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/books": {
       "get": {
         "operationId": "listBooks",
@@ -1369,6 +1406,63 @@
         "x-permission": "users:manage"
       }
     },
+    "/users/{userId}/quota": {
+      "put": {
+        "operationId": "setUserQuota",
+        "summary": "Set how much an account may upload; null is no limit",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetQuotaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
     "/users/{userId}/sessions": {
       "delete": {
         "operationId": "endUserSessions",
@@ -1490,6 +1584,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "quotaBytes": {
+            "type": "integer"
+          },
           "role": {
             "type": "string",
             "enum": [
@@ -1499,6 +1596,9 @@
             ]
           },
           "sessions": {
+            "type": "integer"
+          },
+          "usedBytes": {
             "type": "integer"
           },
           "username": {
@@ -1511,7 +1611,8 @@
           "role",
           "disabled",
           "createdAt",
-          "sessions"
+          "sessions",
+          "usedBytes"
         ]
       },
       "AccountList": {
@@ -2267,6 +2368,20 @@
           "current"
         ]
       },
+      "SetQuotaRequest": {
+        "type": "object",
+        "properties": {
+          "quotaBytes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "quotaBytes"
+        ]
+      },
       "SettingList": {
         "type": "object",
         "properties": {
@@ -2338,6 +2453,20 @@
         },
         "required": [
           "needed"
+        ]
+      },
+      "Storage": {
+        "type": "object",
+        "properties": {
+          "quotaBytes": {
+            "type": "integer"
+          },
+          "usedBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "usedBytes"
         ]
       },
       "UpdateAccountRequest": {
