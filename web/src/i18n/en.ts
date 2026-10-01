@@ -109,6 +109,28 @@ export const en = {
 	"library.none.add": "Add a library",
 
 	"nav.libraries": "Libraries",
+	"nav.settings": "Settings",
+
+	"settings.title": "Settings",
+	"settings.intro":
+		"What GOtome uses while it runs. Keys and tokens are stored encrypted and are never shown again once saved: to change one, type the new one.",
+	"settings.metadataLanguage": "Language for book details",
+	"settings.metadataLanguage.hint":
+		"The language that descriptions and other details are asked for from metadata services, as a two-letter code such as en or de.",
+	"settings.googleBooksKey": "Google Books API key",
+	"settings.googleBooksKey.hint":
+		"Optional. Without one, Google Books answers fewer requests a day.",
+	"settings.hardcoverToken": "Hardcover API token",
+	"settings.hardcoverToken.hint":
+		"From your Hardcover account settings. Needed to look books up on Hardcover.",
+	"settings.secret.set": "Saved on {date}.",
+	"settings.secret.unset": "Not set.",
+	"settings.secret.new": "Paste it here",
+	"settings.secret.replace": "Saved; type a new one to replace it",
+	"settings.secret.remove": "Remove the {name}",
+	"settings.save": "Save",
+	"settings.saving": "Saving…",
+	"settings.saved": "Saved.",
 	"libraries.title": "Libraries",
 	"libraries.existing": "Existing libraries",
 	"libraries.none": "There is no library yet.",

@@ -21,6 +21,9 @@
       "name": "libraries"
     },
     {
+      "name": "settings"
+    },
+    {
       "name": "system"
     }
   ],
@@ -953,6 +956,88 @@
         "x-permission": "books:upload"
       }
     },
+    "/settings": {
+      "get": {
+        "operationId": "listSettings",
+        "summary": "Every setting; a secret says only whether it is set",
+        "tags": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      },
+      "patch": {
+        "operationId": "updateSettings",
+        "summary": "Change settings, all or none; an empty or null value unsets one",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/setup": {
       "get": {
         "operationId": "getSetup",
@@ -1733,6 +1818,50 @@
           "books"
         ]
       },
+      "SettingList": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingView"
+            }
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
+      "SettingView": {
+        "type": "object",
+        "properties": {
+          "isSet": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "secret"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "isSet"
+        ]
+      },
       "SetupRequest": {
         "type": "object",
         "properties": {
@@ -1775,6 +1904,23 @@
             "type": "boolean"
           }
         }
+      },
+      "UpdateSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "required": [
+          "values"
+        ]
       },
       "UploadForm": {
         "type": "object",

@@ -41,8 +41,11 @@ docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
 Then open <http://localhost:8080> and create the first account. A short-lived
-`init` container gives the installation its own random database password on the
-first start and keeps it in the `secrets` volume; nobody has to choose or type it.
+`init` container gives the installation its own random database password and
+encryption key on the first start and keeps them in the `secrets` volume; nobody
+has to choose or type them. The key encrypts what is stored for other services,
+such as API tokens: back up the `secrets` volume together with the database, or
+those have to be entered again.
 Once a release is published, the same file pulls the image instead of building it.
 
 ## Development

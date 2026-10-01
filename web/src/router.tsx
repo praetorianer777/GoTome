@@ -13,6 +13,7 @@ import { picksFrom } from "@/books/filters";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { AdminLibraries } from "@/routes/admin-libraries";
+import { AdminSettings } from "@/routes/admin-settings";
 import { Book } from "@/routes/book";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
@@ -154,10 +155,21 @@ const adminLibrariesRoute = createRoute({
 	component: AdminLibraries,
 });
 
+const adminSettingsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/settings",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "settings:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: AdminSettings,
+});
+
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute, adminSettingsRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

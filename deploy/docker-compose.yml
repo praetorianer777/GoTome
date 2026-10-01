@@ -38,6 +38,9 @@ services:
       GOTOME_UPLOAD_LIMIT_MB: ${GOTOME_UPLOAD_LIMIT_MB:-4096}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
+      # Encrypts the secrets kept in the database, such as provider keys.
+      # gotome init writes it; back it up with the database, or they are lost.
+      GOTOME_SECRET_KEY_FILE: /secrets/secret-key
     volumes:
       - app-data:/data
       - secrets:/secrets:ro

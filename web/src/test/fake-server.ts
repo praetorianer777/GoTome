@@ -8,6 +8,7 @@ import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
+import type { Setting } from "@/settings/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -62,6 +63,13 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/** The secrets as they were sent, which the fake keeps and never sends back. */
+	secrets = new Map<string, string>();
+	private settings: Setting[] = [
+		{ key: "metadata.language", kind: "text", value: "en", isSet: false },
+		{ key: "metadata.googleBooksKey", kind: "secret", isSet: false },
+		{ key: "metadata.hardcoverToken", kind: "secret", isSet: false },
+	];
 	/** What was uploaded, by content, to find a file sent twice. */
 	private uploaded = new Map<string, Uploaded>();
 
@@ -244,6 +252,10 @@ export class FakeServer {
 			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
 		}
 
+		if (path === "/settings") {
+			return this.answerSettings(method, body as unknown as { values?: Record<string, string | null> }, refuse);
+		}
+
 		switch (`${method} ${path}`) {
 			case "GET /setup":
 				return Response.json({ needed: this.accounts.size === 0 });
@@ -338,6 +350,47 @@ export class FakeServer {
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
+	}
+
+	private answerSettings(
+		method: string,
+		body: { values?: Record<string, string | null> },
+		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+	): Response {
+		if (!this.session) {
+			return refuse(401, "unauthorized", "Sign in to continue.");
+		}
+		if (!this.session.permissions.includes("settings:manage")) {
+			return refuse(403, "forbidden", "You do not have permission to do that.");
+		}
+		if (method === "PATCH") {
+			const values = body.values ?? {};
+			const language = values["metadata.language"];
+			if (language && !/^[a-z]{2,3}$/i.test(language.trim())) {
+				return refuse(422, "validation_failed", "Some fields need attention.", {
+					"metadata.language": "Give a language as its two-letter code, such as en or de.",
+				});
+			}
+			for (const [key, value] of Object.entries(values)) {
+				const setting = this.settings.find((s) => s.key === key);
+				if (!setting) {
+					continue;
+				}
+				const unset = value === null || value.trim() === "";
+				setting.isSet = !unset;
+				setting.updatedAt = unset ? undefined : "2026-01-03T09:00:00Z";
+				if (setting.kind === "secret") {
+					if (unset) {
+						this.secrets.delete(key);
+					} else {
+						this.secrets.set(key, value.trim());
+					}
+				} else {
+					setting.value = unset ? "en" : value.trim().toLowerCase();
+				}
+			}
+		}
+		return Response.json({ settings: this.settings });
 	}
 
 	/**

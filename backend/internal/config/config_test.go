@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
-	if cfg != want {
+	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
 	if !cfg.IsProduction() {
@@ -41,7 +42,7 @@ func TestLoadOverrides(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", UploadLimit: 100 << 20}
-	if cfg != want {
+	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
 }
@@ -112,6 +113,40 @@ func TestDatabasePasswordFromAFile(t *testing.T) {
 	} {
 		if _, err := load(env(vars)); err == nil || !strings.Contains(err.Error(), "GOTOME_DATABASE_PASSWORD_FILE") {
 			t.Errorf("%s: err = %v", why, err)
+		}
+	}
+}
+
+func TestSecretKeyFile(t *testing.T) {
+	without, err := load(env(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := without.RequireSecretKey(); err == nil || !strings.Contains(err.Error(), "GOTOME_SECRET_KEY_FILE") {
+		t.Errorf("without a key: err = %v, want one naming the variable", err)
+	}
+
+	dir := t.TempDir()
+	good := filepath.Join(dir, "secret-key")
+	if err := os.WriteFile(good, []byte("QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWY\n"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := load(env(map[string]string{"GOTOME_SECRET_KEY_FILE": good}))
+	if err != nil || string(cfg.SecretKey) != "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef" || cfg.RequireSecretKey() != nil {
+		t.Errorf("a good key: %q, %v", cfg.SecretKey, err)
+	}
+
+	short := filepath.Join(dir, "short")
+	if err := os.WriteFile(short, []byte("QUJD\n"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	for file, want := range map[string]string{
+		short:                        "3 bytes long",
+		filepath.Join(dir, "absent"): "no such file",
+	} {
+		_, err := load(env(map[string]string{"GOTOME_SECRET_KEY_FILE": file}))
+		if err == nil || !strings.Contains(err.Error(), "GOTOME_SECRET_KEY_FILE") || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want one naming the variable and saying %q", file, err, want)
 		}
 	}
 }

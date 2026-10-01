@@ -152,6 +152,17 @@ func (s *Server) routes() []Route {
 		},
 
 		{
+			Method: http.MethodGet, Path: "/settings", ID: "listSettings",
+			Summary: "Every setting; a secret says only whether it is set", Tag: "settings",
+			Response: settingList{}, Permission: auth.SettingsManage, Handler: s.listSettings,
+		},
+		{
+			Method: http.MethodPatch, Path: "/settings", ID: "updateSettings",
+			Summary: "Change settings, all or none; an empty or null value unsets one", Tag: "settings",
+			Request: updateSettingsRequest{}, Response: settingList{}, Permission: auth.SettingsManage, Handler: s.updateSettings,
+		},
+
+		{
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
 			Query: listBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listBooks,

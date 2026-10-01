@@ -64,3 +64,10 @@ What changes for someone who runs or uses GOtome. The format follows
   Sanderson. Press "/" to get to it from anywhere, the arrow keys to pick a
   book and Enter to open it. It answers in well under a tenth of a second on
   50,000 books.
+- Settings. Administrators set the language book details are fetched in and
+  the Google Books and Hardcover keys on a new Settings page. Keys and tokens
+  are stored encrypted and are never shown again, in the app or in the logs.
+  The encryption key is made by the `init` container on the next start and
+  kept in the `secrets` volume, readable by the app only; back that volume up
+  with the database. GOtome refuses to start with a key other than the one its
+  secrets were encrypted with.

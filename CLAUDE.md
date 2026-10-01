@@ -4,8 +4,10 @@ Self-hosted ebook, PDF and audiobook library manager. Go backend, React + Tailwi
 frontend, PostgreSQL. A deployment is exactly two containers: the app and Postgres.
 A third, `init` (the app image running `gotome init`), runs once before them and exits:
 it writes a random database password into the `secrets` volume, which Postgres reads
-through `POSTGRES_PASSWORD_FILE` and the app through `GOTOME_DATABASE_PASSWORD_FILE`.
-The password is never in the compose file or an environment variable.
+through `POSTGRES_PASSWORD_FILE` and the app through `GOTOME_DATABASE_PASSWORD_FILE`,
+and the key secrets are encrypted with (`secret-key`, mode 0400, owned by the app's
+user 10001), which only the app reads, through `GOTOME_SECRET_KEY_FILE`. Neither is
+ever in the compose file or an environment variable. init only adds what is missing.
 
 ## Workflow
 
@@ -124,6 +126,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - A release is cut by the owner with `./release.sh <version>` on `main`. It moves the
   Unreleased entries under the version, writes `VERSION`, commits and tags, and pushes
   nothing. Pushing the tag runs `.github/workflows/release.yml`.
+
+## Settings and secrets
+
+- `internal/settings` holds what an administrator changes at runtime. Every setting
+  is a `Definition` (key, kind text or secret, default, check); a new one is added
+  there, with its label in `web/src/i18n/en.ts` and `TEXTS` in
+  `web/src/routes/admin-settings.tsx`. The routes need `settings:manage`.
+- A secret is sealed with AES-256-GCM (`internal/secret`), its key as associated
+  data, and stored only sealed. The API never returns it, only `isSet`; code that
+  needs it calls `settings.Store.Secret` and must neither log nor send it.
+- `settings.Open` leaves a sealed check value on the first start and opens it on
+  every later one: a start with another key fails with `ErrWrongKey`.
 
 ## Libraries and visibility
 
