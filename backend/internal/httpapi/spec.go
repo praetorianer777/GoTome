@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
 )
 
@@ -31,6 +33,10 @@ func Spec() *openapi.Document {
 		permissions = append(permissions, string(p))
 	}
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
+	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
+	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
+		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},
+	}
 	failure := &openapi.Response{
 		Description: "The request failed.",
 		Content:     map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(errorEnvelope{})}},
@@ -68,7 +74,7 @@ func Spec() *openapi.Document {
 		if rt.Request != nil {
 			op.RequestBody = &openapi.RequestBody{
 				Required: true,
-				Content:  map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(rt.Request)}},
+				Content:  map[string]openapi.MediaType{cmp.Or(rt.Consumes, jsonMedia): {Schema: b.SchemaOf(rt.Request)}},
 			}
 		}
 		success := &openapi.Response{Description: http.StatusText(rt.successStatus())}

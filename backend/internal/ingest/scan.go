@@ -1,7 +1,8 @@
 // Package ingest brings the files of a library's folder into the catalogue:
-// it notices what is new, what changed, what moved and what is gone. It only
-// ever reads the folder. A file that disappears is marked missing, and nothing
-// on disk is deleted, moved or written.
+// it notices what is new, what changed, what moved and what is gone. A scan
+// only ever reads the folder. A file that disappears is marked missing, and
+// nothing on disk is deleted, moved or written. The one thing that writes is
+// an upload, and only into a managed library.
 package ingest
 
 import (
@@ -30,6 +31,10 @@ import (
 // ErrNoFolder is returned when the library's folder cannot be read at all,
 // which is usually a mount that is not there. Nothing is marked missing then.
 var ErrNoFolder = errors.New("the library's folder cannot be read")
+
+// errTaken is a path the scan found new that has a row by the time the scan
+// stores it.
+var errTaken = errors.New("the path was taken while the scan ran")
 
 // Result is what one pass of a scan did.
 type Result struct {
@@ -308,6 +313,20 @@ func (s *Scanner) importUnit(
 	books := 0
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.LockLibraryFiles(ctx, libraryID); err != nil {
+			return err
+		}
+		paths := make([]string, 0, len(files))
+		for _, f := range files {
+			paths = append(paths, f.relPath)
+		}
+		taken, err := q.ListTakenPaths(ctx, sqlc.ListTakenPathsParams{LibraryID: libraryID, Paths: paths})
+		if err != nil {
+			return err
+		}
+		if len(taken) > 0 {
+			return errTaken
+		}
 		for _, m := range moves {
 			err := q.MoveFile(ctx, sqlc.MoveFileParams{
 				ID: m.row.id, RelPath: m.file.relPath, SizeBytes: m.file.size, ModifiedAt: m.file.modified,
@@ -364,6 +383,13 @@ func (s *Scanner) importUnit(
 		}
 		return nil
 	})
+	if errors.Is(err, errTaken) {
+		// An upload put a file here after the pass listed what the library
+		// knows. What the pass decided for this folder is out of date; the
+		// next scan decides again with the upload in view.
+		s.log.Debug("scan: folder changed by an upload, left for the next scan", "folder", unit)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

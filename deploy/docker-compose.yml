@@ -34,6 +34,8 @@ services:
       # How often every library's folder is looked through for changes; 0
       # leaves scanning to the "Scan now" button.
       GOTOME_SCAN_INTERVAL: ${GOTOME_SCAN_INTERVAL:-6h}
+      # The largest file one upload may carry, in MiB.
+      GOTOME_UPLOAD_LIMIT_MB: ${GOTOME_UPLOAD_LIMIT_MB:-4096}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
     volumes:

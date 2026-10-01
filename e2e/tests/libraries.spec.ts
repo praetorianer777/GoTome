@@ -63,7 +63,8 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	await expect(row.getByRole("status")).toHaveText(/^Scanned .+: 3 files, 3 new\.$/);
 
 	await row.getByRole("button", { name: "Scan now" }).click();
-	await expect(row.getByRole("status")).toHaveText(/^Scanned .+: 3 files, nothing new\.$/);
+	// One scan runs at a time, and every browser project scans at once.
+	await expect(row.getByRole("status")).toHaveText(/^Scanned .+: 3 files, nothing new\.$/, { timeout: 15_000 });
 
 	// The books, with what their files say about them once they are read.
 	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Library", exact: true }).click();

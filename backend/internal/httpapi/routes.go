@@ -34,6 +34,10 @@ type Route struct {
 	// route has none.
 	Request  any
 	Response any
+	// Consumes is the media type of a request body that is not JSON, such as
+	// a multipart form; Request then describes the form's fields. The
+	// handler reads the body itself.
+	Consumes string
 	// Produces is the media type of a success that is not JSON, such as an
 	// image. The handler writes it itself.
 	Produces string
@@ -124,6 +128,12 @@ func (s *Server) routes() []Route {
 			Summary: "Look through a library's folder for new, changed and missing files", Tag: "libraries",
 			Response: ingest.Scan{}, Status: http.StatusAccepted,
 			Permission: auth.IndexRebuild, Handler: s.scanLibrary,
+		},
+		{
+			Method: http.MethodPost, Path: "/libraries/{libraryId}/uploads", ID: "uploadFile",
+			Summary: "Store one book file in a managed library, or point to the book that already has it", Tag: "libraries",
+			Consumes: "multipart/form-data", Request: uploadForm{}, Response: ingest.Uploaded{},
+			Permission: auth.BooksUpload, Handler: s.uploadFile,
 		},
 		{
 			Method: http.MethodGet, Path: "/libraries/{libraryId}/members", ID: "listLibraryMembers",

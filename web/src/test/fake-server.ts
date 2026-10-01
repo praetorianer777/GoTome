@@ -6,6 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
+import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import { makeRouter } from "@/router";
 
@@ -61,6 +62,8 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/** What was uploaded, by content, to find a file sent twice. */
+	private uploaded = new Map<string, Uploaded>();
 
 	withAccount(
 		username: string,
@@ -135,7 +138,94 @@ export class FakeServer {
 				body as Record<string, string> | undefined,
 			);
 		});
+		// Uploads go through XMLHttpRequest, which can report progress.
+		const isDown = () => this.down;
+		const record = (method: string, path: string, name: string) =>
+			this.requests.push({ method, path, body: { file: name } });
+		const answer = (path: string, file: File) => this.answerUpload(path, file);
+		class FakeXMLHttpRequest {
+			status = 0;
+			responseText = "";
+			responseType = "";
+			withCredentials = false;
+			upload: { onprogress: ((event: ProgressEvent) => void) | null } = {
+				onprogress: null,
+			};
+			onload: (() => void) | null = null;
+			onerror: (() => void) | null = null;
+			private method = "";
+			private url = "";
+
+			open(method: string, url: string) {
+				this.method = method;
+				this.url = url;
+			}
+
+			send(body: FormData) {
+				void (async () => {
+					if (isDown()) {
+						this.onerror?.();
+						return;
+					}
+					const file = body.get("file") as File;
+					const path = new URL(this.url).pathname.replace(/^\/api\/v1/, "");
+					record(this.method, path, file.name);
+					this.upload.onprogress?.({
+						lengthComputable: true,
+						loaded: file.size,
+						total: file.size,
+					} as ProgressEvent);
+					const response = await answer(path, file);
+					this.status = response.status;
+					this.responseText = await response.text();
+					this.onload?.();
+				})();
+			}
+		}
+		vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
 		return this;
+	}
+
+	private async answerUpload(path: string, file: File): Promise<Response> {
+		const refuse = (status: number, code: string, message: string, fields?: Record<string, string>) =>
+			Response.json({ error: { code, message, fields, requestId: "req-1" } }, { status });
+		if (!this.session) {
+			return refuse(401, "unauthorized", "Sign in to continue.");
+		}
+		if (!this.session.permissions.includes("books:upload")) {
+			return refuse(403, "forbidden", "You do not have permission to do that.");
+		}
+		const library = this.libraries.find((l) => path === `/libraries/${l.id}/uploads`);
+		if (!library) {
+			return refuse(404, "not_found", "There is no such library.");
+		}
+		if (library.mode !== "managed") {
+			return refuse(409, "conflict", "Books can only be uploaded into a managed library.");
+		}
+		const dot = file.name.lastIndexOf(".");
+		const format = dot < 0 ? "" : file.name.slice(dot + 1).toLowerCase();
+		if (!["epub", "pdf", "mobi", "azw", "azw3", "m4b", "m4a", "mp3", "flac", "ogg", "opus"].includes(format)) {
+			return refuse(422, "validation_failed", "Some fields need attention.", {
+				file: "GOtome does not read this kind of file.",
+			});
+		}
+		const content = await file.text();
+		const known = this.uploaded.get(content);
+		if (known) {
+			return Response.json({ ...known, outcome: "duplicate", fileId: undefined });
+		}
+		const title = file.name.slice(0, dot);
+		this.withBook(title, {}, library.name);
+		const book = this.books.at(-1) as BookDetail;
+		const result: Uploaded = {
+			outcome: "added",
+			bookId: book.id,
+			libraryId: library.id,
+			title,
+			fileId: `file-${book.id}`,
+		};
+		this.uploaded.set(content, result);
+		return Response.json(result);
 	}
 
 	private answer(method: string, path: string, body: Record<string, string> = {}): Response {

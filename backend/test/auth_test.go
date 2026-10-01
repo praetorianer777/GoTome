@@ -32,6 +32,9 @@ import (
 // Cheap hashing: these tests sign in dozens of times.
 var fastHash = auth.PasswordParams{MemoryKiB: 64, Iterations: 1, Parallelism: 1, SaltLen: 16, KeyLen: 32}
 
+// uploadLimit is small, so that a test can go past it cheaply.
+const uploadLimit = 1 << 20
+
 // app is a server on a database of its own, with a clock the test moves.
 type app struct {
 	t    *testing.T
@@ -69,6 +72,7 @@ func newApp(t *testing.T) *app {
 	libraries := library.NewService(a.pool, a.dataDir)
 	a.covers = covers.NewStore(a.dataDir)
 	a.scans = ingest.NewService(a.pool, libraries, a.covers, quiet)
+	a.scans.UploadLimit = uploadLimit
 	// Jobs are queued and left there; a test that wants them worked calls
 	// workJobs.
 	queue, err := jobs.New(a.pool, jobs.Config{Logger: quiet, InsertOnly: true})

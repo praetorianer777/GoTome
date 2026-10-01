@@ -212,6 +212,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/libraries/{libraryId}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store one book file in a managed library, or point to the book that already has it */
+        post: operations["uploadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -415,6 +432,21 @@ export interface components {
             name?: string;
             visibility?: string;
             writable?: boolean;
+        };
+        UploadForm: {
+            /** Format: binary */
+            file: string;
+        };
+        Uploaded: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId?: string;
+            /** Format: uuid */
+            libraryId: string;
+            /** @enum {string} */
+            outcome: "added" | "duplicate";
+            title: string;
         };
         User: {
             email?: string;
@@ -921,6 +953,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Scan"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadForm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Uploaded"];
                 };
             };
             /** @description The request failed. */
