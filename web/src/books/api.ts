@@ -12,6 +12,8 @@ export type BookOrder = NonNullable<ListQuery["order"]>;
 
 export interface BookListParams {
 	library?: string;
+	/** The rule tree as JSON, from filterTree. */
+	filter?: string;
 	sort: BookSort;
 	order: BookOrder;
 }
@@ -40,6 +42,23 @@ export function booksQuery(params: BookListParams, refetchInterval: number | fal
 			).data ?? { books: [] },
 		initialPageParam: "",
 		getNextPageParam: (last) => last.nextCursor || undefined,
+		refetchInterval,
+	});
+}
+
+/** How many of the books a list holds have each value of each field. */
+export function facetsQuery(
+	params: { library?: string; filter?: string },
+	refetchInterval: number | false = false,
+) {
+	return queryOptions({
+		queryKey: ["books", "facets", params],
+		queryFn: async () =>
+			(await api.GET("/books/facets", { params: { query: params } })).data
+				?.facets ?? [],
+		// The panel keeps showing the old counts while the new ones load,
+		// rather than jumping to nothing between two clicks.
+		placeholderData: (previous) => previous,
 		refetchInterval,
 	});
 }

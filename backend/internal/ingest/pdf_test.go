@@ -149,12 +149,14 @@ func fakePoppler(t *testing.T, script string) {
 	}
 	was, limits := pdfinfo, pdfLimits
 	pdfinfo = path
-	pdfLimits.Timeout = 500 * time.Millisecond
+	// Long enough for a shell to start on a machine busy compiling.
+	pdfLimits.Timeout = 10 * time.Second
 	t.Cleanup(func() { pdfinfo, pdfLimits = was, limits })
 }
 
 func TestPDFThatMakesPopplerHang(t *testing.T) {
 	fakePoppler(t, "sleep 60")
+	pdfLimits.Timeout = 500 * time.Millisecond
 	started := time.Now()
 	_, err := extractPDF(context.Background(), writePDF(t, nil, textPage("x")))
 	if !errors.Is(err, ErrUnreadable) || !strings.Contains(err.Error(), "took too long") {

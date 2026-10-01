@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -68,6 +69,7 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 
 type listBooksQuery struct {
 	Library string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
+	Filter  string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not."`
 	Sort    string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
 	Order   string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor  string `query:"cursor" doc:"The nextCursor of the page before."`
@@ -162,18 +164,17 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	p := catalog.ListParams{Order: cmp.Or(q.Sort, catalog.OrderTitle), Desc: q.Order == "desc", After: q.Cursor, Limit: cmp.Or(q.Limit, defaultPage)}
-	if q.Library != "" {
-		id, err := uuid.Parse(q.Library)
-		if err != nil {
-			return ErrValidation(map[string]string{"library": "There is no such library."})
-		}
-		p.LibraryID = &id
+	var err error
+	if p.LibraryID, p.Filter, err = bookSelection(q.Library, q.Filter); err != nil {
+		return err
 	}
 	page, err := s.Books.List(r.Context(), library.ScopeOf(*UserFrom(r.Context())), p)
-	if errors.Is(err, catalog.ErrBadCursor) {
+	switch {
+	case errors.Is(err, catalog.ErrBadCursor):
 		return ErrValidation(map[string]string{"cursor": "This cursor belongs to another list; start again from the first page."})
-	}
-	if err != nil {
+	case catalog.IsFilterError(err):
+		return ErrValidation(map[string]string{"filter": err.Error()})
+	case err != nil:
 		return err
 	}
 	out := bookList{Books: make([]bookSummary, len(page.Books)), NextCursor: page.Next}
@@ -182,6 +183,82 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 			ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
 			Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
 			CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt,
+		}
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+// bookSelection reads which books a list or a count is of: the library and
+// the filter, both optional.
+func bookSelection(libraryParam, filterParam string) (*uuid.UUID, filter.Node, error) {
+	var libraryID *uuid.UUID
+	if libraryParam != "" {
+		id, err := uuid.Parse(libraryParam)
+		if err != nil {
+			return nil, filter.Node{}, ErrValidation(map[string]string{"library": "There is no such library."})
+		}
+		libraryID = &id
+	}
+	var tree filter.Node
+	if filterParam != "" {
+		var err error
+		if tree, err = filter.Parse([]byte(filterParam)); err != nil {
+			return nil, filter.Node{}, ErrValidation(map[string]string{"filter": err.Error()})
+		}
+	}
+	return libraryID, tree, nil
+}
+
+type facetsQuery struct {
+	Library string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
+	Filter  string `query:"filter" doc:"The filter of the list the facets are for, as listBooks takes it."`
+}
+
+// facetList is, per field, the values the books of a list have.
+type facetList struct {
+	Facets []facet `json:"facets"`
+}
+
+type facet struct {
+	Field string `json:"field"`
+	// Values are by how many books have them, most first; the published
+	// facet's are decades, in order.
+	Values []facetValue `json:"values"`
+}
+
+type facetValue struct {
+	// Value is what a rule on the field takes.
+	Value string `json:"value"`
+	// Label is how the value reads: an author's name as spelt. A language
+	// code and a decade are labelled with themselves.
+	Label string `json:"label"`
+	// Count is how many books of the list, without the field's own rules,
+	// have the value.
+	Count int `json:"count"`
+}
+
+func (s *Server) listFacets(w http.ResponseWriter, r *http.Request) error {
+	var q facetsQuery
+	if err := decodeQuery(r, &q); err != nil {
+		return err
+	}
+	libraryID, tree, err := bookSelection(q.Library, q.Filter)
+	if err != nil {
+		return err
+	}
+	facets, err := s.Books.Facets(r.Context(), library.ScopeOf(*UserFrom(r.Context())), libraryID, tree)
+	switch {
+	case catalog.IsFilterError(err):
+		return ErrValidation(map[string]string{"filter": err.Error()})
+	case err != nil:
+		return err
+	}
+	out := facetList{Facets: make([]facet, len(facets))}
+	for i, f := range facets {
+		out.Facets[i] = facet{Field: f.Field, Values: make([]facetValue, len(f.Values))}
+		for j, v := range f.Values {
+			out.Facets[i].Values[j] = facetValue{Value: v.Value, Label: v.Label, Count: v.Count}
 		}
 	}
 	writeJSON(w, r, http.StatusOK, out)

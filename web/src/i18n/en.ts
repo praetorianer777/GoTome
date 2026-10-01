@@ -79,6 +79,25 @@ export const en = {
 	"upload.open": "Open the book",
 	"upload.clear": "Clear the finished ones",
 
+	"library.filtered.title": "No book matches",
+	"library.filtered.body":
+		"None of the books here has all of what the filters ask for.",
+
+	"filter.title": "Filters",
+	"filter.toggle": "Filters",
+	"filter.toggleActive": "Filters ({count})",
+	"filter.clear": "Clear the filters",
+	"filter.all": "Show all {count}",
+	"filter.fewer": "Show fewer",
+	"filter.decade": "{decade}s",
+	"filter.value": "{label} ({count})",
+	"filter.field.author": "Author",
+	"filter.field.series": "Series",
+	"filter.field.tag": "Tag",
+	"filter.field.language": "Language",
+	"filter.field.published": "Published",
+	"filter.field.format": "Format",
+
 	"library.none.title": "No library yet",
 	"library.none.admin": "A library is a folder of books. Add one to get started.",
 	"library.none.other": "There is no library you may see yet. An administrator can add one or share one with you.",

@@ -9,6 +9,7 @@ import {
 	useRouteContext,
 } from "@tanstack/react-router";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
+import { picksFrom } from "@/books/filters";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { AdminLibraries } from "@/routes/admin-libraries";
@@ -100,6 +101,7 @@ const libraryRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/",
 	validateSearch: (search): LibrarySearch => ({
+		...picksFrom(search),
 		library: typeof search.library === "string" ? search.library : undefined,
 		sort: oneOf(SORTS, search.sort),
 		view: oneOf(VIEWS, search.view),

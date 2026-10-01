@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -44,8 +45,10 @@ type ListParams struct {
 	// LibraryID narrows the list to one library; nil lists every library the
 	// scope may see.
 	LibraryID *uuid.UUID
-	Order     string
-	Desc      bool
+	// Filter keeps the books its rules match; the zero Node keeps all.
+	Filter filter.Node
+	Order  string
+	Desc   bool
 	// After is the cursor of the page before, empty for the first page.
 	After string
 	Limit int
@@ -91,17 +94,14 @@ func (s *Service) List(ctx context.Context, scope library.Scope, p ListParams) (
 	}
 	limit := min(max(p.Limit, 1), MaxPage)
 
-	args := []any{scope.Viewer, scope.SeesAll}
+	var args []any
 	arg := func(v any) string {
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
-	where := []string{
-		"b.deleted_at IS NULL",
-		"b.library_id IN (SELECT visible_library_ids($1, $2))",
-	}
-	if p.LibraryID != nil {
-		where = append(where, "b.library_id = "+arg(*p.LibraryID))
+	where, err := visibleBooks(scope, p.LibraryID, p.Filter, arg)
+	if err != nil {
+		return Page{}, err
 	}
 	if p.After != "" {
 		c, err := decodeCursor(p.After)

@@ -157,6 +157,11 @@ func (s *Server) routes() []Route {
 			Query: listBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
+			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
+			Query: facetsQuery{}, Response: facetList{}, Permission: auth.LibraryRead, Handler: s.listFacets,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}", ID: "getBook",
 			Summary: "One book with everything that describes it and its files", Tag: "books",
 			Response: bookDetail{}, Permission: auth.LibraryRead, Handler: s.getBook,
