@@ -9,6 +9,7 @@ import type { BookDetail } from "@/books/api";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
+import type { Job } from "@/jobs/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -71,6 +72,10 @@ export class FakeServer {
 		{ id: "s-1", userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-03T08:00:00Z", current: true },
 		{ id: "s-2", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-02T08:00:00Z", current: false },
 	];
+	/** The jobs the jobs page lists, newest first. */
+	jobs: Job[] = [];
+	/** Files somebody asked to have read again. */
+	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
 	secrets = new Map<string, string>();
 	private settings: Setting[] = [
@@ -104,6 +109,7 @@ export class FakeServer {
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
 			filesPending: 0,
+			filesFailed: 0,
 			...overrides,
 		});
 		return this;
@@ -263,6 +269,38 @@ export class FakeServer {
 				{ status },
 			);
 
+		if (path === "/jobs" || path.startsWith("/jobs/") || path.startsWith("/files/") || /^\/libraries\/[^/]+\/extractions$/.test(path)) {
+			if (!this.session) {
+				return refuse(401, "unauthorized", "Sign in to continue.");
+			}
+			if (!this.session.permissions.includes("index:rebuild")) {
+				return refuse(403, "forbidden", "You do not have permission to do that.");
+			}
+			if (path === "/jobs") {
+				return Response.json({ jobs: this.jobs });
+			}
+			const action = path.match(/^\/jobs\/(\d+)\/(retry|cancel)$/);
+			if (action) {
+				const job = this.jobs.find((j) => j.id === Number(action[1]));
+				if (!job) {
+					return refuse(404, "not_found", "There is no such job.");
+				}
+				job.state = action[2] === "retry" ? "available" : "cancelled";
+				return Response.json(job);
+			}
+			const file = path.match(/^\/files\/([^/]+)\/extraction$/);
+			if (file?.[1]) {
+				this.reread.push(file[1]);
+				return Response.json({ queued: 1 }, { status: 202 });
+			}
+			const library = this.libraries.find((l) => path === `/libraries/${l.id}/extractions`);
+			if (library) {
+				this.reread.push(library.id);
+				library.filesFailed = 0;
+				return Response.json({ queued: 1 }, { status: 202 });
+			}
+			return refuse(404, "not_found", "There is nothing at this address.");
+		}
 		if (path === "/libraries" || path.startsWith("/libraries/")) {
 			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
 		}

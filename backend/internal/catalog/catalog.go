@@ -133,6 +133,8 @@ type File struct {
 	SHA256       []byte
 	PartIndex    *int32
 	ExtractState string
+	// ExtractError is why the file could not be read, when it could not.
+	ExtractError string
 	// Missing is set when the last scan did not find the file.
 	Missing    bool
 	DurationMS *int64
@@ -420,7 +422,7 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 	for _, f := range files {
 		book.Files = append(book.Files, File{
 			ID: f.ID, Kind: f.Kind, Format: f.Format, RelPath: f.RelPath, Size: f.SizeBytes,
-			ModifiedAt: f.ModifiedAt, SHA256: f.Sha256, PartIndex: f.PartIndex, ExtractState: f.ExtractState,
+			ModifiedAt: f.ModifiedAt, SHA256: f.Sha256, PartIndex: f.PartIndex, ExtractState: f.ExtractState, ExtractError: deref(f.ExtractError),
 			Missing: f.MissingAt != nil, DurationMS: f.DurationMs, PageCount: f.PageCount, HasText: f.HasText, DRM: f.Drm,
 		})
 	}

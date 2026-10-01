@@ -77,6 +77,9 @@ export function searchQuery(words: string) {
 	});
 }
 
+/** How often a book whose files are still being read is asked for again. */
+const READING_POLL_MS = 3000;
+
 export function bookQuery(id: string) {
 	return queryOptions({
 		queryKey: ["book", id],
@@ -86,6 +89,11 @@ export function bookQuery(id: string) {
 					params: { path: { bookId: id } },
 				})
 			).data,
+		// Until its files are read, what the page shows of a book is a guess.
+		refetchInterval: (query) =>
+			query.state.data?.files.some((f) => f.extractState === "pending")
+				? READING_POLL_MS
+				: false,
 	});
 }
 

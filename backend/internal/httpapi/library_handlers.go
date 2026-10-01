@@ -31,6 +31,8 @@ type libraryResponse struct {
 	// FilesPending is how many files the scans found that are still to be
 	// read for their title, cover and text.
 	FilesPending int32 `json:"filesPending"`
+	// FilesFailed is how many of its files could not be read.
+	FilesFailed int32 `json:"filesFailed"`
 }
 
 // scanState is what the library responses add from the scans: the newest
@@ -38,6 +40,7 @@ type libraryResponse struct {
 type scanState struct {
 	latest  map[uuid.UUID]ingest.Scan
 	pending map[uuid.UUID]int32
+	failed  map[uuid.UUID]int32
 }
 
 func (s *Server) scanState(r *http.Request, scope library.Scope) (scanState, error) {
@@ -49,7 +52,11 @@ func (s *Server) scanState(r *http.Request, scope library.Scope) (scanState, err
 	if err != nil {
 		return scanState{}, err
 	}
-	return scanState{latest: latest, pending: pending}, nil
+	failed, err := s.Scans.Failed(r.Context(), scope)
+	if err != nil {
+		return scanState{}, err
+	}
+	return scanState{latest: latest, pending: pending, failed: failed}, nil
 }
 
 type libraryList struct {
@@ -83,6 +90,7 @@ func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) li
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
+		FilesFailed: scans.failed[l.ID],
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan

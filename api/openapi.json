@@ -18,6 +18,9 @@
       "name": "books"
     },
     {
+      "name": "jobs"
+    },
+    {
       "name": "libraries"
     },
     {
@@ -646,6 +649,208 @@
         "x-permission": "library:read"
       }
     },
+    "/files/{fileId}/extraction": {
+      "post": {
+        "operationId": "rereadFile",
+        "summary": "Read a file again for its details, cover and text",
+        "tags": [
+          "jobs"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
+    "/jobs": {
+      "get": {
+        "operationId": "listJobs",
+        "summary": "The newest background jobs, with what each works on",
+        "tags": [
+          "jobs"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Only jobs in this state; left out, all.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "waiting",
+                "running",
+                "failed",
+                "done"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many of the newest jobs, at most 200; 100 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
+    "/jobs/{jobId}/cancel": {
+      "post": {
+        "operationId": "cancelJob",
+        "summary": "Stop a job that waits or runs",
+        "tags": [
+          "jobs"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
+    "/jobs/{jobId}/retry": {
+      "post": {
+        "operationId": "retryJob",
+        "summary": "Run a job that is not running again, as soon as a worker is free",
+        "tags": [
+          "jobs"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
     "/libraries": {
       "get": {
         "operationId": "listLibraries",
@@ -866,6 +1071,63 @@
           }
         ],
         "x-permission": "storage:manage"
+      }
+    },
+    "/libraries/{libraryId}/extractions": {
+      "post": {
+        "operationId": "rereadLibrary",
+        "summary": "Read a library's files again: those that failed, or all",
+        "tags": [
+          "jobs"
+        ],
+        "parameters": [
+          {
+            "name": "libraryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RereadLibraryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
       }
     },
     "/libraries/{libraryId}/members": {
@@ -1722,6 +1984,12 @@
           "durationMs": {
             "type": "integer"
           },
+          "extractError": {
+            "type": "string"
+          },
+          "extractState": {
+            "type": "string"
+          },
           "format": {
             "type": "string"
           },
@@ -1761,7 +2029,8 @@
           "name",
           "size",
           "missing",
-          "drm"
+          "drm",
+          "extractState"
         ]
       },
       "BookList": {
@@ -2062,6 +2331,86 @@
           "value"
         ]
       },
+      "JobList": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobView"
+            }
+          }
+        },
+        "required": [
+          "jobs"
+        ]
+      },
+      "JobView": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "type": "integer"
+          },
+          "attemptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "libraryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "libraryName": {
+            "type": "string"
+          },
+          "maxAttempts": {
+            "type": "integer"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "attempt",
+          "maxAttempts",
+          "createdAt",
+          "scheduledAt"
+        ]
+      },
       "LibraryList": {
         "type": "object",
         "properties": {
@@ -2082,6 +2431,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "filesFailed": {
+            "type": "integer"
           },
           "filesPending": {
             "type": "integer"
@@ -2120,7 +2472,8 @@
           "writable",
           "visibility",
           "createdAt",
-          "filesPending"
+          "filesPending",
+          "filesFailed"
         ]
       },
       "LoginRequest": {
@@ -2175,6 +2528,28 @@
         },
         "required": [
           "members"
+        ]
+      },
+      "RereadLibraryRequest": {
+        "type": "object",
+        "properties": {
+          "failedOnly": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "failedOnly"
+        ]
+      },
+      "RereadResult": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued"
         ]
       },
       "Scan": {

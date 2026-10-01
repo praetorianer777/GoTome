@@ -83,3 +83,10 @@ What changes for someone who runs or uses GOtome. The format follows
   up. An upload that would pass the limit is refused with a message saying how
   much is used. Files that are gone from disk no longer count. Without a limit,
   there is none.
+- Background jobs. Editors and Administrators see on the new Jobs page what
+  GOtome is doing: scans and the reading of files, with their state, attempts
+  and errors, updated while they run. A failed job can be tried again, a
+  waiting or running one cancelled. A book's page says when one of its files
+  could not be read, and the library page how many could not; both can have
+  them read again. Readers see neither the jobs nor the errors.
+- The book page updates by itself while its files are still being read.

@@ -295,6 +295,26 @@ func (r *Runner) Get(ctx context.Context, id int64) (Job, error) {
 	return fromRow(row), nil
 }
 
+// Retry makes a job that is not running run again as soon as a worker is
+// free, with one more attempt if it had used up its own.
+func (r *Runner) Retry(ctx context.Context, id int64) (Job, error) {
+	row, err := r.client.JobRetry(ctx, id)
+	if err != nil {
+		return Job{}, err
+	}
+	return fromRow(row), nil
+}
+
+// Cancel stops a job: one that waits does not run, and a running one is
+// told to stop and is not tried again.
+func (r *Runner) Cancel(ctx context.Context, id int64) (Job, error) {
+	row, err := r.client.JobCancel(ctx, id)
+	if err != nil {
+		return Job{}, err
+	}
+	return fromRow(row), nil
+}
+
 // List returns the newest jobs, optionally of some queues only.
 func (r *Runner) List(ctx context.Context, limit int, queues ...string) ([]Job, error) {
 	params := river.NewJobListParams().OrderBy(river.JobListOrderByID, river.SortOrderDesc).First(limit)

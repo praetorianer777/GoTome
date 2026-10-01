@@ -3,7 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { type BookDetail, type BookFile, bookQuery, downloadUrl } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { useRouteContext } from "@tanstack/react-router";
+import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
+import { useRereadFile } from "@/jobs/api";
 import { type MessageKey, t } from "@/i18n";
 import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
 
@@ -155,10 +158,14 @@ function fileNotes(file: BookFile): string[] {
 	if (file.drm) notes.push(t("book.file.drm"));
 	if (file.hasText === false && file.kind === "ebook") notes.push(t("book.file.noText"));
 	if (file.missing) notes.push(t("book.file.missing"));
+	if (file.extractState === "pending") notes.push(t("book.file.pending"));
 	return notes;
 }
 
 function Files({ files }: { files: BookFile[] }) {
+	const { user } = useRouteContext({ from: "/app" });
+	const reread = useRereadFile();
+	const canReread = can(user, "index:rebuild");
 	if (files.length === 0) {
 		return null;
 	}
@@ -178,7 +185,25 @@ function Files({ files }: { files: BookFile[] }) {
 									{fileNotes(file).join(" · ")}
 								</span>
 							)}
+							{file.extractState === "failed" && (
+								<span className="block text-red-700 dark:text-red-400">
+									{file.extractError
+										? t("book.file.failedWhy", { error: file.extractError })
+										: t("book.file.failed")}
+								</span>
+							)}
 						</span>
+						{canReread && file.extractState === "failed" && !file.missing && (
+							<button
+								type="button"
+								disabled={reread.isPending}
+								onClick={() => reread.mutate(file.id)}
+								aria-label={t("book.file.rereadNamed", { name: file.name })}
+								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.file.reread")}
+							</button>
+						)}
 						<span className="text-slate-600 dark:text-slate-400">{formatSize(file.size)}</span>
 						{!file.missing && (
 							<a
@@ -193,6 +218,7 @@ function Files({ files }: { files: BookFile[] }) {
 					</li>
 				))}
 			</ul>
+			<FormError error={reread.error} />
 		</section>
 	);
 }

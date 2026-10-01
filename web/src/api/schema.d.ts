@@ -225,6 +225,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}/extraction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a file again for its details, cover and text */
+        post: operations["rereadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The newest background jobs, with what each works on */
+        get: operations["listJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a job that waits or runs */
+        post: operations["cancelJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{jobId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run a job that is not running again, as soon as a worker is free */
+        post: operations["retryJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/libraries": {
         parameters: {
             query?: never;
@@ -260,6 +328,23 @@ export interface paths {
         head?: never;
         /** Change a library's name, visibility or whether GOtome may write to it */
         patch: operations["updateLibrary"];
+        trace?: never;
+    };
+    "/libraries/{libraryId}/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a library's files again: those that failed, or all */
+        post: operations["rereadLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/libraries/{libraryId}/members": {
@@ -511,6 +596,8 @@ export interface components {
         BookFile: {
             drm: boolean;
             durationMs?: number;
+            extractError?: string;
+            extractState: string;
             format: string;
             hasText?: boolean;
             /** Format: uuid */
@@ -598,12 +685,40 @@ export interface components {
             type: string;
             value: string;
         };
+        JobList: {
+            jobs: components["schemas"]["JobView"][];
+        };
+        JobView: {
+            attempt: number;
+            /** Format: date-time */
+            attemptedAt?: string;
+            /** Format: uuid */
+            bookId?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            fileId?: string;
+            filePath?: string;
+            /** Format: date-time */
+            finalizedAt?: string;
+            id: number;
+            kind: string;
+            lastError?: string;
+            /** Format: uuid */
+            libraryId?: string;
+            libraryName?: string;
+            maxAttempts: number;
+            /** Format: date-time */
+            scheduledAt: string;
+            state: string;
+        };
         LibraryList: {
             libraries: components["schemas"]["LibraryResponse"][];
         };
         LibraryResponse: {
             /** Format: date-time */
             createdAt: string;
+            filesFailed: number;
             filesPending: number;
             /** Format: uuid */
             id: string;
@@ -630,6 +745,12 @@ export interface components {
         };
         MemberList: {
             members: components["schemas"]["Member"][];
+        };
+        RereadLibraryRequest: {
+            failedOnly: boolean;
+        };
+        RereadResult: {
+            queued: number;
         };
         Scan: {
             booksAdded: number;
@@ -1174,6 +1295,133 @@ export interface operations {
             };
         };
     };
+    rereadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RereadResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listJobs: {
+        parameters: {
+            query?: {
+                /** @description Only jobs in this state; left out, all. */
+                state?: "waiting" | "running" | "failed" | "done";
+                /** @description How many of the newest jobs, at most 200; 100 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancelJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retryJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listLibraries: {
         parameters: {
             query?: never;
@@ -1318,6 +1566,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LibraryResponse"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rereadLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RereadLibraryRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RereadResult"];
                 };
             };
             /** @description The request failed. */

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
 
 let server: FakeServer;
@@ -405,7 +406,7 @@ describe("books", () => {
 			.withLibrary("Audio")
 			.withBook("Persuasion", {
 				contributors: [{ name: "Jane Austen", role: "author" }],
-				files: [{ id: "file-1", kind: "ebook", format: "epub", name: "Persuasion.epub", size: 1_400_000, missing: false, drm: false }],
+				files: [{ id: "file-1", kind: "ebook", format: "epub", name: "Persuasion.epub", size: 1_400_000, missing: false, drm: false , extractState: "done" }],
 			})
 			.withBook("Dune", {
 				subtitle: "Deluxe Edition",
@@ -422,8 +423,8 @@ describe("books", () => {
 				identifiers: [{ type: "isbn", value: "9780441013593" }],
 				durationMs: 21 * 3600_000 + 2 * 60_000,
 				files: [
-					{ id: "file-2", kind: "audio", format: "mp3", name: "Dune 1.mp3", size: 400_000_000, missing: false, drm: false, part: 0, durationMs: 11 * 3600_000 },
-					{ id: "file-3", kind: "audio", format: "mp3", name: "Dune 2.mp3", size: 380_000_000, missing: true, drm: false, part: 1 },
+					{ id: "file-2", kind: "audio", format: "mp3", name: "Dune 1.mp3", size: 400_000_000, missing: false, drm: false, part: 0, durationMs: 11 * 3600_000 , extractState: "done" },
+					{ id: "file-3", kind: "audio", format: "mp3", name: "Dune 2.mp3", size: 380_000_000, missing: true, drm: false, part: 1 , extractState: "done" },
 				],
 			}, "Audio")
 			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] });
@@ -870,5 +871,72 @@ describe("quotas", () => {
 		expect(await within(await screen.findByRole("listitem", { name: "Small.pdf" })).findByText("Added.")).toBeInTheDocument();
 		expect(await within(screen.getByRole("listitem", { name: "Second.pdf" })).findByText("This file does not fit into your storage.")).toBeInTheDocument();
 		expect(await screen.findByText("Your uploads take up 6 KB of the 10 KB you may use.")).toBeInTheDocument();
+	});
+});
+
+describe("jobs", () => {
+	const job = (id: number, overrides: Partial<Job>): Job => ({
+		id,
+		kind: "ingest.extract_file",
+		state: "available",
+		attempt: 0,
+		maxAttempts: 3,
+		createdAt: "2026-01-02T10:00:00Z",
+		scheduledAt: "2026-01-02T10:00:00Z",
+		...overrides,
+	});
+
+	it("lists jobs with their errors, and tries a failed one again", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Novels");
+		server.jobs = [
+			job(3, { kind: "ingest.scan_library", libraryName: "Novels", state: "discarded", attempt: 1, maxAttempts: 5, lastError: "the library's folder cannot be read" }),
+			job(2, { filePath: "Emma.epub", bookId: "book-1", state: "running", attempt: 1 }),
+			job(1, { kind: "auth.sweep_sessions", state: "completed", attempt: 1 }),
+		];
+		renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Jobs" }));
+		const list = within(await screen.findByRole("list", { name: "Jobs" }));
+		const scan = within(list.getByRole("listitem", { name: "Scan Novels" }));
+		expect(scan.getByText("Failed")).toBeInTheDocument();
+		expect(scan.getByText("the library's folder cannot be read")).toBeInTheDocument();
+		expect(list.getByRole("link", { name: "Read Emma.epub" })).toHaveAttribute("href", "/books/book-1");
+		expect(list.getByRole("listitem", { name: "Clear away old sessions" })).toHaveTextContent("Done");
+
+		await person.click(scan.getByRole("button", { name: "Try again: Scan Novels" }));
+		expect(await scan.findByText("Waiting")).toBeInTheDocument();
+		await person.click(list.getByRole("button", { name: "Cancel: Read Emma.epub" }));
+		await waitFor(() => expect(server.jobs[1]?.state).toBe("cancelled"));
+	});
+
+	it("shows a file that could not be read, and reads it again", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Edith")
+			.withLibrary("Novels", { filesFailed: 1 })
+			.withBook("Broken", {
+				files: [{ id: "file-9", kind: "ebook", format: "epub", name: "Broken.epub", size: 10, missing: false, drm: false, extractState: "failed", extractError: "not a zip file" }],
+			});
+		const { unmount } = renderApp("/");
+
+		const status = await screen.findByText("Files that could not be read: 1.");
+		expect(status).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Read them again" }));
+		await waitFor(() => expect(server.reread).toContain("lib-1"));
+
+		await person.click(await screen.findByRole("link", { name: /^Broken/ }));
+		expect(await screen.findByText("Could not be read: not a zip file")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Read Broken.epub again" }));
+		await waitFor(() => expect(server.reread).toContain("file-9"));
+		unmount();
+
+		server.signedInAs("Rita");
+		const { router } = renderApp("/jobs");
+		expect(await screen.findByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(screen.queryByRole("link", { name: "Jobs" })).not.toBeInTheDocument();
 	});
 });

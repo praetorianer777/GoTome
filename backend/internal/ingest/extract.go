@@ -90,7 +90,7 @@ var extractors = map[string]Extractor{
 // to be read. A file already waiting in the queue is not queued twice.
 func (s *Service) EnqueuePending(ctx context.Context, libraryID uuid.UUID) error {
 	ids, err := sqlc.New(s.pool).ListPendingExtractions(ctx, sqlc.ListPendingExtractionsParams{
-		LibraryID: libraryID, Formats: slices.Sorted(maps.Keys(extractors)),
+		LibraryID: libraryID, Formats: readableFormats(),
 	})
 	if err != nil || len(ids) == 0 {
 		return err
@@ -104,6 +104,9 @@ func (s *Service) EnqueuePending(ctx context.Context, libraryID uuid.UUID) error
 	})
 	return err
 }
+
+// readableFormats are the formats a reader is registered for.
+func readableFormats() []string { return slices.Sorted(maps.Keys(extractors)) }
 
 // Extract reads one file and describes its book with what it says. A file
 // that cannot be parsed is recorded as failed, which is not an error: the
@@ -248,8 +251,11 @@ type ExtractArgs struct {
 	FileID uuid.UUID `json:"fileId"`
 }
 
-// Kind names the job in the queue. It is stored with every job, so it stays.
-func (ExtractArgs) Kind() string { return "ingest.extract_file" }
+// extractKind names the job in the queue. It is stored with every job, so it
+// stays.
+const extractKind = "ingest.extract_file"
+
+func (ExtractArgs) Kind() string { return extractKind }
 
 // ExtractWorker runs ExtractArgs.
 type ExtractWorker struct {

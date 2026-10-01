@@ -6,6 +6,8 @@ import {
 	scanIsActive,
 	useScanLibrary,
 } from "@/libraries/api";
+import { Link } from "@tanstack/react-router";
+import { useRereadLibrary } from "@/jobs/api";
 
 const when = new Intl.DateTimeFormat(undefined, {
 	dateStyle: "medium",
@@ -54,6 +56,7 @@ export function ScanStatus({
 	canScan: boolean;
 }) {
 	const scan = useScanLibrary();
+	const reread = useRereadLibrary();
 	const active = scanIsActive(library.lastScan);
 	const failed = library.lastScan?.state === "failed";
 
@@ -84,7 +87,29 @@ export function ScanStatus({
 					</button>
 				)}
 			</div>
-			<FormError error={scan.error} />
+			{library.filesFailed > 0 && (
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+					<p className="text-red-700 dark:text-red-400">
+						{t("scan.failedFiles", { count: library.filesFailed })}
+					</p>
+					{canScan && (
+						<>
+							<button
+								type="button"
+								disabled={reread.isPending}
+								onClick={() => reread.mutate({ id: library.id, failedOnly: true })}
+								className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("scan.rereadFailed")}
+							</button>
+							<Link to="/jobs" className="text-brand-strong underline underline-offset-4 dark:text-brand">
+								{t("scan.toJobs")}
+							</Link>
+						</>
+					)}
+				</div>
+			)}
+			<FormError error={scan.error ?? reread.error} />
 		</div>
 	);
 }

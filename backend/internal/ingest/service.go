@@ -92,6 +92,8 @@ type Queue interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
 	InsertMany(ctx context.Context, args []river.JobArgs, opts jobs.InsertOpts) (int, error)
 	Get(ctx context.Context, id int64) (jobs.Job, error)
+	Retry(ctx context.Context, id int64) (jobs.Job, error)
+	Cancel(ctx context.Context, id int64) (jobs.Job, error)
 }
 
 // Service asks for scans and runs them.
@@ -207,6 +209,22 @@ func (s *Service) Pending(ctx context.Context, scope library.Scope) (map[uuid.UU
 	return pending, nil
 }
 
+// Failed returns, per library the scope may see, how many of its files could
+// not be read. Libraries with none are left out.
+func (s *Service) Failed(ctx context.Context, scope library.Scope) (map[uuid.UUID]int32, error) {
+	rows, err := sqlc.New(s.pool).CountFailedFiles(ctx, sqlc.CountFailedFilesParams{
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return nil, err
+	}
+	failed := make(map[uuid.UUID]int32, len(rows))
+	for _, row := range rows {
+		failed[row.LibraryID] = row.Failed
+	}
+	return failed, nil
+}
+
 // Run makes one pass of the library's scan and records it. complete is false
 // when the pass stopped at its budget and another has to follow.
 func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (complete bool, err error) {
@@ -284,8 +302,11 @@ type ScanArgs struct {
 	LibraryID uuid.UUID `json:"libraryId"`
 }
 
-// Kind names the job in the queue. It is stored with every job, so it stays.
-func (ScanArgs) Kind() string { return "ingest.scan_library" }
+// scanKind names the job in the queue. It is stored with every job, so it
+// stays.
+const scanKind = "ingest.scan_library"
+
+func (ScanArgs) Kind() string { return scanKind }
 
 // ScanWorker runs ScanArgs.
 type ScanWorker struct {

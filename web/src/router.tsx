@@ -16,6 +16,7 @@ import { AdminLibraries } from "@/routes/admin-libraries";
 import { AdminSettings } from "@/routes/admin-settings";
 import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
+import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
@@ -168,6 +169,17 @@ const adminSettingsRoute = createRoute({
 	component: AdminSettings,
 });
 
+const jobsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/jobs",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "index:rebuild")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Jobs,
+});
+
 const adminUsersRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/admin/users",
@@ -192,7 +204,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
