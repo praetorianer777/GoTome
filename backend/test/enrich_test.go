@@ -52,6 +52,7 @@ func (a *app) matcher() (*enrich.Service, *atomic.Int64) {
 	m := enrich.NewService(a.pool, meta, a.scans, a.covers, a.settings, slog.New(slog.DiscardHandler))
 	m.Queue = a.scans.Queue
 	a.scans.OnExtracted = m.EnqueueTx
+	a.server.Metadata, a.server.Matches = meta, m
 	return m, &asked
 }
 

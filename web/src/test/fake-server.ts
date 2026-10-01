@@ -6,7 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
-import type { BookEdit, Candidate, CandidateApply } from "@/books/edit";
+import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
@@ -75,6 +75,8 @@ export class FakeServer {
 	];
 	/** The jobs the jobs page lists, newest first. */
 	jobs: Job[] = [];
+	/** The books whose matches wait for review. */
+	review: ReviewBook[] = [];
 	/** What the metadata providers know, by book. */
 	candidates: Record<string, { candidates: Candidate[]; failures: { provider: string; message: string }[] }> = {};
 	/** Files somebody asked to have read again. */
@@ -155,6 +157,9 @@ export class FakeServer {
 					? undefined
 					: await request.json().catch(() => undefined);
 			this.requests.push({ method: request.method, path: path + url.search, body });
+			if (path.startsWith("/matches")) {
+				return this.answerMatches(request.method, path, body as CandidateApply);
+			}
 			if (path === "/books" || path.startsWith("/books/")) {
 				return this.answerBooks(request.method, path, url.searchParams, body);
 			}
@@ -436,6 +441,31 @@ export class FakeServer {
 		);
 		const q = typed.toLowerCase();
 		return [...new Set(all)].filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)));
+	}
+
+	private answerMatches(method: string, path: string, body: CandidateApply): Response {
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+		}
+		if (method === "GET") {
+			return Response.json({ books: this.review, total: this.review.length });
+		}
+		const [, , id, action] = path.split("/");
+		const item = this.review.find((b) => b.matches.some((m) => m.matchId === id));
+		const match = item?.matches.find((m) => m.matchId === id);
+		if (!item || !match) {
+			return Response.json({ error: { code: "not_found", message: "There is no such match waiting." } }, { status: 404 });
+		}
+		if (action === "reject") {
+			item.matches = item.matches.filter((m) => m !== match);
+		} else {
+			this.applyCandidate(item.book.id, { ...body, provider: match.provider });
+			item.matches = [];
+		}
+		this.review = this.review.filter((b) => b.matches.length > 0);
+		return action === "reject"
+			? new Response(null, { status: 204 })
+			: Response.json(this.books.find((b) => b.id === item.book.id));
 	}
 
 	/** Takes a candidate's values the way the server does: locked fields stay. */

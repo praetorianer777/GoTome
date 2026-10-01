@@ -2,11 +2,13 @@ package httpapi
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
@@ -83,25 +85,29 @@ func (s *Server) listCandidates(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	for _, c := range found {
-		v := candidateView{
-			Provider: c.Provider, ID: c.ID, Score: c.Score, Title: c.Title, Subtitle: c.Subtitle,
-			Description: c.Description, Language: c.Language, Published: c.Published, Publisher: c.Publisher,
-			Series: c.Series, SeriesIndex: c.SeriesIndex, PageCount: c.PageCount,
-			Contributors: []contributor{}, Tags: append([]string{}, c.Tags...), Identifiers: []identifier{},
-		}
-		for _, p := range c.Contributors {
-			v.Contributors = append(v.Contributors, contributor{Name: p.Name, Role: cmp.Or(p.Role, catalog.RoleAuthor)})
-		}
-		for _, ident := range c.Identifiers {
-			v.Identifiers = append(v.Identifiers, identifier{Type: ident.Type, Value: ident.Value})
-		}
-		if c.CoverURL != "" {
-			v.CoverToken = s.Metadata.CoverToken(c.Provider, c.CoverURL)
-		}
-		out.Candidates = append(out.Candidates, v)
+		out.Candidates = append(out.Candidates, s.candidateViewOf(c))
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
+}
+
+func (s *Server) candidateViewOf(c metadata.Candidate) candidateView {
+	v := candidateView{
+		Provider: c.Provider, ID: c.ID, Score: c.Score, Title: c.Title, Subtitle: c.Subtitle,
+		Description: c.Description, Language: c.Language, Published: c.Published, Publisher: c.Publisher,
+		Series: c.Series, SeriesIndex: c.SeriesIndex, PageCount: c.PageCount,
+		Contributors: []contributor{}, Tags: append([]string{}, c.Tags...), Identifiers: []identifier{},
+	}
+	for _, p := range c.Contributors {
+		v.Contributors = append(v.Contributors, contributor{Name: p.Name, Role: cmp.Or(p.Role, catalog.RoleAuthor)})
+	}
+	for _, ident := range c.Identifiers {
+		v.Identifiers = append(v.Identifiers, identifier{Type: ident.Type, Value: ident.Value})
+	}
+	if c.CoverURL != "" {
+		v.CoverToken = s.Metadata.CoverToken(c.Provider, c.CoverURL)
+	}
+	return v
 }
 
 // getCandidateCover sends a provider's cover through the server: the
@@ -147,7 +153,13 @@ func (s *Server) applyCandidate(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	if !s.Metadata.Has(req.Provider) {
+	return s.takeFromProvider(w, r, id, req.Provider, req.editBookRequest, req.CoverToken)
+}
+
+// takeFromProvider applies values a person chose from a provider's record:
+// recorded as the provider's, locking nothing, leaving locked fields.
+func (s *Server) takeFromProvider(w http.ResponseWriter, r *http.Request, id uuid.UUID, provider string, req editBookRequest, coverToken string, then ...func(context.Context) error) error {
+	if !s.Metadata.Has(provider) {
 		return ErrValidation(map[string]string{"provider": "There is no such provider."})
 	}
 	if len(req.Locks) > 0 {
@@ -160,9 +172,9 @@ func (s *Server) applyCandidate(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	e := req.edit()
-	e.Source = catalog.ProviderSource(req.Provider)
-	if req.CoverToken != "" {
-		image, err := s.Metadata.CoverOf(r.Context(), req.CoverToken)
+	e.Source = catalog.ProviderSource(provider)
+	if coverToken != "" {
+		image, err := s.Metadata.CoverOf(r.Context(), coverToken)
 		if errors.Is(err, metadata.ErrBadToken) || errors.Is(err, metadata.ErrNotFound) {
 			return ErrValidation(map[string]string{"coverToken": "This cover is no longer there; look for candidates again."})
 		}
@@ -178,5 +190,5 @@ func (s *Server) applyCandidate(w http.ResponseWriter, r *http.Request) error {
 		}
 		e.Cover = &key
 	}
-	return s.applyEdit(w, r, id, e)
+	return s.applyEdit(w, r, id, e, then...)
 }

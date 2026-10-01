@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -52,8 +53,10 @@ type Server struct {
 	// Books is the catalogue; Covers holds the cover images it points at.
 	Books  *catalog.Service
 	Covers *covers.Store
-	// Metadata asks outside sources about books.
+	// Metadata asks outside sources about books; Matches keeps what looking
+	// books up by themselves found.
 	Metadata *metadata.Service
+	Matches  *enrich.Service
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

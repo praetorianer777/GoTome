@@ -11,7 +11,7 @@ import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 
 export interface NavItem {
-	to: "/" | "/upload" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
+	to: "/" | "/upload" | "/review" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
 	label: MessageKey;
 	/** What the person must be allowed to do for the entry to be offered. */
 	permission: Permission;
@@ -24,6 +24,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
 	{ to: "/", label: "nav.library", permission: "library:read" },
 	{ to: "/upload", label: "nav.upload", permission: "books:upload" },
+	{ to: "/review", label: "nav.review", permission: "metadata:edit" },
 	{ to: "/jobs", label: "nav.jobs", permission: "index:rebuild" },
 	{ to: "/admin/libraries", label: "nav.libraries", permission: "storage:manage" },
 	{ to: "/admin/users", label: "nav.users", permission: "users:manage" },

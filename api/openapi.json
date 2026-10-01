@@ -1705,6 +1705,150 @@
         "x-permission": "books:upload"
       }
     },
+    "/matches": {
+      "get": {
+        "operationId": "listReview",
+        "summary": "Books whose doubtful matches wait for a person, those that wait longest first",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books to return, at most 50; 20 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/matches/{matchId}/accept": {
+      "post": {
+        "operationId": "acceptMatch",
+        "summary": "Take chosen values from a waiting match; the book's other matches are settled",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptMatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/matches/{matchId}/reject": {
+      "post": {
+        "operationId": "rejectMatch",
+        "summary": "Reject a waiting match; it is not proposed again",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/metadata/covers/{token}": {
       "get": {
         "operationId": "getCandidateCover",
@@ -2202,6 +2346,62 @@
           "code",
           "message"
         ]
+      },
+      "AcceptMatchRequest": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "locks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "series": {
+            "$ref": "#/components/schemas/SeriesPlace"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
       },
       "Account": {
         "type": "object",
@@ -3147,6 +3347,82 @@
           "password"
         ]
       },
+      "MatchView": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "matchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "matchId",
+          "provider",
+          "id",
+          "score",
+          "title",
+          "contributors",
+          "tags",
+          "identifiers"
+        ]
+      },
       "Member": {
         "type": "object",
         "properties": {
@@ -3235,6 +3511,42 @@
         },
         "required": [
           "queued"
+        ]
+      },
+      "ReviewBook": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookDetail"
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchView"
+            }
+          }
+        },
+        "required": [
+          "book",
+          "matches"
+        ]
+      },
+      "ReviewList": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewBook"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "books",
+          "total"
         ]
       },
       "Scan": {

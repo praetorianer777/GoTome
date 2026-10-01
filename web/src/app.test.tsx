@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { BookDetail } from "@/books/api";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
 
@@ -1091,5 +1092,49 @@ describe("finding details online", () => {
 			],
 		});
 		expect(screen.getByRole("heading", { name: "Emma (my copy)", level: 1 })).toBeInTheDocument();
+	});
+});
+
+describe("reviewing matches", () => {
+	it("takes and rejects matches from the keyboard", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Emma Donoghue", role: "author" }] })
+			.withBook("Persuasion");
+		const match = (matchId: string, title: string, publisher: string) => ({
+			matchId, provider: "openlibrary", id: matchId, score: 0.6, title, publisher,
+			contributors: [{ name: "Jane Austen", role: "author" as const }], tags: [], identifiers: [],
+		});
+		server.review = [
+			{ book: server.books[0] as BookDetail, matches: [match("m1", "Emma", "Penguin"), match("m2", "Emma", "John Murray")] },
+			{ book: server.books[1] as BookDetail, matches: [match("m3", "Persuasion", "Penguin")] },
+		];
+		renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Review" }));
+
+		expect(await screen.findByText("2 books wait.")).toBeInTheDocument();
+		expect(screen.getByRole("heading", { name: "Emma", level: 2 })).toBeInTheDocument();
+		await person.keyboard("2");
+		expect(screen.getByRole("button", { name: /^2\. Emma/ })).toHaveAttribute("aria-pressed", "true");
+		await person.keyboard("a");
+
+		expect(await screen.findByRole("heading", { name: "Persuasion", level: 2 })).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/matches/m2/accept")?.body).toMatchObject({ publisher: "John Murray" });
+		expect(server.requests.find((r) => r.path === "/matches/m2/accept")?.body).not.toHaveProperty("provider");
+		await person.keyboard("r");
+		expect(await screen.findByText("Nothing waits for review.")).toBeInTheDocument();
+		expect(server.requests.some((r) => r.path === "/matches/m3/reject")).toBe(true);
+		expect(server.books[0]?.publisher).toBe("John Murray");
+	});
+
+	it("keeps readers out", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		const { router } = renderApp("/review");
+		expect(await screen.findByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(screen.queryByRole("link", { name: "Review" })).not.toBeInTheDocument();
 	});
 });

@@ -116,3 +116,7 @@ What changes for someone who runs or uses GOtome. The format follows
   how sure is sure enough, and choose the sources.
 - `GOTOME_OFFLINE=true` keeps GOtome from asking any metadata source on the
   internet.
+- Review. Doubtful matches wait on the new Review page, the longest waiting
+  first: compare, tick what to take, or reject a match so it is not
+  proposed again. It works from the keyboard (a, r, 1–3, j and k). Editors
+  see the books of the libraries they may see.

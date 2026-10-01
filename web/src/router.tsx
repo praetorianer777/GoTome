@@ -18,6 +18,7 @@ import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
+import { Review } from "@/routes/review";
 import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
@@ -197,6 +198,17 @@ const adminSettingsRoute = createRoute({
 	component: AdminSettings,
 });
 
+const reviewRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/review",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Review,
+});
+
 const jobsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/jobs",
@@ -232,7 +244,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

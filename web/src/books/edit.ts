@@ -131,3 +131,46 @@ export function useApplyCandidate(id: string) {
 		onSuccess: useAfter(id),
 	});
 }
+
+export type ReviewBook = components["schemas"]["ReviewBook"];
+
+/** The books whose doubtful matches wait for a person. */
+export const reviewQuery = queryOptions({
+	queryKey: ["review"],
+	queryFn: async () =>
+		(await api.GET("/matches", { params: { query: { limit: 50 } } })).data ?? { books: [], total: 0 },
+});
+
+function useAfterReview(id: string) {
+	const queryClient = useQueryClient();
+	const after = useAfter(id);
+	return (book?: BookDetail) => {
+		after(book);
+		queryClient.invalidateQueries({ queryKey: ["review"] });
+	};
+}
+
+export function useAcceptMatch(bookId: string) {
+	return useMutation({
+		mutationFn: async ({ matchId, body }: { matchId: string; body: CandidateApply }) => {
+			const { provider: _, ...values } = body;
+			return (
+				await api.POST("/matches/{matchId}/accept", {
+					params: { path: { matchId } },
+					body: values,
+				})
+			).data;
+		},
+		onSuccess: useAfterReview(bookId),
+	});
+}
+
+export function useRejectMatch(bookId: string) {
+	const after = useAfterReview(bookId);
+	return useMutation({
+		mutationFn: async (matchId: string) => {
+			await api.POST("/matches/{matchId}/reject", { params: { path: { matchId } } });
+		},
+		onSuccess: () => after(),
+	});
+}

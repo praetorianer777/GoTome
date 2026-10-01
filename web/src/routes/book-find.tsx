@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/api/client";
 import { type BookDetail, bookQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
@@ -278,7 +278,7 @@ function FindPage({ book }: { book: BookDetail }) {
 					</ul>
 					<section aria-label={t("find.compare")}>
 						{picked ? (
-							<Compare
+							<TakeFromCandidate
 								key={`${picked.provider}:${picked.id}`}
 								book={book}
 								candidate={picked}
@@ -295,26 +295,33 @@ function FindPage({ book }: { book: BookDetail }) {
 	);
 }
 
-function Compare({
+/**
+ * What taking a candidate would change, a tick per field, and the button
+ * that takes the ticked ones. Locked fields cannot be ticked. With keys set,
+ * "a" takes too, unless a text field has the focus.
+ */
+export function Compare({
 	book,
 	candidate,
+	busy,
+	error,
+	onTake,
+	keys = false,
+	children,
 }: {
 	book: BookDetail;
 	candidate: Candidate;
+	busy: boolean;
+	error: unknown;
+	onTake: (body: CandidateApply) => void;
+	keys?: boolean;
+	children?: ReactNode;
 }) {
-	const navigate = useNavigate();
-	const apply = useApplyCandidate(book.id);
 	const rows = changes(book, candidate);
 	const locked = (field: Lockable) => book.fields[field]?.locked ?? false;
 	const [take, setTake] = useState(
 		() => new Set(rows.filter((r) => !locked(r.field)).map((r) => r.field)),
 	);
-
-	if (rows.length === 0) {
-		return (
-			<p className="text-slate-600 dark:text-slate-400">{t("find.nothing")}</p>
-		);
-	}
 	function submit() {
 		const body: CandidateApply = { provider: candidate.provider };
 		for (const row of rows) {
@@ -322,10 +329,29 @@ function Compare({
 				Object.assign(body, row.take);
 			}
 		}
-		apply.mutate(body, {
-			onSuccess: () =>
-				navigate({ to: "/books/$bookId", params: { bookId: book.id } }),
-		});
+		onTake(body);
+	}
+	const latest = useRef(submit);
+	latest.current = submit;
+	useEffect(() => {
+		if (!keys) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "a" && !typing(e) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+				e.preventDefault();
+				latest.current();
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [keys]);
+
+	if (rows.length === 0) {
+		return (
+			<div className="flex flex-col gap-4">
+				<p className="text-slate-600 dark:text-slate-400">{t("find.nothing")}</p>
+				{children}
+			</div>
+		);
 	}
 	return (
 		<div className="flex flex-col gap-4">
@@ -378,15 +404,44 @@ function Compare({
 					))}
 				</tbody>
 			</table>
-			<FormError error={apply.error} />
-			<button
-				type="button"
-				disabled={apply.isPending || take.size === 0}
-				onClick={submit}
-				className="self-start rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
-			>
-				{t("find.apply")}
-			</button>
+			<FormError error={error} />
+			<div className="flex flex-wrap items-center gap-2">
+				<button
+					type="button"
+					disabled={busy || take.size === 0}
+					onClick={submit}
+					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+				>
+					{t("find.apply")}
+				</button>
+				{children}
+			</div>
 		</div>
+	);
+}
+
+/** Whether a key goes into a field that takes text, where it is no command. */
+export function typing(e: KeyboardEvent): boolean {
+	const el = e.target as HTMLElement | null;
+	if (!el) return false;
+	if (el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
+	return el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes((el as HTMLInputElement).type);
+}
+
+function TakeFromCandidate({ book, candidate }: { book: BookDetail; candidate: Candidate }) {
+	const navigate = useNavigate();
+	const apply = useApplyCandidate(book.id);
+	return (
+		<Compare
+			book={book}
+			candidate={candidate}
+			busy={apply.isPending}
+			error={apply.error}
+			onTake={(body) =>
+				apply.mutate(body, {
+					onSuccess: () => navigate({ to: "/books/$bookId", params: { bookId: book.id } }),
+				})
+			}
+		/>
 	);
 }
