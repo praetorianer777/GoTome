@@ -78,3 +78,8 @@ What changes for someone who runs or uses GOtome. The format follows
 - Your account. A click on "Signed in as …" opens your own page: change your
   password, which signs you out everywhere else, and see where you are signed
   in, signing out a browser you no longer use.
+- Storage quotas. An administrator gives an account a limit on what it may
+  upload, on the Users page, which also shows what each account's uploads take
+  up. An upload that would pass the limit is refused with a message saying how
+  much is used. Files that are gone from disk no longer count. Without a limit,
+  there is none.

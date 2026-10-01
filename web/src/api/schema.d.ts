@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the caller's uploads take up, and how much they may */
+        get: operations["getOwnStorage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books": {
         parameters: {
             query?: never;
@@ -385,6 +402,23 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/users/{userId}/quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set how much an account may upload; null is no limit */
+        put: operations["setUserQuota"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}/sessions": {
         parameters: {
             query?: never;
@@ -441,9 +475,11 @@ export interface components {
             id: string;
             /** Format: date-time */
             lastSeenAt?: string;
+            quotaBytes?: number;
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             sessions: number;
+            usedBytes: number;
             username: string;
         };
         AccountList: {
@@ -651,6 +687,9 @@ export interface components {
             lastSeenAt: string;
             userAgent: string;
         };
+        SetQuotaRequest: {
+            quotaBytes: number | null;
+        };
         SettingList: {
             settings: components["schemas"]["SettingView"][];
         };
@@ -670,6 +709,10 @@ export interface components {
         };
         SetupStatus: {
             needed: boolean;
+        };
+        Storage: {
+            quotaBytes?: number;
+            usedBytes: number;
         };
         UpdateAccountRequest: {
             disabled?: boolean;
@@ -886,6 +929,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getOwnStorage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Storage"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -1614,6 +1686,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setUserQuota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetQuotaRequest"];
             };
         };
         responses: {

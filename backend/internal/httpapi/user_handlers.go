@@ -19,6 +19,22 @@ type account struct {
 	LastSeenAt *time.Time `json:"lastSeenAt,omitempty"`
 	// Sessions is how many live sessions the account has.
 	Sessions int `json:"sessions"`
+	// QuotaBytes is how much the account may upload; left out for no limit.
+	QuotaBytes *int64 `json:"quotaBytes,omitempty"`
+	// UsedBytes is what its uploads take up.
+	UsedBytes int64 `json:"usedBytes"`
+}
+
+// storage is what the caller's uploads take up and may.
+type storage struct {
+	UsedBytes int64 `json:"usedBytes"`
+	// QuotaBytes is left out when there is no limit.
+	QuotaBytes *int64 `json:"quotaBytes,omitempty"`
+}
+
+type setQuotaRequest struct {
+	// QuotaBytes is the most the account may upload; null is no limit.
+	QuotaBytes *int64 `json:"quotaBytes"`
 }
 
 type accountList struct {
@@ -61,7 +77,10 @@ type changePasswordRequest struct {
 }
 
 func toAccountView(a auth.Account) account {
-	return account{User: a.User, Disabled: a.Disabled, CreatedAt: a.CreatedAt, LastSeenAt: a.LastSeenAt, Sessions: a.Sessions}
+	return account{
+		User: a.User, Disabled: a.Disabled, CreatedAt: a.CreatedAt, LastSeenAt: a.LastSeenAt,
+		Sessions: a.Sessions, QuotaBytes: a.QuotaBytes, UsedBytes: a.UsedBytes,
+	}
 }
 
 // accountError turns what the account functions refuse into answers.
@@ -181,5 +200,36 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) error {
 		return accountError(err)
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) setQuota(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "userId", "user")
+	if err != nil {
+		return err
+	}
+	var req setQuotaRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	a, err := s.Auth.SetQuota(r.Context(), id, req.QuotaBytes)
+	if err != nil {
+		return accountError(err)
+	}
+	st, err := s.Scans.Storage(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	a.UsedBytes = st.UsedBytes
+	writeJSON(w, r, http.StatusOK, toAccountView(a))
+	return nil
+}
+
+func (s *Server) getOwnStorage(w http.ResponseWriter, r *http.Request) error {
+	st, err := s.Scans.Storage(r.Context(), UserFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, storage{UsedBytes: st.UsedBytes, QuotaBytes: st.QuotaBytes})
 	return nil
 }

@@ -177,6 +177,11 @@ type Setting struct {
 	UpdatedBy *uuid.UUID
 }
 
+type StorageUse struct {
+	UserID    *uuid.UUID
+	UsedBytes int64
+}
+
 type Tag struct {
 	ID      uuid.UUID
 	Name    string

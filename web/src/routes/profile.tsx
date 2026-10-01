@@ -9,6 +9,7 @@ import {
 	useChangePassword,
 	useEndOwnSession,
 } from "@/users/api";
+import { StorageUse } from "@/users/storage";
 
 const ROLE_LABELS: Record<string, MessageKey> = {
 	admin: "role.admin",
@@ -58,6 +59,12 @@ export function Profile({ user }: { user: CurrentUser }) {
 					})}
 				</p>
 			</div>
+			<section aria-labelledby="storage" className="flex flex-col gap-2">
+				<h2 id="storage" className="text-lg font-medium">
+					{t("profile.storage")}
+				</h2>
+				<StorageUse />
+			</section>
 			<ChangePassword />
 			<Sessions />
 		</div>

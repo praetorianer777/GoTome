@@ -7,6 +7,8 @@ import { errorMessage, FormError, fieldErrors } from "@/components/form";
 import { t } from "@/i18n";
 import { formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
+import { storageQuery } from "@/users/api";
+import { StorageUse } from "@/users/storage";
 
 interface Item {
 	id: number;
@@ -72,6 +74,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 				if (result.outcome === "added") {
 					queryClient.invalidateQueries({ queryKey: ["books"] });
 					queryClient.invalidateQueries({ queryKey: librariesQuery.queryKey });
+					queryClient.invalidateQueries({ queryKey: storageQuery.queryKey });
 				}
 			})
 			.catch((error: unknown) => setItems(patched(next.id, { state: "failed", error })));
@@ -100,7 +103,10 @@ export function Upload({ user }: { user: CurrentUser }) {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-semibold">{t("upload.title")}</h1>
+			<div className="flex flex-col gap-1">
+				<h1 className="text-2xl font-semibold">{t("upload.title")}</h1>
+				<StorageUse />
+			</div>
 			{libraries.isPending && <p className="text-slate-500">{t("loading")}</p>}
 			<FormError error={libraries.error} />
 

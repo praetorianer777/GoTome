@@ -10,6 +10,7 @@ export type Account = components["schemas"]["Account"];
 export type NewAccount = components["schemas"]["CreateAccountRequest"];
 export type AccountChanges = components["schemas"]["UpdateAccountRequest"];
 export type Session = components["schemas"]["SessionView"];
+export type Storage = components["schemas"]["Storage"];
 
 /** Every account, for administrators. */
 export const usersQuery = queryOptions({
@@ -23,6 +24,13 @@ export const ownSessionsQuery = queryOptions({
 	queryKey: ["auth", "sessions"],
 	queryFn: async (): Promise<Session[]> =>
 		(await api.GET("/auth/sessions")).data?.sessions ?? [],
+});
+
+/** What the signed-in person's uploads take up, and how much they may. */
+export const storageQuery = queryOptions({
+	queryKey: ["auth", "storage"],
+	queryFn: async (): Promise<Storage | undefined> =>
+		(await api.GET("/auth/storage")).data,
 });
 
 function useInvalidate(queryKey: readonly unknown[]) {
@@ -79,5 +87,18 @@ export function useChangePassword() {
 			await api.POST("/auth/password", { body });
 		},
 		onSuccess: useInvalidate(ownSessionsQuery.queryKey),
+	});
+}
+
+export function useSetQuota() {
+	return useMutation({
+		mutationFn: async ({ id, quotaBytes }: { id: string; quotaBytes: number | null }) =>
+			(
+				await api.PUT("/users/{userId}/quota", {
+					params: { path: { userId: id } },
+					body: { quotaBytes },
+				})
+			).data,
+		onSuccess: useInvalidate(usersQuery.queryKey),
 	});
 }

@@ -30,3 +30,13 @@ WHERE library_id = $1 AND trashed_at IS NULL
 
 -- name: GetBookTitle :one
 SELECT title FROM books WHERE id = $1;
+
+-- name: LockUserStorage :exec
+-- Two uploads of one user at once must not both find room for themselves.
+SELECT pg_advisory_xact_lock(hashtextextended('storage:' || sqlc.arg(user_id)::uuid::text, 0));
+
+-- name: GetUserStorage :one
+SELECT u.quota_bytes, COALESCE(s.used_bytes, 0)::bigint AS used_bytes
+FROM users u
+LEFT JOIN storage_use s ON s.user_id = u.id
+WHERE u.id = $1;

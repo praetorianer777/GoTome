@@ -162,6 +162,11 @@ func (s *Server) routes() []Route {
 			Permission: auth.SignedIn, Handler: s.endOwnSession,
 		},
 		{
+			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
+			Summary: "What the caller's uploads take up, and how much they may", Tag: "auth",
+			Response: storage{}, Permission: auth.SignedIn, Handler: s.getOwnStorage,
+		},
+		{
 			Method: http.MethodPost, Path: "/auth/password", ID: "changePassword",
 			Summary: "Change one's own password; every other session ends", Tag: "auth",
 			Request: changePasswordRequest{}, Permission: auth.SignedIn, Handler: s.changePassword,
@@ -182,6 +187,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPatch, Path: "/users/{userId}", ID: "updateUser",
 			Summary: "Change an account's role, address or password, or disable it; the last administrator stays one", Tag: "users",
 			Request: updateAccountRequest{}, Response: account{}, Permission: auth.UsersManage, Handler: s.updateUser,
+		},
+		{
+			Method: http.MethodPut, Path: "/users/{userId}/quota", ID: "setUserQuota",
+			Summary: "Set how much an account may upload; null is no limit", Tag: "users",
+			Request: setQuotaRequest{}, Response: account{}, Permission: auth.StorageManage, Handler: s.setQuota,
 		},
 		{
 			Method: http.MethodDelete, Path: "/users/{userId}/sessions", ID: "endUserSessions",
