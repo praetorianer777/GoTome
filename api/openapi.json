@@ -146,6 +146,14 @@
             }
           },
           {
+            "name": "filter",
+            "in": "query",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "description": "What the books are ordered by; title when left out.",
@@ -194,6 +202,61 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BookList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/books/facets": {
+      "get": {
+        "operationId": "listBookFacets",
+        "summary": "How many books of a list have each author, series, tag, language, decade and format",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "The filter of the list the facets are for, as listBooks takes it.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacetList"
                 }
               }
             }
@@ -1277,6 +1340,65 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "Facet": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series",
+              "tag",
+              "language",
+              "published",
+              "format"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FacetValue"
+            }
+          }
+        },
+        "required": [
+          "field",
+          "values"
+        ]
+      },
+      "FacetList": {
+        "type": "object",
+        "properties": {
+          "facets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Facet"
+            }
+          }
+        },
+        "required": [
+          "facets"
+        ]
+      },
+      "FacetValue": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label",
+          "count"
         ]
       },
       "Identifier": {

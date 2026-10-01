@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
 )
@@ -33,6 +34,10 @@ func Spec() *openapi.Document {
 		permissions = append(permissions, string(p))
 	}
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
+	b.FieldOverrides["Facet.field"] = &openapi.Schema{Type: "string", Enum: []string{
+		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
+		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldFormat,
+	}}
 	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},

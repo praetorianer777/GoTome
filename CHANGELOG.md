@@ -54,3 +54,8 @@ What changes for someone who runs or uses GOtome. The format follows
   upload that breaks off leaves nothing behind. One file may be up to 4 GiB
   (`GOTOME_UPLOAD_LIMIT_MB`); a reverse proxy in front of GOtome needs to
   allow that much too (nginx: `client_max_body_size`).
+- Filters. The library page has a panel to narrow the books by author,
+  series, tag, language, decade of publication and format, each with how many
+  books have it; values of one field add up, fields narrow each other. The
+  address carries the filters, so a filtered view can be bookmarked or shared.
+  On a phone the panel is behind a "Filters" button.

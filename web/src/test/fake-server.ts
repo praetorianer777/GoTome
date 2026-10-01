@@ -297,6 +297,9 @@ export class FakeServer {
 		if (!this.session) {
 			return Response.json({ error: { code: "unauthorized", message: "Sign in to continue." } }, { status: 401 });
 		}
+		if (path === "/books/facets") {
+			return Response.json({ facets: this.facets(query) });
+		}
 		if (path !== "/books") {
 			const book = this.books.find((b) => `/books/${b.id}` === path);
 			return book
@@ -307,8 +310,10 @@ export class FakeServer {
 		const sort = query.get("sort") ?? "title";
 		const key = (b: BookDetail) =>
 			sort === "author" ? `${authorOf(b)}\u0000${b.title}` : sort === "added" ? b.addedAt : b.title;
+		const tree = query.get("filter");
 		const sorted = this.books
 			.filter((b) => !query.get("library") || b.libraryId === query.get("library"))
+			.filter((b) => !tree || matches(b, JSON.parse(tree)))
 			.sort((a, b) => key(a).localeCompare(key(b)));
 		if (query.get("order") === "desc") {
 			sorted.reverse();
@@ -329,6 +334,34 @@ export class FakeServer {
 				addedAt: b.addedAt,
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
+		});
+	}
+
+	/** The facets the server would count, from the same books. */
+	private facets(query: URLSearchParams) {
+		const tree: Rule = JSON.parse(query.get("filter") || "{}");
+		return FIELDS.map((field) => {
+			// A field's own rules do not narrow its counts.
+			const without: Rule = { all: (tree.all ?? []).filter((r) => fieldsOf(r).join() !== field) };
+			const counts = new Map<string, { label: string; count: number }>();
+			for (const b of this.books) {
+				if (query.get("library") && b.libraryId !== query.get("library")) {
+					continue;
+				}
+				if (!matches(b, without)) {
+					continue;
+				}
+				for (const [value, label] of valuesOf(b, field)) {
+					const entry = counts.get(value) ?? { label, count: 0 };
+					entry.count++;
+					counts.set(value, entry);
+				}
+			}
+			return {
+				field,
+				values: [...counts].map(([value, { label, count }]) => ({ value, label, count }))
+					.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)),
+			};
 		});
 	}
 
@@ -421,6 +454,77 @@ export class FakeServer {
 		}
 		return refuse(404, "not_found", "There is nothing at this address.");
 	}
+}
+
+type Field = "author" | "series" | "tag" | "language" | "published" | "format";
+const FIELDS: Field[] = ["author", "series", "tag", "language", "published", "format"];
+
+interface Rule {
+	all?: Rule[];
+	any?: Rule[];
+	not?: Rule;
+	field?: Field;
+	op?: string;
+	values?: string[];
+}
+
+/** A name as the server compares it, near enough for the tests. */
+function nameKey(name: string): string {
+	return name
+		.normalize("NFKD")
+		.replace(/\p{Mn}/gu, "")
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, " ")
+		.trim();
+}
+
+/** The values a book has for a field, as [value, label] pairs. */
+function valuesOf(b: BookDetail, field: Field): [string, string][] {
+	switch (field) {
+		case "author":
+			return b.contributors.filter((c) => c.role === "author").map((c) => [nameKey(c.name), c.name]);
+		case "series":
+			return b.series ? [[nameKey(b.series), b.series]] : [];
+		case "tag":
+			return b.tags.map((tag) => [nameKey(tag), tag]);
+		case "language": {
+			const lang = b.language?.split("-")[0]?.toLowerCase();
+			return lang ? [[lang, lang]] : [];
+		}
+		case "published": {
+			const decade = b.published ? String(Math.floor(Number(b.published.slice(0, 4)) / 10) * 10) : undefined;
+			return decade ? [[decade, decade]] : [];
+		}
+		case "format":
+			return [...new Set(b.files.map((f) => f.format))].map((f) => [f, f]);
+	}
+}
+
+function fieldsOf(r: Rule): string[] {
+	return [...new Set([r.field ?? "", ...(r.all ?? []).flatMap(fieldsOf), ...(r.any ?? []).flatMap(fieldsOf)])]
+		.filter(Boolean);
+}
+
+function matches(b: BookDetail, r: Rule): boolean {
+	if (r.all) {
+		return r.all.every((c) => matches(b, c));
+	}
+	if (r.any) {
+		return r.any.some((c) => matches(b, c));
+	}
+	if (r.not) {
+		return !matches(b, r.not);
+	}
+	if (!r.field) {
+		return true;
+	}
+	const have = valuesOf(b, r.field).map(([v]) => v);
+	if (r.op === "between") {
+		const year = Number(b.published?.slice(0, 4));
+		const [from, to] = r.values ?? [];
+		return !!b.published && (!from || year >= Number(from)) && (!to || year <= Number(to));
+	}
+	return (r.values ?? []).some((v) => have.includes(r.field === "format" ? v : nameKey(v)));
 }
 
 /** Renders the whole app at an address, against the fake server. */

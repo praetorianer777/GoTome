@@ -1,9 +1,21 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type CurrentUser, can } from "@/auth/session";
-import { type BookSort, type BookSummary, booksQuery } from "@/books/api";
+import {
+	type BookSort,
+	type BookSummary,
+	booksQuery,
+	facetsQuery,
+} from "@/books/api";
 import { Cover } from "@/books/cover";
+import { FilterPanel } from "@/books/filter-panel";
+import {
+	FACET_FIELDS,
+	type FilterPicks,
+	filterTree,
+	pickCount,
+} from "@/books/filters";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
@@ -13,7 +25,7 @@ import { ScanStatus } from "@/libraries/scan";
 export type LibraryView = "grid" | "list";
 
 /** What the library page shows, as the address carries it. */
-export interface LibrarySearch {
+export interface LibrarySearch extends FilterPicks {
 	library?: string;
 	sort?: BookSort;
 	view?: LibraryView;
@@ -53,15 +65,39 @@ export function Library({
 	const sort = search.sort ?? "title";
 	const view = search.view ?? "grid";
 	const busy = (selected ? [selected] : list).some(libraryIsBusy);
+	const picks: FilterPicks = Object.fromEntries(
+		FACET_FIELDS.map((field) => [field, search[field]]),
+	);
+	const filter = filterTree(picks);
+	const filtered = pickCount(picks);
+	const [filtersOpen, setFiltersOpen] = useState(false);
 
 	const books = useInfiniteQuery({
 		...booksQuery(
-			{ library: selected?.id, sort, order: sort === "added" ? "desc" : "asc" },
+			{
+				library: selected?.id,
+				filter,
+				sort,
+				order: sort === "added" ? "desc" : "asc",
+			},
+			busy ? BOOKS_POLL_MS : false,
+		),
+		enabled: list.length > 0,
+	});
+	const facets = useQuery({
+		...facetsQuery(
+			{ library: selected?.id, filter },
 			busy ? BOOKS_POLL_MS : false,
 		),
 		enabled: list.length > 0,
 	});
 	const shown = books.data?.pages.flatMap((page) => page.books) ?? [];
+	// Every field is named, so that one taken out of the picks leaves the
+	// address too.
+	const setPicks = (next: FilterPicks) =>
+		onSearch(
+			Object.fromEntries(FACET_FIELDS.map((field) => [field, next[field]])),
+		);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -140,61 +176,105 @@ export function Library({
 								</button>
 							))}
 						</fieldset>
+						<button
+							type="button"
+							aria-expanded={filtersOpen}
+							aria-controls="filters"
+							onClick={() => setFiltersOpen(!filtersOpen)}
+							className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 lg:hidden dark:border-slate-600 dark:hover:bg-slate-800"
+						>
+							{filtered > 0
+								? t("filter.toggleActive", { count: filtered })
+								: t("filter.toggle")}
+						</button>
 					</div>
 
-					{selected && (
-						<section
-							aria-labelledby="library-name"
-							className="flex flex-col gap-2"
+					<div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+						<aside
+							id="filters"
+							aria-label={t("filter.title")}
+							className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:block lg:w-60`}
 						>
-							<h2 id="library-name" className="text-lg font-medium">
-								{selected.name}
-							</h2>
-							<ScanStatus
-								library={selected}
-								canScan={can(user, "index:rebuild")}
+							<FilterPanel
+								facets={facets.data ?? []}
+								picks={picks}
+								onChange={setPicks}
 							/>
-						</section>
-					)}
+						</aside>
+						<div className="flex min-w-0 flex-1 flex-col gap-6">
+							{selected && (
+								<section
+									aria-labelledby="library-name"
+									className="flex flex-col gap-2"
+								>
+									<h2 id="library-name" className="text-lg font-medium">
+										{selected.name}
+									</h2>
+									<ScanStatus
+										library={selected}
+										canScan={can(user, "index:rebuild")}
+									/>
+								</section>
+							)}
 
-					<section
-						aria-label={t("library.books")}
-						className="flex flex-col gap-4"
-					>
-						<FormError error={books.error} />
-						{books.isSuccess && shown.length === 0 && (
-							<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
-								{busy ? (
-									<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
-										{t("library.adding")}
-									</p>
-								) : (
-									<>
-										<h3 className="font-medium">{t("library.empty.title")}</h3>
-										<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
-											{t("library.empty.body")}
-										</p>
-									</>
+							<section
+								aria-label={t("library.books")}
+								className="flex flex-col gap-4"
+							>
+								<FormError error={books.error} />
+								{books.isSuccess && shown.length === 0 && (
+									<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
+										{filtered > 0 ? (
+											<>
+												<h3 className="font-medium">
+													{t("library.filtered.title")}
+												</h3>
+												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
+													{t("library.filtered.body")}
+												</p>
+												<button
+													type="button"
+													onClick={() => setPicks({})}
+													className="mt-4 rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+												>
+													{t("filter.clear")}
+												</button>
+											</>
+										) : busy ? (
+											<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
+												{t("library.adding")}
+											</p>
+										) : (
+											<>
+												<h3 className="font-medium">
+													{t("library.empty.title")}
+												</h3>
+												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
+													{t("library.empty.body")}
+												</p>
+											</>
+										)}
+									</div>
 								)}
-							</div>
-						)}
-						{shown.length > 0 &&
-							(view === "grid" ? (
-								<Grid books={shown} />
-							) : (
-								<Table books={shown} />
-							))}
-						{books.hasNextPage && (
-							<MoreBooks
-								loading={books.isFetchingNextPage}
-								onMore={() => {
-									if (!books.isFetchingNextPage) {
-										books.fetchNextPage();
-									}
-								}}
-							/>
-						)}
-					</section>
+								{shown.length > 0 &&
+									(view === "grid" ? (
+										<Grid books={shown} />
+									) : (
+										<Table books={shown} />
+									))}
+								{books.hasNextPage && (
+									<MoreBooks
+										loading={books.isFetchingNextPage}
+										onMore={() => {
+											if (!books.isFetchingNextPage) {
+												books.fetchNextPage();
+											}
+										}}
+									/>
+								)}
+							</section>
+						</div>
+					</div>
 				</>
 			)}
 		</div>

@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many books of a list have each author, series, tag, language, decade and format */
+        get: operations["listBookFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}": {
         parameters: {
             query?: never;
@@ -361,6 +378,19 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
+        Facet: {
+            /** @enum {string} */
+            field: "author" | "series" | "tag" | "language" | "published" | "format";
+            values: components["schemas"]["FacetValue"][];
+        };
+        FacetList: {
+            facets: components["schemas"]["Facet"][];
+        };
+        FacetValue: {
+            count: number;
+            label: string;
+            value: string;
+        };
         Identifier: {
             type: string;
             value: string;
@@ -558,6 +588,8 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not. */
+                filter?: string;
                 /** @description What the books are ordered by; title when left out. */
                 sort?: "title" | "author" | "added";
                 /** @description The direction; asc when left out. */
@@ -580,6 +612,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listBookFacets: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description The filter of the list the facets are for, as listBooks takes it. */
+                filter?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacetList"];
                 };
             };
             /** @description The request failed. */

@@ -160,6 +160,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - A route's query parameters are a struct in the route table (`Route.Query`, tags
   `query`, `enum`, `doc`), read with `decodeQuery`; the OpenAPI document and the
   web client's types come from the same struct.
+- Filters are a rule tree (`internal/filter`: all, any, not, and rules of a
+  field, an op and values) compiled to SQL. The fields are the registry
+  `catalog.Filters`; a field not in it is refused, and values reach SQL only
+  as parameters. `visibleBooks` is the start of every list and count of books:
+  visibility, library, filter. A facet counts with its own field's top-level
+  rules left out (`Node.Without`). The web app keeps the picks per field in the
+  address and builds the tree in `web/src/books/filters.ts`. Rating is not a
+  field yet: per-user ratings come with #43.
 - Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
   and without the server's write deadline.
 

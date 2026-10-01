@@ -595,3 +595,67 @@ describe("uploads", () => {
 		expect(screen.queryByRole("link", { name: "Add books" })).not.toBeInTheDocument();
 	});
 });
+
+describe("filters", () => {
+	const titles = () =>
+		within(screen.getByRole("region", { name: "Books" }))
+			.getAllByRole("link")
+			.map((l) => l.lastElementChild?.firstElementChild?.textContent);
+
+	function withShelf() {
+		const author = (name: string) => [{ name, role: "author" }];
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: author("Jane Austen"), language: "en-GB", published: "1815", tags: ["Fiction", "Classics"] })
+			.withBook("Persuasion", { contributors: author("Jane Austen"), language: "en", published: "1817", tags: ["Fiction"] })
+			.withBook("Jane Eyre", { contributors: author("Charlotte Brontë"), language: "en", published: "1847", tags: ["Fiction"] })
+			.withBook("Der Process", { contributors: author("Franz Kafka"), language: "de", published: "1925" });
+	}
+
+	it("narrows the books by what is picked, and counts what is left", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		const filters = within(await screen.findByRole("complementary", { name: "Filters" }));
+
+		await person.click(await filters.findByRole("checkbox", { name: "Jane Austen (2)" }));
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Persuasion"]));
+		expect(router.state.location.search).toMatchObject({ author: ["jane austen"] });
+		// Another author widens the list; the tags count only what is shown.
+		expect(await filters.findByRole("checkbox", { name: "Classics (1)" })).toBeInTheDocument();
+		expect(filters.getByRole("checkbox", { name: "Fiction (2)" })).toBeInTheDocument();
+		await person.click(filters.getByRole("checkbox", { name: "Charlotte Brontë (1)" }));
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Jane Eyre", "Persuasion"]));
+
+		await person.click(filters.getByRole("checkbox", { name: "1810s (2)" }));
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Persuasion"]));
+		expect(server.requests.at(-1)?.path).toContain("filter=");
+
+		await person.click(filters.getByRole("button", { name: "Clear the filters" }));
+		await waitFor(() => expect(titles()).toHaveLength(4));
+		expect(router.state.location.search).not.toHaveProperty("author");
+	});
+
+	it("opens filtered from a shared address, and says when nothing matches", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const pick = (field: string, values: string[]) => `${field}=${encodeURIComponent(JSON.stringify(values))}`;
+		const { unmount } = renderApp(`/?${pick("language", ["de"])}`);
+
+		await waitFor(() => expect(titles()).toEqual(["Der Process"]));
+		const filters = within(screen.getByRole("complementary", { name: "Filters" }));
+		expect(filters.getByRole("checkbox", { name: "German (1)" })).toBeChecked();
+		unmount();
+
+		// The panel offers nothing that would leave no book, but an address may.
+		renderApp(`/?${pick("language", ["de"])}&${pick("author", ["jane austen"])}`);
+		expect(await screen.findByRole("heading", { name: "No book matches" })).toBeInTheDocument();
+		// What was picked stays in view, to be taken back.
+		const picked = within(screen.getByRole("complementary", { name: "Filters" }));
+		expect(await picked.findByRole("checkbox", { name: "jane austen (0)" })).toBeChecked();
+		await person.click(within(screen.getByRole("region", { name: "Books" })).getByRole("button", { name: "Clear the filters" }));
+		await waitFor(() => expect(titles()).toHaveLength(4));
+	});
+});
