@@ -261,38 +261,60 @@ func taken(err error) error {
 // validate normalises an account's details and refuses what cannot be stored.
 func validate(username, password string, email *string) (string, *string, error) {
 	fields := map[string]string{}
-
-	username = strings.TrimSpace(username)
-	switch {
-	case username == "":
-		fields["username"] = "Choose a user name."
-	case len(username) > MaxUsernameLen:
-		fields["username"] = fmt.Sprintf("A user name has at most %d characters.", MaxUsernameLen)
-	case strings.ContainsFunc(username, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }):
-		fields["username"] = "A user name has no spaces in it."
+	username, msg := checkUsername(username)
+	if msg != "" {
+		fields["username"] = msg
 	}
-
-	switch {
-	case len(password) < MinPasswordLen:
-		fields["password"] = fmt.Sprintf("A password has at least %d characters.", MinPasswordLen)
-	case len(password) > MaxPasswordLen:
-		fields["password"] = fmt.Sprintf("A password has at most %d characters.", MaxPasswordLen)
+	if msg := checkPassword(password); msg != "" {
+		fields["password"] = msg
 	}
-
-	if email != nil {
-		trimmed := strings.TrimSpace(*email)
-		switch at := strings.LastIndex(trimmed, "@"); {
-		case trimmed == "":
-			email = nil
-		case at <= 0 || at == len(trimmed)-1 || len(trimmed) > 254 || strings.ContainsFunc(trimmed, unicode.IsSpace):
-			fields["email"] = "That does not look like an e-mail address."
-		default:
-			email = &trimmed
-		}
+	email, msg = checkEmail(email)
+	if msg != "" {
+		fields["email"] = msg
 	}
-
 	if len(fields) > 0 {
 		return "", nil, &ValidationError{Fields: fields}
 	}
 	return username, email, nil
+}
+
+// checkUsername returns the name as stored, or what is wrong with it.
+func checkUsername(username string) (string, string) {
+	username = strings.TrimSpace(username)
+	switch {
+	case username == "":
+		return "", "Choose a user name."
+	case len(username) > MaxUsernameLen:
+		return "", fmt.Sprintf("A user name has at most %d characters.", MaxUsernameLen)
+	case strings.ContainsFunc(username, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }):
+		return "", "A user name has no spaces in it."
+	}
+	return username, ""
+}
+
+// checkPassword says what is wrong with a new password, or nothing.
+func checkPassword(password string) string {
+	switch {
+	case len(password) < MinPasswordLen:
+		return fmt.Sprintf("A password has at least %d characters.", MinPasswordLen)
+	case len(password) > MaxPasswordLen:
+		return fmt.Sprintf("A password has at most %d characters.", MaxPasswordLen)
+	}
+	return ""
+}
+
+// checkEmail returns the address as stored, nil for none, or what is wrong
+// with it.
+func checkEmail(email *string) (*string, string) {
+	if email == nil {
+		return nil, ""
+	}
+	trimmed := strings.TrimSpace(*email)
+	switch at := strings.LastIndex(trimmed, "@"); {
+	case trimmed == "":
+		return nil, ""
+	case at <= 0 || at == len(trimmed)-1 || len(trimmed) > 254 || strings.ContainsFunc(trimmed, unicode.IsSpace):
+		return nil, "That does not look like an e-mail address."
+	}
+	return &trimmed, ""
 }

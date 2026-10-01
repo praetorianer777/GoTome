@@ -47,6 +47,7 @@ export function user(
 interface Account {
 	password: string;
 	user: CurrentUser;
+	disabled?: boolean;
 }
 
 /**
@@ -63,6 +64,11 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/** The signed-in person's sessions, as the profile page lists them. */
+	sessions = [
+		{ id: "s-1", userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-03T08:00:00Z", current: true },
+		{ id: "s-2", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-02T08:00:00Z", current: false },
+	];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
 	secrets = new Map<string, string>();
 	private settings: Setting[] = [
@@ -252,6 +258,9 @@ export class FakeServer {
 			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
 		}
 
+		if (path === "/users" || path.startsWith("/users/") || path.startsWith("/auth/sessions") || path === "/auth/password") {
+			return this.answerAccounts(method, path, body as Record<string, unknown>, refuse);
+		}
 		if (path === "/settings") {
 			return this.answerSettings(method, body as unknown as { values?: Record<string, string | null> }, refuse);
 		}
@@ -284,7 +293,7 @@ export class FakeServer {
 			}
 			case "POST /auth/login": {
 				const account = this.accounts.get((body.username ?? "").toLowerCase());
-				if (!account || account.password !== body.password) {
+				if (!account || account.password !== body.password || account.disabled) {
 					return refuse(
 						401,
 						"unauthorized",
@@ -350,6 +359,89 @@ export class FakeServer {
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
+	}
+
+	private answerAccounts(
+		method: string,
+		path: string,
+		body: Record<string, unknown>,
+		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+	): Response {
+		if (!this.session) {
+			return refuse(401, "unauthorized", "Sign in to continue.");
+		}
+		const me = this.accounts.get(this.session.username.toLowerCase());
+		if (path === "/auth/password") {
+			if (!me || body.currentPassword !== me.password) {
+				return refuse(422, "validation_failed", "Some fields need attention.", { currentPassword: "That is not your current password." });
+			}
+			if (String(body.newPassword ?? "").length < 8) {
+				return refuse(422, "validation_failed", "Some fields need attention.", { newPassword: "A password has at least 8 characters." });
+			}
+			me.password = String(body.newPassword);
+			this.sessions = this.sessions.filter((s) => s.current);
+			return new Response(null, { status: 204 });
+		}
+		if (path === "/auth/sessions") {
+			return Response.json({ sessions: this.sessions });
+		}
+		if (path.startsWith("/auth/sessions/") && method === "DELETE") {
+			this.sessions = this.sessions.filter((s) => `/auth/sessions/${s.id}` !== path);
+			return new Response(null, { status: 204 });
+		}
+
+		if (!this.session.permissions.includes("users:manage")) {
+			return refuse(403, "forbidden", "You do not have permission to do that.");
+		}
+		const view = (a: Account) => ({
+			...a.user,
+			disabled: !!a.disabled,
+			createdAt: "2026-01-01T00:00:00Z",
+			sessions: a.disabled ? 0 : 1,
+			lastSeenAt: "2026-01-02T00:00:00Z",
+		});
+		if (path === "/users" && method === "GET") {
+			return Response.json({ users: [...this.accounts.values()].map(view) });
+		}
+		if (path === "/users" && method === "POST") {
+			const fields: Record<string, string> = {};
+			if (String(body.password ?? "").length < 8) {
+				fields.password = "A password has at least 8 characters.";
+			}
+			if (!String(body.username ?? "").trim()) {
+				fields.username = "Choose a user name.";
+			}
+			if (Object.keys(fields).length > 0) {
+				return refuse(422, "validation_failed", "Some fields need attention.", fields);
+			}
+			if (this.accounts.has(String(body.username).toLowerCase())) {
+				return refuse(409, "conflict", "That user name or e-mail address is already in use.");
+			}
+			this.withAccount(String(body.username), String(body.password), body.role as "admin" | "editor" | "reader");
+			return Response.json(view(this.accounts.get(String(body.username).toLowerCase()) as Account), { status: 201 });
+		}
+		const target = [...this.accounts.values()].find((a) => path.startsWith(`/users/${a.user.id}`));
+		if (!target) {
+			return refuse(404, "not_found", "There is no such user.");
+		}
+		if (path.endsWith("/sessions")) {
+			return new Response(null, { status: 204 });
+		}
+		const role = (body.role as CurrentUser["role"] | undefined) ?? target.user.role;
+		const disabled = (body.disabled as boolean | undefined) ?? target.disabled;
+		const admins = [...this.accounts.values()].filter((a) => a.user.role === "admin" && !a.disabled);
+		if (admins.length === 1 && admins[0] === target && (role !== "admin" || disabled)) {
+			return refuse(409, "conflict", "This is the last administrator who can sign in. Make another account an administrator first.");
+		}
+		if (body.password !== undefined) {
+			if (String(body.password).length < 8) {
+				return refuse(422, "validation_failed", "Some fields need attention.", { password: "A password has at least 8 characters." });
+			}
+			target.password = String(body.password);
+		}
+		target.user = user(target.user.username, role);
+		target.disabled = disabled;
+		return Response.json(view(target));
 	}
 
 	private answerSettings(

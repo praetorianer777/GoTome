@@ -7,6 +7,9 @@ package sqlc
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const countUsers = `-- name: CountUsers :one
@@ -55,6 +58,27 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getUser = `-- name: GetUser :one
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.QuotaBytes,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users WHERE username = $1
 `
@@ -76,6 +100,103 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	return i, err
 }
 
+const listSessionUse = `-- name: ListSessionUse :many
+SELECT user_id, max(last_seen_at)::timestamptz AS last_seen_at,
+       count(*) FILTER (WHERE expires_at > $1::timestamptz) AS live
+FROM sessions
+GROUP BY user_id
+`
+
+type ListSessionUseRow struct {
+	UserID     uuid.UUID
+	LastSeenAt time.Time
+	Live       int64
+}
+
+// When each account that has sessions last used one, and how many are live.
+func (q *Queries) ListSessionUse(ctx context.Context, now time.Time) ([]ListSessionUseRow, error) {
+	rows, err := q.db.Query(ctx, listSessionUse, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSessionUseRow{}
+	for rows.Next() {
+		var i ListSessionUseRow
+		if err := rows.Scan(&i.UserID, &i.LastSeenAt, &i.Live); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsers = `-- name: ListUsers :many
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users ORDER BY lower(username)
+`
+
+func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Role,
+			&i.QuotaBytes,
+			&i.DisabledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockActiveAdmins = `-- name: LockActiveAdmins :many
+SELECT id FROM users
+WHERE role = 'admin' AND disabled_at IS NULL
+ORDER BY id
+FOR UPDATE
+`
+
+// Locked, so that two administrators demoting each other at once cannot
+// both find another one left.
+func (q *Queries) LockActiveAdmins(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, lockActiveAdmins)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockSetup = `-- name: LockSetup :exec
 SELECT pg_advisory_xact_lock(7311501)
 `
@@ -85,4 +206,54 @@ SELECT pg_advisory_xact_lock(7311501)
 func (q *Queries) LockSetup(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, lockSetup)
 	return err
+}
+
+const setPassword = `-- name: SetPassword :exec
+UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1
+`
+
+type SetPasswordParams struct {
+	ID           uuid.UUID
+	PasswordHash *string
+}
+
+func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error {
+	_, err := q.db.Exec(ctx, setPassword, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET role = $2, email = $3, disabled_at = $4, updated_at = now()
+WHERE id = $1
+RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+`
+
+type UpdateUserParams struct {
+	ID         uuid.UUID
+	Role       string
+	Email      *string
+	DisabledAt *time.Time
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.Role,
+		arg.Email,
+		arg.DisabledAt,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.QuotaBytes,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

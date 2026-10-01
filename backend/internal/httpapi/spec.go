@@ -43,6 +43,10 @@ func Spec() *openapi.Document {
 		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
 	}}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
+	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
+	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {
+		b.FieldOverrides[field] = roles
+	}
 	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},

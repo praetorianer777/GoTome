@@ -21,3 +21,17 @@ DELETE FROM sessions WHERE token_hash = $1;
 
 -- name: DeleteExpiredSessions :execrows
 DELETE FROM sessions WHERE expires_at <= sqlc.arg(now)::timestamptz;
+
+-- name: ListUserSessions :many
+SELECT id, token_hash, user_agent, created_at, last_seen_at, expires_at
+FROM sessions
+WHERE user_id = $1 AND expires_at > sqlc.arg(now)::timestamptz
+ORDER BY last_seen_at DESC;
+
+-- name: DeleteUserSession :execrows
+DELETE FROM sessions WHERE id = $1 AND user_id = $2;
+
+-- name: DeleteUserSessions :exec
+-- Every session of the user but the one kept, which may be none.
+DELETE FROM sessions
+WHERE user_id = $1 AND token_hash IS DISTINCT FROM sqlc.narg(keep)::bytea;

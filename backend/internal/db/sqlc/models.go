@@ -166,6 +166,7 @@ type Session struct {
 	CreatedAt  time.Time
 	LastSeenAt time.Time
 	ExpiresAt  time.Time
+	ID         uuid.UUID
 }
 
 type Setting struct {
