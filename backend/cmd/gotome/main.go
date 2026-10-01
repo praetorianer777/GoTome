@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
+	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/version"
@@ -201,6 +202,7 @@ func serve() error {
 		Metadata:  meta,
 		Matches:   matches,
 		Bulk:      changes,
+		Reading:   reading.NewService(pool),
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

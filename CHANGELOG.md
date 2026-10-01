@@ -133,3 +133,9 @@ What changes for someone who runs or uses GOtome. The format follows
   started and finished. Set them on the book's page, or the status of many
   books at once from a selection; lists show them, and the filters narrow
   by them. Every person has their own; nobody else sees them.
+- Reading progress is kept per person, for a book's text and its audio
+  separately, so that another device picks up where you left off. A device
+  that is behind does not overwrite a further position without asking.
+  Starting a book marks it as reading, reaching its end as completed, and
+  every time you read it to the end is counted. The book's page shows how
+  far you are; the readers that write the progress come next.

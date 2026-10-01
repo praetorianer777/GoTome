@@ -1025,6 +1025,118 @@
         "x-permission": "library:read"
       }
     },
+    "/books/{bookId}/progress": {
+      "get": {
+        "operationId": "getProgress",
+        "summary": "Where the caller is in a book, in its text and in its audio",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressState"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/books/{bookId}/progress/{medium}": {
+      "put": {
+        "operationId": "putProgress",
+        "summary": "Record where the caller is in a book; medium is ebook or audio",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "medium",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgressUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressSaved"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/reading": {
       "put": {
         "operationId": "setReading",
@@ -3891,6 +4003,121 @@
         },
         "required": [
           "names"
+        ]
+      },
+      "ProgressSaved": {
+        "type": "object",
+        "properties": {
+          "progress": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ProgressView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "saved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "saved",
+          "progress"
+        ]
+      },
+      "ProgressState": {
+        "type": "object",
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/ProgressView"
+          },
+          "ebook": {
+            "$ref": "#/components/schemas/ProgressView"
+          },
+          "finishes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "finishes"
+        ]
+      },
+      "ProgressUpdate": {
+        "type": "object",
+        "properties": {
+          "basedOn": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "chapter": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "positionMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "locator",
+          "fraction",
+          "clientId"
+        ]
+      },
+      "ProgressView": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "positionMs": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "locator",
+          "fraction",
+          "clientId",
+          "updatedAt"
         ]
       },
       "ProviderFailure": {

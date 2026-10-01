@@ -312,6 +312,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the caller is in a book, in its text and in its audio */
+        get: operations["getProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/progress/{medium}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Record where the caller is in a book; medium is ebook or audio */
+        put: operations["putProgress"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/reading": {
         parameters: {
             query?: never;
@@ -1125,6 +1159,40 @@ export interface components {
         };
         NameList: {
             names: string[];
+        };
+        ProgressSaved: {
+            progress: components["schemas"]["ProgressView"] | null;
+            saved: boolean;
+        };
+        ProgressState: {
+            audio?: components["schemas"]["ProgressView"];
+            ebook?: components["schemas"]["ProgressView"];
+            finishes: number;
+        };
+        ProgressUpdate: {
+            /** Format: date-time */
+            basedOn?: string;
+            chapter?: string;
+            clientId: string;
+            /** Format: uuid */
+            fileId?: string;
+            force?: boolean;
+            fraction: number;
+            locator: string;
+            page?: number;
+            positionMs?: number;
+        };
+        ProgressView: {
+            chapter?: string;
+            clientId: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction: number;
+            locator: string;
+            page?: number;
+            positionMs?: number;
+            /** Format: date-time */
+            updatedAt: string;
         };
         ProviderFailure: {
             message: string;
@@ -1946,6 +2014,73 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressState"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+                medium: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressSaved"];
                 };
             };
             /** @description The request failed. */
