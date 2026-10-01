@@ -96,3 +96,9 @@ What changes for someone who runs or uses GOtome. The format follows
   is added. Every field says where its value came from (which file, the file
   name, or by hand), and what was changed by hand is locked, so reading the
   files again does not undo it. A lock can be taken off again.
+- Edited details are written into the book's EPUB files, in managed libraries
+  and in external ones that GOtome may change: title, people, series,
+  identifiers, language, date, publisher, description, tags, and a cover
+  chosen by hand. The book's text is never touched, and a file is only
+  replaced once the new one is complete and checked. Files in read-only
+  libraries keep what they say.

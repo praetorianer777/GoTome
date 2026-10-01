@@ -354,14 +354,10 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 func detailOf(b catalog.Book, user *auth.User) bookDetail {
 	out := bookDetail{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Description: b.Description,
-		Language: b.Language, Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
+		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{},
-	}
-	if b.PublishedOn != nil {
-		layout := map[string]string{catalog.PrecisionYear: "2006", catalog.PrecisionMonth: "2006-01"}[b.PublishedPrecision]
-		out.Published = b.PublishedOn.Format(cmp.Or(layout, "2006-01-02"))
 	}
 	for _, c := range b.Contributors {
 		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Role: c.Role})

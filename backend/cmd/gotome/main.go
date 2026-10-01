@@ -136,6 +136,7 @@ func serve() error {
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
+	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 	}

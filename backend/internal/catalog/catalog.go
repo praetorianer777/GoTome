@@ -439,6 +439,21 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 	return book, nil
 }
 
+// Published is as much of the publication date as is known: "2010",
+// "2010-08" or "2010-08-31"; empty when it is unknown.
+func (b Book) Published() string {
+	if b.PublishedOn == nil {
+		return ""
+	}
+	switch b.PublishedPrecision {
+	case PrecisionYear:
+		return b.PublishedOn.Format("2006")
+	case PrecisionMonth:
+		return b.PublishedOn.Format("2006-01")
+	}
+	return b.PublishedOn.Format("2006-01-02")
+}
+
 // Authors are the names credited as authors, in order.
 func (b Book) Authors() []string {
 	var names []string

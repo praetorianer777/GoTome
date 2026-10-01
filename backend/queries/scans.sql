@@ -195,3 +195,39 @@ WHERE extract_state = 'failed'
   AND missing_at IS NULL AND trashed_at IS NULL
   AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY library_id;
+
+-- name: ListFilesToWriteBack :many
+-- The files of a book its metadata is written into: EPUBs that were read,
+-- are there, are not encrypted, and lie in a library GOtome may change.
+SELECT f.id
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.book_id = $1
+  AND f.format = 'epub'
+  AND f.extract_state = 'done'
+  AND f.sha256 IS NOT NULL
+  AND f.missing_at IS NULL
+  AND f.trashed_at IS NULL
+  AND NOT f.drm
+  AND l.writable
+ORDER BY f.id;
+
+-- name: GetFileForWriteBack :one
+SELECT f.id, f.book_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
+       f.extract_state, f.drm, f.missing_at, f.trashed_at, l.root_path, l.writable
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1;
+
+-- name: LockFileHash :one
+SELECT sha256 FROM book_files WHERE id = $1 FOR UPDATE;
+
+-- name: SetFileWritten :exec
+-- The file as GOtome wrote it. original_sha256 stays what arrived, and
+-- content_sha256 what the content is, which writing metadata does not change.
+UPDATE book_files
+SET sha256      = sqlc.arg(sha256),
+    size_bytes  = sqlc.arg(size_bytes),
+    modified_at = sqlc.arg(modified_at),
+    updated_at  = now()
+WHERE id = sqlc.arg(id);

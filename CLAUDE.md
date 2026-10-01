@@ -222,6 +222,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - The development stack mounts `e2e/fixtures/books` into the app container as
   `/fixtures/books-<browser project>` (`deploy/docker-compose.dev.yml`).
 
+## Writing metadata into files
+
+- An edit goes through `ingest.Service.Edit`, which queues an
+  `ingest.write_metadata` job for each of the book's EPUBs in a writable
+  library. `epub.Rewrite` rewrites only the package document's metadata (and
+  the manifest for a cover) and copies every other entry as stored, so
+  `content_sha256` stays; the package's unique identifier is kept, as font
+  obfuscation is keyed by it.
+- `WriteBack` writes beside the file under a dot name the scan passes by,
+  reads the result back, and renames it into place in the transaction that
+  records the new `sha256`, size and time; `original_sha256` stays. A file
+  whose hash is not the recorded one is left for the scan.
+
 ## Uploads
 
 - `ingest.Service.Upload` is the one writer into a library, and only into a

@@ -84,7 +84,7 @@ func (s *Server) editBook(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) applyEdit(w http.ResponseWriter, r *http.Request, id uuid.UUID, e catalog.Edit) error {
 	user := UserFrom(r.Context())
 	scope := library.ScopeOf(*user)
-	err := s.Books.Edit(r.Context(), scope, id, e)
+	err := s.Scans.Edit(r.Context(), scope, id, e)
 	var invalid catalog.EditError
 	switch {
 	case errors.Is(err, catalog.ErrNotFound):
