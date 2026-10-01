@@ -110,6 +110,47 @@ export const en = {
 
 	"nav.libraries": "Libraries",
 	"nav.settings": "Settings",
+	"nav.users": "Users",
+
+	"users.title": "Users",
+	"users.existing": "Accounts",
+	"users.you": "(you)",
+	"users.disabled": "Disabled",
+	"users.lastSeen": "Last seen {date}",
+	"users.neverSeen": "Never signed in",
+	"users.role": "Role",
+	"users.enable": "Enable",
+	"users.disable": "Disable",
+	"users.signOutEverywhere": "Sign out everywhere ({count})",
+	"users.newPassword": "Set a new password",
+	"users.newPassword.label": "New password for {name}",
+	"users.newPassword.hint":
+		"At least 8 characters. Every session of the account ends; tell them the new one.",
+	"users.newPassword.save": "Save the password",
+	"users.cancel": "Cancel",
+	"users.add": "Add a user",
+	"users.add.passwordHint": "At least 8 characters. They can change it on their own page.",
+	"users.add.submit": "Add the user",
+	"users.add.submitting": "Adding…",
+
+	"profile.title": "Your account",
+	"profile.who": "Signed in as {name}, {role}.",
+	"profile.password": "Password",
+	"profile.password.current": "Current password",
+	"profile.password.new": "New password",
+	"profile.password.hint":
+		"At least 8 characters. You stay signed in here; everywhere else you are signed out.",
+	"profile.password.submit": "Change the password",
+	"profile.password.done": "Changed. Other devices are signed out.",
+	"profile.sessions": "Where you are signed in",
+	"profile.sessions.intro":
+		"Each browser you signed in with. Sign one out if you no longer use it or do not know it.",
+	"profile.sessions.current": "This browser",
+	"profile.sessions.lastSeen": "Last used {date}",
+	"profile.sessions.end": "Sign out",
+	"profile.sessions.endNamed": "Sign out {name}",
+	"profile.agent": "{browser} on {system}",
+	"profile.agentUnknown": "An unknown browser",
 
 	"settings.title": "Settings",
 	"settings.intro":

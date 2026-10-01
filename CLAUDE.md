@@ -106,6 +106,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   are refused before they reach a handler.
 - First-run setup (`POST /api/v1/setup`) creates the one initial administrator and
   then refuses for good.
+- Accounts after that are made and changed in `internal/auth/accounts.go`. A change
+  locks the active administrators first (`LockActiveAdmins`) and refuses to leave
+  none (`ErrLastAdmin`). Disabling an account or giving it a new password ends its
+  sessions; changing one's own password ends all but the current one.
+- A session has an `id` for its owner to see and end it by; the token's hash is
+  never sent.
 
 ## Browser tests
 

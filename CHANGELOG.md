@@ -71,3 +71,10 @@ What changes for someone who runs or uses GOtome. The format follows
   kept in the `secrets` volume, readable by the app only; back that volume up
   with the database. GOtome refuses to start with a key other than the one its
   secrets were encrypted with.
+- Users. Administrators add accounts on the new Users page, change their role,
+  set a new password, sign them out everywhere, and disable them; a disabled
+  account is signed out at once and cannot sign in. The last administrator
+  cannot be demoted or disabled.
+- Your account. A click on "Signed in as …" opens your own page: change your
+  password, which signs you out everywhere else, and see where you are signed
+  in, signing out a browser you no longer use.

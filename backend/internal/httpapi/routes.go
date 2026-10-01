@@ -152,6 +152,44 @@ func (s *Server) routes() []Route {
 		},
 
 		{
+			Method: http.MethodGet, Path: "/auth/sessions", ID: "listOwnSessions",
+			Summary: "The caller's own live sessions, the one in use marked", Tag: "auth",
+			Response: sessionList{}, Permission: auth.SignedIn, Handler: s.listOwnSessions,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/sessions/{sessionId}", ID: "endOwnSession",
+			Summary: "End one of the caller's own sessions", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.endOwnSession,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/password", ID: "changePassword",
+			Summary: "Change one's own password; every other session ends", Tag: "auth",
+			Request: changePasswordRequest{}, Permission: auth.SignedIn, Handler: s.changePassword,
+		},
+
+		{
+			Method: http.MethodGet, Path: "/users", ID: "listUsers",
+			Summary: "Every account, with when it was last used", Tag: "users",
+			Response: accountList{}, Permission: auth.UsersManage, Handler: s.listUsers,
+		},
+		{
+			Method: http.MethodPost, Path: "/users", ID: "createUser",
+			Summary: "Add an account with a password", Tag: "users",
+			Request: createAccountRequest{}, Response: account{}, Status: http.StatusCreated,
+			Permission: auth.UsersManage, Handler: s.createUser,
+		},
+		{
+			Method: http.MethodPatch, Path: "/users/{userId}", ID: "updateUser",
+			Summary: "Change an account's role, address or password, or disable it; the last administrator stays one", Tag: "users",
+			Request: updateAccountRequest{}, Response: account{}, Permission: auth.UsersManage, Handler: s.updateUser,
+		},
+		{
+			Method: http.MethodDelete, Path: "/users/{userId}/sessions", ID: "endUserSessions",
+			Summary: "Sign an account out everywhere", Tag: "users",
+			Permission: auth.UsersManage, Handler: s.endUserSessions,
+		},
+
+		{
 			Method: http.MethodGet, Path: "/settings", ID: "listSettings",
 			Summary: "Every setting; a secret says only whether it is set", Tag: "settings",
 			Response: settingList{}, Permission: auth.SettingsManage, Handler: s.listSettings,

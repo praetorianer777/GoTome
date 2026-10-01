@@ -763,3 +763,77 @@ describe("settings", () => {
 		expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
 	});
 });
+
+describe("users", () => {
+	it("lets an administrator add, promote and disable accounts, but not leave none", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Users" }));
+		const form = within(await screen.findByRole("region", { name: "Add a user" }));
+		await person.type(form.getByLabelText("User name"), "rita");
+		await person.type(form.getByLabelText("Password"), "short");
+		await person.click(form.getByRole("button", { name: "Add the user" }));
+		expect(await form.findByText("A password has at least 8 characters.")).toBeInTheDocument();
+		await person.clear(form.getByLabelText("Password"));
+		await person.type(form.getByLabelText("Password"), "a long password");
+		await person.click(form.getByRole("button", { name: "Add the user" }));
+
+		const rita = within(await screen.findByRole("listitem", { name: "rita" }));
+		expect(rita.getByRole("combobox", { name: "Role" })).toHaveValue("reader");
+		await person.selectOptions(rita.getByRole("combobox", { name: "Role" }), "Editor");
+		await waitFor(() => expect(server.accounts.get("rita")?.user.role).toBe("editor"));
+		await person.click(rita.getByRole("button", { name: "Disable" }));
+		expect(await rita.findByText("Disabled")).toBeInTheDocument();
+		expect(server.accounts.get("rita")?.disabled).toBe(true);
+
+		await person.click(rita.getByRole("button", { name: "Set a new password" }));
+		await person.type(rita.getByLabelText("New password for rita"), "another long one");
+		await person.click(rita.getByRole("button", { name: "Save the password" }));
+		await waitFor(() => expect(server.accounts.get("rita")?.password).toBe("another long one"));
+
+		// The only administrator cannot step down.
+		const steve = within(screen.getByRole("listitem", { name: "Steve" }));
+		expect(steve.getByText("(you)")).toBeInTheDocument();
+		await person.click(steve.getByRole("button", { name: "Disable" }));
+		expect(await steve.findByRole("alert")).toHaveTextContent("This is the last administrator");
+	});
+
+	it("keeps editors out", async () => {
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Novels");
+		const { router } = renderApp("/admin/users");
+		expect(await screen.findByRole("heading", { name: "Novels" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
+	});
+});
+
+describe("profile", () => {
+	it("changes the password and signs out another browser", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Signed in as Rita" }));
+		expect(await screen.findByRole("heading", { name: "Your account", level: 1 })).toBeInTheDocument();
+		expect(screen.getByText("Signed in as Rita, Reader.")).toBeInTheDocument();
+
+		const sessions = within(screen.getByRole("region", { name: "Where you are signed in" }));
+		expect(await sessions.findByText("Firefox on Linux")).toBeInTheDocument();
+		expect(sessions.getByText("This browser")).toBeInTheDocument();
+		await person.click(sessions.getByRole("button", { name: "Sign out Safari on iPhone" }));
+		await waitFor(() => expect(sessions.queryByText("Safari on iPhone")).not.toBeInTheDocument());
+
+		const password = within(screen.getByRole("region", { name: "Password" }));
+		await person.type(password.getByLabelText("Current password"), "not it at all");
+		await person.type(password.getByLabelText("New password"), "a new long password");
+		await person.click(password.getByRole("button", { name: "Change the password" }));
+		expect(await password.findByText("That is not your current password.")).toBeInTheDocument();
+		await person.clear(password.getByLabelText("Current password"));
+		await person.type(password.getByLabelText("Current password"), "a long password");
+		await person.click(password.getByRole("button", { name: "Change the password" }));
+		expect(await password.findByRole("status")).toHaveTextContent("Changed. Other devices are signed out.");
+		expect(server.accounts.get("rita")?.password).toBe("a new long password");
+	});
+});

@@ -14,10 +14,12 @@ import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { AdminLibraries } from "@/routes/admin-libraries";
 import { AdminSettings } from "@/routes/admin-settings";
+import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
+import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
 import { Setup } from "@/routes/setup";
 import { Upload } from "@/routes/upload";
@@ -166,10 +168,31 @@ const adminSettingsRoute = createRoute({
 	component: AdminSettings,
 });
 
+const adminUsersRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/users",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "users:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function AdminUsersPage() {
+		return <AdminUsers user={useRouteContext({ from: "/app" }).user} />;
+	},
+});
+
+const profileRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/profile",
+	component: function ProfilePage() {
+		return <Profile user={useRouteContext({ from: "/app" }).user} />;
+	},
+});
+
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute, adminSettingsRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, uploadRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
