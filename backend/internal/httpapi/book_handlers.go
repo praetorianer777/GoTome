@@ -110,6 +110,13 @@ type identifier struct {
 	Value string `json:"value"`
 }
 
+type bookIdentifier struct {
+	identifier
+	// FromFile is set for an identifier only a file of the book carries,
+	// which an edit of the book's own leaves as it is.
+	FromFile bool `json:"fromFile"`
+}
+
 type bookFile struct {
 	ID     uuid.UUID `json:"id"`
 	Kind   string    `json:"kind"`
@@ -146,19 +153,33 @@ type bookDetail struct {
 	Language    string    `json:"language,omitempty"`
 	// Published is as much of the date as is known: "2010", "2010-08" or
 	// "2010-08-31".
-	Published    string        `json:"published,omitempty"`
-	Publisher    string        `json:"publisher,omitempty"`
-	Series       string        `json:"series,omitempty"`
-	SeriesIndex  *float64      `json:"seriesIndex,omitempty"`
-	PageCount    *int32        `json:"pageCount,omitempty"`
-	Contributors []contributor `json:"contributors"`
-	Tags         []string      `json:"tags"`
-	Identifiers  []identifier  `json:"identifiers"`
-	Files        []bookFile    `json:"files"`
-	CoverKey     string        `json:"coverKey,omitempty"`
+	Published    string           `json:"published,omitempty"`
+	Publisher    string           `json:"publisher,omitempty"`
+	Series       string           `json:"series,omitempty"`
+	SeriesIndex  *float64         `json:"seriesIndex,omitempty"`
+	PageCount    *int32           `json:"pageCount,omitempty"`
+	Contributors []contributor    `json:"contributors"`
+	Tags         []string         `json:"tags"`
+	Identifiers  []bookIdentifier `json:"identifiers"`
+	Files        []bookFile       `json:"files"`
+	CoverKey     string           `json:"coverKey,omitempty"`
 	// DurationMS is the length of the audiobook, all its parts together.
 	DurationMS *int64    `json:"durationMs,omitempty"`
 	AddedAt    time.Time `json:"addedAt"`
+	// Fields says, for each field whose source is known or that is locked,
+	// where its value came from.
+	Fields map[string]fieldState `json:"fields"`
+}
+
+// fieldState is where a field's value came from and whether automatic
+// updates leave it alone.
+type fieldState struct {
+	// Source is file, filename (a title guessed from the file's name),
+	// provider or manual; left out when nobody knows.
+	Source string `json:"source,omitempty"`
+	// Detail is the format of the file or the name of the provider.
+	Detail string `json:"detail,omitempty"`
+	Locked bool   `json:"locked"`
 }
 
 // defaultPage is how many books a page holds when the client does not say.
@@ -326,11 +347,17 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	writeJSON(w, r, http.StatusOK, detailOf(b, user))
+	return nil
+}
+
+func detailOf(b catalog.Book, user *auth.User) bookDetail {
 	out := bookDetail{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Description: b.Description,
 		Language: b.Language, Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
-		Contributors: []contributor{}, Tags: []string{}, Identifiers: []identifier{}, Files: []bookFile{},
+		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
+		Fields: map[string]fieldState{},
 	}
 	if b.PublishedOn != nil {
 		layout := map[string]string{catalog.PrecisionYear: "2006", catalog.PrecisionMonth: "2006-01"}[b.PublishedPrecision]
@@ -341,12 +368,27 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 	}
 	out.Tags = append(out.Tags, b.Tags...)
 	// The same ISBN in two files is one identifier to whoever reads it.
-	seen := map[identifier]bool{}
+	seen := map[identifier]int{}
 	for _, ident := range b.Identifiers {
-		if i := (identifier{Type: ident.Type, Value: ident.Value}); !seen[i] {
-			seen[i] = true
-			out.Identifiers = append(out.Identifiers, i)
+		i := identifier{Type: ident.Type, Value: ident.Value}
+		at, ok := seen[i]
+		if !ok {
+			seen[i] = len(out.Identifiers)
+			out.Identifiers = append(out.Identifiers, bookIdentifier{identifier: i, FromFile: true})
+			at = seen[i]
 		}
+		if ident.FileID == nil {
+			out.Identifiers[at].FromFile = false
+		}
+	}
+	for field, source := range b.Sources {
+		kind, detail := catalog.Provenance(source)
+		out.Fields[field] = fieldState{Source: kind, Detail: detail}
+	}
+	for _, field := range b.Locked {
+		state := out.Fields[field]
+		state.Locked = true
+		out.Fields[field] = state
 	}
 	manages := auth.Allows(user.Role, auth.StorageManage)
 	rereads := auth.Allows(user.Role, auth.IndexRebuild)
@@ -368,8 +410,7 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 		}
 		out.Files = append(out.Files, file)
 	}
-	writeJSON(w, r, http.StatusOK, out)
-	return nil
+	return out
 }
 
 func derefInt64(p *int64) int64 {

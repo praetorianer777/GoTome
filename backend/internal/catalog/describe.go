@@ -62,9 +62,10 @@ func fileRank(source string) int {
 
 // ApplyFileMetadataTx describes a file's book with what the file says. A
 // field is only written when nothing better is there: it is empty, was
-// guessed from a file name, was last set by this same file, or by a file of a
-// format whose metadata is worth less. What a person locked, what a provider
-// said, and what another file of the same rank said first, stays.
+// guessed from a file name, was last set by this same file, by a file of a
+// format whose metadata is worth less, or by a person who then unlocked it.
+// What is locked, what a provider said, and what another file of the same
+// rank said first, stays.
 func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m FileMetadata) error {
 	q := sqlc.New(tx)
 	book, err := q.LockBookOfFile(ctx, fileID)
@@ -88,6 +89,8 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 		}
 		switch source := sources[field]; {
 		case source == SourceFilename, source == own:
+		case source == SourceManual:
+			// A person typed it and then took the lock off: it may go.
 		case source == "":
 			if !empty {
 				return false
@@ -101,13 +104,7 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 		return true
 	}
 
-	update := sqlc.UpdateBookDescribedParams{
-		ID: book.ID, Title: book.Title, SortTitle: book.SortTitle, TitleKey: book.TitleKey,
-		Subtitle: book.Subtitle, Description: book.Description, Language: book.Language,
-		PublishedOn: book.PublishedOn, PublishedPrecision: book.PublishedPrecision,
-		PublisherID: book.PublisherID, SeriesID: book.SeriesID, SeriesIndex: book.SeriesIndex,
-		PageCount: book.PageCount, CoverKey: book.CoverKey,
-	}
+	update := describedAs(book)
 	text := func(field, value string, current **string) {
 		if value = clean(value); take(field, value != "", *current == nil) {
 			*current = &value

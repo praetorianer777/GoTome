@@ -420,7 +420,7 @@ describe("books", () => {
 				publisher: "Chilton",
 				description: "A desert planet.\n\nAnd a boy.",
 				tags: ["Science Fiction"],
-				identifiers: [{ type: "isbn", value: "9780441013593" }],
+				identifiers: [{ type: "isbn", value: "9780441013593", fromFile: true }],
 				durationMs: 21 * 3600_000 + 2 * 60_000,
 				files: [
 					{ id: "file-2", kind: "audio", format: "mp3", name: "Dune 1.mp3", size: 400_000_000, missing: false, drm: false, part: 0, durationMs: 11 * 3600_000 , extractState: "done" },
@@ -604,7 +604,7 @@ describe("filters", () => {
 			.map((l) => l.lastElementChild?.firstElementChild?.textContent);
 
 	function withShelf() {
-		const author = (name: string) => [{ name, role: "author" }];
+		const author = (name: string) => [{ name, role: "author" as const }];
 		server
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
@@ -938,5 +938,103 @@ describe("jobs", () => {
 		expect(await screen.findByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/");
 		expect(screen.queryByRole("link", { name: "Jobs" })).not.toBeInTheDocument();
+	});
+});
+
+describe("editing a book", () => {
+	function withBook() {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				language: "en",
+				tags: ["Fiction"],
+				identifiers: [{ type: "isbn", value: "9780141439587", fromFile: true }],
+				fields: {
+					title: { source: "file", detail: "epub", locked: false },
+					language: { source: "file", detail: "epub", locked: false },
+				},
+			})
+			.withBook("Persuasion", { contributors: [{ name: "Jane Austenová", role: "translator" }] });
+	}
+	const edits = () => server.requests.filter((r) => r.method === "PATCH").map((r) => r.body);
+
+	it("sends what was changed, which is then locked and set by hand", async () => {
+		const person = userEvent.setup();
+		withBook();
+		const { router } = renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Edit details" }));
+
+		const title = await screen.findByRole("textbox", { name: "Title" });
+		expect(title).toHaveAccessibleDescription("From the EPUB file");
+		expect(screen.getByRole("checkbox", { name: "Lock Title" })).not.toBeChecked();
+		expect(screen.getByText("ISBN 9780141439587, from a file of the book")).toBeInTheDocument();
+
+		await person.clear(title);
+		await person.type(title, "Emma (Annotated)");
+		expect(screen.getByRole("checkbox", { name: "Lock Title" })).toBeChecked();
+		await person.type(screen.getByRole("combobox", { name: "New tag" }), "Classics{Enter}");
+		await person.click(screen.getByRole("button", { name: "Add a person" }));
+		await person.type(screen.getByRole("combobox", { name: "Name of person 2" }), "Fiona Stafford");
+		await person.selectOptions(screen.getByRole("combobox", { name: "Role of person 2" }), "Editor");
+		// Unlocked without being changed.
+		await person.click(screen.getByRole("checkbox", { name: "Lock Language" }));
+		await person.click(screen.getByRole("checkbox", { name: "Lock Language" }));
+		await person.click(screen.getByRole("button", { name: "Save" }));
+
+		expect(await screen.findByRole("heading", { name: "Emma (Annotated)", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-1");
+		expect(edits()).toEqual([
+			{
+				title: "Emma (Annotated)",
+				contributors: [
+					{ name: "Jane Austen", role: "author" },
+					{ name: "Fiona Stafford", role: "editor" },
+				],
+				tags: ["Fiction", "Classics"],
+			},
+		]);
+
+		await person.click(screen.getByRole("link", { name: "Edit details" }));
+		expect(await screen.findByRole("textbox", { name: "Title" })).toHaveAccessibleDescription("Set by hand");
+		expect(screen.getByRole("checkbox", { name: "Lock Title" })).toBeChecked();
+		await person.click(screen.getByRole("checkbox", { name: "Lock Title" }));
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(edits()).toHaveLength(2));
+		expect(edits()[1]).toEqual({ locks: { title: false } });
+	});
+
+	it("offers names already in use and shows the server's word at its field", async () => {
+		const person = userEvent.setup();
+		withBook();
+		renderApp("/books/book-1/edit");
+		const name = await screen.findByRole("combobox", { name: "Name of person 1" });
+		await person.clear(name);
+		await person.type(name, "aus");
+		await waitFor(() => {
+			const options = [...(document.getElementById(name.getAttribute("list") ?? "")?.querySelectorAll("option") ?? [])];
+			expect(options.map((o) => o.value)).toEqual(["Jane Austen", "Jane Austenová"]);
+		});
+
+		const language = screen.getByRole("textbox", { name: "Language" });
+		await person.clear(language);
+		await person.type(language, "not a language");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByText("Give a language code such as en, de or pt-BR.")).toBeInTheDocument();
+		expect(language).toHaveAttribute("aria-invalid", "true");
+	});
+
+	it("keeps readers out", async () => {
+		withBook();
+		server.signedInAs("Rita");
+		const { router } = renderApp("/books/book-1/edit");
+		expect(await screen.findByRole("heading", { name: "Library", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		await router.navigate({ to: "/books/$bookId", params: { bookId: "book-1" } });
+		expect(await screen.findByRole("heading", { name: "Emma", level: 1 })).toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: "Edit details" })).not.toBeInTheDocument();
 	});
 });

@@ -105,6 +105,8 @@ const (
 	// SourceFilename is a title read off the name of a file or its folder,
 	// for want of anything better.
 	SourceFilename = "filename"
+	// SourceManual is a value a person typed.
+	SourceManual = "manual"
 )
 
 // NewFile is a file found on disk or uploaded.
@@ -174,6 +176,11 @@ type Book struct {
 	// CoverKey names the cover in the cover store; empty without one.
 	CoverKey string
 	AddedAt  time.Time
+	// Sources says per field where its value came from, as FileSource,
+	// SourceFilename or SourceManual write it.
+	Sources map[string]string
+	// Locked are the fields automatic updates leave alone.
+	Locked []string
 }
 
 // Service reads and writes the catalogue.
@@ -375,7 +382,10 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 		Subtitle: deref(row.Subtitle), Description: deref(row.Description), Language: deref(row.Language),
 		PublishedOn: row.PublishedOn, PublishedPrecision: deref(row.PublishedPrecision),
 		SeriesIndex: row.SeriesIndex, PageCount: row.PageCount,
-		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt,
+		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt, Locked: row.LockedFields,
+	}
+	if err := json.Unmarshal(row.FieldSources, &book.Sources); err != nil {
+		return Book{}, fmt.Errorf("field sources of book %s: %w", row.ID, err)
 	}
 	if row.SeriesID != nil {
 		series, err := q.GetSeries(ctx, *row.SeriesID)

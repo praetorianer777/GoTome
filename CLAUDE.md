@@ -167,6 +167,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Names are compared by `catalog.Key` (lower case, no accents or punctuation), which
   is what the `*_key` columns hold. Authors, series, publishers and tags are found
   by key and keep the spelling that arrived first.
+- A person changes a book through `catalog.Service.Edit` (`PATCH /books/{id}`,
+  and the cover routes), which records each field it sets as `manual` in
+  `field_sources` and puts it into `locked_fields`. A lock keeps every
+  automatic source off the field; a `manual` value without its lock may be
+  replaced again. The field names are `catalog.LockableFields`.
 - Identifiers are stored in their compared form (`catalog.NormalizeIdentifier`): an
   ISBN as 13 digits, checked.
 

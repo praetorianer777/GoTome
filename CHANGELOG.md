@@ -90,3 +90,9 @@ What changes for someone who runs or uses GOtome. The format follows
   could not be read, and the library page how many could not; both can have
   them read again. Readers see neither the jobs nor the errors.
 - The book page updates by itself while its files are still being read.
+- Editing a book. Editors and Administrators change a book's title, people,
+  series, publisher, date, language, pages, tags, identifiers, description
+  and cover. Names already in the library are offered while typing; a new one
+  is added. Every field says where its value came from (which file, the file
+  name, or by hand), and what was changed by hand is locked, so reading the
+  files again does not undo it. A lock can be taken off again.

@@ -106,6 +106,23 @@ JOIN book_files f ON f.book_id = b.id
 WHERE f.id = $1
 FOR UPDATE OF b;
 
+-- name: LockVisibleBook :one
+-- A book the viewer may see, locked for a person's edit: a file read at the
+-- same time must not write over it half done.
+SELECT b.*
+FROM books b
+WHERE b.id = $1
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+FOR UPDATE;
+
+-- name: SetBookLocks :exec
+UPDATE books SET locked_fields = $2 WHERE id = $1;
+
+-- name: DeleteBookOwnIdentifiers :exec
+-- The identifiers of the book itself; those its files carry stay.
+DELETE FROM book_identifiers WHERE book_id = $1 AND file_id IS NULL;
+
 -- name: UpdateBookDescribed :exec
 -- Every field that describes the book, as worked out by the caller from what
 -- was there and what a source says.

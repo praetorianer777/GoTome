@@ -246,6 +246,16 @@ func (q *Queries) DeleteBookContributors(ctx context.Context, bookID uuid.UUID) 
 	return err
 }
 
+const deleteBookOwnIdentifiers = `-- name: DeleteBookOwnIdentifiers :exec
+DELETE FROM book_identifiers WHERE book_id = $1 AND file_id IS NULL
+`
+
+// The identifiers of the book itself; those its files carry stay.
+func (q *Queries) DeleteBookOwnIdentifiers(ctx context.Context, bookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteBookOwnIdentifiers, bookID)
+	return err
+}
+
 const deleteBookTags = `-- name: DeleteBookTags :exec
 DELETE FROM book_tags WHERE book_id = $1
 `
@@ -615,6 +625,55 @@ func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error
 	return i, err
 }
 
+const lockVisibleBook = `-- name: LockVisibleBook :one
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
+FROM books b
+WHERE b.id = $1
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+FOR UPDATE
+`
+
+type LockVisibleBookParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+// A book the viewer may see, locked for a person's edit: a file read at the
+// same time must not write over it half done.
+func (q *Queries) LockVisibleBook(ctx context.Context, arg LockVisibleBookParams) (Book, error) {
+	row := q.db.QueryRow(ctx, lockVisibleBook, arg.ID, arg.Viewer, arg.SeesAll)
+	var i Book
+	err := row.Scan(
+		&i.ID,
+		&i.LibraryID,
+		&i.Title,
+		&i.SortTitle,
+		&i.TitleKey,
+		&i.Subtitle,
+		&i.Description,
+		&i.Language,
+		&i.PublishedOn,
+		&i.PublishedPrecision,
+		&i.PublisherID,
+		&i.SeriesID,
+		&i.SeriesIndex,
+		&i.ExternalRating,
+		&i.PageCount,
+		&i.CoverKey,
+		&i.LockedFields,
+		&i.FieldSources,
+		&i.MergedIntoID,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PrimaryTextFileID,
+		&i.AuthorSort,
+	)
+	return i, err
+}
+
 const refreshAuthorSort = `-- name: RefreshAuthorSort :exec
 UPDATE books b
 SET author_sort = COALESCE((
@@ -630,6 +689,20 @@ WHERE b.id = $1
 
 func (q *Queries) RefreshAuthorSort(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, refreshAuthorSort, id)
+	return err
+}
+
+const setBookLocks = `-- name: SetBookLocks :exec
+UPDATE books SET locked_fields = $2 WHERE id = $1
+`
+
+type SetBookLocksParams struct {
+	ID           uuid.UUID
+	LockedFields []string
+}
+
+func (q *Queries) SetBookLocks(ctx context.Context, arg SetBookLocksParams) error {
+	_, err := q.db.Exec(ctx, setBookLocks, arg.ID, arg.LockedFields)
 	return err
 }
 

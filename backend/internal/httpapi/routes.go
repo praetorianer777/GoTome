@@ -258,6 +258,27 @@ func (s *Server) routes() []Route {
 			Response: bookDetail{}, Permission: auth.LibraryRead, Handler: s.getBook,
 		},
 		{
+			Method: http.MethodPatch, Path: "/books/{bookId}", ID: "editBook",
+			Summary: "Change how a book is described, and lock what was changed", Tag: "books",
+			Request: editBookRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.editBook,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/cover", ID: "putBookCover",
+			Summary: "Give a book another cover, and lock it", Tag: "books",
+			Request: coverForm{}, Consumes: "multipart/form-data", Response: bookDetail{},
+			Permission: auth.MetadataEdit, Handler: s.putBookCover,
+		},
+		{
+			Method: http.MethodDelete, Path: "/books/{bookId}/cover", ID: "deleteBookCover",
+			Summary: "Take a book's cover away, and lock it so", Tag: "books",
+			Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.deleteBookCover,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/names", ID: "listNames",
+			Summary: "Author, series, publisher or tag names in use that begin as typed", Tag: "books",
+			Query: namesQuery{}, Response: nameList{}, Permission: auth.MetadataEdit, Handler: s.listNames,
+		},
+		{
 			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
 			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
 			Produces: "application/octet-stream", Status: http.StatusOK,

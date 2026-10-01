@@ -48,8 +48,10 @@ export const en = {
 
 	"library.title": "Library",
 	"library.empty.title": "No books yet",
-	"library.empty.body": "Once this library's folder is scanned or a book is uploaded, it shows up here.",
-	"library.adding": "Books are being added. They show up here as they are read.",
+	"library.empty.body":
+		"Once this library's folder is scanned or a book is uploaded, it shows up here.",
+	"library.adding":
+		"Books are being added. They show up here as they are read.",
 	"library.choose": "Library",
 	"library.all": "All libraries",
 	"library.sort": "Sort by",
@@ -83,7 +85,8 @@ export const en = {
 	"upload.waiting": "Waiting",
 	"upload.sending": "Sending, {percent} %",
 	"upload.added": "Added.",
-	"upload.duplicate": "Already in the library as “{title}”, so not added again.",
+	"upload.duplicate":
+		"Already in the library as “{title}”, so not added again.",
 	"upload.open": "Open the book",
 	"upload.clear": "Clear the finished ones",
 
@@ -107,8 +110,10 @@ export const en = {
 	"filter.field.format": "Format",
 
 	"library.none.title": "No library yet",
-	"library.none.admin": "A library is a folder of books. Add one to get started.",
-	"library.none.other": "There is no library you may see yet. An administrator can add one or share one with you.",
+	"library.none.admin":
+		"A library is a folder of books. Add one to get started.",
+	"library.none.other":
+		"There is no library you may see yet. An administrator can add one or share one with you.",
 	"library.none.add": "Add a library",
 
 	"nav.libraries": "Libraries",
@@ -168,7 +173,8 @@ export const en = {
 	"users.quota.used": "Uploads take up {used}; no limit.",
 	"users.quota.usedOf": "Uploads take up {used} of {quota}.",
 	"users.add": "Add a user",
-	"users.add.passwordHint": "At least 8 characters. They can change it on their own page.",
+	"users.add.passwordHint":
+		"At least 8 characters. They can change it on their own page.",
 	"users.add.submit": "Add the user",
 	"users.add.submitting": "Adding…",
 
@@ -219,19 +225,23 @@ export const en = {
 	"libraries.name": "Name",
 	"libraries.rename": "Rename",
 	"libraries.folder": "Folder",
-	"libraries.folder.hint": "The path inside the GOtome container, such as /books. Mount the folder in the compose file first.",
+	"libraries.folder.hint":
+		"The path inside the GOtome container, such as /books. Mount the folder in the compose file first.",
 	"libraries.mode": "Kind",
 	"libraries.mode.managed": "Managed by GOtome",
 	"libraries.mode.external": "An existing folder",
-	"libraries.mode.managed.hint": "GOtome creates the folder and arranges the files. Uploads land here.",
-	"libraries.mode.external.hint": "GOtome reads a folder you arrange yourself and changes nothing in it unless you allow it.",
+	"libraries.mode.managed.hint":
+		"GOtome creates the folder and arranges the files. Uploads land here.",
+	"libraries.mode.external.hint":
+		"GOtome reads a folder you arrange yourself and changes nothing in it unless you allow it.",
 	"libraries.visibility": "Who sees it",
 	"libraries.visibility.shared": "Everybody",
 	"libraries.visibility.private": "Only its members",
 	"libraries.writable": "GOtome may change files here",
 	"libraries.create": "Add the library",
 	"libraries.delete": "Remove",
-	"libraries.delete.confirm": "Remove it from GOtome? The folder and its files stay.",
+	"libraries.delete.confirm":
+		"Remove it from GOtome? The folder and its files stay.",
 	"libraries.delete.yes": "Remove",
 	"libraries.delete.no": "Keep",
 
@@ -254,7 +264,8 @@ export const en = {
 	"scan.skipped": "{count} could not be read",
 
 	"book.back": "Back to the library",
-	"book.notFound": "There is no such book, or it is in a library you may not see.",
+	"book.notFound":
+		"There is no such book, or it is in a library you may not see.",
 	"book.by": "by {names}",
 	"book.readBy": "Read by {names}",
 	"book.seriesPosition": "Book {index} of {series}",
@@ -283,6 +294,57 @@ export const en = {
 	"book.file.drm": "Protected by DRM",
 	"book.file.noText": "No text layer",
 	"book.file.part": "Part {number}",
+	"book.edit": "Edit details",
+
+	"edit.title": "Edit {title}",
+	"edit.intro":
+		"What you change here is locked: reading the files again, or fetching details later, leaves it as you set it. Take the lock off a field to let them change it again.",
+	"edit.back": "Back to the book",
+	"edit.save": "Save",
+	"edit.cancel": "Cancel",
+	"edit.locked": "Locked",
+	"edit.lockNamed": "Lock {field}",
+	"edit.source.file": "From the {format} file",
+	"edit.source.filename": "Guessed from the file name",
+	"edit.source.manual": "Set by hand",
+	"edit.source.provider": "From {provider}",
+	"edit.field.cover": "Cover",
+	"edit.field.title": "Title",
+	"edit.field.subtitle": "Subtitle",
+	"edit.field.contributors": "People",
+	"edit.field.series": "Series",
+	"edit.field.seriesIndex": "Number in the series",
+	"edit.seriesIndexShort": "No.",
+	"edit.field.publisher": "Publisher",
+	"edit.field.published": "Published",
+	"edit.field.language": "Language",
+	"edit.field.pageCount": "Pages",
+	"edit.field.tags": "Tags",
+	"edit.field.identifiers": "Identifiers",
+	"edit.field.description": "Description",
+	"edit.hint.published":
+		"A year, a year and month, or a date: 2010, 2010-08 or 2010-08-31.",
+	"edit.hint.language": "A language code such as en, de or pt-BR.",
+	"edit.cover.choose": "Choose an image",
+	"edit.cover.remove": "Remove the cover",
+	"edit.person.name": "Name of person {number}",
+	"edit.person.role": "Role of person {number}",
+	"edit.person.remove": "Remove {name}",
+	"edit.person.add": "Add a person",
+	"edit.role.author": "Author",
+	"edit.role.narrator": "Narrator",
+	"edit.role.translator": "Translator",
+	"edit.role.editor": "Editor",
+	"edit.role.illustrator": "Illustrator",
+	"edit.tag.new": "New tag",
+	"edit.tag.add": "Add tag",
+	"edit.tag.remove": "Remove tag {tag}",
+	"edit.identifier.type": "Kind of identifier {number}",
+	"edit.identifier.value": "Identifier {number}",
+	"edit.identifier.remove": "Remove identifier {number}",
+	"edit.identifier.add": "Add an identifier",
+	"edit.identifier.fromFile": "{type} {value}, from a file of the book",
+
 	"credit.translator": "Translator",
 	"credit.editor": "Editor",
 	"credit.illustrator": "Illustrator",

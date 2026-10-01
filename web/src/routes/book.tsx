@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
-import { type BookDetail, type BookFile, bookQuery, downloadUrl } from "@/books/api";
+import {
+	type BookDetail,
+	type BookFile,
+	bookQuery,
+	downloadUrl,
+} from "@/books/api";
 import { Cover } from "@/books/cover";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
@@ -32,7 +37,9 @@ export function Book({ id }: { id: string }) {
 		return (
 			<div className="flex flex-col gap-4">
 				{back}
-				<p className="text-slate-600 dark:text-slate-400">{t("book.notFound")}</p>
+				<p className="text-slate-600 dark:text-slate-400">
+					{t("book.notFound")}
+				</p>
 			</div>
 		);
 	}
@@ -56,15 +63,18 @@ function names(book: BookDetail, role: string): string {
 }
 
 function BookPage({ book }: { book: BookDetail }) {
+	const { user } = useRouteContext({ from: "/app" });
 	const authors = names(book, "author");
 	const narrators = names(book, "narrator");
 	const others = book.contributors.filter((c) => ROLES[c.role]);
 	const details: [MessageKey, string][] = [];
 	if (book.publisher) details.push(["book.publisher", book.publisher]);
 	if (book.published) details.push(["book.published", book.published]);
-	if (book.language) details.push(["book.language", formatLanguage(book.language)]);
+	if (book.language)
+		details.push(["book.language", formatLanguage(book.language)]);
 	if (book.pageCount) details.push(["book.pages", String(book.pageCount)]);
-	if (book.durationMs) details.push(["book.duration", formatDuration(book.durationMs)]);
+	if (book.durationMs)
+		details.push(["book.duration", formatDuration(book.durationMs)]);
 	for (const c of others) {
 		const role = ROLES[c.role];
 		if (role) details.push([role, c.name]);
@@ -72,7 +82,9 @@ function BookPage({ book }: { book: BookDetail }) {
 	if (book.identifiers.length > 0) {
 		details.push([
 			"book.identifiers",
-			book.identifiers.map((i) => `${i.type.toUpperCase()} ${i.value}`).join(", "),
+			book.identifiers
+				.map((i) => `${i.type.toUpperCase()} ${i.value}`)
+				.join(", "),
 		]);
 	}
 
@@ -85,11 +97,17 @@ function BookPage({ book }: { book: BookDetail }) {
 				</div>
 				<div className="flex flex-col gap-4">
 					<header className="flex flex-col gap-1">
-						<h1 className="text-3xl font-semibold leading-tight">{book.title}</h1>
+						<h1 className="text-3xl font-semibold leading-tight">
+							{book.title}
+						</h1>
 						{book.subtitle && (
-							<p className="text-lg text-slate-600 dark:text-slate-400">{book.subtitle}</p>
+							<p className="text-lg text-slate-600 dark:text-slate-400">
+								{book.subtitle}
+							</p>
 						)}
-						{authors && <p className="text-lg">{t("book.by", { names: authors })}</p>}
+						{authors && (
+							<p className="text-lg">{t("book.by", { names: authors })}</p>
+						)}
 						{narrators && (
 							<p className="text-slate-600 dark:text-slate-400">
 								{t("book.readBy", { names: narrators })}
@@ -98,15 +116,29 @@ function BookPage({ book }: { book: BookDetail }) {
 						{book.series && (
 							<p className="text-slate-600 dark:text-slate-400">
 								{book.seriesIndex != null
-									? t("book.seriesPosition", { index: book.seriesIndex, series: book.series })
+									? t("book.seriesPosition", {
+											index: book.seriesIndex,
+											series: book.series,
+										})
 									: t("book.series", { series: book.series })}
 							</p>
+						)}
+						{can(user, "metadata:edit") && (
+							<Link
+								to="/books/$bookId/edit"
+								params={{ bookId: book.id }}
+								className="mt-2 self-start rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.edit")}
+							</Link>
 						)}
 					</header>
 
 					{book.description && (
 						<section aria-label={t("book.description")}>
-							<p className="max-w-prose whitespace-pre-line leading-relaxed">{book.description}</p>
+							<p className="max-w-prose whitespace-pre-line leading-relaxed">
+								{book.description}
+							</p>
 						</section>
 					)}
 
@@ -118,7 +150,9 @@ function BookPage({ book }: { book: BookDetail }) {
 							<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
 								{details.map(([label, value]) => (
 									<div key={`${label}${value}`} className="contents">
-										<dt className="text-slate-500 dark:text-slate-400">{t(label)}</dt>
+										<dt className="text-slate-500 dark:text-slate-400">
+											{t(label)}
+										</dt>
 										<dd className="break-words">{value}</dd>
 									</div>
 								))}
@@ -127,7 +161,10 @@ function BookPage({ book }: { book: BookDetail }) {
 					)}
 
 					{book.tags.length > 0 && (
-						<section aria-labelledby="book-tags" className="flex flex-col gap-2">
+						<section
+							aria-labelledby="book-tags"
+							className="flex flex-col gap-2"
+						>
 							<h2 id="book-tags" className="text-sm font-medium">
 								{t("book.tags")}
 							</h2>
@@ -153,10 +190,12 @@ function BookPage({ book }: { book: BookDetail }) {
 
 function fileNotes(file: BookFile): string[] {
 	const notes: string[] = [];
-	if (file.part != null) notes.push(t("book.file.part", { number: file.part + 1 }));
+	if (file.part != null)
+		notes.push(t("book.file.part", { number: file.part + 1 }));
 	if (file.durationMs) notes.push(formatDuration(file.durationMs));
 	if (file.drm) notes.push(t("book.file.drm"));
-	if (file.hasText === false && file.kind === "ebook") notes.push(t("book.file.noText"));
+	if (file.hasText === false && file.kind === "ebook")
+		notes.push(t("book.file.noText"));
 	if (file.missing) notes.push(t("book.file.missing"));
 	if (file.extractState === "pending") notes.push(t("book.file.pending"));
 	return notes;
@@ -176,7 +215,10 @@ function Files({ files }: { files: BookFile[] }) {
 			</h2>
 			<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
 				{files.map((file) => (
-					<li key={file.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
+					<li
+						key={file.id}
+						className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm"
+					>
 						<span className="w-12 font-semibold uppercase">{file.format}</span>
 						<span className="min-w-0 flex-1 break-all">
 							{file.name}
@@ -204,7 +246,9 @@ function Files({ files }: { files: BookFile[] }) {
 								{t("book.file.reread")}
 							</button>
 						)}
-						<span className="text-slate-600 dark:text-slate-400">{formatSize(file.size)}</span>
+						<span className="text-slate-600 dark:text-slate-400">
+							{formatSize(file.size)}
+						</span>
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}

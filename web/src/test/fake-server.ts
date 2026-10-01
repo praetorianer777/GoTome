@@ -6,6 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
+import type { BookEdit } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
@@ -127,6 +128,7 @@ export class FakeServer {
 			tags: [],
 			identifiers: [],
 			files: [],
+			fields: {},
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 		});
@@ -152,7 +154,7 @@ export class FakeServer {
 					: await request.json().catch(() => undefined);
 			this.requests.push({ method: request.method, path: path + url.search, body });
 			if (path === "/books" || path.startsWith("/books/")) {
-				return this.answerBooks(path, url.searchParams);
+				return this.answerBooks(request.method, path, url.searchParams, body);
 			}
 			return this.answer(
 				request.method,
@@ -361,9 +363,15 @@ export class FakeServer {
 				return refuse(404, "not_found", "There is nothing at this address.");
 		}
 	}
-	private answerBooks(path: string, query: URLSearchParams): Response {
+	private answerBooks(method: string, path: string, query: URLSearchParams, body: unknown): Response {
 		if (!this.session) {
 			return Response.json({ error: { code: "unauthorized", message: "Sign in to continue." } }, { status: 401 });
+		}
+		if (path === "/books/names") {
+			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
+		}
+		if (method !== "GET") {
+			return this.editBook(method, path, body as BookEdit | undefined);
 		}
 		if (path === "/books/search") {
 			return Response.json({ books: this.search(query.get("q") ?? "") });
@@ -406,6 +414,86 @@ export class FakeServer {
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
+	}
+
+	/** Names in use on the books, by the beginning of a word. */
+	private names(kind: string, typed: string): string[] {
+		const all = this.books.flatMap((b) =>
+			kind === "author"
+				? b.contributors.map((c) => c.name)
+				: kind === "tag"
+					? b.tags
+					: [kind === "series" ? b.series : b.publisher].filter((n): n is string => !!n),
+		);
+		const q = typed.toLowerCase();
+		return [...new Set(all)].filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)));
+	}
+
+	private editBook(method: string, path: string, edit: BookEdit | undefined): Response {
+		const refuse = (status: number, code: string, message: string, fields?: Record<string, string>) =>
+			Response.json({ error: { code, message, fields } }, { status });
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return refuse(403, "forbidden", "You may not do this.");
+		}
+		const match = /^\/books\/([^/]+)(\/cover)?$/.exec(path);
+		const book = this.books.find((b) => b.id === match?.[1]);
+		if (!match || !book) {
+			return refuse(404, "not_found", "There is no such book.");
+		}
+		const typed = (field: string) => {
+			book.fields[field] = { source: "manual", locked: true };
+		};
+		if (match[2]) {
+			book.coverKey = method === "PUT" ? `cover-${this.requests.length}` : undefined;
+			typed("cover");
+			return Response.json(book);
+		}
+		const e = edit ?? {};
+		const problems: Record<string, string> = {};
+		if (e.title !== undefined && e.title.trim() === "") problems.title = "A book needs a title.";
+		if (e.language && !/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(e.language)) {
+			problems.language = "Give a language code such as en, de or pt-BR.";
+		}
+		if (Object.keys(problems).length > 0) {
+			return refuse(422, "validation_failed", "Some fields need attention.", problems);
+		}
+		const text = ["title", "subtitle", "description", "language", "published", "publisher"] as const;
+		for (const key of text) {
+			const value = e[key];
+			if (value !== undefined) {
+				if (key === "title") book.title = value;
+				else book[key] = value || undefined;
+				typed(key);
+			}
+		}
+		if (e.series) {
+			book.series = e.series.name || undefined;
+			book.seriesIndex = e.series.name ? e.series.index : undefined;
+			typed("series");
+		}
+		if (e.pageCount !== undefined) {
+			book.pageCount = e.pageCount || undefined;
+			typed("pageCount");
+		}
+		if (e.contributors) {
+			book.contributors = e.contributors;
+			typed("contributors");
+		}
+		if (e.tags) {
+			book.tags = e.tags;
+			typed("tags");
+		}
+		if (e.identifiers) {
+			book.identifiers = [
+				...book.identifiers.filter((i) => i.fromFile),
+				...e.identifiers.map((i) => ({ ...i, fromFile: false })),
+			];
+			typed("identifiers");
+		}
+		for (const [field, on] of Object.entries(e.locks ?? {})) {
+			book.fields[field] = { ...book.fields[field], locked: on };
+		}
+		return Response.json(book);
 	}
 
 	private answerAccounts(
