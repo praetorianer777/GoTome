@@ -139,3 +139,8 @@ What changes for someone who runs or uses GOtome. The format follows
   Starting a book marks it as reading, reaching its end as completed, and
   every time you read it to the end is counted. The book's page shows how
   far you are; the readers that write the progress come next.
+- A PDF reader in the browser: open a PDF from its book's page with Read.
+  It shows the first page without waiting for the whole file, turns pages
+  with the buttons, the arrow keys or a page number, zooms, lists the
+  contents, and lets you select and copy text. It reopens at the page you
+  left, on any device, and offers the page another device got further to.

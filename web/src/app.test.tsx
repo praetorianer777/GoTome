@@ -1,9 +1,24 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookDetail } from "@/books/api";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
+
+// PDF.js needs a canvas and a worker, which the test browser has not; the
+// reader's tests see a document of ten pages instead.
+vi.mock("@/reader/pdf", () => ({
+	openPdf: async () => ({
+		pages: 10,
+		pageWidth: async () => 600,
+		outline: async () => [
+			{ id: "0", title: "Chapter One", page: 1, items: [] },
+			{ id: "1", title: "Chapter Two", page: 6, items: [{ id: "1.0", title: "Nowhere", items: [] }] },
+		],
+		render: () => ({ done: Promise.resolve(), cancel: () => {} }),
+		close: () => {},
+	}),
+}));
 
 let server: FakeServer;
 
@@ -1276,5 +1291,76 @@ describe("reading progress", () => {
 		expect(await screen.findByText("Read 42% · Volume II")).toBeInTheDocument();
 		expect(screen.getByText(/^Listened to 80%, at /)).toBeInTheDocument();
 		expect(screen.getByText("Read to the end 2 times")).toBeInTheDocument();
+	});
+});
+
+describe("the PDF reader", () => {
+	function withPdf() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", {
+				files: [{ id: "file-1", kind: "ebook", format: "pdf", name: "Emma.pdf", size: 2_000_000, missing: false, drm: false, extractState: "done" }],
+			});
+	}
+	const page = () => screen.getByRole("textbox", { name: "Page number" });
+	const saves = () => server.requests.filter((r) => r.method === "PUT" && r.path.includes("/progress/")).map((r) => r.body);
+
+	it("opens where the person left off and keeps the page they turn to", async () => {
+		const person = userEvent.setup();
+		withPdf();
+		server.progress["book-1"] = {
+			ebook: { fileId: "file-1", locator: "page:4", fraction: 0.4, page: 4, clientId: "phone", updatedAt: "2026-01-02T00:00:00Z" },
+			finishes: 0,
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Read Emma.pdf" }));
+		expect(router.state.location.pathname).toBe("/books/book-1/read/file-1");
+		expect(await screen.findByRole("figure", { name: "Page 4 of Emma" })).toBeInTheDocument();
+		expect(page()).toHaveValue("4");
+		expect(screen.getByText("of 10")).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Next page" }));
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]).toMatchObject({
+			fileId: "file-1", locator: "page:5", page: 5, fraction: 0.5, basedOn: "2026-01-02T00:00:00Z",
+		});
+
+		await person.keyboard("{End}");
+		expect(page()).toHaveValue("10");
+		await person.clear(page());
+		await person.type(page(), "2{Enter}");
+		expect(screen.getByRole("figure", { name: "Page 2 of Emma" })).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Contents" }));
+		const contents = within(screen.getByRole("navigation", { name: "Contents" }));
+		await person.click(await contents.findByRole("button", { name: "Chapter Two" }));
+		expect(page()).toHaveValue("6");
+		expect(contents.getByText("Nowhere")).toBeInTheDocument();
+		expect(contents.queryByRole("button", { name: "Nowhere" })).not.toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Zoom in" }));
+		expect(screen.getByRole("button", { name: "125%" })).toBeInTheDocument();
+		await waitFor(() => expect(saves().at(-1)).toMatchObject({ locator: "page:6" }));
+	});
+
+	it("offers the further place another device saved", async () => {
+		const person = userEvent.setup();
+		withPdf();
+		server.furtherProgress = { fileId: "file-1", locator: "page:8", fraction: 0.8, page: 8, clientId: "tablet", updatedAt: "2026-01-02T10:00:00Z" };
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByRole("figure", { name: "Page 1 of Emma" })).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Next page" }));
+
+		expect(await screen.findByText("Another device is further on, at page 8.")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Go there" }));
+		expect(page()).toHaveValue("8");
+
+		await person.click(screen.getByRole("button", { name: "Previous page" }));
+		expect(await screen.findByText("Another device is further on, at page 8.")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Stay here" }));
+		await waitFor(() => expect(saves().at(-1)).toMatchObject({ locator: "page:7", force: true }));
+		expect(saves().at(-2)).toMatchObject({ locator: "page:7", basedOn: "2026-01-02T10:00:00Z" });
 	});
 });

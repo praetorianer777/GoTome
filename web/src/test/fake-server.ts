@@ -7,7 +7,7 @@ import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
-import type { ProgressState } from "@/books/progress";
+import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
@@ -86,6 +86,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** A further position another device wrote, which the next save meets. */
+	furtherProgress?: Progress;
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -387,6 +389,19 @@ export class FakeServer {
 		}
 		if (path === "/books/names") {
 			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
+		}
+		const saving = /^\/books\/([^/]+)\/progress\/(ebook|audio)$/.exec(path);
+		if (saving) {
+			const update = body as ProgressUpdate;
+			const further = this.furtherProgress;
+			if (further && !update.force && further.fraction > update.fraction) {
+				return Response.json({ saved: false, progress: further });
+			}
+			const { basedOn: _, force: __, ...rest } = update;
+			const written = { ...rest, updatedAt: `2026-01-03T00:00:${String(this.requests.length % 60).padStart(2, "0")}Z` };
+			const id = saving[1] ?? "";
+			this.progress[id] = { finishes: 0, ...this.progress[id], [saving[2] ?? "ebook"]: written };
+			return Response.json({ saved: true, progress: written });
 		}
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {

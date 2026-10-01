@@ -3,6 +3,7 @@ import {
 	createRootRouteWithContext,
 	createRoute,
 	createRouter,
+	lazyRouteComponent,
 	Outlet,
 	type RouterHistory,
 	redirect,
@@ -210,6 +211,13 @@ const reviewRoute = createRoute({
 	component: Review,
 });
 
+const readPdfRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/books/$bookId/read/$fileId",
+	// PDF.js is most of the app's weight; it loads with the first PDF opened.
+	component: lazyRouteComponent(() => import("@/routes/read-pdf"), "PdfReaderRoute"),
+});
+
 const bulkRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/bulk/$bulkId",
@@ -258,7 +266,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
