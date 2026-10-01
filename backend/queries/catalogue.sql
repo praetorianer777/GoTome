@@ -191,3 +191,17 @@ WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
   AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+
+-- name: ListAudioFiles :many
+-- A book's audio files that are there to be played: the parts of an
+-- audiobook in order, after any whole file.
+SELECT id, format, rel_path, part_index, duration_ms
+FROM book_files
+WHERE book_id = $1 AND kind = 'audio' AND trashed_at IS NULL AND missing_at IS NULL
+ORDER BY part_index NULLS FIRST, rel_path;
+
+-- name: ListFileChapters :many
+SELECT file_id, position, title, start_ms, end_ms
+FROM audio_chapters
+WHERE file_id = ANY(sqlc.arg(file_ids)::uuid[])
+ORDER BY file_id, position;

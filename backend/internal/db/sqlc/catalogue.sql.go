@@ -416,6 +416,49 @@ func (q *Queries) GetVisibleFile(ctx context.Context, arg GetVisibleFileParams) 
 	return i, err
 }
 
+const listAudioFiles = `-- name: ListAudioFiles :many
+SELECT id, format, rel_path, part_index, duration_ms
+FROM book_files
+WHERE book_id = $1 AND kind = 'audio' AND trashed_at IS NULL AND missing_at IS NULL
+ORDER BY part_index NULLS FIRST, rel_path
+`
+
+type ListAudioFilesRow struct {
+	ID         uuid.UUID
+	Format     string
+	RelPath    string
+	PartIndex  *int32
+	DurationMs *int64
+}
+
+// A book's audio files that are there to be played: the parts of an
+// audiobook in order, after any whole file.
+func (q *Queries) ListAudioFiles(ctx context.Context, bookID uuid.UUID) ([]ListAudioFilesRow, error) {
+	rows, err := q.db.Query(ctx, listAudioFiles, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAudioFilesRow{}
+	for rows.Next() {
+		var i ListAudioFilesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Format,
+			&i.RelPath,
+			&i.PartIndex,
+			&i.DurationMs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBookContributors = `-- name: ListBookContributors :many
 SELECT a.id, a.name, a.sort_name, c.role, c.position
 FROM book_contributors c
@@ -573,6 +616,39 @@ func (q *Queries) ListBookTags(ctx context.Context, bookID uuid.UUID) ([]ListBoo
 	for rows.Next() {
 		var i ListBookTagsRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFileChapters = `-- name: ListFileChapters :many
+SELECT file_id, position, title, start_ms, end_ms
+FROM audio_chapters
+WHERE file_id = ANY($1::uuid[])
+ORDER BY file_id, position
+`
+
+func (q *Queries) ListFileChapters(ctx context.Context, fileIds []uuid.UUID) ([]AudioChapter, error) {
+	rows, err := q.db.Query(ctx, listFileChapters, fileIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AudioChapter{}
+	for rows.Next() {
+		var i AudioChapter
+		if err := rows.Scan(
+			&i.FileID,
+			&i.Position,
+			&i.Title,
+			&i.StartMs,
+			&i.EndMs,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

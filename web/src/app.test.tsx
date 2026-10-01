@@ -23,6 +23,7 @@ vi.mock("@/reader/pdf", () => ({
 let server: FakeServer;
 
 beforeEach(() => {
+	vi.restoreAllMocks();
 	localStorage.clear();
 	delete document.documentElement.dataset.theme;
 	server = new FakeServer().install();
@@ -1362,5 +1363,98 @@ describe("the PDF reader", () => {
 		await person.click(screen.getByRole("button", { name: "Stay here" }));
 		await waitFor(() => expect(saves().at(-1)).toMatchObject({ locator: "page:7", force: true }));
 		expect(saves().at(-2)).toMatchObject({ locator: "page:7", basedOn: "2026-01-02T10:00:00Z" });
+	});
+});
+
+describe("the audiobook player", () => {
+	const timeline = (format: "mp3" | "m4b") => ({
+		durationMs: 110_000,
+		complete: true,
+		parts: [
+			{ fileId: "file-a", format, mediaType: format === "mp3" ? "audio/mpeg" : "audio/mp4", name: `Emma 1.${format}`, startMs: 0, durationMs: 60_000 },
+			{ fileId: "file-b", format, mediaType: format === "mp3" ? "audio/mpeg" : "audio/mp4", name: `Emma 2.${format}`, startMs: 60_000, durationMs: 50_000 },
+		],
+		chapters: [
+			{ title: "Volume I", fileId: "file-a", startMs: 0, endMs: 30_000 },
+			{ title: "Volume II", fileId: "file-a", startMs: 30_000, endMs: 60_000 },
+			{ title: "Volume III", fileId: "file-b", startMs: 60_000, endMs: 110_000 },
+		],
+	});
+	function withAudiobook(format: "mp3" | "m4b") {
+		const file = (id: string, name: string) => ({ id, kind: "audio", format, name, size: 1_000_000, missing: false, drm: false, extractState: "done" });
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [file("file-a", `Emma 1.${format}`), file("file-b", `Emma 2.${format}`)] });
+		server.audio["book-1"] = timeline(format);
+	}
+	// The test browser has media elements that cannot play; these stand in.
+	function playable(answer: string) {
+		vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue(answer as CanPlayTypeResult);
+		vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(function (this: HTMLMediaElement) {
+			this.dispatchEvent(new Event("loadedmetadata"));
+		});
+		vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(async function (this: HTMLMediaElement) {
+			this.dispatchEvent(new Event("play"));
+		});
+		vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function (this: HTMLMediaElement) {
+			this.dispatchEvent(new Event("pause"));
+		});
+	}
+	const audio = () => document.querySelector("audio") as HTMLAudioElement;
+	const saves = () => server.requests.filter((r) => r.method === "PUT" && r.path.includes("/progress/audio")).map((r) => r.body);
+
+	it("plays a book in parts as one, from where it was left, and goes on across pages", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		server.progress["book-1"] = {
+			audio: { fileId: "file-b", locator: "75000", fraction: 0.68, positionMs: 75_000, clientId: "phone", updatedAt: "2026-01-02T00:00:00Z" },
+			finishes: 0,
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Listen" }));
+		expect(router.state.location.pathname).toBe("/books/book-1/listen");
+
+		expect(await screen.findByTestId("position")).toHaveTextContent("1:15");
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+		expect(screen.getByRole("button", { name: /^Volume III/ })).toHaveAttribute("aria-current", "true");
+
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		// Back across the start of the second part, into the first.
+		await person.click(screen.getByRole("button", { name: /^Volume II(?!I)/ }));
+		expect(audio().getAttribute("src")).toContain("/files/file-a/");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:30");
+		await waitFor(() =>
+			expect(saves().at(-1)).toMatchObject({ fileId: "file-a", positionMs: 30_000, locator: "30000", chapter: "Volume II" }),
+		);
+		expect(saves().at(-1)).toMatchObject({ basedOn: "2026-01-02T00:00:00Z" });
+
+		await person.selectOptions(screen.getByRole("combobox", { name: "Speed" }), "1.5×");
+		expect(audio().playbackRate).toBe(1.5);
+
+		// Elsewhere in the app the book plays on, in the bar along the bottom.
+		await person.click(screen.getByRole("link", { name: "Back to the book" }));
+		const bar = within(await screen.findByRole("region", { name: "Now playing" }));
+		expect(bar.getByRole("link", { name: "Emma" })).toBeInTheDocument();
+		expect(bar.getByText("Volume II · 0:30")).toBeInTheDocument();
+		await person.click(bar.getByRole("button", { name: "Pause" }));
+		expect(bar.getByRole("button", { name: "Play" })).toBeInTheDocument();
+		await person.click(bar.getByRole("button", { name: "Close the player" }));
+		expect(screen.queryByRole("region", { name: "Now playing" })).not.toBeInTheDocument();
+	});
+
+	it("says which formats this browser cannot play, and offers the files", async () => {
+		const person = userEvent.setup();
+		playable("");
+		withAudiobook("m4b");
+		renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Listen" }));
+		expect(await screen.findByRole("alert")).toHaveTextContent("This browser cannot play M4B files.");
+		expect(screen.getByRole("link", { name: "Download Emma 1.m4b" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Play" })).toBeDisabled();
+		expect(audio().getAttribute("src")).toBeNull();
 	});
 });

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"errors"
 	"net/http"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 )
@@ -127,5 +129,64 @@ func (s *Server) putProgress(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	writeJSON(w, r, http.StatusOK, progressSaved{Saved: saved, Progress: progressViewOf(p)})
+	return nil
+}
+
+// audioTimeline is a book's audio as one recording.
+type audioTimeline struct {
+	// Parts are its files in the order they are played, each with where it
+	// starts on the whole timeline.
+	Parts    []audioPart    `json:"parts"`
+	Chapters []audioChapter `json:"chapters"`
+	// DurationMS is the whole length.
+	DurationMS int64 `json:"durationMs"`
+	// Complete is false while a part has not been read; it is left out
+	// until it has.
+	Complete bool `json:"complete"`
+}
+
+type audioPart struct {
+	FileID uuid.UUID `json:"fileId"`
+	Format string    `json:"format"`
+	// MediaType is what the file is sent as, for a player to ask whether
+	// it can play it.
+	MediaType  string `json:"mediaType"`
+	Name       string `json:"name"`
+	StartMS    int64  `json:"startMs"`
+	DurationMS int64  `json:"durationMs"`
+}
+
+type audioChapter struct {
+	Title string `json:"title"`
+	// FileID is the part the chapter is in; its times are on the whole
+	// timeline.
+	FileID  uuid.UUID `json:"fileId"`
+	StartMS int64     `json:"startMs"`
+	EndMS   int64     `json:"endMs"`
+}
+
+func (s *Server) getAudio(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "bookId", "book")
+	if err != nil {
+		return err
+	}
+	tl, err := s.Books.AudioTimeline(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
+	if errors.Is(err, catalog.ErrNotFound) {
+		return ErrNotFound("There is no such book.")
+	}
+	if err != nil {
+		return err
+	}
+	out := audioTimeline{Parts: []audioPart{}, Chapters: []audioChapter{}, DurationMS: tl.DurationMS, Complete: tl.Complete}
+	for _, p := range tl.Parts {
+		out.Parts = append(out.Parts, audioPart{
+			FileID: p.FileID, Format: p.Format, MediaType: cmp.Or(mediaTypes[p.Format], "application/octet-stream"),
+			Name: p.Name, StartMS: p.StartMS, DurationMS: p.DurationMS,
+		})
+	}
+	for _, c := range tl.Chapters {
+		out.Chapters = append(out.Chapters, audioChapter{Title: c.Title, FileID: c.FileID, StartMS: c.StartMS, EndMS: c.EndMS})
+	}
+	writeJSON(w, r, http.StatusOK, out)
 	return nil
 }

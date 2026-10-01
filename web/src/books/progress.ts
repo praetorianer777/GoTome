@@ -1,4 +1,5 @@
 import {
+	type QueryClient,
 	queryOptions,
 	useMutation,
 	useQueryClient,
@@ -45,32 +46,50 @@ export function clientId(): string {
 	}
 }
 
+export type ProgressSaved = components["schemas"]["ProgressSaved"];
+
 /**
  * Records a position, based on the one this browser last read. When another
  * device wrote a further one since, nothing is written: the answer has saved
- * false and that position, for the reader to offer; force writes anyway.
+ * false and that position, for the player or reader to offer; force writes
+ * anyway. keepalive lets the request outlive the page, for the last save as
+ * it closes.
  */
+export async function saveProgress(
+	queryClient: QueryClient,
+	bookId: string,
+	medium: Medium,
+	update: Omit<ProgressUpdate, "clientId" | "basedOn">,
+	keepalive = false,
+): Promise<ProgressSaved | undefined> {
+	const known = queryClient.getQueryData<ProgressState>(["progress", bookId]);
+	const answer = (
+		await api.PUT("/books/{bookId}/progress/{medium}", {
+			params: { path: { bookId, medium } },
+			body: { ...update, clientId: clientId(), basedOn: known?.[medium]?.updatedAt },
+			keepalive,
+		})
+	).data;
+	if (answer?.saved && answer.progress) {
+		knowProgress(queryClient, bookId, medium, answer.progress);
+	}
+	return answer;
+}
+
+/** Takes a position as the one this browser last read. */
+export function knowProgress(queryClient: QueryClient, bookId: string, medium: Medium, progress: Progress) {
+	queryClient.setQueryData<ProgressState>(["progress", bookId], (state) => ({
+		finishes: state?.finishes ?? 0,
+		...state,
+		[medium]: progress,
+	}));
+}
+
+/** saveProgress as a mutation, for a reader of one book. */
 export function useSaveProgress(bookId: string, medium: Medium) {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async (update: Omit<ProgressUpdate, "clientId" | "basedOn">) => {
-			const known = queryClient.getQueryData<ProgressState>(["progress", bookId]);
-			return (
-				await api.PUT("/books/{bookId}/progress/{medium}", {
-					params: { path: { bookId, medium } },
-					body: { ...update, clientId: clientId(), basedOn: known?.[medium]?.updatedAt },
-				})
-			).data;
-		},
-		onSuccess: (answer) => {
-			if (answer?.saved && answer.progress) {
-				const progress = answer.progress;
-				queryClient.setQueryData<ProgressState>(["progress", bookId], (state) => ({
-					finishes: state?.finishes ?? 0,
-					...state,
-					[medium]: progress,
-				}));
-			}
-		},
+		mutationFn: (update: Omit<ProgressUpdate, "clientId" | "basedOn">) =>
+			saveProgress(queryClient, bookId, medium, update),
 	});
 }

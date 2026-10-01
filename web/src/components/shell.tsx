@@ -9,6 +9,8 @@ import mark from "@/assets/mark.webp";
 import { QuickSearch } from "@/books/quick-search";
 import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
+import { MiniPlayer } from "@/player/controls";
+import { PlayerProvider } from "@/player/player";
 
 export interface NavItem {
 	to: "/" | "/upload" | "/review" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
@@ -57,6 +59,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 	const roleLabel = ROLE_LABELS[user.role];
 
 	return (
+		<PlayerProvider>
 		<div className="flex min-h-dvh flex-col">
 			<a
 				href="#content"
@@ -128,6 +131,8 @@ export function Shell({ user }: { user: CurrentUser }) {
 			<main id="content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
 				<Outlet />
 			</main>
+			<MiniPlayer />
 		</div>
+		</PlayerProvider>
 	);
 }

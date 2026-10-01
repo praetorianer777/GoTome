@@ -243,6 +243,23 @@ export interface paths {
         patch: operations["editBook"];
         trace?: never;
     };
+    "/books/{bookId}/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's audio as one recording: its parts in order and the chapters across them */
+        get: operations["getAudio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/candidates": {
         parameters: {
             query?: never;
@@ -844,6 +861,28 @@ export interface components {
             subtitle?: string;
             tags?: string[];
             title?: string;
+        };
+        AudioChapter: {
+            endMs: number;
+            /** Format: uuid */
+            fileId: string;
+            startMs: number;
+            title: string;
+        };
+        AudioPart: {
+            durationMs: number;
+            /** Format: uuid */
+            fileId: string;
+            format: string;
+            mediaType: string;
+            name: string;
+            startMs: number;
+        };
+        AudioTimeline: {
+            chapters: components["schemas"]["AudioChapter"][];
+            complete: boolean;
+            durationMs: number;
+            parts: components["schemas"]["AudioPart"][];
         };
         BookDetail: {
             /** Format: date-time */
@@ -1850,6 +1889,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAudio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioTimeline"];
                 };
             };
             /** @description The request failed. */

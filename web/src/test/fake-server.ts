@@ -8,6 +8,7 @@ import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
+import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
@@ -86,6 +87,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** The audio of each book, as the player asks for it. */
+	audio: Record<string, Timeline> = {};
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
 	/** Files somebody asked to have read again. */
@@ -402,6 +405,10 @@ export class FakeServer {
 			const id = saving[1] ?? "";
 			this.progress[id] = { finishes: 0, ...this.progress[id], [saving[2] ?? "ebook"]: written };
 			return Response.json({ saved: true, progress: written });
+		}
+		const audio = /^\/books\/([^/]+)\/audio$/.exec(path);
+		if (audio) {
+			return Response.json(this.audio[audio[1] ?? ""] ?? { parts: [], chapters: [], durationMs: 0, complete: true });
 		}
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {
