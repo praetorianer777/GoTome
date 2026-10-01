@@ -291,6 +291,24 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
   is that hash. A route that sends something other than JSON declares `Produces`.
 
+## Metadata providers
+
+- A source of metadata is a `metadata.Provider` (name, limits, lookup by
+  identifier, search by text) that turns its source's answers into
+  `metadata.Record`s. It reaches the network only through the `metadata.Web`
+  it is handed: requests spaced by the provider's `Limits.Interval` across the
+  whole process, answers (200 and 404) kept for 30 days in `provider_records`,
+  a user agent, timeouts and size caps, and a dialler that refuses loopback,
+  private, link-local and other non-public addresses (also after redirects).
+- API keys and tokens go in `Request.SecretQuery` or `Request.Header`, which
+  are never stored, never part of the cache key and never in an error.
+- `metadata.Service.Candidates` looks a book up by its ISBNs, searches by
+  title and authors where that finds nothing, and ranks with `Score`: 1 only
+  for a shared identifier.
+- Provider tests run against `metadata.NewFixtures`, recorded answers in the
+  provider's `testdata`; a missing one fails the test. Record with
+  `GOTOME_RECORD_FIXTURES=1`, by hand. The gate never reaches a provider.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
