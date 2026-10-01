@@ -193,7 +193,7 @@ function BookPage({ book }: { book: BookDetail }) {
 						</section>
 					)}
 
-					<Files files={book.files} />
+					<Files bookId={book.id} files={book.files} />
 				</div>
 			</div>
 		</article>
@@ -213,7 +213,7 @@ function fileNotes(file: BookFile): string[] {
 	return notes;
 }
 
-function Files({ files }: { files: BookFile[] }) {
+function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
 	const { user } = useRouteContext({ from: "/app" });
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
@@ -261,6 +261,16 @@ function Files({ files }: { files: BookFile[] }) {
 						<span className="text-slate-600 dark:text-slate-400">
 							{formatSize(file.size)}
 						</span>
+						{!file.missing && file.format === "pdf" && (
+							<Link
+								to="/books/$bookId/read/$fileId"
+								params={{ bookId, fileId: file.id }}
+								aria-label={t("book.file.readNamed", { name: file.name })}
+								className="rounded-md bg-brand-strong px-3 py-1 font-medium text-white hover:bg-sky-800"
+							>
+								{t("book.file.read")}
+							</Link>
+						)}
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}

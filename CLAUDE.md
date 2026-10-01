@@ -359,6 +359,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `reading`; reaching `reading.End` from before it records a
   `reading_finishes` row and makes it `completed`, so a re-read counts.
 
+## Readers
+
+- The PDF reader (`/books/$bookId/read/$fileId`, `routes/read-pdf.tsx`) uses
+  PDF.js through `web/src/reader/pdf.ts`, the only file that imports it; app
+  tests mock that module. It loads with the route, not with the app. PDF.js
+  fetches the file in range requests (`disableAutoFetch`, `disableStream`)
+  from the download route, so a page shows before the file has arrived.
+- A reader saves its place through `useSaveProgress` (`books/progress.ts`),
+  which sends this browser's `clientId` and the `updatedAt` it last read as
+  `basedOn`, and offers a further place another device saved. A PDF's
+  locator is `page:<n>`, its fraction the page over the page count.
+- `e2e/fixtures/pdf.ts` makes PDFs of any size for the browser tests.
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an
