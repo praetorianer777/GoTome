@@ -659,3 +659,60 @@ describe("filters", () => {
 		await waitFor(() => expect(titles()).toHaveLength(4));
 	});
 });
+
+describe("quick search", () => {
+	function withShelf() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Mistborn", { contributors: [{ name: "Brandon Sanderson", role: "author" }] })
+			.withBook("The Way of Kings", { contributors: [{ name: "Brandon Sanderson", role: "author" }] })
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] });
+	}
+
+	it("finds a misspelt author and opens a book from the keyboard", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		await screen.findByRole("heading", { name: "Library", level: 1 });
+
+		// "/" anywhere on the page comes to the search box.
+		await person.keyboard("/");
+		const box = screen.getByRole("combobox", { name: "Search books" });
+		expect(box).toHaveFocus();
+		await person.type(box, "Sandersen");
+
+		const results = await screen.findByRole("listbox", { name: "Books found" });
+		await waitFor(() => expect(within(results).getAllByRole("option")).toHaveLength(2));
+		expect(box).toHaveAttribute("aria-expanded", "true");
+
+		await person.keyboard("{ArrowDown}{ArrowDown}");
+		expect(within(results).getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+		await person.keyboard("{Enter}");
+		expect(await screen.findByRole("heading", { name: "The Way of Kings", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-2");
+		expect(box).toHaveValue("");
+	});
+
+	it("waits for three letters, says when nothing is found, and closes on Escape", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		renderApp("/");
+		const box = await screen.findByRole("combobox", { name: "Search books" });
+
+		await person.type(box, "em");
+		await new Promise((r) => setTimeout(r, 300));
+		expect(server.requests.some((r) => r.path.startsWith("/books/search"))).toBe(false);
+
+		await person.type(box, "ma");
+		const results = await screen.findByRole("listbox", { name: "Books found" });
+		await waitFor(() => expect(within(results).getByRole("option", { name: /Emma/ })).toBeInTheDocument());
+		await person.keyboard("{Escape}");
+		expect(box).toHaveAttribute("aria-expanded", "false");
+
+		await person.clear(box);
+		await person.type(box, "qwertz");
+		expect(await screen.findByText("No title, author or series looks like that.")).toBeInTheDocument();
+	});
+});

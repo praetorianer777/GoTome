@@ -10,6 +10,11 @@ export const en = {
 	"nav.main": "Main",
 	"nav.skip": "Skip to the content",
 
+	"search.label": "Search books",
+	"search.placeholder": "Title, author or series  ( / )",
+	"search.results": "Books found",
+	"search.none": "No title, author or series looks like that.",
+
 	"user.menu": "Account",
 	"user.signedInAs": "Signed in as {name}",
 	"user.signOut": "Sign out",

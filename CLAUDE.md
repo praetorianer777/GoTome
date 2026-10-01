@@ -168,6 +168,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   rules left out (`Node.Without`). The web app keeps the picks per field in the
   address and builds the tree in `web/src/books/filters.ts`. Rating is not a
   field yet: per-user ratings come with #43.
+- The quick search (`catalog.Search`, `GET /books/search`) matches the
+  `*_key` columns of titles, authors and series with pg_trgm's `<%` through
+  GIN trigram indexes. It is not the full-text search of #14 and later. Its
+  transaction lowers the word-similarity threshold and turns off sequential
+  scans, without which the planner reads every title; a test holds it under
+  300 ms on 50,000 books.
 - Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
   and without the server's write deadline.
 

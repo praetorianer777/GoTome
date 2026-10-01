@@ -59,3 +59,8 @@ What changes for someone who runs or uses GOtome. The format follows
   books have it; values of one field add up, fields narrow each other. The
   address carries the filters, so a filtered view can be bookmarked or shared.
   On a phone the panel is behind a "Filters" button.
+- Quick search. The box in the header finds books by title, author or series
+  as you type, even misspelt or only begun: "Sandersen" finds Brandon
+  Sanderson. Press "/" to get to it from anywhere, the arrow keys to pick a
+  book and Enter to open it. It answers in well under a tenth of a second on
+  50,000 books.

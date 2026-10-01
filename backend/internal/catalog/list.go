@@ -70,6 +70,23 @@ type Summary struct {
 	AddedAt time.Time
 }
 
+// summaryColumns are what a Summary is read from, in the order of dest. The
+// query has books as b and their series as s.
+const summaryColumns = `b.id, b.library_id, b.title, COALESCE(b.subtitle, ''), b.created_at,
+       COALESCE(b.cover_key, ''), s.name, b.series_index, extract(year FROM b.published_on)::int,
+       COALESCE((SELECT array_agg(a.name ORDER BY c.position)
+                 FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                 WHERE c.book_id = b.id AND c.role = 'author'), '{}'),
+       COALESCE((SELECT array_agg(DISTINCT f.format ORDER BY f.format)
+                 FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), '{}')`
+
+// dest is where rows.Scan puts summaryColumns; the series name goes to
+// series, which may be NULL.
+func (b *Summary) dest(series **string) []any {
+	return []any{&b.ID, &b.LibraryID, &b.Title, &b.Subtitle, &b.AddedAt,
+		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats}
+}
+
 // Page is one page of a list, and the cursor of the next; Next is empty on
 // the last page.
 type Page struct {
@@ -141,13 +158,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, p ListParams) (
 	}
 
 	query := `
-SELECT b.id, b.library_id, b.title, COALESCE(b.subtitle, ''), b.sort_title, b.author_sort, b.created_at,
-       COALESCE(b.cover_key, ''), s.name, b.series_index, extract(year FROM b.published_on)::int,
-       COALESCE((SELECT array_agg(a.name ORDER BY c.position)
-                 FROM book_contributors c JOIN authors a ON a.id = c.author_id
-                 WHERE c.book_id = b.id AND c.role = 'author'), '{}'),
-       COALESCE((SELECT array_agg(DISTINCT f.format ORDER BY f.format)
-                 FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), '{}')
+SELECT ` + summaryColumns + `, b.sort_title, b.author_sort
 FROM books b
 LEFT JOIN series s ON s.id = b.series_id
 WHERE ` + strings.Join(where, " AND ") + `
@@ -164,8 +175,7 @@ LIMIT ` + arg(limit+1)
 	for rows.Next() {
 		var b Summary
 		var series *string
-		if err := rows.Scan(&b.ID, &b.LibraryID, &b.Title, &b.Subtitle, &sortTitle, &authorSort, &b.AddedAt,
-			&b.CoverKey, &series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats); err != nil {
+		if err := rows.Scan(append(b.dest(&series), &sortTitle, &authorSort)...); err != nil {
 			return Page{}, err
 		}
 		b.Series = deref(series)

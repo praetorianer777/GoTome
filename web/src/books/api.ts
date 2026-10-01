@@ -63,6 +63,20 @@ export function facetsQuery(
 	});
 }
 
+export type SearchHit = components["schemas"]["SearchHit"];
+
+/** The books whose title, author or series looks like the words. */
+export function searchQuery(words: string) {
+	return queryOptions({
+		queryKey: ["books", "search", words],
+		queryFn: async () =>
+			(await api.GET("/books/search", { params: { query: { q: words } } })).data
+				?.books ?? [],
+		// While the next answer is on its way, the last one stays in view.
+		placeholderData: (previous) => previous,
+	});
+}
+
 export function bookQuery(id: string) {
 	return queryOptions({
 		queryKey: ["book", id],
