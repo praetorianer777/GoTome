@@ -179,11 +179,53 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := bookList{Books: make([]bookSummary, len(page.Books)), NextCursor: page.Next}
 	for i, b := range page.Books {
-		out.Books[i] = bookSummary{
-			ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
-			Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
-			CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt,
-		}
+		out.Books[i] = summaryOf(b)
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func summaryOf(b catalog.Summary) bookSummary {
+	return bookSummary{
+		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
+		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
+		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt,
+	}
+}
+
+type searchQuery struct {
+	Q     string `query:"q" doc:"What to look for in titles, authors and series; it may be misspelt or only begun. Fewer than three letters find nothing."`
+	Limit int    `query:"limit" doc:"How many books to return, at most 50; 10 when left out."`
+}
+
+// searchResult is the books a quick search found, the best first.
+type searchResult struct {
+	Books []searchHit `json:"books"`
+}
+
+type searchHit struct {
+	bookSummary
+	// Match says whether the title, an author or the series is what looked
+	// like the search.
+	Match string `json:"match"`
+}
+
+// defaultHits is how many books a quick search returns when the client does
+// not say.
+const defaultHits = 10
+
+func (s *Server) searchBooks(w http.ResponseWriter, r *http.Request) error {
+	var q searchQuery
+	if err := decodeQuery(r, &q); err != nil {
+		return err
+	}
+	hits, err := s.Books.Search(r.Context(), library.ScopeOf(*UserFrom(r.Context())), q.Q, cmp.Or(q.Limit, defaultHits))
+	if err != nil {
+		return err
+	}
+	out := searchResult{Books: make([]searchHit, len(hits))}
+	for i, h := range hits {
+		out.Books[i] = searchHit{bookSummary: summaryOf(h.Summary), Match: h.Match}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

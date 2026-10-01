@@ -38,6 +38,9 @@ func Spec() *openapi.Document {
 		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
 		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldFormat,
 	}}
+	b.FieldOverrides["SearchHit.match"] = &openapi.Schema{Type: "string", Enum: []string{
+		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
+	}}
 	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},

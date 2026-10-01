@@ -297,6 +297,9 @@ export class FakeServer {
 		if (!this.session) {
 			return Response.json({ error: { code: "unauthorized", message: "Sign in to continue." } }, { status: 401 });
 		}
+		if (path === "/books/search") {
+			return Response.json({ books: this.search(query.get("q") ?? "") });
+		}
 		if (path === "/books/facets") {
 			return Response.json({ facets: this.facets(query) });
 		}
@@ -334,6 +337,26 @@ export class FakeServer {
 				addedAt: b.addedAt,
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
+		});
+	}
+
+	/**
+	 * Titles and authors that contain the words, or a word one letter off:
+	 * close enough to the server's trigrams for what the tests type.
+	 */
+	private search(words: string) {
+		const q = nameKey(words);
+		if (q.replace(/ /g, "").length < 3) {
+			return [];
+		}
+		const near = (text: string) =>
+			nameKey(text).includes(q) || nameKey(text).split(" ").some((w) => oneOff(w, q));
+		return this.books.flatMap((b) => {
+			const author = b.contributors.find((c) => c.role === "author" && near(c.name));
+			const match = near(b.title) ? "title" : author ? "author" : undefined;
+			return match
+				? [{ id: b.id, libraryId: b.libraryId, title: b.title, authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name), formats: [], addedAt: b.addedAt, match }]
+				: [];
 		});
 	}
 
@@ -476,6 +499,22 @@ function nameKey(name: string): string {
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]+/gu, " ")
 		.trim();
+}
+
+/** Whether two words differ by one letter put in, left out or changed. */
+function oneOff(a: string, b: string): boolean {
+	if (Math.abs(a.length - b.length) > 1) {
+		return false;
+	}
+	let i = 0;
+	while (i < a.length && a[i] === b[i]) {
+		i++;
+	}
+	return (
+		a.slice(i + 1) === b.slice(i + 1) ||
+		a.slice(i) === b.slice(i + 1) ||
+		a.slice(i + 1) === b.slice(i)
+	);
 }
 
 /** The values a book has for a field, as [value, label] pairs. */

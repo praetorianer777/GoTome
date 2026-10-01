@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose title, author or series looks like the words, the best first */
+        get: operations["searchBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}": {
         parameters: {
             query?: never;
@@ -450,6 +467,27 @@ export interface components {
             startedAt?: string;
             state: string;
         };
+        SearchHit: {
+            /** Format: date-time */
+            addedAt: string;
+            authors: string[];
+            coverKey?: string;
+            formats: string[];
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            libraryId: string;
+            /** @enum {string} */
+            match: "title" | "author" | "series";
+            publishedYear?: number;
+            series?: string;
+            seriesIndex?: number;
+            subtitle?: string;
+            title: string;
+        };
+        SearchResult: {
+            books: components["schemas"]["SearchHit"][];
+        };
         SetupRequest: {
             email?: string;
             password: string;
@@ -646,6 +684,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FacetList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchBooks: {
+        parameters: {
+            query?: {
+                /** @description What to look for in titles, authors and series; it may be misspelt or only begun. Fewer than three letters find nothing. */
+                q?: string;
+                /** @description How many books to return, at most 50; 10 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
                 };
             };
             /** @description The request failed. */

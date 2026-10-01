@@ -280,6 +280,61 @@
         "x-permission": "library:read"
       }
     },
+    "/books/search": {
+      "get": {
+        "operationId": "searchBooks",
+        "summary": "Books whose title, author or series looks like the words, the best first",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "What to look for in titles, authors and series; it may be misspelt or only begun. Fewer than three letters find nothing.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books to return, at most 50; 10 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/books/{bookId}": {
       "get": {
         "operationId": "getBook",
@@ -1598,6 +1653,84 @@
           "filesMissing",
           "filesSkipped",
           "booksAdded"
+        ]
+      },
+      "SearchHit": {
+        "type": "object",
+        "properties": {
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverKey": {
+            "type": "string"
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "libraryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "match": {
+            "type": "string",
+            "enum": [
+              "title",
+              "author",
+              "series"
+            ]
+          },
+          "publishedYear": {
+            "type": "integer"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "libraryId",
+          "title",
+          "authors",
+          "formats",
+          "addedAt",
+          "match"
+        ]
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            }
+          }
+        },
+        "required": [
+          "books"
         ]
       },
       "SetupRequest": {
