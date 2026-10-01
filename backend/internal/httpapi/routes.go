@@ -284,6 +284,16 @@ func (s *Server) routes() []Route {
 			Request: applyCandidateRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.applyCandidate,
 		},
 		{
+			Method: http.MethodPut, Path: "/books/{bookId}/reading", ID: "setReading",
+			Summary: "Change where the caller stands with a book: status, rating, dates", Tag: "books",
+			Request: readingChange{}, Response: readingState{}, Permission: auth.PersonalManage, Handler: s.setReading,
+		},
+		{
+			Method: http.MethodPost, Path: "/books/reading", ID: "setReadingBulk",
+			Summary: "Change where the caller stands with many books at once", Tag: "books",
+			Request: readingBulkRequest{}, Response: readingBulkResult{}, Permission: auth.PersonalManage, Handler: s.setReadingBulk,
+		},
+		{
 			Method: http.MethodPost, Path: "/books/bulk", ID: "startBulk",
 			Summary: "Edit, look up or write into their files many books at once, as a job", Tag: "books",
 			Request: bulkRequest{}, Response: bulkStarted{}, Status: http.StatusAccepted,

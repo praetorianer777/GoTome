@@ -7,6 +7,7 @@ import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
+import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
@@ -136,6 +137,7 @@ export class FakeServer {
 			identifiers: [],
 			files: [],
 			fields: {},
+			reading: { status: "unread" },
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 		});
@@ -383,6 +385,31 @@ export class FakeServer {
 		if (path === "/books/names") {
 			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
 		}
+		if (path === "/books/reading") {
+			const req = body as ReadingBulk;
+			const chosen = this.books.filter((b) =>
+				req.books?.length
+					? req.books.includes(b.id)
+					: (!req.library || b.libraryId === req.library) && (!req.filter || matches(b, JSON.parse(req.filter))),
+			);
+			for (const b of chosen) {
+				b.reading = { ...b.reading, ...(req.status ? { status: req.status } : {}) };
+			}
+			return Response.json({ changed: chosen.length });
+		}
+		const reading = /^\/books\/([^/]+)\/reading$/.exec(path);
+		if (reading) {
+			const book = this.books.find((b) => b.id === reading[1]);
+			if (!book) {
+				return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+			}
+			const change = body as ReadingChange;
+			book.reading = { ...book.reading, ...change };
+			if (change.rating === 0) {
+				book.reading.rating = undefined;
+			}
+			return Response.json(book.reading);
+		}
 		const asked = /^\/books\/([^/]+)\/candidates(\/apply)?$/.exec(path);
 		if (asked && !asked[2]) {
 			return Response.json(this.candidates[asked[1] ?? ""] ?? { candidates: [], failures: [] });
@@ -431,6 +458,8 @@ export class FakeServer {
 				coverKey: b.coverKey,
 				formats: [...new Set(b.files.map((f) => f.format))],
 				addedAt: b.addedAt,
+				status: b.reading.status,
+				rating: b.reading.rating,
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
@@ -886,8 +915,8 @@ export class FakeServer {
 	}
 }
 
-type Field = "author" | "series" | "tag" | "language" | "published" | "format";
-const FIELDS: Field[] = ["author", "series", "tag", "language", "published", "format"];
+type Field = "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format";
+const FIELDS: Field[] = ["author", "series", "tag", "language", "published", "status", "rating", "format"];
 
 interface Rule {
 	all?: Rule[];
@@ -943,6 +972,10 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 		}
 		case "format":
 			return [...new Set(b.files.map((f) => f.format))].map((f) => [f, f]);
+		case "status":
+			return [[b.reading.status, b.reading.status]];
+		case "rating":
+			return b.reading.rating ? [[String(b.reading.rating), String(b.reading.rating)]] : [];
 	}
 }
 

@@ -9,6 +9,7 @@ import {
 	facetsQuery,
 } from "@/books/api";
 import { BulkBar } from "@/books/bulk-bar";
+import { STATUS_LABELS } from "@/books/reading";
 import { Cover } from "@/books/cover";
 import { FilterPanel } from "@/books/filter-panel";
 import {
@@ -93,7 +94,7 @@ export function Library({
 		enabled: list.length > 0,
 	});
 	const shown = books.data?.pages.flatMap((page) => page.books) ?? [];
-	const canEdit = can(user, "metadata:edit");
+	const canSelect = can(user, "personal:manage");
 	const [selecting, setSelecting] = useState(false);
 	const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
 	const [allMatching, setAllMatching] = useState(false);
@@ -205,7 +206,7 @@ export function Library({
 								</button>
 							))}
 						</fieldset>
-						{canEdit && (
+						{canSelect && (
 							<button
 								type="button"
 								aria-pressed={selecting}
@@ -266,6 +267,7 @@ export function Library({
 								{selecting && (
 									<BulkBar
 										count={chosen.size}
+										canEdit={can(user, "metadata:edit")}
 										all={allMatching}
 										selection={
 											allMatching
@@ -336,6 +338,31 @@ export function Library({
 	);
 }
 
+function Stars({ rating }: { rating: number }) {
+	return (
+		<span
+			role="img"
+			aria-label={t("reading.stars", { count: rating })}
+			className="text-amber-500"
+		>
+			{"★".repeat(rating)}
+		</span>
+	);
+}
+
+/** Where the viewer stands with a book, when it is more than unread. */
+function Standing({ book }: { book: BookSummary }) {
+	if (book.status === "unread" && !book.rating) {
+		return null;
+	}
+	return (
+		<span className="flex gap-2 text-sm text-slate-600 dark:text-slate-400">
+			{book.status !== "unread" && <span>{t(STATUS_LABELS[book.status])}</span>}
+			{book.rating ? <Stars rating={book.rating} /> : null}
+		</span>
+	);
+}
+
 /** Which books are ticked, while books are being selected. */
 interface Selection {
 	isSelected: (id: string) => boolean;
@@ -383,6 +410,7 @@ function Grid({ books, selection }: { books: BookSummary[]; selection?: Selectio
 									{book.authors.join(", ")}
 								</span>
 							)}
+							<Standing book={book} />
 						</span>
 					</Link>
 				</li>
@@ -416,6 +444,12 @@ function Table({ books, selection }: { books: BookSummary[]; selection?: Selecti
 						<th scope="col" className={`${head} hidden md:table-cell`}>
 							{t("library.column.added")}
 						</th>
+						<th scope="col" className={`${head} hidden lg:table-cell`}>
+							{t("library.column.status")}
+						</th>
+						<th scope="col" className={`${head} hidden lg:table-cell`}>
+							{t("library.column.rating")}
+						</th>
 					</tr>
 				</thead>
 				<tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -441,6 +475,12 @@ function Table({ books, selection }: { books: BookSummary[]; selection?: Selecti
 							</td>
 							<td className="hidden px-3 py-2 md:table-cell">
 								{formatDate(book.addedAt)}
+							</td>
+							<td className="hidden px-3 py-2 lg:table-cell">
+								{t(STATUS_LABELS[book.status])}
+							</td>
+							<td className="hidden px-3 py-2 lg:table-cell">
+								{book.rating ? <Stars rating={book.rating} /> : null}
 							</td>
 						</tr>
 					))}

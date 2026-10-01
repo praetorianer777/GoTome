@@ -6,6 +6,7 @@ import {
 	type FilterPicks,
 	pickCount,
 } from "@/books/filters";
+import { type ReadingStatus, STATUS_LABELS } from "@/books/reading";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
 
@@ -18,6 +19,8 @@ const FIELD_LABELS: Record<FacetField, MessageKey> = {
 	tag: "filter.field.tag",
 	language: "filter.field.language",
 	published: "filter.field.published",
+	status: "filter.field.status",
+	rating: "filter.field.rating",
 	format: "filter.field.format",
 };
 
@@ -30,6 +33,10 @@ function valueLabel(field: FacetField, value: string, label?: string): string {
 			return t("filter.decade", { decade: value });
 		case "format":
 			return value.toUpperCase();
+		case "status":
+			return t(STATUS_LABELS[value as ReadingStatus] ?? "status.unread");
+		case "rating":
+			return t("reading.stars", { count: value });
 		default:
 			return label ?? value;
 	}

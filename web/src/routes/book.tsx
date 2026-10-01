@@ -8,6 +8,7 @@ import {
 	downloadUrl,
 } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { ReadingControls } from "@/books/reading-controls";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
@@ -142,6 +143,8 @@ function BookPage({ book }: { book: BookDetail }) {
 							</div>
 						)}
 					</header>
+
+					{can(user, "personal:manage") && <ReadingControls book={book} />}
 
 					{book.description && (
 						<section aria-label={t("book.description")}>

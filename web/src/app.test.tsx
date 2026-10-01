@@ -1207,11 +1207,54 @@ describe("changing many books", () => {
 		expect(bulkRequests()).toEqual([{ books: ["book-3"], action: "fetch" }]);
 	});
 
-	it("is not offered to a reader", async () => {
+	it("lets a reader set their status on many books, but not edit them", async () => {
+		const person = userEvent.setup();
 		withShelf();
 		server.signedInAs("Rita");
 		renderApp("/");
-		expect(await screen.findByRole("link", { name: /Emma/ })).toBeInTheDocument();
-		expect(screen.queryByRole("button", { name: "Select books" })).not.toBeInTheDocument();
+		await person.click(await screen.findByRole("button", { name: "Select books" }));
+		await person.click(screen.getByRole("button", { name: "Select every book that matches" }));
+		expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Fetch details" })).not.toBeInTheDocument();
+		await person.selectOptions(screen.getByRole("combobox", { name: "Set my status" }), "Wishlist");
+
+		expect(await screen.findByText("Status set on 3 books.")).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/books/reading")?.body).toEqual({ library: "lib-1", status: "wishlist" });
+		expect(server.books.map((b) => b.reading.status)).toEqual(["wishlist", "wishlist", "wishlist"]);
+	});
+});
+
+describe("reading state", () => {
+	it("sets status and rating on a book, shows them in the list and filters by them", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma")
+			.withBook("Persuasion");
+		const { router } = renderApp("/books/book-1");
+
+		await person.selectOptions(await screen.findByRole("combobox", { name: "Your status" }), "Reading");
+		await waitFor(() => expect(server.books[0]?.reading.status).toBe("reading"));
+		await person.click(screen.getByRole("button", { name: "4 of 5 stars" }));
+		await waitFor(() => expect(screen.getByRole("button", { name: "4 of 5 stars" })).toHaveAttribute("aria-pressed", "true"));
+		expect(server.requests.filter((r) => r.method === "PUT").map((r) => r.body)).toEqual([{ status: "reading" }, { rating: 4 }]);
+		// The same star again takes the rating away.
+		await person.click(screen.getByRole("button", { name: "4 of 5 stars" }));
+		await waitFor(() => expect(server.books[0]?.reading.rating).toBeUndefined());
+		await person.click(screen.getByRole("button", { name: "5 of 5 stars" }));
+
+		await person.click(screen.getByRole("link", { name: "Back to the library" }));
+		const emma = (await screen.findByRole("link", { name: /^Emma/ })) as HTMLElement;
+		expect(within(emma).getByText("Reading")).toBeInTheDocument();
+		expect(within(emma).getByRole("img", { name: "5 of 5 stars" })).toBeInTheDocument();
+
+		const filters = within(screen.getByRole("complementary", { name: "Filters" }));
+		expect(await filters.findByRole("checkbox", { name: "5 of 5 stars (1)" })).toBeInTheDocument();
+		await person.click(await filters.findByRole("checkbox", { name: "Unread (1)" }));
+		await waitFor(() => expect(screen.queryByRole("link", { name: /^Emma/ })).not.toBeInTheDocument());
+		expect(screen.getByRole("link", { name: /^Persuasion/ })).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ status: ["unread"] });
 	});
 });
