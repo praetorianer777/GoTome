@@ -192,6 +192,12 @@ What changes for someone who runs or uses GOtome. The format follows
   administrator may give a contact e-mail address in Settings, which
   CrossRef serves faster. Installations that chose their sources keep
   their choice; add `crossref` to use it.
+- Google Books is asked for book details beside OpenLibrary, with the
+  small quota Google gives anyone, or with your own once an administrator
+  gives a Google Books API key in Settings (a key of a Google Cloud
+  project with the Books API enabled). When the quota is used up, GOtome
+  waits rather than failing. Installations that chose their sources keep
+  their choice; add `google` to use it.
 - Hardcover is asked for book details beside OpenLibrary once an
   administrator gives a Hardcover API token in Settings (from your
   Hardcover account settings). It knows series and their order, which

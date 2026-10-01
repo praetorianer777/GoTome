@@ -36,6 +36,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/googlebooks"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -165,6 +166,7 @@ func serve() error {
 			}
 			return token
 		}),
+		googlebooks.New(settingStore),
 	}
 	if cfg.Offline {
 		providers = nil

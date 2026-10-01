@@ -87,7 +87,10 @@ func newProviderServer(t *testing.T) *providerServer {
 		case strings.HasPrefix(r.URL.Path, "/broken"):
 			http.Error(w, "oops", http.StatusInternalServerError)
 		case r.URL.Path == "/busy":
+			w.Header().Set("Retry-After", "120")
 			http.Error(w, "slow down", http.StatusTooManyRequests)
+		case r.URL.Path == "/quota":
+			http.Error(w, `{"error":{"errors":[{"reason":"dailyLimitExceeded"}]}}`, http.StatusForbidden)
 		default:
 			http.NotFound(w, r)
 		}
@@ -171,11 +174,43 @@ func TestOneFailingProviderDoesNotHideTheOthers(t *testing.T) {
 func TestAProviderThatIsBusySaysSo(t *testing.T) {
 	srv := newProviderServer(t)
 	s := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{AllowPrivate: true})
-	if _, err := s.webs["fake"].Get(context.Background(), Request{URL: srv.URL + "/busy"}); !errors.Is(err, ErrBusy) {
+	ctx := context.Background()
+	if _, err := s.webs["fake"].Get(ctx, Request{URL: srv.URL + "/nothing"}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("err = %v", err)
 	}
-	if _, err := s.webs["fake"].Get(context.Background(), Request{URL: srv.URL + "/nothing"}); !errors.Is(err, ErrNotFound) {
-		t.Errorf("err = %v", err)
+	_, err := s.webs["fake"].Get(ctx, Request{URL: srv.URL + "/busy"})
+	var busy *BusyError
+	if !errors.As(err, &busy) || !errors.Is(err, ErrBusy) || time.Until(busy.Until) < 110*time.Second {
+		t.Fatalf("err = %v", err)
+	}
+	// Left alone until then: nothing more is sent.
+	before := len(srv.requests())
+	if _, err := s.Candidates(ctx, emmaBook(true)); !errors.Is(err, ErrBusy) || len(srv.requests()) != before {
+		t.Errorf("while busy: %v, %d more requests", err, len(srv.requests())-before)
+	}
+
+	// A provider that says it in its own way.
+	other := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{AllowPrivate: true})
+	quota := func(status int, body []byte) bool {
+		return status == http.StatusForbidden && strings.Contains(string(body), "dailyLimitExceeded")
+	}
+	if _, err := other.webs["fake"].Get(ctx, Request{URL: srv.URL + "/quota", Busy: quota}); !errors.As(err, &busy) {
+		t.Errorf("a used-up quota: %v", err)
+	}
+}
+
+func TestARefusalSaysWhyWhereTheProviderDoes(t *testing.T) {
+	srv := newProviderServer(t)
+	s := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{AllowPrivate: true})
+	ctx := context.Background()
+	_, err := s.webs["fake"].Get(ctx, Request{URL: srv.URL + "/broken"})
+	if err == nil || strings.Contains(err.Error(), "oops") {
+		t.Errorf("without a Reason the body stays out: %v", err)
+	}
+	reason := func(body []byte) string { return strings.TrimSpace(string(body)) }
+	_, err = s.webs["fake"].Get(ctx, Request{URL: srv.URL + "/broken/again", Reason: reason})
+	if err == nil || !strings.HasSuffix(err.Error(), "500 Internal Server Error: oops") {
+		t.Errorf("with a Reason: %v", err)
 	}
 }
 

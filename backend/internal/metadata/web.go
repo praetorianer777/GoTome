@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -50,7 +51,35 @@ type Request struct {
 	NoCache bool
 	// MaxBytes caps the answer; zero is maxAnswerBytes.
 	MaxBytes int64
+	// Busy tells, for a provider that says so in its own way, whether an
+	// answer means its quota is used up. 429 and 503 always do.
+	Busy func(status int, body []byte) bool
+	// Reason picks, for a provider that says why it refused, that out of
+	// an answer that is neither a success nor busy, for the error. It must
+	// not return anything the provider echoes of the request.
+	Reason func(body []byte) string
 }
+
+// BusyError is a provider that asked to be left alone until a time. Until
+// then its Web answers every request with this error without sending it,
+// and a job that meets it waits rather than failing.
+type BusyError struct {
+	Provider string
+	Until    time.Time
+}
+
+func (e *BusyError) Error() string {
+	return fmt.Sprintf("%s asks to be asked again after %s", e.Provider, e.Until.UTC().Format(time.RFC3339))
+}
+
+func (e *BusyError) Is(target error) bool { return target == ErrBusy }
+
+const (
+	// defaultBackoff is how long a busy provider is left alone when it does
+	// not say; maxBackoff bounds what it may say.
+	defaultBackoff = time.Minute
+	maxBackoff     = 6 * time.Hour
+)
 
 // Web is how a provider reaches its source.
 type Web interface {
@@ -134,6 +163,34 @@ type web struct {
 	client   *http.Client
 	pool     *pgxpool.Pool
 	limit    *spacer
+
+	mu           sync.Mutex
+	blockedUntil time.Time
+}
+
+func (w *web) blocked() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if time.Now().Before(w.blockedUntil) {
+		return &BusyError{Provider: w.provider, Until: w.blockedUntil}
+	}
+	return nil
+}
+
+func (w *web) backOff(retryAfter string) error {
+	wait := defaultBackoff
+	if secs, err := strconv.Atoi(retryAfter); err == nil && secs > 0 {
+		wait = time.Duration(secs) * time.Second
+	} else if at, err := http.ParseTime(retryAfter); err == nil {
+		wait = time.Until(at)
+	}
+	wait = min(max(wait, time.Second), maxBackoff)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if until := time.Now().Add(wait); until.After(w.blockedUntil) {
+		w.blockedUntil = until
+	}
+	return &BusyError{Provider: w.provider, Until: w.blockedUntil}
 }
 
 var userAgent = "GOtome/" + version.Current().Version + " (+https://github.com/praetorianer777/GoTome)"
@@ -169,6 +226,9 @@ func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
 		}
 		u.RawQuery = q.Encode()
 	}
+	if err := w.blocked(); err != nil {
+		return nil, err
+	}
 	if err := w.limit.wait(ctx); err != nil {
 		return nil, err
 	}
@@ -201,11 +261,17 @@ func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
 	if int64(len(body)) > limit {
 		return nil, fmt.Errorf("%s %s: the answer is larger than %d bytes", method, r.URL, limit)
 	}
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusNotFound:
-	case http.StatusTooManyRequests, http.StatusServiceUnavailable:
-		return nil, fmt.Errorf("%w: %s", ErrBusy, resp.Status)
+	switch {
+	case resp.StatusCode == http.StatusTooManyRequests, resp.StatusCode == http.StatusServiceUnavailable,
+		r.Busy != nil && r.Busy(resp.StatusCode, body):
+		return nil, w.backOff(resp.Header.Get("Retry-After"))
+	case resp.StatusCode == http.StatusOK, resp.StatusCode == http.StatusNotFound:
 	default:
+		if r.Reason != nil {
+			if reason := r.Reason(body); reason != "" {
+				return nil, fmt.Errorf("%s %s: %s: %s", method, r.URL, resp.Status, reason)
+			}
+		}
 		return nil, fmt.Errorf("%s %s: %s", method, r.URL, resp.Status)
 	}
 	if cached {

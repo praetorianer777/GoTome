@@ -85,7 +85,7 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names},
+	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover,google", Check: names},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
