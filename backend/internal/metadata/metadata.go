@@ -115,7 +115,14 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 
 	var found []Candidate
 	var errs []error
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
 	for _, p := range s.providers {
+		if s.enabled != nil && !slices.Contains(enabled, p.Name()) {
+			continue
+		}
 		web := s.webs[p.Name()]
 		records, err := func() ([]Record, error) {
 			var records []Record

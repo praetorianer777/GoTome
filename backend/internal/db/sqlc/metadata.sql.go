@@ -8,6 +8,8 @@ package sqlc
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const getProviderRecord = `-- name: GetProviderRecord :one
@@ -31,6 +33,40 @@ func (q *Queries) GetProviderRecord(ctx context.Context, arg GetProviderRecordPa
 	var i GetProviderRecordRow
 	err := row.Scan(&i.Status, &i.Body)
 	return i, err
+}
+
+const listBookMatches = `-- name: ListBookMatches :many
+SELECT id, book_id, provider, record_id, score, record, state, created_at, updated_at FROM metadata_matches WHERE book_id = $1 ORDER BY score DESC, created_at
+`
+
+func (q *Queries) ListBookMatches(ctx context.Context, bookID uuid.UUID) ([]MetadataMatch, error) {
+	rows, err := q.db.Query(ctx, listBookMatches, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MetadataMatch{}
+	for rows.Next() {
+		var i MetadataMatch
+		if err := rows.Scan(
+			&i.ID,
+			&i.BookID,
+			&i.Provider,
+			&i.RecordID,
+			&i.Score,
+			&i.Record,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const putProviderRecord = `-- name: PutProviderRecord :exec
@@ -58,6 +94,37 @@ func (q *Queries) PutProviderRecord(ctx context.Context, arg PutProviderRecordPa
 		arg.Status,
 		arg.Body,
 		arg.ExpiresAt,
+	)
+	return err
+}
+
+const recordMatch = `-- name: RecordMatch :exec
+INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (book_id, provider, record_id) DO UPDATE
+SET score = EXCLUDED.score, record = EXCLUDED.record, updated_at = now(),
+    state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END
+`
+
+type RecordMatchParams struct {
+	BookID   uuid.UUID
+	Provider string
+	RecordID string
+	Score    float64
+	Record   []byte
+	State    string
+}
+
+// A match found again keeps what became of it: a dismissed one is not
+// brought back, an applied one not made pending.
+func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) error {
+	_, err := q.db.Exec(ctx, recordMatch,
+		arg.BookID,
+		arg.Provider,
+		arg.RecordID,
+		arg.Score,
+		arg.Record,
+		arg.State,
 	)
 	return err
 }

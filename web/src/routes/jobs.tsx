@@ -47,6 +47,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.read", { file: job.filePath || t("jobs.goneFile") });
 		case "ingest.write_metadata":
 			return t("jobs.kind.write", { file: job.filePath || t("jobs.goneFile") });
+		case "enrich.match_book":
+			return t("jobs.kind.match", { book: job.bookTitle || t("jobs.goneBook") });
 		case "ingest.scan_all_libraries":
 			return t("jobs.kind.scanAll");
 		case "auth.sweep_sessions":

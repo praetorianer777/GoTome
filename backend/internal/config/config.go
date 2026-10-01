@@ -54,6 +54,8 @@ type Config struct {
 	ScanInterval time.Duration
 	// UploadLimit is the largest file one upload may carry, in bytes.
 	UploadLimit int64
+	// Offline asks no metadata provider on the internet.
+	Offline bool
 	// SecretKey encrypts the secrets kept in the database. Commands that
 	// keep none run without it; see RequireSecretKey.
 	SecretKey []byte
@@ -117,6 +119,10 @@ func load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("GOTOME_UPLOAD_LIMIT_MB is %q, want a whole number of mebibytes from 1 to 1048576, such as %d", limit, DefaultUploadLimitMB)
 	}
 	cfg.UploadLimit = mb << 20
+	offline := get("GOTOME_OFFLINE", "false")
+	if cfg.Offline, err = strconv.ParseBool(offline); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_OFFLINE is %q, want true or false", offline)
+	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)

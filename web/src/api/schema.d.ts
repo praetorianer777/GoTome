@@ -856,6 +856,7 @@ export interface components {
             attemptedAt?: string;
             /** Format: uuid */
             bookId?: string;
+            bookTitle?: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: uuid */

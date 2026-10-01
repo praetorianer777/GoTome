@@ -37,11 +37,12 @@ func TestLoadOverrides(t *testing.T) {
 		// Zero switches scheduled scans off.
 		"GOTOME_SCAN_INTERVAL":   "0",
 		"GOTOME_UPLOAD_LIMIT_MB": "100",
+		"GOTOME_OFFLINE":         "true",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", UploadLimit: 100 << 20}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", UploadLimit: 100 << 20, Offline: true}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -58,6 +59,7 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_SCAN_INTERVAL", "-6h"},
 		{"GOTOME_UPLOAD_LIMIT_MB", "0"},
 		{"GOTOME_UPLOAD_LIMIT_MB", "2GB"},
+		{"GOTOME_OFFLINE", "sometimes"},
 	}
 	for _, c := range cases {
 		_, err := load(env(map[string]string{c.key: c.value}))

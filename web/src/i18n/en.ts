@@ -135,10 +135,12 @@ export const en = {
 	"jobs.kind.scan": "Scan {library}",
 	"jobs.kind.read": "Read {file}",
 	"jobs.kind.write": "Write the details into {file}",
+	"jobs.kind.match": "Look up {book}",
 	"jobs.kind.scanAll": "Scan every library",
 	"jobs.kind.sweep": "Clear away old sessions",
 	"jobs.goneLibrary": "a library that is gone",
 	"jobs.goneFile": "a file that is gone",
+	"jobs.goneBook": "a book that is gone",
 	"jobs.state.waiting": "Waiting",
 	"jobs.state.scheduled": "Scheduled",
 	"jobs.state.retrying": "Will try again",
@@ -211,6 +213,14 @@ export const en = {
 	"settings.hardcoverToken": "Hardcover API token",
 	"settings.hardcoverToken.hint":
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
+	"settings.autoMatch": "Look up new books by themselves",
+	"settings.autoMatch.hint":
+		"on or off. When on, every book that arrives is looked up with the sources below; a sure match fills in what the book is missing, anything less waits for review.",
+	"settings.matchThreshold": "Sure enough to take without asking",
+	"settings.matchThreshold.hint":
+		"A score from 0.5 to 1. A match with the same ISBN scores 1; title, author and year alone at most 0.99.",
+	"settings.providers": "Sources to ask",
+	"settings.providers.hint": "Their names, separated by commas: openlibrary.",
 	"settings.secret.set": "Saved on {date}.",
 	"settings.secret.unset": "Not set.",
 	"settings.secret.new": "Paste it here",

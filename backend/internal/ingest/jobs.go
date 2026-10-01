@@ -45,26 +45,27 @@ type JobStatus struct {
 	// LibraryID and LibraryName are the library the job works on, if any.
 	LibraryID   *uuid.UUID
 	LibraryName string
-	// FileID, FilePath and BookID are the file a job reads or writes.
-	FileID   *uuid.UUID
-	FilePath string
-	BookID   *uuid.UUID
+	// FileID and FilePath are the file a job reads or writes, BookID and
+	// BookTitle the book it is about or the file's.
+	FileID    *uuid.UUID
+	FilePath  string
+	BookID    *uuid.UUID
+	BookTitle string
 }
 
-// jobsQuery lists jobs with the library and file they concern. Which jobs
-// those are is read from their arguments, by kind. A job about a library
-// the viewer may not see is left out; one about no library, such as the
-// sweep of old sessions, is listed for everyone who may see jobs at all.
+// jobsQuery lists jobs with the library, book and file they concern, which
+// a job names in its arguments as libraryId, bookId or fileId. A job about a
+// library the viewer may not see is left out; one about no library, such as
+// the sweep of old sessions, is listed for everyone who may see jobs at all.
 const jobsQuery = `
 SELECT j.id, j.kind, j.queue, j.state::text, j.attempt, j.max_attempts,
        j.created_at, j.scheduled_at, j.attempted_at, j.finalized_at,
        COALESCE(j.errors[array_length(j.errors, 1)]->>'error', ''),
-       lib.id, COALESCE(lib.name, ''), f.id, COALESCE(f.rel_path, ''), f.book_id
+       lib.id, COALESCE(lib.name, ''), f.id, COALESCE(f.rel_path, ''), bk.id, COALESCE(bk.title, '')
 FROM river_job j
-LEFT JOIN book_files f
-       ON j.kind IN ('` + extractKind + `', '` + writeBackKind + `') AND f.id = (j.args->>'fileId')::uuid
-LEFT JOIN libraries lib
-       ON lib.id = CASE WHEN j.kind = '` + scanKind + `' THEN (j.args->>'libraryId')::uuid ELSE f.library_id END
+LEFT JOIN book_files f ON f.id = (j.args->>'fileId')::uuid
+LEFT JOIN books bk ON bk.id = COALESCE((j.args->>'bookId')::uuid, f.book_id)
+LEFT JOIN libraries lib ON lib.id = COALESCE((j.args->>'libraryId')::uuid, f.library_id, bk.library_id)
 WHERE (lib.id IS NULL OR lib.id IN (SELECT visible_library_ids($1, $2)))
   AND (cardinality($3::text[]) = 0 OR j.state::text = ANY($3::text[]))
   AND ($4::bigint = 0 OR j.id = $4)
@@ -99,7 +100,7 @@ func (s *Service) jobs(ctx context.Context, scope library.Scope, states []string
 		var j JobStatus
 		if err := rows.Scan(&j.ID, &j.Kind, &j.Queue, &j.State, &j.Attempt, &j.MaxAttempts,
 			&j.CreatedAt, &j.ScheduledAt, &j.AttemptedAt, &j.FinalizedAt, &j.LastError,
-			&j.LibraryID, &j.LibraryName, &j.FileID, &j.FilePath, &j.BookID); err != nil {
+			&j.LibraryID, &j.LibraryName, &j.FileID, &j.FilePath, &j.BookID, &j.BookTitle); err != nil {
 			return nil, err
 		}
 		out = append(out, j)

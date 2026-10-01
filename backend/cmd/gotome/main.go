@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -133,7 +134,24 @@ func serve() error {
 	coverStore := covers.NewStore(cfg.DataDir)
 	scans := ingest.NewService(pool, libraries, coverStore, log)
 	scans.UploadLimit = cfg.UploadLimit
+	providers := []metadata.Provider{openlibrary.New()}
+	if cfg.Offline {
+		providers = nil
+	}
+	meta := metadata.NewService(pool, providers, metadata.Options{
+		Language: func(ctx context.Context) string {
+			lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
+			return lang
+		},
+		Enabled: func(ctx context.Context) []string {
+			names, _ := settingStore.Text(ctx, settings.Providers)
+			return strings.Split(names, ",")
+		},
+	})
+	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
+	scans.OnExtracted = matches.EnqueueTx
 	workers := jobs.NewWorkers()
+	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
 	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
@@ -152,6 +170,7 @@ func serve() error {
 		return err
 	}
 	scans.Queue = runner
+	matches.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -175,13 +194,8 @@ func serve() error {
 		Scans:     scans,
 		Books:     catalog.NewService(pool),
 		Covers:    coverStore,
-		Metadata: metadata.NewService(pool, []metadata.Provider{openlibrary.New()}, metadata.Options{
-			Language: func(ctx context.Context) string {
-				lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
-				return lang
-			},
-		}),
-		Web: webui.Handler(),
+		Metadata:  meta,
+		Web:       webui.Handler(),
 	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

@@ -146,6 +146,18 @@ type LibraryScan struct {
 	Error         *string
 }
 
+type MetadataMatch struct {
+	ID        uuid.UUID
+	BookID    uuid.UUID
+	Provider  string
+	RecordID  string
+	Score     float64
+	Record    []byte
+	State     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte

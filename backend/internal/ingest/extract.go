@@ -171,6 +171,11 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
 			return err
 		}
+		if s.OnExtracted != nil {
+			if err := s.OnExtracted(ctx, tx, file.BookID); err != nil {
+				return err
+			}
+		}
 		if err := q.DeleteFileChapters(ctx, fileID); err != nil {
 			return err
 		}

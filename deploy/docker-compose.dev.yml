@@ -2,6 +2,10 @@
 # (mk/stack.mk). A deployment uses docker-compose.yml alone.
 services:
   app:
+    environment:
+      # The test gate reaches no provider: what a match or a search finds
+      # out there is not the gate's to know.
+      GOTOME_OFFLINE: "true"
     volumes:
       # The browser tests add this folder as an external library. Two libraries
       # cannot share a folder, and the browser projects run side by side, so

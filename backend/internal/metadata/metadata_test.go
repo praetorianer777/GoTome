@@ -131,6 +131,21 @@ func TestCandidatesLookUpByISBNThenSearch(t *testing.T) {
 	}
 }
 
+func TestOnlyEnabledProvidersAreAsked(t *testing.T) {
+	srv := newProviderServer(t)
+	enabled := []string{"other"}
+	s := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{
+		AllowPrivate: true, Enabled: func(context.Context) []string { return enabled },
+	})
+	if got, err := s.Candidates(context.Background(), emmaBook(true)); err != nil || len(got) != 0 || len(srv.requests()) != 0 {
+		t.Errorf("a disabled provider: %v, %v, %d requests", got, err, len(srv.requests()))
+	}
+	enabled = []string{"fake"}
+	if got, _ := s.Candidates(context.Background(), emmaBook(true)); len(got) != 1 {
+		t.Errorf("enabled again: %v", got)
+	}
+}
+
 func TestOneFailingProviderDoesNotHideTheOthers(t *testing.T) {
 	srv := newProviderServer(t)
 	s := NewService(nil, []Provider{
