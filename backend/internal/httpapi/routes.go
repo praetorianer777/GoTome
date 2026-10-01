@@ -289,6 +289,16 @@ func (s *Server) routes() []Route {
 			Request: readingChange{}, Response: readingState{}, Permission: auth.PersonalManage, Handler: s.setReading,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
+			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
+			Response: progressState{}, Permission: auth.PersonalManage, Handler: s.getProgress,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
+			Summary: "Record where the caller is in a book; medium is ebook or audio", Tag: "books",
+			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Handler: s.putProgress,
+		},
+		{
 			Method: http.MethodPost, Path: "/books/reading", ID: "setReadingBulk",
 			Summary: "Change where the caller stands with many books at once", Tag: "books",
 			Request: readingBulkRequest{}, Response: readingBulkResult{}, Permission: auth.PersonalManage, Handler: s.setReadingBulk,

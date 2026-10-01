@@ -7,6 +7,7 @@ import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
+import type { ProgressState } from "@/books/progress";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
@@ -83,6 +84,8 @@ export class FakeServer {
 	candidates: Record<string, { candidates: Candidate[]; failures: { provider: string; message: string }[] }> = {};
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
 	bulks: BulkStatus[] = [];
+	/** Where the signed-in person is in each book. */
+	progress: Record<string, ProgressState> = {};
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -384,6 +387,10 @@ export class FakeServer {
 		}
 		if (path === "/books/names") {
 			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
+		}
+		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
+		if (progress) {
+			return Response.json(this.progress[progress[1] ?? ""] ?? { finishes: 0 });
 		}
 		if (path === "/books/reading") {
 			const req = body as ReadingBulk;

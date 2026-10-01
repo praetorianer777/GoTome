@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
@@ -145,6 +146,7 @@ func newApp(t *testing.T) *app {
 	}
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
+	a.server.Reading = reading.NewService(a.pool)
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL

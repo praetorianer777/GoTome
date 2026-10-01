@@ -193,6 +193,40 @@ type Publisher struct {
 	NameKey string
 }
 
+type ReadingFinish struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	BookID     uuid.UUID
+	Medium     string
+	FinishedAt time.Time
+}
+
+type ReadingProgress struct {
+	UserID     uuid.UUID
+	BookID     uuid.UUID
+	Medium     string
+	FileID     *uuid.UUID
+	Locator    string
+	Fraction   float64
+	Chapter    *string
+	Page       *int32
+	PositionMs *int64
+	ClientID   string
+	UpdatedAt  time.Time
+}
+
+type ReadingSession struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	BookID       uuid.UUID
+	Medium       string
+	ClientID     string
+	StartedAt    time.Time
+	EndedAt      time.Time
+	FromFraction float64
+	ToFraction   float64
+}
+
 type Series struct {
 	ID        uuid.UUID
 	Name      string

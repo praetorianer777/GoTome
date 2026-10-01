@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import type { BookDetail } from "@/books/api";
+import { type ProgressState, progressQuery } from "@/books/progress";
 import {
 	MAX_RATING,
 	type ReadingStatus,
@@ -8,6 +10,7 @@ import {
 } from "@/books/reading";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { formatDuration } from "@/lib/format";
 
 const control =
 	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -15,6 +18,7 @@ const control =
 /** Where the signed-in person stands with the book, theirs to change. */
 export function ReadingControls({ book }: { book: BookDetail }) {
 	const set = useSetReading(book.id);
+	const progress = useQuery(progressQuery(book.id)).data;
 	const { status, rating, startedOn, finishedOn } = book.reading;
 	return (
 		<section
@@ -91,7 +95,42 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 					/>
 				</label>
 			</div>
+			{progress && <Where progress={progress} />}
 			<FormError error={set.error} />
 		</section>
+	);
+}
+
+/** How far the person is, in the text and in the audio, and how often done. */
+function Where({ progress }: { progress: ProgressState }) {
+	const lines: string[] = [];
+	if (progress.ebook) {
+		lines.push(
+			t("progress.ebook", { percent: Math.round(progress.ebook.fraction * 100) }) +
+				(progress.ebook.chapter ? ` · ${progress.ebook.chapter}` : ""),
+		);
+	}
+	if (progress.audio) {
+		lines.push(
+			progress.audio.positionMs != null
+				? t("progress.audioAt", {
+						percent: Math.round(progress.audio.fraction * 100),
+						at: formatDuration(progress.audio.positionMs),
+					})
+				: t("progress.audio", { percent: Math.round(progress.audio.fraction * 100) }),
+		);
+	}
+	if (progress.finishes > 1) {
+		lines.push(t("progress.finishes", { count: progress.finishes }));
+	}
+	if (lines.length === 0) {
+		return null;
+	}
+	return (
+		<ul className="flex flex-col gap-1 text-slate-600 dark:text-slate-400">
+			{lines.map((line) => (
+				<li key={line}>{line}</li>
+			))}
+		</ul>
 	);
 }

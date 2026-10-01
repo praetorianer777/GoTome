@@ -345,6 +345,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `catalog.Book.Reading` and the summaries' `Status` and `Rating` are the
   viewer's.
 
+## Reading progress
+
+- `internal/reading` keeps where each person is in a book, once per medium
+  (`ebook`, `audio`), independent of each other: a locator as the reader
+  writes it, a fraction, chapter, page or millisecond, and the client that
+  wrote it (`PUT /books/{id}/progress/{medium}`).
+- Last write wins, except that a position earlier than one another client
+  wrote since this one last read (`basedOn`) is not written: the answer is
+  `saved: false` with the further position, and `force` writes anyway.
+- A write extends the client's session (`reading_sessions`) when it wrote
+  in the last 30 minutes, or starts one. The first position makes the book
+  `reading`; reaching `reading.End` from before it records a
+  `reading_finishes` row and makes it `completed`, so a re-read counts.
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an

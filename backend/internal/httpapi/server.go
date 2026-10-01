@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
@@ -60,6 +61,8 @@ type Server struct {
 	Matches  *enrich.Service
 	// Bulk makes one change to many books.
 	Bulk *bulk.Service
+	// Reading keeps where each person is in a book.
+	Reading *reading.Service
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

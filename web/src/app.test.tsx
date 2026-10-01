@@ -1258,3 +1258,23 @@ describe("reading state", () => {
 		expect(router.state.location.search).toMatchObject({ status: ["unread"] });
 	});
 });
+
+describe("reading progress", () => {
+	it("shows how far the person read and listened, and how often to the end", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma");
+		const at = { clientId: "phone", updatedAt: "2026-01-02T00:00:00Z" };
+		server.progress["book-1"] = {
+			ebook: { ...at, locator: "epubcfi(/6/8)", fraction: 0.42, chapter: "Volume II" },
+			audio: { ...at, locator: "5400000", fraction: 0.8, positionMs: 5_400_000 },
+			finishes: 2,
+		};
+		renderApp("/books/book-1");
+		expect(await screen.findByText("Read 42% · Volume II")).toBeInTheDocument();
+		expect(screen.getByText(/^Listened to 80%, at /)).toBeInTheDocument();
+		expect(screen.getByText("Read to the end 2 times")).toBeInTheDocument();
+	});
+});
