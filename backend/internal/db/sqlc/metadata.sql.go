@@ -12,6 +12,43 @@ import (
 	"github.com/google/uuid"
 )
 
+const countReviewBooks = `-- name: CountReviewBooks :one
+SELECT count(DISTINCT b.id)
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+`
+
+type CountReviewBooksParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+func (q *Queries) CountReviewBooks(ctx context.Context, arg CountReviewBooksParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countReviewBooks, arg.Viewer, arg.SeesAll)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const dismissOtherMatches = `-- name: DismissOtherMatches :exec
+UPDATE metadata_matches SET state = 'dismissed', updated_at = now()
+WHERE book_id = $1 AND id <> $2 AND state = 'pending'
+`
+
+type DismissOtherMatchesParams struct {
+	BookID uuid.UUID
+	ID     uuid.UUID
+}
+
+// Once one match of a book is taken, the others it waited with are done.
+func (q *Queries) DismissOtherMatches(ctx context.Context, arg DismissOtherMatchesParams) error {
+	_, err := q.db.Exec(ctx, dismissOtherMatches, arg.BookID, arg.ID)
+	return err
+}
+
 const getProviderRecord = `-- name: GetProviderRecord :one
 SELECT status, body
 FROM provider_records
@@ -35,12 +72,46 @@ func (q *Queries) GetProviderRecord(ctx context.Context, arg GetProviderRecordPa
 	return i, err
 }
 
-const listBookMatches = `-- name: ListBookMatches :many
-SELECT id, book_id, provider, record_id, score, record, state, created_at, updated_at FROM metadata_matches WHERE book_id = $1 ORDER BY score DESC, created_at
+const getVisibleMatch = `-- name: GetVisibleMatch :one
+SELECT m.id, m.book_id, m.provider, m.record_id, m.score, m.record, m.state, m.created_at, m.updated_at
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.id = $1
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
 `
 
-func (q *Queries) ListBookMatches(ctx context.Context, bookID uuid.UUID) ([]MetadataMatch, error) {
-	rows, err := q.db.Query(ctx, listBookMatches, bookID)
+type GetVisibleMatchParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+func (q *Queries) GetVisibleMatch(ctx context.Context, arg GetVisibleMatchParams) (MetadataMatch, error) {
+	row := q.db.QueryRow(ctx, getVisibleMatch, arg.ID, arg.Viewer, arg.SeesAll)
+	var i MetadataMatch
+	err := row.Scan(
+		&i.ID,
+		&i.BookID,
+		&i.Provider,
+		&i.RecordID,
+		&i.Score,
+		&i.Record,
+		&i.State,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listPendingMatches = `-- name: ListPendingMatches :many
+SELECT id, book_id, provider, record_id, score, record, state, created_at, updated_at FROM metadata_matches
+WHERE book_id = ANY($1::uuid[]) AND state = 'pending'
+ORDER BY book_id, score DESC, id
+`
+
+func (q *Queries) ListPendingMatches(ctx context.Context, bookIds []uuid.UUID) ([]MetadataMatch, error) {
+	rows, err := q.db.Query(ctx, listPendingMatches, bookIds)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +133,46 @@ func (q *Queries) ListBookMatches(ctx context.Context, bookID uuid.UUID) ([]Meta
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReviewBooks = `-- name: ListReviewBooks :many
+SELECT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+GROUP BY b.id
+ORDER BY min(m.created_at), b.id
+LIMIT $3
+`
+
+type ListReviewBooksParams struct {
+	Viewer   uuid.UUID
+	SeesAll  bool
+	MaxBooks int32
+}
+
+// The books with matches waiting, those waiting longest first, of the
+// libraries the viewer may see.
+func (q *Queries) ListReviewBooks(ctx context.Context, arg ListReviewBooksParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listReviewBooks, arg.Viewer, arg.SeesAll, arg.MaxBooks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -126,5 +237,19 @@ func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) error 
 		arg.Record,
 		arg.State,
 	)
+	return err
+}
+
+const setMatchState = `-- name: SetMatchState :exec
+UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1
+`
+
+type SetMatchStateParams struct {
+	ID    uuid.UUID
+	State string
+}
+
+func (q *Queries) SetMatchState(ctx context.Context, arg SetMatchStateParams) error {
+	_, err := q.db.Exec(ctx, setMatchState, arg.ID, arg.State)
 	return err
 }

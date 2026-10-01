@@ -322,6 +322,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   match found again keeps its state. `metadata.providers` names the sources
   asked. `GOTOME_OFFLINE=true` registers none; the development stack sets
   it, so the gate never reaches a provider.
+- The review queue (`GET /matches`, `POST /matches/{id}/accept|reject`) lists
+  pending matches of visible books; accepting takes chosen values like a
+  candidate does and dismisses the book's other matches, rejecting dismisses
+  one, which `RecordMatch` never brings back.
 - `GET /books/{id}/candidates` asks the providers; `POST .../candidates/apply`
   takes chosen values as an edit with `Source` `provider:<name>`, which skips
   locked fields and locks nothing. A candidate's cover reaches the browser

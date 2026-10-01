@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -85,8 +86,9 @@ func (req editBookRequest) edit() catalog.Edit {
 	return e
 }
 
-// applyEdit makes the edit and answers with the book as it is now.
-func (s *Server) applyEdit(w http.ResponseWriter, r *http.Request, id uuid.UUID, e catalog.Edit) error {
+// applyEdit makes the edit, then what is to follow it, and answers with the
+// book as it is now.
+func (s *Server) applyEdit(w http.ResponseWriter, r *http.Request, id uuid.UUID, e catalog.Edit, then ...func(context.Context) error) error {
 	user := UserFrom(r.Context())
 	scope := library.ScopeOf(*user)
 	err := s.Scans.Edit(r.Context(), scope, id, e)
@@ -98,6 +100,11 @@ func (s *Server) applyEdit(w http.ResponseWriter, r *http.Request, id uuid.UUID,
 		return ErrValidation(invalid)
 	case err != nil:
 		return err
+	}
+	for _, f := range then {
+		if err := f(r.Context()); err != nil {
+			return err
+		}
 	}
 	b, err := s.Books.Get(r.Context(), scope, id)
 	if err != nil {

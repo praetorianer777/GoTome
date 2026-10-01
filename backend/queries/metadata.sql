@@ -20,5 +20,44 @@ ON CONFLICT (book_id, provider, record_id) DO UPDATE
 SET score = EXCLUDED.score, record = EXCLUDED.record, updated_at = now(),
     state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END;
 
--- name: ListBookMatches :many
-SELECT * FROM metadata_matches WHERE book_id = $1 ORDER BY score DESC, created_at;
+-- name: ListReviewBooks :many
+-- The books with matches waiting, those waiting longest first, of the
+-- libraries the viewer may see.
+SELECT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY b.id
+ORDER BY min(m.created_at), b.id
+LIMIT sqlc.arg(max_books);
+
+-- name: CountReviewBooks :one
+SELECT count(DISTINCT b.id)
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+
+-- name: ListPendingMatches :many
+SELECT * FROM metadata_matches
+WHERE book_id = ANY(sqlc.arg(book_ids)::uuid[]) AND state = 'pending'
+ORDER BY book_id, score DESC, id;
+
+-- name: GetVisibleMatch :one
+SELECT m.*
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.id = sqlc.arg(id)
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+
+-- name: SetMatchState :exec
+UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1;
+
+-- name: DismissOtherMatches :exec
+-- Once one match of a book is taken, the others it waited with are done.
+UPDATE metadata_matches SET state = 'dismissed', updated_at = now()
+WHERE book_id = $1 AND id <> $2 AND state = 'pending';

@@ -195,6 +195,7 @@ func serve() error {
 		Books:     catalog.NewService(pool),
 		Covers:    coverStore,
 		Metadata:  meta,
+		Matches:   matches,
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

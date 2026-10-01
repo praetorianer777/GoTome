@@ -284,6 +284,21 @@ func (s *Server) routes() []Route {
 			Request: applyCandidateRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.applyCandidate,
 		},
 		{
+			Method: http.MethodGet, Path: "/matches", ID: "listReview",
+			Summary: "Books whose doubtful matches wait for a person, those that wait longest first", Tag: "books",
+			Query: reviewQuery{}, Response: reviewList{}, Permission: auth.MetadataEdit, Handler: s.listReview,
+		},
+		{
+			Method: http.MethodPost, Path: "/matches/{matchId}/accept", ID: "acceptMatch",
+			Summary: "Take chosen values from a waiting match; the book's other matches are settled", Tag: "books",
+			Request: acceptMatchRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.acceptMatch,
+		},
+		{
+			Method: http.MethodPost, Path: "/matches/{matchId}/reject", ID: "rejectMatch",
+			Summary: "Reject a waiting match; it is not proposed again", Tag: "books",
+			Permission: auth.MetadataEdit, Handler: s.rejectMatch,
+		},
+		{
 			Method: http.MethodGet, Path: "/metadata/covers/{token}", ID: "getCandidateCover",
 			Summary: "A provider's cover for a candidate, fetched through the server", Tag: "books",
 			Produces: "image/*", Status: http.StatusOK, Permission: auth.MetadataEdit, Handler: s.getCandidateCover,

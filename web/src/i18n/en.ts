@@ -119,6 +119,7 @@ export const en = {
 	"nav.libraries": "Libraries",
 	"nav.settings": "Settings",
 	"nav.users": "Users",
+	"nav.review": "Review",
 	"nav.jobs": "Jobs",
 
 	"jobs.title": "Background jobs",
@@ -330,6 +331,19 @@ export const en = {
 	"find.nothing": "Nothing differs from what the book has.",
 	"find.back": "Back to the book",
 	"find.addIdentifiers": "Add",
+
+	"review.title": "Review matches",
+	"review.intro":
+		"Books that were looked up by themselves and found only doubtful matches. Take what fits, reject what does not; a rejected match is not proposed again.",
+	"review.waiting": "{count} books wait.",
+	"review.none": "Nothing waits for review.",
+	"review.position": "Book {number} of {count}",
+	"review.matches": "Matches for this book",
+	"review.reject": "Reject",
+	"review.searchAgain": "Search again",
+	"review.previous": "Previous book",
+	"review.next": "Next book",
+	"review.keys": "Keys: a takes what is ticked, r rejects, 1 to 3 pick a match, j and k go to the next and previous book.",
 
 	"edit.title": "Edit {title}",
 	"edit.intro":

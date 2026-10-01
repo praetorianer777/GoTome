@@ -486,6 +486,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose doubtful matches wait for a person, those that wait longest first */
+        get: operations["listReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/matches/{matchId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take chosen values from a waiting match; the book's other matches are settled */
+        post: operations["acceptMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/matches/{matchId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a waiting match; it is not proposed again */
+        post: operations["rejectMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metadata/covers/{token}": {
         parameters: {
             query?: never;
@@ -637,6 +688,23 @@ export interface components {
             };
             message: string;
             requestId?: string;
+        };
+        AcceptMatchRequest: {
+            contributors?: components["schemas"]["Contributor"][];
+            coverToken?: string;
+            description?: string;
+            identifiers?: components["schemas"]["Identifier"][];
+            language?: string;
+            locks?: {
+                [key: string]: boolean;
+            };
+            pageCount?: number;
+            published?: string;
+            publisher?: string;
+            series?: components["schemas"]["SeriesPlace"];
+            subtitle?: string;
+            tags?: string[];
+            title?: string;
         };
         Account: {
             /** Format: date-time */
@@ -898,6 +966,26 @@ export interface components {
             password: string;
             username: string;
         };
+        MatchView: {
+            contributors: components["schemas"]["Contributor"][];
+            coverToken?: string;
+            description?: string;
+            id: string;
+            identifiers: components["schemas"]["Identifier"][];
+            language?: string;
+            /** Format: uuid */
+            matchId: string;
+            pageCount?: number;
+            provider: string;
+            published?: string;
+            publisher?: string;
+            score: number;
+            series?: string;
+            seriesIndex?: number;
+            subtitle?: string;
+            tags: string[];
+            title: string;
+        };
         Member: {
             /** Format: date-time */
             addedAt: string;
@@ -921,6 +1009,14 @@ export interface components {
         };
         RereadResult: {
             queued: number;
+        };
+        ReviewBook: {
+            book: components["schemas"]["BookDetail"];
+            matches: components["schemas"]["MatchView"][];
+        };
+        ReviewList: {
+            books: components["schemas"]["ReviewBook"][];
+            total: number;
         };
         Scan: {
             booksAdded: number;
@@ -2136,6 +2232,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Uploaded"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReview: {
+        parameters: {
+            query?: {
+                /** @description How many books to return, at most 50; 20 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    acceptMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rejectMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
