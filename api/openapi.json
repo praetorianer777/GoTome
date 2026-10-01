@@ -388,6 +388,53 @@
         "x-permission": "library:read"
       }
     },
+    "/books/bulk": {
+      "post": {
+        "operationId": "startBulk",
+        "summary": "Edit, look up or write into their files many books at once, as a job",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStarted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/books/facets": {
       "get": {
         "operationId": "listBookFacets",
@@ -929,6 +976,53 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/bulk/{bulkId}": {
+      "get": {
+        "operationId": "getBulk",
+        "summary": "A bulk change the caller asked for, and what it came to for each book so far",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bulkId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
       }
     },
     "/files/{fileId}/download": {
@@ -2783,6 +2877,205 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "BulkChange": {
+        "type": "object",
+        "properties": {
+          "addAuthors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "includeLocked": {
+            "type": "boolean"
+          },
+          "language": {
+            "type": "string"
+          },
+          "locks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "removeAuthors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removeTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BulkRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "edit",
+              "fetch",
+              "writeBack"
+            ]
+          },
+          "books": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "change": {
+            "$ref": "#/components/schemas/BulkChange"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "BulkResult": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "changed",
+              "unchanged",
+              "locked",
+              "review",
+              "notFound",
+              "failed"
+            ]
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "skipped"
+        ]
+      },
+      "BulkStarted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "total"
+        ]
+      },
+      "BulkStatus": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "edit",
+              "fetch",
+              "writeBack"
+            ]
+          },
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkResult"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "done": {
+            "type": "integer"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "createdAt",
+          "total",
+          "done",
+          "counts",
+          "books"
         ]
       },
       "CandidateList": {

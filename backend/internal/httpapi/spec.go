@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
@@ -58,6 +59,9 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},
 	}
+	b.FieldOverrides["BulkRequest.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
+	b.FieldOverrides["BulkStatus.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
+	b.FieldOverrides["BulkResult.outcome"] = &openapi.Schema{Type: "string", Enum: bulk.Outcomes}
 	failure := &openapi.Response{
 		Description: "The request failed.",
 		Content:     map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(errorEnvelope{})}},

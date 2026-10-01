@@ -1138,3 +1138,80 @@ describe("reviewing matches", () => {
 		expect(screen.queryByRole("link", { name: "Review" })).not.toBeInTheDocument();
 	});
 });
+
+describe("changing many books", () => {
+	function withShelf() {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Mort", { series: "Discworl", tags: ["Fantasy"] })
+			.withBook("Eric", { series: "Discworl", fields: { series: { source: "manual", locked: true } } })
+			.withBook("Emma");
+	}
+	const bulkRequests = () => server.requests.filter((r) => r.path === "/books/bulk").map((r) => r.body);
+
+	it("edits every book that matches the filter, and reports the locked ones", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/?series=discworl");
+		await person.click(await screen.findByRole("button", { name: "Select books" }));
+		await person.click(screen.getByRole("button", { name: "Select every book that matches" }));
+		expect(screen.getByText("Every book that matches is selected")).toBeInTheDocument();
+		expect(await screen.findByRole("checkbox", { name: "Select Mort" })).toBeChecked();
+
+		await person.click(screen.getByRole("button", { name: "Edit" }));
+		await person.click(screen.getByRole("button", { name: "Change the books" }));
+		expect(screen.getByRole("alert")).toHaveTextContent("Choose at least one field to change.");
+		await person.selectOptions(screen.getByRole("combobox", { name: "What to do with Series" }), "Set to");
+		await person.type(screen.getByRole("textbox", { name: "Value for Series" }), "Discworld");
+		await person.selectOptions(screen.getByRole("combobox", { name: "What to do with Tags" }), "Add");
+		await person.type(screen.getByRole("textbox", { name: "Value for Tags" }), "Humour, Satire,");
+		await person.click(screen.getByRole("button", { name: "Change the books" }));
+
+		expect(await screen.findByRole("heading", { name: "Editing many books", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/bulk/bulk-1");
+		expect(bulkRequests()).toEqual([
+			{
+				library: "lib-1",
+				filter: JSON.stringify({ all: [{ field: "series", op: "in", values: ["discworl"] }] }),
+				action: "edit",
+				change: { series: "Discworld", addTags: ["Humour", "Satire"] },
+			},
+		]);
+		expect(screen.getByText("2 of 2 books done.")).toBeInTheDocument();
+		const eric = screen.getByRole("link", { name: "Eric" }).closest("li") as HTMLElement;
+		expect(within(eric).getByText("Locked, left as it was: Series")).toBeInTheDocument();
+		expect(within(eric).getByText("Changed")).toBeInTheDocument();
+		expect(server.books[0]?.series).toBe("Discworld");
+		expect(server.books[1]?.series).toBe("Discworl");
+		expect(server.books[2]?.tags).toEqual([]);
+
+		await person.click(screen.getByRole("button", { name: "Changed: 2" }));
+		expect(screen.getAllByRole("listitem")).toHaveLength(2);
+	});
+
+	it("looks up the books ticked", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Select books" }));
+		await person.click(await screen.findByRole("checkbox", { name: "Select Emma" }));
+		await person.click(screen.getByRole("checkbox", { name: "Select Mort" }));
+		await person.click(screen.getByRole("checkbox", { name: "Select Mort" }));
+		expect(screen.getByText("1 selected")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Fetch details" }));
+
+		expect(await screen.findByRole("heading", { name: "Fetching details for many books", level: 1 })).toBeInTheDocument();
+		expect(bulkRequests()).toEqual([{ books: ["book-3"], action: "fetch" }]);
+	});
+
+	it("is not offered to a reader", async () => {
+		withShelf();
+		server.signedInAs("Rita");
+		renderApp("/");
+		expect(await screen.findByRole("link", { name: /Emma/ })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Select books" })).not.toBeInTheDocument();
+	});
+});

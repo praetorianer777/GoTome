@@ -8,6 +8,7 @@ import {
 	booksQuery,
 	facetsQuery,
 } from "@/books/api";
+import { BulkBar } from "@/books/bulk-bar";
 import { Cover } from "@/books/cover";
 import { FilterPanel } from "@/books/filter-panel";
 import {
@@ -92,6 +93,34 @@ export function Library({
 		enabled: list.length > 0,
 	});
 	const shown = books.data?.pages.flatMap((page) => page.books) ?? [];
+	const canEdit = can(user, "metadata:edit");
+	const [selecting, setSelecting] = useState(false);
+	const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
+	const [allMatching, setAllMatching] = useState(false);
+	// A selection belongs to the list it was made in.
+	const listKey = `${selected?.id ?? ""} ${filter ?? ""}`;
+	const [chosenIn, setChosenIn] = useState(listKey);
+	if (chosenIn !== listKey) {
+		setChosenIn(listKey);
+		setChosen(new Set());
+		setAllMatching(false);
+	}
+	const toggle = (id: string) => {
+		// Unticking one of every book that matches leaves those shown.
+		const next = new Set(allMatching ? shown.map((b) => b.id) : chosen);
+		if (!next.delete(id)) {
+			next.add(id);
+		}
+		setChosen(next);
+		setAllMatching(false);
+	};
+	const clearSelection = () => {
+		setChosen(new Set());
+		setAllMatching(false);
+	};
+	const selection = selecting
+		? { isSelected: (id: string) => allMatching || chosen.has(id), toggle }
+		: undefined;
 	// Every field is named, so that one taken out of the picks leaves the
 	// address too.
 	const setPicks = (next: FilterPicks) =>
@@ -176,6 +205,19 @@ export function Library({
 								</button>
 							))}
 						</fieldset>
+						{canEdit && (
+							<button
+								type="button"
+								aria-pressed={selecting}
+								onClick={() => {
+									setSelecting(!selecting);
+									clearSelection();
+								}}
+								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+							>
+								{t(selecting ? "bulk.selectDone" : "bulk.select")}
+							</button>
+						)}
 						<button
 							type="button"
 							aria-expanded={filtersOpen}
@@ -221,6 +263,19 @@ export function Library({
 								aria-label={t("library.books")}
 								className="flex flex-col gap-4"
 							>
+								{selecting && (
+									<BulkBar
+										count={chosen.size}
+										all={allMatching}
+										selection={
+											allMatching
+												? { library: selected?.id, filter }
+												: { books: [...chosen] }
+										}
+										onSelectAll={() => setAllMatching(true)}
+										onClear={clearSelection}
+									/>
+								)}
 								<FormError error={books.error} />
 								{books.isSuccess && shown.length === 0 && (
 									<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
@@ -258,9 +313,9 @@ export function Library({
 								)}
 								{shown.length > 0 &&
 									(view === "grid" ? (
-										<Grid books={shown} />
+										<Grid books={shown} selection={selection} />
 									) : (
-										<Table books={shown} />
+										<Table books={shown} selection={selection} />
 									))}
 								{books.hasNextPage && (
 									<MoreBooks
@@ -281,11 +336,34 @@ export function Library({
 	);
 }
 
-function Grid({ books }: { books: BookSummary[] }) {
+/** Which books are ticked, while books are being selected. */
+interface Selection {
+	isSelected: (id: string) => boolean;
+	toggle: (id: string) => void;
+}
+
+function Tick({ book, selection }: { book: BookSummary; selection: Selection }) {
+	return (
+		<input
+			type="checkbox"
+			checked={selection.isSelected(book.id)}
+			onChange={() => selection.toggle(book.id)}
+			aria-label={t("bulk.selectBook", { title: book.title })}
+			className="size-5"
+		/>
+	);
+}
+
+function Grid({ books, selection }: { books: BookSummary[]; selection?: Selection }) {
 	return (
 		<ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
 			{books.map((book) => (
-				<li key={book.id}>
+				<li key={book.id} className="relative">
+					{selection && (
+						<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 dark:bg-slate-900/90">
+							<Tick book={book} selection={selection} />
+						</span>
+					)}
 					<Link
 						to="/books/$bookId"
 						params={{ bookId: book.id }}
@@ -313,7 +391,7 @@ function Grid({ books }: { books: BookSummary[] }) {
 	);
 }
 
-function Table({ books }: { books: BookSummary[] }) {
+function Table({ books, selection }: { books: BookSummary[]; selection?: Selection }) {
 	const head =
 		"px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400";
 	return (
@@ -321,6 +399,11 @@ function Table({ books }: { books: BookSummary[] }) {
 			<table className="w-full text-sm">
 				<thead className="bg-slate-50 dark:bg-slate-900">
 					<tr>
+						{selection && (
+							<th scope="col" className={head}>
+								<span className="sr-only">{t("bulk.title")}</span>
+							</th>
+						)}
 						<th scope="col" className={head}>
 							{t("library.column.title")}
 						</th>
@@ -338,6 +421,11 @@ function Table({ books }: { books: BookSummary[] }) {
 				<tbody className="divide-y divide-slate-200 dark:divide-slate-800">
 					{books.map((book) => (
 						<tr key={book.id}>
+							{selection && (
+								<td className="w-8 px-3 py-2">
+									<Tick book={book} selection={selection} />
+								</td>
+							)}
 							<td className="px-3 py-2">
 								<Link
 									to="/books/$bookId"

@@ -108,6 +108,25 @@ type BookTag struct {
 	TagID  uuid.UUID
 }
 
+type BulkChange struct {
+	ID         uuid.UUID
+	CreatedBy  uuid.UUID
+	SeesAll    bool
+	Action     string
+	Change     []byte
+	CreatedAt  time.Time
+	FinishedAt *time.Time
+}
+
+type BulkChangeBook struct {
+	BulkChangeID uuid.UUID
+	Position     int32
+	BookID       uuid.UUID
+	Outcome      *string
+	Message      *string
+	Skipped      []string
+}
+
 type Library struct {
 	ID         uuid.UUID
 	Name       string

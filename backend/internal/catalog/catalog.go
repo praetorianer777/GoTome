@@ -369,7 +369,10 @@ func AddFileTx(ctx context.Context, tx pgx.Tx, bookID, libraryID uuid.UUID, in N
 // Get returns a book the scope may see, with its files and credits, or
 // ErrNotFound.
 func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (Book, error) {
-	q := sqlc.New(s.pool)
+	return get(ctx, sqlc.New(s.pool), scope, id)
+}
+
+func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID) (Book, error) {
 	row, err := q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Book{}, ErrNotFound

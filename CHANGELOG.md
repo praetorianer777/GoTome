@@ -120,3 +120,11 @@ What changes for someone who runs or uses GOtome. The format follows
   first: compare, tick what to take, or reject a match so it is not
   proposed again. It works from the keyboard (a, r, 1–3, j and k). Editors
   see the books of the libraries they may see.
+- Changing many books at once. On the library page, Select books, tick
+  them or select every book the filter matches, then edit (set the series,
+  publisher, date or language; set, add or remove authors and tags), fetch
+  details for all of them, or write their details into their EPUB files. It
+  runs in the background, up to 5000 books at a time, and a page shows its
+  progress and what came of each book. Fields locked on a book are left as
+  they are and reported, unless you ask for them to be changed too; a book
+  that fails does not stop the others.
