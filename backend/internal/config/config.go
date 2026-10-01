@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/secret"
 )
 
 // Environments a deployment may declare itself as.
@@ -52,6 +54,18 @@ type Config struct {
 	ScanInterval time.Duration
 	// UploadLimit is the largest file one upload may carry, in bytes.
 	UploadLimit int64
+	// SecretKey encrypts the secrets kept in the database. Commands that
+	// keep none run without it; see RequireSecretKey.
+	SecretKey []byte
+}
+
+// RequireSecretKey is the error a command that keeps secrets starts with
+// when no key is configured.
+func (c Config) RequireSecretKey() error {
+	if c.SecretKey == nil {
+		return errors.New("GOTOME_SECRET_KEY_FILE is not set, want the file gotome init writes, such as /secrets/secret-key")
+	}
+	return nil
 }
 
 // RequireDatabase is the error a command that needs the database starts with
@@ -106,6 +120,15 @@ func load(getenv func(string) string) (Config, error) {
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
+	}
+	if file := get("GOTOME_SECRET_KEY_FILE", ""); file != "" {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return Config{}, fmt.Errorf("GOTOME_SECRET_KEY_FILE: %w", err)
+		}
+		if cfg.SecretKey, err = secret.ParseKey(string(data)); err != nil {
+			return Config{}, fmt.Errorf("GOTOME_SECRET_KEY_FILE: %s: %w", file, err)
+		}
 	}
 	if file := get("GOTOME_DATABASE_PASSWORD_FILE", ""); file != "" {
 		if cfg.DatabaseURL, err = withPassword(cfg.DatabaseURL, file); err != nil {

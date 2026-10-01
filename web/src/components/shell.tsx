@@ -11,7 +11,7 @@ import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 
 export interface NavItem {
-	to: "/" | "/upload" | "/admin/libraries";
+	to: "/" | "/upload" | "/admin/libraries" | "/admin/settings";
 	label: MessageKey;
 	/** What the person must be allowed to do for the entry to be offered. */
 	permission: Permission;
@@ -25,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ to: "/", label: "nav.library", permission: "library:read" },
 	{ to: "/upload", label: "nav.upload", permission: "books:upload" },
 	{ to: "/admin/libraries", label: "nav.libraries", permission: "storage:manage" },
+	{ to: "/admin/settings", label: "nav.settings", permission: "settings:manage" },
 ];
 
 export function visibleNavItems(

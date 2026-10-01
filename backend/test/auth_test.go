@@ -27,6 +27,8 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/secret"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -34,6 +36,41 @@ var fastHash = auth.PasswordParams{MemoryKiB: 64, Iterations: 1, Parallelism: 1,
 
 // uploadLimit is small, so that a test can go past it cheaply.
 const uploadLimit = 1 << 20
+
+// lockedBuffer is a log that requests on several goroutines write to.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func testBox(t *testing.T) *secret.Box {
+	t.Helper()
+	encoded, err := secret.NewKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := secret.ParseKey(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	box, err := secret.New(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return box
+}
 
 // app is a server on a database of its own, with a clock the test moves.
 type app struct {
@@ -44,8 +81,12 @@ type app struct {
 	dataDir string
 	scans   *ingest.Service
 	covers  *covers.Store
-	now     time.Time
-	mu      sync.Mutex
+	// box seals this app's secrets; settings keeps them.
+	box      *secret.Box
+	settings *settings.Store
+	logs     lockedBuffer
+	now      time.Time
+	mu       sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -80,8 +121,16 @@ func newApp(t *testing.T) *app {
 		t.Fatal(err)
 	}
 	a.scans.Queue = queue
+	a.box = testBox(t)
+	a.settings, err = settings.Open(context.Background(), a.pool, a.box)
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := &httpapi.Server{
-		Log:       quiet,
+		// Everything the server logs, so that a test can look for what must
+		// not be in it.
+		Log:       slog.New(slog.NewTextHandler(&a.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		Settings:  a.settings,
 		DB:        a.pool,
 		Auth:      accounts.WithClock(a.clock),
 		Logins:    httpapi.NewLoginLimits(a.clock),

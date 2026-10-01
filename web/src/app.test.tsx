@@ -716,3 +716,50 @@ describe("quick search", () => {
 		expect(await screen.findByText("No title, author or series looks like that.")).toBeInTheDocument();
 	});
 });
+
+describe("settings", () => {
+	it("lets an administrator set a token that is never shown again", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/");
+
+		await person.click(await screen.findByRole("link", { name: "Settings" }));
+		expect(await screen.findByRole("heading", { name: "Settings", level: 1 })).toBeInTheDocument();
+		const token = screen.getByLabelText("Hardcover API token");
+		expect(token).toHaveAttribute("type", "password");
+		expect(screen.getByText(/Needed to look books up on Hardcover\. Not set\./)).toBeInTheDocument();
+
+		await person.type(token, "hc-secret");
+		await person.clear(screen.getByLabelText("Language for book details"));
+		await person.type(screen.getByLabelText("Language for book details"), "deutsch");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByText("Give a language as its two-letter code, such as en or de.")).toBeInTheDocument();
+		expect(server.secrets.size).toBe(0);
+
+		await person.clear(screen.getByLabelText("Language for book details"));
+		await person.type(screen.getByLabelText("Language for book details"), "de");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+		expect(server.secrets.get("metadata.hardcoverToken")).toBe("hc-secret");
+		// The field is empty again and only says that a token is there.
+		expect(screen.getByLabelText("Hardcover API token")).toHaveValue("");
+		expect(screen.getByText(/Saved on/)).toBeInTheDocument();
+		expect(screen.getByLabelText("Language for book details")).toHaveValue("de");
+		expect(document.body.textContent).not.toContain("hc-secret");
+		// Only what changed was sent: the Google key stays as it was.
+		expect(server.requests.at(-1)?.body).toEqual({ values: { "metadata.hardcoverToken": "hc-secret", "metadata.language": "de" } });
+
+		await person.click(screen.getByRole("button", { name: "Remove the Hardcover API token" }));
+		await waitFor(() => expect(server.secrets.has("metadata.hardcoverToken")).toBe(false));
+		expect(await screen.findByText(/Needed to look books up on Hardcover\. Not set\./)).toBeInTheDocument();
+	});
+
+	it("keeps an editor out", async () => {
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Novels");
+		const { router } = renderApp("/admin/settings");
+
+		expect(await screen.findByRole("heading", { name: "Novels" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+	});
+});

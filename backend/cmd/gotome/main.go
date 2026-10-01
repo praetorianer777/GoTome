@@ -27,6 +27,8 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/secret"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -103,11 +105,22 @@ func serve() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	if err := cfg.RequireSecretKey(); err != nil {
+		return err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
 	pool, err := openDatabase(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
+	settingStore, err := settings.Open(ctx, pool, box)
+	if err != nil {
+		return err
+	}
 
 	accounts, err := auth.NewService(pool, auth.DefaultPasswordParams(), auth.DefaultSessionTTL)
 	if err != nil {
@@ -155,6 +168,7 @@ func serve() error {
 		Auth:      accounts,
 		Logins:    httpapi.NewLoginLimits(time.Now),
 		Libraries: libraries,
+		Settings:  settingStore,
 		Scans:     scans,
 		Books:     catalog.NewService(pool),
 		Covers:    coverStore,

@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -43,6 +44,8 @@ type Server struct {
 	Auth      *auth.Service
 	Logins    *LoginLimits
 	Libraries *library.Service
+	// Settings are what an administrator changes while GOtome runs.
+	Settings *settings.Store
 	// Scans looks through library folders for new and changed files.
 	Scans *ingest.Service
 	// Books is the catalogue; Covers holds the cover images it points at.

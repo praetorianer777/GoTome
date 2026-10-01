@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
 // specVersion is the version of the API, not of the build: the document is
@@ -41,6 +42,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["SearchHit.match"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
 	}}
+	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	b.FieldOverrides["UploadForm.file"] = &openapi.Schema{Type: "string", Format: "binary"}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},

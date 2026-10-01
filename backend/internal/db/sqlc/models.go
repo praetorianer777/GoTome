@@ -168,6 +168,14 @@ type Session struct {
 	ExpiresAt  time.Time
 }
 
+type Setting struct {
+	Key       string
+	Value     *string
+	Sealed    []byte
+	UpdatedAt time.Time
+	UpdatedBy *uuid.UUID
+}
+
 type Tag struct {
 	ID      uuid.UUID
 	Name    string

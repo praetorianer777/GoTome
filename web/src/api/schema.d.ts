@@ -263,6 +263,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every setting; a secret says only whether it is set */
+        get: operations["listSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change settings, all or none; an empty or null value unsets one */
+        patch: operations["updateSettings"];
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -488,6 +506,18 @@ export interface components {
         SearchResult: {
             books: components["schemas"]["SearchHit"][];
         };
+        SettingList: {
+            settings: components["schemas"]["SettingView"][];
+        };
+        SettingView: {
+            isSet: boolean;
+            key: string;
+            /** @enum {string} */
+            kind: "text" | "secret";
+            /** Format: date-time */
+            updatedAt?: string;
+            value?: string;
+        };
         SetupRequest: {
             email?: string;
             password: string;
@@ -500,6 +530,11 @@ export interface components {
             name?: string;
             visibility?: string;
             writable?: boolean;
+        };
+        UpdateSettingsRequest: {
+            values: {
+                [key: string]: string | null;
+            };
         };
         UploadForm: {
             /** Format: binary */
@@ -1126,6 +1161,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Uploaded"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingList"];
                 };
             };
             /** @description The request failed. */
