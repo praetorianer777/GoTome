@@ -17,6 +17,8 @@ export const FACET_FIELDS: FacetField[] = [
 	"tag",
 	"language",
 	"published",
+	"status",
+	"rating",
 	"format",
 ];
 

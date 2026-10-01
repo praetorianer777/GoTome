@@ -191,8 +191,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   as parameters. `visibleBooks` is the start of every list and count of books:
   visibility, library, filter. A facet counts with its own field's top-level
   rules left out (`Node.Without`). The web app keeps the picks per field in the
-  address and builds the tree in `web/src/books/filters.ts`. Rating is not a
-  field yet: per-user ratings come with #43.
+  address and builds the tree in `web/src/books/filters.ts`. Status and rating
+  are the viewer's own (`user_books`), so the registry the tree compiles
+  against is `filtersFor(viewer)`: `Filters` with those two fields added.
 - The quick search (`catalog.Search`, `GET /books/search`) matches the
   `*_key` columns of titles, authors and series with pg_trgm's `<%` through
   GIN trigram indexes. It is not the full-text search of #14 and later. Its
@@ -331,6 +332,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   locked fields and locks nothing. A candidate's cover reaches the browser
   only through `GET /metadata/covers/{token}`: tokens are HMACs the process
   signs, so the server never fetches an address a client made up.
+
+## Reading state
+
+- `user_books` holds where each person stands with a book: status
+  (`catalog.Statuses`), their own rating of 1 to 5 stars, started and
+  finished dates. No row is unread and unrated. It is never anyone else's
+  to see, and it is not a provider's rating, which is not stored on books.
+- `catalog.Service.SetReading` changes it for the books among the IDs the
+  user may see (`PUT /books/{id}/reading`, and `POST /books/reading` for a
+  selection as bulk changes take one); it needs `personal:manage`.
+  `catalog.Book.Reading` and the summaries' `Status` and `Rating` are the
+  viewer's.
 
 ## Bulk changes
 

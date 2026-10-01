@@ -38,8 +38,12 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
 	b.FieldOverrides["Facet.field"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
-		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldFormat,
+		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat,
 	}}
+	statuses := &openapi.Schema{Type: "string", Enum: catalog.Statuses}
+	for _, field := range []string{"ReadingState.status", "ReadingChange.status", "ReadingBulkRequest.status", "BookSummary.status", "SearchHit.status"} {
+		b.FieldOverrides[field] = statuses
+	}
 	b.FieldOverrides["SearchHit.match"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
 	}}

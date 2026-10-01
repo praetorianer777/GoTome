@@ -311,7 +311,7 @@
           {
             "name": "filter",
             "in": "query",
-            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not.",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
             "schema": {
               "type": "string"
             }
@@ -557,6 +557,53 @@
           }
         ],
         "x-permission": "metadata:edit"
+      }
+    },
+    "/books/reading": {
+      "post": {
+        "operationId": "setReadingBulk",
+        "summary": "Change where the caller stands with many books at once",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadingBulkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingBulkResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/books/search": {
@@ -976,6 +1023,63 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/books/{bookId}/reading": {
+      "put": {
+        "operationId": "setReading",
+        "summary": "Change where the caller stands with a book: status, rating, dates",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadingChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingState"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/bulk/{bulkId}": {
@@ -2685,6 +2789,9 @@
           "publisher": {
             "type": "string"
           },
+          "reading": {
+            "$ref": "#/components/schemas/ReadingState"
+          },
           "series": {
             "type": "string"
           },
@@ -2713,7 +2820,8 @@
           "identifiers",
           "files",
           "addedAt",
-          "fields"
+          "fields",
+          "reading"
         ]
       },
       "BookFile": {
@@ -2843,11 +2951,24 @@
           "publishedYear": {
             "type": "integer"
           },
+          "rating": {
+            "type": "integer"
+          },
           "series": {
             "type": "string"
           },
           "seriesIndex": {
             "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "reading",
+              "completed",
+              "abandoned",
+              "wishlist"
+            ]
           },
           "subtitle": {
             "type": "string"
@@ -2862,7 +2983,8 @@
           "title",
           "authors",
           "formats",
-          "addedAt"
+          "addedAt",
+          "status"
         ]
       },
       "BuildInfo": {
@@ -3391,6 +3513,8 @@
               "tag",
               "language",
               "published",
+              "status",
+              "rating",
               "format"
             ]
           },
@@ -3784,6 +3908,105 @@
           "message"
         ]
       },
+      "ReadingBulkRequest": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "filter": {
+            "type": "string"
+          },
+          "finishedOn": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "startedOn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "reading",
+              "completed",
+              "abandoned",
+              "wishlist"
+            ]
+          }
+        }
+      },
+      "ReadingBulkResult": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed"
+        ]
+      },
+      "ReadingChange": {
+        "type": "object",
+        "properties": {
+          "finishedOn": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "startedOn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "reading",
+              "completed",
+              "abandoned",
+              "wishlist"
+            ]
+          }
+        }
+      },
+      "ReadingState": {
+        "type": "object",
+        "properties": {
+          "finishedOn": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "startedOn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "reading",
+              "completed",
+              "abandoned",
+              "wishlist"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "RereadLibraryRequest": {
         "type": "object",
         "properties": {
@@ -3952,11 +4175,24 @@
           "publishedYear": {
             "type": "integer"
           },
+          "rating": {
+            "type": "integer"
+          },
           "series": {
             "type": "string"
           },
           "seriesIndex": {
             "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unread",
+              "reading",
+              "completed",
+              "abandoned",
+              "wishlist"
+            ]
           },
           "subtitle": {
             "type": "string"
@@ -3972,6 +4208,7 @@
           "authors",
           "formats",
           "addedAt",
+          "status",
           "match"
         ]
       },

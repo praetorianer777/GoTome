@@ -69,7 +69,7 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 
 type listBooksQuery struct {
 	Library string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter  string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not."`
+	Filter  string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
 	Sort    string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
 	Order   string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor  string `query:"cursor" doc:"The nextCursor of the page before."`
@@ -91,6 +91,10 @@ type bookSummary struct {
 	CoverKey string    `json:"coverKey,omitempty"`
 	Formats  []string  `json:"formats"`
 	AddedAt  time.Time `json:"addedAt"`
+	// Status is where the caller stands with the book; Rating their own
+	// stars, left out when they gave none.
+	Status string `json:"status"`
+	Rating *int16 `json:"rating,omitempty"`
 }
 
 type bookList struct {
@@ -169,6 +173,8 @@ type bookDetail struct {
 	// Fields says, for each field whose source is known or that is locked,
 	// where its value came from.
 	Fields map[string]fieldState `json:"fields"`
+	// Reading is where the caller stands with the book.
+	Reading readingState `json:"reading"`
 }
 
 // fieldState is where a field's value came from and whether automatic
@@ -216,7 +222,7 @@ func summaryOf(b catalog.Summary) bookSummary {
 	return bookSummary{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
 		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
-		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt,
+		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
 	}
 }
 
@@ -357,7 +363,7 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
-		Fields: map[string]fieldState{},
+		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading),
 	}
 	for _, c := range b.Contributors {
 		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Role: c.Role})

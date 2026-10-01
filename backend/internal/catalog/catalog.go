@@ -181,6 +181,8 @@ type Book struct {
 	Sources map[string]string
 	// Locked are the fields automatic updates leave alone.
 	Locked []string
+	// Reading is where the scope's user stands with the book.
+	Reading Reading
 }
 
 // Service reads and writes the catalogue.
@@ -427,6 +429,9 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		book.Identifiers = append(book.Identifiers, BookIdentifier{
 			Identifier: Identifier{Type: ident.Type, Value: ident.Value}, FileID: ident.FileID,
 		})
+	}
+	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
+		return Book{}, err
 	}
 	files, err := q.ListBookFiles(ctx, id)
 	if err != nil {

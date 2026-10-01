@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -23,6 +24,10 @@ const (
 	FieldLanguage  = "language"
 	FieldPublished = "published"
 	FieldFormat    = "format"
+	// FieldStatus and FieldRating are where the viewer stands with a book:
+	// each person filters by their own.
+	FieldStatus = "status"
+	FieldRating = "rating"
 )
 
 // Comparisons, as a rule names them.
@@ -93,6 +98,57 @@ var Filters = filter.Registry{
 	},
 }
 
+// filtersFor is Filters with the fields that depend on who is looking.
+func filtersFor(viewer uuid.UUID) filter.Registry {
+	own := func(column string, arg func(any) string) string {
+		return `(SELECT ub.` + column + ` FROM user_books ub WHERE ub.book_id = b.id AND ub.user_id = ` + arg(viewer) + `)`
+	}
+	registry := maps.Clone(Filters)
+	registry[FieldStatus] = filter.Field{
+		OpIn: {Arity: -1, Value: status, SQL: func(v []string, arg func(any) string) string {
+			return "COALESCE(" + own("status", arg) + ", '" + StatusUnread + "') = ANY(" + arg(v) + "::text[])"
+		}},
+	}
+	registry[FieldRating] = filter.Field{
+		OpIn: {Arity: -1, Value: rating, SQL: func(v []string, arg func(any) string) string {
+			return own("rating", arg) + " = ANY(" + arg(v) + "::smallint[])"
+		}},
+		OpBetween: {Arity: 2, Value: ratingOrNone, SQL: func(v []string, arg func(any) string) string {
+			conditions := []string{own("rating", arg) + " IS NOT NULL"}
+			if v[0] != "" {
+				conditions = append(conditions, own("rating", arg)+" >= "+arg(v[0])+"::smallint")
+			}
+			if v[1] != "" {
+				conditions = append(conditions, own("rating", arg)+" <= "+arg(v[1])+"::smallint")
+			}
+			return strings.Join(conditions, " AND ")
+		}},
+		OpEmpty: {SQL: func(_ []string, arg func(any) string) string { return own("rating", arg) + " IS NULL" }},
+	}
+	return registry
+}
+
+func status(v string) (string, error) {
+	if !slices.Contains(Statuses, v) {
+		return "", fmt.Errorf("%q is not a status; one is %s", v, strings.Join(Statuses, ", "))
+	}
+	return v, nil
+}
+
+func rating(v string) (string, error) {
+	if n, err := strconv.Atoi(strings.TrimSpace(v)); err != nil || n < 1 || n > MaxRating {
+		return "", fmt.Errorf("%q is not a rating from 1 to %d", v, MaxRating)
+	}
+	return strings.TrimSpace(v), nil
+}
+
+func ratingOrNone(v string) (string, error) {
+	if strings.TrimSpace(v) == "" {
+		return "", nil
+	}
+	return rating(v)
+}
+
 func nameKey(v string) (string, error) {
 	if k := Key(v); k != "" {
 		return k, nil
@@ -137,7 +193,7 @@ func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, a
 	if libraryID != nil {
 		where = append(where, "b.library_id = "+arg(*libraryID))
 	}
-	cond, err := Filters.Compile(tree, arg)
+	cond, err := filtersFor(scope.Viewer).Compile(tree, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +271,23 @@ WHERE {where} AND b.published_on IS NOT NULL
 GROUP BY d
 ORDER BY d
 LIMIT {limit}`},
+	{FieldStatus, `
+SELECT st, st, count(*)
+FROM books b
+LEFT JOIN user_books ub ON ub.book_id = b.id AND ub.user_id = {viewer},
+LATERAL (SELECT COALESCE(ub.status, '` + StatusUnread + `') AS st) own
+WHERE {where}
+GROUP BY st
+ORDER BY array_position(ARRAY['` + strings.Join(Statuses, "','") + `'], st)
+LIMIT {limit}`},
+	{FieldRating, `
+SELECT ub.rating::text, ub.rating::text, count(*)
+FROM books b
+JOIN user_books ub ON ub.book_id = b.id AND ub.user_id = {viewer} AND ub.rating IS NOT NULL
+WHERE {where}
+GROUP BY ub.rating
+ORDER BY ub.rating DESC
+LIMIT {limit}`},
 	{FieldFormat, `
 SELECT f.format, f.format, count(DISTINCT b.id)
 FROM books b
@@ -231,7 +304,7 @@ LIMIT {limit}`},
 func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uuid.UUID, tree filter.Node) ([]Facet, error) {
 	// The whole tree first, so that a broken one is refused with its own
 	// message rather than with that of a smaller tree.
-	if _, err := Filters.Compile(tree, func(any) string { return "NULL" }); err != nil {
+	if _, err := filtersFor(scope.Viewer).Compile(tree, func(any) string { return "NULL" }); err != nil {
 		return nil, err
 	}
 	batch := &pgx.Batch{}
@@ -249,6 +322,9 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 		query := strings.ReplaceAll(fq.query, "{where}", strings.Join(where, " AND "))
 		if strings.Contains(query, "{picked}") {
 			query = strings.ReplaceAll(query, "{picked}", arg(picked))
+		}
+		if strings.Contains(query, "{viewer}") {
+			query = strings.ReplaceAll(query, "{viewer}", arg(scope.Viewer))
 		}
 		query = strings.ReplaceAll(query, "{limit}", arg(MaxFacetValues+len(picked)))
 		batch.Queue(query, args...)

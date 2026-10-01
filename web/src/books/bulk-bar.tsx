@@ -11,6 +11,12 @@ import {
 	emptyBulkForm,
 	useStartBulk,
 } from "@/books/bulk";
+import {
+	type ReadingStatus,
+	STATUS_LABELS,
+	STATUSES,
+	useSetReadingBulk,
+} from "@/books/reading";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 
@@ -26,12 +32,15 @@ const control =
  */
 export function BulkBar({
 	count,
+	canEdit,
 	all,
 	selection,
 	onSelectAll,
 	onClear,
 }: {
 	count: number;
+	/** Whether the person may change the books themselves, not only their own status. */
+	canEdit: boolean;
 	all: boolean;
 	selection: Pick<BulkRequest, "books" | "library" | "filter">;
 	onSelectAll: () => void;
@@ -40,6 +49,8 @@ export function BulkBar({
 	const start = useStartBulk();
 	const navigate = useNavigate();
 	const [editing, setEditing] = useState(false);
+	const setStatus = useSetReadingBulk();
+	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"]) =>
 		start.mutate(
 			{ ...selection, action, change },
@@ -69,17 +80,40 @@ export function BulkBar({
 				<button
 					type="button"
 					className={quietButton}
-					disabled={!all && count === 0}
+					disabled={none}
 					onClick={onClear}
 				>
 					{t("bulk.clear")}
 				</button>
 				<span className="grow" />
+				<select
+					aria-label={t("bulk.status")}
+					value=""
+					disabled={none || setStatus.isPending}
+					onChange={(e) =>
+						setStatus.mutate({
+							...selection,
+							status: e.target.value as ReadingStatus,
+						})
+					}
+					className={control}
+				>
+					<option value="" disabled>
+						{t("bulk.status")}
+					</option>
+					{STATUSES.map((s) => (
+						<option key={s} value={s}>
+							{t(STATUS_LABELS[s])}
+						</option>
+					))}
+				</select>
+				{canEdit && (
+					<>
 				<button
 					type="button"
 					aria-expanded={editing}
 					className={quietButton}
-					disabled={(!all && count === 0) || start.isPending}
+					disabled={none || start.isPending}
 					onClick={() => setEditing(!editing)}
 				>
 					{t("bulk.edit")}
@@ -87,7 +121,7 @@ export function BulkBar({
 				<button
 					type="button"
 					className={quietButton}
-					disabled={(!all && count === 0) || start.isPending}
+					disabled={none || start.isPending}
 					onClick={() => run("fetch")}
 				>
 					{t("bulk.fetch")}
@@ -95,12 +129,18 @@ export function BulkBar({
 				<button
 					type="button"
 					className={quietButton}
-					disabled={(!all && count === 0) || start.isPending}
+					disabled={none || start.isPending}
 					onClick={() => run("writeBack")}
 				>
 					{t("bulk.writeBack")}
 				</button>
+					</>
+				)}
 			</div>
+			{setStatus.data && (
+				<p role="status">{t("bulk.statusDone", { count: setStatus.data.changed })}</p>
+			)}
+			<FormError error={setStatus.error} />
 			{!editing && <FormError error={start.error} />}
 			{editing && (
 				<BulkEditForm

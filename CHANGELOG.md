@@ -128,3 +128,8 @@ What changes for someone who runs or uses GOtome. The format follows
   progress and what came of each book. Fields locked on a book are left as
   they are and reported, unless you ask for them to be changed too; a book
   that fails does not stop the others.
+- Your own status for each book (unread, reading, completed, abandoned,
+  wishlist) and your own rating of one to five stars, with the dates you
+  started and finished. Set them on the book's page, or the status of many
+  books at once from a selection; lists show them, and the filters narrow
+  by them. Every person has their own; nobody else sees them.

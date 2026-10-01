@@ -191,6 +191,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change where the caller stands with many books at once */
+        post: operations["setReadingBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/search": {
         parameters: {
             query?: never;
@@ -288,6 +305,23 @@ export interface paths {
         /** A book's cover as a JPEG; size is small or large */
         get: operations["getBookCover"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change where the caller stands with a book: status, rating, dates */
+        put: operations["setReading"];
         post?: never;
         delete?: never;
         options?: never;
@@ -797,6 +831,7 @@ export interface components {
             pageCount?: number;
             published?: string;
             publisher?: string;
+            reading: components["schemas"]["ReadingState"];
             series?: string;
             seriesIndex?: number;
             subtitle?: string;
@@ -840,8 +875,11 @@ export interface components {
             /** Format: uuid */
             libraryId: string;
             publishedYear?: number;
+            rating?: number;
             series?: string;
             seriesIndex?: number;
+            /** @enum {string} */
+            status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
             title: string;
         };
@@ -982,7 +1020,7 @@ export interface components {
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "format";
+            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -1092,6 +1130,33 @@ export interface components {
             message: string;
             provider: string;
         };
+        ReadingBulkRequest: {
+            books?: string[];
+            filter?: string;
+            finishedOn?: string;
+            library?: string;
+            rating?: number;
+            startedOn?: string;
+            /** @enum {string} */
+            status?: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
+        };
+        ReadingBulkResult: {
+            changed: number;
+        };
+        ReadingChange: {
+            finishedOn?: string;
+            rating?: number;
+            startedOn?: string;
+            /** @enum {string} */
+            status?: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
+        };
+        ReadingState: {
+            finishedOn?: string;
+            rating?: number;
+            startedOn?: string;
+            /** @enum {string} */
+            status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
+        };
         RereadLibraryRequest: {
             failedOnly: boolean;
         };
@@ -1141,8 +1206,11 @@ export interface components {
             /** @enum {string} */
             match: "title" | "author" | "series";
             publishedYear?: number;
+            rating?: number;
             series?: string;
             seriesIndex?: number;
+            /** @enum {string} */
+            status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
             title: string;
         };
@@ -1454,7 +1522,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format also takes op empty without values. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. */
                 sort?: "title" | "author" | "added";
@@ -1581,6 +1649,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NameList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setReadingBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadingBulkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingBulkResult"];
                 };
             };
             /** @description The request failed. */
@@ -1845,6 +1946,41 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadingChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingState"];
                 };
             };
             /** @description The request failed. */

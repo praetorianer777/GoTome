@@ -240,3 +240,13 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+type UserBook struct {
+	UserID     uuid.UUID
+	BookID     uuid.UUID
+	Status     string
+	Rating     *int16
+	StartedOn  *time.Time
+	FinishedOn *time.Time
+	UpdatedAt  time.Time
+}
