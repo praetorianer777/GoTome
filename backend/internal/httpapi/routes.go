@@ -274,6 +274,21 @@ func (s *Server) routes() []Route {
 			Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.deleteBookCover,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/{bookId}/candidates", ID: "listCandidates",
+			Summary: "What the metadata providers know about a book, the best fit first", Tag: "books",
+			Response: candidateList{}, Permission: auth.MetadataEdit, Handler: s.listCandidates,
+		},
+		{
+			Method: http.MethodPost, Path: "/books/{bookId}/candidates/apply", ID: "applyCandidate",
+			Summary: "Take chosen values from a provider's record; locked fields stay", Tag: "books",
+			Request: applyCandidateRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.applyCandidate,
+		},
+		{
+			Method: http.MethodGet, Path: "/metadata/covers/{token}", ID: "getCandidateCover",
+			Summary: "A provider's cover for a candidate, fetched through the server", Tag: "books",
+			Produces: "image/*", Status: http.StatusOK, Permission: auth.MetadataEdit, Handler: s.getCandidateCover,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/names", ID: "listNames",
 			Summary: "Author, series, publisher or tag names in use that begin as typed", Tag: "books",
 			Query: namesQuery{}, Response: nameList{}, Permission: auth.MetadataEdit, Handler: s.listNames,

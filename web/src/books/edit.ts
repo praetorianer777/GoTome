@@ -3,7 +3,7 @@ import {
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { API_BASE, api } from "@/api/client";
 import type { components, paths } from "@/api/schema";
 import type { BookDetail } from "@/books/api";
 
@@ -91,6 +91,41 @@ export function useDeleteCover(id: string) {
 			(
 				await api.DELETE("/books/{bookId}/cover", {
 					params: { path: { bookId: id } },
+				})
+			).data,
+		onSuccess: useAfter(id),
+	});
+}
+
+export type Candidate = components["schemas"]["CandidateView"];
+export type CandidateApply = components["schemas"]["ApplyCandidateRequest"];
+
+/** What the providers know about a book. Asking them is slow, so once is enough. */
+export function candidatesQuery(id: string) {
+	return queryOptions({
+		queryKey: ["candidates", id],
+		queryFn: async () =>
+			(
+				await api.GET("/books/{bookId}/candidates", {
+					params: { path: { bookId: id } },
+				})
+			).data ?? { candidates: [], failures: [] },
+		staleTime: 10 * 60_000,
+		retry: false,
+	});
+}
+
+export function candidateCoverUrl(token: string): string {
+	return `${API_BASE}/metadata/covers/${encodeURIComponent(token)}`;
+}
+
+export function useApplyCandidate(id: string) {
+	return useMutation({
+		mutationFn: async (body: CandidateApply) =>
+			(
+				await api.POST("/books/{bookId}/candidates/apply", {
+					params: { path: { bookId: id } },
+					body,
 				})
 			).data,
 		onSuccess: useAfter(id),

@@ -3,6 +3,7 @@ package metadata
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -70,8 +71,9 @@ const (
 
 // Options configure a Service.
 type Options struct {
-	// Language is asked for when a book has none, as a BCP 47 tag.
-	Language string
+	// Language is the BCP 47 tag asked for when a book has none, read on
+	// every search: an administrator may change it. Nil asks for none.
+	Language func(context.Context) string
 	// AllowPrivate lets requests reach addresses inside the server's own
 	// network. Only tests set it, for a provider served on the loopback.
 	AllowPrivate bool
@@ -81,14 +83,18 @@ type Options struct {
 type Service struct {
 	providers []Provider
 	webs      map[string]Web
-	language  string
+	language  func(context.Context) string
+	// tokenKey signs cover tokens. It is new with every start: a token is
+	// good for as long as the page that holds it.
+	tokenKey []byte
 }
 
 // NewService returns a Service asking the providers in their order. With a
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language}
+	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language, tokenKey: make([]byte, 32)}
+	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)
 	}

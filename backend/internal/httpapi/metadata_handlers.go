@@ -55,6 +55,11 @@ func (s *Server) editBook(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
+	return s.applyEdit(w, r, id, req.edit())
+}
+
+// edit is the request as the catalogue takes it.
+func (req editBookRequest) edit() catalog.Edit {
 	e := catalog.Edit{
 		Title: req.Title, Subtitle: req.Subtitle, Description: req.Description, Language: req.Language,
 		Published: req.Published, Publisher: req.Publisher, PageCount: req.PageCount, Tags: req.Tags,
@@ -77,7 +82,7 @@ func (s *Server) editBook(w http.ResponseWriter, r *http.Request) error {
 		}
 		e.Identifiers = &idents
 	}
-	return s.applyEdit(w, r, id, e)
+	return e
 }
 
 // applyEdit makes the edit and answers with the book as it is now.

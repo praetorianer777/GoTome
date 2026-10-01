@@ -68,6 +68,44 @@ type Edit struct {
 	// Cover is a key in the cover store.
 	Cover *string
 	Locks map[string]bool
+	// Source is where the values come from when no person typed them: a
+	// provider, as ProviderSource names it. Such an edit leaves locked
+	// fields as they are and locks nothing.
+	Source string
+}
+
+// ProviderSource is the source recorded for fields a metadata provider
+// filled in.
+func ProviderSource(name string) string { return "provider:" + name }
+
+// leave takes a field out of the edit.
+func (e *Edit) leave(field string) {
+	switch field {
+	case FieldTitle:
+		e.Title = nil
+	case FieldSubtitle:
+		e.Subtitle = nil
+	case FieldDescription:
+		e.Description = nil
+	case FieldLanguage:
+		e.Language = nil
+	case FieldPublished:
+		e.Published = nil
+	case FieldPublisher:
+		e.Publisher = nil
+	case FieldSeries:
+		e.Series = nil
+	case FieldPageCount:
+		e.PageCount = nil
+	case FieldContributors:
+		e.Contributors = nil
+	case FieldTags:
+		e.Tags = nil
+	case FieldIdentifiers:
+		e.Identifiers = nil
+	case FieldCover:
+		e.Cover = nil
+	}
 }
 
 // SeriesPlace is a series and the book's position in it.
@@ -133,6 +171,9 @@ func (e *Edit) check() error {
 		}
 		e.Identifiers = &normalized
 	}
+	if e.Source != "" && (!strings.HasPrefix(e.Source, "provider:") || len(e.Locks) > 0) {
+		problems["source"] = "Only a person's edit sets locks; a provider's names it as provider:<name>."
+	}
 	for field := range e.Locks {
 		if !slices.Contains(LockableFields, field) {
 			problems["locks"] = fmt.Sprintf("There is no field %q to lock.", field)
@@ -153,7 +194,8 @@ func (e Edit) ChangesValues() bool {
 }
 
 // EditTx changes how a book the scope may see is described, inside a
-// transaction the caller runs, or returns ErrNotFound or an EditError.
+// transaction the caller runs, or returns ErrNotFound or an EditError. An
+// edit with a Source skips the locked fields.
 func EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e Edit) error {
 	if err := e.check(); err != nil {
 		return err
@@ -174,9 +216,18 @@ func EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e
 	for _, field := range book.LockedFields {
 		locked[field] = true
 	}
+	source := SourceManual
+	if e.Source != "" {
+		source = e.Source
+		for field := range locked {
+			e.leave(field)
+		}
+	}
 	typed := func(field string) {
-		sources[field] = SourceManual
-		locked[field] = true
+		sources[field] = source
+		if source == SourceManual {
+			locked[field] = true
+		}
 	}
 
 	update := describedAs(book)

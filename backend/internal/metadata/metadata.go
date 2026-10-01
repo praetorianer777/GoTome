@@ -9,9 +9,13 @@ package metadata
 import (
 	"cmp"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
@@ -105,8 +109,8 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 		}
 	}
 	q := Query{Title: book.Title, Authors: book.Authors(), Language: book.Language}
-	if q.Language == "" {
-		q.Language = s.language
+	if q.Language == "" && s.language != nil {
+		q.Language = s.language(ctx)
 	}
 
 	var found []Candidate
@@ -145,6 +149,44 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 	}
 	slices.SortStableFunc(found, func(a, b Candidate) int { return cmp.Compare(b.Score, a.Score) })
 	return found, errors.Join(errs...)
+}
+
+// Has reports whether a provider of that name is asked.
+func (s *Service) Has(provider string) bool {
+	_, ok := s.webs[provider]
+	return ok
+}
+
+// ErrBadToken is a cover token this process did not hand out.
+var ErrBadToken = errors.New("no such cover")
+
+// CoverToken stands for a cover a record points to. Only what a token names
+// is fetched for a client, so that nobody can have the server fetch an
+// address of their choosing.
+func (s *Service) CoverToken(provider, url string) string {
+	payload := base64.RawURLEncoding.EncodeToString([]byte(provider + "\x00" + url))
+	return payload + "." + base64.RawURLEncoding.EncodeToString(s.sign(payload))
+}
+
+// CoverOf fetches the cover a token stands for.
+func (s *Service) CoverOf(ctx context.Context, token string) ([]byte, error) {
+	payload, sig, ok := strings.Cut(token, ".")
+	mac, err := base64.RawURLEncoding.DecodeString(sig)
+	if !ok || err != nil || !hmac.Equal(mac, s.sign(payload)) {
+		return nil, ErrBadToken
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(payload)
+	if err != nil {
+		return nil, ErrBadToken
+	}
+	provider, url, _ := strings.Cut(string(raw), "\x00")
+	return s.Cover(ctx, provider, url)
+}
+
+func (s *Service) sign(payload string) []byte {
+	h := hmac.New(sha256.New, s.tokenKey)
+	h.Write([]byte(payload))
+	return h.Sum(nil)
 }
 
 // maxCoverBytes is the largest cover taken from a provider.

@@ -209,6 +209,40 @@ export interface paths {
         patch: operations["editBook"];
         trace?: never;
     };
+    "/books/{bookId}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the metadata providers know about a book, the best fit first */
+        get: operations["listCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/candidates/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take chosen values from a provider's record; locked fields stay */
+        post: operations["applyCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/cover": {
         parameters: {
             query?: never;
@@ -452,6 +486,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metadata/covers/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A provider's cover for a candidate, fetched through the server */
+        get: operations["getCandidateCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -606,6 +657,24 @@ export interface components {
         AccountList: {
             users: components["schemas"]["Account"][];
         };
+        ApplyCandidateRequest: {
+            contributors?: components["schemas"]["Contributor"][];
+            coverToken?: string;
+            description?: string;
+            identifiers?: components["schemas"]["Identifier"][];
+            language?: string;
+            locks?: {
+                [key: string]: boolean;
+            };
+            pageCount?: number;
+            provider: string;
+            published?: string;
+            publisher?: string;
+            series?: components["schemas"]["SeriesPlace"];
+            subtitle?: string;
+            tags?: string[];
+            title?: string;
+        };
         BookDetail: {
             /** Format: date-time */
             addedAt: string;
@@ -677,6 +746,28 @@ export interface components {
         BuildInfo: {
             commit?: string;
             version: string;
+        };
+        CandidateList: {
+            candidates: components["schemas"]["CandidateView"][];
+            failures: components["schemas"]["ProviderFailure"][];
+        };
+        CandidateView: {
+            contributors: components["schemas"]["Contributor"][];
+            coverToken?: string;
+            description?: string;
+            id: string;
+            identifiers: components["schemas"]["Identifier"][];
+            language?: string;
+            pageCount?: number;
+            provider: string;
+            published?: string;
+            publisher?: string;
+            score: number;
+            series?: string;
+            seriesIndex?: number;
+            subtitle?: string;
+            tags: string[];
+            title: string;
         };
         ChangePasswordRequest: {
             currentPassword: string;
@@ -819,6 +910,10 @@ export interface components {
         };
         NameList: {
             names: string[];
+        };
+        ProviderFailure: {
+            message: string;
+            provider: string;
         };
         RereadLibraryRequest: {
             failedOnly: boolean;
@@ -1358,6 +1453,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EditBookRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    applyCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyCandidateRequest"];
             };
         };
         responses: {
@@ -1973,6 +2134,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Uploaded"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCandidateCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": string;
                 };
             };
             /** @description The request failed. */

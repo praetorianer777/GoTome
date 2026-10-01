@@ -17,6 +17,7 @@ import { AdminSettings } from "@/routes/admin-settings";
 import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { BookEditPage } from "@/routes/book-edit";
+import { FindDetails } from "@/routes/book-find";
 import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
@@ -146,6 +147,19 @@ const bookEditRoute = createRoute({
 	},
 });
 
+const bookFindRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/books/$bookId/find",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function BookFindRoute() {
+		return <FindDetails id={bookFindRoute.useParams().bookId} />;
+	},
+});
+
 const uploadRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/upload",
@@ -218,7 +232,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, uploadRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
