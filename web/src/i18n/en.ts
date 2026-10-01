@@ -134,6 +134,7 @@ export const en = {
 	"jobs.none": "No jobs here.",
 	"jobs.kind.scan": "Scan {library}",
 	"jobs.kind.read": "Read {file}",
+	"jobs.kind.write": "Write the details into {file}",
 	"jobs.kind.scanAll": "Scan every library",
 	"jobs.kind.sweep": "Clear away old sessions",
 	"jobs.goneLibrary": "a library that is gone",

@@ -45,7 +45,7 @@ type JobStatus struct {
 	// LibraryID and LibraryName are the library the job works on, if any.
 	LibraryID   *uuid.UUID
 	LibraryName string
-	// FileID, FilePath and BookID are the file a reading job reads.
+	// FileID, FilePath and BookID are the file a job reads or writes.
 	FileID   *uuid.UUID
 	FilePath string
 	BookID   *uuid.UUID
@@ -62,7 +62,7 @@ SELECT j.id, j.kind, j.queue, j.state::text, j.attempt, j.max_attempts,
        lib.id, COALESCE(lib.name, ''), f.id, COALESCE(f.rel_path, ''), f.book_id
 FROM river_job j
 LEFT JOIN book_files f
-       ON j.kind = '` + extractKind + `' AND f.id = (j.args->>'fileId')::uuid
+       ON j.kind IN ('` + extractKind + `', '` + writeBackKind + `') AND f.id = (j.args->>'fileId')::uuid
 LEFT JOIN libraries lib
        ON lib.id = CASE WHEN j.kind = '` + scanKind + `' THEN (j.args->>'libraryId')::uuid ELSE f.library_id END
 WHERE (lib.id IS NULL OR lib.id IN (SELECT visible_library_ids($1, $2)))

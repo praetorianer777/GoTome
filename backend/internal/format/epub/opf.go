@@ -305,13 +305,23 @@ func identifier(scheme, value string) (Identifier, bool) {
 	}
 	scheme = strings.ToLower(strings.TrimSpace(scheme))
 	lower := strings.ToLower(value)
-	for _, prefix := range []string{"urn:isbn:", "urn:uuid:", "urn:doi:", "isbn:", "uuid:", "doi:"} {
-		if strings.HasPrefix(lower, prefix) {
-			value = strings.TrimSpace(value[len(prefix):])
+	if rest, ok := strings.CutPrefix(lower, "urn:"); ok {
+		// urn:isbn:…, and what GOtome writes for the others: urn:asin:….
+		if name, _, found := strings.Cut(rest, ":"); found && name != "" {
+			value = strings.TrimSpace(value[len("urn:")+len(name)+1:])
 			if scheme == "" {
-				scheme = strings.TrimSuffix(strings.TrimPrefix(prefix, "urn:"), ":")
+				scheme = name
 			}
-			break
+		}
+	} else {
+		for _, prefix := range []string{"isbn:", "uuid:", "doi:"} {
+			if strings.HasPrefix(lower, prefix) {
+				value = strings.TrimSpace(value[len(prefix):])
+				if scheme == "" {
+					scheme = strings.TrimSuffix(prefix, ":")
+				}
+				break
+			}
 		}
 	}
 	if scheme == "" && looksLikeISBN(value) {

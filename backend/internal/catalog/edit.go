@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/text/language"
 
-	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
@@ -145,140 +144,146 @@ func (e *Edit) check() error {
 	return nil
 }
 
-// Edit changes how a book the scope may see is described, or returns
-// ErrNotFound or an EditError.
-func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e Edit) error {
+// ChangesValues reports whether the edit sets any field, rather than only
+// putting locks on or taking them off.
+func (e Edit) ChangesValues() bool {
+	return e.Title != nil || e.Subtitle != nil || e.Description != nil || e.Language != nil ||
+		e.Published != nil || e.Publisher != nil || e.Series != nil || e.PageCount != nil ||
+		e.Contributors != nil || e.Tags != nil || e.Identifiers != nil || e.Cover != nil
+}
+
+// EditTx changes how a book the scope may see is described, inside a
+// transaction the caller runs, or returns ErrNotFound or an EditError.
+func EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e Edit) error {
 	if err := e.check(); err != nil {
 		return err
 	}
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
-		book, err := q.LockVisibleBook(ctx, sqlc.LockVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
-		sources := map[string]string{}
-		if err := json.Unmarshal(book.FieldSources, &sources); err != nil {
-			return fmt.Errorf("field sources of book %s: %w", book.ID, err)
-		}
-		locked := map[string]bool{}
-		for _, field := range book.LockedFields {
-			locked[field] = true
-		}
-		typed := func(field string) {
-			sources[field] = SourceManual
-			locked[field] = true
-		}
+	q := sqlc.New(tx)
+	book, err := q.LockVisibleBook(ctx, sqlc.LockVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	sources := map[string]string{}
+	if err := json.Unmarshal(book.FieldSources, &sources); err != nil {
+		return fmt.Errorf("field sources of book %s: %w", book.ID, err)
+	}
+	locked := map[string]bool{}
+	for _, field := range book.LockedFields {
+		locked[field] = true
+	}
+	typed := func(field string) {
+		sources[field] = SourceManual
+		locked[field] = true
+	}
 
-		update := describedAs(book)
-		text := func(field string, value *string, current **string) {
-			if value != nil {
-				*current = optional(clean(*value))
-				typed(field)
+	update := describedAs(book)
+	text := func(field string, value *string, current **string) {
+		if value != nil {
+			*current = optional(clean(*value))
+			typed(field)
+		}
+	}
+	text(FieldSubtitle, e.Subtitle, &update.Subtitle)
+	text(FieldLanguage, e.Language, &update.Language)
+	text(FieldCover, e.Cover, &update.CoverKey)
+	if e.Description != nil {
+		update.Description = optional(*e.Description)
+		typed(FieldDescription)
+	}
+	if e.Title != nil {
+		update.Title = clean(*e.Title)
+		update.TitleKey = Key(update.Title)
+		typed(FieldTitle)
+	}
+	update.SortTitle = SortTitle(update.Title, deref(update.Language))
+	if e.Published != nil {
+		update.PublishedOn, update.PublishedPrecision = nil, nil
+		if date, precision, ok := ParsePublished(*e.Published); ok {
+			update.PublishedOn, update.PublishedPrecision = &date, &precision
+		}
+		typed(FieldPublished)
+	}
+	if e.Publisher != nil {
+		update.PublisherID = nil
+		if name := clean(*e.Publisher); Key(name) != "" {
+			publisher, err := q.UpsertPublisher(ctx, sqlc.UpsertPublisherParams{Name: name, NameKey: Key(name)})
+			if err != nil {
+				return fmt.Errorf("publisher: %w", err)
+			}
+			update.PublisherID = &publisher.ID
+		}
+		typed(FieldPublisher)
+	}
+	if e.Series != nil {
+		update.SeriesID, update.SeriesIndex = nil, nil
+		if name := clean(e.Series.Name); Key(name) != "" {
+			series, err := q.UpsertSeries(ctx, sqlc.UpsertSeriesParams{Name: name, NameKey: Key(name)})
+			if err != nil {
+				return fmt.Errorf("series: %w", err)
+			}
+			update.SeriesID, update.SeriesIndex = &series.ID, e.Series.Index
+		}
+		typed(FieldSeries)
+	}
+	if e.PageCount != nil {
+		update.PageCount = nil
+		if *e.PageCount > 0 {
+			update.PageCount = e.PageCount
+		}
+		typed(FieldPageCount)
+	}
+	if e.Contributors != nil {
+		if err := q.DeleteBookContributors(ctx, book.ID); err != nil {
+			return err
+		}
+		if err := addContributors(ctx, q, book.ID, *e.Contributors); err != nil {
+			return err
+		}
+		if err := q.RefreshAuthorSort(ctx, book.ID); err != nil {
+			return err
+		}
+		typed(FieldContributors)
+	}
+	if e.Tags != nil {
+		if err := q.DeleteBookTags(ctx, book.ID); err != nil {
+			return err
+		}
+		if err := addTags(ctx, q, book.ID, *e.Tags); err != nil {
+			return err
+		}
+		typed(FieldTags)
+	}
+	if e.Identifiers != nil {
+		if err := q.DeleteBookOwnIdentifiers(ctx, book.ID); err != nil {
+			return err
+		}
+		for _, ident := range *e.Identifiers {
+			err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{BookID: book.ID, Type: ident.Type, Value: ident.Value})
+			if err != nil {
+				return fmt.Errorf("identifier %s: %w", ident.Type, err)
 			}
 		}
-		text(FieldSubtitle, e.Subtitle, &update.Subtitle)
-		text(FieldLanguage, e.Language, &update.Language)
-		text(FieldCover, e.Cover, &update.CoverKey)
-		if e.Description != nil {
-			update.Description = optional(*e.Description)
-			typed(FieldDescription)
-		}
-		if e.Title != nil {
-			update.Title = clean(*e.Title)
-			update.TitleKey = Key(update.Title)
-			typed(FieldTitle)
-		}
-		update.SortTitle = SortTitle(update.Title, deref(update.Language))
-		if e.Published != nil {
-			update.PublishedOn, update.PublishedPrecision = nil, nil
-			if date, precision, ok := ParsePublished(*e.Published); ok {
-				update.PublishedOn, update.PublishedPrecision = &date, &precision
-			}
-			typed(FieldPublished)
-		}
-		if e.Publisher != nil {
-			update.PublisherID = nil
-			if name := clean(*e.Publisher); Key(name) != "" {
-				publisher, err := q.UpsertPublisher(ctx, sqlc.UpsertPublisherParams{Name: name, NameKey: Key(name)})
-				if err != nil {
-					return fmt.Errorf("publisher: %w", err)
-				}
-				update.PublisherID = &publisher.ID
-			}
-			typed(FieldPublisher)
-		}
-		if e.Series != nil {
-			update.SeriesID, update.SeriesIndex = nil, nil
-			if name := clean(e.Series.Name); Key(name) != "" {
-				series, err := q.UpsertSeries(ctx, sqlc.UpsertSeriesParams{Name: name, NameKey: Key(name)})
-				if err != nil {
-					return fmt.Errorf("series: %w", err)
-				}
-				update.SeriesID, update.SeriesIndex = &series.ID, e.Series.Index
-			}
-			typed(FieldSeries)
-		}
-		if e.PageCount != nil {
-			update.PageCount = nil
-			if *e.PageCount > 0 {
-				update.PageCount = e.PageCount
-			}
-			typed(FieldPageCount)
-		}
-		if e.Contributors != nil {
-			if err := q.DeleteBookContributors(ctx, book.ID); err != nil {
-				return err
-			}
-			if err := addContributors(ctx, q, book.ID, *e.Contributors); err != nil {
-				return err
-			}
-			if err := q.RefreshAuthorSort(ctx, book.ID); err != nil {
-				return err
-			}
-			typed(FieldContributors)
-		}
-		if e.Tags != nil {
-			if err := q.DeleteBookTags(ctx, book.ID); err != nil {
-				return err
-			}
-			if err := addTags(ctx, q, book.ID, *e.Tags); err != nil {
-				return err
-			}
-			typed(FieldTags)
-		}
-		if e.Identifiers != nil {
-			if err := q.DeleteBookOwnIdentifiers(ctx, book.ID); err != nil {
-				return err
-			}
-			for _, ident := range *e.Identifiers {
-				err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{BookID: book.ID, Type: ident.Type, Value: ident.Value})
-				if err != nil {
-					return fmt.Errorf("identifier %s: %w", ident.Type, err)
-				}
-			}
-			typed(FieldIdentifiers)
-		}
+		typed(FieldIdentifiers)
+	}
 
-		maps.Copy(locked, e.Locks)
-		if update.FieldSources, err = json.Marshal(sources); err != nil {
-			return err
+	maps.Copy(locked, e.Locks)
+	if update.FieldSources, err = json.Marshal(sources); err != nil {
+		return err
+	}
+	if err := q.UpdateBookDescribed(ctx, update); err != nil {
+		return err
+	}
+	var locks []string
+	for field, on := range locked {
+		if on {
+			locks = append(locks, field)
 		}
-		if err := q.UpdateBookDescribed(ctx, update); err != nil {
-			return err
-		}
-		var locks []string
-		for field, on := range locked {
-			if on {
-				locks = append(locks, field)
-			}
-		}
-		slices.Sort(locks)
-		return q.SetBookLocks(ctx, sqlc.SetBookLocksParams{ID: book.ID, LockedFields: append([]string{}, locks...)})
-	})
+	}
+	slices.Sort(locks)
+	return q.SetBookLocks(ctx, sqlc.SetBookLocksParams{ID: book.ID, LockedFields: append([]string{}, locks...)})
 }
 
 // describedAs is the update that leaves the book as it is.

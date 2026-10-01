@@ -453,6 +453,7 @@ func (a *app) workJobs() {
 	river.AddWorker(workers, &ingest.ScanWorker{Service: a.scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: a.scans})
 	river.AddWorker(workers, &ingest.ExtractWorker{Service: a.scans})
+	river.AddWorker(workers, &ingest.WriteBackWorker{Service: a.scans})
 	runner, err := jobs.New(a.pool, jobs.Config{Logger: slog.New(slog.DiscardHandler), Workers: workers})
 	if err != nil {
 		a.t.Fatal(err)

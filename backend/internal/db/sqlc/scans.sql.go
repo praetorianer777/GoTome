@@ -176,6 +176,51 @@ func (q *Queries) GetFileForExtraction(ctx context.Context, id uuid.UUID) (GetFi
 	return i, err
 }
 
+const getFileForWriteBack = `-- name: GetFileForWriteBack :one
+SELECT f.id, f.book_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
+       f.extract_state, f.drm, f.missing_at, f.trashed_at, l.root_path, l.writable
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1
+`
+
+type GetFileForWriteBackRow struct {
+	ID            uuid.UUID
+	BookID        uuid.UUID
+	Format        string
+	RelPath       string
+	SizeBytes     int64
+	Sha256        []byte
+	ContentSha256 []byte
+	ExtractState  string
+	Drm           bool
+	MissingAt     *time.Time
+	TrashedAt     *time.Time
+	RootPath      string
+	Writable      bool
+}
+
+func (q *Queries) GetFileForWriteBack(ctx context.Context, id uuid.UUID) (GetFileForWriteBackRow, error) {
+	row := q.db.QueryRow(ctx, getFileForWriteBack, id)
+	var i GetFileForWriteBackRow
+	err := row.Scan(
+		&i.ID,
+		&i.BookID,
+		&i.Format,
+		&i.RelPath,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.ContentSha256,
+		&i.ExtractState,
+		&i.Drm,
+		&i.MissingAt,
+		&i.TrashedAt,
+		&i.RootPath,
+		&i.Writable,
+	)
+	return i, err
+}
+
 const latestVisibleScans = `-- name: LatestVisibleScans :many
 SELECT DISTINCT ON (s.library_id) s.id, s.library_id, s.state, s.requested_by, s.requested_at, s.job_id, s.started_at, s.finished_at, s.files_seen, s.files_added, s.files_changed, s.files_moved, s.files_restored, s.files_missing, s.files_skipped, s.books_added, s.error
 FROM library_scans s
@@ -322,6 +367,43 @@ func (q *Queries) ListFilesForScan(ctx context.Context, libraryID uuid.UUID) ([]
 	return items, nil
 }
 
+const listFilesToWriteBack = `-- name: ListFilesToWriteBack :many
+SELECT f.id
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.book_id = $1
+  AND f.format = 'epub'
+  AND f.extract_state = 'done'
+  AND f.sha256 IS NOT NULL
+  AND f.missing_at IS NULL
+  AND f.trashed_at IS NULL
+  AND NOT f.drm
+  AND l.writable
+ORDER BY f.id
+`
+
+// The files of a book its metadata is written into: EPUBs that were read,
+// are there, are not encrypted, and lie in a library GOtome may change.
+func (q *Queries) ListFilesToWriteBack(ctx context.Context, bookID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listFilesToWriteBack, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLibraryFilesToReread = `-- name: ListLibraryFilesToReread :many
 SELECT id FROM book_files
 WHERE library_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
@@ -445,6 +527,17 @@ func (q *Queries) LockActiveScan(ctx context.Context, libraryID uuid.UUID) (Libr
 		&i.Error,
 	)
 	return i, err
+}
+
+const lockFileHash = `-- name: LockFileHash :one
+SELECT sha256 FROM book_files WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockFileHash(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, lockFileHash, id)
+	var sha256 []byte
+	err := row.Scan(&sha256)
+	return sha256, err
 }
 
 const markFilesMissing = `-- name: MarkFilesMissing :execrows
@@ -713,6 +806,34 @@ type SetFilePartIndexParams struct {
 
 func (q *Queries) SetFilePartIndex(ctx context.Context, arg SetFilePartIndexParams) error {
 	_, err := q.db.Exec(ctx, setFilePartIndex, arg.ID, arg.PartIndex)
+	return err
+}
+
+const setFileWritten = `-- name: SetFileWritten :exec
+UPDATE book_files
+SET sha256      = $1,
+    size_bytes  = $2,
+    modified_at = $3,
+    updated_at  = now()
+WHERE id = $4
+`
+
+type SetFileWrittenParams struct {
+	Sha256     []byte
+	SizeBytes  int64
+	ModifiedAt time.Time
+	ID         uuid.UUID
+}
+
+// The file as GOtome wrote it. original_sha256 stays what arrived, and
+// content_sha256 what the content is, which writing metadata does not change.
+func (q *Queries) SetFileWritten(ctx context.Context, arg SetFileWrittenParams) error {
+	_, err := q.db.Exec(ctx, setFileWritten,
+		arg.Sha256,
+		arg.SizeBytes,
+		arg.ModifiedAt,
+		arg.ID,
+	)
 	return err
 }
 
