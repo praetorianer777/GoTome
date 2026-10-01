@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const testOPF = `<?xml version="1.0"?>
@@ -112,6 +113,28 @@ func TestFetchFillsQuotaAcrossPagesAndResumes(t *testing.T) {
 	}
 	if after := requests.Load(); after != before {
 		t.Errorf("a full corpus cost %d more requests", after-before)
+	}
+}
+
+func TestFetchTriesAFailedHarvestPageAgain(t *testing.T) {
+	var requests, failures atomic.Int64
+	srv := harvestServer(t, &requests)
+	flaky := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "harvest") && failures.Add(1) <= 2 {
+			http.Error(w, "gateway timeout", http.StatusGatewayTimeout)
+			return
+		}
+		srv.Config.Handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(flaky.Close)
+	dir := t.TempDir()
+	f := &Fetcher{Dir: dir, Harvest: flaky.URL + "/robot/harvest", Client: flaky.Client(), Log: io.Discard, Delay: time.Millisecond}
+
+	if err := f.Fetch(context.Background(), []Quota{{Lang: "de", Count: 2}}); err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if got := len(names(t, filepath.Join(dir, "de"))); got != 2 {
+		t.Errorf("fetched %d books, want 2", got)
 	}
 }
 

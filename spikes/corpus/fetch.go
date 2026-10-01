@@ -116,7 +116,7 @@ func (f *Fetcher) fetchLanguage(ctx context.Context, q Quota) error {
 	}.Encode()
 
 	for have < q.Count && page != "" {
-		body, err := f.get(ctx, page, maxPageBytes)
+		body, err := f.getPage(ctx, page)
 		if err != nil {
 			return fmt.Errorf("harvest page: %w", err)
 		}
@@ -203,6 +203,43 @@ func (f *Fetcher) download(ctx context.Context, src, dst string) error {
 	return os.Rename(tmp, dst)
 }
 
+// pageAttempts is how often a harvest page is asked for before the run
+// ends. Without the page there is nothing more to fetch, and the mirror's
+// gateway times out now and then.
+const pageAttempts = 4
+
+// getPage fetches a harvest page, again after a server error or a lost
+// connection, each time after a longer wait.
+func (f *Fetcher) getPage(ctx context.Context, page string) ([]byte, error) {
+	var err error
+	for attempt := range pageAttempts {
+		if attempt > 0 {
+			wait := f.Delay * time.Duration(10<<attempt)
+			fmt.Fprintf(f.Log, "harvest page failed (%v), trying again in %s\n", err, wait)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(wait):
+			}
+		}
+		var body []byte
+		body, err = f.get(ctx, page, maxPageBytes)
+		var status *statusError
+		if err == nil || ctx.Err() != nil || (errors.As(err, &status) && status.code < 500) {
+			return body, err
+		}
+	}
+	return nil, err
+}
+
+// statusError is an answer other than 200.
+type statusError struct {
+	code   int
+	status string
+}
+
+func (e *statusError) Error() string { return e.status }
+
 // get waits out the delay first, so every request is spaced from the one
 // before it whatever that one was.
 func (f *Fetcher) get(ctx context.Context, rawURL string, limit int64) ([]byte, error) {
@@ -222,7 +259,7 @@ func (f *Fetcher) get(ctx context.Context, rawURL string, limit int64) ([]byte, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s", resp.Status)
+		return nil, &statusError{code: resp.StatusCode, status: resp.Status}
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
