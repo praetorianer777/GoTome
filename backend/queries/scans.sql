@@ -171,3 +171,27 @@ WHERE extract_state = 'pending'
   AND missing_at IS NULL AND trashed_at IS NULL
   AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY library_id;
+
+-- name: ResetExtraction :many
+-- Files to be read again, as if they were new; only those a reader exists
+-- for, that are on disk and not in the trash.
+UPDATE book_files
+SET extract_state = 'pending', extract_error = NULL, updated_at = now()
+WHERE id = ANY(sqlc.arg(ids)::uuid[])
+  AND format = ANY(sqlc.arg(formats)::text[])
+  AND missing_at IS NULL AND trashed_at IS NULL
+RETURNING id;
+
+-- name: ListLibraryFilesToReread :many
+SELECT id FROM book_files
+WHERE library_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
+  AND (NOT sqlc.arg(failed_only)::boolean OR extract_state = 'failed');
+
+-- name: CountFailedFiles :many
+-- Per library the viewer may see, how many files could not be read.
+SELECT library_id, count(*)::int AS failed
+FROM book_files
+WHERE extract_state = 'failed'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY library_id;

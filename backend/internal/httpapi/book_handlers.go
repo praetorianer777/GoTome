@@ -129,6 +129,12 @@ type bookFile struct {
 	// RelPath is where the file lies in its library, for those who manage
 	// storage.
 	RelPath *string `json:"relPath,omitempty"`
+	// ExtractState says whether the file has been read for its details:
+	// pending, done, failed, or skipped for a format without a reader.
+	ExtractState string `json:"extractState"`
+	// ExtractError is why it could not be read, for those who may have it
+	// read again; it may name places on the server.
+	ExtractError string `json:"extractError,omitempty"`
 }
 
 type bookDetail struct {
@@ -343,14 +349,18 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	manages := auth.Allows(user.Role, auth.StorageManage)
+	rereads := auth.Allows(user.Role, auth.IndexRebuild)
 	for _, f := range b.Files {
 		file := bookFile{
 			ID: f.ID, Kind: f.Kind, Format: f.Format, Name: path.Base(f.RelPath), Size: f.Size,
 			Missing: f.Missing, DurationMS: f.DurationMS, PageCount: f.PageCount, HasText: f.HasText,
-			DRM: f.DRM, Part: f.PartIndex,
+			DRM: f.DRM, Part: f.PartIndex, ExtractState: f.ExtractState,
 		}
 		if manages {
 			file.RelPath = &f.RelPath
+		}
+		if rereads {
+			file.ExtractError = f.ExtractError
 		}
 		if f.DurationMS != nil {
 			total := derefInt64(out.DurationMS) + *f.DurationMS

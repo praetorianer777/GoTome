@@ -36,6 +36,46 @@ func (q *Queries) AddFileChapter(ctx context.Context, arg AddFileChapterParams) 
 	return err
 }
 
+const countFailedFiles = `-- name: CountFailedFiles :many
+SELECT library_id, count(*)::int AS failed
+FROM book_files
+WHERE extract_state = 'failed'
+  AND missing_at IS NULL AND trashed_at IS NULL
+  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+GROUP BY library_id
+`
+
+type CountFailedFilesParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type CountFailedFilesRow struct {
+	LibraryID uuid.UUID
+	Failed    int32
+}
+
+// Per library the viewer may see, how many files could not be read.
+func (q *Queries) CountFailedFiles(ctx context.Context, arg CountFailedFilesParams) ([]CountFailedFilesRow, error) {
+	rows, err := q.db.Query(ctx, countFailedFiles, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountFailedFilesRow{}
+	for rows.Next() {
+		var i CountFailedFilesRow
+		if err := rows.Scan(&i.LibraryID, &i.Failed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countPendingFiles = `-- name: CountPendingFiles :many
 SELECT library_id, count(*)::int AS pending
 FROM book_files
@@ -282,6 +322,37 @@ func (q *Queries) ListFilesForScan(ctx context.Context, libraryID uuid.UUID) ([]
 	return items, nil
 }
 
+const listLibraryFilesToReread = `-- name: ListLibraryFilesToReread :many
+SELECT id FROM book_files
+WHERE library_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
+  AND (NOT $2::boolean OR extract_state = 'failed')
+`
+
+type ListLibraryFilesToRereadParams struct {
+	LibraryID  uuid.UUID
+	FailedOnly bool
+}
+
+func (q *Queries) ListLibraryFilesToReread(ctx context.Context, arg ListLibraryFilesToRereadParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLibraryFilesToReread, arg.LibraryID, arg.FailedOnly)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLibraryIDs = `-- name: ListLibraryIDs :many
 SELECT id FROM libraries ORDER BY id
 `
@@ -513,6 +584,42 @@ func (q *Queries) RecordScanProgress(ctx context.Context, arg RecordScanProgress
 		arg.BooksAdded,
 	)
 	return err
+}
+
+const resetExtraction = `-- name: ResetExtraction :many
+UPDATE book_files
+SET extract_state = 'pending', extract_error = NULL, updated_at = now()
+WHERE id = ANY($1::uuid[])
+  AND format = ANY($2::text[])
+  AND missing_at IS NULL AND trashed_at IS NULL
+RETURNING id
+`
+
+type ResetExtractionParams struct {
+	Ids     []uuid.UUID
+	Formats []string
+}
+
+// Files to be read again, as if they were new; only those a reader exists
+// for, that are on disk and not in the trash.
+func (q *Queries) ResetExtraction(ctx context.Context, arg ResetExtractionParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, resetExtraction, arg.Ids, arg.Formats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const restoreFile = `-- name: RestoreFile :exec

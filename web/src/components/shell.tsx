@@ -11,7 +11,7 @@ import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 
 export interface NavItem {
-	to: "/" | "/upload" | "/admin/libraries" | "/admin/users" | "/admin/settings";
+	to: "/" | "/upload" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
 	label: MessageKey;
 	/** What the person must be allowed to do for the entry to be offered. */
 	permission: Permission;
@@ -24,6 +24,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
 	{ to: "/", label: "nav.library", permission: "library:read" },
 	{ to: "/upload", label: "nav.upload", permission: "books:upload" },
+	{ to: "/jobs", label: "nav.jobs", permission: "index:rebuild" },
 	{ to: "/admin/libraries", label: "nav.libraries", permission: "storage:manage" },
 	{ to: "/admin/users", label: "nav.users", permission: "users:manage" },
 	{ to: "/admin/settings", label: "nav.settings", permission: "settings:manage" },
@@ -71,7 +72,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 							<span className="text-brand-strong dark:text-brand">GO</span>tome
 						</span>
 					</Link>
-					<nav aria-label={t("nav.main")} className="flex gap-4">
+					<nav aria-label={t("nav.main")} className="flex flex-wrap gap-x-4 gap-y-1">
 						{visibleNavItems(NAV_ITEMS, user).map((item) => (
 							<Link
 								key={item.to}

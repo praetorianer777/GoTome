@@ -281,6 +281,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the worker in `cmd/gotome` with `river.AddWorker`, and enqueues through the
   `jobs.Runner`. Use `InsertTx` when the job follows from a change in the same
   transaction, and `Unique` for work that must not be queued twice.
+- The jobs page reads `river_job` directly (`ingest/jobs.go`), joined to the file
+  or library a job is about by its kind's arguments, and filtered through
+  `visible_library_ids`; a job about no library is shown to everyone with
+  `index:rebuild`. A job kind that is about a library or file needs its join
+  there, or its jobs show without one. Retry and cancel go through River's
+  client, after the same visibility check.
 - Queues: `scan`, `extract`, `metadata`, `embed`, `notify`, and `default` for
   housekeeping. A job may run twice (after a crash or a cancelled shutdown), so it
   must be safe to repeat.

@@ -200,6 +200,33 @@ func (s *Server) routes() []Route {
 		},
 
 		{
+			Method: http.MethodGet, Path: "/jobs", ID: "listJobs",
+			Summary: "The newest background jobs, with what each works on", Tag: "jobs",
+			Query: listJobsQuery{}, Response: jobList{}, Permission: auth.IndexRebuild, Handler: s.listJobs,
+		},
+		{
+			Method: http.MethodPost, Path: "/jobs/{jobId}/retry", ID: "retryJob",
+			Summary: "Run a job that is not running again, as soon as a worker is free", Tag: "jobs",
+			Response: jobView{}, Permission: auth.IndexRebuild, Handler: s.retryJob,
+		},
+		{
+			Method: http.MethodPost, Path: "/jobs/{jobId}/cancel", ID: "cancelJob",
+			Summary: "Stop a job that waits or runs", Tag: "jobs",
+			Response: jobView{}, Permission: auth.IndexRebuild, Handler: s.cancelJob,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/extraction", ID: "rereadFile",
+			Summary: "Read a file again for its details, cover and text", Tag: "jobs",
+			Response: rereadResult{}, Status: http.StatusAccepted, Permission: auth.IndexRebuild, Handler: s.rereadFile,
+		},
+		{
+			Method: http.MethodPost, Path: "/libraries/{libraryId}/extractions", ID: "rereadLibrary",
+			Summary: "Read a library's files again: those that failed, or all", Tag: "jobs",
+			Request: rereadLibraryRequest{}, Response: rereadResult{}, Status: http.StatusAccepted,
+			Permission: auth.IndexRebuild, Handler: s.rereadLibrary,
+		},
+
+		{
 			Method: http.MethodGet, Path: "/settings", ID: "listSettings",
 			Summary: "Every setting; a secret says only whether it is set", Tag: "settings",
 			Response: settingList{}, Permission: auth.SettingsManage, Handler: s.listSettings,

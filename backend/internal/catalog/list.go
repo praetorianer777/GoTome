@@ -229,6 +229,18 @@ type VisibleFile struct {
 	SHA256 []byte
 }
 
+// VisibleFileID returns the file's ID if it is a file of a book the scope may
+// see, and ErrNotFound otherwise.
+func (s *Service) VisibleFileID(ctx context.Context, scope library.Scope, fileID uuid.UUID) (uuid.UUID, error) {
+	row, err := sqlc.New(s.pool).GetVisibleFile(ctx, sqlc.GetVisibleFileParams{
+		ID: fileID, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, ErrNotFound
+	}
+	return row.ID, err
+}
+
 // OpenFile finds a file of a book the scope may see. A file the scope may
 // not see is ErrNotFound, like one that does not exist.
 func (s *Service) OpenFile(ctx context.Context, scope library.Scope, fileID uuid.UUID) (VisibleFile, *os.File, error) {
