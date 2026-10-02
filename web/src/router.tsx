@@ -17,6 +17,7 @@ import { AdminLibraries } from "@/routes/admin-libraries";
 import { AdminSettings } from "@/routes/admin-settings";
 import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
+import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
@@ -218,6 +219,14 @@ const readPdfRoute = createRoute({
 	component: lazyRouteComponent(() => import("@/routes/read-pdf"), "PdfReaderRoute"),
 });
 
+const listenRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/books/$bookId/listen",
+	component: function ListenRoute() {
+		return <Listen bookId={listenRoute.useParams().bookId} />;
+	},
+});
+
 const bulkRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/bulk/$bulkId",
@@ -266,7 +275,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

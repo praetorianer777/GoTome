@@ -370,6 +370,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   which sends this browser's `clientId` and the `updatedAt` it last read as
   `basedOn`, and offers a further place another device saved. A PDF's
   locator is `page:<n>`, its fraction the page over the page count.
+- The audiobook player (`web/src/player`) is one `<audio>` element in
+  `PlayerProvider`, which the shell holds, so a book plays on across pages;
+  `MiniPlayer` is its bar, `/books/$bookId/listen` its page.
+  `GET /books/{id}/audio` (`catalog.Service.AudioTimeline`) gives the parts
+  in order with where each starts, and the chapters on that one timeline;
+  the player keeps the time of the whole and loads the part a time falls
+  in. Its locator is the millisecond of the whole. Formats the browser's
+  `canPlayType` refuses are said, with the files to download, rather than
+  tried.
+- `e2e/fixtures/audio` holds two short MP3 parts, made with the toolchain's
+  ffmpeg as its README says. Firefox in the test container has no audio
+  output, so the player's browser test skips it.
 - `e2e/fixtures/pdf.ts` makes PDFs of any size for the browser tests.
 
 ## Bulk changes

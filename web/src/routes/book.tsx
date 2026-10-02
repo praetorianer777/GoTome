@@ -9,6 +9,7 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { ReadingControls } from "@/books/reading-controls";
+import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
@@ -54,6 +55,21 @@ export function Book({ id }: { id: string }) {
 		);
 	}
 	return <BookPage book={book.data} />;
+}
+
+/** Loads the book into the player and goes to its page. */
+function ListenButton({ bookId }: { bookId: string }) {
+	const player = usePlayer();
+	return (
+		<Link
+			to="/books/$bookId/listen"
+			params={{ bookId }}
+			onClick={() => player.open(bookId)}
+			className="mt-2 self-start rounded-md bg-brand-strong px-4 py-1.5 font-medium text-white hover:bg-sky-800"
+		>
+			{t("book.listen")}
+		</Link>
+	);
 }
 
 function names(book: BookDetail, role: string): string {
@@ -123,6 +139,9 @@ function BookPage({ book }: { book: BookDetail }) {
 										})
 									: t("book.series", { series: book.series })}
 							</p>
+						)}
+						{book.files.some((f) => f.kind === "audio" && !f.missing) && (
+							<ListenButton bookId={book.id} />
 						)}
 						{can(user, "metadata:edit") && (
 							<div className="mt-2 flex flex-wrap gap-2">

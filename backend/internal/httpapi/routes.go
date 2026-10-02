@@ -289,6 +289,11 @@ func (s *Server) routes() []Route {
 			Request: readingChange{}, Response: readingState{}, Permission: auth.PersonalManage, Handler: s.setReading,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/{bookId}/audio", ID: "getAudio",
+			Summary: "A book's audio as one recording: its parts in order and the chapters across them", Tag: "books",
+			Response: audioTimeline{}, Permission: auth.LibraryRead, Handler: s.getAudio,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
 			Response: progressState{}, Permission: auth.PersonalManage, Handler: s.getProgress,

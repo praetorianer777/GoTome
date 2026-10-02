@@ -144,3 +144,10 @@ What changes for someone who runs or uses GOtome. The format follows
   with the buttons, the arrow keys or a page number, zooms, lists the
   contents, and lets you select and copy text. It reopens at the page you
   left, on any device, and offers the page another device got further to.
+- An audiobook player in the browser. Listen on a book's page plays its
+  files as one recording, whatever the number of parts, from where you left
+  off on any device. It lists the chapters, skips 30 seconds, plays faster
+  or slower, stops by a sleep timer, and answers the media keys and the
+  phone's lock screen. A bar along the bottom keeps playing while you look
+  at other pages. Formats your browser cannot play are named, with the files
+  to download.

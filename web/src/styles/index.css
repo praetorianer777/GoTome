@@ -22,6 +22,11 @@
 
 :root {
 	color-scheme: light dark;
+	/* Room for the scroll bar whether or not there is one: a page that grows
+	   past the window does not shift sideways, and the PDF reader, which
+	   fits a page to the width, does not resize and redraw back and forth
+	   as the bar comes and goes. */
+	scrollbar-gutter: stable;
 }
 :root[data-theme="light"] {
 	color-scheme: light;

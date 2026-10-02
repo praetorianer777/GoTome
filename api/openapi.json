@@ -763,6 +763,53 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/audio": {
+      "get": {
+        "operationId": "getAudio",
+        "summary": "A book's audio as one recording: its parts in order and the chapters across them",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioTimeline"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/books/{bookId}/candidates": {
       "get": {
         "operationId": "listCandidates",
@@ -2839,6 +2886,91 @@
         },
         "required": [
           "provider"
+        ]
+      },
+      "AudioChapter": {
+        "type": "object",
+        "properties": {
+          "endMs": {
+            "type": "integer"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startMs": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "fileId",
+          "startMs",
+          "endMs"
+        ]
+      },
+      "AudioPart": {
+        "type": "object",
+        "properties": {
+          "durationMs": {
+            "type": "integer"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "format": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fileId",
+          "format",
+          "mediaType",
+          "name",
+          "startMs",
+          "durationMs"
+        ]
+      },
+      "AudioTimeline": {
+        "type": "object",
+        "properties": {
+          "chapters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioChapter"
+            }
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioPart"
+            }
+          }
+        },
+        "required": [
+          "parts",
+          "chapters",
+          "durationMs",
+          "complete"
         ]
       },
       "BookDetail": {

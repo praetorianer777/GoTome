@@ -3,8 +3,8 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { bookQuery, downloadUrl } from "@/books/api";
 import {
+	knowProgress,
 	type Progress,
-	type ProgressState,
 	progressQuery,
 	useSaveProgress,
 } from "@/books/progress";
@@ -193,14 +193,7 @@ export function PdfReader({
 							className={button}
 							onClick={() => {
 								// What this browser now knows is that place.
-								queryClient.setQueryData<ProgressState>(
-									["progress", bookId],
-									(state) => ({
-										finishes: state?.finishes ?? 0,
-										...state,
-										ebook: further,
-									}),
-								);
+								knowProgress(queryClient, bookId, "ebook", further);
 								kept.current = furtherPage;
 								setFurther(undefined);
 								go(furtherPage);
@@ -369,7 +362,10 @@ function Page({
 		if (!el) return;
 		setWidth(el.clientWidth);
 		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(() => setWidth(el.clientWidth));
+		// A few pixels are not worth drawing the page again for.
+		const observer = new ResizeObserver(() =>
+			setWidth((was) => (Math.abs(was - el.clientWidth) < 8 ? was : el.clientWidth)),
+		);
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, []);
