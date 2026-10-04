@@ -165,3 +165,8 @@ What changes for someone who runs or uses GOtome. The format follows
   book from its page, or many from a selection in the library. A collection
   is private unless you share it; a shared one everyone signed in can look
   at, and each sees only the books of libraries they may see.
+- Smart shelves: a shelf defined by rules, such as an author, your rating
+  of four stars or more, and unread, combined with "every", "any" and "not"
+  and nested in groups. While you build the rules you see how many books
+  match. A smart shelf stays current by itself, and shared ones show each
+  person what matches for them.

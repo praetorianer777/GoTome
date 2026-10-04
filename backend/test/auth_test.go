@@ -148,7 +148,7 @@ func newApp(t *testing.T) *app {
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
 	a.server.Reading = reading.NewService(a.pool)
-	a.server.Shelves = shelves.NewService(a.pool)
+	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL

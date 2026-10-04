@@ -1620,3 +1620,104 @@ describe("collections", () => {
 		expect(server.books).toHaveLength(3);
 	});
 });
+
+describe("smart shelves", () => {
+	function withShelf() {
+		const by = (name: string) => ({ contributors: [{ name, role: "author" as const }] });
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Mistborn", { ...by("Brandon Sanderson"), reading: { status: "unread", rating: 5 } })
+			.withBook("Elantris", { ...by("Brandon Sanderson"), reading: { status: "completed", rating: 4 } })
+			.withBook("Emma", { ...by("Jane Austen"), reading: { status: "unread", rating: 5 } });
+	}
+
+	it("builds a shelf from rules with a live count, and what is on it follows the person's status", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/collections");
+		expect(await screen.findByText(/^No smart shelves yet/)).toBeInTheDocument();
+		await person.click(screen.getByRole("link", { name: "New smart shelf" }));
+		await person.type(await screen.findByRole("textbox", { name: "Name" }), "Next Sanderson");
+
+		const first = within(screen.getByRole("group", { name: "Rule 1 of Rules" }));
+		await person.type(first.getByRole("textbox", { name: "Values" }), "Brandon Sanderson");
+		expect(await screen.findByText("Books matching now: 2")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Add a rule" }));
+		const second = within(screen.getByRole("group", { name: "Rule 2 of Rules" }));
+		await person.selectOptions(second.getByRole("combobox", { name: "Field" }), "My status");
+		await person.click(second.getByRole("checkbox", { name: "Unread" }));
+		expect(await screen.findByText("Books matching now: 1")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Create" }));
+
+		expect(await screen.findByRole("heading", { name: "Next Sanderson", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/smart-shelves/smart-1");
+		expect(server.requests.find((r) => r.path === "/smart-shelves" && r.method === "POST")?.body).toEqual({
+			name: "Next Sanderson",
+			visibility: "private",
+			filter: JSON.stringify({
+				all: [
+					{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+					{ field: "status", op: "in", values: ["unread"] },
+				],
+			}),
+		});
+		const books = within(screen.getByRole("list", { name: "Books on this shelf" }));
+		expect(await books.findByRole("link", { name: /^Mistborn/ })).toBeInTheDocument();
+		expect(books.getAllByRole("link")).toHaveLength(1);
+
+		await person.click(books.getByRole("link", { name: /^Mistborn/ }));
+		await person.selectOptions(await screen.findByRole("combobox", { name: "Your status" }), "Completed");
+		await waitFor(() => expect(server.books[0]?.reading.status).toBe("completed"));
+		router.history.back();
+		expect(await screen.findByText("No book you may see matches these rules now.")).toBeInTheDocument();
+	});
+
+	it("edits the rules of a shelf, with groups and rules turned round", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		server.withSmartShelf("Sanderson", { field: "author", op: "in", values: ["Brandon Sanderson"] });
+		renderApp("/smart-shelves/smart-1");
+		await person.click(await screen.findByRole("button", { name: "Edit smart shelf" }));
+		expect(within(screen.getByRole("group", { name: "Rule 1 of Rules" })).getByRole("textbox", { name: "Values" })).toHaveValue(
+			"Brandon Sanderson",
+		);
+		await person.selectOptions(screen.getByRole("combobox", { name: "Books that match" }), "any rule");
+		await person.click(screen.getByRole("button", { name: "Add a group" }));
+		const group = within(screen.getByRole("group", { name: "Group 2 of Rules" }));
+		await person.click(group.getByRole("button", { name: "Add a rule" }));
+		const rule = within(screen.getByRole("group", { name: "Rule 1 of Group 2 of Rules" }));
+		await person.selectOptions(rule.getByRole("combobox", { name: "Field" }), "My rating");
+		await person.selectOptions(rule.getByRole("combobox", { name: "Comparison" }), "is between");
+		await person.type(rule.getByRole("textbox", { name: "From" }), "5");
+		await person.click(rule.getByRole("checkbox", { name: "Not" }));
+		expect(await screen.findByText("Books matching now: 2")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Save" }));
+
+		await waitFor(() =>
+			expect(JSON.parse(server.smartShelves[0]?.filter ?? "")).toEqual({
+				any: [
+					{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+					{ all: [{ not: { field: "rating", op: "between", values: ["5", ""] } }] },
+				],
+			}),
+		);
+		expect(await screen.findByRole("button", { name: "Edit smart shelf" })).toBeInTheDocument();
+	});
+
+	it("shows another person's shared shelf as it matches for the viewer, without letting it be changed", async () => {
+		withShelf();
+		server.withSmartShelf(
+			"Five stars",
+			{ field: "rating", op: "in", values: ["5"] },
+			{ mine: false, ownerName: "Edith", visibility: "shared" },
+		);
+		renderApp("/collections");
+		const shelves = within(await screen.findByRole("region", { name: "Smart shelves" }));
+		expect(await shelves.findByRole("link", { name: /^Five stars/ })).toHaveTextContent("Books: 2 · Shared by Edith");
+		await userEvent.setup().click(shelves.getByRole("link", { name: /^Five stars/ }));
+		expect(await screen.findByRole("link", { name: /^Emma/ })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Edit smart shelf" })).not.toBeInTheDocument();
+	});
+});

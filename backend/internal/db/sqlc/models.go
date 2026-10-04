@@ -270,6 +270,16 @@ type Setting struct {
 	UpdatedBy *uuid.UUID
 }
 
+type SmartShelf struct {
+	ID         uuid.UUID
+	OwnerID    uuid.UUID
+	Name       string
+	Filter     []byte
+	Visibility string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type StorageUse struct {
 	UserID    *uuid.UUID
 	UsedBytes int64

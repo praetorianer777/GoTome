@@ -7,6 +7,7 @@ import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail, BookSummary } from "@/books/api";
 import type { Collection, CollectionAdd, CollectionRequest } from "@/books/collections";
+import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
@@ -98,6 +99,8 @@ export class FakeServer {
 	furtherProgress?: Progress;
 	/** The collections the signed-in person sees, with their books in order. */
 	collections: (Omit<Collection, "books" | "hasBook"> & { books: string[] })[] = [];
+	/** The smart shelves the signed-in person sees; what is on them is worked out when asked. */
+	smartShelves: Omit<SmartShelf, "books">[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -191,6 +194,9 @@ export class FakeServer {
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
+			}
+			if (path === "/smart-shelves" || path.startsWith("/smart-shelves/")) {
+				return this.answerSmartShelves(request.method, path, body as SmartShelfRequest);
 			}
 			if (path === "/collections" || path.startsWith("/collections/")) {
 				return this.answerCollections(request.method, path, url.searchParams, body);
@@ -482,6 +488,17 @@ export class FakeServer {
 		if (method !== "GET") {
 			return this.editBook(method, path, body as BookEdit | undefined);
 		}
+		if (path === "/books/count") {
+			const tree = JSON.parse(query.get("filter") || "{}") as Rule;
+			const unknown = fieldsOf(tree).find((f) => !FIELDS.includes(f as Field));
+			if (unknown) {
+				return Response.json(
+					{ error: { code: "validation", message: "Some fields need attention.", fields: { filter: `Books cannot be filtered by "${unknown}".` } } },
+					{ status: 422 },
+				);
+			}
+			return Response.json({ count: this.books.filter((b) => !b.placeholder && matches(b, tree)).length });
+		}
 		if (path === "/books/search") {
 			return Response.json({ books: this.search(query.get("q") ?? "") });
 		}
@@ -594,6 +611,71 @@ export class FakeServer {
 			return new Response(null, { status: 204 });
 		}
 		return detail(c);
+	}
+
+	withSmartShelf(name: string, filter: object, overrides: Partial<SmartShelf> = {}): this {
+		this.smartShelves.push({
+			id: `smart-${this.smartShelves.length + 1}`,
+			name,
+			filter: JSON.stringify(filter),
+			visibility: "private",
+			ownerId: this.session?.id ?? "u-1",
+			ownerName: this.session?.username ?? "admin",
+			mine: true,
+			updatedAt: "2026-01-01T00:00:00Z",
+			...overrides,
+		});
+		return this;
+	}
+
+	/** Smart shelves, matched against the books as they are now; a rule on an unknown field is refused. */
+	private answerSmartShelves(method: string, path: string, body: SmartShelfRequest): Response {
+		const on = (s: Omit<SmartShelf, "books">) =>
+			this.books.filter((b) => !b.placeholder && matches(b, JSON.parse(s.filter)));
+		const view = (s: Omit<SmartShelf, "books">) => ({ ...s, books: on(s).length });
+		const refuse = () => {
+			const unknown = fieldsOf(JSON.parse(body.filter || "{}")).find((f) => !FIELDS.includes(f as Field));
+			return unknown
+				? Response.json(
+						{ error: { code: "validation", message: "Some fields need attention.", fields: { filter: `Books cannot be filtered by "${unknown}".` } } },
+						{ status: 422 },
+					)
+				: undefined;
+		};
+		if (path === "/smart-shelves") {
+			if (method === "POST") {
+				const refused = refuse();
+				if (refused) {
+					return refused;
+				}
+				this.withSmartShelf(body.name, JSON.parse(body.filter), { visibility: body.visibility ?? "private" });
+				return Response.json(view(this.smartShelves.at(-1) as Omit<SmartShelf, "books">), { status: 201 });
+			}
+			return Response.json({ shelves: this.smartShelves.map(view) });
+		}
+		const [, id, books] = /^\/smart-shelves\/([^/]+)(\/books)?$/.exec(path) ?? [];
+		const shelf = this.smartShelves.find((s) => s.id === id);
+		if (!shelf) {
+			return Response.json({ error: { code: "not_found", message: "There is no such smart shelf." } }, { status: 404 });
+		}
+		if (books) {
+			return Response.json({ books: on(shelf).sort((a, b) => a.title.localeCompare(b.title)).map(summaryOf) });
+		}
+		if (method !== "GET" && !shelf.mine) {
+			return Response.json({ error: { code: "forbidden", message: "Only its owner changes a smart shelf." } }, { status: 403 });
+		}
+		if (method === "PUT") {
+			const refused = refuse();
+			if (refused) {
+				return refused;
+			}
+			Object.assign(shelf, body);
+		}
+		if (method === "DELETE") {
+			this.smartShelves = this.smartShelves.filter((s) => s !== shelf);
+			return new Response(null, { status: 204 });
+		}
+		return Response.json(view(shelf));
 	}
 
 	/** Names in use on the books, by the beginning of a word. */
@@ -1126,7 +1208,14 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 }
 
 function fieldsOf(r: Rule): string[] {
-	return [...new Set([r.field ?? "", ...(r.all ?? []).flatMap(fieldsOf), ...(r.any ?? []).flatMap(fieldsOf)])]
+	return [
+		...new Set([
+			r.field ?? "",
+			...(r.all ?? []).flatMap(fieldsOf),
+			...(r.any ?? []).flatMap(fieldsOf),
+			...(r.not ? fieldsOf(r.not) : []),
+		]),
+	]
 		.filter(Boolean);
 }
 
@@ -1144,6 +1233,14 @@ function matches(b: BookDetail, r: Rule): boolean {
 		return true;
 	}
 	const have = valuesOf(b, r.field).map(([v]) => v);
+	if (r.op === "empty") {
+		return have.length === 0;
+	}
+	if (r.op === "between" && r.field === "rating") {
+		const [from, to] = r.values ?? [];
+		const stars = b.reading.rating ?? 0;
+		return stars > 0 && (!from || stars >= Number(from)) && (!to || stars <= Number(to));
+	}
 	if (r.op === "between") {
 		const year = Number(b.published?.slice(0, 4));
 		const [from, to] = r.values ?? [];

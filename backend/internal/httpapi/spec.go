@@ -52,6 +52,8 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["Collection.visibility"] = visibility
 	b.FieldOverrides["CollectionDetail.visibility"] = visibility
 	b.FieldOverrides["CollectionRequest.visibility"] = visibility
+	b.FieldOverrides["SmartShelf.visibility"] = visibility
+	b.FieldOverrides["SmartShelfRequest.visibility"] = visibility
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {

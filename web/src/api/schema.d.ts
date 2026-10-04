@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many books the caller may see match a filter */
+        get: operations["countBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/facets": {
         parameters: {
             query?: never;
@@ -848,6 +865,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/smart-shelves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own smart shelves and everyone's shared ones, with what each holds for the caller */
+        get: operations["listSmartShelves"];
+        put?: never;
+        /** Make a smart shelf from a rule tree, private unless it is said to be shared */
+        post: operations["createSmartShelf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/smart-shelves/{shelfId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A smart shelf, with how many books it holds for the caller */
+        get: operations["getSmartShelf"];
+        /** Change a smart shelf of the caller's: its name, rules or who may look at it */
+        put: operations["updateSmartShelf"];
+        post?: never;
+        /** Delete a smart shelf of the caller's */
+        delete: operations["deleteSmartShelf"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/smart-shelves/{shelfId}/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One page of the books on a smart shelf, as they match for the caller now */
+        get: operations["listSmartShelfBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -1022,6 +1093,9 @@ export interface components {
             complete: boolean;
             durationMs: number;
             parts: components["schemas"]["AudioPart"][];
+        };
+        BookCount: {
+            count: number;
         };
         BookDetail: {
             /** Format: date-time */
@@ -1571,6 +1645,30 @@ export interface components {
         SetupStatus: {
             needed: boolean;
         };
+        SmartShelf: {
+            books: number;
+            filter: string;
+            /** Format: uuid */
+            id: string;
+            mine: boolean;
+            name: string;
+            /** Format: uuid */
+            ownerId: string;
+            ownerName: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @enum {string} */
+            visibility: "private" | "shared";
+        };
+        SmartShelfList: {
+            shelves: components["schemas"]["SmartShelf"][];
+        };
+        SmartShelfRequest: {
+            filter: string;
+            name: string;
+            /** @enum {string} */
+            visibility?: "private" | "shared";
+        };
         StatsDay: {
             date: string;
             listeningMinutes: number;
@@ -1934,6 +2032,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    countBooks: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description A rule tree as JSON, as listBooks takes it. */
+                filter?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookCount"];
                 };
             };
             /** @description The request failed. */
@@ -3586,6 +3718,203 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSmartShelves: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartShelfList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createSmartShelf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartShelfRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartShelf"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSmartShelf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shelfId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartShelf"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateSmartShelf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shelfId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartShelfRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartShelf"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteSmartShelf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shelfId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSmartShelfBooks: {
+        parameters: {
+            query?: {
+                /** @description What the books are ordered by; title when left out. */
+                sort?: "title" | "author" | "added";
+                /** @description The direction; asc when left out. */
+                order?: "asc" | "desc";
+                /** @description The nextCursor of the page before. */
+                cursor?: string;
+                /** @description How many books a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                shelfId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookList"];
                 };
             };
             /** @description The request failed. */

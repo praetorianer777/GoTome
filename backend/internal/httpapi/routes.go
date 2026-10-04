@@ -361,6 +361,42 @@ func (s *Server) routes() []Route {
 			Request: collectionOrder{}, Response: collectionDetail{}, Permission: auth.PersonalManage, Handler: s.reorderCollection,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/count", ID: "countBooks",
+			Summary: "How many books the caller may see match a filter", Tag: "books",
+			Query: countBooksQuery{}, Response: bookCount{}, Permission: auth.LibraryRead, Handler: s.countBooks,
+		},
+		{
+			Method: http.MethodGet, Path: "/smart-shelves", ID: "listSmartShelves",
+			Summary: "The caller's own smart shelves and everyone's shared ones, with what each holds for the caller", Tag: "collections",
+			Response: smartShelfList{}, Permission: auth.LibraryRead, Handler: s.listSmartShelves,
+		},
+		{
+			Method: http.MethodPost, Path: "/smart-shelves", ID: "createSmartShelf",
+			Summary: "Make a smart shelf from a rule tree, private unless it is said to be shared", Tag: "collections",
+			Request: smartShelfRequest{}, Response: smartShelf{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createSmartShelf,
+		},
+		{
+			Method: http.MethodGet, Path: "/smart-shelves/{shelfId}", ID: "getSmartShelf",
+			Summary: "A smart shelf, with how many books it holds for the caller", Tag: "collections",
+			Response: smartShelf{}, Permission: auth.LibraryRead, Handler: s.getSmartShelf,
+		},
+		{
+			Method: http.MethodPut, Path: "/smart-shelves/{shelfId}", ID: "updateSmartShelf",
+			Summary: "Change a smart shelf of the caller's: its name, rules or who may look at it", Tag: "collections",
+			Request: smartShelfRequest{}, Response: smartShelf{}, Permission: auth.PersonalManage, Handler: s.updateSmartShelf,
+		},
+		{
+			Method: http.MethodDelete, Path: "/smart-shelves/{shelfId}", ID: "deleteSmartShelf",
+			Summary: "Delete a smart shelf of the caller's", Tag: "collections",
+			Permission: auth.PersonalManage, Handler: s.deleteSmartShelf,
+		},
+		{
+			Method: http.MethodGet, Path: "/smart-shelves/{shelfId}/books", ID: "listSmartShelfBooks",
+			Summary: "One page of the books on a smart shelf, as they match for the caller now", Tag: "collections",
+			Query: smartBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listSmartShelfBooks,
+		},
+		{
 			Method: http.MethodPost, Path: "/books/reading", ID: "setReadingBulk",
 			Summary: "Change where the caller stands with many books at once", Tag: "books",
 			Request: readingBulkRequest{}, Response: readingBulkResult{}, Permission: auth.PersonalManage, Handler: s.setReadingBulk,
