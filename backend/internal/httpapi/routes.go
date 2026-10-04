@@ -47,8 +47,26 @@ type Route struct {
 	// one of the permissions a role is made of. Every route declares one; the
 	// router refuses to start with a route that does not.
 	Permission auth.Permission
-	Handler    HandlerFunc
+	// Reads says what a GET route answers with; the router refuses to
+	// start with one that does not say.
+	Reads   Reads
+	Handler HandlerFunc
 }
+
+// Reads is what a route answers with, as far as libraries are concerned.
+type Reads int
+
+const (
+	readsUnset Reads = iota
+	// ReadsLibraries answers with something that belongs to a library, or
+	// tells of it: a book, a file, a count, a shelf. It must filter through
+	// visible_library_ids, and an integration test calls every such route as
+	// someone outside a private library to prove that it does.
+	ReadsLibraries
+	// ReadsNoLibrary answers with nothing of any library: the build, the
+	// caller's own account, the settings, a provider's answer.
+	ReadsNoLibrary
+)
 
 func (rt Route) successStatus() int {
 	switch {
@@ -61,18 +79,21 @@ func (rt Route) successStatus() int {
 	}
 }
 
+// Table is every API endpoint, as the router mounts them.
+func (s *Server) Table() []Route { return s.routes() }
+
 // routes is the table of every API endpoint.
 func (s *Server) routes() []Route {
 	return []Route{
 		{
 			Method: http.MethodGet, Path: "/version", ID: "getVersion",
 			Summary: "Which build of GOtome is running", Tag: "system",
-			Response: buildInfo{}, Permission: auth.Public, Handler: s.getVersion,
+			Response: buildInfo{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getVersion,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
 			Summary: "Whether the first account still has to be created", Tag: "auth",
-			Response: setupStatus{}, Permission: auth.Public, Handler: s.getSetup,
+			Response: setupStatus{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getSetup,
 		},
 		{
 			Method: http.MethodPost, Path: "/setup", ID: "completeSetup",
@@ -93,13 +114,13 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
-			Response: currentUser{}, Permission: auth.SignedIn, Handler: s.getMe,
+			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getMe,
 		},
 
 		{
 			Method: http.MethodGet, Path: "/libraries", ID: "listLibraries",
 			Summary: "The libraries the caller may see", Tag: "libraries",
-			Response: libraryList{}, Permission: auth.LibraryRead, Handler: s.listLibraries,
+			Response: libraryList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listLibraries,
 		},
 		{
 			Method: http.MethodPost, Path: "/libraries", ID: "createLibrary",
@@ -110,7 +131,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/libraries/{libraryId}", ID: "getLibrary",
 			Summary: "One library, if the caller may see it", Tag: "libraries",
-			Response: libraryResponse{}, Permission: auth.LibraryRead, Handler: s.getLibrary,
+			Response: libraryResponse{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getLibrary,
 		},
 		{
 			Method: http.MethodPatch, Path: "/libraries/{libraryId}", ID: "updateLibrary",
@@ -138,7 +159,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/libraries/{libraryId}/members", ID: "listLibraryMembers",
 			Summary: "Who may see a private library besides its owner", Tag: "libraries",
-			Response: memberList{}, Permission: auth.StorageManage, Handler: s.listLibraryMembers,
+			Response: memberList{}, Reads: ReadsLibraries, Permission: auth.StorageManage, Handler: s.listLibraryMembers,
 		},
 		{
 			Method: http.MethodPut, Path: "/libraries/{libraryId}/members/{userId}", ID: "addLibraryMember",
@@ -154,7 +175,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/auth/sessions", ID: "listOwnSessions",
 			Summary: "The caller's own live sessions, the one in use marked", Tag: "auth",
-			Response: sessionList{}, Permission: auth.SignedIn, Handler: s.listOwnSessions,
+			Response: sessionList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnSessions,
 		},
 		{
 			Method: http.MethodDelete, Path: "/auth/sessions/{sessionId}", ID: "endOwnSession",
@@ -164,7 +185,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
 			Summary: "What the caller's uploads take up, and how much they may", Tag: "auth",
-			Response: storage{}, Permission: auth.SignedIn, Handler: s.getOwnStorage,
+			Response: storage{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getOwnStorage,
 		},
 		{
 			Method: http.MethodPost, Path: "/auth/password", ID: "changePassword",
@@ -175,7 +196,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/users", ID: "listUsers",
 			Summary: "Every account, with when it was last used", Tag: "users",
-			Response: accountList{}, Permission: auth.UsersManage, Handler: s.listUsers,
+			Response: accountList{}, Reads: ReadsNoLibrary, Permission: auth.UsersManage, Handler: s.listUsers,
 		},
 		{
 			Method: http.MethodPost, Path: "/users", ID: "createUser",
@@ -202,7 +223,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/jobs", ID: "listJobs",
 			Summary: "The newest background jobs, with what each works on", Tag: "jobs",
-			Query: listJobsQuery{}, Response: jobList{}, Permission: auth.IndexRebuild, Handler: s.listJobs,
+			Query: listJobsQuery{}, Response: jobList{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.listJobs,
 		},
 		{
 			Method: http.MethodPost, Path: "/jobs/{jobId}/retry", ID: "retryJob",
@@ -229,7 +250,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/settings", ID: "listSettings",
 			Summary: "Every setting; a secret says only whether it is set", Tag: "settings",
-			Response: settingList{}, Permission: auth.SettingsManage, Handler: s.listSettings,
+			Response: settingList{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.listSettings,
 		},
 		{
 			Method: http.MethodPatch, Path: "/settings", ID: "updateSettings",
@@ -240,22 +261,22 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
-			Query: listBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listBooks,
+			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
 			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
-			Query: searchQuery{}, Response: searchResult{}, Permission: auth.LibraryRead, Handler: s.searchBooks,
+			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
-			Query: facetsQuery{}, Response: facetList{}, Permission: auth.LibraryRead, Handler: s.listFacets,
+			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}", ID: "getBook",
 			Summary: "One book with everything that describes it and its files", Tag: "books",
-			Response: bookDetail{}, Permission: auth.LibraryRead, Handler: s.getBook,
+			Response: bookDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBook,
 		},
 		{
 			Method: http.MethodPatch, Path: "/books/{bookId}", ID: "editBook",
@@ -276,7 +297,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/candidates", ID: "listCandidates",
 			Summary: "What the metadata providers know about a book, the best fit first", Tag: "books",
-			Response: candidateList{}, Permission: auth.MetadataEdit, Handler: s.listCandidates,
+			Response: candidateList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCandidates,
 		},
 		{
 			Method: http.MethodPost, Path: "/books/{bookId}/candidates/apply", ID: "applyCandidate",
@@ -291,12 +312,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/audio", ID: "getAudio",
 			Summary: "A book's audio as one recording: its parts in order and the chapters across them", Tag: "books",
-			Response: audioTimeline{}, Permission: auth.LibraryRead, Handler: s.getAudio,
+			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAudio,
 		},
 		{
 			Method: http.MethodGet, Path: "/metadata/search", ID: "searchMetadata",
 			Summary: "Books the metadata providers know by title, author or ISBN, to wish for", Tag: "books",
-			Query: metadataSearchQuery{}, Response: candidateList{}, Permission: auth.PersonalManage, Handler: s.searchMetadata,
+			Query: metadataSearchQuery{}, Response: candidateList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.searchMetadata,
 		},
 		{
 			Method: http.MethodPost, Path: "/books/wishes", ID: "createWish",
@@ -307,12 +328,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
-			Query: statsQuery{}, Response: readingStats{}, Permission: auth.PersonalManage, Handler: s.getStats,
+			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
-			Response: progressState{}, Permission: auth.PersonalManage, Handler: s.getProgress,
+			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getProgress,
 		},
 		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
@@ -322,7 +343,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/collections", ID: "listCollections",
 			Summary: "The caller's own collections and everyone's shared ones", Tag: "collections",
-			Query: collectionsQuery{}, Response: collectionList{}, Permission: auth.LibraryRead, Handler: s.listCollections,
+			Query: collectionsQuery{}, Response: collectionList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listCollections,
 		},
 		{
 			Method: http.MethodPost, Path: "/collections", ID: "createCollection",
@@ -333,7 +354,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/collections/{collectionId}", ID: "getCollection",
 			Summary: "A collection and, in its order, the books of it the caller may see", Tag: "collections",
-			Response: collectionDetail{}, Permission: auth.LibraryRead, Handler: s.getCollection,
+			Response: collectionDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getCollection,
 		},
 		{
 			Method: http.MethodPut, Path: "/collections/{collectionId}", ID: "updateCollection",
@@ -363,12 +384,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/count", ID: "countBooks",
 			Summary: "How many books the caller may see match a filter", Tag: "books",
-			Query: countBooksQuery{}, Response: bookCount{}, Permission: auth.LibraryRead, Handler: s.countBooks,
+			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.countBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/smart-shelves", ID: "listSmartShelves",
 			Summary: "The caller's own smart shelves and everyone's shared ones, with what each holds for the caller", Tag: "collections",
-			Response: smartShelfList{}, Permission: auth.LibraryRead, Handler: s.listSmartShelves,
+			Response: smartShelfList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listSmartShelves,
 		},
 		{
 			Method: http.MethodPost, Path: "/smart-shelves", ID: "createSmartShelf",
@@ -379,7 +400,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/smart-shelves/{shelfId}", ID: "getSmartShelf",
 			Summary: "A smart shelf, with how many books it holds for the caller", Tag: "collections",
-			Response: smartShelf{}, Permission: auth.LibraryRead, Handler: s.getSmartShelf,
+			Response: smartShelf{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getSmartShelf,
 		},
 		{
 			Method: http.MethodPut, Path: "/smart-shelves/{shelfId}", ID: "updateSmartShelf",
@@ -394,7 +415,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/smart-shelves/{shelfId}/books", ID: "listSmartShelfBooks",
 			Summary: "One page of the books on a smart shelf, as they match for the caller now", Tag: "collections",
-			Query: smartBooksQuery{}, Response: bookList{}, Permission: auth.LibraryRead, Handler: s.listSmartShelfBooks,
+			Query: smartBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listSmartShelfBooks,
 		},
 		{
 			Method: http.MethodPost, Path: "/books/reading", ID: "setReadingBulk",
@@ -410,12 +431,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/bulk/{bulkId}", ID: "getBulk",
 			Summary: "A bulk change the caller asked for, and what it came to for each book so far", Tag: "books",
-			Response: bulkStatus{}, Permission: auth.MetadataEdit, Handler: s.getBulk,
+			Response: bulkStatus{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.getBulk,
 		},
 		{
 			Method: http.MethodGet, Path: "/matches", ID: "listReview",
 			Summary: "Books whose doubtful matches wait for a person, those that wait longest first", Tag: "books",
-			Query: reviewQuery{}, Response: reviewList{}, Permission: auth.MetadataEdit, Handler: s.listReview,
+			Query: reviewQuery{}, Response: reviewList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listReview,
 		},
 		{
 			Method: http.MethodPost, Path: "/matches/{matchId}/accept", ID: "acceptMatch",
@@ -430,24 +451,24 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/metadata/covers/{token}", ID: "getCandidateCover",
 			Summary: "A provider's cover for a candidate, fetched through the server", Tag: "books",
-			Produces: "image/*", Status: http.StatusOK, Permission: auth.PersonalManage, Handler: s.getCandidateCover,
+			Produces: "image/*", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.getCandidateCover,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/names", ID: "listNames",
 			Summary: "Author, series, publisher or tag names in use that begin as typed", Tag: "books",
-			Query: namesQuery{}, Response: nameList{}, Permission: auth.MetadataEdit, Handler: s.listNames,
+			Query: namesQuery{}, Response: nameList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listNames,
 		},
 		{
 			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
 			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
 			Produces: "application/octet-stream", Status: http.StatusOK,
-			Permission: auth.LibraryRead, Handler: s.downloadFile,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.downloadFile,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
 			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",
 			Produces: "image/jpeg", Status: http.StatusOK,
-			Permission: auth.LibraryRead, Handler: s.getBookCover,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBookCover,
 		},
 	}
 }

@@ -100,17 +100,24 @@ func mounts(routes ...Route) (panicked any) {
 
 func TestRouterRefusesATableWithAnUndeclaredRoute(t *testing.T) {
 	handler := func(http.ResponseWriter, *http.Request) error { return nil }
-	declared := Route{Method: http.MethodGet, Path: "/a", Permission: auth.LibraryRead, Handler: handler}
+	declared := Route{Method: http.MethodGet, Path: "/a", Permission: auth.LibraryRead, Reads: ReadsLibraries, Handler: handler}
 
 	if rec := mounts(declared); rec != nil {
 		t.Errorf("a declared route does not mount: %v", rec)
 	}
 	for name, permission := range map[string]auth.Permission{"none": "", "a role, not a permission": "admin"} {
-		undeclared := Route{Method: http.MethodGet, Path: "/b", Permission: permission, Handler: handler}
+		undeclared := Route{Method: http.MethodGet, Path: "/b", Permission: permission, Reads: ReadsLibraries, Handler: handler}
 		rec := mounts(declared, undeclared)
 		if rec == nil || !strings.Contains(rec.(string), "GET /b") {
 			t.Errorf("%s: mounting said %v, want a refusal naming the route", name, rec)
 		}
+	}
+	silent := Route{Method: http.MethodGet, Path: "/c", Permission: auth.LibraryRead, Handler: handler}
+	if rec := mounts(declared, silent); rec == nil || !strings.Contains(rec.(string), "GET /c does not say what it reads") {
+		t.Errorf("a read route that does not say what it reads: mounting said %v", rec)
+	}
+	if rec := mounts(Route{Method: http.MethodPost, Path: "/d", Permission: auth.LibraryRead, Handler: handler}); rec != nil {
+		t.Errorf("a change needs no Reads, but mounting said %v", rec)
 	}
 	if rec := mounts(testServer().routes()...); rec != nil {
 		t.Errorf("the real route table does not mount: %v", rec)

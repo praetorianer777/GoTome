@@ -95,6 +95,9 @@ func mount(api chi.Router, routes []Route) {
 		if !auth.Known(rt.Permission) {
 			panic(fmt.Sprintf("httpapi: route %s %s declares no known permission (%q)", rt.Method, rt.Path, rt.Permission))
 		}
+		if rt.Method == http.MethodGet && rt.Reads == readsUnset {
+			panic(fmt.Sprintf("httpapi: route %s %s does not say what it reads", rt.Method, rt.Path))
+		}
 		api.Method(rt.Method, rt.Path, handle(require(rt.Permission, rt.Handler)))
 	}
 }
