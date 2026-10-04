@@ -150,7 +150,7 @@ func (s *Server) getBulk(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	st, err := s.Bulk.Status(r.Context(), UserFrom(r.Context()).ID, id)
+	st, err := s.Bulk.Status(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	if errors.Is(err, bulk.ErrNotFound) {
 		return ErrNotFound("There is no such bulk change.")
 	}

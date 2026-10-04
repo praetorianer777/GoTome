@@ -85,8 +85,15 @@ SELECT cb.book_id, cb.outcome, cb.message, cb.skipped, b.title
 FROM bulk_change_books cb
 JOIN books b ON b.id = cb.book_id
 WHERE cb.bulk_change_id = $1
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
 ORDER BY cb.position
 `
+
+type ListBulkChangeBooksParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
 
 type ListBulkChangeBooksRow struct {
 	BookID  uuid.UUID
@@ -96,8 +103,10 @@ type ListBulkChangeBooksRow struct {
 	Title   string
 }
 
-func (q *Queries) ListBulkChangeBooks(ctx context.Context, bulkChangeID uuid.UUID) ([]ListBulkChangeBooksRow, error) {
-	rows, err := q.db.Query(ctx, listBulkChangeBooks, bulkChangeID)
+// The books of a change the viewer may still see: one they lost access to
+// since is left out, as if it had never been in it.
+func (q *Queries) ListBulkChangeBooks(ctx context.Context, arg ListBulkChangeBooksParams) ([]ListBulkChangeBooksRow, error) {
+	rows, err := q.db.Query(ctx, listBulkChangeBooks, arg.ID, arg.Viewer, arg.SeesAll)
 	if err != nil {
 		return nil, err
 	}

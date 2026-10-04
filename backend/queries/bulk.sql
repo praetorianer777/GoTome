@@ -28,8 +28,11 @@ WHERE bulk_change_id = $1 AND book_id = $2;
 UPDATE bulk_changes SET finished_at = now() WHERE id = $1 AND finished_at IS NULL;
 
 -- name: ListBulkChangeBooks :many
+-- The books of a change the viewer may still see: one they lost access to
+-- since is left out, as if it had never been in it.
 SELECT cb.book_id, cb.outcome, cb.message, cb.skipped, b.title
 FROM bulk_change_books cb
 JOIN books b ON b.id = cb.book_id
-WHERE cb.bulk_change_id = $1
+WHERE cb.bulk_change_id = sqlc.arg(id)
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY cb.position;

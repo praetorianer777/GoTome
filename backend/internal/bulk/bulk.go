@@ -270,17 +270,18 @@ type Result struct {
 	Skipped []string
 }
 
-// Status returns a bulk change the viewer asked for, or ErrNotFound.
-func (s *Service) Status(ctx context.Context, viewer, id uuid.UUID) (Status, error) {
+// Status returns a bulk change the scope's user asked for, or ErrNotFound,
+// with the books of it they may still see.
+func (s *Service) Status(ctx context.Context, scope library.Scope, id uuid.UUID) (Status, error) {
 	q := sqlc.New(s.pool)
 	row, err := q.GetBulkChange(ctx, id)
-	if errors.Is(err, pgx.ErrNoRows) || err == nil && row.CreatedBy != viewer {
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && row.CreatedBy != scope.Viewer {
 		return Status{}, ErrNotFound
 	}
 	if err != nil {
 		return Status{}, err
 	}
-	books, err := q.ListBulkChangeBooks(ctx, id)
+	books, err := q.ListBulkChangeBooks(ctx, sqlc.ListBulkChangeBooksParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if err != nil {
 		return Status{}, err
 	}

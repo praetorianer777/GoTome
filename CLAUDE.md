@@ -154,6 +154,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   another query.
 - Something the viewer may not see is answered exactly like something that does not
   exist: 404, same body.
+- Every GET route says what it reads (`Route.Reads`); the router refuses to
+  start with one that does not. `ReadsLibraries` routes are each called in
+  `TestEveryReadRouteKeepsToTheCallersLibraries` (`test/visibility_test.go`)
+  as a former member and a stranger of a private library: no answer may name
+  its book, and one about the book must equal the answer about an ID or name
+  that does not exist. A new such route needs its calls in `readCases`, with
+  someone who does see the book as the control, or the test fails.
 - Managed libraries live under `GOTOME_DATA_DIR` (`/data` in the image, a volume);
   external ones are folders mounted into the container.
 
