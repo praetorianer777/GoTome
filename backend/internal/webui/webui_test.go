@@ -103,3 +103,25 @@ func TestEmbeddedDirectoryIsServable(t *testing.T) {
 		t.Errorf("status %d from the embedded build", rec.Code)
 	}
 }
+
+func TestEveryResponseCarriesThePolicyThatKeepsBookScriptsFromRunning(t *testing.T) {
+	h := New(built())
+	for _, target := range []string{"/", "/books/42/read/7", "/assets/index-abc.js", "/favicon.ico"} {
+		policy := get(t, h, http.MethodGet, target).Header().Get("Content-Security-Policy")
+		directives := map[string]string{}
+		for _, d := range strings.Split(policy, ";") {
+			name, value, _ := strings.Cut(strings.TrimSpace(d), " ")
+			directives[name] = value
+		}
+		if s := directives["script-src"]; !strings.HasPrefix(s, "'self'") || strings.Contains(s, "unsafe-inline") ||
+			strings.Contains(s, "blob:") || strings.Contains(s, "'unsafe-eval'") {
+			t.Errorf("%s: script-src %q lets a book's script run", target, s)
+		}
+		if directives["connect-src"] != "'self'" || directives["default-src"] != "'self'" {
+			t.Errorf("%s: a book could reach the network: %q", target, policy)
+		}
+		if directives["object-src"] != "'none'" {
+			t.Errorf("%s: object-src %q", target, directives["object-src"])
+		}
+	}
+}

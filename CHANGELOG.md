@@ -170,3 +170,8 @@ What changes for someone who runs or uses GOtome. The format follows
   and nested in groups. While you build the rules you see how many books
   match. A smart shelf stays current by itself, and shared ones show each
   person what matches for them.
+- Read EPUB, MOBI and AZW3 books in the browser, with a table of contents,
+  page turning by button, arrow keys or swiping, text size, light, sepia and
+  dark pages, and a choice of pages or scrolling. The reader opens where you
+  left off, on this device or another. Scripts inside a book never run, and
+  a book cannot load anything from the internet.

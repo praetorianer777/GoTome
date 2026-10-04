@@ -16,3 +16,28 @@ node_modules/
 
 /e2e/test-results/
 /e2e/playwright-report/
+
+# foliate-js is kept to what the EPUB and MOBI reader loads: upstream's demo
+# reader, tests and build files stay out, and so do its PDF adapter and the
+# copy of PDF.js it brings, as PDFs open in our own PDF reader.
+/web/vendor/foliate-js/*
+!/web/vendor/foliate-js/COMMIT
+!/web/vendor/foliate-js/LICENSE
+!/web/vendor/foliate-js/README.md
+!/web/vendor/foliate-js/view.js
+!/web/vendor/foliate-js/epub.js
+!/web/vendor/foliate-js/epubcfi.js
+!/web/vendor/foliate-js/mobi.js
+!/web/vendor/foliate-js/fb2.js
+!/web/vendor/foliate-js/comic-book.js
+!/web/vendor/foliate-js/paginator.js
+!/web/vendor/foliate-js/fixed-layout.js
+!/web/vendor/foliate-js/progress.js
+!/web/vendor/foliate-js/overlayer.js
+!/web/vendor/foliate-js/text-walker.js
+!/web/vendor/foliate-js/search.js
+!/web/vendor/foliate-js/tts.js
+!/web/vendor/foliate-js/vendor/
+/web/vendor/foliate-js/vendor/*
+!/web/vendor/foliate-js/vendor/zip.js
+!/web/vendor/foliate-js/vendor/fflate.js

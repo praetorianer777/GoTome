@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { bookQuery, downloadUrl } from "@/books/api";
 import {
@@ -33,12 +33,6 @@ function pageIn(
 		return undefined;
 	}
 	return Number(match[1]);
-}
-
-/** The reader at its address, which names the book and the file. */
-export function PdfReaderRoute() {
-	const { bookId, fileId } = useParams({ from: "/app/books/$bookId/read/$fileId" });
-	return <PdfReader bookId={bookId} fileId={fileId} />;
 }
 
 /** A PDF of a book, a page at a time, picking up where the person left off. */

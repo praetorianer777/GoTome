@@ -377,6 +377,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   which sends this browser's `clientId` and the `updatedAt` it last read as
   `basedOn`, and offers a further place another device saved. A PDF's
   locator is `page:<n>`, its fraction the page over the page count.
+- EPUB, MOBI, AZW3 and AZW open in the ebook reader (`routes/read-ebook.tsx`),
+  through `web/src/reader/ebook.ts`, the only file that imports foliate-js;
+  app tests mock it. `/books/$bookId/read/$fileId` picks the reader by the
+  file's format (`routes/read.tsx`), and each reader loads with the first
+  file of its kind. Its locator is the EPUB CFI foliate-js gives, its
+  fraction foliate-js's, or 1 on the last page. Moves are queued: a jump
+  made while a page turns is otherwise undone. Display settings are each
+  browser's own (localStorage).
+- foliate-js is vendored in `web/vendor/foliate-js` at the commit in its
+  `COMMIT` file. `.gitignore` keeps it to the files the reader loads; its
+  PDF adapter is not among them, and `vite.config.ts` resolves its import
+  to a stub. It renders a book in same-origin `blob:` frames, so what keeps
+  a book's scripts from running and its content off the network is the
+  Content Security Policy the server sends with every page of the web app
+  (`webui.ContentSecurityPolicy`): no inline script, no `blob:` script, no
+  connection or image from another origin. Do not loosen it.
 - The audiobook player (`web/src/player`) is one `<audio>` element in
   `PlayerProvider`, which the shell holds, so a book plays on across pages;
   `MiniPlayer` is its bar, `/books/$bookId/listen` its page.

@@ -3,7 +3,6 @@ import {
 	createRootRouteWithContext,
 	createRoute,
 	createRouter,
-	lazyRouteComponent,
 	Outlet,
 	type RouterHistory,
 	redirect,
@@ -20,6 +19,7 @@ import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
 import { Stats } from "@/routes/stats";
+import { ReaderRoute } from "@/routes/read";
 import { CollectionPage } from "@/routes/collection";
 import { Collections } from "@/routes/collections";
 import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
@@ -220,8 +220,7 @@ const reviewRoute = createRoute({
 const readPdfRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId/read/$fileId",
-	// PDF.js is most of the app's weight; it loads with the first PDF opened.
-	component: lazyRouteComponent(() => import("@/routes/read-pdf"), "PdfReaderRoute"),
+	component: ReaderRoute,
 });
 
 const listenRoute = createRoute({

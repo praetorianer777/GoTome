@@ -17,6 +17,17 @@ import (
 //go:embed all:dist
 var embedded embed.FS
 
+// ContentSecurityPolicy goes with every response of the web app. The ebook
+// reader shows a book's pages in frames of blob: documents, which take the
+// policy of the page that made them: a script a book carries does not run,
+// and nothing in a book reaches the network, as foliate-js requires
+// (web/vendor/foliate-js/README.md). WebAssembly is for PDF.js's image
+// decoders.
+const ContentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; " +
+	"style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; " +
+	"media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; " +
+	"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+
 func init() {
 	// Go's table does not know the web app manifest, and a browser ignores
 	// one served as plain text.
@@ -40,6 +51,7 @@ func Handler() http.Handler {
 func New(dist fs.FS) http.Handler {
 	files := http.FileServerFS(dist)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", ContentSecurityPolicy)
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
