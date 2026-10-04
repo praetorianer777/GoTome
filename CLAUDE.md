@@ -393,6 +393,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   came from an EPUB or MOBI, whose pages are worked out from their text.
   Every finish counts in its year, so a re-read counts again.
 
+## Wishlist and placeholders
+
+- A wish (`POST /books/wishes`, `catalog.Service.CreatePlaceholder`) is a
+  book without files made from a provider's record (`GET /metadata/search`)
+  with `books.placeholder` set, and on the wisher's wishlist (status
+  `wishlist`). Placeholders are not in the library yet: `visibleBooks`
+  leaves them out unless a list asks with `placeholders=include`, and the
+  quick search and facets never show them. Duplicate detection and
+  embeddings must leave them out too (`NOT b.placeholder`).
+- Extraction fulfils one: `catalog.FulfilPlaceholderTx` runs before a
+  file's metadata is applied. When the file names a placeholder of its
+  library, by a shared ISBN or by title and an author, and the file's book
+  is only what a scan made (no lock, no manual or provider value, nobody's
+  state), the book's files move to the placeholder and the scan's book is
+  merged into it (`merged_into_id`).
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an

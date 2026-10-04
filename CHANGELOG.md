@@ -156,3 +156,8 @@ What changes for someone who runs or uses GOtome. The format follows
   finished each year (reading one again counts again), and when you
   started and finished which. Page counts of EPUB and MOBI books are
   estimates and marked so. Everyone sees only their own.
+- A wishlist. Look a book up with the metadata sources on the Wishlist page
+  and wish for it: it gets an entry with its cover and details, marked as
+  not in the library yet, and stays out of the library's lists and search.
+  When a file of that book is added, by its ISBN or its title and author,
+  it joins the wished entry instead of making a second book.

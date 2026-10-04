@@ -356,6 +356,17 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "placeholders",
+            "in": "query",
+            "description": "include lists the books wished for that the library does not hold yet, too; left out, they are not listed.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "include"
+              ]
+            }
           }
         ],
         "responses": {
@@ -659,6 +670,53 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/books/wishes": {
+      "post": {
+        "operationId": "createWish",
+        "summary": "Wish for a book the library does not hold: a placeholder from a provider's record",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/books/{bookId}": {
@@ -2306,7 +2364,70 @@
             "session": []
           }
         ],
-        "x-permission": "metadata:edit"
+        "x-permission": "personal:manage"
+      }
+    },
+    "/metadata/search": {
+      "get": {
+        "operationId": "searchMetadata",
+        "summary": "Books the metadata providers know by title, author or ISBN, to wish for",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "description": "The book's title, or part of it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "author",
+            "in": "query",
+            "description": "One of its authors.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isbn",
+            "in": "query",
+            "description": "An ISBN, with or without hyphens; found by it before anything else.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/settings": {
@@ -3082,6 +3203,9 @@
           "pageCount": {
             "type": "integer"
           },
+          "placeholder": {
+            "type": "boolean"
+          },
           "published": {
             "type": "string"
           },
@@ -3120,7 +3244,8 @@
           "files",
           "addedAt",
           "fields",
-          "reading"
+          "reading",
+          "placeholder"
         ]
       },
       "BookFile": {
@@ -3247,6 +3372,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "placeholder": {
+            "type": "boolean"
+          },
           "publishedYear": {
             "type": "integer"
           },
@@ -3283,7 +3411,8 @@
           "authors",
           "formats",
           "addedAt",
-          "status"
+          "status",
+          "placeholder"
         ]
       },
       "BuildInfo": {
@@ -4642,6 +4771,9 @@
               "series"
             ]
           },
+          "placeholder": {
+            "type": "boolean"
+          },
           "publishedYear": {
             "type": "integer"
           },
@@ -4679,6 +4811,7 @@
           "formats",
           "addedAt",
           "status",
+          "placeholder",
           "match"
         ]
       },
@@ -5049,6 +5182,73 @@
           "id",
           "username",
           "role"
+        ]
+      },
+      "WishRequest": {
+        "type": "object",
+        "properties": {
+          "contributors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contributor"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "series": {
+            "$ref": "#/components/schemas/SeriesPlace"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "library",
+          "provider"
         ]
       }
     },

@@ -51,6 +51,7 @@ type Book struct {
 	UpdatedAt          time.Time
 	PrimaryTextFileID  *uuid.UUID
 	AuthorSort         string
+	Placeholder        bool
 }
 
 type BookContributor struct {

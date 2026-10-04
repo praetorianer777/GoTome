@@ -294,6 +294,17 @@ func (s *Server) routes() []Route {
 			Response: audioTimeline{}, Permission: auth.LibraryRead, Handler: s.getAudio,
 		},
 		{
+			Method: http.MethodGet, Path: "/metadata/search", ID: "searchMetadata",
+			Summary: "Books the metadata providers know by title, author or ISBN, to wish for", Tag: "books",
+			Query: metadataSearchQuery{}, Response: candidateList{}, Permission: auth.PersonalManage, Handler: s.searchMetadata,
+		},
+		{
+			Method: http.MethodPost, Path: "/books/wishes", ID: "createWish",
+			Summary: "Wish for a book the library does not hold: a placeholder from a provider's record", Tag: "books",
+			Request: wishRequest{}, Response: bookDetail{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createWish,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
 			Query: statsQuery{}, Response: readingStats{}, Permission: auth.PersonalManage, Handler: s.getStats,
@@ -342,7 +353,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/metadata/covers/{token}", ID: "getCandidateCover",
 			Summary: "A provider's cover for a candidate, fetched through the server", Tag: "books",
-			Produces: "image/*", Status: http.StatusOK, Permission: auth.MetadataEdit, Handler: s.getCandidateCover,
+			Produces: "image/*", Status: http.StatusOK, Permission: auth.PersonalManage, Handler: s.getCandidateCover,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/names", ID: "listNames",

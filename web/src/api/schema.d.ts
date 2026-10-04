@@ -225,6 +225,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/wishes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Wish for a book the library does not hold: a placeholder from a provider's record */
+        post: operations["createWish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}": {
         parameters: {
             query?: never;
@@ -690,6 +707,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metadata/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books the metadata providers know by title, author or ISBN, to wish for */
+        get: operations["searchMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -919,6 +953,7 @@ export interface components {
             /** Format: uuid */
             libraryId: string;
             pageCount?: number;
+            placeholder: boolean;
             published?: string;
             publisher?: string;
             reading: components["schemas"]["ReadingState"];
@@ -964,6 +999,7 @@ export interface components {
             id: string;
             /** Format: uuid */
             libraryId: string;
+            placeholder: boolean;
             publishedYear?: number;
             rating?: number;
             series?: string;
@@ -1341,6 +1377,7 @@ export interface components {
             libraryId: string;
             /** @enum {string} */
             match: "title" | "author" | "series";
+            placeholder: boolean;
             publishedYear?: number;
             rating?: number;
             series?: string;
@@ -1455,6 +1492,26 @@ export interface components {
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             username: string;
+        };
+        WishRequest: {
+            contributors?: components["schemas"]["Contributor"][];
+            coverToken?: string;
+            description?: string;
+            identifiers?: components["schemas"]["Identifier"][];
+            language?: string;
+            /** Format: uuid */
+            library: string;
+            locks?: {
+                [key: string]: boolean;
+            };
+            pageCount?: number;
+            provider: string;
+            published?: string;
+            publisher?: string;
+            series?: components["schemas"]["SeriesPlace"];
+            subtitle?: string;
+            tags?: string[];
+            title?: string;
         };
     };
     responses: never;
@@ -1687,6 +1744,8 @@ export interface operations {
                 cursor?: string;
                 /** @description How many books a page holds, at most 200; 50 when left out. */
                 limit?: number;
+                /** @description include lists the books wished for that the library does not hold yet, too; left out, they are not listed. */
+                placeholders?: "include";
             };
             header?: never;
             path?: never;
@@ -1871,6 +1930,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createWish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WishRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetail"];
                 };
             };
             /** @description The request failed. */
@@ -2933,6 +3025,42 @@ export interface operations {
                 };
                 content: {
                     "image/*": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchMetadata: {
+        parameters: {
+            query?: {
+                /** @description The book's title, or part of it. */
+                title?: string;
+                /** @description One of its authors. */
+                author?: string;
+                /** @description An ISBN, with or without hyphens; found by it before anything else. */
+                isbn?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateList"];
                 };
             };
             /** @description The request failed. */

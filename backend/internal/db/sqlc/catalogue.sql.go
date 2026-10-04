@@ -103,7 +103,7 @@ INSERT INTO books (
     field_sources
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort
+RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort, placeholder
 `
 
 type CreateBookParams struct {
@@ -166,6 +166,7 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, e
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
+		&i.Placeholder,
 	)
 	return i, err
 }
@@ -302,7 +303,7 @@ func (q *Queries) GetSeries(ctx context.Context, id uuid.UUID) (Series, error) {
 }
 
 const getVisibleBook = `-- name: GetVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
@@ -345,6 +346,7 @@ func (q *Queries) GetVisibleBook(ctx context.Context, arg GetVisibleBookParams) 
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
+		&i.Placeholder,
 	)
 	return i, err
 }
@@ -660,7 +662,7 @@ func (q *Queries) ListFileChapters(ctx context.Context, fileIds []uuid.UUID) ([]
 }
 
 const lockBookOfFile = `-- name: LockBookOfFile :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
 FROM books b
 JOIN book_files f ON f.book_id = b.id
 WHERE f.id = $1
@@ -697,12 +699,13 @@ func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
+		&i.Placeholder,
 	)
 	return i, err
 }
 
 const lockVisibleBook = `-- name: LockVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
@@ -746,6 +749,7 @@ func (q *Queries) LockVisibleBook(ctx context.Context, arg LockVisibleBookParams
 		&i.UpdatedAt,
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
+		&i.Placeholder,
 	)
 	return i, err
 }

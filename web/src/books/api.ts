@@ -16,6 +16,8 @@ export interface BookListParams {
 	filter?: string;
 	sort: BookSort;
 	order: BookOrder;
+	/** "include" lists the books wished for that are not in the library yet. */
+	placeholders?: "include";
 }
 
 const PAGE_SIZE = 60;

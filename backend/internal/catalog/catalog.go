@@ -183,6 +183,8 @@ type Book struct {
 	Locked []string
 	// Reading is where the scope's user stands with the book.
 	Reading Reading
+	// Placeholder is a book wished for that the library does not hold yet.
+	Placeholder bool
 }
 
 // Service reads and writes the catalogue.
@@ -387,7 +389,7 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		Subtitle: deref(row.Subtitle), Description: deref(row.Description), Language: deref(row.Language),
 		PublishedOn: row.PublishedOn, PublishedPrecision: deref(row.PublishedPrecision),
 		SeriesIndex: row.SeriesIndex, PageCount: row.PageCount,
-		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt, Locked: row.LockedFields,
+		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt, Locked: row.LockedFields, Placeholder: row.Placeholder,
 	}
 	if err := json.Unmarshal(row.FieldSources, &book.Sources); err != nil {
 		return Book{}, fmt.Errorf("field sources of book %s: %w", row.ID, err)

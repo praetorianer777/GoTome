@@ -9,6 +9,7 @@ import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
+import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
@@ -149,6 +150,7 @@ export class FakeServer {
 			files: [],
 			fields: {},
 			reading: { status: "unread" },
+			placeholder: false,
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 		});
@@ -173,6 +175,9 @@ export class FakeServer {
 					? undefined
 					: await request.json().catch(() => undefined);
 			this.requests.push({ method: request.method, path: path + url.search, body });
+			if (path === "/metadata/search") {
+				return Response.json(this.candidates.search ?? { candidates: [], failures: [] });
+			}
 			if (path === "/me/stats") {
 				return Response.json(
 					this.stats ?? {
@@ -425,6 +430,17 @@ export class FakeServer {
 		if (progress) {
 			return Response.json(this.progress[progress[1] ?? ""] ?? { finishes: 0 });
 		}
+		if (path === "/books/wishes") {
+			const wish = body as WishRequest;
+			this.withBook(wish.title ?? "", {
+				libraryId: wish.library,
+				contributors: wish.contributors ?? [],
+				publisher: wish.publisher,
+				placeholder: true,
+				reading: { status: "wishlist" },
+			});
+			return Response.json(this.books.at(-1), { status: 201 });
+		}
 		if (path === "/books/reading") {
 			const req = body as ReadingBulk;
 			const chosen = this.books.filter((b) =>
@@ -479,6 +495,7 @@ export class FakeServer {
 		const tree = query.get("filter");
 		const sorted = this.books
 			.filter((b) => !query.get("library") || b.libraryId === query.get("library"))
+			.filter((b) => !b.placeholder || query.get("placeholders") === "include")
 			.filter((b) => !tree || matches(b, JSON.parse(tree)))
 			.sort((a, b) => key(a).localeCompare(key(b)));
 		if (query.get("order") === "desc") {
@@ -500,6 +517,7 @@ export class FakeServer {
 				addedAt: b.addedAt,
 				status: b.reading.status,
 				rating: b.reading.rating,
+				placeholder: b.placeholder,
 			})),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});

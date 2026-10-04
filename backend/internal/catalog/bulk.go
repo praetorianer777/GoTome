@@ -31,7 +31,7 @@ func (s *Service) Select(ctx context.Context, scope library.Scope, libraryID *uu
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
-	where, err := visibleBooks(scope, libraryID, tree, arg)
+	where, err := visibleBooks(scope, libraryID, tree, false, arg)
 	if err != nil {
 		return nil, err
 	}

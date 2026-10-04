@@ -13,7 +13,7 @@ import { MiniPlayer } from "@/player/controls";
 import { PlayerProvider } from "@/player/player";
 
 export interface NavItem {
-	to: "/" | "/upload" | "/review" | "/stats" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
+	to: "/" | "/upload" | "/review" | "/wishlist" | "/stats" | "/jobs" | "/admin/libraries" | "/admin/users" | "/admin/settings";
 	label: MessageKey;
 	/** What the person must be allowed to do for the entry to be offered. */
 	permission: Permission;
@@ -27,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
 	{ to: "/", label: "nav.library", permission: "library:read" },
 	{ to: "/upload", label: "nav.upload", permission: "books:upload" },
 	{ to: "/review", label: "nav.review", permission: "metadata:edit" },
+	{ to: "/wishlist", label: "nav.wishlist", permission: "personal:manage" },
 	{ to: "/stats", label: "nav.stats", permission: "personal:manage" },
 	{ to: "/jobs", label: "nav.jobs", permission: "index:rebuild" },
 	{ to: "/admin/libraries", label: "nav.libraries", permission: "storage:manage" },

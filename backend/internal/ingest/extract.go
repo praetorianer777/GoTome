@@ -168,11 +168,17 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		if err != nil || n == 0 {
 			return err
 		}
+		// A file a placeholder waited for joins it first, so that what the
+		// file says describes the placeholder.
+		bookID, err := catalog.FulfilPlaceholderTx(ctx, tx, file.BookID, got.Metadata)
+		if err != nil {
+			return err
+		}
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
 			return err
 		}
 		if s.OnExtracted != nil {
-			if err := s.OnExtracted(ctx, tx, file.BookID); err != nil {
+			if err := s.OnExtracted(ctx, tx, bookID); err != nil {
 				return err
 			}
 		}
@@ -189,13 +195,13 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		}
 		// The book is locked by now, so the parts of one audiobook are put in
 		// order by one file's job at a time.
-		if err := orderParts(ctx, q, file.BookID); err != nil {
+		if err := orderParts(ctx, q, bookID); err != nil {
 			return err
 		}
 		if !got.HasText {
 			return nil
 		}
-		return q.SetPrimaryTextFile(ctx, sqlc.SetPrimaryTextFileParams{ID: file.BookID, PrimaryTextFileID: &fileID})
+		return q.SetPrimaryTextFile(ctx, sqlc.SetPrimaryTextFileParams{ID: bookID, PrimaryTextFileID: &fileID})
 	})
 }
 

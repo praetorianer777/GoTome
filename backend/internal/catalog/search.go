@@ -81,7 +81,7 @@ FROM best
 JOIN books b ON b.id = best.id
 LEFT JOIN series s ON s.id = b.series_id
 ` + summaryJoin("$1") + `
-WHERE b.library_id IN (SELECT visible_library_ids($1, $2))
+WHERE b.library_id IN (SELECT visible_library_ids($1, $2)) AND NOT b.placeholder
 ORDER BY best.score DESC, b.sort_title, b.id
 LIMIT $4`
 

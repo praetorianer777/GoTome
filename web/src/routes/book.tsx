@@ -163,6 +163,12 @@ function BookPage({ book }: { book: BookDetail }) {
 						)}
 					</header>
 
+					{book.placeholder && (
+						<p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm dark:border-sky-900 dark:bg-sky-950">
+							{t("book.placeholder")}
+						</p>
+					)}
+
 					{can(user, "personal:manage") && <ReadingControls book={book} />}
 
 					{book.description && (
