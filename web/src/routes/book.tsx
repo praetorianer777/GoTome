@@ -10,6 +10,7 @@ import {
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
 import { ReadingControls } from "@/books/reading-controls";
+import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
@@ -288,7 +289,7 @@ function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
 						<span className="text-slate-600 dark:text-slate-400">
 							{formatSize(file.size)}
 						</span>
-						{!file.missing && file.format === "pdf" && (
+						{!file.missing && readable(file.format) && (
 							<Link
 								to="/books/$bookId/read/$fileId"
 								params={{ bookId, fileId: file.id }}

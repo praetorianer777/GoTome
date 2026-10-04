@@ -173,7 +173,7 @@ export class FakeServer {
 			if (this.down) {
 				throw new TypeError("Failed to fetch");
 			}
-			const request = input as Request;
+			const request = input instanceof Request ? input : new Request(new URL(String(input), window.location.href));
 			const url = new URL(request.url);
 			const path = url.pathname.replace(/^\/api\/v1/, "");
 			const body: unknown =
@@ -194,6 +194,9 @@ export class FakeServer {
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
+			}
+			if (/^\/files\/[^/]+\/download$/.test(path)) {
+				return new Response(`the bytes of ${path}`);
 			}
 			if (path === "/smart-shelves" || path.startsWith("/smart-shelves/")) {
 				return this.answerSmartShelves(request.method, path, body as SmartShelfRequest);

@@ -20,11 +20,60 @@ vi.mock("@/reader/pdf", () => ({
 	}),
 }));
 
+// foliate-js lays pages out, which the test browser does not; the reader's
+// tests see a book of three chapters that moves a tenth on with each page.
+const ebook = vi.hoisted(() => ({
+	opened: [] as { name: string; start?: string }[],
+	looks: [] as unknown[],
+}));
+vi.mock("@/reader/ebook", () => ({
+	openEbook: async (
+		_into: HTMLElement,
+		file: File,
+		options: {
+			start?: string;
+			look: unknown;
+			onPlace: (p: { cfi: string; fraction: number; chapter?: string; atEnd: boolean }) => void;
+		},
+	) => {
+		ebook.opened.push({ name: file.name, start: options.start });
+		ebook.looks.push(options.look);
+		let at = options.start ? Number(/\/(\d+)\)$/.exec(options.start)?.[1] ?? 0) : 0;
+		const chapter = () => ["One", "Two", "Three"][Math.min(Math.floor(at / 4), 2)];
+		const place = () =>
+			options.onPlace({ cfi: `epubcfi(/6/${at})`, fraction: at / 10, chapter: chapter(), atEnd: at >= 10 });
+		const turn = async (step: number) => {
+			at = Math.min(Math.max(at + step, 0), 10);
+			place();
+		};
+		place();
+		return {
+			toc: [
+				{ key: "0", label: "One", href: "one.xhtml", depth: 0 },
+				{ key: "1", label: "Two", href: "two.xhtml", depth: 0 },
+				{ key: "2", label: "Three", href: "three.xhtml", depth: 1 },
+			],
+			goTo: async (target: string) => {
+				at = target.startsWith("epubcfi(") ? Number(/\/(\d+)\)$/.exec(target)?.[1] ?? 0) : ["one.xhtml", "two.xhtml", "three.xhtml"].indexOf(target) * 4;
+				place();
+			},
+			goLeft: () => turn(-1),
+			goRight: () => turn(1),
+			prev: () => turn(-1),
+			next: () => turn(1),
+			setLook: (look: unknown) => ebook.looks.push(look),
+			close: () => {},
+		};
+	},
+}));
+
 let server: FakeServer;
 
 beforeEach(() => {
 	vi.restoreAllMocks();
 	localStorage.clear();
+	ebook.opened.length = 0;
+	ebook.looks.length = 0;
 	delete document.documentElement.dataset.theme;
 	server = new FakeServer().install();
 });
@@ -1719,5 +1768,90 @@ describe("smart shelves", () => {
 		await userEvent.setup().click(shelves.getByRole("link", { name: /^Five stars/ }));
 		expect(await screen.findByRole("link", { name: /^Emma/ })).toBeInTheDocument();
 		expect(screen.queryByRole("button", { name: "Edit smart shelf" })).not.toBeInTheDocument();
+	});
+});
+
+describe("the EPUB and MOBI reader", () => {
+	function withBook(format: string, name: string) {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Persuasion", {
+				files: [{ id: "file-1", kind: "ebook", format, name, size: 200_000, missing: false, drm: false, extractState: "done" }],
+			});
+	}
+	const saves = () => server.requests.filter((r) => r.method === "PUT" && r.path.includes("/progress/")).map((r) => r.body);
+
+	it("opens an EPUB where the person left off, turns pages, and keeps the place", async () => {
+		const person = userEvent.setup();
+		withBook("epub", "Persuasion.epub");
+		server.progress["book-1"] = {
+			ebook: { fileId: "file-1", locator: "epubcfi(/6/3)", fraction: 0.3, chapter: "One", clientId: "phone", updatedAt: "2026-01-02T00:00:00Z" },
+			finishes: 0,
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(await screen.findByRole("link", { name: "Read Persuasion.epub" }));
+		expect(router.state.location.pathname).toBe("/books/book-1/read/file-1");
+		expect(await screen.findByText("30%")).toBeInTheDocument();
+		expect(ebook.opened).toEqual([{ name: "Persuasion.epub", start: "epubcfi(/6/3)" }]);
+		expect(server.requests.some((r) => r.path === "/files/file-1/download")).toBe(true);
+
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		expect(await screen.findByText("40%")).toBeInTheDocument();
+		expect(screen.getByRole("region", { name: "Pages of Persuasion" })).toHaveAttribute("data-chapter", "Two");
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]).toMatchObject({
+			fileId: "file-1", locator: "epubcfi(/6/4)", fraction: 0.4, chapter: "Two", basedOn: "2026-01-02T00:00:00Z",
+		});
+
+		await person.keyboard("{ArrowRight}{ArrowRight}");
+		expect(await screen.findByText("60%")).toBeInTheDocument();
+		await person.keyboard("{ArrowLeft}");
+		expect(await screen.findByText("50%")).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Contents" }));
+		const contents = within(screen.getByRole("navigation", { name: "Contents" }));
+		expect(contents.getByRole("button", { name: "Two" })).toHaveAttribute("aria-current", "location");
+		await person.click(contents.getByRole("button", { name: "Three" }));
+		expect(await screen.findByText("80%")).toBeInTheDocument();
+		expect(screen.queryByRole("navigation", { name: "Contents" })).not.toBeInTheDocument();
+		await waitFor(() => expect(saves().at(-1)).toMatchObject({ locator: "epubcfi(/6/8)", chapter: "Three" }));
+	});
+
+	it("sets colours, text size and layout, and keeps them for the next book", async () => {
+		const person = userEvent.setup();
+		withBook("mobi", "Persuasion.mobi");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		expect(ebook.opened).toEqual([{ name: "Persuasion.mobi", start: undefined }]);
+		await person.click(screen.getByRole("button", { name: "Display" }));
+		await person.selectOptions(screen.getByRole("combobox", { name: "Page colours" }), "Sepia");
+		await person.selectOptions(screen.getByRole("combobox", { name: "Layout" }), "Scrolling");
+		await person.click(screen.getByRole("button", { name: "Larger" }));
+		expect(screen.getByText("Text size 110%")).toBeInTheDocument();
+		await waitFor(() => expect(ebook.looks.at(-1)).toEqual({ flow: "scrolled", theme: "sepia", fontSize: 110 }));
+		expect(JSON.parse(localStorage.getItem("gotome.reader.look") ?? "{}")).toEqual({ flow: "scrolled", theme: "sepia", fontSize: 110 });
+	});
+
+	it("reaching the end saves the whole book as read", async () => {
+		const person = userEvent.setup();
+		withBook("epub", "Persuasion.epub");
+		server.progress["book-1"] = {
+			ebook: { fileId: "file-1", locator: "epubcfi(/6/9)", fraction: 0.9, clientId: "phone", updatedAt: "2026-01-02T00:00:00Z" },
+			finishes: 0,
+		};
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("90%")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		expect(await screen.findByText("100%")).toBeInTheDocument();
+		await waitFor(() => expect(saves().at(-1)).toMatchObject({ locator: "epubcfi(/6/10)", fraction: 1 }));
+	});
+
+	it("says when a file cannot be read in the browser", async () => {
+		withBook("fb2", "Persuasion.fb2");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText(/^This file cannot be read in the browser/)).toBeInTheDocument();
+		expect(ebook.opened).toEqual([]);
 	});
 });
