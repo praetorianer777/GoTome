@@ -384,6 +384,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   output, so the player's browser test skips it.
 - `e2e/fixtures/pdf.ts` makes PDFs of any size for the browser tests.
 
+## Reading statistics
+
+- `GET /me/stats` (`reading.Service.Stats`) counts only the caller's own
+  sessions and finishes, of books they may still see, in days of the time
+  zone the client names. Pages are a session's share of the book times its
+  main text file's page count, or the book's; `pagesEstimated` says some
+  came from an EPUB or MOBI, whose pages are worked out from their text.
+  Every finish counts in its year, so a re-read counts again.
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an

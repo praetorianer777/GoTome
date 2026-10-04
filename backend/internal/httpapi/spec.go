@@ -66,6 +66,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["BulkRequest.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
 	b.FieldOverrides["BulkStatus.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
 	b.FieldOverrides["BulkResult.outcome"] = &openapi.Schema{Type: "string", Enum: bulk.Outcomes}
+	b.FieldOverrides["StatsEvent.event"] = &openapi.Schema{Type: "string", Enum: []string{"started", "finished"}}
 	failure := &openapi.Response{
 		Description: "The request failed.",
 		Content:     map[string]openapi.MediaType{jsonMedia: {Schema: b.SchemaOf(errorEnvelope{})}},

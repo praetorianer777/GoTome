@@ -2206,6 +2206,61 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/me/stats": {
+      "get": {
+        "operationId": "getStats",
+        "summary": "What the caller read and listened to: per day, in total, per year, and when",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How many days, up to today, the daily figures cover: 1 to 366; 30 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "The IANA time zone the days are counted in, such as Europe/Berlin; UTC when left out.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingStats"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/metadata/covers/{token}": {
       "get": {
         "operationId": "getCandidateCover",
@@ -4366,6 +4421,62 @@
           "status"
         ]
       },
+      "ReadingStats": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsDay"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsEvent"
+            }
+          },
+          "listeningMinutesPerDay": {
+            "type": "number"
+          },
+          "pagesEstimated": {
+            "type": "boolean"
+          },
+          "pagesPerDay": {
+            "type": "number"
+          },
+          "readingMinutesPerDay": {
+            "type": "number"
+          },
+          "totalListeningMinutes": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          },
+          "totalReadingMinutes": {
+            "type": "integer"
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsYear"
+            }
+          }
+        },
+        "required": [
+          "days",
+          "pagesPerDay",
+          "readingMinutesPerDay",
+          "listeningMinutesPerDay",
+          "totalPages",
+          "totalReadingMinutes",
+          "totalListeningMinutes",
+          "pagesEstimated",
+          "years",
+          "history"
+        ]
+      },
       "RereadLibraryRequest": {
         "type": "object",
         "properties": {
@@ -4728,6 +4839,76 @@
         },
         "required": [
           "needed"
+        ]
+      },
+      "StatsDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "listeningMinutes": {
+            "type": "number"
+          },
+          "pages": {
+            "type": "number"
+          },
+          "readingMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "pages",
+          "readingMinutes",
+          "listeningMinutes"
+        ]
+      },
+      "StatsEvent": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "started",
+              "finished"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "event",
+          "date"
+        ]
+      },
+      "StatsYear": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "finishes": {
+            "type": "integer"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "finishes",
+          "books"
         ]
       },
       "Storage": {

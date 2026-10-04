@@ -151,3 +151,8 @@ What changes for someone who runs or uses GOtome. The format follows
   phone's lock screen. A bar along the bottom keeps playing while you look
   at other pages. Formats your browser cannot play are named, with the files
   to download.
+- Statistics: how many pages and minutes a day you read and listen, over
+  the last week, month, quarter or year, your totals, the books you
+  finished each year (reading one again counts again), and when you
+  started and finished which. Page counts of EPUB and MOBI books are
+  estimates and marked so. Everyone sees only their own.
