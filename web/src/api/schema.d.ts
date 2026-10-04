@@ -656,6 +656,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the caller read and listened to: per day, in total, per year, and when */
+        get: operations["getStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metadata/covers/{token}": {
         parameters: {
             query?: never;
@@ -1264,6 +1281,18 @@ export interface components {
             /** @enum {string} */
             status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
         };
+        ReadingStats: {
+            days: components["schemas"]["StatsDay"][];
+            history: components["schemas"]["StatsEvent"][];
+            listeningMinutesPerDay: number;
+            pagesEstimated: boolean;
+            pagesPerDay: number;
+            readingMinutesPerDay: number;
+            totalListeningMinutes: number;
+            totalPages: number;
+            totalReadingMinutes: number;
+            years: components["schemas"]["StatsYear"][];
+        };
         RereadLibraryRequest: {
             failedOnly: boolean;
         };
@@ -1363,6 +1392,25 @@ export interface components {
         };
         SetupStatus: {
             needed: boolean;
+        };
+        StatsDay: {
+            date: string;
+            listeningMinutes: number;
+            pages: number;
+            readingMinutes: number;
+        };
+        StatsEvent: {
+            /** Format: uuid */
+            bookId: string;
+            date: string;
+            /** @enum {string} */
+            event: "started" | "finished";
+            title: string;
+        };
+        StatsYear: {
+            books: number;
+            finishes: number;
+            year: number;
         };
         Storage: {
             quotaBytes?: number;
@@ -2821,6 +2869,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getStats: {
+        parameters: {
+            query?: {
+                /** @description How many days, up to today, the daily figures cover: 1 to 366; 30 when left out. */
+                days?: number;
+                /** @description The IANA time zone the days are counted in, such as Europe/Berlin; UTC when left out. */
+                tz?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingStats"];
+                };
             };
             /** @description The request failed. */
             default: {

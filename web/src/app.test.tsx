@@ -1458,3 +1458,35 @@ describe("the audiobook player", () => {
 		expect(audio().getAttribute("src")).toBeNull();
 	});
 });
+
+describe("reading statistics", () => {
+	it("shows the person's own figures, years with re-reads, and their history", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Emma");
+		server.stats = {
+			days: [
+				{ date: "2026-10-03", pages: 100, readingMinutes: 40, listeningMinutes: 0 },
+				{ date: "2026-10-04", pages: 30, readingMinutes: 20, listeningMinutes: 30 },
+			],
+			pagesPerDay: 4.3, readingMinutesPerDay: 2.2, listeningMinutesPerDay: 1,
+			totalPages: 160, totalReadingMinutes: 75, totalListeningMinutes: 30, pagesEstimated: true,
+			years: [{ year: 2026, finishes: 1, books: 1 }, { year: 2025, finishes: 2, books: 1 }],
+			history: [{ bookId: "book-1", title: "Emma", event: "finished", date: "2025-11-01" }],
+		};
+		renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Statistics" }));
+
+		expect(await screen.findByRole("heading", { name: "Your reading", level: 1 })).toBeInTheDocument();
+		const figure = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+		expect(figure("Pages a day")).toBe("≈ 4.3");
+		expect(figure("Reading in all")).toBe("1 h 15 min");
+		expect(figure("Listening a day")).toBe("1 min");
+		expect(screen.getByText(/estimated from the length of their text/)).toBeInTheDocument();
+		expect(screen.getByText(/2 finished, 1 different books/)).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-1");
+		expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3);
+
+		await person.click(screen.getByRole("button", { name: "7 days" }));
+		await waitFor(() => expect(server.requests.at(-1)?.path).toMatch(/^\/me\/stats\?days=7&tz=/));
+	});
+});

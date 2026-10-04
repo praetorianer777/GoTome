@@ -8,6 +8,7 @@ import type { CurrentUser } from "@/auth/session";
 import type { BookDetail } from "@/books/api";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
+import type { ReadingStats } from "@/books/stats";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
 import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
@@ -87,6 +88,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** The signed-in person's statistics, the same whatever the window. */
+	stats?: ReadingStats;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** A further position another device wrote, which the next save meets. */
@@ -170,6 +173,14 @@ export class FakeServer {
 					? undefined
 					: await request.json().catch(() => undefined);
 			this.requests.push({ method: request.method, path: path + url.search, body });
+			if (path === "/me/stats") {
+				return Response.json(
+					this.stats ?? {
+						days: [], pagesPerDay: 0, readingMinutesPerDay: 0, listeningMinutesPerDay: 0, totalPages: 0,
+						totalReadingMinutes: 0, totalListeningMinutes: 0, pagesEstimated: false, years: [], history: [],
+					},
+				);
+			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
 			}

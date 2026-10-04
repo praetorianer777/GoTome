@@ -19,6 +19,7 @@ import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
+import { Stats } from "@/routes/stats";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
 import { Review } from "@/routes/review";
@@ -227,6 +228,17 @@ const listenRoute = createRoute({
 	},
 });
 
+const statsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/stats",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Stats,
+});
+
 const bulkRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/bulk/$bulkId",
@@ -275,7 +287,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, statsRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

@@ -7,9 +7,65 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const activityTotals = `-- name: ActivityTotals :many
+SELECT s.medium,
+       sum(extract(epoch FROM s.ended_at - s.started_at))::bigint AS seconds,
+       sum(CASE WHEN s.medium = 'ebook'
+                THEN greatest(s.to_fraction - s.from_fraction, 0) * COALESCE(f.page_count, b.page_count, 0)
+                ELSE 0 END)::double precision AS pages,
+       bool_or(s.medium = 'ebook' AND f.page_count IS NOT NULL AND f.pages_estimated) AS estimated
+FROM reading_sessions s
+JOIN books b ON b.id = s.book_id
+LEFT JOIN book_files f ON f.id = b.primary_text_file_id
+WHERE s.user_id = $1
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+GROUP BY s.medium
+ORDER BY s.medium
+`
+
+type ActivityTotalsParams struct {
+	UserID  uuid.UUID
+	SeesAll bool
+}
+
+type ActivityTotalsRow struct {
+	Medium    string
+	Seconds   int64
+	Pages     float64
+	Estimated bool
+}
+
+// The same, over all time, per medium.
+func (q *Queries) ActivityTotals(ctx context.Context, arg ActivityTotalsParams) ([]ActivityTotalsRow, error) {
+	rows, err := q.db.Query(ctx, activityTotals, arg.UserID, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ActivityTotalsRow{}
+	for rows.Next() {
+		var i ActivityTotalsRow
+		if err := rows.Scan(
+			&i.Medium,
+			&i.Seconds,
+			&i.Pages,
+			&i.Estimated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const addFinish = `-- name: AddFinish :exec
 INSERT INTO reading_finishes (user_id, book_id, medium) VALUES ($1, $2, $3)
@@ -40,6 +96,75 @@ func (q *Queries) CountFinishes(ctx context.Context, arg CountFinishesParams) (i
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const dailyActivity = `-- name: DailyActivity :many
+SELECT (s.started_at AT TIME ZONE $1::text)::date AS day,
+       s.medium,
+       sum(extract(epoch FROM s.ended_at - s.started_at))::bigint AS seconds,
+       sum(CASE WHEN s.medium = 'ebook'
+                THEN greatest(s.to_fraction - s.from_fraction, 0) * COALESCE(f.page_count, b.page_count, 0)
+                ELSE 0 END)::double precision AS pages,
+       bool_or(s.medium = 'ebook' AND f.page_count IS NOT NULL AND f.pages_estimated) AS estimated
+FROM reading_sessions s
+JOIN books b ON b.id = s.book_id
+LEFT JOIN book_files f ON f.id = b.primary_text_file_id
+WHERE s.user_id = $2
+  AND s.started_at >= $3
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $4::boolean))
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type DailyActivityParams struct {
+	Tz      string
+	UserID  uuid.UUID
+	Since   time.Time
+	SeesAll bool
+}
+
+type DailyActivityRow struct {
+	Day       time.Time
+	Medium    string
+	Seconds   int64
+	Pages     float64
+	Estimated bool
+}
+
+// What a person read and listened to per day of their time zone since a
+// time, of books they may still see. Pages are the share of the book a
+// session covered times its page count: its main text file's, or the
+// book's; estimated says the file's was worked out from its text.
+func (q *Queries) DailyActivity(ctx context.Context, arg DailyActivityParams) ([]DailyActivityRow, error) {
+	rows, err := q.db.Query(ctx, dailyActivity,
+		arg.Tz,
+		arg.UserID,
+		arg.Since,
+		arg.SeesAll,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DailyActivityRow{}
+	for rows.Next() {
+		var i DailyActivityRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.Medium,
+			&i.Seconds,
+			&i.Pages,
+			&i.Estimated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const extendSession = `-- name: ExtendSession :execrows
@@ -93,6 +218,53 @@ func (q *Queries) FileOfBook(ctx context.Context, arg FileOfBookParams) (bool, e
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const finishesByYear = `-- name: FinishesByYear :many
+SELECT extract(year FROM rf.finished_at AT TIME ZONE $1::text)::int AS year,
+       count(*) AS finishes,
+       count(DISTINCT rf.book_id) AS books
+FROM reading_finishes rf
+JOIN books b ON b.id = rf.book_id
+WHERE rf.user_id = $2
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+GROUP BY 1
+ORDER BY 1 DESC
+`
+
+type FinishesByYearParams struct {
+	Tz      string
+	UserID  uuid.UUID
+	SeesAll bool
+}
+
+type FinishesByYearRow struct {
+	Year     int32
+	Finishes int64
+	Books    int64
+}
+
+// Every time a book was read to its end counts, so a book read twice in a
+// year counts twice there; books is how many different ones.
+func (q *Queries) FinishesByYear(ctx context.Context, arg FinishesByYearParams) ([]FinishesByYearRow, error) {
+	rows, err := q.db.Query(ctx, finishesByYear, arg.Tz, arg.UserID, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FinishesByYearRow{}
+	for rows.Next() {
+		var i FinishesByYearRow
+		if err := rows.Scan(&i.Year, &i.Finishes, &i.Books); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listProgress = `-- name: ListProgress :many
@@ -216,6 +388,69 @@ func (q *Queries) PutProgress(ctx context.Context, arg PutProgressParams) (Readi
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const readingHistory = `-- name: ReadingHistory :many
+SELECT h.book_id, b.title, h.event, h.day
+FROM (
+    SELECT ub.book_id, 'started' AS event, ub.started_on AS day
+    FROM user_books ub
+    WHERE ub.user_id = $1 AND ub.started_on IS NOT NULL
+  UNION ALL
+    SELECT rf.book_id, 'finished', (rf.finished_at AT TIME ZONE $2::text)::date
+    FROM reading_finishes rf
+    WHERE rf.user_id = $1
+) h
+JOIN books b ON b.id = h.book_id
+WHERE b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $3::boolean))
+ORDER BY h.day DESC, h.event DESC, b.title
+LIMIT $4
+`
+
+type ReadingHistoryParams struct {
+	UserID  uuid.UUID
+	Tz      string
+	SeesAll bool
+	MaxRows int32
+}
+
+type ReadingHistoryRow struct {
+	BookID uuid.UUID
+	Title  string
+	Event  string
+	Day    *time.Time
+}
+
+// When a person began and finished books, the latest first.
+func (q *Queries) ReadingHistory(ctx context.Context, arg ReadingHistoryParams) ([]ReadingHistoryRow, error) {
+	rows, err := q.db.Query(ctx, readingHistory,
+		arg.UserID,
+		arg.Tz,
+		arg.SeesAll,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReadingHistoryRow{}
+	for rows.Next() {
+		var i ReadingHistoryRow
+		if err := rows.Scan(
+			&i.BookID,
+			&i.Title,
+			&i.Event,
+			&i.Day,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const startSession = `-- name: StartSession :exec
