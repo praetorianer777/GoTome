@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -191,6 +192,8 @@ func serve() error {
 	}()
 
 	books := catalog.NewService(pool)
+	hub := notify.NewHub(pool, log)
+	go hub.Run(ctx)
 	server := &httpapi.Server{
 		Log:       log,
 		DB:        pool,
@@ -206,7 +209,10 @@ func serve() error {
 		Bulk:      changes,
 		Reading:   reading.NewService(pool),
 		Shelves:   shelves.NewService(pool, books),
-		Web:       webui.Handler(),
+
+		Notifications: notify.NewService(pool),
+		NotifyHub:     hub,
+		Web:           webui.Handler(),
 	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

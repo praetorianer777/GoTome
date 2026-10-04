@@ -1,18 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { BULK_OUTCOMES, type BulkOutcome, bulkQuery } from "@/books/bulk";
+import { BULK_OUTCOME_LABELS as OUTCOMES, BULK_OUTCOMES, type BulkOutcome, bulkQuery } from "@/books/bulk";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 
-const OUTCOMES: Record<BulkOutcome, MessageKey> = {
-	changed: "bulk.outcome.changed",
-	unchanged: "bulk.outcome.unchanged",
-	locked: "bulk.outcome.locked",
-	review: "bulk.outcome.review",
-	notFound: "bulk.outcome.notFound",
-	failed: "bulk.outcome.failed",
-};
 
 /** The fields a book's result may name as skipped, by what the form calls them. */
 function fieldName(field: string): string {

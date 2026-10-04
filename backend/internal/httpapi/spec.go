@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -54,6 +55,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["CollectionRequest.visibility"] = visibility
 	b.FieldOverrides["SmartShelf.visibility"] = visibility
 	b.FieldOverrides["SmartShelfRequest.visibility"] = visibility
+	b.FieldOverrides["Notification.kind"] = &openapi.Schema{Type: "string", Enum: []string{notify.KindBulkFinished}}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {

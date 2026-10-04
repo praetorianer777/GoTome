@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -66,6 +67,10 @@ type Server struct {
 	Reading *reading.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
+	// Notifications keeps what people are told; NotifyHub wakes their
+	// open streams.
+	Notifications *notify.Service
+	NotifyHub     *notify.Hub
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

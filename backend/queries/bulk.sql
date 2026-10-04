@@ -24,7 +24,7 @@ UPDATE bulk_change_books
 SET outcome = $3, message = $4, skipped = $5
 WHERE bulk_change_id = $1 AND book_id = $2;
 
--- name: FinishBulkChange :exec
+-- name: FinishBulkChange :execrows
 UPDATE bulk_changes SET finished_at = now() WHERE id = $1 AND finished_at IS NULL;
 
 -- name: ListBulkChangeBooks :many
@@ -36,3 +36,9 @@ JOIN books b ON b.id = cb.book_id
 WHERE cb.bulk_change_id = sqlc.arg(id)
   AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY cb.position;
+
+-- name: CountBulkOutcomes :many
+SELECT COALESCE(outcome, '')::text AS outcome, count(*)::int AS books
+FROM bulk_change_books
+WHERE bulk_change_id = $1
+GROUP BY outcome;

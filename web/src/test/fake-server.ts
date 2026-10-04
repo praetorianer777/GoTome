@@ -7,6 +7,7 @@ import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
 import type { BookDetail, BookSummary } from "@/books/api";
 import type { Collection, CollectionAdd, CollectionRequest } from "@/books/collections";
+import type { Notification } from "@/notifications/api";
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
@@ -101,6 +102,8 @@ export class FakeServer {
 	collections: (Omit<Collection, "books" | "hasBook"> & { books: string[] })[] = [];
 	/** The smart shelves the signed-in person sees; what is on them is worked out when asked. */
 	smartShelves: Omit<SmartShelf, "books">[] = [];
+	/** The signed-in person's notifications, newest first. */
+	notifications: Notification[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -194,6 +197,16 @@ export class FakeServer {
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
+			}
+			if (path === "/notifications") {
+				return Response.json({ notifications: this.notifications, unread: this.unread() });
+			}
+			if (path === "/notifications/read") {
+				const req = body as { ids?: string[]; all?: boolean };
+				for (const n of this.notifications) {
+					if (req.all || req.ids?.includes(n.id)) n.readAt ??= "2026-01-03T00:00:00Z";
+				}
+				return Response.json({ unread: this.unread() });
 			}
 			if (/^\/files\/[^/]+\/download$/.test(path)) {
 				return new Response(`the bytes of ${path}`);
@@ -536,6 +549,23 @@ export class FakeServer {
 			books: page.map(summaryOf),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
+	}
+
+	/** Tells the person something, as a finished bulk change would. */
+	notify(n: Partial<Notification> = {}): this {
+		this.notifications.unshift({
+			id: `note-${this.notifications.length + 1}`,
+			kind: "bulk.finished",
+			data: { action: "edit", outcomes: { changed: 2, failed: 1 } },
+			link: "/bulk/bulk-1",
+			createdAt: "2026-01-02T10:00:00Z",
+			...n,
+		});
+		return this;
+	}
+
+	unread(): number {
+		return this.notifications.filter((n) => !n.readAt).length;
 	}
 
 	withCollection(name: string, books: string[], overrides: Partial<Collection> = {}): this {

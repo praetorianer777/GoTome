@@ -1,3 +1,4 @@
+import type { MessageKey } from "@/i18n";
 import { queryOptions, useMutation } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
@@ -17,6 +18,15 @@ export const BULK_OUTCOMES: BulkOutcome[] = [
 	"notFound",
 	"failed",
 ];
+
+export const BULK_OUTCOME_LABELS: Record<BulkOutcome, MessageKey> = {
+	changed: "bulk.outcome.changed",
+	unchanged: "bulk.outcome.unchanged",
+	locked: "bulk.outcome.locked",
+	review: "bulk.outcome.review",
+	notFound: "bulk.outcome.notFound",
+	failed: "bulk.outcome.failed",
+};
 
 export function useStartBulk() {
 	return useMutation({
