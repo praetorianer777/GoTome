@@ -166,7 +166,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	}
 	twin := map[string]string{
 		"book": uuid.NewString(), "file": uuid.NewString(), "library": uuid.NewString(),
-		"title": "Secretum " + twinMark, "author": "Abditus " + twinMark, "tag": "Arcanum" + twinMark,
+		// Other words than the secret's: the quick search and the names
+		// match words alike, which would find the secret for its twin.
+		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark,
 	}
 	book := secret["book"]
 	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+book, map[string]any{
