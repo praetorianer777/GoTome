@@ -23,6 +23,8 @@ ever in the compose file or an environment variable. init only adds what is miss
   dependencies; do not start it before they are merged.
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
   under `docs/decisions/`. No search or embedding feature work starts before them.
+  #14 chose pg_search in the pinned ParadeDB image
+  (`docs/decisions/search-engine.md`); its harness is `spikes/search`.
 
 ## Layout and toolchain
 

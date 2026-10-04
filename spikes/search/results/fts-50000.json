@@ -1,0 +1,454 @@
+{
+  "engine": "fts",
+  "books": 50000,
+  "chunks": 2338921,
+  "textMB": 17889.962182,
+  "buildSeconds": {
+    "index": 512.377219111,
+    "load": 3495.528009316,
+    "total": 4901.951037515,
+    "vacuum": 17.718798983,
+    "vocabulary": 876.304866791
+  },
+  "sizes": {
+    "chunks_library": 16236544,
+    "chunks_pkey": 52551680,
+    "chunks_tsv": 2073665536,
+    "table": 31132852224,
+    "tsvector column": 16119915610,
+    "words": 340819968
+  },
+  "memory": {
+    "build": {
+      "anon": 891969536,
+      "current": 2160640000
+    },
+    "oomKills": 0,
+    "queries": {
+      "anon": 100241408,
+      "current": 2147713024
+    },
+    "rebuild": {
+      "anon": 662966272,
+      "current": 2147483648
+    }
+  },
+  "latencyMs": {
+    "filtered": {
+      "runs": 20,
+      "p50": 89.992,
+      "p95": 23050.663,
+      "max": 26378.075
+    },
+    "fuzzy": {
+      "runs": 25,
+      "p50": 2291.509,
+      "p95": 64028.414,
+      "max": 66346.148
+    },
+    "phrase": {
+      "runs": 25,
+      "p50": 18809.842,
+      "p95": 42482.467,
+      "max": 46291.852
+    },
+    "repaired": {
+      "runs": 25,
+      "p50": 2997.512,
+      "p95": 64914.16,
+      "max": 70614.314
+    },
+    "snippets": {
+      "runs": 20,
+      "p50": 10405.894,
+      "p95": 38254.223,
+      "max": 38509.863
+    },
+    "stemmed": {
+      "runs": 50,
+      "p50": 292.203,
+      "p95": 39456.255,
+      "max": 54009.047
+    }
+  },
+  "rebuildSeconds": 451.680781212,
+  "samples": [
+    {
+      "kind": "stemmed",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 61522, 0.33)",
+        "Whalers and whaling (book 81522, 0.33)",
+        "Whalers and whaling (book 31522, 0.33)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "The bar act (book 60884, 0.32)",
+        "The bar act (book 80884, 0.32)",
+        "The bar act (book 40884, 0.32)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "ancient temples ruins",
+      "want": "temple",
+      "found": 10,
+      "top": [
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 71517, 0.13)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 81517, 0.13)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 41517, 0.13)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "detective murdered",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "The book review digest, volume 04, 1908 (book 61190, 0.06)",
+        "The book review digest, volume 04, 1908 (book 81190, 0.06)",
+        "The book review digest, volume 04, 1908 (book 31190, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "love letters",
+      "want": "letter",
+      "found": 10,
+      "top": [
+        "The love-letters of Mr. H. \u0026 Miss R., 1775-1779 (book 71025, 0.66)",
+        "The love-letters of Mr. H. \u0026 Miss R., 1775-1779 (book 81025, 0.66)",
+        "The love-letters of Mr. H. \u0026 Miss R., 1775-1779 (book 41025, 0.66)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Häuser Flüsse",
+      "want": "Haus",
+      "found": 10,
+      "top": [
+        "Quer Durch Borneo; Erster Teil (book 60087, 0.09)",
+        "Quer Durch Borneo; Erster Teil (book 80087, 0.09)",
+        "Quer Durch Borneo; Erster Teil (book 40087, 0.09)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 60378, 0.15)",
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 80378, 0.15)",
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 40378, 0.15)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Kinder spielten",
+      "want": "Kind",
+      "found": 10,
+      "top": [
+        "Das kleine Dummerle und andere Erzählungen zum Vorlesen im Familienkreise (book 60121, 0.15)",
+        "Das kleine Dummerle und andere Erzählungen zum Vorlesen im Familienkreise (book 80121, 0.15)",
+        "Das kleine Dummerle und andere Erzählungen zum Vorlesen im Familienkreise (book 50121, 0.15)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "maison jardin",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Contes de la chaumière (book 71978, 0.08)",
+        "Contes de la chaumière (book 81978, 0.08)",
+        "Contes de la chaumière (book 51978, 0.08)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Motion pictures and filmstrips, 1978 (book 121256, 14.60)",
+        "Motion pictures and filmstrips, 1978 (book 201256, 14.60)",
+        "Motion pictures and filmstrips, 1978 (book 111256, 14.60)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "white whale",
+      "want": "white whale",
+      "found": 10,
+      "top": [
+        "Herman Melville (book 20816, 0.70)",
+        "Herman Melville (book 40816, 0.70)",
+        "Herman Melville (book 10816, 0.70)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "once upon a time",
+      "want": "once upon a time",
+      "found": 10,
+      "top": [
+        "Mixed pickles (book 101712, 0.15)",
+        "The man who married the moon, and other Pueblo Indian folk-stories (book 120667, 0.15)",
+        "Mixed pickles (book 71712, 0.15)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "in the morning",
+      "want": "in the morning",
+      "found": 10,
+      "top": [
+        "Motion pictures and filmstrips, 1978 (book 181256, 14.60)",
+        "Motion pictures and filmstrips, 1978 (book 71256, 14.60)",
+        "Motion pictures and filmstrips, 1978 (book 151256, 14.60)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "der alte Mann",
+      "want": "alte Mann",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 20445, 1.30)",
+        "Der Fremde: Ein Gleichniss (book 20456, 1.30)",
+        "Der Fremde: Ein Gleichniss (book 10456, 1.30)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "es war einmal",
+      "want": "war einmal",
+      "found": 0,
+      "top": null
+    },
+    {
+      "kind": "fuzzy",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 91434, 2.90)",
+        "Clendenen's detective manual (book 81434, 2.90)",
+        "Clendenen's detective manual (book 81434, 2.90)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 61522, 0.33)",
+        "Whalers and whaling (book 81522, 0.33)",
+        "Whalers and whaling (book 31522, 0.33)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 210613, 5.80)",
+        "Webster's Unabridged Dictionary (book 70613, 5.80)",
+        "Webster's Unabridged Dictionary (book 190613, 5.80)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 60521, 2.50)",
+        "Fünfundzwanzig Jahre Ceylon (book 80521, 2.50)",
+        "Fünfundzwanzig Jahre Ceylon (book 40521, 2.50)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "D'Archangel au golfe Persique (book 11905, 1.00)",
+        "Pauvre Blaise (book 11856, 1.00)",
+        "Pauvre Blaise (book 11856, 1.00)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "The great sea-serpent (book 51051, 0.02)",
+        "The great sea-serpent (book 81051, 0.02)",
+        "The great sea-serpent (book 31051, 0.02)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Handbook of nature-study for teachers and parents (book 70903, 0.29)",
+        "Handbook of nature-study for teachers and parents (book 80903, 0.29)",
+        "Handbook of nature-study for teachers and parents (book 50903, 0.29)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Gesammelte Schriften von Marie von Ebner-Eschenbach (3/10) (book 60511, 0.10)",
+        "Gesammelte Schriften von Marie von Ebner-Eschenbach (3/10) (book 80511, 0.10)",
+        "Gesammelte Schriften von Marie von Ebner-Eschenbach (3/10) (book 30511, 0.10)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "A third day in Mary Carrow's school (book 161043, 1.10)",
+        "A third day in Mary Carrow's school (book 51043, 1.10)",
+        "A third day in Mary Carrow's school (book 91043, 1.10)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 61522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second",
+        "Whalers and whaling (book 81522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second",
+        "Whalers and whaling (book 31522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "The bar act (book 60884, 0.32): \u003cb\u003erunning\u003c/b\u003e \u003cb\u003ehorse\u003c/b\u003e, and yet to never lose their hats.\n\nHeads were drawn together in a last",
+        "The bar act (book 80884, 0.32): \u003cb\u003erunning\u003c/b\u003e \u003cb\u003ehorse\u003c/b\u003e, and yet to never lose their hats.\n\nHeads were drawn together in a last",
+        "The bar act (book 40884, 0.32): \u003cb\u003erunning\u003c/b\u003e \u003cb\u003ehorse\u003c/b\u003e, and yet to never lose their hats.\n\nHeads were drawn together in a last"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 60378, 0.15): \u003cb\u003everloren\u003c/b\u003e, \u003cb\u003eliebes\u003c/b\u003e Kind,\n\u003cb\u003eVerlör\u003c/b\u003e ich auch den Sohn, so wär ich sänfter blind.\nSei stolz",
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 80378, 0.15): \u003cb\u003everloren\u003c/b\u003e, \u003cb\u003eliebes\u003c/b\u003e Kind,\n\u003cb\u003eVerlör\u003c/b\u003e ich auch den Sohn, so wär ich sänfter blind.\nSei stolz",
+        "Rostem und Suhrab: Eine Heldengeschichte in zwölf Büchern (book 40378, 0.15): \u003cb\u003everloren\u003c/b\u003e, \u003cb\u003eliebes\u003c/b\u003e Kind,\n\u003cb\u003eVerlör\u003c/b\u003e ich auch den Sohn, so wär ich sänfter blind.\nSei stolz"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Motion pictures and filmstrips, 1978 (book 151256, 14.60): \u003cb\u003emorning\u003c/b\u003e news, Monday, May 30, 1977. (PA 1-612.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e news, Monday, November 7, 1977. (PA 1-563.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e",
+        "Motion pictures and filmstrips, 1978 (book 221256, 14.60): \u003cb\u003emorning\u003c/b\u003e news, Monday, May 30, 1977. (PA 1-612.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e news, Monday, November 7, 1977. (PA 1-563.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e",
+        "Motion pictures and filmstrips, 1978 (book 91256, 14.60): \u003cb\u003emorning\u003c/b\u003e news, Monday, May 30, 1977. (PA 1-612.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e news, Monday, November 7, 1977. (PA 1-563.)\n\nCBS \u003cb\u003emorning\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 61434, 2.90): \u003cb\u003eDetective\u003c/b\u003e 48\n\nChapter VII.—Industrial \u003cb\u003eDetective\u003c/b\u003e Work 52\n\nChapter VIII.—Insurance \u003cb\u003eDetectives\u003c/b\u003e 56\n\nChapter IX.—Criminal",
+        "Clendenen's detective manual (book 71434, 2.90): \u003cb\u003eDETECTIVE\u003c/b\u003e MANUAL ***\n\nCLENDENEN’S\n\u003cb\u003eDETECTIVE\u003c/b\u003e\nMANUAL\n\nHow to Become a\nSuccessful \u003cb\u003eDetective\u003c/b\u003e\n\nRUFUS H. CLENDENEN",
+        "Clendenen's detective manual (book 21434, 2.90): \u003cb\u003eDetective\u003c/b\u003e 48\n\nChapter VII.—Industrial \u003cb\u003eDetective\u003c/b\u003e Work 52\n\nChapter VIII.—Insurance \u003cb\u003eDetectives\u003c/b\u003e 56\n\nChapter IX.—Criminal"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 61522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second",
+        "Whalers and whaling (book 81522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second",
+        "Whalers and whaling (book 31522, 0.33): \u003cb\u003ewhales\u003c/b\u003e were soon \u003cb\u003eharpooned\u003c/b\u003e. One of these mammals escaped by the \u003cb\u003eharpoon\u003c/b\u003e drawing, a second"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 200613, 5.80): \u003cb\u003ekind\u003c/b\u003e-hearted landlord. To thy self at least \u003cb\u003ekind\u003c/b\u003e-hearted prove. Shak.\n\n\u003cb\u003eKIND\u003c/b\u003e-HEARTEDNESS\n\u003cb\u003eKind\u003c/b\u003e",
+        "Webster's Unabridged Dictionary (book 230613, 5.80): \u003cb\u003ekind\u003c/b\u003e-hearted landlord. To thy self at least \u003cb\u003ekind\u003c/b\u003e-hearted prove. Shak.\n\n\u003cb\u003eKIND\u003c/b\u003e-HEARTEDNESS\n\u003cb\u003eKind\u003c/b\u003e",
+        "Webster's Unabridged Dictionary (book 60613, 5.80): \u003cb\u003ekind\u003c/b\u003e-hearted landlord. To thy self at least \u003cb\u003ekind\u003c/b\u003e-hearted prove. Shak.\n\n\u003cb\u003eKIND\u003c/b\u003e-HEARTEDNESS\n\u003cb\u003eKind\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 60521, 2.50): \u003cb\u003eRogue\u003c/b\u003e-\u003cb\u003eElefanten\u003c/b\u003e\n\nDas stolzeste Hochwild \u003cb\u003eCeylons\u003c/b\u003e ist der \u003cb\u003eElefant\u003c/b\u003e. Ein wahrhaft",
+        "Fünfundzwanzig Jahre Ceylon (book 80521, 2.50): \u003cb\u003eRogue\u003c/b\u003e-\u003cb\u003eElefanten\u003c/b\u003e\n\nDas stolzeste Hochwild \u003cb\u003eCeylons\u003c/b\u003e ist der \u003cb\u003eElefant\u003c/b\u003e. Ein wahrhaft",
+        "Fünfundzwanzig Jahre Ceylon (book 40521, 2.50): \u003cb\u003eRogue\u003c/b\u003e-\u003cb\u003eElefanten\u003c/b\u003e\n\nDas stolzeste Hochwild \u003cb\u003eCeylons\u003c/b\u003e ist der \u003cb\u003eElefant\u003c/b\u003e. Ein wahrhaft"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "D'Archangel au golfe Persique (book 11905, 1.00): \u003cb\u003ejardin\u003c/b\u003e plein de nuit, comme nous pourrions le faire dans n’importe quel \u003cb\u003ejardin\u003c/b\u003e de Paris",
+        "Pauvre Blaise (book 11856, 1.00): \u003cb\u003ejardin\u003c/b\u003e. Il vous demande de les bien soigner pour les remettre dans le \u003cb\u003ejardin\u003c/b\u003e quand",
+        "Pauvre Blaise (book 11856, 1.00): \u003cb\u003ejardin\u003c/b\u003e. En arrivant au perron, ils trouvèrent la comtesse avec sa fille qui les attendaient"
+      ]
+    }
+  ],
+  "plans": {
+    "filtered": "Subquery Scan on t (actual time=31.500..31.503 rows=10.00 loops=1)\n  Buffers: shared hit=1291 read=1039\n  -\u003e  Limit (actual time=31.498..31.500 rows=10.00 loops=1)\n        Buffers: shared hit=1291 read=1039\n        -\u003e  Sort (actual time=31.497..31.498 rows=10.00 loops=1)\n              Sort Key: (ts_rank_cd(chunks.tsv, '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)) DESC\n              Sort Method: top-N heapsort  Memory: 25kB\n              Buffers: shared hit=1291 read=1039\n              -\u003e  Bitmap Heap Scan on chunks (actual time=1.768..31.373 rows=349.00 loops=1)\n                    Recheck Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                    Filter: (library_id = ANY ('{3,11}'::integer[]))\n                    Rows Removed by Filter: 2025\n                    Heap Blocks: exact=701\n                    Buffers: shared hit=1291 read=1039\n                    -\u003e  Bitmap Index Scan on chunks_tsv (actual time=0.922..0.922 rows=2374.00 loops=1)\n                          Index Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                          Index Searches: 1\n                          Buffers: shared hit=25 read=8\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.209 ms\nExecution Time: 31.524 ms",
+    "fuzzy": "Subquery Scan on t (actual time=12326.636..12341.695 rows=10.00 loops=1)\n  Buffers: shared hit=199072 read=149629\n  -\u003e  Limit (actual time=12326.634..12341.691 rows=10.00 loops=1)\n        Buffers: shared hit=199072 read=149629\n        -\u003e  Gather Merge (actual time=12326.633..12341.688 rows=10.00 loops=1)\n              Workers Planned: 2\n              Workers Launched: 2\n              Buffers: shared hit=199072 read=149629\n              -\u003e  Sort (actual time=12304.665..12304.667 rows=10.00 loops=3)\n                    Sort Key: (ts_rank_cd(chunks.tsv, '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)) DESC\n                    Sort Method: top-N heapsort  Memory: 25kB\n                    Buffers: shared hit=199072 read=149629\n                    Worker 0:  Sort Method: top-N heapsort  Memory: 25kB\n                    Worker 1:  Sort Method: top-N heapsort  Memory: 25kB\n                    -\u003e  Parallel Bitmap Heap Scan on chunks (actual time=6.826..12287.960 rows=23864.33 loops=3)\n                          Recheck Cond: (tsv @@ '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)\n                          Heap Blocks: exact=4865\n                          Buffers: shared hit=199060 read=149625\n                          Worker 0:  Heap Blocks: exact=4718\n                          Worker 1:  Heap Blocks: exact=4762\n                          -\u003e  Bitmap Index Scan on chunks_tsv (actual time=14.677..14.677 rows=71593.00 loops=1)\n                                Index Cond: (tsv @@ '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)\n                                Index Searches: 1\n                                Buffers: shared hit=25 read=17\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.169 ms\nExecution Time: 12341.726 ms",
+    "phrase": "Subquery Scan on t (actual time=3109.866..3109.871 rows=10.00 loops=1)\n  Buffers: shared hit=28915 read=19011\n  -\u003e  Limit (actual time=3109.865..3109.867 rows=10.00 loops=1)\n        Buffers: shared hit=28915 read=19011\n        -\u003e  Sort (actual time=3109.863..3109.865 rows=10.00 loops=1)\n              Sort Key: (ts_rank_cd(chunks.tsv, '''white'' \u003c-\u003e ''whale'' | ''whit'' \u003c-\u003e ''whal'' | ''white'' \u003c-\u003e ''whale'''::tsquery)) DESC\n              Sort Method: top-N heapsort  Memory: 25kB\n              Buffers: shared hit=28915 read=19011\n              -\u003e  Bitmap Heap Scan on chunks (actual time=24.814..3108.803 rows=825.00 loops=1)\n                    Recheck Cond: (tsv @@ '''white'' \u003c-\u003e ''whale'' | ''whit'' \u003c-\u003e ''whal'' | ''white'' \u003c-\u003e ''whale'''::tsquery)\n                    Rows Removed by Index Recheck: 7719\n                    Heap Blocks: exact=3429\n                    Buffers: shared hit=28915 read=19011\n                    -\u003e  Bitmap Index Scan on chunks_tsv (actual time=11.383..11.383 rows=8544.00 loops=1)\n                          Index Cond: (tsv @@ '''white'' \u003c-\u003e ''whale'' | ''whit'' \u003c-\u003e ''whal'' | ''white'' \u003c-\u003e ''whale'''::tsquery)\n                          Index Searches: 1\n                          Buffers: shared hit=197 read=61\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.925 ms\nExecution Time: 3109.897 ms",
+    "repaired": "Subquery Scan on t (actual time=11887.446..11903.352 rows=10.00 loops=1)\n  Buffers: shared hit=201679 read=147072\n  -\u003e  Limit (actual time=11885.591..11886.450 rows=10.00 loops=1)\n        Buffers: shared hit=201649 read=147052\n        -\u003e  Gather Merge (actual time=11885.590..11886.446 rows=10.00 loops=1)\n              Workers Planned: 2\n              Workers Launched: 2\n              Buffers: shared hit=201649 read=147052\n              -\u003e  Sort (actual time=11860.062..11860.064 rows=10.00 loops=3)\n                    Sort Key: (ts_rank_cd(chunks.tsv, '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)) DESC\n                    Sort Method: top-N heapsort  Memory: 30kB\n                    Buffers: shared hit=201649 read=147052\n                    Worker 0:  Sort Method: top-N heapsort  Memory: 31kB\n                    Worker 1:  Sort Method: top-N heapsort  Memory: 30kB\n                    -\u003e  Parallel Bitmap Heap Scan on chunks (actual time=12.283..11841.701 rows=23864.33 loops=3)\n                          Recheck Cond: (tsv @@ '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)\n                          Heap Blocks: exact=4826\n                          Buffers: shared hit=201637 read=147048\n                          Worker 0:  Heap Blocks: exact=4708\n                          Worker 1:  Heap Blocks: exact=4811\n                          -\u003e  Bitmap Index Scan on chunks_tsv (actual time=14.810..14.810 rows=71593.00 loops=1)\n                                Index Cond: (tsv @@ '''detec'' | ''detect'' | ''detecta'' | ''detective⁠'' | ''detecto'' | ''detectum'' | ''detectus'''::tsquery)\n                                Index Searches: 1\n                                Buffers: shared hit=27 read=15\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.209 ms\nExecution Time: 11903.380 ms",
+    "snippets": "Subquery Scan on t (actual time=326.026..337.052 rows=10.00 loops=1)\n  Buffers: shared hit=8284 read=3602\n  -\u003e  Limit (actual time=324.559..324.563 rows=10.00 loops=1)\n        Buffers: shared hit=8244 read=3602\n        -\u003e  Sort (actual time=324.557..324.560 rows=10.00 loops=1)\n              Sort Key: (ts_rank_cd(chunks.tsv, '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)) DESC\n              Sort Method: top-N heapsort  Memory: 29kB\n              Buffers: shared hit=8244 read=3602\n              -\u003e  Bitmap Heap Scan on chunks (actual time=1.600..323.527 rows=2374.00 loops=1)\n                    Recheck Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                    Heap Blocks: exact=701\n                    Buffers: shared hit=8244 read=3602\n                    -\u003e  Bitmap Index Scan on chunks_tsv (actual time=1.081..1.081 rows=2374.00 loops=1)\n                          Index Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                          Index Searches: 1\n                          Buffers: shared hit=33\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.253 ms\nExecution Time: 337.078 ms",
+    "stemmed": "Subquery Scan on t (actual time=859.767..859.771 rows=10.00 loops=1)\n  Buffers: shared hit=6507 read=5339\n  -\u003e  Limit (actual time=859.766..859.768 rows=10.00 loops=1)\n        Buffers: shared hit=6507 read=5339\n        -\u003e  Sort (actual time=859.764..859.765 rows=10.00 loops=1)\n              Sort Key: (ts_rank_cd(chunks.tsv, '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)) DESC\n              Sort Method: top-N heapsort  Memory: 25kB\n              Buffers: shared hit=6507 read=5339\n              -\u003e  Bitmap Heap Scan on chunks (actual time=4.173..858.429 rows=2374.00 loops=1)\n                    Recheck Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                    Heap Blocks: exact=701\n                    Buffers: shared hit=6507 read=5339\n                    -\u003e  Bitmap Index Scan on chunks_tsv (actual time=3.160..3.161 rows=2374.00 loops=1)\n                          Index Cond: (tsv @@ '''whale'' \u0026 ''harpoon'' | ''whal'' \u0026 ''harpooned'' | ''whales'' \u0026 ''harpooned'''::tsquery)\n                          Index Searches: 1\n                          Buffers: shared hit=22 read=11\nPlanning:\n  Buffers: shared hit=1\nPlanning Time: 0.256 ms\nExecution Time: 859.802 ms"
+  },
+  "started": "2026-10-04T16:55:29.942264603Z",
+  "settings": {
+    "maintenance_work_mem": "512MB",
+    "max_parallel_maintenance_workers": "3",
+    "max_parallel_workers_per_gather": "2",
+    "pg_search": "0.25.11",
+    "server_version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "shared_buffers": "512MB",
+    "work_mem": "32MB"
+  }
+}

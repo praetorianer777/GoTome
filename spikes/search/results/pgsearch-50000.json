@@ -1,0 +1,452 @@
+{
+  "engine": "pgsearch",
+  "books": 50000,
+  "chunks": 2338921,
+  "textMB": 17889.962182,
+  "buildSeconds": {
+    "index": 1199.46576386,
+    "load": 847.226687336,
+    "total": 5554.49062604,
+    "vacuum": 299.679118004,
+    "vocabulary": 3208.020715679
+  },
+  "sizes": {
+    "chunks_bm25": 10236649472,
+    "chunks_pkey": 52551680,
+    "table": 12417220608,
+    "words": 265232384
+  },
+  "memory": {
+    "build": {
+      "anon": 778522624,
+      "current": 2148233216
+    },
+    "oomKills": 0,
+    "queries": {
+      "anon": 215822336,
+      "current": 2147479552
+    },
+    "rebuild": {
+      "anon": 770564096,
+      "current": 2147495936
+    }
+  },
+  "latencyMs": {
+    "filtered": {
+      "runs": 20,
+      "p50": 7.573,
+      "p95": 8.116,
+      "max": 8.359
+    },
+    "fuzzy": {
+      "runs": 25,
+      "p50": 75.566,
+      "p95": 166.299,
+      "max": 166.564
+    },
+    "phrase": {
+      "runs": 25,
+      "p50": 31.14,
+      "p95": 84.035,
+      "max": 84.905
+    },
+    "repaired": {
+      "runs": 25,
+      "p50": 20.599,
+      "p95": 66.347,
+      "max": 67.277
+    },
+    "snippets": {
+      "runs": 20,
+      "p50": 11.111,
+      "p95": 14.544,
+      "max": 15.715
+    },
+    "stemmed": {
+      "runs": 50,
+      "p50": 5.093,
+      "p95": 13.027,
+      "max": 13.167
+    }
+  },
+  "rebuildSeconds": 1111.502430036,
+  "samples": [
+    {
+      "kind": "stemmed",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 11522, 22.13)",
+        "Whalers and whaling (book 21522, 22.13)",
+        "Whalers and whaling (book 41522, 22.13)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Advance Australia! (book 41101, 8.13)",
+        "Advance Australia! (book 61101, 8.13)",
+        "Advance Australia! (book 141101, 8.13)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "ancient temples ruins",
+      "want": "temple",
+      "found": 10,
+      "top": [
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 11517, 17.01)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 21517, 17.01)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 41517, 17.01)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "detective murdered",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "The scarab murder case (book 11269, 12.03)",
+        "The scarab murder case (book 21269, 12.03)",
+        "The scarab murder case (book 41269, 12.03)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "love letters",
+      "want": "letter",
+      "found": 10,
+      "top": [
+        "An anthology of German literature (book 146, 8.42)",
+        "Geschichte der Englischen Sprache und Literatur / von den ältesten Zeiten bis zur Einführung der Buchdruckerkunst (book 10109, 8.42)",
+        "An anthology of German literature (book 20146, 8.42)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Häuser Flüsse",
+      "want": "Haus",
+      "found": 10,
+      "top": [
+        "Die Nacht der Erfüllung: Erzählungen (book 379, 8.16)",
+        "Die Nacht der Erfüllung: Erzählungen (book 90379, 8.16)",
+        "Die Nacht der Erfüllung: Erzählungen (book 140379, 8.16)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 71754, 17.51)",
+        "Genius and degeneration (book 131754, 17.51)",
+        "Genius and degeneration (book 141754, 17.51)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Kinder spielten",
+      "want": "Kind",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 9.52)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 10445, 9.52)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 20445, 9.52)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "maison jardin",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Petite ville (book 1926, 7.90)",
+        "Petite ville (book 11926, 7.90)",
+        "Petite ville (book 21926, 7.90)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 150156, 12.97)",
+        "Eingeschneit: Eine Studentengeschichte (book 170156, 12.97)",
+        "Eingeschneit: Eine Studentengeschichte (book 200156, 12.97)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "white whale",
+      "want": "white whale",
+      "found": 10,
+      "top": [
+        "Herman Melville (book 816, 11.90)",
+        "Herman Melville (book 20816, 11.90)",
+        "Herman Melville (book 60816, 11.90)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "once upon a time",
+      "want": "once upon a time",
+      "found": 10,
+      "top": [
+        "Such a happy day (book 21310, 5.22)",
+        "Such a happy day (book 41310, 5.22)",
+        "Such a happy day (book 51310, 5.22)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "in the morning",
+      "want": "in the morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 12.51)",
+        "Eingeschneit: Eine Studentengeschichte (book 20156, 12.51)",
+        "Eingeschneit: Eine Studentengeschichte (book 30156, 12.51)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "der alte Mann",
+      "want": "alte Mann",
+      "found": 10,
+      "top": [
+        "Der Fremde: Ein Gleichniss (book 456, 8.20)",
+        "Der Fremde: Ein Gleichniss (book 20456, 8.20)",
+        "Der Fremde: Ein Gleichniss (book 60456, 8.20)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "es war einmal",
+      "want": "war einmal",
+      "found": 10,
+      "top": [
+        "Die Richterin (book 600, 5.66)",
+        "Die Richterin (book 10600, 5.66)",
+        "Die Richterin (book 30600, 5.66)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 10613, 2.00)",
+        "Webster's Unabridged Dictionary (book 30613, 2.00)",
+        "Webster's Unabridged Dictionary (book 40613, 2.00)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Urwald (book 496, 5.00)",
+        "Elemente der Paläontologie (book 515, 5.00)",
+        "Eskimoleben (book 522, 5.00)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "Der Wahn und die Träume in W. Jensens »Gradiva« (book 437, 4.50)",
+        "Der Wahn und die Träume in W. Jensens »Gradiva« (book 10437, 4.50)",
+        "Der Wahn und die Träume in W. Jensens »Gradiva« (book 20437, 4.50)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 10613, 19.50)",
+        "Webster's Unabridged Dictionary (book 30613, 19.50)",
+        "Webster's Unabridged Dictionary (book 40613, 19.50)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 10613, 3.00)",
+        "Webster's Unabridged Dictionary (book 30613, 3.00)",
+        "Webster's Unabridged Dictionary (book 40613, 3.00)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "The great sea-serpent (book 11051, 18.25)",
+        "The great sea-serpent (book 21051, 18.25)",
+        "The great sea-serpent (book 31051, 18.25)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Handbook of nature-study for teachers and parents (book 903, 9.06)",
+        "Handbook of nature-study for teachers and parents (book 10903, 9.06)",
+        "Handbook of nature-study for teachers and parents (book 20903, 9.06)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Die Frau von dreißig Jahren (book 20243, 7.64)",
+        "Die Frau von dreißig Jahren (book 30243, 7.64)",
+        "Die Frau von dreißig Jahren (book 40243, 7.64)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "A third day in Mary Carrow's school (book 1043, 4.55)",
+        "A third day in Mary Carrow's school (book 11043, 4.55)",
+        "A third day in Mary Carrow's school (book 21043, 4.55)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 11522, 22.13): success, and nothing gave the men greater confidence than the capture of several \u003cb\u003ewhales\u003c/b\u003e by clever \u003cb\u003eharpooning\u003c/b\u003e. It satisfied them that the \u003cb\u003eharpooner\u003c/b\u003e",
+        "Whalers and whaling (book 21522, 22.13): success, and nothing gave the men greater confidence than the capture of several \u003cb\u003ewhales\u003c/b\u003e by clever \u003cb\u003eharpooning\u003c/b\u003e. It satisfied them that the \u003cb\u003eharpooner\u003c/b\u003e",
+        "Whalers and whaling (book 41522, 22.13): success, and nothing gave the men greater confidence than the capture of several \u003cb\u003ewhales\u003c/b\u003e by clever \u003cb\u003eharpooning\u003c/b\u003e. It satisfied them that the \u003cb\u003eharpooner\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Advance Australia! (book 41101, 8.13): the whole time. The horsebreaker is most likely a man that no living \u003cb\u003ehorse\u003c/b\u003e can throw by any means short of rolling on him; so he blindfolds the \u003cb\u003ehorse\u003c/b\u003e",
+        "Advance Australia! (book 61101, 8.13): the whole time. The horsebreaker is most likely a man that no living \u003cb\u003ehorse\u003c/b\u003e can throw by any means short of rolling on him; so he blindfolds the \u003cb\u003ehorse\u003c/b\u003e",
+        "Advance Australia! (book 141101, 8.13): the whole time. The horsebreaker is most likely a man that no living \u003cb\u003ehorse\u003c/b\u003e can throw by any means short of rolling on him; so he blindfolds the \u003cb\u003ehorse\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 71754, 17.51): Walhall \u003cb\u003everloren\u003c/b\u003e:\n\nDer der \u003cb\u003eLiebe\u003c/b\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach.\n\n[183]\n\nWas so schlimmes",
+        "Genius and degeneration (book 131754, 17.51): Walhall \u003cb\u003everloren\u003c/b\u003e:\n\nDer der \u003cb\u003eLiebe\u003c/b\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach.\n\n[183]\n\nWas so schlimmes",
+        "Genius and degeneration (book 141754, 17.51): Walhall \u003cb\u003everloren\u003c/b\u003e:\n\nDer der \u003cb\u003eLiebe\u003c/b\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach.\n\n[183]\n\nWas so schlimmes"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 150156, 12.97): tremendous tobacco-smoke (filling a room.)\n\nMor´gen, m. (pl. —), \u003cb\u003emorning\u003c/b\u003e; des Morgens, in the \u003cb\u003emorning\u003c/b\u003e; des Morgens früh, early in the \u003cb\u003emorning\u003c/b\u003e",
+        "Eingeschneit: Eine Studentengeschichte (book 170156, 12.97): tremendous tobacco-smoke (filling a room.)\n\nMor´gen, m. (pl. —), \u003cb\u003emorning\u003c/b\u003e; des Morgens, in the \u003cb\u003emorning\u003c/b\u003e; des Morgens früh, early in the \u003cb\u003emorning\u003c/b\u003e",
+        "Eingeschneit: Eine Studentengeschichte (book 200156, 12.97): tremendous tobacco-smoke (filling a room.)\n\nMor´gen, m. (pl. —), \u003cb\u003emorning\u003c/b\u003e; des Morgens, in the \u003cb\u003emorning\u003c/b\u003e; des Morgens früh, early in the \u003cb\u003emorning\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 11434, 29.13): CLENDENEN\u0026#x27;S \u003cb\u003eDETECTIVE\u003c/b\u003e MANUAL ***\n\nCLENDENEN’S\n\u003cb\u003eDETECTIVE\u003c/b\u003e\nMANUAL\n\nHow to Become a\nSuccessful \u003cb\u003eDetective\u003c/b\u003e\n\nRUFUS H. CLENDENEN\nCHARLESTON, W. VA",
+        "Clendenen's detective manual (book 21434, 29.13): CLENDENEN\u0026#x27;S \u003cb\u003eDETECTIVE\u003c/b\u003e MANUAL ***\n\nCLENDENEN’S\n\u003cb\u003eDETECTIVE\u003c/b\u003e\nMANUAL\n\nHow to Become a\nSuccessful \u003cb\u003eDetective\u003c/b\u003e\n\nRUFUS H. CLENDENEN\nCHARLESTON, W. VA",
+        "Clendenen's detective manual (book 41434, 29.13): CLENDENEN\u0026#x27;S \u003cb\u003eDETECTIVE\u003c/b\u003e MANUAL ***\n\nCLENDENEN’S\n\u003cb\u003eDETECTIVE\u003c/b\u003e\nMANUAL\n\nHow to Become a\nSuccessful \u003cb\u003eDetective\u003c/b\u003e\n\nRUFUS H. CLENDENEN\nCHARLESTON, W. VA"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 0,
+      "top": null
+    },
+    {
+      "kind": "repaired",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "The Green Dolphin (book 807, 30.82): ones that \u003cb\u003ekinder\u003c/b\u003e needed clippin’ off—she turns her shoulder plumb upon me an’ goes shootin’ off into the house as if I’d offered her \u003cb\u003ea\u003c/b\u003e",
+        "The Green Dolphin (book 20807, 30.82): ones that \u003cb\u003ekinder\u003c/b\u003e needed clippin’ off—she turns her shoulder plumb upon me an’ goes shootin’ off into the house as if I’d offered her \u003cb\u003ea\u003c/b\u003e",
+        "The Green Dolphin (book 60807, 30.82): ones that \u003cb\u003ekinder\u003c/b\u003e needed clippin’ off—she turns her shoulder plumb upon me an’ goes shootin’ off into the house as if I’d offered her \u003cb\u003ea\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 521, 30.54): Heiligtum.\n\n\u003cb\u003eElefantenkuh\u003c/b\u003e mit ihrem Baby\n\nFünftes Kapitel\nVom \u003cb\u003eElefanten\u003c/b\u003e und seinem Fang\n\nCeylon, die klassische Elefanteninsel — Unterschiede",
+        "Fünfundzwanzig Jahre Ceylon (book 10521, 30.54): Heiligtum.\n\n\u003cb\u003eElefantenkuh\u003c/b\u003e mit ihrem Baby\n\nFünftes Kapitel\nVom \u003cb\u003eElefanten\u003c/b\u003e und seinem Fang\n\nCeylon, die klassische Elefanteninsel — Unterschiede",
+        "Fünfundzwanzig Jahre Ceylon (book 30521, 30.54): Heiligtum.\n\n\u003cb\u003eElefantenkuh\u003c/b\u003e mit ihrem Baby\n\nFünftes Kapitel\nVom \u003cb\u003eElefanten\u003c/b\u003e und seinem Fang\n\nCeylon, die klassische Elefanteninsel — Unterschiede"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 10613, 51.81): used as a piece of decorative furniture in room.\n\n\u003cb\u003eJARDS\u003c/b\u003e\n\u003cb\u003eJards\u003c/b\u003e, n. Etym: [F. \u003cb\u003ejarde\u003c/b\u003e, \u003cb\u003ejardon\u003c/b\u003e.] (Far.)\n\nDefn: A callous tumor on the leg of a horse, below",
+        "Webster's Unabridged Dictionary (book 30613, 51.81): used as a piece of decorative furniture in room.\n\n\u003cb\u003eJARDS\u003c/b\u003e\n\u003cb\u003eJards\u003c/b\u003e, n. Etym: [F. \u003cb\u003ejarde\u003c/b\u003e, \u003cb\u003ejardon\u003c/b\u003e.] (Far.)\n\nDefn: A callous tumor on the leg of a horse, below",
+        "Webster's Unabridged Dictionary (book 40613, 51.81): used as a piece of decorative furniture in room.\n\n\u003cb\u003eJARDS\u003c/b\u003e\n\u003cb\u003eJards\u003c/b\u003e, n. Etym: [F. \u003cb\u003ejarde\u003c/b\u003e, \u003cb\u003ejardon\u003c/b\u003e.] (Far.)\n\nDefn: A callous tumor on the leg of a horse, below"
+      ]
+    }
+  ],
+  "plans": {
+    "filtered": "Limit (actual time=2.263..2.289 rows=10.00 loops=1)\n  Buffers: shared hit=349\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=2.262..2.288 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"must\":[{\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}},{\"term_set\":{\"terms\":[{\"field\":\"library_id\",\"value\":3},{\"field\":\"library_id\",\"value\":11}]}}]}}\n        Buffers: shared hit=349\nPlanning:\n  Buffers: shared hit=266\nPlanning Time: 1.931 ms\nExecution Time: 2.382 ms",
+    "fuzzy": "Limit (actual time=49.434..49.471 rows=10.00 loops=1)\n  Buffers: shared hit=1627\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=49.433..49.468 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=1627\nPlanning:\n  Buffers: shared hit=976\nPlanning Time: 27.498 ms\nExecution Time: 49.582 ms",
+    "phrase": "Limit (actual time=3.550..3.579 rows=10.00 loops=1)\n  Buffers: shared hit=657\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=3.550..3.578 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_en\",\"phrase\":\"white whale\",\"slop\":null}}}},{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_de\",\"phrase\":\"white whale\",\"slop\":null}}}},{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_xx\",\"phrase\":\"white whale\",\"slop\":null}}}}]}}\n        Buffers: shared hit=657\nPlanning:\n  Buffers: shared hit=457\nPlanning Time: 1.743 ms\nExecution Time: 3.657 ms",
+    "repaired": "Limit (actual time=8.263..11.626 rows=10.00 loops=1)\n  Buffers: shared hit=519\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=8.263..11.624 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}}]}}\n        Buffers: shared hit=519\nPlanning:\n  Buffers: shared hit=242\nPlanning Time: 1.462 ms\nExecution Time: 11.738 ms",
+    "snippets": "Limit (actual time=2.729..6.400 rows=10.00 loops=1)\n  Buffers: shared hit=481\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=2.729..6.399 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=481\nPlanning:\n  Buffers: shared hit=250\nPlanning Time: 1.066 ms\nExecution Time: 6.482 ms",
+    "stemmed": "Limit (actual time=1.739..1.768 rows=10.00 loops=1)\n  Buffers: shared hit=429\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=1.738..1.767 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=429\nPlanning:\n  Buffers: shared hit=250\nPlanning Time: 1.042 ms\nExecution Time: 1.837 ms"
+  },
+  "started": "2026-10-04T19:10:12.21028918Z",
+  "settings": {
+    "maintenance_work_mem": "512MB",
+    "max_parallel_maintenance_workers": "3",
+    "max_parallel_workers_per_gather": "2",
+    "pg_search": "0.25.11",
+    "server_version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "shared_buffers": "512MB",
+    "work_mem": "32MB"
+  }
+}

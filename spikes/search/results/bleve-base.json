@@ -1,0 +1,374 @@
+{
+  "engine": "bleve",
+  "books": 2011,
+  "chunks": 94107,
+  "textMB": 719.87946,
+  "buildSeconds": {
+    "index": 84.22284804,
+    "total": 84.255606239
+  },
+  "sizes": {
+    "index (text stored inside)": 1601486679
+  },
+  "memory": {
+    "build": {
+      "anon": 922697728,
+      "current": 2147381248
+    },
+    "oomKills": 0,
+    "queries": {
+      "anon": 855994368,
+      "current": 1392488448
+    },
+    "rebuild": {
+      "anon": 46432256,
+      "current": 1400872960
+    }
+  },
+  "latencyMs": {
+    "filtered": {
+      "runs": 20,
+      "p50": 3.085,
+      "p95": 4.308,
+      "max": 4.601
+    },
+    "fuzzy": {
+      "runs": 25,
+      "p50": 3.6,
+      "p95": 5.571,
+      "max": 5.909
+    },
+    "phrase": {
+      "runs": 25,
+      "p50": 17.531,
+      "p95": 61.826,
+      "max": 62.657
+    },
+    "snippets": {
+      "runs": 20,
+      "p50": 3.036,
+      "p95": 6.2,
+      "max": 6.259
+    },
+    "stemmed": {
+      "runs": 50,
+      "p50": 1.831,
+      "p95": 4.255,
+      "max": 4.676
+    }
+  },
+  "samples": [
+    {
+      "kind": "stemmed",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 1522, 0.18)",
+        "Whalers and whaling (book 1522, 0.18)",
+        "Whalers and whaling (book 1522, 0.17)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Tartarin de Tarascon (book 1824, 0.11)",
+        "Webster's Unabridged Dictionary (book 613, 0.07)",
+        "Handbook of nature-study for teachers and parents (book 903, 0.07)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "ancient temples ruins",
+      "want": "temple",
+      "found": 10,
+      "top": [
+        "Journal of a tour in Asia Minor (book 1516, 0.09)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 1517, 0.09)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 1517, 0.09)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "detective murdered",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 1434, 0.06)",
+        "The scarab murder case (book 1269, 0.06)",
+        "The fifteen cells (book 1372, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "love letters",
+      "want": "letter",
+      "found": 10,
+      "top": [
+        "Hernani (book 2011, 0.15)",
+        "An anthology of German literature (book 146, 0.11)",
+        "Webster's Unabridged Dictionary (book 613, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Häuser Flüsse",
+      "want": "Haus",
+      "found": 10,
+      "top": [
+        "Geschichte Alexanders des Grossen (book 197, 0.05)",
+        "Reise in die Aequinoctial-Gegenden des neuen Continents. Band 3. (book 275, 0.05)",
+        "Reise in die Aequinoctial-Gegenden des neuen Continents. Band 3. (book 275, 0.05)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 1754, 0.10)",
+        "Kleine Dichtungen (book 481, 0.05)",
+        "Sämtliche Werke 14 (book 434, 0.05)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Kinder spielten",
+      "want": "Kind",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.07)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.06)",
+        "Das Buch von Monelle (book 436, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "maison jardin",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Petite ville (book 1926, 0.06)",
+        "Tout arrive (book 1962, 0.06)",
+        "Les Heures Claires (book 1810, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 0.18)",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 64, 0.16)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.15)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "white whale",
+      "want": "white whale",
+      "found": 10,
+      "top": [
+        "The seals and whales of the British seas (book 697, 0.12)",
+        "Whalers and whaling (book 1522, 0.12)",
+        "Herman Melville (book 816, 0.11)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "once upon a time",
+      "want": "once upon a time",
+      "found": 10,
+      "top": [
+        "Plutarch's essays and miscellanies, Vol. 5 (of 5) (book 803, 0.02)",
+        "New lands (book 1017, 0.02)",
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 1517, 0.02)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "in the morning",
+      "want": "in the morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 0.22)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.16)",
+        "An anthology of German literature (book 146, 0.12)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "der alte Mann",
+      "want": "alte Mann",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.06)",
+        "Märchen für Kinder (book 111, 0.05)",
+        "Ehstnische Märchen. Zweite Hälfte (book 172, 0.05)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "es war einmal",
+      "want": "war einmal",
+      "found": 0,
+      "top": null
+    },
+    {
+      "kind": "fuzzy",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 64, 0.05)",
+        "Webster's Unabridged Dictionary (book 613, 0.03)",
+        "The French powder mystery (book 1408, 0.02)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 0.03)",
+        "Der Wahnsinnige: Eine Erzählung aus Südamerika (book 382, 0.01)",
+        "Reise in die Aequinoctial-Gegenden des neuen Continents. Band 2. (book 226, 0.01)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "The Green Dolphin (book 807, 0.05)",
+        "Der Widerspenstigen Zähmung (book 362, 0.05)",
+        "Das Buch von Monelle (book 436, 0.05)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 521, 0.07)",
+        "Fünfundzwanzig Jahre Ceylon (book 521, 0.06)",
+        "Fünfundzwanzig Jahre Ceylon (book 521, 0.06)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 0.03)",
+        "Mineralogia Polyglotta (book 78, 0.01)",
+        "Matabele land and the Victoria Falls (book 666, 0.01)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "The great sea-serpent (book 1051, 0.41)",
+        "The great sea-serpent (book 1051, 0.40)",
+        "The great sea-serpent (book 1051, 0.39)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "The young reporter (book 1151, 0.43)",
+        "The haunts of men (book 771, 0.43)",
+        "Bransford in Arcadia (book 1271, 0.43)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Die zärtlichen Schwestern (book 591, 0.42)",
+        "Die zärtlichen Schwestern (book 591, 0.41)",
+        "Die zärtlichen Schwestern (book 591, 0.41)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Hernani (book 2011, 0.64)",
+        "The autobiography of a seaman (volume 2 of 2) (book 731, 0.58)",
+        "The young reporter (book 1151, 0.58)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 1522, 0.18): …se \u003cmark\u003eharpooners\u003c/mark\u003e at work separating the blubber fat worked under the direction of the specksioneer, or head fat-cutter, the expert of experts on the subject of \u003cmark\u003ewhales\u003c/mark\u003e. But if in the seventeenth-century D…",
+        "Whalers and whaling (book 1522, 0.18): … \u003cmark\u003ewhales\u003c/mark\u003e and possibly fill up his holds before the other ships could sail through. Taking \u003cmark\u003ewhaling\u003c/mark\u003e as a whole, success depended far more on the captain’s character and skill, and next on his \u003cmark\u003eharpooners\u003c/mark\u003e,…",
+        "Whalers and whaling (book 1522, 0.17): … the \u003cmark\u003ewhale\u003c/mark\u003e-ship Tuscan one day sighted on her voyage out in the Atlantic a school of small \u003cmark\u003ewhales\u003c/mark\u003e. Boats were lowered away as quickly as possible in pursuit, and three \u003cmark\u003ewhales\u003c/mark\u003e were soon \u003cmark\u003eharpooned\u003c/mark\u003e. One …"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Tartarin de Tarascon (book 1824, 0.11)",
+        "Webster's Unabridged Dictionary (book 613, 0.07): …es as a \u003cmark\u003ehorse\u003c/mark\u003e medicine. — \u003cmark\u003eHorse\u003c/mark\u003e cloth, a cloth to cover a \u003cmark\u003ehorse\u003c/mark\u003e. — \u003cmark\u003eHorse\u003c/mark\u003e conch (Zoöl.), a large, spiral, marine shell of the genus Triton. See Triton. — \u003cmark\u003eHorse\u003c/mark\u003e courser. (a) One that \u003cmark\u003eruns\u003c/mark\u003e \u003cmark\u003ehorses\u003c/mark\u003e, or kee…",
+        "Handbook of nature-study for teachers and parents (book 903, 0.07): …oot. The \u003cmark\u003ehorse\u003c/mark\u003e walks on one toe. Which toe do you think it is? What do we call the toe-nail of the \u003cmark\u003ehorse\u003c/mark\u003e? What advantage is this sort of a foot to the \u003cmark\u003ehorse\u003c/mark\u003e? Is it best fitted for \u003cmark\u003erunning\u003c/mark\u003e on dry plain…"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 1754, 0.10): …r durch Verträge ich Herr,\n\nDen Verträgen bin ich nun Knecht.\n\n[182]\n\nDann wäre Walhall \u003cmark\u003everloren\u003c/mark\u003e:\n\nDer der \u003cmark\u003eLiebe\u003c/mark\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach…",
+        "Kleine Dichtungen (book 481, 0.05)",
+        "Sämtliche Werke 14 (book 434, 0.05)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 0.18)",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 64, 0.16)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 0.15): …t, to murder.\n\nMorgen, m. -s, \u003cmark\u003emorning\u003c/mark\u003e, to-morrow; morgens, in the \u003cmark\u003emorning\u003c/mark\u003e.\n\nMorgenschlaf, m. \u003cmark\u003emorning\u003c/mark\u003e nap.\n\nMorgenschläfchen, n. little \u003cmark\u003emorning\u003c/mark\u003e nap.\n\nMorgentau, m. \u003cmark\u003emorning\u003c/mark\u003e dew.\n\nmüde, tired.\n\nMüdigkeit…"
+      ]
+    }
+  ],
+  "plans": {
+    "filtered": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "fuzzy": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "phrase": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "snippets": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "stemmed": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken."
+  },
+  "started": "2026-10-04T13:53:59.305994195Z"
+}
