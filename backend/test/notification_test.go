@@ -49,6 +49,23 @@ func (a *app) events(c *http.Client) <-chan string {
 	return out
 }
 
+// until reads events until one is want. Changes that come close together
+// are told once, so the counts between may be skipped.
+func until(t *testing.T, events <-chan string, want string) {
+	t.Helper()
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case e := <-events:
+			if e == want {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("no event %s within five seconds", want)
+		}
+	}
+}
+
 func next(t *testing.T, events <-chan string) string {
 	t.Helper()
 	select {
@@ -80,9 +97,7 @@ func TestNotificationsReachTheirOwnerAtOnceAndStayUnreadUntilRead(t *testing.T) 
 
 	// A bulk change that finishes tells whoever asked, in the stream, once.
 	bulk := a.runBulk(editor, map[string]any{"books": []string{emma.String()}, "action": "writeBack"})
-	if e := next(t, mine); e != `{"unread":1}` {
-		t.Errorf("after the bulk change: %s", e)
-	}
+	until(t, mine, `{"unread":1}`)
 	if _, err := a.server.Bulk.Run(context.Background(), uuid.MustParse(bulk["id"].(string))); err != nil {
 		t.Fatal(err)
 	}
@@ -130,16 +145,12 @@ func TestNotificationsReachTheirOwnerAtOnceAndStayUnreadUntilRead(t *testing.T) 
 	}
 
 	// Marking read is told to every window, and lasts.
-	for range 3 {
-		next(t, mine)
-	}
+	until(t, mine, `{"unread":4}`)
 	id := n["id"].(string)
 	if status, out, _ := a.call(editor, http.MethodPost, "/notifications/read", map[string]any{"ids": []string{id}}); status != 200 || out["unread"].(float64) != 3 {
 		t.Errorf("mark one: %d %v", status, out)
 	}
-	if e := next(t, mine); e != `{"unread":3}` {
-		t.Errorf("after marking one read: %s", e)
-	}
+	until(t, mine, `{"unread":3}`)
 	// Someone else's notification is not theirs to mark.
 	a.call(reader, http.MethodPost, "/notifications/read", map[string]any{"all": true})
 	if _, list, _ := a.call(editor, http.MethodGet, "/notifications", nil); list["unread"].(float64) != 3 {
@@ -148,9 +159,7 @@ func TestNotificationsReachTheirOwnerAtOnceAndStayUnreadUntilRead(t *testing.T) 
 	if status, out, _ := a.call(editor, http.MethodPost, "/notifications/read", map[string]any{"all": true}); status != 200 || out["unread"].(float64) != 0 {
 		t.Errorf("mark all: %d %v", status, out)
 	}
-	if e := next(t, mine); e != `{"unread":0}` {
-		t.Errorf("after marking all read: %s", e)
-	}
+	until(t, mine, `{"unread":0}`)
 	if again := a.events(editor); next(t, again) != `{"unread":0}` {
 		t.Error("a new stream does not open with the count kept")
 	}
