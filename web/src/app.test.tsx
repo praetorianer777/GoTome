@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookDetail } from "@/books/api";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -1853,5 +1853,69 @@ describe("the EPUB and MOBI reader", () => {
 		renderApp("/books/book-1/read/file-1");
 		expect(await screen.findByText(/^This file cannot be read in the browser/)).toBeInTheDocument();
 		expect(ebook.opened).toEqual([]);
+	});
+});
+
+describe("notifications", () => {
+	/** An EventSource the test pushes events through, as the server's stream would. */
+	class FakeEventSource {
+		static opened: FakeEventSource[] = [];
+		listeners = new Map<string, ((e: MessageEvent) => void)[]>();
+		closed = false;
+		constructor(readonly url: string) {
+			FakeEventSource.opened.push(this);
+		}
+		addEventListener(type: string, listener: (e: MessageEvent) => void) {
+			this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+		}
+		close() {
+			this.closed = true;
+		}
+		emit(type: string, data: string) {
+			for (const listener of this.listeners.get(type) ?? []) listener(new MessageEvent(type, { data }));
+		}
+	}
+
+	beforeEach(() => {
+		FakeEventSource.opened = [];
+		vi.stubGlobal("EventSource", FakeEventSource);
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows a notification the stream announces, without a reload, and marks it read", async () => {
+		const person = userEvent.setup();
+		renderApp("/");
+		expect(await screen.findByRole("button", { name: "Notifications, 0 unread" })).toBeInTheDocument();
+		const stream = FakeEventSource.opened.at(-1);
+		expect(stream?.url).toBe("/api/v1/notifications/stream");
+
+		server.notify();
+		stream?.emit("unread", '{"unread":1}');
+		const bell = await screen.findByRole("button", { name: "Notifications, 1 unread" });
+		await person.click(bell);
+		const panel = within(screen.getByRole("region", { name: "Notifications" }));
+		expect(panel.getByRole("button", { name: /^Unread: Editing many books is done/ })).toHaveTextContent(
+			"Changed: 2 · Failed: 1",
+		);
+		await person.click(panel.getByRole("button", { name: "Mark all as read" }));
+		expect(await screen.findByRole("button", { name: "Notifications, 0 unread" })).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/notifications/read")?.body).toEqual({ all: true });
+		expect(panel.getByRole("button", { name: /^Editing many books is done/ })).toBeInTheDocument();
+
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
+	});
+
+	it("goes where a notification points, marking that one read", async () => {
+		const person = userEvent.setup();
+		server.notify({ id: "note-old", readAt: "2026-01-01T00:00:00Z" }).notify({ link: "/collections" });
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Notifications, 1 unread" }));
+		await person.click(screen.getByRole("button", { name: /^Unread: Editing many books is done/ }));
+		await waitFor(() => expect(router.state.location.pathname).toBe("/collections"));
+		expect(server.requests.find((r) => r.path === "/notifications/read")?.body).toEqual({ ids: ["note-2"] });
+		expect(await screen.findByRole("button", { name: "Notifications, 0 unread" })).toBeInTheDocument();
+		expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
 	});
 });

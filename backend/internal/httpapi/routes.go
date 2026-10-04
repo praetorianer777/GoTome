@@ -387,6 +387,21 @@ func (s *Server) routes() []Route {
 			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.countBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/notifications", ID: "listNotifications",
+			Summary: "The caller's notifications, newest first, and how many are unread", Tag: "notifications",
+			Query: notificationsQuery{}, Response: notificationList{}, Reads: ReadsLibraries, Permission: auth.SignedIn, Handler: s.listNotifications,
+		},
+		{
+			Method: http.MethodPost, Path: "/notifications/read", ID: "markNotificationsRead",
+			Summary: "Mark the caller's notifications read: those named, or all", Tag: "notifications",
+			Request: notificationsRead{}, Response: unreadCount{}, Permission: auth.SignedIn, Handler: s.markNotificationsRead,
+		},
+		{
+			Method: http.MethodGet, Path: "/notifications/stream", ID: "streamNotifications",
+			Summary: "Server-sent events: the caller's unread count, now and whenever it may have changed", Tag: "notifications",
+			Produces: "text/event-stream", Reads: ReadsLibraries, Permission: auth.SignedIn, Handler: s.streamNotifications,
+		},
+		{
 			Method: http.MethodGet, Path: "/smart-shelves", ID: "listSmartShelves",
 			Summary: "The caller's own smart shelves and everyone's shared ones, with what each holds for the caller", Tag: "collections",
 			Response: smartShelfList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listSmartShelves,

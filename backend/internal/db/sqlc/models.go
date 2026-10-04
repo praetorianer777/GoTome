@@ -195,6 +195,17 @@ type MetadataMatch struct {
 	UpdatedAt time.Time
 }
 
+type Notification struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Kind      string
+	Data      []byte
+	Link      string
+	BookID    *uuid.UUID
+	CreatedAt time.Time
+	ReadAt    *time.Time
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte

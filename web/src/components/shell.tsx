@@ -7,6 +7,7 @@ import {
 } from "@/auth/session";
 import mark from "@/assets/mark.webp";
 import { QuickSearch } from "@/books/quick-search";
+import { Bell } from "@/notifications/bell";
 import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
 import { MiniPlayer } from "@/player/controls";
@@ -93,6 +94,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 					</nav>
 					{can(user, "library:read") && <QuickSearch />}
 					<div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+						<Bell />
 						<label className="flex items-center gap-2">
 							<span className="text-slate-600 dark:text-slate-400">
 								{t("theme.label")}

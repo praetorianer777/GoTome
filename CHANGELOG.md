@@ -175,3 +175,7 @@ What changes for someone who runs or uses GOtome. The format follows
   dark pages, and a choice of pages or scrolling. The reader opens where you
   left off, on this device or another. Scripts inside a book never run, and
   a book cannot load anything from the internet.
+- Notifications: a bell in the header shows how many you have not read,
+  and updates as things happen, without reloading the page. A bulk change
+  tells you when it is done. Open the bell to see them, go to what one is
+  about, or mark them all as read.

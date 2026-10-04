@@ -27,6 +27,38 @@ func (q *Queries) AddBulkChangeBooks(ctx context.Context, arg AddBulkChangeBooks
 	return err
 }
 
+const countBulkOutcomes = `-- name: CountBulkOutcomes :many
+SELECT COALESCE(outcome, '')::text AS outcome, count(*)::int AS books
+FROM bulk_change_books
+WHERE bulk_change_id = $1
+GROUP BY outcome
+`
+
+type CountBulkOutcomesRow struct {
+	Outcome string
+	Books   int32
+}
+
+func (q *Queries) CountBulkOutcomes(ctx context.Context, bulkChangeID uuid.UUID) ([]CountBulkOutcomesRow, error) {
+	rows, err := q.db.Query(ctx, countBulkOutcomes, bulkChangeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountBulkOutcomesRow{}
+	for rows.Next() {
+		var i CountBulkOutcomesRow
+		if err := rows.Scan(&i.Outcome, &i.Books); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createBulkChange = `-- name: CreateBulkChange :one
 INSERT INTO bulk_changes (created_by, sees_all, action, change)
 VALUES ($1, $2, $3, $4)
@@ -52,13 +84,16 @@ func (q *Queries) CreateBulkChange(ctx context.Context, arg CreateBulkChangePara
 	return id, err
 }
 
-const finishBulkChange = `-- name: FinishBulkChange :exec
+const finishBulkChange = `-- name: FinishBulkChange :execrows
 UPDATE bulk_changes SET finished_at = now() WHERE id = $1 AND finished_at IS NULL
 `
 
-func (q *Queries) FinishBulkChange(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, finishBulkChange, id)
-	return err
+func (q *Queries) FinishBulkChange(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, finishBulkChange, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getBulkChange = `-- name: GetBulkChange :one

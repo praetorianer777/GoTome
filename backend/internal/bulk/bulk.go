@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
 
 // What a bulk change does to each book.
@@ -158,7 +159,7 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 			return false, err
 		}
 		if len(next) == 0 {
-			return true, q.FinishBulkChange(ctx, id)
+			return true, s.finish(ctx, row)
 		}
 		for _, book := range next {
 			if err := s.one(ctx, row.Action, scope, change, id, book); err != nil {
@@ -167,6 +168,32 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// finish marks the change done and tells whoever asked for it, once: a run
+// repeated after the change was finished tells nobody again.
+func (s *Service) finish(ctx context.Context, row sqlc.BulkChange) error {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		n, err := q.FinishBulkChange(ctx, row.ID)
+		if err != nil || n == 0 {
+			return err
+		}
+		counts, err := q.CountBulkOutcomes(ctx, row.ID)
+		if err != nil {
+			return err
+		}
+		outcomes := map[string]int{}
+		for _, c := range counts {
+			outcomes[c.Outcome] = int(c.Books)
+		}
+		_, err = notify.CreateTx(ctx, tx, row.CreatedBy, notify.New{
+			Kind: notify.KindBulkFinished,
+			Data: map[string]any{"action": row.Action, "outcomes": outcomes},
+			Link: "/bulk/" + row.ID.String(),
+		})
+		return err
+	})
 }
 
 // one makes the change to one book and records what it came to. It returns

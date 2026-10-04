@@ -3,6 +3,7 @@
 package test
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -15,10 +16,13 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
 
 // readCase is one way to call a read route. Path and query hold
@@ -89,6 +93,8 @@ func readCases() map[string][]readCase {
 			{path: "/smart-shelves/{sharedShelf}/books", control: "insider"},
 			{path: "/smart-shelves/{formerShelf}/books", control: "former"},
 		},
+		"listNotifications":   {{path: "/notifications", control: "former"}},
+		"streamNotifications": {{path: "/notifications/stream", why: "it carries the unread count alone, checked against the list below"}},
 		"getBulk": {
 			{path: "/bulk/{insiderBulk}", control: "insider"},
 			{path: "/bulk/{formerBulk}", control: "former"},
@@ -103,7 +109,8 @@ var twinned = []string{"book", "file", "library", "title", "author", "tag"}
 
 var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
-// get calls a path and returns the status and the body, whatever it is.
+// get calls a path and returns the status and the body, whatever it is; of
+// a stream of events, the first event.
 func (a *app) get(c *http.Client, path string) (int, []byte) {
 	a.t.Helper()
 	resp, err := c.Get(a.url + httpapi.APIPrefix + path)
@@ -111,6 +118,16 @@ func (a *app) get(c *http.Client, path string) (int, []byte) {
 		a.t.Fatal(err)
 	}
 	defer resp.Body.Close()
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
+		lines := bufio.NewReader(resp.Body)
+		event, err := lines.ReadString('\n')
+		for err == nil && !strings.HasSuffix(event, "\n\n") {
+			var line string
+			line, err = lines.ReadString('\n')
+			event += line
+		}
+		return resp.StatusCode, []byte(event)
+	}
 	body, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, requestIDs.ReplaceAll(body, nil)
 }
@@ -192,6 +209,16 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		owned[map[string]string{"insider": "sharedCollection", "former": "formerCollection"}[name]] = col["id"].(string)
 		owned[map[string]string{"insider": "sharedShelf", "former": "formerShelf"}[name]] = shelf["id"].(string)
 		owned[name+"Bulk"] = bulk["id"].(string)
+	}
+
+	if err := db.InTx(ctx, a.pool, func(tx pgx.Tx) error {
+		secretBook := uuid.MustParse(book)
+		_, err := notify.CreateTx(ctx, tx, uuid.MustParse(formerID), notify.New{
+			Kind: notify.KindBulkFinished, Data: map[string]string{"title": secret["title"]}, BookID: &secretBook,
+		})
+		return err
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	fill := func(s string, values map[string]string) string {
@@ -307,6 +334,21 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 				}
 			}
 		}
+	}
+
+	// The unread count is of what may be seen, as the stream's is.
+	_, told, _ := a.call(former, http.MethodGet, "/notifications", nil)
+	unread := 0
+	for _, n := range told["notifications"].([]any) {
+		if n.(map[string]any)["readAt"] == nil {
+			unread++
+		}
+	}
+	if told["unread"].(float64) != float64(unread) {
+		t.Errorf("the former member is told of %v unread, but sees %d", told["unread"], unread)
+	}
+	if _, event := a.get(former, "/notifications/stream"); !strings.Contains(string(event), fmt.Sprintf(`{"unread":%d}`, unread)) {
+		t.Errorf("the former member's stream says %q, not %d unread", event, unread)
 	}
 
 	_, shelf, _ := a.call(former, http.MethodGet, "/smart-shelves/"+owned["formerShelf"], nil)

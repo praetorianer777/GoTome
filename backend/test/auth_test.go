@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -149,6 +150,11 @@ func newApp(t *testing.T) *app {
 	a.server.Bulk.Queue = queue
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
+	a.server.Notifications = notify.NewService(a.pool)
+	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
+	hubCtx, stopHub := context.WithCancel(context.Background())
+	t.Cleanup(stopHub)
+	go a.server.NotifyHub.Run(hubCtx)
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL

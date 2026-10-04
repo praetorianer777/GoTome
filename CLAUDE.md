@@ -476,6 +476,23 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   leaves fields locked before as they are and reports them (`skipped`),
   unless `includeLocked`.
 
+## Notifications
+
+- `internal/notify` keeps what people are told: a row in `notifications`
+  with a kind, the values its text is made from (`data`), a link into the
+  app and the book it is about, if any. The web app words each kind
+  (`notificationText` in `web/src/notifications/api.ts`); a new kind gets
+  its constant in `notify`, its enum entry in `spec.go` and its text there.
+- Make one with `notify.CreateTx` in the transaction of the change it is
+  about. It sends `pg_notify`, which Postgres delivers only on commit; the
+  `notify.Hub` (one listening connection, started in `serve`) wakes the
+  user's open streams. A job that may run twice must make it once, as
+  `bulk` does by notifying only when its finish changed a row.
+- `GET /notifications/stream` is a server-sent event stream of the unread
+  count only, sent when it opens and whenever something changed; the list
+  comes from `GET /notifications`. A notification about a book is seen only
+  while its library is, and counted only then.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
