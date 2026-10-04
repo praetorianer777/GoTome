@@ -1490,3 +1490,41 @@ describe("reading statistics", () => {
 		await waitFor(() => expect(server.requests.at(-1)?.path).toMatch(/^\/me\/stats\?days=7&tz=/));
 	});
 });
+
+describe("the wishlist", () => {
+	it("finds a book with the providers, wishes for it, and keeps it out of the library", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Persuasion");
+		server.candidates.search = {
+			candidates: [
+				{
+					provider: "openlibrary", id: "OL1", score: 0.9, title: "Emma", publisher: "John Murray", published: "1815",
+					contributors: [{ name: "Jane Austen", role: "author" }], tags: [], identifiers: [{ type: "isbn", value: "9780141439587" }],
+				},
+			],
+			failures: [],
+		};
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Wishlist" }));
+		expect(await screen.findByText("You wish for nothing yet.")).toBeInTheDocument();
+
+		await person.type(screen.getByRole("textbox", { name: "Title" }), "Emma");
+		await person.click(screen.getByRole("button", { name: "Look it up" }));
+		expect(server.requests.at(-1)?.path).toBe("/metadata/search?title=Emma");
+		await person.click(await screen.findByRole("button", { name: "Wish for Emma" }));
+
+		expect(await screen.findByText(/^Not in the library yet\. It is wished for/)).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-2");
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toMatchObject({
+			library: "lib-1", provider: "openlibrary", title: "Emma", publisher: "John Murray",
+			identifiers: [{ type: "isbn", value: "9780141439587" }],
+		});
+
+		await person.click(screen.getByRole("link", { name: "Library" }));
+		expect(await screen.findByRole("link", { name: /^Persuasion/ })).toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: /^Emma/ })).not.toBeInTheDocument();
+		await person.click(screen.getByRole("link", { name: "Wishlist" }));
+		const wished = within(await screen.findByRole("region", { name: "Wished for" }));
+		expect(await wished.findByText("Not in the library yet")).toBeInTheDocument();
+	});
+});

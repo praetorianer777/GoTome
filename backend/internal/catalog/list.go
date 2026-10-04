@@ -47,8 +47,11 @@ type ListParams struct {
 	LibraryID *uuid.UUID
 	// Filter keeps the books its rules match; the zero Node keeps all.
 	Filter filter.Node
-	Order  string
-	Desc   bool
+	// Placeholders lists the books wished for that the library does not
+	// hold yet too.
+	Placeholders bool
+	Order        string
+	Desc         bool
 	// After is the cursor of the page before, empty for the first page.
 	After string
 	Limit int
@@ -71,6 +74,8 @@ type Summary struct {
 	// Status and Rating are where the viewer stands with the book.
 	Status string
 	Rating *int16
+	// Placeholder is a book wished for that the library does not hold yet.
+	Placeholder bool
 }
 
 // summaryColumns are what a Summary is read from, in the order of dest. The
@@ -82,7 +87,7 @@ const summaryColumns = `b.id, b.library_id, b.title, COALESCE(b.subtitle, ''), b
                  WHERE c.book_id = b.id AND c.role = 'author'), '{}'),
        COALESCE((SELECT array_agg(DISTINCT f.format ORDER BY f.format)
                  FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), '{}'),
-       COALESCE(ub.status, 'unread'), ub.rating`
+       COALESCE(ub.status, 'unread'), ub.rating, b.placeholder`
 
 // summaryJoin brings in where the viewer, a placeholder, stands with each
 // book.
@@ -94,7 +99,7 @@ func summaryJoin(viewer string) string {
 // series, which may be NULL.
 func (b *Summary) dest(series **string) []any {
 	return []any{&b.ID, &b.LibraryID, &b.Title, &b.Subtitle, &b.AddedAt,
-		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating}
+		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating, &b.Placeholder}
 }
 
 // Page is one page of a list, and the cursor of the next; Next is empty on
@@ -126,7 +131,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, p ListParams) (
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
-	where, err := visibleBooks(scope, p.LibraryID, p.Filter, arg)
+	where, err := visibleBooks(scope, p.LibraryID, p.Filter, p.Placeholders, arg)
 	if err != nil {
 		return Page{}, err
 	}

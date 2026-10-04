@@ -68,12 +68,13 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 }
 
 type listBooksQuery struct {
-	Library string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter  string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
-	Sort    string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
-	Order   string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
-	Cursor  string `query:"cursor" doc:"The nextCursor of the page before."`
-	Limit   int    `query:"limit" doc:"How many books a page holds, at most 200; 50 when left out."`
+	Library      string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
+	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
+	Sort         string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
+	Order        string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
+	Cursor       string `query:"cursor" doc:"The nextCursor of the page before."`
+	Limit        int    `query:"limit" doc:"How many books a page holds, at most 200; 50 when left out."`
+	Placeholders string `query:"placeholders" enum:"include" doc:"include lists the books wished for that the library does not hold yet, too; left out, they are not listed."`
 }
 
 // bookSummary is a book as a list shows it.
@@ -95,6 +96,8 @@ type bookSummary struct {
 	// stars, left out when they gave none.
 	Status string `json:"status"`
 	Rating *int16 `json:"rating,omitempty"`
+	// Placeholder is a book wished for that the library does not hold yet.
+	Placeholder bool `json:"placeholder"`
 }
 
 type bookList struct {
@@ -175,6 +178,9 @@ type bookDetail struct {
 	Fields map[string]fieldState `json:"fields"`
 	// Reading is where the caller stands with the book.
 	Reading readingState `json:"reading"`
+	// Placeholder is a book wished for that the library does not hold yet;
+	// the first file imported that is this book fulfils it.
+	Placeholder bool `json:"placeholder"`
 }
 
 // fieldState is where a field's value came from and whether automatic
@@ -196,7 +202,10 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeQuery(r, &q); err != nil {
 		return err
 	}
-	p := catalog.ListParams{Order: cmp.Or(q.Sort, catalog.OrderTitle), Desc: q.Order == "desc", After: q.Cursor, Limit: cmp.Or(q.Limit, defaultPage)}
+	p := catalog.ListParams{
+		Order: cmp.Or(q.Sort, catalog.OrderTitle), Desc: q.Order == "desc", After: q.Cursor, Limit: cmp.Or(q.Limit, defaultPage),
+		Placeholders: q.Placeholders == "include",
+	}
 	var err error
 	if p.LibraryID, p.Filter, err = bookSelection(q.Library, q.Filter); err != nil {
 		return err
@@ -223,6 +232,7 @@ func summaryOf(b catalog.Summary) bookSummary {
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
 		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
 		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
+		Placeholder: b.Placeholder,
 	}
 }
 
@@ -363,7 +373,7 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
-		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading),
+		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
 	}
 	for _, c := range b.Contributors {
 		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Role: c.Role})

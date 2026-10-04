@@ -64,6 +64,12 @@ func (s *Server) listCandidates(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.writeCandidates(w, r, book)
+}
+
+// writeCandidates answers with what the providers know about the book, and
+// which of them did not answer.
+func (s *Server) writeCandidates(w http.ResponseWriter, r *http.Request, book catalog.Book) error {
 	found, err := s.Metadata.Candidates(r.Context(), book)
 	out := candidateList{Candidates: []candidateView{}, Failures: []providerFailure{}}
 	if err != nil {

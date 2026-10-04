@@ -184,14 +184,18 @@ func format(v string) (string, error) {
 }
 
 // visibleBooks are the conditions every list and count of books starts from:
-// the books the scope may see, in one library or all, that the filter keeps.
-func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, arg func(any) string) ([]string, error) {
+// the books the scope may see, in one library or all, that the filter keeps;
+// placeholders only when asked for, as they are not in the library yet.
+func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, placeholders bool, arg func(any) string) ([]string, error) {
 	where := []string{
 		"b.deleted_at IS NULL",
 		"b.library_id IN (SELECT visible_library_ids(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + "))",
 	}
 	if libraryID != nil {
 		where = append(where, "b.library_id = "+arg(*libraryID))
+	}
+	if !placeholders {
+		where = append(where, "NOT b.placeholder")
 	}
 	cond, err := filtersFor(scope.Viewer).Compile(tree, arg)
 	if err != nil {
@@ -314,7 +318,7 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 			args = append(args, v)
 			return fmt.Sprintf("$%d", len(args))
 		}
-		where, err := visibleBooks(scope, libraryID, tree.Without(fq.field), arg)
+		where, err := visibleBooks(scope, libraryID, tree.Without(fq.field), false, arg)
 		if err != nil {
 			return nil, err
 		}
