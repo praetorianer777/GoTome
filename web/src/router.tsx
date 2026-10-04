@@ -22,6 +22,7 @@ import { BulkProgress } from "@/routes/bulk";
 import { Stats } from "@/routes/stats";
 import { CollectionPage } from "@/routes/collection";
 import { Collections } from "@/routes/collections";
+import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
 import { Wishlist } from "@/routes/wishlist";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
@@ -267,6 +268,25 @@ const collectionRoute = createRoute({
 	},
 });
 
+const newSmartShelfRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/smart-shelves/new",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/collections" });
+		}
+	},
+	component: NewSmartShelf,
+});
+
+const smartShelfRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/smart-shelves/$shelfId",
+	component: function SmartShelfRoute() {
+		return <SmartShelfPage shelfId={smartShelfRoute.useParams().shelfId} />;
+	},
+});
+
 const bulkRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/bulk/$bulkId",
@@ -315,7 +335,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

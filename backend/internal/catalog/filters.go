@@ -385,6 +385,29 @@ func picked(tree filter.Node, field string) []string {
 	return out
 }
 
+// CheckFilter returns the filter error that makes the tree unusable, or nil.
+func CheckFilter(tree filter.Node) error {
+	_, err := filtersFor(uuid.Nil).Compile(tree, func(any) string { return "NULL" })
+	return err
+}
+
+// Count returns how many books the scope may see that are in the library,
+// or every library when it is nil, and match the filter.
+func (s *Service) Count(ctx context.Context, scope library.Scope, libraryID *uuid.UUID, tree filter.Node) (int, error) {
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	where, err := visibleBooks(scope, libraryID, tree, false, arg)
+	if err != nil {
+		return 0, err
+	}
+	var n int
+	err = s.pool.QueryRow(ctx, `SELECT count(*) FROM books b WHERE `+strings.Join(where, " AND "), args...).Scan(&n)
+	return n, err
+}
+
 // IsFilterError reports whether err is a filter that cannot be used, as
 // opposed to a failure of the database.
 func IsFilterError(err error) bool {

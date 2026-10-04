@@ -190,6 +190,7 @@ func serve() error {
 		}
 	}()
 
+	books := catalog.NewService(pool)
 	server := &httpapi.Server{
 		Log:       log,
 		DB:        pool,
@@ -198,13 +199,13 @@ func serve() error {
 		Libraries: libraries,
 		Settings:  settingStore,
 		Scans:     scans,
-		Books:     catalog.NewService(pool),
+		Books:     books,
 		Covers:    coverStore,
 		Metadata:  meta,
 		Matches:   matches,
 		Bulk:      changes,
 		Reading:   reading.NewService(pool),
-		Shelves:   shelves.NewService(pool),
+		Shelves:   shelves.NewService(pool, books),
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { can } from "@/auth/session";
 import { useState } from "react";
 import {
 	type Collection,
@@ -7,6 +8,7 @@ import {
 	collectionsQuery,
 	useCreateCollection,
 } from "@/books/collections";
+import { smartShelvesQuery } from "@/books/smart-shelves";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
 
@@ -39,6 +41,7 @@ export function Collections() {
 				)}
 				<CollectionList collections={mine} />
 			</section>
+			<SmartShelves />
 			{shared.length > 0 && (
 				<section
 					aria-labelledby="collections-shared"
@@ -82,6 +85,49 @@ function CollectionList({ collections }: { collections: Collection[] }) {
 				</li>
 			))}
 		</ul>
+	);
+}
+
+/** The smart shelves the person sees, theirs and shared ones, with what each holds for them. */
+function SmartShelves() {
+	const { user } = useRouteContext({ from: "/app" });
+	const shelves = useQuery(smartShelvesQuery);
+	return (
+		<section aria-labelledby="smart-shelves" className="flex flex-col gap-2">
+			<div className="flex flex-wrap items-baseline gap-3">
+				<h2 id="smart-shelves" className="text-lg font-medium">
+					{t("smart.title")}
+				</h2>
+				{can(user, "personal:manage") && (
+					<Link to="/smart-shelves/new" className={button}>
+						{t("smart.new")}
+					</Link>
+				)}
+			</div>
+			<FormError error={shelves.error} />
+			{shelves.isSuccess && shelves.data.length === 0 && (
+				<p className="text-slate-600 dark:text-slate-400">{t("smart.none")}</p>
+			)}
+			<ul className="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
+				{shelves.data?.map((s) => (
+					<li key={s.id} className="py-2">
+						<Link
+							to="/smart-shelves/$shelfId"
+							params={{ shelfId: s.id }}
+							className="flex flex-wrap items-baseline gap-x-3 hover:underline"
+						>
+							<span className="font-medium">{s.name}</span>
+							<span className="text-sm text-slate-600 dark:text-slate-400">
+								{[
+									t("collections.count", { count: s.books }),
+									s.mine ? t(`collections.visibility.${s.visibility}`) : t("collections.by", { name: s.ownerName }),
+								].join(" · ")}
+							</span>
+						</Link>
+					</li>
+				))}
+			</ul>
+		</section>
 	);
 }
 

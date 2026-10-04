@@ -1,6 +1,7 @@
 // Package shelves is what people put books on: collections, filled by hand
-// in an order their owner chooses. A shelf is never an access boundary: it
-// shows each viewer only the books of libraries they may see.
+// in an order their owner chooses, and smart shelves, which hold whatever
+// matches their rules. A shelf is never an access boundary: it shows each
+// viewer only the books of libraries they may see.
 package shelves
 
 import (
@@ -16,12 +17,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
-// Who may look at a collection.
+// Who may look at a shelf.
 const (
 	// Private collections are their owner's alone.
 	Private = "private"
@@ -32,16 +34,16 @@ const (
 // MaxBooks is the most books a collection holds.
 const MaxBooks = 5000
 
-// MaxName is the longest a collection's name may be, in characters.
+// MaxName is the longest a shelf's name may be, in characters.
 const MaxName = 200
 
 var (
-	// ErrNotFound covers a collection that does not exist and one the
-	// viewer may not see alike.
-	ErrNotFound = errors.New("no such collection")
-	// ErrNotOwner is a change to a shared collection by someone who may look
-	// at it but does not own it.
-	ErrNotOwner = errors.New("only its owner changes a collection")
+	// ErrNotFound covers a shelf that does not exist and one the viewer
+	// may not see alike.
+	ErrNotFound = errors.New("no such shelf")
+	// ErrNotOwner is a change to a shared shelf by someone who may look at
+	// it but does not own it.
+	ErrNotOwner = errors.New("only its owner changes a shelf")
 	// ErrFull is an addition past MaxBooks.
 	ErrFull = fmt.Errorf("a collection holds at most %d books", MaxBooks)
 )
@@ -102,14 +104,16 @@ func (d *Details) check() error {
 	return nil
 }
 
-// Service keeps the collections.
+// Service keeps the collections and the smart shelves.
 type Service struct {
-	pool *pgxpool.Pool
+	pool  *pgxpool.Pool
+	books *catalog.Service
 }
 
-// NewService returns a Service on the pool.
-func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+// NewService returns a Service on the pool; books works out what is on a
+// smart shelf.
+func NewService(pool *pgxpool.Pool, books *catalog.Service) *Service {
+	return &Service{pool: pool, books: books}
 }
 
 // List returns the scope's own collections, then everyone else's shared
@@ -275,9 +279,16 @@ func (s *Service) Reorder(ctx context.Context, scope library.Scope, id uuid.UUID
 // the scope's user owns it. A collection they may look at but do not own is
 // ErrNotOwner, any other ErrNotFound.
 func (s *Service) owned(ctx context.Context, scope library.Scope, id uuid.UUID, change func(*sqlc.Queries) error) error {
+	return s.ownedBy(ctx, scope, func(q *sqlc.Queries) (sqlc.LockCollectionRow, error) {
+		return q.LockCollection(ctx, id)
+	}, change)
+}
+
+// ownedBy is owned for anything lock finds an owner and a visibility of.
+func (s *Service) ownedBy(ctx context.Context, scope library.Scope, lock func(*sqlc.Queries) (sqlc.LockCollectionRow, error), change func(*sqlc.Queries) error) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		c, err := q.LockCollection(ctx, id)
+		c, err := lock(q)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

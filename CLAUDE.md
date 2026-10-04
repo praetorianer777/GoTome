@@ -425,6 +425,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   collection. A book on a shelf is not one a scan alone made, so a
   placeholder does not swallow it.
 
+## Smart shelves
+
+- A smart shelf (`smart_shelves`, `shelves.Service.CreateSmart`) is a rule
+  tree under a name, the same tree `GET /books` takes as `filter`, stored as
+  JSON. Nothing about what is on it is stored: `SmartBooks` and the counts
+  run it through `catalog.List` and `catalog.Count` each time, for the
+  viewer, so status and rating are theirs and a book moves on or off as
+  soon as it or their state changes. Visibility is as for collections.
+- A tree is checked on save with `catalog.CheckFilter`, the registry the
+  library's filter compiles against; one it refuses is a 422 on `filter`.
+- `GET /books/count` is the builder's live count. The web app edits a tree
+  as groups and rules in `books/rules.ts` and `books/rule-builder.tsx`.
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an

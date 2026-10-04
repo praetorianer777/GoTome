@@ -449,6 +449,61 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/count": {
+      "get": {
+        "operationId": "countBooks",
+        "summary": "How many books the caller may see match a filter",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "A rule tree as JSON, as listBooks takes it.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookCount"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/books/facets": {
       "get": {
         "operationId": "listBookFacets",
@@ -2981,6 +3036,316 @@
         "x-permission": "public"
       }
     },
+    "/smart-shelves": {
+      "get": {
+        "operationId": "listSmartShelves",
+        "summary": "The caller's own smart shelves and everyone's shared ones, with what each holds for the caller",
+        "tags": [
+          "collections"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartShelfList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      },
+      "post": {
+        "operationId": "createSmartShelf",
+        "summary": "Make a smart shelf from a rule tree, private unless it is said to be shared",
+        "tags": [
+          "collections"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartShelfRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartShelf"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/smart-shelves/{shelfId}": {
+      "delete": {
+        "operationId": "deleteSmartShelf",
+        "summary": "Delete a smart shelf of the caller's",
+        "tags": [
+          "collections"
+        ],
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "get": {
+        "operationId": "getSmartShelf",
+        "summary": "A smart shelf, with how many books it holds for the caller",
+        "tags": [
+          "collections"
+        ],
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartShelf"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      },
+      "put": {
+        "operationId": "updateSmartShelf",
+        "summary": "Change a smart shelf of the caller's: its name, rules or who may look at it",
+        "tags": [
+          "collections"
+        ],
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartShelfRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartShelf"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/smart-shelves/{shelfId}/books": {
+      "get": {
+        "operationId": "listSmartShelfBooks",
+        "summary": "One page of the books on a smart shelf, as they match for the caller now",
+        "tags": [
+          "collections"
+        ],
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "What the books are ordered by; title when left out.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "title",
+                "author",
+                "added"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The direction; asc when left out.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The nextCursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books a page holds, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/users": {
       "get": {
         "operationId": "listUsers",
@@ -3544,6 +3909,17 @@
           "chapters",
           "durationMs",
           "complete"
+        ]
+      },
+      "BookCount": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
         ]
       },
       "BookDetail": {
@@ -5559,6 +5935,92 @@
         },
         "required": [
           "needed"
+        ]
+      },
+      "SmartShelf": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "shared"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "filter",
+          "visibility",
+          "ownerId",
+          "ownerName",
+          "mine",
+          "books",
+          "updatedAt"
+        ]
+      },
+      "SmartShelfList": {
+        "type": "object",
+        "properties": {
+          "shelves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SmartShelf"
+            }
+          }
+        },
+        "required": [
+          "shelves"
+        ]
+      },
+      "SmartShelfRequest": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "shared"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "filter"
         ]
       },
       "StatsDay": {
