@@ -320,6 +320,47 @@ func (s *Server) routes() []Route {
 			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Handler: s.putProgress,
 		},
 		{
+			Method: http.MethodGet, Path: "/collections", ID: "listCollections",
+			Summary: "The caller's own collections and everyone's shared ones", Tag: "collections",
+			Query: collectionsQuery{}, Response: collectionList{}, Permission: auth.LibraryRead, Handler: s.listCollections,
+		},
+		{
+			Method: http.MethodPost, Path: "/collections", ID: "createCollection",
+			Summary: "Make a collection, private unless it is said to be shared", Tag: "collections",
+			Request: collectionRequest{}, Response: collectionDetail{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createCollection,
+		},
+		{
+			Method: http.MethodGet, Path: "/collections/{collectionId}", ID: "getCollection",
+			Summary: "A collection and, in its order, the books of it the caller may see", Tag: "collections",
+			Response: collectionDetail{}, Permission: auth.LibraryRead, Handler: s.getCollection,
+		},
+		{
+			Method: http.MethodPut, Path: "/collections/{collectionId}", ID: "updateCollection",
+			Summary: "Rename a collection of the caller's, or change who may look at it", Tag: "collections",
+			Request: collectionRequest{}, Response: collectionDetail{}, Permission: auth.PersonalManage, Handler: s.updateCollection,
+		},
+		{
+			Method: http.MethodDelete, Path: "/collections/{collectionId}", ID: "deleteCollection",
+			Summary: "Delete a collection of the caller's; its books stay", Tag: "collections",
+			Permission: auth.PersonalManage, Handler: s.deleteCollection,
+		},
+		{
+			Method: http.MethodPost, Path: "/collections/{collectionId}/books", ID: "addToCollection",
+			Summary: "Put books at the end of a collection of the caller's", Tag: "collections",
+			Request: collectionAddRequest{}, Response: collectionAddResult{}, Permission: auth.PersonalManage, Handler: s.addToCollection,
+		},
+		{
+			Method: http.MethodDelete, Path: "/collections/{collectionId}/books/{bookId}", ID: "removeFromCollection",
+			Summary: "Take a book out of a collection of the caller's", Tag: "collections",
+			Permission: auth.PersonalManage, Handler: s.removeFromCollection,
+		},
+		{
+			Method: http.MethodPut, Path: "/collections/{collectionId}/order", ID: "reorderCollection",
+			Summary: "Put a collection's books in another order", Tag: "collections",
+			Request: collectionOrder{}, Response: collectionDetail{}, Permission: auth.PersonalManage, Handler: s.reorderCollection,
+		},
+		{
 			Method: http.MethodPost, Path: "/books/reading", ID: "setReadingBulk",
 			Summary: "Change where the caller stands with many books at once", Tag: "books",
 			Request: readingBulkRequest{}, Response: readingBulkResult{}, Permission: auth.PersonalManage, Handler: s.setReadingBulk,

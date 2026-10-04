@@ -161,3 +161,7 @@ What changes for someone who runs or uses GOtome. The format follows
   not in the library yet, and stays out of the library's lists and search.
   When a file of that book is added, by its ISBN or its title and author,
   it joins the wished entry instead of making a second book.
+- Collections: shelves you fill by hand and put in your own order. Add a
+  book from its page, or many from a selection in the library. A collection
+  is private unless you share it; a shared one everyone signed in can look
+  at, and each sees only the books of libraries they may see.

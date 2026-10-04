@@ -216,6 +216,44 @@ LIMIT ` + arg(limit+1)
 	return page, rows.Err()
 }
 
+// Summaries returns the books among ids the scope may see, placeholders
+// included, in the order of ids.
+func (s *Service) Summaries(ctx context.Context, scope library.Scope, ids []uuid.UUID) ([]Summary, error) {
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	where, err := visibleBooks(scope, nil, filter.Node{}, true, arg)
+	if err != nil {
+		return nil, err
+	}
+	query := `
+SELECT ` + summaryColumns + `
+FROM unnest(` + arg(ids) + `::uuid[]) WITH ORDINALITY AS n(id, ord)
+JOIN books b ON b.id = n.id
+LEFT JOIN series s ON s.id = b.series_id
+` + summaryJoin(arg(scope.Viewer)) + `
+WHERE ` + strings.Join(where, " AND ") + `
+ORDER BY n.ord`
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Summary{}
+	for rows.Next() {
+		var b Summary
+		var series *string
+		if err := rows.Scan(b.dest(&series)...); err != nil {
+			return nil, err
+		}
+		b.Series = deref(series)
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 func encodeCursor(c cursor) string {
 	data, _ := json.Marshal(c)
 	return base64.RawURLEncoding.EncodeToString(data)

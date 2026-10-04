@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
+	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -203,6 +204,7 @@ func serve() error {
 		Matches:   matches,
 		Bulk:      changes,
 		Reading:   reading.NewService(pool),
+		Shelves:   shelves.NewService(pool),
 		Web:       webui.Handler(),
 	}
 	srv := &http.Server{

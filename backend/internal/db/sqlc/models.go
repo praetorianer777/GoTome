@@ -128,6 +128,23 @@ type BulkChangeBook struct {
 	Skipped      []string
 }
 
+type Collection struct {
+	ID          uuid.UUID
+	OwnerID     uuid.UUID
+	Name        string
+	Description string
+	Visibility  string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type CollectionItem struct {
+	CollectionID uuid.UUID
+	BookID       uuid.UUID
+	Position     int32
+	AddedAt      time.Time
+}
+
 type Library struct {
 	ID         uuid.UUID
 	Name       string

@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
+	"github.com/praetorianer777/gotome/backend/internal/shelves"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -63,6 +64,8 @@ type Server struct {
 	Bulk *bulk.Service
 	// Reading keeps where each person is in a book.
 	Reading *reading.Service
+	// Shelves keeps the collections people put books on.
+	Shelves *shelves.Service
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler

@@ -1528,3 +1528,95 @@ describe("the wishlist", () => {
 		expect(await wished.findByText("Not in the library yet")).toBeInTheDocument();
 	});
 });
+
+describe("collections", () => {
+	function withShelf() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Mort")
+			.withBook("Eric")
+			.withBook("Emma");
+	}
+	const titles = () =>
+		within(screen.getByRole("list", { name: "Books in this collection" }))
+			.getAllByRole("button", { name: /^Move .+ up$/ })
+			.map((b) => b.getAttribute("aria-label")?.slice("Move ".length, -" up".length));
+
+	it("makes a collection, fills it from a book's page and a selection, and orders it", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Collections" }));
+		expect(await screen.findByText("You have no collections yet.")).toBeInTheDocument();
+		await person.type(screen.getByRole("textbox", { name: "Name" }), "Favourites");
+		await person.selectOptions(screen.getByRole("combobox", { name: "Who sees it" }), "Everyone signed in");
+		await person.click(screen.getByRole("button", { name: "Create" }));
+		expect(await screen.findByRole("heading", { name: "Favourites", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/collections/col-1");
+		expect(screen.getByText(/^No books yet/)).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/collections" && r.method === "POST")?.body).toEqual({
+			name: "Favourites",
+			visibility: "shared",
+		});
+
+		await router.navigate({ to: "/books/$bookId", params: { bookId: "book-3" } });
+		await person.click(await screen.findByText("Your collections holding it: 0"));
+		await person.click(await screen.findByRole("checkbox", { name: "Favourites" }));
+		expect(await screen.findByText("Your collections holding it: 1")).toBeInTheDocument();
+		expect(server.collections[0]?.books).toEqual(["book-3"]);
+
+		await person.click(screen.getByRole("link", { name: "Library" }));
+		await person.click(await screen.findByRole("button", { name: "Select books" }));
+		await person.click(screen.getByRole("button", { name: "Select every book that matches" }));
+		await person.selectOptions(await screen.findByRole("combobox", { name: "Add to collection" }), "Favourites");
+		expect(await screen.findByText("Added to Favourites: 2 not in it before.")).toBeInTheDocument();
+		expect(server.requests.filter((r) => r.path === "/collections/col-1/books").map((r) => r.body)).toEqual([
+			{ books: ["book-3"] },
+			{ library: "lib-1" },
+		]);
+
+		await router.navigate({ to: "/collections/$collectionId", params: { collectionId: "col-1" } });
+		await screen.findByRole("button", { name: "Move Eric up" });
+		expect(titles()).toEqual(["Emma", "Mort", "Eric"]);
+		await person.click(screen.getByRole("button", { name: "Move Eric up" }));
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Eric", "Mort"]));
+		expect(server.collections[0]?.books).toEqual(["book-3", "book-2", "book-1"]);
+		expect(screen.getByRole("button", { name: "Move Emma up" })).toBeDisabled();
+		await person.click(screen.getByRole("button", { name: "Take Emma out of the collection" }));
+		await waitFor(() => expect(titles()).toEqual(["Eric", "Mort"]));
+	});
+
+	it("shows another person's shared collection without letting it be changed", async () => {
+		withShelf();
+		server.withCollection("Classics", ["book-3", "book-1"], { mine: false, ownerName: "Edith", visibility: "shared" });
+		renderApp("/collections");
+		const shared = within(await screen.findByRole("region", { name: "Shared by others" }));
+		expect(shared.getByRole("link", { name: /^Classics/ })).toHaveTextContent("Books: 2 · Shared by Edith");
+		await userEvent.setup().click(shared.getByRole("link", { name: /^Classics/ }));
+		expect(await screen.findByRole("link", { name: /^Emma/ })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Edit collection" })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /^Move/ })).not.toBeInTheDocument();
+	});
+
+	it("renames a collection and deletes it", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		server.withCollection("Notes", ["book-1"]);
+		const { router } = renderApp("/collections/col-1");
+		await person.click(await screen.findByRole("button", { name: "Edit collection" }));
+		const name = screen.getByRole("textbox", { name: "Name" });
+		await person.clear(name);
+		await person.type(name, "To read");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("heading", { name: "To read", level: 1 })).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Edit collection" }));
+		await person.click(screen.getByRole("button", { name: "Delete collection" }));
+		await person.click(screen.getByRole("button", { name: "Yes, delete" }));
+		expect(await screen.findByText("You have no collections yet.")).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/collections");
+		expect(server.books).toHaveLength(3);
+	});
+});

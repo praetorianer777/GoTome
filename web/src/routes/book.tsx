@@ -8,6 +8,7 @@ import {
 	downloadUrl,
 } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { CollectionPicker } from "@/books/collection-picker";
 import { ReadingControls } from "@/books/reading-controls";
 import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
@@ -170,6 +171,7 @@ function BookPage({ book }: { book: BookDetail }) {
 					)}
 
 					{can(user, "personal:manage") && <ReadingControls book={book} />}
+					{can(user, "personal:manage") && <CollectionPicker bookId={book.id} />}
 
 					{book.description && (
 						<section aria-label={t("book.description")}>

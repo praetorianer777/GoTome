@@ -5,7 +5,8 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
-import type { BookDetail } from "@/books/api";
+import type { BookDetail, BookSummary } from "@/books/api";
+import type { Collection, CollectionAdd, CollectionRequest } from "@/books/collections";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
@@ -95,6 +96,8 @@ export class FakeServer {
 	audio: Record<string, Timeline> = {};
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
+	/** The collections the signed-in person sees, with their books in order. */
+	collections: (Omit<Collection, "books" | "hasBook"> & { books: string[] })[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -188,6 +191,9 @@ export class FakeServer {
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
+			}
+			if (path === "/collections" || path.startsWith("/collections/")) {
+				return this.answerCollections(request.method, path, url.searchParams, body);
 			}
 			if (path.startsWith("/matches")) {
 				return this.answerMatches(request.method, path, body as CandidateApply);
@@ -507,20 +513,87 @@ export class FakeServer {
 		const limit = Number(query.get("limit") || 50);
 		const page = sorted.slice(start, start + limit);
 		return Response.json({
-			books: page.map((b) => ({
-				id: b.id,
-				libraryId: b.libraryId,
-				title: b.title,
-				authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name),
-				coverKey: b.coverKey,
-				formats: [...new Set(b.files.map((f) => f.format))],
-				addedAt: b.addedAt,
-				status: b.reading.status,
-				rating: b.reading.rating,
-				placeholder: b.placeholder,
-			})),
+			books: page.map(summaryOf),
 			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
+	}
+
+	withCollection(name: string, books: string[], overrides: Partial<Collection> = {}): this {
+		this.collections.push({
+			id: `col-${this.collections.length + 1}`,
+			name,
+			visibility: "private",
+			ownerId: this.session?.id ?? "u-1",
+			ownerName: this.session?.username ?? "admin",
+			mine: true,
+			updatedAt: "2026-01-01T00:00:00Z",
+			...overrides,
+			books,
+		});
+		return this;
+	}
+
+	/** Collections as the server keeps them, for one person who owns those marked mine. */
+	private answerCollections(method: string, path: string, query: URLSearchParams, body: unknown): Response {
+		const notFound = () =>
+			Response.json({ error: { code: "not_found", message: "There is no such collection." } }, { status: 404 });
+		const view = (c: (typeof this.collections)[number]) => {
+			const { books, ...rest } = c;
+			return { ...rest, books: books.length };
+		};
+		const detail = (c: (typeof this.collections)[number], status = 200) =>
+			Response.json(
+				{ ...view(c), bookList: c.books.flatMap((id) => this.books.filter((b) => b.id === id).map(summaryOf)) },
+				{ status },
+			);
+		if (path === "/collections") {
+			if (method === "POST") {
+				const req = body as CollectionRequest;
+				this.withCollection(req.name, [], { visibility: req.visibility ?? "private", description: req.description });
+				return detail(this.collections.at(-1) as (typeof this.collections)[number], 201);
+			}
+			const book = query.get("book");
+			return Response.json({
+				collections: this.collections.map((c) => ({ ...view(c), ...(book ? { hasBook: c.books.includes(book) } : {}) })),
+			});
+		}
+		const [, id, part, bookId] = /^\/collections\/([^/]+)(?:\/(books|order))?(?:\/([^/]+))?$/.exec(path) ?? [];
+		const c = this.collections.find((x) => x.id === id);
+		if (!c) {
+			return notFound();
+		}
+		if (method !== "GET" && !c.mine) {
+			return Response.json({ error: { code: "forbidden", message: "Only its owner changes a collection." } }, { status: 403 });
+		}
+		if (part === "books" && method === "POST") {
+			const req = body as CollectionAdd;
+			const chosen = req.books?.length
+				? req.books
+				: this.books
+						.filter((b) => !b.placeholder && (!req.library || b.libraryId === req.library))
+						.filter((b) => !req.filter || matches(b, JSON.parse(req.filter)))
+						.map((b) => b.id);
+			const added = chosen.filter((b) => !c.books.includes(b));
+			c.books.push(...added);
+			return Response.json({ added: added.length });
+		}
+		if (part === "books" && method === "DELETE") {
+			c.books = c.books.filter((b) => b !== bookId);
+			return new Response(null, { status: 204 });
+		}
+		if (part === "order") {
+			c.books = (body as { books: string[] }).books;
+			return detail(c);
+		}
+		if (method === "PUT") {
+			Object.assign(c, body as CollectionRequest);
+			return detail(c);
+		}
+		if (method === "DELETE") {
+			this.collections = this.collections.filter((x) => x !== c);
+			return new Response(null, { status: 204 });
+		}
+		return detail(c);
 	}
 
 	/** Names in use on the books, by the beginning of a word. */
@@ -986,6 +1059,21 @@ interface Rule {
 }
 
 /** A name as the server compares it, near enough for the tests. */
+function summaryOf(b: BookDetail): BookSummary {
+	return {
+		id: b.id,
+		libraryId: b.libraryId,
+		title: b.title,
+		authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name),
+		coverKey: b.coverKey,
+		formats: [...new Set(b.files.map((f) => f.format))],
+		addedAt: b.addedAt,
+		status: b.reading.status,
+		rating: b.reading.rating,
+		placeholder: b.placeholder,
+	};
+}
+
 function nameKey(name: string): string {
 	return name
 		.normalize("NFKD")
