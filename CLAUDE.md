@@ -409,6 +409,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   state), the book's files move to the placeholder and the scan's book is
   merged into it (`merged_into_id`).
 
+## Collections
+
+- `internal/shelves` keeps collections: shelves a person fills by hand, in an
+  order they choose (`collection_items.position`). Private ones are their
+  owner's alone, answered to anyone else like one that does not exist; a
+  shared one every signed-in person may look at, and only its owner changes
+  (`403` for the others). A collection never grants access: what it shows,
+  counts and lets be added or removed goes through `visible_library_ids`, and
+  `catalog.Service.Summaries` gives its books in its order.
+- A reorder names the books the owner sees; they take the places they held
+  between them, so books of libraries the owner no longer sees stay put.
+- Books are added from a book's page, by IDs, or from a list's library and
+  filter through `catalog.Service.Select`, at most `shelves.MaxBooks` per
+  collection. A book on a shelf is not one a scan alone made, so a
+  placeholder does not swallow it.
+
 ## Bulk changes
 
 - `internal/bulk` makes one change to many books (`POST /books/bulk`): an

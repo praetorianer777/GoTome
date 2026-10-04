@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import {
@@ -17,6 +18,7 @@ import {
 	STATUSES,
 	useSetReadingBulk,
 } from "@/books/reading";
+import { collectionsQuery, useAddToCollection } from "@/books/collections";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 
@@ -50,6 +52,9 @@ export function BulkBar({
 	const navigate = useNavigate();
 	const [editing, setEditing] = useState(false);
 	const setStatus = useSetReadingBulk();
+	const collections = useQuery(collectionsQuery());
+	const mine = collections.data?.filter((c) => c.mine) ?? [];
+	const collect = useAddToCollection();
 	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"]) =>
 		start.mutate(
@@ -107,6 +112,24 @@ export function BulkBar({
 						</option>
 					))}
 				</select>
+				{mine.length > 0 && (
+					<select
+						aria-label={t("bulk.collect")}
+						value=""
+						disabled={none || collect.isPending}
+						onChange={(e) => collect.mutate({ ...selection, id: e.target.value })}
+						className={control}
+					>
+						<option value="" disabled>
+							{t("bulk.collect")}
+						</option>
+						{mine.map((c) => (
+							<option key={c.id} value={c.id}>
+								{c.name}
+							</option>
+						))}
+					</select>
+				)}
 				{canEdit && (
 					<>
 				<button
@@ -140,6 +163,15 @@ export function BulkBar({
 			{setStatus.data && (
 				<p role="status">{t("bulk.statusDone", { count: setStatus.data.changed })}</p>
 			)}
+			{collect.data && (
+				<p role="status">
+					{t("bulk.collectDone", {
+						count: collect.data.added,
+						name: mine.find((c) => c.id === collect.variables?.id)?.name ?? "",
+					})}
+				</p>
+			)}
+			<FormError error={collect.error} />
 			<FormError error={setStatus.error} />
 			{!editing && <FormError error={start.error} />}
 			{editing && (

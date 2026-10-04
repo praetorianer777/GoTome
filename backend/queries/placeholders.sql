@@ -26,13 +26,15 @@ FOR UPDATE;
 
 -- name: BookIsUntouched :one
 -- Whether a book is only what a scan made of its files: no person or
--- provider set anything on it, and nobody has read, rated or wished it.
+-- provider set anything on it, and nobody has read, rated, wished or
+-- shelved it.
 SELECT COALESCE(NOT b.placeholder
    AND cardinality(b.locked_fields) = 0
    AND NOT EXISTS (SELECT 1 FROM jsonb_each_text(b.field_sources) s
                    WHERE s.value NOT LIKE 'file:%' AND s.value <> 'filename')
    AND NOT EXISTS (SELECT 1 FROM user_books u WHERE u.book_id = b.id)
-   AND NOT EXISTS (SELECT 1 FROM reading_progress p WHERE p.book_id = b.id), false)::boolean AS untouched
+   AND NOT EXISTS (SELECT 1 FROM reading_progress p WHERE p.book_id = b.id)
+   AND NOT EXISTS (SELECT 1 FROM collection_items c WHERE c.book_id = b.id), false)::boolean AS untouched
 FROM books b
 WHERE b.id = $1
 FOR UPDATE OF b;

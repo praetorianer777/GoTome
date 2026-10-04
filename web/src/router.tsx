@@ -20,6 +20,8 @@ import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
 import { Stats } from "@/routes/stats";
+import { CollectionPage } from "@/routes/collection";
+import { Collections } from "@/routes/collections";
 import { Wishlist } from "@/routes/wishlist";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
@@ -251,6 +253,20 @@ const statsRoute = createRoute({
 	component: Stats,
 });
 
+const collectionsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/collections",
+	component: Collections,
+});
+
+const collectionRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/collections/$collectionId",
+	component: function CollectionRoute() {
+		return <CollectionPage collectionId={collectionRoute.useParams().collectionId} />;
+	},
+});
+
 const bulkRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/bulk/$bulkId",
@@ -299,7 +315,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
