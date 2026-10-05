@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"maps"
 	"slices"
 	"strings"
 
@@ -47,16 +48,27 @@ func NewPGSearch(pool *pgxpool.Pool, books *catalog.Service) *PGSearch {
 }
 
 // match is the condition a chunk meets: in one of the language columns, all
-// the free words in any form, and each phrase in order. The texts are
-// parameters; pg_search needs them as constants, which the transaction's
-// custom plans keep them.
+// the free words in any form, one word of each group of corrections, each
+// phrase in order, and one phrase of each set of variants. The texts are parameters; pg_search needs them as
+// constants, which the transaction's custom plans keep them.
 func match(p parsed, arg func(any) string) string {
-	var words, phrases []string
+	var words, groups, phrases []string
+	var variants [][]string
 	if p.Words != "" {
 		words = append(words, arg(p.Words))
 	}
+	for _, g := range p.Groups {
+		groups = append(groups, arg(strings.Join(g, " ")))
+	}
 	for _, ph := range p.Phrases {
 		phrases = append(phrases, arg(ph))
+	}
+	for _, vs := range p.Variants {
+		var params []string
+		for _, v := range vs {
+			params = append(params, arg(v))
+		}
+		variants = append(variants, params)
 	}
 	var alts []string
 	for _, c := range columns {
@@ -64,8 +76,18 @@ func match(p parsed, arg func(any) string) string {
 		for _, w := range words {
 			conds = append(conds, c+" &&& "+w)
 		}
+		for _, g := range groups {
+			conds = append(conds, c+" ||| "+g)
+		}
 		for _, ph := range phrases {
 			conds = append(conds, c+" ### "+ph)
+		}
+		for _, vs := range variants {
+			var either []string
+			for _, v := range vs {
+				either = append(either, c+" ### "+v)
+			}
+			conds = append(conds, "("+strings.Join(either, " OR ")+")")
 		}
 		alts = append(alts, "("+strings.Join(conds, " AND ")+")")
 	}
@@ -85,9 +107,20 @@ type found struct {
 	score  float64
 }
 
+// reading is the best chunks one reading of the query found, and the
+// reading, which the snippets are made with.
+type reading struct {
+	chunks    []found
+	query     parsed
+	corrected bool
+}
+
 // Search finds the chunks that match in the libraries the scope may see,
 // takes the best of them, keeps those of books the filter matches, and
-// groups them by book, best book first.
+// groups them by book, best book first. When that finds fewer than
+// sparseBooks books, the query's unknown words are taken for typos and the
+// words of the text like them searched for as well; the books only that
+// finds come after the others, marked as corrected.
 func (s *PGSearch) Search(ctx context.Context, scope library.Scope, q Query) (Result, error) {
 	p, err := parse(q.Text)
 	if err != nil {
@@ -107,7 +140,21 @@ func (s *PGSearch) Search(ctx context.Context, scope library.Scope, q Query) (Re
 		if err != nil {
 			return err
 		}
-		res, err = s.group(ctx, tx, chunks, p, limit, offset)
+		readings := []reading{{chunks: chunks, query: p}}
+		if distinctBooks(chunks) < sparseBooks {
+			fixed, changed, err := correct(ctx, tx, p)
+			if err != nil {
+				return err
+			}
+			if changed {
+				more, err := s.best(ctx, tx, scope, q, fixed)
+				if err != nil {
+					return err
+				}
+				readings = append(readings, reading{chunks: more, query: fixed, corrected: true})
+			}
+		}
+		res, err = s.group(ctx, tx, readings, limit, offset)
 		return err
 	})
 	return res, err
@@ -175,17 +222,28 @@ func (s *PGSearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope, q Q
 	})
 }
 
-// group makes books of the chunks, in the order of each book's best chunk,
-// and reads the passages of the page's books.
-func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, chunks []found, p parsed, limit, offset int) (Result, error) {
-	var order []uuid.UUID
-	byBook := map[uuid.UUID][]found{}
-	for _, c := range chunks {
-		if byBook[c.bookID] == nil {
-			order = append(order, c.bookID)
-		}
-		if len(byBook[c.bookID]) < hitsPerBook {
-			byBook[c.bookID] = append(byBook[c.bookID], c)
+// group makes books of the readings' chunks, the first reading's books
+// first, each in the order of its best chunk, and reads the passages of the
+// page's books. A book a reading before found is not found again.
+func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, readings []reading, limit, offset int) (Result, error) {
+	type entry struct {
+		id      uuid.UUID
+		reading int
+		chunks  []found
+	}
+	var order []*entry
+	byBook := map[uuid.UUID]*entry{}
+	for r, rd := range readings {
+		for _, c := range rd.chunks {
+			e := byBook[c.bookID]
+			if e == nil {
+				e = &entry{id: c.bookID, reading: r}
+				byBook[c.bookID] = e
+				order = append(order, e)
+			}
+			if e.reading == r && len(e.chunks) < hitsPerBook {
+				e.chunks = append(e.chunks, c)
+			}
 		}
 	}
 	res := Result{More: len(order) > offset+limit}
@@ -193,19 +251,28 @@ func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, chunks []found, p parse
 		return res, nil
 	}
 	page := order[offset:min(offset+limit, len(order))]
-	var ids []int64
-	for _, b := range page {
-		for _, c := range byBook[b] {
-			ids = append(ids, c.id)
+	hits := map[int64]Hit{}
+	for r, rd := range readings {
+		var ids []int64
+		for _, e := range page {
+			if e.reading == r {
+				for _, c := range e.chunks {
+					ids = append(ids, c.id)
+				}
+			}
 		}
+		if len(ids) == 0 {
+			continue
+		}
+		got, err := s.passages(ctx, tx, ids, rd.query)
+		if err != nil {
+			return Result{}, err
+		}
+		maps.Copy(hits, got)
 	}
-	hits, err := s.passages(ctx, tx, ids, p)
-	if err != nil {
-		return Result{}, err
-	}
-	for _, b := range page {
-		book := Book{ID: b, Score: byBook[b][0].score}
-		for _, c := range byBook[b] {
+	for _, e := range page {
+		book := Book{ID: e.id, Score: e.chunks[0].score, Corrected: readings[e.reading].corrected}
+		for _, c := range e.chunks {
 			if h, ok := hits[c.id]; ok {
 				h.Score = c.score
 				book.Hits = append(book.Hits, h)
@@ -214,6 +281,14 @@ func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, chunks []found, p parse
 		res.Books = append(res.Books, book)
 	}
 	return res, nil
+}
+
+func distinctBooks(chunks []found) int {
+	seen := map[uuid.UUID]bool{}
+	for _, c := range chunks {
+		seen[c.bookID] = true
+	}
+	return len(seen)
 }
 
 // passages reads the chunks with a snippet of each around its matches.

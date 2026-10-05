@@ -47,7 +47,10 @@ type Result struct {
 type Book struct {
 	ID    uuid.UUID
 	Score float64
-	Hits  []Hit
+	// Corrected says the book was found only with the query's typos
+	// repaired; such books come after those the query found as written.
+	Corrected bool
+	Hits      []Hit
 }
 
 // Hit is a passage of a book that matched.
@@ -82,8 +85,14 @@ type parsed struct {
 	// Words are the words outside quotes, joined by spaces; "" when there
 	// are none.
 	Words string
+	// Groups are the words a typo was taken for, one group per word of
+	// the query; one word of each must occur.
+	Groups [][]string
 	// Phrases are the quoted ones that hold a word.
 	Phrases []string
+	// Variants are phrases with typos repaired, each as the phrases it may
+	// have meant; one of each must occur.
+	Variants [][]string
 }
 
 // parse splits the query into its free words and its phrases. A quote left

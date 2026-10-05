@@ -349,6 +349,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   plan hands it a parameter instead.
 - Stemming is Snowball's: "running" finds "runs", but irregular forms such
   as "ran" are other words to it.
+- Typos are repaired only when the query as written finds fewer than
+  `sparseBooks` books (`correct.go`): each word no chunk holds becomes the
+  words of `search_words` fewest edits from it (pg_trgm for candidates,
+  `levenshtein` to order them; two edits, one for words of four letters),
+  a free word as a group of which one must occur, a phrase as the phrases
+  it may have meant. Books found only so come after the others, marked
+  `corrected`. The words chosen are never sent: the vocabulary holds those
+  of every library.
 
 ## Metadata providers
 
