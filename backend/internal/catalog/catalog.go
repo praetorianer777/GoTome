@@ -379,6 +379,14 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID) (Book, error) {
 	row, err := q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if errors.Is(err, pgx.ErrNoRows) {
+		// A book merged into another is that book now, for whoever sees it.
+		survivor, ferr := q.FollowMerges(ctx, id)
+		if ferr != nil || survivor == id {
+			return Book{}, ErrNotFound
+		}
+		row, err = q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: survivor, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Book{}, ErrNotFound
 	}
 	if err != nil {

@@ -345,8 +345,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   for repairing typos (#55). Words are only added, never counted or removed,
   so books chunked in parallel do not wait on each other. It holds the words
   of private libraries too: use it to search, never show its words.
-- Placeholders have no files and so no chunks. A merge of books (#62) must
-  choose the survivor's primary text file and rechunk it.
+- Placeholders have no files and so no chunks. A merge of books chooses the
+  surviving book's primary text file again and rechunks it if it changed.
 
 ## Full-text search
 
@@ -441,6 +441,27 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `routes/duplicates.tsx`, its filters in the address; it says each pair in
   a sentence from its strongest evidence and compares the two books from
   `GET /books/{id}`.
+
+## Merging books
+
+- `ingest.Service.Merge` (`POST /books/{id}/merge`, `metadata:edit`) makes
+  two books of one library one, in one transaction (`queries/merge.sql`):
+  both locked in ID order; the fields named in `take`, and those the
+  surviving book lacks, copied with their sources and locks; files and
+  identifiers moved; shelves, everyone's `user_books` (the further status,
+  their rating where the survivor has none, the earliest start, the
+  latest finish), `reading_progress` (the further fraction), sessions and
+  finishes, relations and notifications moved; the merged book's matches
+  and open pairs dropped and its pair with the survivor set `merged`; its
+  chunks dropped and the survivor's text chosen again. The merged book is
+  soft-deleted with `merged_into_id`, and books merged into it before are
+  pointed on. Books of two libraries are refused: a file stays in its
+  library's folder.
+- A table that points at a book must be handled there, or a merge loses it.
+- `catalog.get` follows `merged_into_id` (`FollowMerges`) when the book
+  asked for is gone, so an old ID answers with the surviving book, for
+  whoever sees it; the book page then takes the survivor's address. The
+  duplicates page merges a pair through `duplicates/merge-form.tsx`.
 
 ## Metadata providers
 
