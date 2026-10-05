@@ -46,6 +46,9 @@ test("the books are narrowed by a filter, which the address keeps", async ({
 		books.getByRole("link", { name: new RegExp(`^Kindle ${stamp}`) }),
 	).toBeVisible();
 
+	// The list follows the router's state, which can be ahead of the
+	// address the reload reads.
+	await expect(page).toHaveURL(/[?&]format=[^&]*mobi/);
 	await page.reload();
 	await expect(books.getByRole("link")).toHaveCount(1);
 	await expect(
