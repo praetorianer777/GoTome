@@ -366,6 +366,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the word itself, in foliate-js's search or in the pages' text, and takes
   the place whose words the snippet shares most (`reader/passage.ts`). A
   place opened so is not saved until the person moves on from it.
+- Rebuilding, as `docs/search-index.md` tells an operator: `index_versions`
+  holds the pg_search version the index was built with and the
+  `ingest.ChunkVersion` the chunks were cut with. At start,
+  `search.Index.CheckEngine` updates the extension to the image's and
+  queues `search.rebuild_index` (`REINDEX INDEX CONCURRENTLY`, which records
+  the version when done) on a change; `ingest.Service.CheckChunkVersion`
+  marks every file to be read again. Raise `ChunkVersion` with a change to
+  how text is extracted or cut. `POST /search/reread` and
+  `POST /search/rebuild` do the same by hand (`index:rebuild`);
+  `GET /search/status` counts the visible books' text files and how many
+  are chunked. Old chunks and the old index answer until replaced.
 
 ## Metadata providers
 

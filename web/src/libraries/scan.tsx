@@ -7,6 +7,7 @@ import {
 	useScanLibrary,
 } from "@/libraries/api";
 import { Link } from "@tanstack/react-router";
+import { RereadText } from "@/jobs/search-controls";
 import { useRereadLibrary } from "@/jobs/api";
 
 const when = new Intl.DateTimeFormat(undefined, {
@@ -87,6 +88,12 @@ export function ScanStatus({
 					</button>
 				)}
 			</div>
+			{canScan && (
+				<RereadText
+					target={{ library: library.id }}
+					label={t("searchIndex.rereadLibrary")}
+				/>
+			)}
 			{library.filesFailed > 0 && (
 				<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
 					<p className="text-red-700 dark:text-red-400">

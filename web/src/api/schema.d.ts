@@ -897,6 +897,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build the search index again from the text already read; searches use the old one until then */
+        post: operations["rebuildSearchIndex"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/reread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read the text of a book, a library or every visible book again; search keeps the old text until then */
+        post: operations["rereadText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How much of the books' text search knows, and whether its index is being rebuilt */
+        get: operations["searchStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -1454,6 +1505,12 @@ export interface components {
             type: string;
             value: string;
         };
+        IndexStatus: {
+            engine: string;
+            files: number;
+            indexed: number;
+            rebuilding: boolean;
+        };
         JobList: {
             jobs: components["schemas"]["JobView"][];
         };
@@ -1641,6 +1698,9 @@ export interface components {
             totalReadingMinutes: number;
             years: components["schemas"]["StatsYear"][];
         };
+        RebuildResult: {
+            queued: boolean;
+        };
         RereadLibraryRequest: {
             failedOnly: boolean;
         };
@@ -1808,6 +1868,15 @@ export interface components {
             pageTo?: number;
             position: number;
             snippet: components["schemas"]["SnippetPart"][];
+        };
+        TextRereadRequest: {
+            /** Format: uuid */
+            book?: string;
+            /** Format: uuid */
+            library?: string;
+        };
+        TextRereadResult: {
+            files: number;
         };
         UnreadCount: {
             unread: number;
@@ -3850,6 +3919,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FullTextResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rebuildSearchIndex: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RebuildResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rereadText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TextRereadRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TextRereadResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchStatus: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexStatus"];
                 };
             };
             /** @description The request failed. */

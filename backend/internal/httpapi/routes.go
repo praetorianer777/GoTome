@@ -5,6 +5,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -272,6 +273,23 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/search", ID: "searchText",
 			Summary: "Books whose text holds the words, best first, with the passages that do", Tag: "books",
 			Query: fullTextQuery{}, Response: fullTextResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchText,
+		},
+		{
+			Method: http.MethodGet, Path: "/search/status", ID: "searchStatus",
+			Summary: "How much of the books' text search knows, and whether its index is being rebuilt", Tag: "books",
+			Query: searchStatusQuery{}, Response: search.IndexStatus{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.searchStatus,
+		},
+		{
+			Method: http.MethodPost, Path: "/search/reread", ID: "rereadText",
+			Summary: "Read the text of a book, a library or every visible book again; search keeps the old text until then", Tag: "books",
+			Request: textRereadRequest{}, Response: textRereadResult{}, Status: http.StatusAccepted,
+			Permission: auth.IndexRebuild, Handler: s.rereadText,
+		},
+		{
+			Method: http.MethodPost, Path: "/search/rebuild", ID: "rebuildSearchIndex",
+			Summary: "Build the search index again from the text already read; searches use the old one until then", Tag: "books",
+			Response: rebuildResult{}, Status: http.StatusAccepted,
+			Permission: auth.IndexRebuild, Handler: s.rebuildSearchIndex,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",

@@ -66,6 +66,9 @@ func readCases() map[string][]readCase {
 			{path: "/search", query: q("q", "{title}"), control: "insider"},
 			{path: "/search", query: q("q", "{title}", "library", "{library}"), control: "insider"},
 		},
+		// Counts name no book; the call about the library proves it is
+		// kept to those who see it.
+		"searchStatus": {{path: "/search/status", query: q("library", "{library}"), control: "insider"}},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},

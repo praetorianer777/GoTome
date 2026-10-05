@@ -186,3 +186,9 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- The search index rebuilds itself when an upgrade brings a new search
+  engine or a new way of reading text, and search keeps answering while it
+  does. Editors can have a book's, a library's or every book's text read
+  again, and the index rebuilt, from the book, the library and the Jobs
+  page, which also shows how much of the text search knows. See
+  `docs/search-index.md`.

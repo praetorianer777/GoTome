@@ -152,6 +152,8 @@ func newApp(t *testing.T) *app {
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
+	a.server.Index = search.NewIndex(a.pool, quiet)
+	a.server.Index.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)
 	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
 	hubCtx, stopHub := context.WithCancel(context.Background())

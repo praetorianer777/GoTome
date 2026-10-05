@@ -127,6 +127,8 @@ export class FakeServer {
 	 * filter.
 	 */
 	passages: { bookId: string; hit: TextHit }[] = [];
+	/** How much of the text search knows; rebuilding and rereading change it. */
+	searchStatus = { files: 4, indexed: 4, rebuilding: false, engine: "0.25.11" };
 	/** The signed-in person's statistics, the same whatever the window. */
 	stats?: ReadingStats;
 	/** The audio of each book, as the player asks for it. */
@@ -234,6 +236,20 @@ export class FakeServer {
 			});
 			if (path === "/search") {
 				return this.searchText(url.searchParams);
+			}
+			if (path === "/search/status") {
+				return Response.json(this.searchStatus);
+			}
+			if (path === "/search/reread") {
+				const target = body as { library?: string; book?: string };
+				const files = target.book ? 1 : target.library ? 2 : this.searchStatus.files;
+				this.searchStatus = { ...this.searchStatus, indexed: this.searchStatus.indexed - files };
+				return Response.json({ files }, { status: 202 });
+			}
+			if (path === "/search/rebuild") {
+				const queued = !this.searchStatus.rebuilding;
+				this.searchStatus = { ...this.searchStatus, rebuilding: true };
+				return Response.json({ queued }, { status: 202 });
 			}
 			if (path === "/metadata/search") {
 				return Response.json(

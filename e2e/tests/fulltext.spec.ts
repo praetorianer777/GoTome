@@ -32,14 +32,22 @@ async function upload(
 	expect((await uploaded.json()).outcome).toBe("added");
 }
 
-/** Ticks or unticks a value in the filters, behind their button on a phone. */
+/**
+ * Ticks or unticks a value in the filters. On a phone they are behind a
+ * button, and closed again after, as they would lie over the results.
+ */
 async function filter(page: Page, name: RegExp, on: boolean) {
 	const toggle = page.getByRole("button", { name: /^Filters/ });
 	const panel = page.getByRole("complementary", { name: "Filters" });
-	if ((await toggle.isVisible()) && !(await panel.isVisible())) {
+	const behind = await toggle.isVisible();
+	if (behind) {
 		await toggle.click();
 	}
 	await panel.getByRole("checkbox", { name }).setChecked(on);
+	if (behind) {
+		await page.getByRole("button", { name: /^Filters/ }).click();
+		await expect(panel).toBeHidden();
+	}
 }
 
 test("the text is searched from the header, narrowed by a filter, and a passage opens in its reader", async ({
