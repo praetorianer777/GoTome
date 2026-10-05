@@ -13,7 +13,7 @@ import (
 )
 
 type fullTextQuery struct {
-	Q       string `query:"q" doc:"The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order."`
+	Q       string `query:"q" doc:"The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order. When few books hold them, words no book holds are taken for typos and the words like them are looked for too."`
 	Library string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
 	Filter  string `query:"filter" doc:"A rule tree the books must match, as listBooks takes it."`
 	Limit   int    `query:"limit" doc:"How many books a page holds, at most 50; 20 when left out."`
@@ -44,7 +44,10 @@ type textHit struct {
 // textBook is a book found, with its best passages.
 type textBook struct {
 	Book bookSummary `json:"book"`
-	Hits []textHit   `json:"hits"`
+	// Corrected says the book was found only once the query's typos were
+	// repaired; such books come after the others.
+	Corrected bool      `json:"corrected,omitempty"`
+	Hits      []textHit `json:"hits"`
 }
 
 type fullTextResult struct {
@@ -97,7 +100,7 @@ func (s *Server) searchText(w http.ResponseWriter, r *http.Request) error {
 			// Gone between the search and the summaries.
 			continue
 		}
-		book := textBook{Book: summaryOf(sm), Hits: make([]textHit, len(b.Hits))}
+		book := textBook{Book: summaryOf(sm), Corrected: b.Corrected, Hits: make([]textHit, len(b.Hits))}
 		for i, h := range b.Hits {
 			hit := textHit{
 				FileID: h.FileID, Position: h.Position, Chapter: h.Chapter,

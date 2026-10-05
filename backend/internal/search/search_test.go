@@ -35,3 +35,14 @@ func TestParts(t *testing.T) {
 		t.Errorf("parts of nothing = %+v", got)
 	}
 }
+
+func TestVariants(t *testing.T) {
+	got := variants([][]string{{"with", "white"}, {"whale"}})
+	if !reflect.DeepEqual(got, []string{"with whale", "white whale"}) {
+		t.Errorf("variants = %v", got)
+	}
+	got = variants([][]string{{"a", "b", "c"}, {"d", "e", "f"}, {"g", "h"}})
+	if len(got) != maxVariants || got[0] != "a d g" {
+		t.Errorf("variants of many: %v", got)
+	}
+}

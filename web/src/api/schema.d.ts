@@ -1795,6 +1795,7 @@ export interface components {
         };
         TextBook: {
             book: components["schemas"]["BookSummary"];
+            corrected?: boolean;
             hits: components["schemas"]["TextHit"][];
         };
         TextHit: {
@@ -3824,7 +3825,7 @@ export interface operations {
     searchText: {
         parameters: {
             query?: {
-                /** @description The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order. */
+                /** @description The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order. When few books hold them, words no book holds are taken for typos and the words like them are looked for too. */
                 q?: string;
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;

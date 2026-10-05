@@ -3036,7 +3036,7 @@
           {
             "name": "q",
             "in": "query",
-            "description": "The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order.",
+            "description": "The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order. When few books hold them, words no book holds are taken for typos and the words like them are looked for too.",
             "schema": {
               "type": "string"
             }
@@ -6444,6 +6444,9 @@
         "properties": {
           "book": {
             "$ref": "#/components/schemas/BookSummary"
+          },
+          "corrected": {
+            "type": "boolean"
           },
           "hits": {
             "type": "array",

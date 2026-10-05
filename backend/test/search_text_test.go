@@ -18,7 +18,8 @@ type textResult struct {
 			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"book"`
-		Hits []struct {
+		Corrected bool `json:"corrected"`
+		Hits      []struct {
 			FileID   string `json:"fileId"`
 			Position int    `json:"position"`
 			Chapter  string `json:"chapter"`

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { chooseLibrary, openSignedIn } from "../fixtures/app";
+import { openSignedIn } from "../fixtures/app";
 
 test("the books are narrowed by a filter, which the address keeps", async ({
 	page,
@@ -29,8 +29,10 @@ test("the books are narrowed by a filter, which the address keeps", async ({
 		expect(uploaded.status()).toBe(200);
 	}
 
-	await page.goto("/");
-	await chooseLibrary(page, library);
+	// The library goes into the address: chosen from the page, it would not
+	// be while it is the only one, and other tests add theirs before the
+	// reload below.
+	await page.goto(`/?library=${id}`);
 	const books = page.getByRole("region", { name: "Books" });
 	await expect(books.getByRole("link")).toHaveCount(2);
 
