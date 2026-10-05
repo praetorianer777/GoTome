@@ -131,6 +131,8 @@ export class FakeServer {
 	passages: { bookId: string; hit: TextHit }[] = [];
 	/** The pairs of books that look like one, strongest first. */
 	pairs: DuplicatePair[] = [];
+	/** Books merged away, and the book each lives on as. */
+	mergedInto: Record<string, string> = {};
 
 	/** Adds an open pair of two of the books, with its evidence. */
 	withPair(id: string, a: string, b: string, evidence: DuplicatePair["evidence"]): this {
@@ -655,6 +657,27 @@ export class FakeServer {
 				{ error: { code: "unauthorized", message: "Sign in to continue." } },
 				{ status: 401 },
 			);
+		}
+		const merging = /^\/books\/([^/]+)\/merge$/.exec(path);
+		if (merging && method === "POST") {
+			const { from, take } = body as { from: string; take: string[] };
+			const into = this.books.find((b) => b.id === merging[1]);
+			const gone = this.books.find((b) => b.id === from);
+			if (!into || !gone) {
+				return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+			}
+			if (take.includes("title")) into.title = gone.title;
+			into.files.push(...gone.files);
+			this.books = this.books.filter((b) => b !== gone);
+			this.mergedInto[gone.id] = into.id;
+			for (const p of this.pairs) {
+				if (p.books.some((b) => b.id === gone.id)) p.state = "merged";
+			}
+			return Response.json(into);
+		}
+		const old = /^\/books\/([^/]+)$/.exec(path);
+		if (method === "GET" && old?.[1] && this.mergedInto[old[1]]) {
+			return this.answerBooks(method, `/books/${this.mergedInto[old[1]]}`, query, body);
 		}
 		if (path === "/books/names") {
 			return Response.json({

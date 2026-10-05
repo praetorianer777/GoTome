@@ -86,3 +86,22 @@ export function overlapOf(detail: string): Overlap | undefined {
 		? { jaccard: Number(m[1]), aInB: Number(m[2]), bInA: Number(m[3]) }
 		: undefined;
 }
+
+/** Merges one book into another, which survives with what was chosen. */
+export function useMergeBooks() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({ into, from, take }: { into: string; from: string; take: string[] }) =>
+			(
+				await api.POST("/books/{bookId}/merge", {
+					params: { path: { bookId: into } },
+					body: { from, take },
+				})
+			).data,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["duplicates"] });
+			queryClient.invalidateQueries({ queryKey: ["book"] });
+			queryClient.invalidateQueries({ queryKey: ["books"] });
+		},
+	});
+}

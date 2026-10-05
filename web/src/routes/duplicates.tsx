@@ -17,6 +17,7 @@ import {
 	useSetPairState,
 } from "@/duplicates/api";
 import { type MessageKey, t } from "@/i18n";
+import { MergeForm } from "@/duplicates/merge-form";
 import { formatDate, formatLanguage, formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
 
@@ -262,6 +263,8 @@ function evidenceText(e: Evidence, pair: DuplicatePair): string {
 
 function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 	const [comparing, setComparing] = useState(false);
+	const [merging, setMerging] = useState(false);
+	const oneLibrary = pair.books[0]?.libraryId === pair.books[1]?.libraryId;
 	const setState = useSetPairState();
 	const said = statement(pair);
 	return (
@@ -321,9 +324,25 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 						)}
 					</button>
 				)}
+				{canAct && pair.state === "open" && oneLibrary && (
+					<button
+						type="button"
+						aria-expanded={merging}
+						onClick={() => setMerging(!merging)}
+						className={button}
+					>
+						{t(merging ? "duplicates.mergeClose" : "duplicates.merge")}
+					</button>
+				)}
 			</div>
+			{canAct && pair.state === "open" && !oneLibrary && (
+				<p className="text-sm text-slate-600 dark:text-slate-400">
+					{t("duplicates.otherLibraries")}
+				</p>
+			)}
 			<FormError error={setState.error} />
 			{comparing && <Compare pair={pair} />}
+			{merging && <MergeForm pair={pair} onDone={() => setMerging(false)} />}
 		</li>
 	);
 }

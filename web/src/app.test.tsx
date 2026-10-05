@@ -2185,3 +2185,35 @@ describe("the trash", () => {
 		expect(screen.queryByRole("button", { name: "Move Emma.epub to the trash" })).not.toBeInTheDocument();
 	});
 });
+
+describe("merging books", () => {
+	it("keeps one book with the values picked, and leads the other's address to it", async () => {
+		const person = userEvent.setup();
+		const file = (id: string, format: string, name: string) => ({
+			id, kind: "ebook", format, name, size: 1000, missing: false, drm: false, extractState: "done",
+		});
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [file("f1", "epub", "Emma.epub")] })
+			.withBook("Emma: A Novel", { files: [file("f2", "pdf", "Emma.pdf")] })
+			.withPair("pair-1", "book-1", "book-2", [{ kind: "title_author", detail: "emma / austen", score: 0.75 }]);
+		const { router } = renderApp("/duplicates");
+		const pair = within(await screen.findByRole("listitem", { name: "Emma and Emma: A Novel have the same title and author." }));
+		await person.click(pair.getByRole("button", { name: "Merge…" }));
+		const form = within(await pair.findByRole("form", { name: "Merge the two books" }));
+		expect(form.getByRole("radio", { name: "Emma, files: 1" })).toBeChecked();
+		const title = within(form.getByRole("radiogroup", { name: "Title" }));
+		await person.click(title.getByRole("radio", { name: "Emma: A Novel" }));
+		await person.click(form.getByRole("button", { name: "Merge into Emma" }));
+
+		await waitFor(() => expect(screen.queryByRole("listitem", { name: /have the same title and author/ })).not.toBeInTheDocument());
+		const sent = server.requests.find((r) => r.path === "/books/book-1/merge");
+		expect(sent?.body).toEqual({ from: "book-2", take: ["title"] });
+
+		await router.navigate({ to: "/books/$bookId", params: { bookId: "book-2" } });
+		expect(await screen.findByRole("heading", { name: "Emma: A Novel", level: 1 })).toBeInTheDocument();
+		await waitFor(() => expect(router.state.location.pathname).toBe("/books/book-1"));
+	});
+});

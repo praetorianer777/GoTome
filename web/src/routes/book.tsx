@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import {
 	type BookDetail,
@@ -39,6 +40,15 @@ const back = (
 
 export function Book({ id }: { id: string }) {
 	const book = useQuery(bookQuery(id));
+	const navigate = useNavigate();
+	const survivor = book.data?.id;
+	// A merged book's ID leads to the book it was merged into, whose own
+	// address the page then takes.
+	useEffect(() => {
+		if (survivor && survivor !== id) {
+			navigate({ to: "/books/$bookId", params: { bookId: survivor }, replace: true });
+		}
+	}, [survivor, id, navigate]);
 
 	if (book.error instanceof ApiError && book.error.status === 404) {
 		return (

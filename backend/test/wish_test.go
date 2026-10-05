@@ -87,8 +87,9 @@ func TestAWishedBookWaitsAndTheMatchingFileFulfilsIt(t *testing.T) {
 	if id := files["Mansfield Park.epub"].BookID.String(); id == emma || id == persuasion["id"] {
 		t.Error("a book nobody wished for joined a wish")
 	}
-	if status, _, _ := a.call(reader, http.MethodGet, "/books/"+scanned.String(), nil); status != 404 {
-		t.Errorf("the book the scan made is still there: %d", status)
+	// The book the scan made is gone into the wish: its ID leads there.
+	if status, got, _ := a.call(reader, http.MethodGet, "/books/"+scanned.String(), nil); status != 200 || got["id"] != emma {
+		t.Errorf("the book the scan made: %d %v", status, got["id"])
 	}
 	_, got, _ := a.call(reader, http.MethodGet, "/books/"+emma, nil)
 	if got["placeholder"] != false || len(got["files"].([]any)) != 1 || got["publisher"] != "John Murray" ||
