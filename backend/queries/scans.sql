@@ -117,7 +117,7 @@ WHERE library_id = $1
 ORDER BY id;
 
 -- name: GetFileForExtraction :one
-SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1;
@@ -144,11 +144,6 @@ UPDATE book_files
 SET extract_state = 'failed', extract_error = sqlc.arg(error), updated_at = now()
 WHERE id = $1 AND sha256 = sqlc.arg(sha256);
 
--- name: SetPrimaryTextFile :exec
--- The first file of a book that has text is the one its text is read from.
-UPDATE books
-SET primary_text_file_id = $2
-WHERE id = $1 AND primary_text_file_id IS NULL;
 
 -- name: DeleteFileChapters :exec
 DELETE FROM audio_chapters WHERE file_id = $1;

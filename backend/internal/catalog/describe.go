@@ -44,6 +44,10 @@ type FileMetadata struct {
 // the word processor's document.
 var formatRanks = map[string]int{"epub": 3, "azw3": 2, "mobi": 2, "azw": 2, "pdf": 1}
 
+// FormatRank is how much a format's metadata and text are worth against
+// another's: higher is better, 0 for a format that has neither.
+func FormatRank(format string) int { return formatRanks[format] }
+
 // FileSource is the source recorded for fields that a file filled in.
 func FileSource(format string, fileID uuid.UUID) string {
 	return "file:" + format + ":" + fileID.String()

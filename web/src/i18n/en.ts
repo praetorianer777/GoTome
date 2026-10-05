@@ -343,6 +343,7 @@ export const en = {
 	"jobs.none": "No jobs here.",
 	"jobs.kind.scan": "Scan {library}",
 	"jobs.kind.read": "Read {file}",
+	"jobs.kind.chunk": "Keep the text of {file} for search",
 	"jobs.kind.write": "Write the details into {file}",
 	"jobs.kind.match": "Look up {book}",
 	"jobs.kind.scanAll": "Scan every library",
