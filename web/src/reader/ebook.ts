@@ -1,5 +1,6 @@
 import "foliate-js/view.js";
 import type { FoliateTocItem, View } from "foliate-js/view.js";
+import { closest, type Found } from "@/reader/passage";
 
 export type Flow = "paginated" | "scrolled";
 export type Theme = "light" | "sepia" | "dark";
@@ -32,6 +33,12 @@ export interface Ebook {
 	toc: TocEntry[];
 	/** Goes to a CFI or a table of contents entry's href. */
 	goTo(target: string): Promise<void>;
+	/**
+	 * Looks for the word in the book, outlines where it stands, and goes to
+	 * the place whose text is most like the passage. False when the word is
+	 * nowhere in the book.
+	 */
+	find(word: string, passage: string): Promise<boolean>;
 	/** Turns the page towards the left or the right, whichever way the book reads. */
 	goLeft(): Promise<void>;
 	goRight(): Promise<void>;
@@ -135,15 +142,27 @@ export async function openEbook(
 	// settles, so every move waits for the one before.
 	let moving: Promise<unknown> = Promise.resolve();
 	const inTurn =
-		<A extends unknown[]>(move: (...args: A) => Promise<unknown>) =>
-		(...args: A): Promise<void> => {
+		<A extends unknown[], R>(move: (...args: A) => Promise<R>) =>
+		(...args: A): Promise<R> => {
 			const next = moving.then(() => move(...args));
 			moving = next.catch(() => {});
-			return next.then(() => {});
+			return next;
 		};
+	const find = async (word: string, passage: string) => {
+		const found: Found[] = [];
+		for await (const result of view.search({ query: word })) {
+			if (typeof result === "object" && "subitems" in result) {
+				found.push(...result.subitems);
+			}
+		}
+		const best = closest(found, passage);
+		if (best) await view.goTo(best.cfi);
+		return Boolean(best);
+	};
 	return {
 		toc: flatten(view.book.toc),
 		goTo: inTurn((target: string) => view.goTo(target)),
+		find: inTurn(find),
 		goLeft: inTurn(() => view.goLeft()),
 		goRight: inTurn(() => view.goRight()),
 		next: inTurn(() => view.next()),

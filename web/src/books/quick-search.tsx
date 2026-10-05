@@ -15,8 +15,10 @@ function letters(words: string): number {
 
 /**
  * The search box in the header: titles, authors and series, misspelt or only
- * begun. It is a combobox: the arrow keys move through what was found, Enter
- * opens a book, Escape closes the list, and "/" anywhere comes back to it.
+ * begun, and last a way to search the text of the books for the words. It is
+ * a combobox: the arrow keys move through what was found, Enter opens a book
+ * or the text search, Escape closes the list, and "/" anywhere comes back to
+ * it.
  */
 export function QuickSearch() {
 	const navigate = useNavigate();
@@ -57,11 +59,20 @@ export function QuickSearch() {
 	const hits = enough ? (search.data ?? []) : [];
 	const shown = open && letters(words) >= MIN_LETTERS && enough;
 
-	function go(hit: SearchHit) {
+	function close() {
 		setOpen(false);
 		setWords("");
 		setActive(-1);
+	}
+
+	function go(hit: SearchHit) {
+		close();
 		navigate({ to: "/books/$bookId", params: { bookId: hit.id } });
+	}
+
+	function searchText() {
+		close();
+		navigate({ to: "/search", search: { q: words.trim() } });
 	}
 
 	function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -69,17 +80,20 @@ export function QuickSearch() {
 			case "ArrowDown":
 				event.preventDefault();
 				setOpen(true);
-				setActive((i) => Math.min(i + 1, hits.length - 1));
+				setActive((i) => Math.min(i + 1, hits.length));
 				break;
 			case "ArrowUp":
 				event.preventDefault();
 				setActive((i) => Math.max(i - 1, -1));
 				break;
 			case "Enter": {
+				if (!shown) break;
+				event.preventDefault();
 				const hit = hits[Math.max(active, 0)];
-				if (shown && hit) {
-					event.preventDefault();
+				if (hit && active < hits.length) {
 					go(hit);
+				} else {
+					searchText();
 				}
 				break;
 			}
@@ -122,6 +136,14 @@ export function QuickSearch() {
 				hidden={!shown}
 				className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
 			>
+				{search.isSuccess && hits.length === 0 && (
+					<p
+						role="status"
+						className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400"
+					>
+						{t("search.none")}
+					</p>
+				)}
 				<div id={listId} role="listbox" aria-label={t("search.results")}>
 					{hits.map((hit, i) => (
 						// biome-ignore lint/a11y/useKeyWithClickEvents: the keys work on the input, which keeps the focus; this is the combobox pattern with aria-activedescendant.
@@ -146,15 +168,20 @@ export function QuickSearch() {
 							)}
 						</div>
 					))}
-				</div>
-				{search.isSuccess && hits.length === 0 && (
-					<p
-						role="status"
-						className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400"
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: as above. */}
+					<div
+						id={`${listId}-${hits.length}`}
+						role="option"
+						tabIndex={-1}
+						aria-selected={active === hits.length}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={searchText}
+						onMouseEnter={() => setActive(hits.length)}
+						className="cursor-pointer border-t border-slate-200 px-3 py-2 text-sm text-brand-strong aria-selected:bg-sky-100 dark:border-slate-700 dark:text-brand dark:aria-selected:bg-sky-900"
 					>
-						{t("search.none")}
-					</p>
-				)}
+						{t("search.fullText", { words: words.trim() })}
+					</div>
+				</div>
 			</div>
 		</div>
 	);

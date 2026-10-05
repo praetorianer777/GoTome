@@ -6470,6 +6470,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "format": {
+            "type": "string"
+          },
           "offset": {
             "type": "integer"
           },
@@ -6491,6 +6494,7 @@
         },
         "required": [
           "fileId",
+          "format",
           "position",
           "offset",
           "snippet"

@@ -57,6 +57,8 @@ type Book struct {
 type Hit struct {
 	ChunkID int64
 	FileID  uuid.UUID
+	// Format is the file's, which says how a reader finds the passage.
+	Format string
 	// Position is the chunk's among the book's, from 0.
 	Position int
 	Chapter  string

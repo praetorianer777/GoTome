@@ -1802,6 +1802,7 @@ export interface components {
             chapter?: string;
             /** Format: uuid */
             fileId: string;
+            format: string;
             offset: number;
             pageFrom?: number;
             pageTo?: number;

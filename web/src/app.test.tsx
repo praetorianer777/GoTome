@@ -15,6 +15,8 @@ vi.mock("@/reader/pdf", () => ({
 			{ id: "0", title: "Chapter One", page: 1, items: [] },
 			{ id: "1", title: "Chapter Two", page: 6, items: [{ id: "1.0", title: "Nowhere", items: [] }] },
 		],
+		// Page 8 holds the passage the full-text search's tests open.
+		text: async (page: number) => (page === 8 ? "a white ledger and a whale" : "a white page"),
 		render: () => ({ done: Promise.resolve(), cancel: () => {} }),
 		close: () => {},
 	}),
@@ -25,6 +27,7 @@ vi.mock("@/reader/pdf", () => ({
 const ebook = vi.hoisted(() => ({
 	opened: [] as { name: string; start?: string }[],
 	looks: [] as unknown[],
+	finds: [] as { word: string; passage: string }[],
 }));
 vi.mock("@/reader/ebook", () => ({
 	openEbook: async (
@@ -53,6 +56,13 @@ vi.mock("@/reader/ebook", () => ({
 				{ key: "1", label: "Two", href: "two.xhtml", depth: 0 },
 				{ key: "2", label: "Three", href: "three.xhtml", depth: 1 },
 			],
+			// The word is found in the second chapter, at the sixth tenth.
+			find: async (word: string, passage: string) => {
+				ebook.finds.push({ word, passage });
+				at = 5;
+				place();
+				return true;
+			},
 			goTo: async (target: string) => {
 				at = target.startsWith("epubcfi(") ? Number(/\/(\d+)\)$/.exec(target)?.[1] ?? 0) : ["one.xhtml", "two.xhtml", "three.xhtml"].indexOf(target) * 4;
 				place();
@@ -74,6 +84,7 @@ beforeEach(() => {
 	localStorage.clear();
 	ebook.opened.length = 0;
 	ebook.looks.length = 0;
+	ebook.finds.length = 0;
 	delete document.documentElement.dataset.theme;
 	server = new FakeServer().install();
 });
@@ -751,7 +762,9 @@ describe("quick search", () => {
 		await person.type(box, "Sandersen");
 
 		const results = await screen.findByRole("listbox", { name: "Books found" });
-		await waitFor(() => expect(within(results).getAllByRole("option")).toHaveLength(2));
+		// Two books, and last the search of their text.
+		await waitFor(() => expect(within(results).getAllByRole("option")).toHaveLength(3));
+		expect(within(results).getAllByRole("option")[2]).toHaveTextContent("Search the text of the books for “Sandersen”");
 		expect(box).toHaveAttribute("aria-expanded", "true");
 
 		await person.keyboard("{ArrowDown}{ArrowDown}");
@@ -1917,5 +1930,100 @@ describe("notifications", () => {
 		expect(server.requests.find((r) => r.path === "/notifications/read")?.body).toEqual({ ids: ["note-2"] });
 		expect(await screen.findByRole("button", { name: "Notifications, 0 unread" })).toBeInTheDocument();
 		expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
+	});
+});
+
+describe("the full-text search", () => {
+	function withPassages() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Moby-Dick", {
+				files: [{ id: "file-1", kind: "ebook", format: "epub", name: "Moby-Dick.epub", size: 1_000_000, missing: false, drm: false, extractState: "done" }],
+			})
+			.withBook("Ledger", {
+				files: [{ id: "file-2", kind: "ebook", format: "pdf", name: "Ledger.pdf", size: 1_000_000, missing: false, drm: false, extractState: "done" }],
+			});
+		server.passages = [
+			{
+				bookId: "book-1",
+				hit: {
+					fileId: "file-1", format: "epub", position: 3, chapter: "Two", offset: 24_000,
+					snippet: [{ text: "the " }, { text: "white", match: true }, { text: " " }, { text: "whale", match: true }, { text: " rose" }],
+				},
+			},
+			{
+				bookId: "book-2",
+				hit: {
+					fileId: "file-2", format: "pdf", position: 0, pageFrom: 7, pageTo: 8, offset: 0,
+					snippet: [{ text: "a " }, { text: "white", match: true }, { text: " ledger and a " }, { text: "whale", match: true }],
+				},
+			},
+		];
+	}
+	const results = async () => within(await screen.findByRole("region", { name: "Books found" }));
+	const saves = () => server.requests.filter((r) => r.method === "PUT" && r.path.includes("/progress/"));
+
+	it("is reached from the header with the words typed there, and keeps query and filters in the address", async () => {
+		const person = userEvent.setup();
+		withPassages();
+		const { router } = renderApp("/");
+		await person.type(await screen.findByRole("combobox", { name: "Search books" }), "white whale");
+		await person.click(await screen.findByRole("option", { name: "Search the text of the books for “white whale”" }));
+
+		const found = await results();
+		expect(await found.findByRole("link", { name: "Moby-Dick" })).toBeInTheDocument();
+		expect(found.getByRole("link", { name: "Ledger" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/search");
+		expect(router.state.location.search).toMatchObject({ q: "white whale" });
+		expect(screen.getByRole("searchbox", { name: "Words to look for" })).toHaveValue("white whale");
+		expect(found.getAllByText("whale")[0]?.tagName).toBe("MARK");
+		expect(found.getByText("Two")).toBeInTheDocument();
+		expect(found.getByText("Pages 7–8")).toBeInTheDocument();
+
+		const filters = within(screen.getByRole("complementary", { name: "Filters" }));
+		await person.click(await filters.findByRole("checkbox", { name: "PDF (1)" }));
+		await waitFor(() => expect(found.queryByRole("link", { name: "Moby-Dick" })).not.toBeInTheDocument());
+		expect(router.state.location.search).toMatchObject({ q: "white whale", format: ["pdf"] });
+		const asked = server.requests.filter((r) => r.path.startsWith("/search?")).at(-1)?.path ?? "";
+		expect(new URLSearchParams(asked.slice("/search?".length)).get("filter")).toBe(
+			JSON.stringify({ all: [{ field: "format", op: "in", values: ["pdf"] }] }),
+		);
+
+		await person.clear(screen.getByRole("searchbox", { name: "Words to look for" }));
+		await person.type(screen.getByRole("searchbox", { name: "Words to look for" }), "nothing like it{Enter}");
+		expect(await screen.findByText("No book's text holds those words.")).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ q: "nothing like it", format: ["pdf"] });
+	});
+
+	it("opens a PDF at the page of a passage among its pages, and saves no place until the person moves on", async () => {
+		const person = userEvent.setup();
+		withPassages();
+		const { router } = renderApp("/search?q=ledger");
+		await person.click(await (await results()).findByRole("link", { name: "Read from here" }));
+		expect(router.state.location.pathname).toBe("/books/book-2/read/file-2");
+		expect(router.state.location.search).toMatchObject({ page: 7, to: 8, find: "white" });
+		await waitFor(() => expect(screen.getByRole("textbox", { name: "Page number" })).toHaveValue("8"));
+		await new Promise((r) => setTimeout(r, 800));
+		expect(saves()).toEqual([]);
+		await person.click(screen.getByRole("button", { name: "Next page" }));
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]?.body).toMatchObject({ locator: "page:9" });
+	});
+
+	it("opens an EPUB at the passage, looked for by its longest word near its text", async () => {
+		const person = userEvent.setup();
+		withPassages();
+		renderApp("/search?q=rose");
+		await person.click(await (await results()).findByRole("link", { name: "Read from here" }));
+		await waitFor(() => expect(ebook.finds).toEqual([{ word: "white", passage: "the white whale rose" }]));
+		expect(ebook.opened.at(-1)?.start).toBeUndefined();
+		await waitFor(() => expect(screen.getByText("50%")).toBeInTheDocument());
+		await new Promise((r) => setTimeout(r, 800));
+		expect(saves()).toEqual([]);
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]?.body).toMatchObject({ locator: "epubcfi(/6/6)" });
 	});
 });

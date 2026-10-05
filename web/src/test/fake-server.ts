@@ -5,8 +5,12 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser } from "@/auth/session";
-import type { BookDetail, BookSummary } from "@/books/api";
-import type { Collection, CollectionAdd, CollectionRequest } from "@/books/collections";
+import type { BookDetail, BookSummary, TextHit } from "@/books/api";
+import type {
+	Collection,
+	CollectionAdd,
+	CollectionRequest,
+} from "@/books/collections";
 import type { Notification } from "@/notifications/api";
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
@@ -15,7 +19,12 @@ import type { ReadingStats } from "@/books/stats";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange } from "@/books/reading";
-import type { BookEdit, Candidate, CandidateApply, ReviewBook } from "@/books/edit";
+import type {
+	BookEdit,
+	Candidate,
+	CandidateApply,
+	ReviewBook,
+} from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
@@ -79,19 +88,45 @@ export class FakeServer {
 	down = false;
 	/** The signed-in person's sessions, as the profile page lists them. */
 	sessions = [
-		{ id: "s-1", userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-03T08:00:00Z", current: true },
-		{ id: "s-2", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1", createdAt: "2026-01-01T08:00:00Z", lastSeenAt: "2026-01-02T08:00:00Z", current: false },
+		{
+			id: "s-1",
+			userAgent:
+				"Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0",
+			createdAt: "2026-01-01T08:00:00Z",
+			lastSeenAt: "2026-01-03T08:00:00Z",
+			current: true,
+		},
+		{
+			id: "s-2",
+			userAgent:
+				"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1",
+			createdAt: "2026-01-01T08:00:00Z",
+			lastSeenAt: "2026-01-02T08:00:00Z",
+			current: false,
+		},
 	];
 	/** The jobs the jobs page lists, newest first. */
 	jobs: Job[] = [];
 	/** The books whose matches wait for review. */
 	review: ReviewBook[] = [];
 	/** What the metadata providers know, by book. */
-	candidates: Record<string, { candidates: Candidate[]; failures: { provider: string; message: string }[] }> = {};
+	candidates: Record<
+		string,
+		{
+			candidates: Candidate[];
+			failures: { provider: string; message: string }[];
+		}
+	> = {};
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/**
+	 * The passages of the books' text the full-text search finds: one is
+	 * found when its text holds the words, its book with the library's
+	 * filter.
+	 */
+	passages: { bookId: string; hit: TextHit }[] = [];
 	/** The signed-in person's statistics, the same whatever the window. */
 	stats?: ReadingStats;
 	/** The audio of each book, as the player asks for it. */
@@ -99,7 +134,8 @@ export class FakeServer {
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
 	/** The collections the signed-in person sees, with their books in order. */
-	collections: (Omit<Collection, "books" | "hasBook"> & { books: string[] })[] = [];
+	collections: (Omit<Collection, "books" | "hasBook"> & { books: string[] })[] =
+		[];
 	/** The smart shelves the signed-in person sees; what is on them is worked out when asked. */
 	smartShelves: Omit<SmartShelf, "books">[] = [];
 	/** The signed-in person's notifications, newest first. */
@@ -146,8 +182,13 @@ export class FakeServer {
 	}
 
 	/** Adds a book to the library of that name, or the first library. */
-	withBook(title: string, overrides: Partial<BookDetail> = {}, libraryName?: string): this {
-		const library = this.libraries.find((l) => l.name === libraryName) ?? this.libraries[0];
+	withBook(
+		title: string,
+		overrides: Partial<BookDetail> = {},
+		libraryName?: string,
+	): this {
+		const library =
+			this.libraries.find((l) => l.name === libraryName) ?? this.libraries[0];
 		const n = this.books.length + 1;
 		this.books.push({
 			id: `book-${n}`,
@@ -176,22 +217,42 @@ export class FakeServer {
 			if (this.down) {
 				throw new TypeError("Failed to fetch");
 			}
-			const request = input instanceof Request ? input : new Request(new URL(String(input), window.location.href));
+			const request =
+				input instanceof Request
+					? input
+					: new Request(new URL(String(input), window.location.href));
 			const url = new URL(request.url);
 			const path = url.pathname.replace(/^\/api\/v1/, "");
 			const body: unknown =
 				request.method === "GET"
 					? undefined
 					: await request.json().catch(() => undefined);
-			this.requests.push({ method: request.method, path: path + url.search, body });
+			this.requests.push({
+				method: request.method,
+				path: path + url.search,
+				body,
+			});
+			if (path === "/search") {
+				return this.searchText(url.searchParams);
+			}
 			if (path === "/metadata/search") {
-				return Response.json(this.candidates.search ?? { candidates: [], failures: [] });
+				return Response.json(
+					this.candidates.search ?? { candidates: [], failures: [] },
+				);
 			}
 			if (path === "/me/stats") {
 				return Response.json(
 					this.stats ?? {
-						days: [], pagesPerDay: 0, readingMinutesPerDay: 0, listeningMinutesPerDay: 0, totalPages: 0,
-						totalReadingMinutes: 0, totalListeningMinutes: 0, pagesEstimated: false, years: [], history: [],
+						days: [],
+						pagesPerDay: 0,
+						readingMinutesPerDay: 0,
+						listeningMinutesPerDay: 0,
+						totalPages: 0,
+						totalReadingMinutes: 0,
+						totalListeningMinutes: 0,
+						pagesEstimated: false,
+						years: [],
+						history: [],
 					},
 				);
 			}
@@ -199,12 +260,16 @@ export class FakeServer {
 				return this.answerBulk(path, body as BulkRequest);
 			}
 			if (path === "/notifications") {
-				return Response.json({ notifications: this.notifications, unread: this.unread() });
+				return Response.json({
+					notifications: this.notifications,
+					unread: this.unread(),
+				});
 			}
 			if (path === "/notifications/read") {
 				const req = body as { ids?: string[]; all?: boolean };
 				for (const n of this.notifications) {
-					if (req.all || req.ids?.includes(n.id)) n.readAt ??= "2026-01-03T00:00:00Z";
+					if (req.all || req.ids?.includes(n.id))
+						n.readAt ??= "2026-01-03T00:00:00Z";
 				}
 				return Response.json({ unread: this.unread() });
 			}
@@ -212,10 +277,19 @@ export class FakeServer {
 				return new Response(`the bytes of ${path}`);
 			}
 			if (path === "/smart-shelves" || path.startsWith("/smart-shelves/")) {
-				return this.answerSmartShelves(request.method, path, body as SmartShelfRequest);
+				return this.answerSmartShelves(
+					request.method,
+					path,
+					body as SmartShelfRequest,
+				);
 			}
 			if (path === "/collections" || path.startsWith("/collections/")) {
-				return this.answerCollections(request.method, path, url.searchParams, body);
+				return this.answerCollections(
+					request.method,
+					path,
+					url.searchParams,
+					body,
+				);
 			}
 			if (path.startsWith("/matches")) {
 				return this.answerMatches(request.method, path, body as CandidateApply);
@@ -278,24 +352,52 @@ export class FakeServer {
 	}
 
 	private async answerUpload(path: string, file: File): Promise<Response> {
-		const refuse = (status: number, code: string, message: string, fields?: Record<string, string>) =>
-			Response.json({ error: { code, message, fields, requestId: "req-1" } }, { status });
+		const refuse = (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) =>
+			Response.json(
+				{ error: { code, message, fields, requestId: "req-1" } },
+				{ status },
+			);
 		if (!this.session) {
 			return refuse(401, "unauthorized", "Sign in to continue.");
 		}
 		if (!this.session.permissions.includes("books:upload")) {
 			return refuse(403, "forbidden", "You do not have permission to do that.");
 		}
-		const library = this.libraries.find((l) => path === `/libraries/${l.id}/uploads`);
+		const library = this.libraries.find(
+			(l) => path === `/libraries/${l.id}/uploads`,
+		);
 		if (!library) {
 			return refuse(404, "not_found", "There is no such library.");
 		}
 		if (library.mode !== "managed") {
-			return refuse(409, "conflict", "Books can only be uploaded into a managed library.");
+			return refuse(
+				409,
+				"conflict",
+				"Books can only be uploaded into a managed library.",
+			);
 		}
 		const dot = file.name.lastIndexOf(".");
 		const format = dot < 0 ? "" : file.name.slice(dot + 1).toLowerCase();
-		if (!["epub", "pdf", "mobi", "azw", "azw3", "m4b", "m4a", "mp3", "flac", "ogg", "opus"].includes(format)) {
+		if (
+			![
+				"epub",
+				"pdf",
+				"mobi",
+				"azw",
+				"azw3",
+				"m4b",
+				"m4a",
+				"mp3",
+				"flac",
+				"ogg",
+				"opus",
+			].includes(format)
+		) {
 			return refuse(422, "validation_failed", "Some fields need attention.", {
 				file: "GOtome does not read this kind of file.",
 			});
@@ -303,11 +405,22 @@ export class FakeServer {
 		const content = await file.text();
 		const known = this.uploaded.get(content);
 		if (known) {
-			return Response.json({ ...known, outcome: "duplicate", fileId: undefined });
+			return Response.json({
+				...known,
+				outcome: "duplicate",
+				fileId: undefined,
+			});
 		}
 		const me = this.accounts.get(this.session.username.toLowerCase());
-		if (me?.quotaBytes !== undefined && (me.usedBytes ?? 0) + file.size > me.quotaBytes) {
-			return refuse(413, "over_quota", "This file does not fit into your storage.");
+		if (
+			me?.quotaBytes !== undefined &&
+			(me.usedBytes ?? 0) + file.size > me.quotaBytes
+		) {
+			return refuse(
+				413,
+				"over_quota",
+				"This file does not fit into your storage.",
+			);
 		}
 		if (me) {
 			me.usedBytes = (me.usedBytes ?? 0) + file.size;
@@ -326,7 +439,11 @@ export class FakeServer {
 		return Response.json(result);
 	}
 
-	private answer(method: string, path: string, body: Record<string, string> = {}): Response {
+	private answer(
+		method: string,
+		path: string,
+		body: Record<string, string> = {},
+	): Response {
 		const refuse = (
 			status: number,
 			code: string,
@@ -338,12 +455,21 @@ export class FakeServer {
 				{ status },
 			);
 
-		if (path === "/jobs" || path.startsWith("/jobs/") || path.startsWith("/files/") || /^\/libraries\/[^/]+\/extractions$/.test(path)) {
+		if (
+			path === "/jobs" ||
+			path.startsWith("/jobs/") ||
+			path.startsWith("/files/") ||
+			/^\/libraries\/[^/]+\/extractions$/.test(path)
+		) {
 			if (!this.session) {
 				return refuse(401, "unauthorized", "Sign in to continue.");
 			}
 			if (!this.session.permissions.includes("index:rebuild")) {
-				return refuse(403, "forbidden", "You do not have permission to do that.");
+				return refuse(
+					403,
+					"forbidden",
+					"You do not have permission to do that.",
+				);
 			}
 			if (path === "/jobs") {
 				return Response.json({ jobs: this.jobs });
@@ -362,7 +488,9 @@ export class FakeServer {
 				this.reread.push(file[1]);
 				return Response.json({ queued: 1 }, { status: 202 });
 			}
-			const library = this.libraries.find((l) => path === `/libraries/${l.id}/extractions`);
+			const library = this.libraries.find(
+				(l) => path === `/libraries/${l.id}/extractions`,
+			);
 			if (library) {
 				this.reread.push(library.id);
 				library.filesFailed = 0;
@@ -371,14 +499,34 @@ export class FakeServer {
 			return refuse(404, "not_found", "There is nothing at this address.");
 		}
 		if (path === "/libraries" || path.startsWith("/libraries/")) {
-			return this.answerLibraries(method, path.slice("/libraries".length + 1), body, refuse);
+			return this.answerLibraries(
+				method,
+				path.slice("/libraries".length + 1),
+				body,
+				refuse,
+			);
 		}
 
-		if (path === "/users" || path.startsWith("/users/") || path.startsWith("/auth/sessions") || path === "/auth/password" || path === "/auth/storage") {
-			return this.answerAccounts(method, path, body as Record<string, unknown>, refuse);
+		if (
+			path === "/users" ||
+			path.startsWith("/users/") ||
+			path.startsWith("/auth/sessions") ||
+			path === "/auth/password" ||
+			path === "/auth/storage"
+		) {
+			return this.answerAccounts(
+				method,
+				path,
+				body as Record<string, unknown>,
+				refuse,
+			);
 		}
 		if (path === "/settings") {
-			return this.answerSettings(method, body as unknown as { values?: Record<string, string | null> }, refuse);
+			return this.answerSettings(
+				method,
+				body as unknown as { values?: Record<string, string | null> },
+				refuse,
+			);
 		}
 
 		switch (`${method} ${path}`) {
@@ -409,7 +557,11 @@ export class FakeServer {
 			}
 			case "POST /auth/login": {
 				const account = this.accounts.get((body.username ?? "").toLowerCase());
-				if (!account || account.password !== body.password || account.disabled) {
+				if (
+					!account ||
+					account.password !== body.password ||
+					account.disabled
+				) {
 					return refuse(
 						401,
 						"unauthorized",
@@ -430,12 +582,22 @@ export class FakeServer {
 				return refuse(404, "not_found", "There is nothing at this address.");
 		}
 	}
-	private answerBooks(method: string, path: string, query: URLSearchParams, body: unknown): Response {
+	private answerBooks(
+		method: string,
+		path: string,
+		query: URLSearchParams,
+		body: unknown,
+	): Response {
 		if (!this.session) {
-			return Response.json({ error: { code: "unauthorized", message: "Sign in to continue." } }, { status: 401 });
+			return Response.json(
+				{ error: { code: "unauthorized", message: "Sign in to continue." } },
+				{ status: 401 },
+			);
 		}
 		if (path === "/books/names") {
-			return Response.json({ names: this.names(query.get("kind") ?? "", query.get("q") ?? "") });
+			return Response.json({
+				names: this.names(query.get("kind") ?? "", query.get("q") ?? ""),
+			});
 		}
 		const saving = /^\/books\/([^/]+)\/progress\/(ebook|audio)$/.exec(path);
 		if (saving) {
@@ -445,14 +607,28 @@ export class FakeServer {
 				return Response.json({ saved: false, progress: further });
 			}
 			const { basedOn: _, force: __, ...rest } = update;
-			const written = { ...rest, updatedAt: `2026-01-03T00:00:${String(this.requests.length % 60).padStart(2, "0")}Z` };
+			const written = {
+				...rest,
+				updatedAt: `2026-01-03T00:00:${String(this.requests.length % 60).padStart(2, "0")}Z`,
+			};
 			const id = saving[1] ?? "";
-			this.progress[id] = { finishes: 0, ...this.progress[id], [saving[2] ?? "ebook"]: written };
+			this.progress[id] = {
+				finishes: 0,
+				...this.progress[id],
+				[saving[2] ?? "ebook"]: written,
+			};
 			return Response.json({ saved: true, progress: written });
 		}
 		const audio = /^\/books\/([^/]+)\/audio$/.exec(path);
 		if (audio) {
-			return Response.json(this.audio[audio[1] ?? ""] ?? { parts: [], chapters: [], durationMs: 0, complete: true });
+			return Response.json(
+				this.audio[audio[1] ?? ""] ?? {
+					parts: [],
+					chapters: [],
+					durationMs: 0,
+					complete: true,
+				},
+			);
 		}
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {
@@ -474,10 +650,14 @@ export class FakeServer {
 			const chosen = this.books.filter((b) =>
 				req.books?.length
 					? req.books.includes(b.id)
-					: (!req.library || b.libraryId === req.library) && (!req.filter || matches(b, JSON.parse(req.filter))),
+					: (!req.library || b.libraryId === req.library) &&
+						(!req.filter || matches(b, JSON.parse(req.filter))),
 			);
 			for (const b of chosen) {
-				b.reading = { ...b.reading, ...(req.status ? { status: req.status } : {}) };
+				b.reading = {
+					...b.reading,
+					...(req.status ? { status: req.status } : {}),
+				};
 			}
 			return Response.json({ changed: chosen.length });
 		}
@@ -485,7 +665,10 @@ export class FakeServer {
 		if (reading) {
 			const book = this.books.find((b) => b.id === reading[1]);
 			if (!book) {
-				return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+				return Response.json(
+					{ error: { code: "not_found", message: "There is no such book." } },
+					{ status: 404 },
+				);
 			}
 			const change = body as ReadingChange;
 			book.reading = { ...book.reading, ...change };
@@ -496,7 +679,9 @@ export class FakeServer {
 		}
 		const asked = /^\/books\/([^/]+)\/candidates(\/apply)?$/.exec(path);
 		if (asked && !asked[2]) {
-			return Response.json(this.candidates[asked[1] ?? ""] ?? { candidates: [], failures: [] });
+			return Response.json(
+				this.candidates[asked[1] ?? ""] ?? { candidates: [], failures: [] },
+			);
 		}
 		if (asked?.[2]) {
 			return this.applyCandidate(asked[1] ?? "", body as CandidateApply);
@@ -509,11 +694,20 @@ export class FakeServer {
 			const unknown = fieldsOf(tree).find((f) => !FIELDS.includes(f as Field));
 			if (unknown) {
 				return Response.json(
-					{ error: { code: "validation", message: "Some fields need attention.", fields: { filter: `Books cannot be filtered by "${unknown}".` } } },
+					{
+						error: {
+							code: "validation",
+							message: "Some fields need attention.",
+							fields: { filter: `Books cannot be filtered by "${unknown}".` },
+						},
+					},
 					{ status: 422 },
 				);
 			}
-			return Response.json({ count: this.books.filter((b) => !b.placeholder && matches(b, tree)).length });
+			return Response.json({
+				count: this.books.filter((b) => !b.placeholder && matches(b, tree))
+					.length,
+			});
 		}
 		if (path === "/books/search") {
 			return Response.json({ books: this.search(query.get("q") ?? "") });
@@ -525,15 +719,25 @@ export class FakeServer {
 			const book = this.books.find((b) => `/books/${b.id}` === path);
 			return book
 				? Response.json(book)
-				: Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+				: Response.json(
+						{ error: { code: "not_found", message: "There is no such book." } },
+						{ status: 404 },
+					);
 		}
-		const authorOf = (b: BookDetail) => b.contributors.find((c) => c.role === "author")?.name ?? "";
+		const authorOf = (b: BookDetail) =>
+			b.contributors.find((c) => c.role === "author")?.name ?? "";
 		const sort = query.get("sort") ?? "title";
 		const key = (b: BookDetail) =>
-			sort === "author" ? `${authorOf(b)}\u0000${b.title}` : sort === "added" ? b.addedAt : b.title;
+			sort === "author"
+				? `${authorOf(b)}\u0000${b.title}`
+				: sort === "added"
+					? b.addedAt
+					: b.title;
 		const tree = query.get("filter");
 		const sorted = this.books
-			.filter((b) => !query.get("library") || b.libraryId === query.get("library"))
+			.filter(
+				(b) => !query.get("library") || b.libraryId === query.get("library"),
+			)
 			.filter((b) => !b.placeholder || query.get("placeholders") === "include")
 			.filter((b) => !tree || matches(b, JSON.parse(tree)))
 			.sort((a, b) => key(a).localeCompare(key(b)));
@@ -547,7 +751,8 @@ export class FakeServer {
 		const page = sorted.slice(start, start + limit);
 		return Response.json({
 			books: page.map(summaryOf),
-			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
+			nextCursor:
+				start + limit < sorted.length ? String(start + limit) : undefined,
 		});
 	}
 
@@ -568,7 +773,11 @@ export class FakeServer {
 		return this.notifications.filter((n) => !n.readAt).length;
 	}
 
-	withCollection(name: string, books: string[], overrides: Partial<Collection> = {}): this {
+	withCollection(
+		name: string,
+		books: string[],
+		overrides: Partial<Collection> = {},
+	): this {
 		this.collections.push({
 			id: `col-${this.collections.length + 1}`,
 			name,
@@ -584,43 +793,80 @@ export class FakeServer {
 	}
 
 	/** Collections as the server keeps them, for one person who owns those marked mine. */
-	private answerCollections(method: string, path: string, query: URLSearchParams, body: unknown): Response {
+	private answerCollections(
+		method: string,
+		path: string,
+		query: URLSearchParams,
+		body: unknown,
+	): Response {
 		const notFound = () =>
-			Response.json({ error: { code: "not_found", message: "There is no such collection." } }, { status: 404 });
+			Response.json(
+				{
+					error: { code: "not_found", message: "There is no such collection." },
+				},
+				{ status: 404 },
+			);
 		const view = (c: (typeof this.collections)[number]) => {
 			const { books, ...rest } = c;
 			return { ...rest, books: books.length };
 		};
 		const detail = (c: (typeof this.collections)[number], status = 200) =>
 			Response.json(
-				{ ...view(c), bookList: c.books.flatMap((id) => this.books.filter((b) => b.id === id).map(summaryOf)) },
+				{
+					...view(c),
+					bookList: c.books.flatMap((id) =>
+						this.books.filter((b) => b.id === id).map(summaryOf),
+					),
+				},
 				{ status },
 			);
 		if (path === "/collections") {
 			if (method === "POST") {
 				const req = body as CollectionRequest;
-				this.withCollection(req.name, [], { visibility: req.visibility ?? "private", description: req.description });
-				return detail(this.collections.at(-1) as (typeof this.collections)[number], 201);
+				this.withCollection(req.name, [], {
+					visibility: req.visibility ?? "private",
+					description: req.description,
+				});
+				return detail(
+					this.collections.at(-1) as (typeof this.collections)[number],
+					201,
+				);
 			}
 			const book = query.get("book");
 			return Response.json({
-				collections: this.collections.map((c) => ({ ...view(c), ...(book ? { hasBook: c.books.includes(book) } : {}) })),
+				collections: this.collections.map((c) => ({
+					...view(c),
+					...(book ? { hasBook: c.books.includes(book) } : {}),
+				})),
 			});
 		}
-		const [, id, part, bookId] = /^\/collections\/([^/]+)(?:\/(books|order))?(?:\/([^/]+))?$/.exec(path) ?? [];
+		const [, id, part, bookId] =
+			/^\/collections\/([^/]+)(?:\/(books|order))?(?:\/([^/]+))?$/.exec(path) ??
+			[];
 		const c = this.collections.find((x) => x.id === id);
 		if (!c) {
 			return notFound();
 		}
 		if (method !== "GET" && !c.mine) {
-			return Response.json({ error: { code: "forbidden", message: "Only its owner changes a collection." } }, { status: 403 });
+			return Response.json(
+				{
+					error: {
+						code: "forbidden",
+						message: "Only its owner changes a collection.",
+					},
+				},
+				{ status: 403 },
+			);
 		}
 		if (part === "books" && method === "POST") {
 			const req = body as CollectionAdd;
 			const chosen = req.books?.length
 				? req.books
 				: this.books
-						.filter((b) => !b.placeholder && (!req.library || b.libraryId === req.library))
+						.filter(
+							(b) =>
+								!b.placeholder && (!req.library || b.libraryId === req.library),
+						)
 						.filter((b) => !req.filter || matches(b, JSON.parse(req.filter)))
 						.map((b) => b.id);
 			const added = chosen.filter((b) => !c.books.includes(b));
@@ -646,7 +892,11 @@ export class FakeServer {
 		return detail(c);
 	}
 
-	withSmartShelf(name: string, filter: object, overrides: Partial<SmartShelf> = {}): this {
+	withSmartShelf(
+		name: string,
+		filter: object,
+		overrides: Partial<SmartShelf> = {},
+	): this {
 		this.smartShelves.push({
 			id: `smart-${this.smartShelves.length + 1}`,
 			name,
@@ -662,15 +912,32 @@ export class FakeServer {
 	}
 
 	/** Smart shelves, matched against the books as they are now; a rule on an unknown field is refused. */
-	private answerSmartShelves(method: string, path: string, body: SmartShelfRequest): Response {
+	private answerSmartShelves(
+		method: string,
+		path: string,
+		body: SmartShelfRequest,
+	): Response {
 		const on = (s: Omit<SmartShelf, "books">) =>
-			this.books.filter((b) => !b.placeholder && matches(b, JSON.parse(s.filter)));
-		const view = (s: Omit<SmartShelf, "books">) => ({ ...s, books: on(s).length });
+			this.books.filter(
+				(b) => !b.placeholder && matches(b, JSON.parse(s.filter)),
+			);
+		const view = (s: Omit<SmartShelf, "books">) => ({
+			...s,
+			books: on(s).length,
+		});
 		const refuse = () => {
-			const unknown = fieldsOf(JSON.parse(body.filter || "{}")).find((f) => !FIELDS.includes(f as Field));
+			const unknown = fieldsOf(JSON.parse(body.filter || "{}")).find(
+				(f) => !FIELDS.includes(f as Field),
+			);
 			return unknown
 				? Response.json(
-						{ error: { code: "validation", message: "Some fields need attention.", fields: { filter: `Books cannot be filtered by "${unknown}".` } } },
+						{
+							error: {
+								code: "validation",
+								message: "Some fields need attention.",
+								fields: { filter: `Books cannot be filtered by "${unknown}".` },
+							},
+						},
 						{ status: 422 },
 					)
 				: undefined;
@@ -681,21 +948,47 @@ export class FakeServer {
 				if (refused) {
 					return refused;
 				}
-				this.withSmartShelf(body.name, JSON.parse(body.filter), { visibility: body.visibility ?? "private" });
-				return Response.json(view(this.smartShelves.at(-1) as Omit<SmartShelf, "books">), { status: 201 });
+				this.withSmartShelf(body.name, JSON.parse(body.filter), {
+					visibility: body.visibility ?? "private",
+				});
+				return Response.json(
+					view(this.smartShelves.at(-1) as Omit<SmartShelf, "books">),
+					{ status: 201 },
+				);
 			}
 			return Response.json({ shelves: this.smartShelves.map(view) });
 		}
-		const [, id, books] = /^\/smart-shelves\/([^/]+)(\/books)?$/.exec(path) ?? [];
+		const [, id, books] =
+			/^\/smart-shelves\/([^/]+)(\/books)?$/.exec(path) ?? [];
 		const shelf = this.smartShelves.find((s) => s.id === id);
 		if (!shelf) {
-			return Response.json({ error: { code: "not_found", message: "There is no such smart shelf." } }, { status: 404 });
+			return Response.json(
+				{
+					error: {
+						code: "not_found",
+						message: "There is no such smart shelf.",
+					},
+				},
+				{ status: 404 },
+			);
 		}
 		if (books) {
-			return Response.json({ books: on(shelf).sort((a, b) => a.title.localeCompare(b.title)).map(summaryOf) });
+			return Response.json({
+				books: on(shelf)
+					.sort((a, b) => a.title.localeCompare(b.title))
+					.map(summaryOf),
+			});
 		}
 		if (method !== "GET" && !shelf.mine) {
-			return Response.json({ error: { code: "forbidden", message: "Only its owner changes a smart shelf." } }, { status: 403 });
+			return Response.json(
+				{
+					error: {
+						code: "forbidden",
+						message: "Only its owner changes a smart shelf.",
+					},
+				},
+				{ status: 403 },
+			);
 		}
 		if (method === "PUT") {
 			const refused = refuse();
@@ -718,10 +1011,17 @@ export class FakeServer {
 				? b.contributors.map((c) => c.name)
 				: kind === "tag"
 					? b.tags
-					: [kind === "series" ? b.series : b.publisher].filter((n): n is string => !!n),
+					: [kind === "series" ? b.series : b.publisher].filter(
+							(n): n is string => !!n,
+						),
 		);
 		const q = typed.toLowerCase();
-		return [...new Set(all)].filter((n) => n.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)));
+		return [...new Set(all)].filter((n) =>
+			n
+				.toLowerCase()
+				.split(/\s+/)
+				.some((w) => w.startsWith(q)),
+		);
 	}
 
 	/**
@@ -730,38 +1030,64 @@ export class FakeServer {
 	 */
 	private answerBulk(path: string, req: BulkRequest): Response {
 		if (!this.session?.permissions.includes("metadata:edit")) {
-			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+			return Response.json(
+				{ error: { code: "forbidden", message: "You may not do this." } },
+				{ status: 403 },
+			);
 		}
 		if (path !== "/books/bulk") {
 			const status = this.bulks.find((b) => `/bulk/${b.id}` === path);
 			return status
 				? Response.json(status)
-				: Response.json({ error: { code: "not_found", message: "There is no such bulk change." } }, { status: 404 });
+				: Response.json(
+						{
+							error: {
+								code: "not_found",
+								message: "There is no such bulk change.",
+							},
+						},
+						{ status: 404 },
+					);
 		}
 		const chosen = this.books.filter((b) =>
 			req.books?.length
 				? req.books.includes(b.id)
-				: (!req.library || b.libraryId === req.library) && (!req.filter || matches(b, JSON.parse(req.filter))),
+				: (!req.library || b.libraryId === req.library) &&
+					(!req.filter || matches(b, JSON.parse(req.filter))),
 		);
 		const change = req.change ?? {};
 		const results: BulkResult[] = chosen.map((book) => {
 			const skipped = (["series", "tags"] as const).filter(
-				(f) => (f === "series" ? change.series !== undefined : !!change.addTags || !!change.removeTags) &&
-					book.fields[f]?.locked && !change.includeLocked,
+				(f) =>
+					(f === "series"
+						? change.series !== undefined
+						: !!change.addTags || !!change.removeTags) &&
+					book.fields[f]?.locked &&
+					!change.includeLocked,
 			);
 			let changed = false;
-			if (change.series !== undefined && !skipped.includes("series") && book.series !== change.series) {
+			if (
+				change.series !== undefined &&
+				!skipped.includes("series") &&
+				book.series !== change.series
+			) {
 				book.series = change.series || undefined;
 				book.fields.series = { source: "manual", locked: true };
 				changed = true;
 			}
 			if ((change.addTags || change.removeTags) && !skipped.includes("tags")) {
-				const tags = [...book.tags, ...(change.addTags ?? [])].filter((t) => !change.removeTags?.includes(t));
+				const tags = [...book.tags, ...(change.addTags ?? [])].filter(
+					(t) => !change.removeTags?.includes(t),
+				);
 				changed ||= tags.join() !== book.tags.join();
 				book.tags = [...new Set(tags)];
 				book.fields.tags = { source: "manual", locked: true };
 			}
-			const outcome = changed ? "changed" : skipped.length > 0 ? "locked" : "unchanged";
+			const outcome = changed
+				? "changed"
+				: skipped.length > 0
+					? "locked"
+					: "unchanged";
 			return { bookId: book.id, title: book.title, outcome, skipped };
 		});
 		const counts: Record<string, number> = {};
@@ -770,24 +1096,47 @@ export class FakeServer {
 		}
 		const id = `bulk-${this.bulks.length + 1}`;
 		this.bulks.push({
-			id, action: req.action, createdAt: "2026-01-04T00:00:00Z", finishedAt: "2026-01-04T00:00:01Z",
-			total: results.length, done: results.length, counts, books: results,
+			id,
+			action: req.action,
+			createdAt: "2026-01-04T00:00:00Z",
+			finishedAt: "2026-01-04T00:00:01Z",
+			total: results.length,
+			done: results.length,
+			counts,
+			books: results,
 		});
 		return Response.json({ id, total: results.length }, { status: 202 });
 	}
 
-	private answerMatches(method: string, path: string, body: CandidateApply): Response {
+	private answerMatches(
+		method: string,
+		path: string,
+		body: CandidateApply,
+	): Response {
 		if (!this.session?.permissions.includes("metadata:edit")) {
-			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+			return Response.json(
+				{ error: { code: "forbidden", message: "You may not do this." } },
+				{ status: 403 },
+			);
 		}
 		if (method === "GET") {
 			return Response.json({ books: this.review, total: this.review.length });
 		}
 		const [, , id, action] = path.split("/");
-		const item = this.review.find((b) => b.matches.some((m) => m.matchId === id));
+		const item = this.review.find((b) =>
+			b.matches.some((m) => m.matchId === id),
+		);
 		const match = item?.matches.find((m) => m.matchId === id);
 		if (!item || !match) {
-			return Response.json({ error: { code: "not_found", message: "There is no such match waiting." } }, { status: 404 });
+			return Response.json(
+				{
+					error: {
+						code: "not_found",
+						message: "There is no such match waiting.",
+					},
+				},
+				{ status: 404 },
+			);
 		}
 		if (action === "reject") {
 			item.matches = item.matches.filter((m) => m !== match);
@@ -805,7 +1154,10 @@ export class FakeServer {
 	private applyCandidate(id: string, body: CandidateApply): Response {
 		const book = this.books.find((b) => b.id === id);
 		if (!book) {
-			return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+			return Response.json(
+				{ error: { code: "not_found", message: "There is no such book." } },
+				{ status: 404 },
+			);
 		}
 		const { provider, coverToken, ...values } = body;
 		const fields = Object.keys(values).filter((f) => !book.fields[f]?.locked);
@@ -817,14 +1169,26 @@ export class FakeServer {
 		}
 		if (coverToken && !book.fields.cover?.locked) {
 			book.coverKey = `cover-${coverToken}`;
-			book.fields.cover = { source: "provider", detail: provider, locked: false };
+			book.fields.cover = {
+				source: "provider",
+				detail: provider,
+				locked: false,
+			};
 		}
 		return Response.json(book);
 	}
 
-	private editBook(method: string, path: string, edit: BookEdit | undefined): Response {
-		const refuse = (status: number, code: string, message: string, fields?: Record<string, string>) =>
-			Response.json({ error: { code, message, fields } }, { status });
+	private editBook(
+		method: string,
+		path: string,
+		edit: BookEdit | undefined,
+	): Response {
+		const refuse = (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) => Response.json({ error: { code, message, fields } }, { status });
 		if (!this.session?.permissions.includes("metadata:edit")) {
 			return refuse(403, "forbidden", "You may not do this.");
 		}
@@ -837,20 +1201,34 @@ export class FakeServer {
 			book.fields[field] = { source: "manual", locked: true };
 		};
 		if (match[2]) {
-			book.coverKey = method === "PUT" ? `cover-${this.requests.length}` : undefined;
+			book.coverKey =
+				method === "PUT" ? `cover-${this.requests.length}` : undefined;
 			typed("cover");
 			return Response.json(book);
 		}
 		const e = edit ?? {};
 		const problems: Record<string, string> = {};
-		if (e.title !== undefined && e.title.trim() === "") problems.title = "A book needs a title.";
+		if (e.title !== undefined && e.title.trim() === "")
+			problems.title = "A book needs a title.";
 		if (e.language && !/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(e.language)) {
 			problems.language = "Give a language code such as en, de or pt-BR.";
 		}
 		if (Object.keys(problems).length > 0) {
-			return refuse(422, "validation_failed", "Some fields need attention.", problems);
+			return refuse(
+				422,
+				"validation_failed",
+				"Some fields need attention.",
+				problems,
+			);
 		}
-		const text = ["title", "subtitle", "description", "language", "published", "publisher"] as const;
+		const text = [
+			"title",
+			"subtitle",
+			"description",
+			"language",
+			"published",
+			"publisher",
+		] as const;
 		for (const key of text) {
 			const value = e[key];
 			if (value !== undefined) {
@@ -893,7 +1271,12 @@ export class FakeServer {
 		method: string,
 		path: string,
 		body: Record<string, unknown>,
-		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+		refuse: (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) => Response,
 	): Response {
 		if (!this.session) {
 			return refuse(401, "unauthorized", "Sign in to continue.");
@@ -901,23 +1284,32 @@ export class FakeServer {
 		const me = this.accounts.get(this.session.username.toLowerCase());
 		if (path === "/auth/password") {
 			if (!me || body.currentPassword !== me.password) {
-				return refuse(422, "validation_failed", "Some fields need attention.", { currentPassword: "That is not your current password." });
+				return refuse(422, "validation_failed", "Some fields need attention.", {
+					currentPassword: "That is not your current password.",
+				});
 			}
 			if (String(body.newPassword ?? "").length < 8) {
-				return refuse(422, "validation_failed", "Some fields need attention.", { newPassword: "A password has at least 8 characters." });
+				return refuse(422, "validation_failed", "Some fields need attention.", {
+					newPassword: "A password has at least 8 characters.",
+				});
 			}
 			me.password = String(body.newPassword);
 			this.sessions = this.sessions.filter((s) => s.current);
 			return new Response(null, { status: 204 });
 		}
 		if (path === "/auth/storage") {
-			return Response.json({ usedBytes: me?.usedBytes ?? 0, quotaBytes: me?.quotaBytes });
+			return Response.json({
+				usedBytes: me?.usedBytes ?? 0,
+				quotaBytes: me?.quotaBytes,
+			});
 		}
 		if (path === "/auth/sessions") {
 			return Response.json({ sessions: this.sessions });
 		}
 		if (path.startsWith("/auth/sessions/") && method === "DELETE") {
-			this.sessions = this.sessions.filter((s) => `/auth/sessions/${s.id}` !== path);
+			this.sessions = this.sessions.filter(
+				(s) => `/auth/sessions/${s.id}` !== path,
+			);
 			return new Response(null, { status: 204 });
 		}
 
@@ -945,15 +1337,33 @@ export class FakeServer {
 				fields.username = "Choose a user name.";
 			}
 			if (Object.keys(fields).length > 0) {
-				return refuse(422, "validation_failed", "Some fields need attention.", fields);
+				return refuse(
+					422,
+					"validation_failed",
+					"Some fields need attention.",
+					fields,
+				);
 			}
 			if (this.accounts.has(String(body.username).toLowerCase())) {
-				return refuse(409, "conflict", "That user name or e-mail address is already in use.");
+				return refuse(
+					409,
+					"conflict",
+					"That user name or e-mail address is already in use.",
+				);
 			}
-			this.withAccount(String(body.username), String(body.password), body.role as "admin" | "editor" | "reader");
-			return Response.json(view(this.accounts.get(String(body.username).toLowerCase()) as Account), { status: 201 });
+			this.withAccount(
+				String(body.username),
+				String(body.password),
+				body.role as "admin" | "editor" | "reader",
+			);
+			return Response.json(
+				view(this.accounts.get(String(body.username).toLowerCase()) as Account),
+				{ status: 201 },
+			);
 		}
-		const target = [...this.accounts.values()].find((a) => path.startsWith(`/users/${a.user.id}`));
+		const target = [...this.accounts.values()].find((a) =>
+			path.startsWith(`/users/${a.user.id}`),
+		);
 		if (!target) {
 			return refuse(404, "not_found", "There is no such user.");
 		}
@@ -964,15 +1374,28 @@ export class FakeServer {
 			target.quotaBytes = (body.quotaBytes as number | null) ?? undefined;
 			return Response.json(view(target));
 		}
-		const role = (body.role as CurrentUser["role"] | undefined) ?? target.user.role;
+		const role =
+			(body.role as CurrentUser["role"] | undefined) ?? target.user.role;
 		const disabled = (body.disabled as boolean | undefined) ?? target.disabled;
-		const admins = [...this.accounts.values()].filter((a) => a.user.role === "admin" && !a.disabled);
-		if (admins.length === 1 && admins[0] === target && (role !== "admin" || disabled)) {
-			return refuse(409, "conflict", "This is the last administrator who can sign in. Make another account an administrator first.");
+		const admins = [...this.accounts.values()].filter(
+			(a) => a.user.role === "admin" && !a.disabled,
+		);
+		if (
+			admins.length === 1 &&
+			admins[0] === target &&
+			(role !== "admin" || disabled)
+		) {
+			return refuse(
+				409,
+				"conflict",
+				"This is the last administrator who can sign in. Make another account an administrator first.",
+			);
 		}
 		if (body.password !== undefined) {
 			if (String(body.password).length < 8) {
-				return refuse(422, "validation_failed", "Some fields need attention.", { password: "A password has at least 8 characters." });
+				return refuse(422, "validation_failed", "Some fields need attention.", {
+					password: "A password has at least 8 characters.",
+				});
 			}
 			target.password = String(body.password);
 		}
@@ -984,7 +1407,12 @@ export class FakeServer {
 	private answerSettings(
 		method: string,
 		body: { values?: Record<string, string | null> },
-		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+		refuse: (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) => Response,
 	): Response {
 		if (!this.session) {
 			return refuse(401, "unauthorized", "Sign in to continue.");
@@ -997,7 +1425,8 @@ export class FakeServer {
 			const language = values["metadata.language"];
 			if (language && !/^[a-z]{2,3}$/i.test(language.trim())) {
 				return refuse(422, "validation_failed", "Some fields need attention.", {
-					"metadata.language": "Give a language as its two-letter code, such as en or de.",
+					"metadata.language":
+						"Give a language as its two-letter code, such as en or de.",
 				});
 			}
 			for (const [key, value] of Object.entries(values)) {
@@ -1032,14 +1461,66 @@ export class FakeServer {
 			return [];
 		}
 		const near = (text: string) =>
-			nameKey(text).includes(q) || nameKey(text).split(" ").some((w) => oneOff(w, q));
+			nameKey(text).includes(q) ||
+			nameKey(text)
+				.split(" ")
+				.some((w) => oneOff(w, q));
 		return this.books.flatMap((b) => {
-			const author = b.contributors.find((c) => c.role === "author" && near(c.name));
+			const author = b.contributors.find(
+				(c) => c.role === "author" && near(c.name),
+			);
 			const match = near(b.title) ? "title" : author ? "author" : undefined;
 			return match
-				? [{ id: b.id, libraryId: b.libraryId, title: b.title, authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name), formats: [], addedAt: b.addedAt, match }]
+				? [
+						{
+							id: b.id,
+							libraryId: b.libraryId,
+							title: b.title,
+							authors: b.contributors
+								.filter((c) => c.role === "author")
+								.map((c) => c.name),
+							formats: [],
+							addedAt: b.addedAt,
+							match,
+						},
+					]
 				: [];
 		});
+	}
+
+	private searchText(query: URLSearchParams) {
+		const words = (query.get("q") ?? "")
+			.toLowerCase()
+			.split(/\s+/)
+			.filter(Boolean);
+		if (words.length === 0 || query.get("offset") === "0") {
+			return Response.json(
+				{
+					error: {
+						code: "validation",
+						message: "Some fields need attention.",
+						fields: { q: "Name a word to look for." },
+					},
+				},
+				{ status: 422 },
+			);
+		}
+		const tree = query.get("filter");
+		const books = this.books
+			.filter(
+				(b) => !query.get("library") || b.libraryId === query.get("library"),
+			)
+			.filter((b) => !tree || matches(b, JSON.parse(tree)))
+			.flatMap((b) => {
+				const hits = this.passages
+					.filter((p) => p.bookId === b.id)
+					.map((p) => p.hit)
+					.filter((h) =>
+						words.every((w) => snippetText(h).toLowerCase().includes(w)),
+					);
+				return hits.length > 0 ? [{ book: summaryOf(b), hits }] : [];
+			});
+		return Response.json({ books, more: false });
 	}
 
 	/** The facets the server would count, from the same books. */
@@ -1047,7 +1528,9 @@ export class FakeServer {
 		const tree: Rule = JSON.parse(query.get("filter") || "{}");
 		return FIELDS.map((field) => {
 			// A field's own rules do not narrow its counts.
-			const without: Rule = { all: (tree.all ?? []).filter((r) => fieldsOf(r).join() !== field) };
+			const without: Rule = {
+				all: (tree.all ?? []).filter((r) => fieldsOf(r).join() !== field),
+			};
 			const counts = new Map<string, { label: string; count: number }>();
 			for (const b of this.books) {
 				if (query.get("library") && b.libraryId !== query.get("library")) {
@@ -1064,7 +1547,8 @@ export class FakeServer {
 			}
 			return {
 				field,
-				values: [...counts].map(([value, { label, count }]) => ({ value, label, count }))
+				values: [...counts]
+					.map(([value, { label, count }]) => ({ value, label, count }))
 					.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)),
 			};
 		});
@@ -1074,7 +1558,12 @@ export class FakeServer {
 		method: string,
 		id: string,
 		body: Record<string, unknown>,
-		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+		refuse: (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) => Response,
 	): Response {
 		if (!this.session) {
 			return refuse(401, "unauthorized", "Sign in to continue.");
@@ -1082,7 +1571,9 @@ export class FakeServer {
 		const manages = this.session.permissions.includes("storage:manage");
 		// What a reader is shown leaves out where the files lie.
 		const shown = (library: Library): Library =>
-			manages ? library : { ...library, rootPath: undefined, ownerId: undefined };
+			manages
+				? library
+				: { ...library, rootPath: undefined, ownerId: undefined };
 
 		if (method === "GET" && id === "") {
 			return Response.json({ libraries: this.libraries.map(shown) });
@@ -1090,7 +1581,11 @@ export class FakeServer {
 		if (method === "POST" && id.endsWith("/scans")) {
 			const library = this.libraries.find((l) => `${l.id}/scans` === id);
 			if (!this.session.permissions.includes("index:rebuild")) {
-				return refuse(403, "forbidden", "You do not have permission to do that.");
+				return refuse(
+					403,
+					"forbidden",
+					"You do not have permission to do that.",
+				);
 			}
 			if (!library) {
 				return refuse(404, "not_found", "There is no such library.");
@@ -1120,7 +1615,9 @@ export class FakeServer {
 		const invalid = (fields: Record<string, string>) =>
 			refuse(422, "validation_failed", "Some fields need attention.", fields);
 		const nameTaken = (name: string, except?: string) =>
-			this.libraries.some((l) => l.id !== except && l.name.toLowerCase() === name.toLowerCase());
+			this.libraries.some(
+				(l) => l.id !== except && l.name.toLowerCase() === name.toLowerCase(),
+			);
 
 		if (method === "POST" && id === "") {
 			const name = String(body.name ?? "").trim();
@@ -1130,14 +1627,21 @@ export class FakeServer {
 			if (nameTaken(name)) {
 				return invalid({ name: "Another library already has this name." });
 			}
-			if (body.mode === "external" && !String(body.rootPath ?? "").startsWith("/")) {
-				return invalid({ rootPath: "Give the folder as a full path, such as /books." });
+			if (
+				body.mode === "external" &&
+				!String(body.rootPath ?? "").startsWith("/")
+			) {
+				return invalid({
+					rootPath: "Give the folder as a full path, such as /books.",
+				});
 			}
 			this.withLibrary(name, {
 				mode: body.mode as string,
 				visibility: body.visibility as string,
 				writable: body.mode === "managed",
-				...(body.mode === "external" ? { rootPath: body.rootPath as string } : {}),
+				...(body.mode === "external"
+					? { rootPath: body.rootPath as string }
+					: {}),
 			});
 			return Response.json(this.libraries.at(-1), { status: 201 });
 		}
@@ -1161,8 +1665,25 @@ export class FakeServer {
 	}
 }
 
-type Field = "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format";
-const FIELDS: Field[] = ["author", "series", "tag", "language", "published", "status", "rating", "format"];
+type Field =
+	| "author"
+	| "series"
+	| "tag"
+	| "language"
+	| "published"
+	| "status"
+	| "rating"
+	| "format";
+const FIELDS: Field[] = [
+	"author",
+	"series",
+	"tag",
+	"language",
+	"published",
+	"status",
+	"rating",
+	"format",
+];
 
 interface Rule {
 	all?: Rule[];
@@ -1174,12 +1695,18 @@ interface Rule {
 }
 
 /** A name as the server compares it, near enough for the tests. */
+function snippetText(hit: TextHit): string {
+	return hit.snippet.map((p) => p.text).join("");
+}
+
 function summaryOf(b: BookDetail): BookSummary {
 	return {
 		id: b.id,
 		libraryId: b.libraryId,
 		title: b.title,
-		authors: b.contributors.filter((c) => c.role === "author").map((c) => c.name),
+		authors: b.contributors
+			.filter((c) => c.role === "author")
+			.map((c) => c.name),
 		coverKey: b.coverKey,
 		formats: [...new Set(b.files.map((f) => f.format))],
 		addedAt: b.addedAt,
@@ -1218,7 +1745,9 @@ function oneOff(a: string, b: string): boolean {
 function valuesOf(b: BookDetail, field: Field): [string, string][] {
 	switch (field) {
 		case "author":
-			return b.contributors.filter((c) => c.role === "author").map((c) => [nameKey(c.name), c.name]);
+			return b.contributors
+				.filter((c) => c.role === "author")
+				.map((c) => [nameKey(c.name), c.name]);
 		case "series":
 			return b.series ? [[nameKey(b.series), b.series]] : [];
 		case "tag":
@@ -1228,7 +1757,9 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 			return lang ? [[lang, lang]] : [];
 		}
 		case "published": {
-			const decade = b.published ? String(Math.floor(Number(b.published.slice(0, 4)) / 10) * 10) : undefined;
+			const decade = b.published
+				? String(Math.floor(Number(b.published.slice(0, 4)) / 10) * 10)
+				: undefined;
 			return decade ? [[decade, decade]] : [];
 		}
 		case "format":
@@ -1236,7 +1767,9 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 		case "status":
 			return [[b.reading.status, b.reading.status]];
 		case "rating":
-			return b.reading.rating ? [[String(b.reading.rating), String(b.reading.rating)]] : [];
+			return b.reading.rating
+				? [[String(b.reading.rating), String(b.reading.rating)]]
+				: [];
 	}
 }
 
@@ -1248,8 +1781,7 @@ function fieldsOf(r: Rule): string[] {
 			...(r.any ?? []).flatMap(fieldsOf),
 			...(r.not ? fieldsOf(r.not) : []),
 		]),
-	]
-		.filter(Boolean);
+	].filter(Boolean);
 }
 
 function matches(b: BookDetail, r: Rule): boolean {
@@ -1272,14 +1804,24 @@ function matches(b: BookDetail, r: Rule): boolean {
 	if (r.op === "between" && r.field === "rating") {
 		const [from, to] = r.values ?? [];
 		const stars = b.reading.rating ?? 0;
-		return stars > 0 && (!from || stars >= Number(from)) && (!to || stars <= Number(to));
+		return (
+			stars > 0 &&
+			(!from || stars >= Number(from)) &&
+			(!to || stars <= Number(to))
+		);
 	}
 	if (r.op === "between") {
 		const year = Number(b.published?.slice(0, 4));
 		const [from, to] = r.values ?? [];
-		return !!b.published && (!from || year >= Number(from)) && (!to || year <= Number(to));
+		return (
+			!!b.published &&
+			(!from || year >= Number(from)) &&
+			(!to || year <= Number(to))
+		);
 	}
-	return (r.values ?? []).some((v) => have.includes(r.field === "format" ? v : nameKey(v)));
+	return (r.values ?? []).some((v) =>
+		have.includes(r.field === "format" ? v : nameKey(v)),
+	);
 }
 
 /** Renders the whole app at an address, against the fake server. */

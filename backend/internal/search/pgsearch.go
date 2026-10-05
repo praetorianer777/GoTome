@@ -298,10 +298,13 @@ func (s *PGSearch) passages(ctx context.Context, tx pgx.Tx, ids []int64, p parse
 	for i, c := range columns {
 		snippets[i] = fmt.Sprintf("NULLIF(pdb.snippet(%s, %s, %s, %s), '')", c, a.add(matchStart), a.add(matchEnd), a.add(snippetChars))
 	}
-	sql := `SELECT id, file_id, position, chapter, page_from, page_to, char_offset,
-		coalesce(` + strings.Join(snippets, ", ") + `, '')
-	FROM book_chunks
-	WHERE ` + match(p, a.add) + ` AND id = ANY(` + a.add(ids) + `::bigint[])`
+	sql := `SELECT c.id, c.file_id, f.format, c.position, c.chapter, c.page_from, c.page_to, c.char_offset, c.snippet
+	FROM (
+		SELECT id, file_id, position, chapter, page_from, page_to, char_offset,
+			coalesce(` + strings.Join(snippets, ", ") + `, '') AS snippet
+		FROM book_chunks
+		WHERE ` + match(p, a.add) + ` AND id = ANY(` + a.add(ids) + `::bigint[])
+	) c JOIN book_files f ON f.id = c.file_id`
 	rows, err := tx.Query(ctx, sql, a.values...)
 	if err != nil {
 		return nil, err
@@ -313,7 +316,7 @@ func (s *PGSearch) passages(ctx context.Context, tx pgx.Tx, ids []int64, p parse
 		var from, to *int32
 		var snippet string
 		var position, offset int32
-		if err := rows.Scan(&h.ChunkID, &h.FileID, &position, &h.Chapter, &from, &to, &offset, &snippet); err != nil {
+		if err := rows.Scan(&h.ChunkID, &h.FileID, &h.Format, &position, &h.Chapter, &from, &to, &offset, &snippet); err != nil {
 			return nil, err
 		}
 		h.Position, h.Offset = int(position), int(offset)

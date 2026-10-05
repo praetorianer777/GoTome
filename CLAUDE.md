@@ -357,6 +357,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   it may have meant. Books found only so come after the others, marked
   `corrected`. The words chosen are never sent: the vocabulary holds those
   of every library.
+- The search page (`routes/search.tsx`, `/search`) keeps the query, the
+  library and the filter picks in the address, as the library page does;
+  the header's quick search offers it as its last option. "Read from here"
+  opens the reader with `find` (the longest matched word) and `near` (the
+  snippet's text) in the address, and for a PDF the passage's pages
+  (`page`, `to`): a chunk spans pages and sections, so the reader looks for
+  the word itself, in foliate-js's search or in the pages' text, and takes
+  the place whose words the snippet shares most (`reader/passage.ts`). A
+  place opened so is not saved until the person moves on from it.
 
 ## Metadata providers
 

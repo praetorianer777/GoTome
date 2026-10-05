@@ -30,6 +30,9 @@ type snippetPart struct {
 // textHit is a passage of a book that matched.
 type textHit struct {
 	FileID uuid.UUID `json:"fileId"`
+	// Format is the file's: a PDF's passage is found by its page, another's
+	// by its words.
+	Format string `json:"format"`
 	// Position counts the passages of the book's text from 0.
 	Position int    `json:"position"`
 	Chapter  string `json:"chapter,omitempty"`
@@ -103,7 +106,7 @@ func (s *Server) searchText(w http.ResponseWriter, r *http.Request) error {
 		book := textBook{Book: summaryOf(sm), Corrected: b.Corrected, Hits: make([]textHit, len(b.Hits))}
 		for i, h := range b.Hits {
 			hit := textHit{
-				FileID: h.FileID, Position: h.Position, Chapter: h.Chapter,
+				FileID: h.FileID, Format: h.Format, Position: h.Position, Chapter: h.Chapter,
 				PageFrom: h.PageFrom, PageTo: h.PageTo, Offset: h.Offset,
 				Snippet: make([]snippetPart, len(h.Snippet)),
 			}
