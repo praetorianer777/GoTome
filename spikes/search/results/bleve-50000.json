@@ -1,0 +1,374 @@
+{
+  "engine": "bleve",
+  "books": 50000,
+  "chunks": 2338921,
+  "textMB": 17889.962182,
+  "buildSeconds": {
+    "index": 2636.481722754,
+    "total": 2636.558334791
+  },
+  "sizes": {
+    "index (text stored inside)": 37335433117
+  },
+  "memory": {
+    "build": {
+      "anon": 1044512768,
+      "current": 2147487744
+    },
+    "oomKills": 0,
+    "queries": {
+      "anon": 371503104,
+      "current": 2147483648
+    },
+    "rebuild": {
+      "anon": 47382528,
+      "current": 2147409920
+    }
+  },
+  "latencyMs": {
+    "filtered": {
+      "runs": 20,
+      "p50": 61.871,
+      "p95": 98.343,
+      "max": 99.773
+    },
+    "fuzzy": {
+      "runs": 25,
+      "p50": 51.772,
+      "p95": 76.838,
+      "max": 77.044
+    },
+    "phrase": {
+      "runs": 25,
+      "p50": 452.113,
+      "p95": 1815.812,
+      "max": 1882.679
+    },
+    "snippets": {
+      "runs": 20,
+      "p50": 68.34,
+      "p95": 122.718,
+      "max": 124.527
+    },
+    "stemmed": {
+      "runs": 50,
+      "p50": 13.858,
+      "p95": 56.499,
+      "max": 64.924
+    }
+  },
+  "samples": [
+    {
+      "kind": "stemmed",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 11522, 0.15)",
+        "Whalers and whaling (book 21522, 0.15)",
+        "Whalers and whaling (book 31522, 0.15)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Tartarin de Tarascon (book 11824, 0.12)",
+        "Tartarin de Tarascon (book 21824, 0.12)",
+        "Tartarin de Tarascon (book 31824, 0.12)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "ancient temples ruins",
+      "want": "temple",
+      "found": 10,
+      "top": [
+        "Journal of a tour in Asia Minor (book 11516, 0.09)",
+        "Journal of a tour in Asia Minor (book 21516, 0.09)",
+        "Journal of a tour in Asia Minor (book 31516, 0.09)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "detective murdered",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 11434, 0.06)",
+        "Clendenen's detective manual (book 21434, 0.06)",
+        "Clendenen's detective manual (book 41434, 0.06)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "love letters",
+      "want": "letter",
+      "found": 10,
+      "top": [
+        "Hernani (book 12011, 0.15)",
+        "Hernani (book 22011, 0.15)",
+        "Hernani (book 32011, 0.15)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Häuser Flüsse",
+      "want": "Haus",
+      "found": 10,
+      "top": [
+        "Geschichte Alexanders des Grossen (book 20197, 0.04)",
+        "Geschichte Alexanders des Grossen (book 30197, 0.04)",
+        "Geschichte Alexanders des Grossen (book 40197, 0.04)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 11754, 0.09)",
+        "Genius and degeneration (book 21754, 0.09)",
+        "Genius and degeneration (book 31754, 0.09)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Kinder spielten",
+      "want": "Kind",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 20445, 0.05)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 30445, 0.05)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 40445, 0.05)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "maison jardin",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Petite ville (book 11926, 0.07)",
+        "Petite ville (book 21926, 0.07)",
+        "Petite ville (book 31926, 0.07)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 20156, 0.18)",
+        "Eingeschneit: Eine Studentengeschichte (book 30156, 0.18)",
+        "Eingeschneit: Eine Studentengeschichte (book 40156, 0.18)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "white whale",
+      "want": "white whale",
+      "found": 10,
+      "top": [
+        "The seals and whales of the British seas (book 20697, 0.10)",
+        "The seals and whales of the British seas (book 30697, 0.10)",
+        "The seals and whales of the British seas (book 40697, 0.10)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "once upon a time",
+      "want": "once upon a time",
+      "found": 10,
+      "top": [
+        "Plutarch's essays and miscellanies, Vol. 5 (of 5) (book 20803, 0.02)",
+        "Plutarch's essays and miscellanies, Vol. 5 (of 5) (book 30803, 0.02)",
+        "Plutarch's essays and miscellanies, Vol. 5 (of 5) (book 40803, 0.02)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "in the morning",
+      "want": "in the morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 20156, 0.22)",
+        "Eingeschneit: Eine Studentengeschichte (book 30156, 0.22)",
+        "Eingeschneit: Eine Studentengeschichte (book 40156, 0.22)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "der alte Mann",
+      "want": "alte Mann",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 20445, 0.06)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 30445, 0.06)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 40445, 0.06)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "es war einmal",
+      "want": "war einmal",
+      "found": 0,
+      "top": null
+    },
+    {
+      "kind": "fuzzy",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 20064, 0.05)",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 30064, 0.05)",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 40064, 0.05)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 20613, 0.03)",
+        "Webster's Unabridged Dictionary (book 30613, 0.03)",
+        "Webster's Unabridged Dictionary (book 40613, 0.03)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "The Green Dolphin (book 20807, 0.04)",
+        "The Green Dolphin (book 30807, 0.04)",
+        "The Green Dolphin (book 40807, 0.04)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 20521, 0.06)",
+        "Fünfundzwanzig Jahre Ceylon (book 30521, 0.06)",
+        "Fünfundzwanzig Jahre Ceylon (book 40521, 0.06)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 20613, 0.03)",
+        "Webster's Unabridged Dictionary (book 30613, 0.03)",
+        "Webster's Unabridged Dictionary (book 40613, 0.03)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "The great sea-serpent (book 21051, 0.33)",
+        "The great sea-serpent (book 31051, 0.33)",
+        "The great sea-serpent (book 41051, 0.33)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "The young reporter (book 11151, 0.42)",
+        "The young reporter (book 21151, 0.42)",
+        "The young reporter (book 31151, 0.42)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Die zärtlichen Schwestern (book 20591, 0.38)",
+        "Die zärtlichen Schwestern (book 30591, 0.38)",
+        "Die zärtlichen Schwestern (book 40591, 0.38)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Hernani (book 12011, 0.64)",
+        "Hernani (book 22011, 0.64)",
+        "Hernani (book 32011, 0.64)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 11522, 0.15): …se \u003cmark\u003eharpooners\u003c/mark\u003e at work separating the blubber fat worked under the direction of the specksioneer, or head fat-cutter, the expert of experts on the subject of \u003cmark\u003ewhales\u003c/mark\u003e. But if in the seventeenth-century D…",
+        "Whalers and whaling (book 21522, 0.15)",
+        "Whalers and whaling (book 31522, 0.15): …se \u003cmark\u003eharpooners\u003c/mark\u003e at work separating the blubber fat worked under the direction of the specksioneer, or head fat-cutter, the expert of experts on the subject of \u003cmark\u003ewhales\u003c/mark\u003e. But if in the seventeenth-century D…"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Tartarin de Tarascon (book 11824, 0.12)",
+        "Tartarin de Tarascon (book 21824, 0.12)",
+        "Tartarin de Tarascon (book 31824, 0.12): …begrudge me good \u003cmark\u003ehorses\u003c/mark\u003e? Never! 2. Nobody treats me well any more. 3. It\u0026#39;s beginning again! 4. Instead of biting each other they would do well to take a roundabout way across the plains and stop at a …"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 11754, 0.09): …r durch Verträge ich Herr,\n\nDen Verträgen bin ich nun Knecht.\n\n[182]\n\nDann wäre Walhall \u003cmark\u003everloren\u003c/mark\u003e:\n\nDer der \u003cmark\u003eLiebe\u003c/mark\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach…",
+        "Genius and degeneration (book 21754, 0.09): …r durch Verträge ich Herr,\n\nDen Verträgen bin ich nun Knecht.\n\n[182]\n\nDann wäre Walhall \u003cmark\u003everloren\u003c/mark\u003e:\n\nDer der \u003cmark\u003eLiebe\u003c/mark\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach…",
+        "Genius and degeneration (book 31754, 0.09): …r durch Verträge ich Herr,\n\nDen Verträgen bin ich nun Knecht.\n\n[182]\n\nDann wäre Walhall \u003cmark\u003everloren\u003c/mark\u003e:\n\nDer der \u003cmark\u003eLiebe\u003c/mark\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach…"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 20156, 0.18): …), \u003cmark\u003emorning\u003c/mark\u003e; des Morgens, in the \u003cmark\u003emorning\u003c/mark\u003e; des Morgens früh, early in the \u003cmark\u003emorning\u003c/mark\u003e.\n\nmor´gen, to-morrow.\n\nMor´gengruß, m. (pl. -̈e), \u003cmark\u003emorning\u003c/mark\u003e-salute, \u003cmark\u003emorning\u003c/mark\u003e-music.\n\nMor´genluft, f. (pl. -̈e), \u003cmark\u003emorning\u003c/mark\u003e-bre…",
+        "Eingeschneit: Eine Studentengeschichte (book 30156, 0.18)",
+        "Eingeschneit: Eine Studentengeschichte (book 40156, 0.18)"
+      ]
+    }
+  ],
+  "plans": {
+    "filtered": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "fuzzy": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "phrase": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "snippets": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken.",
+    "stemmed": "Filters are part of the query: a conjunction with a term query on the library, evaluated inside the index before the top 10 are taken."
+  },
+  "started": "2026-10-04T16:10:08.850104695Z"
+}

@@ -1,0 +1,452 @@
+{
+  "engine": "pgsearch",
+  "books": 2011,
+  "chunks": 94107,
+  "textMB": 719.87946,
+  "buildSeconds": {
+    "index": 46.520258543,
+    "load": 24.72858187,
+    "total": 192.285862719,
+    "vacuum": 2.037204423,
+    "vocabulary": 118.994103352
+  },
+  "sizes": {
+    "chunks_bm25": 242556928,
+    "chunks_pkey": 2129920,
+    "table": 499875840,
+    "words": 187826176
+  },
+  "memory": {
+    "build": {
+      "anon": 749772800,
+      "current": 2147483648
+    },
+    "oomKills": 0,
+    "queries": {
+      "anon": 588374016,
+      "current": 2147479552
+    },
+    "rebuild": {
+      "anon": 659615744,
+      "current": 2147483648
+    }
+  },
+  "latencyMs": {
+    "filtered": {
+      "runs": 20,
+      "p50": 1.631,
+      "p95": 1.842,
+      "max": 1.854
+    },
+    "fuzzy": {
+      "runs": 25,
+      "p50": 35.869,
+      "p95": 74.111,
+      "max": 74.415
+    },
+    "phrase": {
+      "runs": 25,
+      "p50": 4.108,
+      "p95": 7.983,
+      "max": 8.036
+    },
+    "repaired": {
+      "runs": 25,
+      "p50": 16.055,
+      "p95": 31.473,
+      "max": 31.843
+    },
+    "snippets": {
+      "runs": 20,
+      "p50": 6.412,
+      "p95": 7.335,
+      "max": 7.335
+    },
+    "stemmed": {
+      "runs": 50,
+      "p50": 1.407,
+      "p95": 2.145,
+      "max": 2.727
+    }
+  },
+  "rebuildSeconds": 46.968058724,
+  "samples": [
+    {
+      "kind": "stemmed",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 1522, 22.14)",
+        "Whalers and whaling (book 1522, 22.03)",
+        "Whalers and whaling (book 1522, 22.02)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Advance Australia! (book 1101, 8.14)",
+        "Handbook of nature-study for teachers and parents (book 903, 8.07)",
+        "Webster's Unabridged Dictionary (book 613, 7.91)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "ancient temples ruins",
+      "want": "temple",
+      "found": 10,
+      "top": [
+        "Letters from Egypt, Ethiopia, and the peninsula of Sinai (book 1517, 17.02)",
+        "Journal of a tour in Asia Minor (book 1516, 16.10)",
+        "Journal of a tour in Asia Minor (book 1516, 16.03)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "detective murdered",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "The scarab murder case (book 1269, 12.04)",
+        "The fifteen cells (book 1372, 11.59)",
+        "Thornley Colton (book 1261, 11.48)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "love letters",
+      "want": "letter",
+      "found": 10,
+      "top": [
+        "Geschichte der Englischen Sprache und Literatur / von den ältesten Zeiten bis zur Einführung der Buchdruckerkunst (book 109, 8.39)",
+        "An anthology of German literature (book 146, 8.39)",
+        "An anthology of German literature (book 146, 7.35)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Häuser Flüsse",
+      "want": "Haus",
+      "found": 10,
+      "top": [
+        "Die Nacht der Erfüllung: Erzählungen (book 379, 8.16)",
+        "Quer Durch Borneo; Zweiter Teil (book 88, 8.02)",
+        "Utopia (book 251, 7.75)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 1754, 17.37)",
+        "Kleine Dichtungen (book 481, 7.66)",
+        "Sämtliche Werke 14 (book 434, 7.47)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "Kinder spielten",
+      "want": "Kind",
+      "found": 10,
+      "top": [
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 9.53)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 9.01)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 8.58)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "maison jardin",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Petite ville (book 1926, 7.98)",
+        "Tout arrive (book 1962, 7.40)",
+        "Les Heures Claires (book 1810, 6.67)"
+      ]
+    },
+    {
+      "kind": "stemmed",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 12.89)",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 10.69)",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 64, 9.18)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "white whale",
+      "want": "white whale",
+      "found": 10,
+      "top": [
+        "Herman Melville (book 816, 11.91)",
+        "Herman Melville (book 816, 11.35)",
+        "The seals and whales of the British seas (book 697, 10.14)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "once upon a time",
+      "want": "once upon a time",
+      "found": 10,
+      "top": [
+        "Such a happy day (book 1310, 5.24)",
+        "The man who married the moon, and other Pueblo Indian folk-stories (book 667, 4.87)",
+        "Mixed pickles (book 1712, 4.87)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "in the morning",
+      "want": "in the morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 12.45)",
+        "An anthology of German literature (book 146, 5.75)",
+        "Eingeschneit: Eine Studentengeschichte (book 156, 5.75)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "der alte Mann",
+      "want": "alte Mann",
+      "found": 10,
+      "top": [
+        "Der Fremde: Ein Gleichniss (book 456, 8.21)",
+        "Märchen für Kinder (book 111, 7.29)",
+        "Josefine Mutzenbacher / oder Die Geschichte einer Wienerischen Dirne von ihr selbst erzählt (book 344, 7.29)"
+      ]
+    },
+    {
+      "kind": "phrase",
+      "query": "es war einmal",
+      "want": "war einmal",
+      "found": 10,
+      "top": [
+        "Die Richterin (book 600, 5.67)",
+        "Deutsche Lyrik seit Liliencron (book 276, 4.62)",
+        "Norwegische Volksmährchen vol. 1 / gesammelt von P. Asbjörnsen und Jörgen Moe (book 301, 4.57)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 2.00)",
+        "Rip Foster Rides the Gray Planet (book 610, 1.00)",
+        "Webster's Unabridged Dictionary (book 613, 1.00)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 10,
+      "top": [
+        "Urwald (book 496, 5.00)",
+        "Elemente der Paläontologie (book 515, 5.00)",
+        "Eskimoleben (book 522, 5.00)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "Der Wahn und die Träume in W. Jensens »Gradiva« (book 437, 4.50)",
+        "Der Wahn und die Träume in W. Jensens »Gradiva« (book 437, 4.00)",
+        "Memoiren einer Sozialistin: Lehrjahre (book 75, 3.50)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 19.50)",
+        "Webster's Unabridged Dictionary (book 613, 14.50)",
+        "Webster's Unabridged Dictionary (book 613, 12.50)"
+      ]
+    },
+    {
+      "kind": "fuzzy",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 10,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 3.00)",
+        "Les affinités électives / Suivies d'un choix de pensées du même (book 1818, 2.00)",
+        "Les affinités électives / Suivies d'un choix de pensées du même (book 1818, 2.00)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "The great sea-serpent (book 1051, 18.25)",
+        "The great sea-serpent (book 1051, 17.84)",
+        "The great sea-serpent (book 1051, 16.35)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Handbook of nature-study for teachers and parents (book 903, 9.07)",
+        "The haunts of men (book 771, 8.41)",
+        "Plutarch's essays and miscellanies, Vol. 5 (of 5) (book 803, 8.39)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Die Frau von dreißig Jahren (book 243, 7.65)",
+        "Die Frau von dreißig Jahren (book 243, 6.77)",
+        "Japanischer Frühling: Nachdichtungen Japanischer Lyrik (book 583, 6.77)"
+      ]
+    },
+    {
+      "kind": "filtered",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "A third day in Mary Carrow's school (book 1043, 4.55)",
+        "The autobiography of a seaman (volume 2 of 2) (book 731, 4.41)",
+        "The young reporter (book 1151, 4.34)"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "whales harpooned",
+      "want": "harpoon",
+      "found": 10,
+      "top": [
+        "Whalers and whaling (book 1522, 22.14): success, and nothing gave the men greater confidence than the capture of several \u003cb\u003ewhales\u003c/b\u003e by clever \u003cb\u003eharpooning\u003c/b\u003e. It satisfied them that the \u003cb\u003eharpooner\u003c/b\u003e",
+        "Whalers and whaling (book 1522, 22.03): a third occasion a couple of \u003cb\u003ewhales\u003c/b\u003e were \u003cb\u003eharpooned\u003c/b\u003e in the midst of a school, but one of the boats whose \u003cb\u003eharpoon\u003c/b\u003e had penetrated the mammal was, whilst",
+        "Whalers and whaling (book 1522, 22.02): Perhaps the \u003cb\u003ewhale\u003c/b\u003e might be \u003cb\u003eharpooned\u003c/b\u003e again and chased for a long while and then killed. Whose was that \u003cb\u003ewhale\u003c/b\u003e? Did it belong to the ship whose \u003cb\u003eharpoon\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "running horses",
+      "want": "horse",
+      "found": 10,
+      "top": [
+        "Advance Australia! (book 1101, 8.14): the whole time. The horsebreaker is most likely a man that no living \u003cb\u003ehorse\u003c/b\u003e can throw by any means short of rolling on him; so he blindfolds the \u003cb\u003ehorse\u003c/b\u003e",
+        "Handbook of nature-study for teachers and parents (book 903, 8.07): \u003cb\u003ehorse\u003c/b\u003e \u003cb\u003eruns\u003c/b\u003e in the pasture all winter, how does its coat change? When does the \u003cb\u003ehorse\u003c/b\u003e shed its coat? What is the use of the \u003cb\u003ehorse\u003c/b\u003e’s mane, forelock and",
+        "Webster's Unabridged Dictionary (book 613, 7.91): specifically, a \u003cb\u003ehorse\u003c/b\u003e bred or kept for \u003cb\u003erunning\u003c/b\u003e races. (b) A breed of \u003cb\u003ehorses\u003c/b\u003e remarkable for swiftness in \u003cb\u003erunning\u003c/b\u003e. (c) (Zoöl.) The steamer duck. (d"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "verlorene Liebe",
+      "want": "Liebe",
+      "found": 10,
+      "top": [
+        "Genius and degeneration (book 1754, 17.37): Walhall \u003cb\u003everloren\u003c/b\u003e:\n\nDer der \u003cb\u003eLiebe\u003c/b\u003e fluchte\n\nEr allein\n\nNützte neidisch\n\nDes Ringen Runen\n\nZu aller Edlen\n\nEndloser schmach.\n\n[183]\n\nWas so schlimmes",
+        "Kleine Dichtungen (book 481, 7.66): \u003cb\u003eliebe\u003c/b\u003e, und kaum, daß ich ihn umhalst und an das Herz gedrückt habe, schon \u003cb\u003everloren\u003c/b\u003e. Wie grausam ist das.« – Was hat ihn denn bewogen, sie zu",
+        "Sämtliche Werke 14 (book 434, 7.47): Mein Täubchen! \u003cb\u003eVerloren\u003c/b\u003e bin ich, beide sind wir \u003cb\u003everloren\u003c/b\u003e, unrettbar \u003cb\u003everloren\u003c/b\u003e! Mein Ruf, meine Ehre – alles ist \u003cb\u003everloren\u003c/b\u003e! Und ich bin es, der Sie"
+      ]
+    },
+    {
+      "kind": "snippets",
+      "query": "morning",
+      "want": "morning",
+      "found": 10,
+      "top": [
+        "Eingeschneit: Eine Studentengeschichte (book 156, 12.89): tremendous tobacco-smoke (filling a room.)\n\nMor´gen, m. (pl. —), \u003cb\u003emorning\u003c/b\u003e; des Morgens, in the \u003cb\u003emorning\u003c/b\u003e; des Morgens früh, early in the \u003cb\u003emorning\u003c/b\u003e",
+        "Märchen und Erzählungen für Anfänger. Erster Teil (book 445, 10.69): m. -s, \u003cb\u003emorning\u003c/b\u003e, to-morrow; morgens, in the \u003cb\u003emorning\u003c/b\u003e.\n\nMorgenschlaf, m. \u003cb\u003emorning\u003c/b\u003e nap.\n\nMorgenschläfchen, n. little \u003cb\u003emorning\u003c/b\u003e nap.\n\nMorgentau, m. \u003cb\u003emorning\u003c/b\u003e",
+        "Sieben Jahre in Süd-Afrika. Erster Band. / Erlebnisse, Forschungen und Jagden auf meinen Reisen von den Diamantenfeldern zum Zambesi (1872-1879). (book 64, 9.18): Kimberley abgehaltenen \u003cb\u003eMorning\u003c/b\u003e-markets (öffentliche Auctionen). Ein von der Regierung angestellter \u003cb\u003eMorning\u003c/b\u003e-master (Auctionär), der jedoch auch"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "detectve",
+      "want": "detective",
+      "found": 10,
+      "top": [
+        "Clendenen's detective manual (book 1434, 29.16): CLENDENEN\u0026#x27;S \u003cb\u003eDETECTIVE\u003c/b\u003e MANUAL ***\n\nCLENDENEN’S\n\u003cb\u003eDETECTIVE\u003c/b\u003e\nMANUAL\n\nHow to Become a\nSuccessful \u003cb\u003eDetective\u003c/b\u003e\n\nRUFUS H. CLENDENEN\nCHARLESTON, W. VA",
+        "Clendenen's detective manual (book 1434, 29.03): \u003cb\u003edetective\u003c/b\u003e has no legal standing as such, and being a member of a \u003cb\u003edetective\u003c/b\u003e agency does not give him any authority to carry fire arms, make arrests",
+        "Shadowed by a detective (book 1401, 28.97): Images courtesy of the Digital Library@Villanova University.)\n\n*** START OF THE PROJECT GUTENBERG EBOOK SHADOWED BY A \u003cb\u003eDETECTIVE\u003c/b\u003e ***\n\nMAGNET \u003cb\u003eDETECTIVE\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "whael harpon",
+      "want": "whale",
+      "found": 0,
+      "top": null
+    },
+    {
+      "kind": "repaired",
+      "query": "Kinnder",
+      "want": "Kinder",
+      "found": 10,
+      "top": [
+        "The Green Dolphin (book 807, 30.81): ones that \u003cb\u003ekinder\u003c/b\u003e needed clippin’ off—she turns her shoulder plumb upon me an’ goes shootin’ off into the house as if I’d offered her \u003cb\u003ea\u003c/b\u003e",
+        "There's not a bathing suit in Russia \u0026 other bare facts (book 686, 29.02): Well, here is the funny part about it: I don’t think there was \u003cb\u003ea\u003c/b\u003e soul in Russia that knew I was in there. In fact it \u003cb\u003ekinder\u003c/b\u003e hurt my pride when I",
+        "There's not a bathing suit in Russia \u0026 other bare facts (book 686, 27.27): Athaletic stuff I better \u003cb\u003ekinder\u003c/b\u003e call you over to one side and tip you off to \u003cb\u003ea\u003c/b\u003e little bit of the life that is really very interesting, in fact \u003cb\u003ekinder\u003c/b\u003e"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "elefant",
+      "want": "elephant",
+      "found": 10,
+      "top": [
+        "Fünfundzwanzig Jahre Ceylon (book 521, 24.29): zwischen dem indischen und dem afrikanischen \u003cb\u003eElefanten\u003c/b\u003e — Verschiedene Arten des ceylonischen \u003cb\u003eElefanten\u003c/b\u003e — Seine Lebensweise — Einzelgänger und",
+        "Fünfundzwanzig Jahre Ceylon (book 521, 23.72): energisch und schnell bewerkstelligt werden. Die zahmen \u003cb\u003eElefanten\u003c/b\u003e drängen sich an die Herde der wilden \u003cb\u003eElefanten\u003c/b\u003e heran und treiben diese zusammen",
+        "Fünfundzwanzig Jahre Ceylon (book 521, 23.49): bedeutet, \u003cb\u003eElefanten\u003c/b\u003e unter wirklicher Lebensgefahr aufs Korn zu nehmen.\n\nAm häufigsten kommt der ceylonische \u003cb\u003eElefant\u003c/b\u003e in der waldreichen Gegend"
+      ]
+    },
+    {
+      "kind": "repaired",
+      "query": "jardn",
+      "want": "jardin",
+      "found": 9,
+      "top": [
+        "Webster's Unabridged Dictionary (book 613, 50.95): used as a piece of decorative furniture in room.\n\n\u003cb\u003eJARDS\u003c/b\u003e\n\u003cb\u003eJards\u003c/b\u003e, n. Etym: [F. \u003cb\u003ejarde\u003c/b\u003e, \u003cb\u003ejardon\u003c/b\u003e.] (Far.)\n\nDefn: A callous tumor on the leg of a horse, below",
+        "My experiences of the war between France and Germany, vol. 1 (of 2) (book 1777, 29.62): \u003cb\u003eJard\u003c/b\u003e. There were no Germans there, and the villagers said they had seen none but a few scattered Uhlans. Our road then lay through a fine forest",
+        "Matabele land and the Victoria Falls (book 666, 25.65): bicolor, \u003cb\u003eJard\u003c/b\u003e.: Sharpe, ed. Layard, p. 210. Pied Babbling Thrush.\n\na. ♂ Tati, October 2, 1874. Iris bright orange; bill and legs black.\n\nb. ♀ Tati"
+      ]
+    }
+  ],
+  "plans": {
+    "filtered": "Limit (actual time=0.468..0.479 rows=10.00 loops=1)\n  Buffers: shared hit=69\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=0.468..0.477 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"must\":[{\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}},{\"term_set\":{\"terms\":[{\"field\":\"library_id\",\"value\":3},{\"field\":\"library_id\",\"value\":11}]}}]}}\n        Buffers: shared hit=69\nPlanning:\n  Buffers: shared hit=140\nPlanning Time: 1.038 ms\nExecution Time: 0.532 ms",
+    "fuzzy": "Limit (actual time=11.353..11.371 rows=10.00 loops=1)\n  Buffers: shared hit=371\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=11.353..11.369 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"detectve\",\"tokenizer\":null,\"distance\":1,\"transposition_cost_one\":false,\"prefix\":true,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=371\nPlanning:\n  Buffers: shared hit=743\nPlanning Time: 23.207 ms\nExecution Time: 11.417 ms",
+    "phrase": "Limit (actual time=0.463..0.476 rows=10.00 loops=1)\n  Buffers: shared hit=86\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=0.462..0.475 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_en\",\"phrase\":\"white whale\",\"slop\":null}}}},{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_de\",\"phrase\":\"white whale\",\"slop\":null}}}},{\"with_index\":{\"query\":{\"tokenized_phrase\":{\"field\":\"body_xx\",\"phrase\":\"white whale\",\"slop\":null}}}}]}}\n        Buffers: shared hit=86\nPlanning:\n  Buffers: shared hit=169\nPlanning Time: 1.176 ms\nExecution Time: 0.521 ms",
+    "repaired": "Limit (actual time=1.472..4.917 rows=10.00 loops=1)\n  Buffers: shared hit=120\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=1.472..4.915 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"detect detective detective⁠ detecto detects\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":false}}}}]}}\n        Buffers: shared hit=120\nPlanning:\n  Buffers: shared hit=117\nPlanning Time: 1.165 ms\nExecution Time: 4.973 ms",
+    "snippets": "Limit (actual time=1.021..4.484 rows=10.00 loops=1)\n  Buffers: shared hit=117\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=1.020..4.483 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=117\nPlanning:\n  Buffers: shared hit=131\nPlanning Time: 0.881 ms\nExecution Time: 4.545 ms",
+    "stemmed": "Limit (actual time=0.394..0.404 rows=10.00 loops=1)\n  Buffers: shared hit=68\n  -\u003e  Custom Scan (ParadeDB Base Scan) on chunks (actual time=0.394..0.402 rows=10.00 loops=1)\n        Table: chunks\n        Index: chunks_bm25\n        Heap Fetches: 10\n        Exec Method: TopKScanExecState\n        Scores: true\n           TopK Order By: pdb.score() desc\n           TopK Limit: 10\n           Queries: 1\n        Tantivy Query: {\"boolean\":{\"should\":[{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_en\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_de\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}},{\"with_index\":{\"query\":{\"match\":{\"field\":\"body_xx\",\"value\":\"whales harpooned\",\"tokenizer\":null,\"distance\":null,\"transposition_cost_one\":null,\"prefix\":null,\"conjunction_mode\":true}}}}]}}\n        Buffers: shared hit=68\nPlanning:\n  Buffers: shared hit=131\nPlanning Time: 0.870 ms\nExecution Time: 0.449 ms"
+  },
+  "started": "2026-10-04T21:06:29.096013413Z",
+  "settings": {
+    "maintenance_work_mem": "512MB",
+    "max_parallel_maintenance_workers": "3",
+    "max_parallel_workers_per_gather": "2",
+    "pg_search": "0.25.11",
+    "server_version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "shared_buffers": "512MB",
+    "work_mem": "32MB"
+  }
+}
