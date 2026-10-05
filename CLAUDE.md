@@ -462,6 +462,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   asked for is gone, so an old ID answers with the surviving book, for
   whoever sees it; the book page then takes the survivor's address. The
   duplicates page merges a pair through `duplicates/merge-form.tsx`.
+- Replacing (`POST /duplicates/{id}/replace {keep}`, `ingest.Service.Replace`)
+  is a merge that first trashes the other book's live files, in the same
+  transaction (`mergeTx`), with the renames last and moved back on failure;
+  the trashed files then belong to the kept book, so a restore brings them
+  back to it. Places read that no live file of the book holds become
+  `fraction:<f>` (`ProgressByFraction`), which the ebook reader opens with
+  `goToFraction` and the PDF reader as the page that far in. The pair is
+  set `replaced`. Keeping both may link the two in `book_relations` as an
+  edition, a translation or related (`PUT /duplicates/{id}/state`).
 
 ## Metadata providers
 

@@ -24,12 +24,20 @@ const SAVE_AFTER_MS = 600;
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800";
 
-/** The page a saved position names, if it is one in this file. */
+/**
+ * The page a saved position names, if it is one in this file, or the page
+ * as far into this one as a place saved in a file since replaced was.
+ */
 function pageIn(
 	progress: Progress | null | undefined,
 	fileId: string,
+	pages?: number,
 ): number | undefined {
-	const match = /^page:(\d+)$/.exec(progress?.locator ?? "");
+	const locator = progress?.locator ?? "";
+	if (locator.startsWith("fraction:") && pages) {
+		return Math.max(1, Math.round(Number(locator.slice("fraction:".length)) * pages));
+	}
+	const match = /^page:(\d+)$/.exec(locator);
 	if (!match || progress?.fileId !== fileId) {
 		return undefined;
 	}
@@ -121,7 +129,7 @@ export function PdfReader({
 		page === undefined &&
 		(target !== undefined || at === undefined)
 	) {
-		const resumed = pageIn(progress.data?.ebook, fileId);
+		const resumed = pageIn(progress.data?.ebook, fileId, doc.pages);
 		const start = Math.min(Math.max(target ?? resumed ?? 1, 1), doc.pages);
 		kept.current = target === undefined ? resumed : start;
 		setPage(start);

@@ -153,3 +153,29 @@ WITH RECURSIVE chain AS (
     FROM books b JOIN chain c ON b.id = c.merged_into_id
     WHERE c.depth < 20)
 SELECT chain.id FROM chain WHERE chain.deleted_at IS NULL ORDER BY chain.depth LIMIT 1;
+
+-- name: ListLiveBookFiles :many
+-- The book's files that are in their folders: neither missing nor trashed.
+SELECT id FROM book_files
+WHERE book_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
+ORDER BY id;
+
+-- name: ProgressByFraction :exec
+-- Places read in no file the book still has in its folder say only how
+-- far: a locator means nothing in another file, a fraction does.
+UPDATE reading_progress p
+SET locator = 'fraction:' || p.fraction::text, file_id = NULL
+WHERE p.book_id = $1 AND p.locator NOT LIKE 'fraction:%'
+  AND (p.file_id IS NULL OR p.file_id NOT IN (
+      SELECT f.id FROM book_files f WHERE f.book_id = $1 AND f.trashed_at IS NULL AND f.missing_at IS NULL));
+
+-- name: SetPairReplaced :exec
+UPDATE duplicate_pairs SET state = 'replaced', updated_at = now()
+WHERE book_a = least(sqlc.arg(into_book)::uuid, sqlc.arg(from_book)::uuid)
+  AND book_b = greatest(sqlc.arg(into_book)::uuid, sqlc.arg(from_book)::uuid);
+
+-- name: RelateBooks :exec
+-- The two as editions or translations of one work, as a person says.
+INSERT INTO book_relations (book_a, book_b, kind)
+VALUES (least(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), greatest(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), sqlc.arg(kind))
+ON CONFLICT (book_a, book_b) DO UPDATE SET kind = EXCLUDED.kind;

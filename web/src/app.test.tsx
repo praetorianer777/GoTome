@@ -2217,3 +2217,46 @@ describe("merging books", () => {
 		await waitFor(() => expect(router.state.location.pathname).toBe("/books/book-1"));
 	});
 });
+
+describe("replacing and keeping both", () => {
+	const file = (id: string, format: string, name: string) => ({
+		id, kind: "ebook", format, name, size: 1000, missing: false, drm: false, extractState: "done",
+	});
+	function withEmmas() {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [file("f1", "epub", "Emma.epub")] })
+			.withBook("Emma (scan)", { files: [file("f2", "pdf", "Emma.pdf")] })
+			.withPair("pair-1", "book-1", "book-2", [{ kind: "title_author", detail: "emma / austen", score: 0.75 }]);
+	}
+	const pairItem = async () =>
+		within(await screen.findByRole("listitem", { name: "Emma and Emma (scan) have the same title and author." }));
+
+	it("keeps one book's file and trashes the other's, which the trash can bring back", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		renderApp("/duplicates");
+		const pair = await pairItem();
+		await person.click(pair.getByRole("button", { name: "Replace…" }));
+		await person.click(pair.getByRole("button", { name: "Keep Emma (EPUB), trash Emma (scan)" }));
+		await waitFor(() => expect(screen.queryByRole("listitem", { name: /have the same title and author/ })).not.toBeInTheDocument());
+		expect(server.requests.find((r) => r.path === "/duplicates/pair-1/replace")?.body).toEqual({ keep: "book-1" });
+
+		await person.click(screen.getByRole("link", { name: "Trash" }));
+		const trashed = within(await screen.findByRole("listitem", { name: "Emma.pdf" }));
+		expect(trashed.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-1");
+	});
+
+	it("keeps both as another edition", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		renderApp("/duplicates");
+		const pair = await pairItem();
+		await person.selectOptions(pair.getByRole("combobox", { name: "Link them as" }), "edition");
+		await person.click(pair.getByRole("button", { name: "Keep both" }));
+		await waitFor(() => expect(server.pairs[0]?.state).toBe("kept_both"));
+		expect(server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body).toEqual({ state: "kept_both", relation: "edition" });
+	});
+});

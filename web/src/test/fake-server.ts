@@ -269,6 +269,31 @@ export class FakeServer {
 				);
 				return Response.json({ pairs });
 			}
+			const replacing = /^\/duplicates\/([^/]+)\/replace$/.exec(path);
+			if (replacing && request.method === "POST") {
+				const pair = this.pairs.find((p) => p.id === replacing[1]);
+				const keepID = (body as { keep: string }).keep;
+				const keep = this.books.find((b) => b.id === keepID);
+				const goneID = pair?.books.find((b) => b.id !== keepID)?.id;
+				const gone = this.books.find((b) => b.id === goneID);
+				if (!pair || !keep || !gone) {
+					return Response.json({ error: { code: "not_found", message: "There is no such pair." } }, { status: 404 });
+				}
+				for (const file of gone.files) {
+					this.trashed.push({
+						file,
+						view: {
+							id: file.id, name: file.name, format: file.format, size: file.size,
+							bookId: keep.id, bookTitle: keep.title, libraryId: keep.libraryId, library: "",
+							trashedAt: "2026-10-05T10:00:00Z", purgeAt: "2026-11-04T10:00:00Z",
+						},
+					});
+				}
+				this.books = this.books.filter((b) => b !== gone);
+				this.mergedInto[gone.id] = keep.id;
+				pair.state = "replaced";
+				return new Response(null, { status: 204 });
+			}
 			const pairState = /^\/duplicates\/([^/]+)\/state$/.exec(path);
 			if (pairState && request.method === "PUT") {
 				const pair = this.pairs.find((p) => p.id === pairState[1]);

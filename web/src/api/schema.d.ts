@@ -570,6 +570,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/duplicates/{pairId}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep one book of a pair: the other's files go to the trash and the book into the one kept */
+        post: operations["replaceDuplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/duplicates/{pairId}/state": {
         parameters: {
             query?: never;
@@ -1792,6 +1809,8 @@ export interface components {
         };
         PairStateRequest: {
             /** @enum {string} */
+            relation?: "edition" | "translation" | "related";
+            /** @enum {string} */
             state: "kept_both" | "open";
         };
         ProgressSaved: {
@@ -1873,6 +1892,10 @@ export interface components {
         };
         RebuildResult: {
             queued: boolean;
+        };
+        ReplaceRequest: {
+            /** Format: uuid */
+            keep: string;
         };
         RereadLibraryRequest: {
             failedOnly: boolean;
@@ -3384,6 +3407,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DuplicateCheckResult"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    replaceDuplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

@@ -62,6 +62,19 @@ function cfiIn(
 		: undefined;
 }
 
+/**
+ * Where to open: the saved CFI in this file, or how far into the book a
+ * place saved in a file since replaced was ("fraction:0.42").
+ */
+function startIn(
+	progress: Progress | null | undefined,
+	fileId: string,
+): string | undefined {
+	return progress?.locator.startsWith("fraction:")
+		? progress.locator
+		: cfiIn(progress, fileId);
+}
+
 /** An EPUB, MOBI or AZW3 file of a book, picking up where the person left off. */
 export function EbookReader({
 	bookId,
@@ -102,7 +115,7 @@ export function EbookReader({
 	// not open it again.
 	const start = useRef<string | undefined>(undefined);
 	start.current =
-		ready && !findNow.current ? cfiIn(progress.data?.ebook, fileId) : undefined;
+		ready && !findNow.current ? startIn(progress.data?.ebook, fileId) : undefined;
 	useEffect(() => {
 		if (!ready || !pages.current) return;
 		const into = pages.current;

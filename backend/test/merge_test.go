@@ -148,8 +148,8 @@ func TestBooksAreMergedWithEveryonesReading(t *testing.T) {
 	}
 
 	// Links to the merged book lead to the surviving one.
-	if status, old, _ := a.call(admin, http.MethodGet, "/books/"+gone, nil); status != 200 || old["id"] != keep {
-		t.Errorf("the old link: %d %v", status, old["id"])
+	if status, old, _ := a.call(admin, http.MethodGet, "/books/"+gone, nil); status != 200 || old["id"] != keep || len(old["files"].([]any)) != 2 {
+		t.Errorf("the old link: %d %v %v", status, old["id"], old["files"])
 	}
 
 	// No one lost their standing, place or shelves.

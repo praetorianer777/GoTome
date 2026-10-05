@@ -150,6 +150,33 @@ func (q *Queries) ForwardMergedBooks(ctx context.Context, arg ForwardMergedBooks
 	return err
 }
 
+const listLiveBookFiles = `-- name: ListLiveBookFiles :many
+SELECT id FROM book_files
+WHERE book_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
+ORDER BY id
+`
+
+// The book's files that are in their folders: neither missing nor trashed.
+func (q *Queries) ListLiveBookFiles(ctx context.Context, bookID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLiveBookFiles, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBooksForMerge = `-- name: LockBooksForMerge :many
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
@@ -337,6 +364,39 @@ func (q *Queries) MoveReadingHistory(ctx context.Context, arg MoveReadingHistory
 	return err
 }
 
+const progressByFraction = `-- name: ProgressByFraction :exec
+UPDATE reading_progress p
+SET locator = 'fraction:' || p.fraction::text, file_id = NULL
+WHERE p.book_id = $1 AND p.locator NOT LIKE 'fraction:%'
+  AND (p.file_id IS NULL OR p.file_id NOT IN (
+      SELECT f.id FROM book_files f WHERE f.book_id = $1 AND f.trashed_at IS NULL AND f.missing_at IS NULL))
+`
+
+// Places read in no file the book still has in its folder say only how
+// far: a locator means nothing in another file, a fraction does.
+func (q *Queries) ProgressByFraction(ctx context.Context, bookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, progressByFraction, bookID)
+	return err
+}
+
+const relateBooks = `-- name: RelateBooks :exec
+INSERT INTO book_relations (book_a, book_b, kind)
+VALUES (least($1::uuid, $2::uuid), greatest($1::uuid, $2::uuid), $3)
+ON CONFLICT (book_a, book_b) DO UPDATE SET kind = EXCLUDED.kind
+`
+
+type RelateBooksParams struct {
+	One   uuid.UUID
+	Other uuid.UUID
+	Kind  string
+}
+
+// The two as editions or translations of one work, as a person says.
+func (q *Queries) RelateBooks(ctx context.Context, arg RelateBooksParams) error {
+	_, err := q.db.Exec(ctx, relateBooks, arg.One, arg.Other, arg.Kind)
+	return err
+}
+
 const setHeldFiles = `-- name: SetHeldFiles :exec
 UPDATE books b SET placeholder = false
 WHERE b.id = $1 AND b.placeholder AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = b.id)
@@ -345,6 +405,22 @@ WHERE b.id = $1 AND b.placeholder AND EXISTS (SELECT 1 FROM book_files f WHERE f
 // A wish whose book now has files is in the library.
 func (q *Queries) SetHeldFiles(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, setHeldFiles, id)
+	return err
+}
+
+const setPairReplaced = `-- name: SetPairReplaced :exec
+UPDATE duplicate_pairs SET state = 'replaced', updated_at = now()
+WHERE book_a = least($1::uuid, $2::uuid)
+  AND book_b = greatest($1::uuid, $2::uuid)
+`
+
+type SetPairReplacedParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+func (q *Queries) SetPairReplaced(ctx context.Context, arg SetPairReplacedParams) error {
+	_, err := q.db.Exec(ctx, setPairReplaced, arg.IntoBook, arg.FromBook)
 	return err
 }
 
