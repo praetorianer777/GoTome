@@ -1,0 +1,92 @@
+{
+  "backend": "direct",
+  "weights": "fp32",
+  "minCosine": 0.9999999493548296,
+  "tokensMatch": 14,
+  "texts": [
+    {
+      "text": "query: how do whales breathe",
+      "tokens": 12,
+      "cosine": 1.0000000569737058,
+      "firstMismatch": -1
+    },
+    {
+      "text": "query: Wie atmen Wale?",
+      "tokens": 11,
+      "cosine": 1.0000000311462496,
+      "firstMismatch": -1
+    },
+    {
+      "text": "query: comment respirent les baleines",
+      "tokens": 12,
+      "cosine": 0.9999999562429308,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Whales are mammals and breathe air through a blowho…",
+      "tokens": 26,
+      "cosine": 1.0000000057633907,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Wale sind Säugetiere und atmen Luft durch ein Blasl…",
+      "tokens": 22,
+      "cosine": 1.0000000456225107,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Les baleines sont des mammifères qui respirent de l…",
+      "tokens": 33,
+      "cosine": 1.0000001096034081,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: The detective examined the room carefully; the wind…",
+      "tokens": 22,
+      "cosine": 1.0000000283719903,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Der Kommissar untersuchte das Zimmer genau – das Fe…",
+      "tokens": 23,
+      "cosine": 0.9999999812927596,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Straße, Fußgänger, Größe, Ærø, naïve café, Œuvre, ½…",
+      "tokens": 40,
+      "cosine": 1.0000000001843836,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: 1835: Darwin reached the Galápagos; 2 + 2 = 4; e-ma…",
+      "tokens": 32,
+      "cosine": 1.0000000195072785,
+      "firstMismatch": -1
+    },
+    {
+      "text": "query: ",
+      "tokens": 5,
+      "cosine": 0.9999999798122646,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: The harbour lay quiet under a grey sky while the fi…",
+      "tokens": 512,
+      "cosine": 1.0000000691766073,
+      "firstMismatch": -1
+    },
+    {
+      "text": "passage: Am Ufer des Flusses standen die alten Häuser dicht …",
+      "tokens": 512,
+      "cosine": 1.000000079844047,
+      "firstMismatch": -1
+    },
+    {
+      "text": "query: The harbour lay quiet under a grey sky while the fish…",
+      "tokens": 512,
+      "cosine": 0.9999999493548296,
+      "firstMismatch": -1
+    }
+  ]
+}

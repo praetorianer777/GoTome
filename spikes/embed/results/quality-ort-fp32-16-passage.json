@@ -1,0 +1,71 @@
+[
+  {
+    "vectors": "/embed/vectors-ort-fp32-16-passage.gob",
+    "samples": 16,
+    "quality": {
+      "volumes": {
+        "books": 134,
+        "recallAt1": 0.8880597014925373,
+        "recallAt10": 0.9776119402985075,
+        "mrr": 0.9234825397478043,
+        "related": "another volume of the same work"
+      },
+      "authors": {
+        "books": 861,
+        "recallAt1": 0.31939605110336816,
+        "recallAt10": 0.5563298490127758,
+        "mrr": 0.39706127157639587,
+        "related": "another book by the same author"
+      },
+      "subjectPrecision": 0.1648930880159125,
+      "subjectBaseline": 0.01477693580827835,
+      "sameLanguage": 0.9884137245151666
+    }
+  },
+  {
+    "vectors": "/embed/vectors-ort-fp32-16-passage.gob",
+    "samples": 32,
+    "quality": {
+      "volumes": {
+        "books": 134,
+        "recallAt1": 0.8880597014925373,
+        "recallAt10": 0.9776119402985075,
+        "mrr": 0.9234825397478043,
+        "related": "another volume of the same work"
+      },
+      "authors": {
+        "books": 861,
+        "recallAt1": 0.31939605110336816,
+        "recallAt10": 0.5563298490127758,
+        "mrr": 0.39706127157639587,
+        "related": "another book by the same author"
+      },
+      "subjectPrecision": 0.1648930880159125,
+      "subjectBaseline": 0.01477693580827835,
+      "sameLanguage": 0.9884137245151666
+    }
+  },
+  {
+    "vectors": "/embed/vectors-ort-fp32-16-passage.gob",
+    "samples": 64,
+    "quality": {
+      "volumes": {
+        "books": 134,
+        "recallAt1": 0.8880597014925373,
+        "recallAt10": 0.9776119402985075,
+        "mrr": 0.9234825397478043,
+        "related": "another volume of the same work"
+      },
+      "authors": {
+        "books": 861,
+        "recallAt1": 0.31939605110336816,
+        "recallAt10": 0.5563298490127758,
+        "mrr": 0.39706127157639587,
+        "related": "another book by the same author"
+      },
+      "subjectPrecision": 0.1648930880159125,
+      "subjectBaseline": 0.01477693580827835,
+      "sameLanguage": 0.9884137245151666
+    }
+  }
+]

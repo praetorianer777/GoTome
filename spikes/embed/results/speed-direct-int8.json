@@ -1,0 +1,21 @@
+{
+  "backend": "direct",
+  "weights": "int8",
+  "threads": 4,
+  "batch": 8,
+  "passages": 128,
+  "meanTokens": 512,
+  "loadSeconds": 0.640873271,
+  "loadedAnon": 262254592,
+  "memoryLimit": 2147483648,
+  "seconds": 22.170188896,
+  "passagesPerSecond": 5.773518692170191,
+  "memory": {
+    "anon": 729755648,
+    "current": 896872448
+  },
+  "oomKills": 0,
+  "modelFileBytes": 118346824,
+  "libraryBytes": 28985152,
+  "executableBytes": 26101024
+}

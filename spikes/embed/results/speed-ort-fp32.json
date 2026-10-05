@@ -1,0 +1,21 @@
+{
+  "backend": "ort",
+  "weights": "fp32",
+  "threads": 4,
+  "batch": 8,
+  "passages": 128,
+  "meanTokens": 511.640625,
+  "loadSeconds": 2.204759993,
+  "loadedAnon": 691380224,
+  "memoryLimit": 2147483648,
+  "seconds": 22.930945515,
+  "passagesPerSecond": 5.581976544153853,
+  "memory": {
+    "anon": 1131995136,
+    "current": 1277308928
+  },
+  "oomKills": 0,
+  "modelFileBytes": 470268510,
+  "libraryBytes": 28985152,
+  "executableBytes": 26101024
+}
