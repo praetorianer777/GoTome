@@ -73,6 +73,10 @@ func readCases() map[string][]readCase {
 			{path: "/duplicates", control: "insider"},
 			{path: "/duplicates", query: q("library", "{library}"), control: "insider"},
 		},
+		"listTrash": {
+			{path: "/trash", control: "insider"},
+			{path: "/trash", query: q("library", "{library}"), control: "insider"},
+		},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
@@ -212,6 +216,11 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	}
 	if _, err := a.pool.Exec(ctx, `WITH p AS (INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2) RETURNING id)
 		INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, 'isbn', '9780306406157' FROM p`, pairA, pairB); err != nil {
+		t.Fatal(err)
+	}
+	// A trashed file of the secret, for the trash to list.
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_files (book_id, library_id, kind, format, rel_path, size_bytes, modified_at, trashed_at)
+		VALUES ($1, $2, 'ebook', 'pdf', 'old secret.pdf', 1, now(), now())`, book, vault); err != nil {
 		t.Fatal(err)
 	}
 	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}

@@ -43,6 +43,9 @@ const (
 	MatchThreshold = "metadata.matchThreshold"
 	// Providers lists the metadata providers asked, comma-separated.
 	Providers = "metadata.providers"
+	// TrashRetentionDays is how many days a trashed file is kept before it
+	// is deleted for good.
+	TrashRetentionDays = "trash.retentionDays"
 )
 
 // maxValueLen bounds a value; no key or token comes near it.
@@ -71,6 +74,7 @@ var Definitions = []Definition{
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
 	{Key: Providers, Kind: KindText, Default: "openlibrary", Check: names},
+	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 }
 
 func definition(key string) (Definition, bool) {
@@ -103,6 +107,15 @@ func threshold(v string) (string, error) {
 		return "", errors.New("Give a number from 0.5 to 1, such as 0.95.")
 	}
 	return strconv.FormatFloat(f, 'f', -1, 64), nil
+}
+
+// days is a whole number of days, from one to ten years.
+func days(v string) (string, error) {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 1 || n > 3650 {
+		return "", errors.New("Give a whole number of days from 1 to 3650.")
+	}
+	return strconv.Itoa(n), nil
 }
 
 // names keeps a list of provider names in one spelling: "openlibrary,google".
@@ -307,4 +320,18 @@ func (s *Store) Secret(ctx context.Context, key string) (string, bool, error) {
 		return "", false, fmt.Errorf("setting %s: %w", key, err)
 	}
 	return string(value), true, nil
+}
+
+// TrashRetention is how long a trashed file is kept before it is deleted
+// for good.
+func (s *Store) TrashRetention(ctx context.Context) (time.Duration, error) {
+	v, err := s.Text(ctx, TrashRetentionDays)
+	if err != nil {
+		return 0, err
+	}
+	days, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", TrashRetentionDays, err)
+	}
+	return time.Duration(days) * 24 * time.Hour, nil
 }

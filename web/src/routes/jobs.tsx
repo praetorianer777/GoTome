@@ -46,6 +46,8 @@ function describe(job: Job): string {
 			});
 		case "ingest.extract_file":
 			return t("jobs.kind.read", { file: job.filePath || t("jobs.goneFile") });
+		case "ingest.purge_trash":
+			return t("jobs.kind.purgeTrash");
 		case "ingest.chunk_file":
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
 		case "search.rebuild_index":

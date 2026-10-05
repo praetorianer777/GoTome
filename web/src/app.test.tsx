@@ -2140,3 +2140,48 @@ describe("the duplicates page", () => {
 		expect(list.queryByRole("button", { name: "Keep both" })).not.toBeInTheDocument();
 	});
 });
+
+describe("the trash", () => {
+	const file = { id: "file-1", kind: "ebook", format: "epub", name: "Emma.epub", size: 300_000, missing: false, drm: false, extractState: "done" };
+
+	it("takes a file out of its book, and puts it back", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Novels").withBook("Emma", { files: [file] });
+		renderApp("/books/book-1");
+		await person.click(await screen.findByRole("button", { name: "Move Emma.epub to the trash" }));
+		await waitFor(() => expect(screen.queryByRole("button", { name: "Move Emma.epub to the trash" })).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.method === "POST" && r.path === "/files/file-1/trash")).toBe(true);
+
+		await person.click(screen.getByRole("link", { name: "Trash" }));
+		const item = within(await screen.findByRole("listitem", { name: "Emma.epub" }));
+		expect(item.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-1");
+		expect(item.getByText(/^Trashed on .* by Edith\. Deleted for good on /)).toBeInTheDocument();
+		// Deleting for good is an administrator's.
+		expect(item.queryByRole("button", { name: "Delete now" })).not.toBeInTheDocument();
+		await person.click(item.getByRole("button", { name: "Restore" }));
+		expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
+		expect(server.books[0]?.files).toHaveLength(1);
+	});
+
+	it("lets an administrator delete for good, after saying so twice", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada").withLibrary("Novels").withBook("Emma", { files: [file] });
+		renderApp("/books/book-1");
+		await person.click(await screen.findByRole("button", { name: "Move Emma.epub to the trash" }));
+		await waitFor(() => expect(server.trashed).toHaveLength(1));
+		await person.click(screen.getByRole("link", { name: "Trash" }));
+		const item = within(await screen.findByRole("listitem", { name: "Emma.epub" }));
+		await person.click(item.getByRole("button", { name: "Delete now" }));
+		expect(server.trashed).toHaveLength(1);
+		await person.click(item.getByRole("button", { name: "Delete for good" }));
+		expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
+		expect(server.books[0]?.files).toHaveLength(0);
+	});
+
+	it("is not offered in a library GOtome does not write to", async () => {
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Shelf", { mode: "external", writable: false }).withBook("Emma", { files: [file] });
+		renderApp("/books/book-1");
+		expect(await screen.findByRole("heading", { name: "Emma", level: 1 })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Move Emma.epub to the trash" })).not.toBeInTheDocument();
+	});
+});
