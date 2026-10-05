@@ -29,6 +29,24 @@ func (q *Queries) AddDuplicateEvidence(ctx context.Context, arg AddDuplicateEvid
 	return err
 }
 
+const dropBookSignatures = `-- name: DropBookSignatures :exec
+DELETE FROM file_signatures s
+USING book_files f
+WHERE s.file_id = f.id AND f.book_id = $1 AND f.id <> $2
+`
+
+type DropBookSignaturesParams struct {
+	BookID uuid.UUID
+	FileID uuid.UUID
+}
+
+// The signatures of the book's files other than the one its text is read
+// from, which stand for it no more.
+func (q *Queries) DropBookSignatures(ctx context.Context, arg DropBookSignaturesParams) error {
+	_, err := q.db.Exec(ctx, dropBookSignatures, arg.BookID, arg.FileID)
+	return err
+}
+
 const dropEmptyDuplicatePairs = `-- name: DropEmptyDuplicatePairs :exec
 DELETE FROM duplicate_pairs p
 WHERE p.state = 'open'
@@ -42,27 +60,40 @@ func (q *Queries) DropEmptyDuplicatePairs(ctx context.Context, bookID uuid.UUID)
 	return err
 }
 
+const dropFileBuckets = `-- name: DropFileBuckets :exec
+DELETE FROM file_lsh WHERE file_id = $1
+`
+
+func (q *Queries) DropFileBuckets(ctx context.Context, fileID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, dropFileBuckets, fileID)
+	return err
+}
+
+const dropFileSignature = `-- name: DropFileSignature :exec
+DELETE FROM file_signatures WHERE file_id = $1
+`
+
+func (q *Queries) DropFileSignature(ctx context.Context, fileID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, dropFileSignature, fileID)
+	return err
+}
+
 const findDuplicateEvidence = `-- name: FindDuplicateEvidence :many
 WITH me AS (
     SELECT bk.id, bk.title_key FROM books bk
     WHERE bk.id = $1 AND bk.deleted_at IS NULL AND NOT bk.placeholder
-),
-files AS (
-    SELECT f.book_id, f.sha256, f.content_sha256
-    FROM book_files f
-    JOIN books b ON b.id = f.book_id
-    WHERE f.missing_at IS NULL AND f.trashed_at IS NULL
-      AND b.deleted_at IS NULL AND NOT b.placeholder
 )
 SELECT o.book_id AS other, 'sha256'::text AS kind, encode(f.sha256, 'hex') AS detail
 FROM me
-JOIN files f ON f.book_id = me.id
-JOIN files o ON o.sha256 = f.sha256 AND o.book_id <> me.id
+JOIN book_files f ON f.book_id = me.id AND f.missing_at IS NULL AND f.trashed_at IS NULL
+JOIN book_files o ON o.sha256 = f.sha256 AND o.book_id <> me.id AND o.missing_at IS NULL AND o.trashed_at IS NULL
+JOIN books ob ON ob.id = o.book_id AND ob.deleted_at IS NULL AND NOT ob.placeholder
 UNION
 SELECT o.book_id, 'content', encode(f.content_sha256, 'hex')
 FROM me
-JOIN files f ON f.book_id = me.id
-JOIN files o ON o.content_sha256 = f.content_sha256 AND o.book_id <> me.id
+JOIN book_files f ON f.book_id = me.id AND f.missing_at IS NULL AND f.trashed_at IS NULL
+JOIN book_files o ON o.content_sha256 = f.content_sha256 AND o.book_id <> me.id AND o.missing_at IS NULL AND o.trashed_at IS NULL
+JOIN books ob ON ob.id = o.book_id AND ob.deleted_at IS NULL AND NOT ob.placeholder
 WHERE o.sha256 IS DISTINCT FROM f.sha256
 UNION
 SELECT o.book_id, 'isbn', i.value
@@ -90,7 +121,8 @@ type FindDuplicateEvidenceRow struct {
 // Every other book that looks like this one, with why: a file of the same
 // bytes, a file of the same content where the bytes differ, a shared ISBN,
 // or the same title and an author in common. Only books in the library,
-// neither deleted, merged nor wished for, count.
+// neither deleted, merged nor wished for, count. Each branch starts from the
+// book's own rows and reaches the others through an index.
 func (q *Queries) FindDuplicateEvidence(ctx context.Context, bookID uuid.UUID) ([]FindDuplicateEvidenceRow, error) {
 	rows, err := q.db.Query(ctx, findDuplicateEvidence, bookID)
 	if err != nil {
@@ -109,6 +141,26 @@ func (q *Queries) FindDuplicateEvidence(ctx context.Context, bookID uuid.UUID) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const getBookSignature = `-- name: GetBookSignature :one
+SELECT s.file_id, s.shingles, s.signature
+FROM books b JOIN file_signatures s ON s.file_id = b.primary_text_file_id
+WHERE b.id = $1 AND b.deleted_at IS NULL AND NOT b.placeholder AND s.signature IS NOT NULL
+`
+
+type GetBookSignatureRow struct {
+	FileID    uuid.UUID
+	Shingles  int32
+	Signature []byte
+}
+
+// The signature of the book's primary text file, if it has one.
+func (q *Queries) GetBookSignature(ctx context.Context, id uuid.UUID) (GetBookSignatureRow, error) {
+	row := q.db.QueryRow(ctx, getBookSignature, id)
+	var i GetBookSignatureRow
+	err := row.Scan(&i.FileID, &i.Shingles, &i.Signature)
+	return i, err
 }
 
 const listDuplicateEvidence = `-- name: ListDuplicateEvidence :many
@@ -204,6 +256,32 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 	return items, nil
 }
 
+const listFileChunkTexts = `-- name: ListFileChunkTexts :many
+SELECT coalesce(body_en, body_de, body_xx)::text AS body
+FROM book_chunks WHERE file_id = $1 ORDER BY position
+`
+
+// The file's text as its chunks hold it, in order.
+func (q *Queries) ListFileChunkTexts(ctx context.Context, fileID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listFileChunkTexts, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var body string
+		if err := rows.Scan(&body); err != nil {
+			return nil, err
+		}
+		items = append(items, body)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLibraryBookIDs = `-- name: ListLibraryBookIDs :many
 SELECT b.id FROM books b
 WHERE b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
@@ -238,6 +316,95 @@ func (q *Queries) ListLibraryBookIDs(ctx context.Context, arg ListLibraryBookIDs
 	return items, nil
 }
 
+const listSignatureCompanions = `-- name: ListSignatureCompanions :many
+SELECT DISTINCT s.file_id, b.id AS book_id, s.shingles, s.signature
+FROM file_lsh me
+JOIN file_lsh o ON o.band = me.band AND o.bucket = me.bucket AND o.file_id <> me.file_id
+JOIN file_signatures s ON s.file_id = o.file_id
+JOIN book_files f ON f.id = s.file_id
+JOIN books b ON b.id = f.book_id AND b.primary_text_file_id = f.id
+WHERE me.file_id = $1
+  AND b.id <> $2 AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND (SELECT count(*) FROM file_lsh c WHERE c.band = me.band AND c.bucket = me.bucket) <= $3::bigint
+`
+
+type ListSignatureCompanionsParams struct {
+	FileID uuid.UUID
+	BookID uuid.UUID
+	Crowd  int64
+}
+
+type ListSignatureCompanionsRow struct {
+	FileID    uuid.UUID
+	BookID    uuid.UUID
+	Shingles  int32
+	Signature []byte
+}
+
+// The signatures of other books' primary text files that share a bucket
+// with the file. A bucket shared by more than sqlc.arg(crowd) files is
+// passed over: text every book of a kind carries, such as a licence, says
+// nothing about two of them.
+func (q *Queries) ListSignatureCompanions(ctx context.Context, arg ListSignatureCompanionsParams) ([]ListSignatureCompanionsRow, error) {
+	rows, err := q.db.Query(ctx, listSignatureCompanions, arg.FileID, arg.BookID, arg.Crowd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSignatureCompanionsRow{}
+	for rows.Next() {
+		var i ListSignatureCompanionsRow
+		if err := rows.Scan(
+			&i.FileID,
+			&i.BookID,
+			&i.Shingles,
+			&i.Signature,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnsignedFiles = `-- name: ListUnsignedFiles :many
+SELECT f.id, f.book_id
+FROM books b
+JOIN book_files f ON f.id = b.primary_text_file_id
+LEFT JOIN file_signatures s ON s.file_id = f.id
+WHERE f.chunked_at IS NOT NULL AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND (s.file_id IS NULL OR s.version <> $1::smallint)
+`
+
+type ListUnsignedFilesRow struct {
+	ID     uuid.UUID
+	BookID uuid.UUID
+}
+
+// The chunked primary text files without a signature of this version.
+func (q *Queries) ListUnsignedFiles(ctx context.Context, version int16) ([]ListUnsignedFilesRow, error) {
+	rows, err := q.db.Query(ctx, listUnsignedFiles, version)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnsignedFilesRow{}
+	for rows.Next() {
+		var i ListUnsignedFilesRow
+		if err := rows.Scan(&i.ID, &i.BookID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pruneDuplicateEvidence = `-- name: PruneDuplicateEvidence :exec
 DELETE FROM duplicate_evidence e
 USING duplicate_pairs p
@@ -262,6 +429,46 @@ func (q *Queries) PruneDuplicateEvidence(ctx context.Context, arg PruneDuplicate
 		arg.PairIds,
 		arg.Kinds,
 		arg.Details,
+	)
+	return err
+}
+
+const putFileBuckets = `-- name: PutFileBuckets :exec
+INSERT INTO file_lsh (band, bucket, file_id)
+SELECT unnest($1::smallint[]), unnest($2::bigint[]), $3::uuid
+ON CONFLICT DO NOTHING
+`
+
+type PutFileBucketsParams struct {
+	Bands   []int16
+	Buckets []int64
+	FileID  uuid.UUID
+}
+
+func (q *Queries) PutFileBuckets(ctx context.Context, arg PutFileBucketsParams) error {
+	_, err := q.db.Exec(ctx, putFileBuckets, arg.Bands, arg.Buckets, arg.FileID)
+	return err
+}
+
+const putFileSignature = `-- name: PutFileSignature :exec
+INSERT INTO file_signatures (file_id, version, shingles, signature) VALUES ($1, $2, $3, $4)
+ON CONFLICT (file_id) DO UPDATE SET version = EXCLUDED.version, shingles = EXCLUDED.shingles,
+    signature = EXCLUDED.signature, signed_at = now()
+`
+
+type PutFileSignatureParams struct {
+	FileID    uuid.UUID
+	Version   int16
+	Shingles  int32
+	Signature []byte
+}
+
+func (q *Queries) PutFileSignature(ctx context.Context, arg PutFileSignatureParams) error {
+	_, err := q.db.Exec(ctx, putFileSignature,
+		arg.FileID,
+		arg.Version,
+		arg.Shingles,
+		arg.Signature,
 	)
 	return err
 }

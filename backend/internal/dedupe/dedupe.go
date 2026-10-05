@@ -33,10 +33,14 @@ const (
 	// EvidenceTitleAuthor is the same title, as compared, and an author in
 	// common.
 	EvidenceTitleAuthor = "title_author"
+	// EvidenceOverlap is text the two share, by the MinHash signatures of
+	// their primary text files: the Jaccard estimate and how much of each
+	// the other holds.
+	EvidenceOverlap = "overlap"
 )
 
 // Kinds are the kinds of evidence.
-var Kinds = []string{EvidenceSHA256, EvidenceContent, EvidenceISBN, EvidenceTitleAuthor}
+var Kinds = []string{EvidenceSHA256, EvidenceContent, EvidenceISBN, EvidenceTitleAuthor, EvidenceOverlap}
 
 // What a person decided about a pair: nothing yet, that both stay, or that
 // one was merged into or replaced by the other.
@@ -76,6 +80,11 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		if err != nil {
 			return err
 		}
+		shared, err := overlaps(ctx, q, bookID)
+		if err != nil {
+			return err
+		}
+		found = append(found, shared...)
 		pairs := map[uuid.UUID]uuid.UUID{}
 		var ev sqlc.AddDuplicateEvidenceParams
 		for _, f := range found {

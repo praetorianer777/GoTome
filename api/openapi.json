@@ -5338,7 +5338,8 @@
               "sha256",
               "content",
               "isbn",
-              "title_author"
+              "title_author",
+              "overlap"
             ]
           }
         },

@@ -1503,7 +1503,7 @@ export interface components {
         DuplicateEvidence: {
             detail: string;
             /** @enum {string} */
-            kind: "sha256" | "content" | "isbn" | "title_author";
+            kind: "sha256" | "content" | "isbn" | "title_author" | "overlap";
         };
         DuplicateList: {
             more: boolean;

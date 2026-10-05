@@ -165,6 +165,7 @@ func serve() error {
 		}
 		return duplicates.EnqueueTx(ctx, tx, bookID)
 	}
+	scans.OnChunked = duplicates.ChunkedTx
 	changes := bulk.NewService(pool, scans, matches, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
@@ -178,6 +179,7 @@ func serve() error {
 	searchIndex := search.NewIndex(pool, log)
 	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
+	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 	}
@@ -210,6 +212,10 @@ func serve() error {
 	// be rebuilt. Search works without them meanwhile, only knows less.
 	if err := scans.EnqueueUnchunked(ctx); err != nil {
 		log.Warn("could not queue chunking", "error", err)
+	}
+	// Texts chunked before overlap was looked for, or signed another way.
+	if err := duplicates.EnqueueUnsigned(ctx); err != nil {
+		log.Warn("could not queue signing", "error", err)
 	}
 	// Stopped last, after the HTTP server has drained: a request in flight may
 	// still enqueue a job.
