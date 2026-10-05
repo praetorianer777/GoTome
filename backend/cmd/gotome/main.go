@@ -165,6 +165,8 @@ func serve() error {
 	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ChunkWorker{Service: scans})
 	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
+	searchIndex := search.NewIndex(pool, log)
+	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 	}
@@ -180,8 +182,17 @@ func serve() error {
 	scans.Queue = runner
 	matches.Queue = runner
 	changes.Queue = runner
+	searchIndex.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
+	}
+	// A new pg_search, or a new way of cutting text into chunks, is rebuilt
+	// for in the background; search keeps answering from what is there.
+	if err := searchIndex.CheckEngine(ctx); err != nil {
+		log.Warn("could not check the search index", "error", err)
+	}
+	if err := scans.CheckChunkVersion(ctx); err != nil {
+		log.Warn("could not check the chunks", "error", err)
 	}
 	// Books read before their text was kept, or whose chunks were dropped to
 	// be rebuilt. Search works without them meanwhile, only knows less.
@@ -217,6 +228,7 @@ func serve() error {
 		Reading:   reading.NewService(pool),
 		Shelves:   shelves.NewService(pool, books),
 		Search:    search.NewPGSearch(pool, books),
+		Index:     searchIndex,
 
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,

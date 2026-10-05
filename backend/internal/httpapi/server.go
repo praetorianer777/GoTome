@@ -68,8 +68,10 @@ type Server struct {
 	Reading *reading.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
-	// Search finds books by the words of their text.
+	// Search finds books by the words of their text; Index looks after the
+	// index it searches.
 	Search search.Searcher
+	Index  *search.Index
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

@@ -3104,6 +3104,137 @@
         "x-permission": "library:read"
       }
     },
+    "/search/rebuild": {
+      "post": {
+        "operationId": "rebuildSearchIndex",
+        "summary": "Build the search index again from the text already read; searches use the old one until then",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
+    "/search/reread": {
+      "post": {
+        "operationId": "rereadText",
+        "summary": "Read the text of a book, a library or every visible book again; search keeps the old text until then",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextRereadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextRereadResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
+    "/search/status": {
+      "get": {
+        "operationId": "searchStatus",
+        "summary": "How much of the books' text search knows, and whether its index is being rebuilt",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "listSettings",
@@ -5232,6 +5363,29 @@
           "value"
         ]
       },
+      "IndexStatus": {
+        "type": "object",
+        "properties": {
+          "engine": {
+            "type": "string"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "indexed": {
+            "type": "integer"
+          },
+          "rebuilding": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "files",
+          "indexed",
+          "rebuilding",
+          "engine"
+        ]
+      },
       "JobList": {
         "type": "object",
         "properties": {
@@ -5887,6 +6041,17 @@
           "history"
         ]
       },
+      "RebuildResult": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
+        ]
+      },
       "RereadLibraryRequest": {
         "type": "object",
         "properties": {
@@ -6498,6 +6663,30 @@
           "position",
           "offset",
           "snippet"
+        ]
+      },
+      "TextRereadRequest": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TextRereadResult": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "files"
         ]
       },
       "UnreadCount": {

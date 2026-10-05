@@ -18,6 +18,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/textproc"
 )
 
@@ -192,18 +193,72 @@ func (s *Service) EnqueueUnchunked(ctx context.Context) error {
 	if err != nil || len(ids) == 0 {
 		return err
 	}
+	if err := s.queueChunking(ctx, ids); err != nil {
+		return err
+	}
+	s.log.Info("queued chunking of books read before", "files", len(ids))
+	return nil
+}
+
+func (s *Service) queueChunking(ctx context.Context, ids []uuid.UUID) error {
 	args := make([]river.JobArgs, len(ids))
 	for i, id := range ids {
 		args[i] = ChunkArgs{FileID: id}
 	}
-	_, err = s.Queue.InsertMany(ctx, args, jobs.InsertOpts{
+	_, err := s.Queue.InsertMany(ctx, args, jobs.InsertOpts{
 		Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
 	})
 	if err != nil {
 		return fmt.Errorf("queue chunking: %w", err)
 	}
-	s.log.Info("queued chunking of books read before", "files", len(ids))
 	return nil
+}
+
+// ChunkVersion names how text is cut into chunks. Raising it when
+// textproc or the extractors' text changes makes the next start read the
+// text of every book again (CheckChunkVersion).
+const ChunkVersion = "1"
+
+// chunkVersionName is the row of index_versions that holds ChunkVersion.
+const chunkVersionName = "chunks"
+
+// CheckChunkVersion compares ChunkVersion with the one the chunks were cut
+// with. When it differs, every file is marked as still to be chunked, for
+// EnqueueUnchunked to queue; the chunks there stay found until replaced.
+// A database without a version is taken to have been cut with this one.
+func (s *Service) CheckChunkVersion(ctx context.Context) error {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		stored, err := q.GetIndexVersion(ctx, chunkVersionName)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		case stored == ChunkVersion:
+			return nil
+		default:
+			s.log.Info("the chunker changed; reading the text of every book again", "from", stored, "to", ChunkVersion)
+			if err := q.ClearAllChunked(ctx); err != nil {
+				return err
+			}
+		}
+		return q.SetIndexVersion(ctx, sqlc.SetIndexVersionParams{Name: chunkVersionName, Version: ChunkVersion})
+	})
+}
+
+// Rechunk reads the text of the visible books again, of a library or of
+// one book when named, and returns how many files it queued. Search keeps
+// finding the old chunks of a book until its new ones replace them.
+func (s *Service) Rechunk(ctx context.Context, scope library.Scope, libraryID, bookID *uuid.UUID) (int, error) {
+	ids, err := sqlc.New(s.pool).ClearChunked(ctx, sqlc.ClearChunkedParams{
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID, BookID: bookID,
+	})
+	if err != nil || len(ids) == 0 {
+		return 0, err
+	}
+	// Should queueing fail, the files are still marked, and the next start
+	// queues them.
+	return len(ids), s.queueChunking(ctx, ids)
 }
 
 // ChunkArgs is the job that cuts one file's text into chunks.

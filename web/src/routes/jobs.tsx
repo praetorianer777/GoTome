@@ -11,6 +11,7 @@ import {
 	useCancelJob,
 	useRetryJob,
 } from "@/jobs/api";
+import { SearchIndexPanel } from "@/jobs/search-controls";
 
 const GROUPS: { value: JobGroup | undefined; label: MessageKey }[] = [
 	{ value: undefined, label: "jobs.filter.all" },
@@ -47,6 +48,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.read", { file: job.filePath || t("jobs.goneFile") });
 		case "ingest.chunk_file":
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
+		case "search.rebuild_index":
+			return t("jobs.kind.rebuildIndex");
 		case "ingest.write_metadata":
 			return t("jobs.kind.write", { file: job.filePath || t("jobs.goneFile") });
 		case "enrich.match_book":
@@ -73,6 +76,7 @@ export function Jobs() {
 					{t("jobs.intro")}
 				</p>
 			</div>
+			<SearchIndexPanel />
 			<fieldset className="flex flex-wrap items-center gap-2 text-sm">
 				<legend className="sr-only">{t("jobs.filter")}</legend>
 				{GROUPS.map((g) => (

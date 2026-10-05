@@ -2027,3 +2027,51 @@ describe("the full-text search", () => {
 		expect(saves()[0]?.body).toMatchObject({ locator: "epubcfi(/6/6)" });
 	});
 });
+
+describe("the search index", () => {
+	it("says how much of the text search knows, and has it read again or the index rebuilt", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Edith", "a long password", "editor").signedInAs("Edith").withLibrary("Novels");
+		renderApp("/jobs");
+		const panel = within(await screen.findByRole("region", { name: "Search index" }));
+		expect(await panel.findByText("Books whose text search knows: 4 of 4.")).toBeInTheDocument();
+
+		await person.click(panel.getByRole("button", { name: "Read all text again" }));
+		expect(await panel.findByText(/^Books whose text is read again in the background: 4\./)).toBeInTheDocument();
+		expect(await panel.findByText("Books whose text search knows: 0 of 4.")).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/search/reread")?.body).toEqual({});
+
+		await person.click(panel.getByRole("button", { name: "Rebuild the index" }));
+		expect(await panel.findByText(/^The index is built again in the background/)).toBeInTheDocument();
+		expect(await panel.findByText(/^The index is being built again/)).toBeInTheDocument();
+		expect(panel.getByRole("button", { name: "Rebuild the index" })).toBeDisabled();
+	});
+
+	it("reads one library's or one book's text again", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", {
+				files: [{ id: "file-1", kind: "ebook", format: "epub", name: "Emma.epub", size: 10, missing: false, drm: false, extractState: "done", hasText: true }],
+			});
+		renderApp("/books/book-1");
+		await person.click(await screen.findByRole("button", { name: "Read the text again for search" }));
+		expect(await screen.findByText(/^Books whose text is read again in the background: 1\./)).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/search/reread")?.body).toEqual({ book: "book-1" });
+
+		await person.click(screen.getByRole("link", { name: "Back to the library" }));
+		await person.click(await screen.findByRole("button", { name: "Read this library's text again for search" }));
+		await waitFor(() =>
+			expect(server.requests.filter((r) => r.path === "/search/reread").at(-1)?.body).toEqual({ library: server.libraries[0]?.id }),
+		);
+	});
+
+	it("is not offered to a reader", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Emma");
+		renderApp("/books/book-1");
+		expect(await screen.findByRole("heading", { name: "Emma", level: 1 })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Read the text again for search" })).not.toBeInTheDocument();
+	});
+});

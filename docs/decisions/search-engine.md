@@ -144,8 +144,9 @@ with the top hits of every query and the query plans, are in
   requires `ALTER EXTENSION pg_search UPDATE` after a new image and suggests
   `REINDEX` if queries misbehave after a large version jump; it promises no
   index format across versions. #57 detects a version change at start and
-  rebuilds, with search incomplete meanwhile. The image changes only in a
-  commit that says so.
+  rebuilds concurrently, beside the old index, which searches keep using
+  meanwhile (`docs/search-index.md`). The image changes only in a commit
+  that says so.
 - **pg_search is pre-1.0.** The SQL used here (the `pdb.*` casts and the
   `&&&`, `###` and `|||` operators) is 0.25's, so the queries are kept in
   one package behind the app's own interface, and a new image is tested

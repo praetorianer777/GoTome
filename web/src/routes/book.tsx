@@ -16,6 +16,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
 import { useRereadFile } from "@/jobs/api";
+import { RereadText } from "@/jobs/search-controls";
 import { type MessageKey, t } from "@/i18n";
 import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
 
@@ -313,6 +314,9 @@ function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
 				))}
 			</ul>
 			<FormError error={reread.error} />
+			{canReread && files.some((f) => f.hasText) && (
+				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />
+			)}
 		</section>
 	);
 }

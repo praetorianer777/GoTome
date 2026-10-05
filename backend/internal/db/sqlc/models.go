@@ -162,6 +162,12 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type IndexVersion struct {
+	Name      string
+	Version   string
+	UpdatedAt time.Time
+}
+
 type Library struct {
 	ID         uuid.UUID
 	Name       string
