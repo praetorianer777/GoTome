@@ -553,6 +553,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/duplicates/{pairId}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Keep both books of a pair, or open it again */
+        put: operations["setDuplicateState"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/download": {
         parameters: {
             query?: never;
@@ -1504,9 +1521,10 @@ export interface components {
             detail: string;
             /** @enum {string} */
             kind: "sha256" | "content" | "isbn" | "title_author" | "overlap";
+            score: number;
         };
         DuplicateList: {
-            more: boolean;
+            nextCursor?: string;
             pairs: components["schemas"]["DuplicatePair"][];
         };
         DuplicatePair: {
@@ -1516,6 +1534,7 @@ export interface components {
             foundAt: string;
             /** Format: uuid */
             id: string;
+            score: number;
             /** @enum {string} */
             state: "open" | "kept_both" | "merged" | "replaced";
         };
@@ -1680,6 +1699,10 @@ export interface components {
         NotificationsRead: {
             all?: boolean;
             ids?: string[];
+        };
+        PairStateRequest: {
+            /** @enum {string} */
+            state: "kept_both" | "open";
         };
         ProgressSaved: {
             progress: components["schemas"]["ProgressView"] | null;
@@ -3159,8 +3182,12 @@ export interface operations {
                 state?: "open" | "kept_both" | "merged" | "replaced";
                 /** @description A library's ID: the pairs with a book in it. Left out, every library the caller may see. */
                 library?: string;
-                /** @description The ID of the last pair of the page before; pairs come newest first. */
-                before?: string;
+                /** @description Only pairs with evidence of this kind. */
+                kind?: "sha256" | "content" | "isbn" | "title_author" | "overlap";
+                /** @description Only pairs whose score is at least this many percent. */
+                least?: number;
+                /** @description Where the page before ended, as its nextCursor says; pairs come strongest first. */
+                cursor?: string;
                 /** @description How many pairs a page holds, at most 100; 50 when left out. */
                 limit?: number;
             };
@@ -3211,6 +3238,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DuplicateCheckResult"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDuplicateState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pairId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairStateRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

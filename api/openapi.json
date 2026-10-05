@@ -1832,9 +1832,32 @@
             }
           },
           {
-            "name": "before",
+            "name": "kind",
             "in": "query",
-            "description": "The ID of the last pair of the page before; pairs come newest first.",
+            "description": "Only pairs with evidence of this kind.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sha256",
+                "content",
+                "isbn",
+                "title_author",
+                "overlap"
+              ]
+            }
+          },
+          {
+            "name": "least",
+            "in": "query",
+            "description": "Only pairs whose score is at least this many percent.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Where the page before ended, as its nextCursor says; pairs come strongest first.",
             "schema": {
               "type": "string"
             }
@@ -1905,6 +1928,56 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/duplicates/{pairId}/state": {
+      "put": {
+        "operationId": "setDuplicateState",
+        "summary": "Keep both books of a pair, or open it again",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "pairId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairStateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "The request failed.",
@@ -5341,18 +5414,22 @@
               "title_author",
               "overlap"
             ]
+          },
+          "score": {
+            "type": "number"
           }
         },
         "required": [
           "kind",
-          "detail"
+          "detail",
+          "score"
         ]
       },
       "DuplicateList": {
         "type": "object",
         "properties": {
-          "more": {
-            "type": "boolean"
+          "nextCursor": {
+            "type": "string"
           },
           "pairs": {
             "type": "array",
@@ -5362,8 +5439,7 @@
           }
         },
         "required": [
-          "pairs",
-          "more"
+          "pairs"
         ]
       },
       "DuplicatePair": {
@@ -5389,6 +5465,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "score": {
+            "type": "number"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -5402,6 +5481,7 @@
         "required": [
           "id",
           "state",
+          "score",
           "foundAt",
           "books",
           "evidence"
@@ -5980,6 +6060,21 @@
             }
           }
         }
+      },
+      "PairStateRequest": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "kept_both",
+              "open"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
       },
       "ProgressSaved": {
         "type": "object",

@@ -297,6 +297,12 @@ func (s *Server) routes() []Route {
 			Query: duplicatesQuery{}, Response: duplicateList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listDuplicates,
 		},
 		{
+			Method: http.MethodPut, Path: "/duplicates/{pairId}/state", ID: "setDuplicateState",
+			Summary: "Keep both books of a pair, or open it again", Tag: "books",
+			Request: pairStateRequest{}, Status: http.StatusNoContent,
+			Permission: auth.MetadataEdit, Handler: s.setPairState,
+		},
+		{
 			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
 			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
 			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,

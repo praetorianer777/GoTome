@@ -408,9 +408,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   first book). Texts under 500 shingles get a row without a signature.
   Raising `SignatureVersion` re-signs every file from its chunks at start
   (`EnqueueUnsigned`, `dedupe.sign_file`).
+- A pair's `score` is that of its strongest evidence, by the SQL function
+  `duplicate_score` (an equal file 1, equal content 0.99, an ISBN 0.9, title
+  and author 0.75, overlap its largest figure); `Check` refreshes it
+  (`RefreshPairScores`), and the list sends each evidence's too.
 - `GET /duplicates` lists pairs of which the caller sees both books, by
-  state, newest first, paged by `before`. The dashboard is #60; merging and
-  replacing are #62 and #63, which set the state.
+  state, strongest first, filtered by evidence kind, least score and
+  library, paged by a cursor of score and ID. `PUT /duplicates/{id}/state`
+  sets `kept_both` or `open` (`metadata:edit`); `merged` and `replaced` are
+  set by merging and replacing (#62, #63). The page is
+  `routes/duplicates.tsx`, its filters in the address; it says each pair in
+  a sentence from its strongest evidence and compares the two books from
+  `GET /books/{id}`.
 
 ## Metadata providers
 

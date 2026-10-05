@@ -1,7 +1,10 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,22 +16,30 @@ import (
 type duplicatesQuery struct {
 	State   string `query:"state" enum:"open,kept_both,merged,replaced" doc:"Which pairs: open (the default) are those nobody has decided about."`
 	Library string `query:"library" doc:"A library's ID: the pairs with a book in it. Left out, every library the caller may see."`
-	Before  string `query:"before" doc:"The ID of the last pair of the page before; pairs come newest first."`
+	Kind    string `query:"kind" enum:"sha256,content,isbn,title_author,overlap" doc:"Only pairs with evidence of this kind."`
+	Least   int    `query:"least" doc:"Only pairs whose score is at least this many percent."`
+	Cursor  string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; pairs come strongest first."`
 	Limit   int    `query:"limit" doc:"How many pairs a page holds, at most 100; 50 when left out."`
 }
 
 type duplicateEvidence struct {
 	Kind string `json:"kind"`
-	// Detail is what the books share: the hash, the ISBN, or the title and
-	// author as compared.
+	// Detail is what the books share: the hash, the ISBN, the title and
+	// author as compared, or for overlap "jaccard=… a_in_b=… b_in_a=…",
+	// from the pair's first book.
 	Detail string `json:"detail"`
+	// Score is how sure this evidence alone makes it, from 0 to 1.
+	Score float32 `json:"score"`
 }
 
 // duplicatePair is two books that look like one, both visible to the
 // caller, and why.
 type duplicatePair struct {
-	ID       uuid.UUID           `json:"id"`
-	State    string              `json:"state"`
+	ID    uuid.UUID `json:"id"`
+	State string    `json:"state"`
+	// Score is how sure the strongest evidence makes it that the books are
+	// one, from 0 to 1.
+	Score    float32             `json:"score"`
 	FoundAt  time.Time           `json:"foundAt"`
 	Books    []bookSummary       `json:"books"`
 	Evidence []duplicateEvidence `json:"evidence"`
@@ -36,8 +47,13 @@ type duplicatePair struct {
 
 type duplicateList struct {
 	Pairs []duplicatePair `json:"pairs"`
-	// More says pairs follow; ask with before set to the last one's ID.
-	More bool `json:"more"`
+	// NextCursor asks for the pairs that follow; left out when none do.
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+type pairStateRequest struct {
+	// State is kept_both, that both books stay as they are, or open.
+	State string `json:"state"`
 }
 
 type duplicateCheckRequest struct {
@@ -72,29 +88,61 @@ func (s *Server) listDuplicates(w http.ResponseWriter, r *http.Request) error {
 		}
 		lq.LibraryID = &id
 	}
-	if q.Before != "" {
-		id, err := uuid.Parse(q.Before)
-		if err != nil {
-			return ErrValidation(map[string]string{"before": "Give a pair's ID."})
+	if q.Kind != "" {
+		lq.Kind = &q.Kind
+	}
+	lq.Least = float32(q.Least) / 100
+	if q.Cursor != "" {
+		score, id, _ := strings.Cut(q.Cursor, "_")
+		f, scoreErr := strconv.ParseFloat(score, 32)
+		pairID, idErr := uuid.Parse(id)
+		if scoreErr != nil || idErr != nil {
+			return ErrValidation(map[string]string{"cursor": "Give the nextCursor of the page before."})
 		}
-		lq.Before = &id
+		lq.After = &dedupe.Cursor{Score: float32(f), ID: pairID}
 	}
 	pairs, more, err := s.Duplicates.List(r.Context(), library.ScopeOf(*UserFrom(r.Context())), lq)
 	if err != nil {
 		return err
 	}
-	out := duplicateList{Pairs: make([]duplicatePair, len(pairs)), More: more}
+	out := duplicateList{Pairs: make([]duplicatePair, len(pairs))}
+	if more && len(pairs) > 0 {
+		last := pairs[len(pairs)-1]
+		out.NextCursor = strconv.FormatFloat(float64(last.Score), 'g', -1, 32) + "_" + last.ID.String()
+	}
 	for i, p := range pairs {
-		dp := duplicatePair{ID: p.ID, State: p.State, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}}
+		dp := duplicatePair{ID: p.ID, State: p.State, Score: p.Score, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}}
 		for _, b := range p.Books {
 			dp.Books = append(dp.Books, summaryOf(b))
 		}
 		for _, e := range p.Evidence {
-			dp.Evidence = append(dp.Evidence, duplicateEvidence{Kind: e.Kind, Detail: e.Detail})
+			dp.Evidence = append(dp.Evidence, duplicateEvidence{Kind: e.Kind, Detail: e.Detail, Score: e.Score})
 		}
 		out.Pairs[i] = dp
 	}
 	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func (s *Server) setPairState(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "pairId", "pair")
+	if err != nil {
+		return err
+	}
+	var req pairStateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	err = s.Duplicates.SetState(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id, req.State)
+	switch {
+	case errors.Is(err, dedupe.ErrNotFound):
+		return ErrNotFound("There is no such pair.")
+	case errors.Is(err, dedupe.ErrState):
+		return ErrValidation(map[string]string{"state": "Use kept_both or open."})
+	case err != nil:
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 

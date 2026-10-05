@@ -72,8 +72,9 @@ WHERE b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.a
 
 -- name: ListDuplicatePairs :many
 -- The pairs in the state whose books the viewer both sees, of a library when
--- named (either book in it), newest first, after the cursor.
-SELECT p.id, p.book_a, p.book_b, p.state, p.found_at
+-- named (either book in it), with evidence of the kind and a score of at
+-- least the least when named, the strongest first, after the cursor's.
+SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score
 FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
@@ -82,14 +83,38 @@ WHERE p.state = sqlc.arg(state)
   AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
   AND (sqlc.narg(library_id)::uuid IS NULL OR sqlc.narg(library_id)::uuid IN (a.library_id, b.library_id))
-  AND (sqlc.narg(before)::uuid IS NULL OR p.id < sqlc.narg(before)::uuid)
-ORDER BY p.id DESC
+  AND (sqlc.narg(kind)::text IS NULL OR EXISTS (
+      SELECT 1 FROM duplicate_evidence e WHERE e.pair_id = p.id AND e.kind = sqlc.narg(kind)::text))
+  AND p.score >= sqlc.arg(least)::real
+  AND (sqlc.narg(after_id)::uuid IS NULL
+       OR (p.score, p.id) < (sqlc.arg(after_score)::real, sqlc.narg(after_id)::uuid))
+ORDER BY p.score DESC, p.id DESC
 LIMIT sqlc.arg(page_size);
 
+-- name: GetVisiblePair :one
+-- The pair, if the viewer sees both its books.
+SELECT p.id, p.state FROM duplicate_pairs p
+JOIN books a ON a.id = p.book_a
+JOIN books b ON b.id = p.book_b
+WHERE p.id = sqlc.arg(id)
+  AND a.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.deleted_at IS NULL AND b.deleted_at IS NULL
+FOR UPDATE OF p;
+
+-- name: SetPairState :exec
+UPDATE duplicate_pairs SET state = $2, updated_at = now() WHERE id = $1;
+
+-- name: RefreshPairScores :exec
+-- The book's pairs' scores, from their evidence as it now is.
+UPDATE duplicate_pairs p SET score = coalesce(
+    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0)
+WHERE p.book_a = sqlc.arg(book_id) OR p.book_b = sqlc.arg(book_id);
+
 -- name: ListDuplicateEvidence :many
-SELECT pair_id, kind, detail FROM duplicate_evidence
+SELECT pair_id, kind, detail, duplicate_score(kind, detail) AS score FROM duplicate_evidence
 WHERE pair_id = ANY(sqlc.arg(pair_ids)::uuid[])
-ORDER BY pair_id, kind, detail;
+ORDER BY pair_id, score DESC, kind, detail;
 
 -- name: ListFileChunkTexts :many
 -- The file's text as its chunks hold it, in order.

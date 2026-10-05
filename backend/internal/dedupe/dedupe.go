@@ -5,6 +5,7 @@ package dedupe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -113,7 +114,10 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		}); err != nil {
 			return err
 		}
-		return q.DropEmptyDuplicatePairs(ctx, bookID)
+		if err := q.DropEmptyDuplicatePairs(ctx, bookID); err != nil {
+			return err
+		}
+		return q.RefreshPairScores(ctx, bookID)
 	})
 }
 
@@ -152,12 +156,16 @@ func (s *Service) Request(ctx context.Context, scope library.Scope, libraryID *u
 type Evidence struct {
 	Kind   string
 	Detail string
+	Score  float32
 }
 
 // Pair is two books that look like one, both of which the viewer sees.
 type Pair struct {
-	ID       uuid.UUID
-	State    string
+	ID    uuid.UUID
+	State string
+	// Score is how sure its strongest evidence makes it, from 0 to 1
+	// (duplicate_score in the database).
+	Score    float32
 	FoundAt  time.Time
 	Books    []catalog.Summary
 	Evidence []Evidence
@@ -166,24 +174,38 @@ type Pair struct {
 // MaxPage is the most pairs a page holds.
 const MaxPage = 100
 
+// Cursor is where a page ends: the score and ID of its last pair.
+type Cursor struct {
+	Score float32
+	ID    uuid.UUID
+}
+
 // ListQuery picks the pairs a list shows.
 type ListQuery struct {
 	State     string
 	LibraryID *uuid.UUID
-	// Before is the last pair of the page before.
-	Before *uuid.UUID
-	Limit  int
+	// Kind keeps the pairs with evidence of the kind; Least those with a
+	// score of at least it.
+	Kind  *string
+	Least float32
+	// After is the cursor of the page before.
+	After *Cursor
+	Limit int
 }
 
 // List returns the pairs of the state of which the scope sees both books,
-// newest first, and whether more follow.
+// the strongest first, and whether more follow.
 func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) ([]Pair, bool, error) {
 	limit := min(max(lq.Limit, 1), MaxPage)
 	q := sqlc.New(s.pool)
-	rows, err := q.ListDuplicatePairs(ctx, sqlc.ListDuplicatePairsParams{
+	params := sqlc.ListDuplicatePairsParams{
 		State: lq.State, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
-		LibraryID: lq.LibraryID, Before: lq.Before, PageSize: int32(limit + 1),
-	})
+		LibraryID: lq.LibraryID, Kind: lq.Kind, Least: lq.Least, PageSize: int32(limit + 1),
+	}
+	if lq.After != nil {
+		params.AfterID, params.AfterScore = &lq.After.ID, lq.After.Score
+	}
+	rows, err := q.ListDuplicatePairs(ctx, params)
 	if err != nil {
 		return nil, false, err
 	}
@@ -212,7 +234,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 	}
 	byPair := map[uuid.UUID][]Evidence{}
 	for _, e := range evidence {
-		byPair[e.PairID] = append(byPair[e.PairID], Evidence{Kind: e.Kind, Detail: e.Detail})
+		byPair[e.PairID] = append(byPair[e.PairID], Evidence{Kind: e.Kind, Detail: e.Detail, Score: e.Score})
 	}
 	out := make([]Pair, 0, len(rows))
 	for _, r := range rows {
@@ -222,11 +244,37 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 			continue
 		}
 		out = append(out, Pair{
-			ID: r.ID, State: r.State, FoundAt: r.FoundAt,
+			ID: r.ID, State: r.State, Score: r.Score, FoundAt: r.FoundAt,
 			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID],
 		})
 	}
 	return out, more, nil
+}
+
+// ErrNotFound is a pair that does not exist, or one of whose books the
+// viewer does not see.
+var ErrNotFound = errors.New("no such pair")
+
+// ErrState is a state a person may not set here: merged and replaced are
+// what merging and replacing set.
+var ErrState = errors.New("a pair is kept both or open")
+
+// SetState records what a person decided about a pair of which they see
+// both books: that both books stay (kept_both), or that it is open again.
+// A pair kept both stays so when it is found again.
+func (s *Service) SetState(ctx context.Context, scope library.Scope, id uuid.UUID, state string) error {
+	if state != StateKeptBoth && state != StateOpen {
+		return ErrState
+	}
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if _, err := q.GetVisiblePair(ctx, sqlc.GetVisiblePairParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll}); errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
+		}
+		return q.SetPairState(ctx, sqlc.SetPairStateParams{ID: id, State: state})
+	})
 }
 
 // checkAttempts is how often a failed check is tried.
