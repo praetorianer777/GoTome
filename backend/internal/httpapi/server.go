@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -72,6 +73,8 @@ type Server struct {
 	// index it searches.
 	Search search.Searcher
 	Index  *search.Index
+	// Duplicates finds books that look like one another.
+	Duplicates *dedupe.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

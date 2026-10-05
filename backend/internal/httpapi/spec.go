@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
@@ -75,6 +76,8 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["BulkRequest.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
 	b.FieldOverrides["BulkStatus.action"] = &openapi.Schema{Type: "string", Enum: bulk.Actions}
 	b.FieldOverrides["BulkResult.outcome"] = &openapi.Schema{Type: "string", Enum: bulk.Outcomes}
+	b.FieldOverrides["DuplicateEvidence.kind"] = &openapi.Schema{Type: "string", Enum: dedupe.Kinds}
+	b.FieldOverrides["DuplicatePair.state"] = &openapi.Schema{Type: "string", Enum: dedupe.States}
 	b.FieldOverrides["StatsEvent.event"] = &openapi.Schema{Type: "string", Enum: []string{"started", "finished"}}
 	failure := &openapi.Response{
 		Description: "The request failed.",

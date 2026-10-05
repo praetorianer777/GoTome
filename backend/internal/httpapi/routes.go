@@ -292,6 +292,17 @@ func (s *Server) routes() []Route {
 			Permission: auth.IndexRebuild, Handler: s.rebuildSearchIndex,
 		},
 		{
+			Method: http.MethodGet, Path: "/duplicates", ID: "listDuplicates",
+			Summary: "Pairs of books that look like one, both of which the caller sees, with why", Tag: "books",
+			Query: duplicatesQuery{}, Response: duplicateList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listDuplicates,
+		},
+		{
+			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
+			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
+			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.checkDuplicates,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
 			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,

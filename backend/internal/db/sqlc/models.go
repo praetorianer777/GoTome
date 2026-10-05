@@ -162,6 +162,21 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type DuplicateEvidence struct {
+	PairID uuid.UUID
+	Kind   string
+	Detail string
+}
+
+type DuplicatePair struct {
+	ID        uuid.UUID
+	BookA     uuid.UUID
+	BookB     uuid.UUID
+	State     string
+	FoundAt   time.Time
+	UpdatedAt time.Time
+}
+
 type IndexVersion struct {
 	Name      string
 	Version   string

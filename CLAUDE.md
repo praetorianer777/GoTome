@@ -378,6 +378,24 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `GET /search/status` counts the visible books' text files and how many
   are chunked. Old chunks and the old index answer until replaced.
 
+## Duplicates
+
+- `internal/dedupe` keeps `duplicate_pairs` (two books, smaller ID first,
+  with a state a person sets: `open`, `kept_both`, `merged`, `replaced`)
+  and their `duplicate_evidence`: a file of the same SHA-256, of the same
+  `content_sha256` where the bytes differ, a shared ISBN, or the same
+  `title_key` with an author in common (`FindDuplicateEvidence`). Deleted,
+  merged and placeholder books have none.
+- `Service.Check` records what it finds for one book and takes back, from
+  the book's open pairs, the evidence not found again; an open pair left
+  without any goes. It is safe to run again. Extraction queues it
+  (`dedupe.check_book`, through `OnExtracted`), after the commit so that
+  it sees the file; `POST /duplicates/checks` queues it for a library's or
+  every visible book.
+- `GET /duplicates` lists pairs of which the caller sees both books, by
+  state, newest first, paged by `before`. The dashboard is #60; merging and
+  replacing are #62 and #63, which set the state.
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by

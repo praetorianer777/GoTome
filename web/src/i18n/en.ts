@@ -360,6 +360,7 @@ export const en = {
 	"jobs.kind.read": "Read {file}",
 	"jobs.kind.chunk": "Keep the text of {file} for search",
 	"jobs.kind.rebuildIndex": "Build the search index again",
+	"jobs.kind.duplicates": "Look for duplicates of {book}",
 	"searchIndex.title": "Search index",
 	"searchIndex.intro":
 		"Read the text again once GOtome reads a format better; rebuild the index after the database was upgraded, which GOtome also does by itself when it starts. Search keeps working meanwhile, with what it has.",
