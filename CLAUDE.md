@@ -301,6 +301,32 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
   is that hash. A route that sends something other than JSON declares `Produces`.
 
+## Chunks
+
+- A book's text is kept as `book_chunks`, read from its primary text file
+  only: the best of its readable files, an EPUB, then a Kindle file, then a
+  PDF (`choosePrimaryTx`, by `catalog.FormatRank`). `internal/textproc`
+  normalises the extractor's sections and cuts them at paragraph breaks into
+  chunks of about 8,000 characters, each with the chapter it starts in, its
+  pages (a PDF's own, or estimated at `charsPerPage`), its offset and its
+  language (`textproc.Detect`, by function words, the book's language when a
+  chunk cannot tell).
+- The text goes into `body_en`, `body_de` or `body_xx` by language, the
+  columns the search index stems each its own way. `library_id` follows the
+  book's through the foreign key on `(book_id, library_id)`.
+- Extraction writes the chunks in the transaction that records the file, and
+  replaces what was there: the book's chunks and the file's. When another
+  file becomes the primary one, it is queued as `ingest.chunk_file`
+  (`Service.Chunk`), which reads the file again for its text only. The app
+  queues every primary text file whose `chunked_at` is NULL at start
+  (`EnqueueUnchunked`); clearing it is how chunks are rebuilt.
+- `search_words` is every word of every chunk, lower case and as written,
+  for repairing typos (#55). Words are only added, never counted or removed,
+  so books chunked in parallel do not wait on each other. It holds the words
+  of private libraries too: use it to search, never show its words.
+- Placeholders have no files and so no chunks. A merge of books (#62) must
+  choose the survivor's primary text file and rechunk it.
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by

@@ -43,8 +43,8 @@ type Section struct {
 // Extracted is what reading one file yields.
 type Extracted struct {
 	Metadata catalog.FileMetadata
-	// Sections are the text in reading order. Nothing keeps them yet; the
-	// full-text search will.
+	// Sections are the text in reading order, which the primary text file's
+	// book keeps as chunks.
 	Sections []Section
 	// Cover is the cover image as the file holds it, or nil.
 	Cover []byte
@@ -198,10 +198,7 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		if err := orderParts(ctx, q, bookID); err != nil {
 			return err
 		}
-		if !got.HasText {
-			return nil
-		}
-		return q.SetPrimaryTextFile(ctx, sqlc.SetPrimaryTextFileParams{ID: bookID, PrimaryTextFileID: &fileID})
+		return s.textReadTx(ctx, tx, bookID, file.LibraryID, fileID, file.Format, got.Metadata.Language, got.Sections)
 	})
 }
 

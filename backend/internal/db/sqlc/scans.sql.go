@@ -143,7 +143,7 @@ func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) error {
 }
 
 const getFileForExtraction = `-- name: GetFileForExtraction :one
-SELECT f.id, f.book_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.sha256, f.missing_at, f.trashed_at, l.root_path
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
@@ -152,6 +152,7 @@ WHERE f.id = $1
 type GetFileForExtractionRow struct {
 	ID        uuid.UUID
 	BookID    uuid.UUID
+	LibraryID uuid.UUID
 	Format    string
 	RelPath   string
 	Sha256    []byte
@@ -166,6 +167,7 @@ func (q *Queries) GetFileForExtraction(ctx context.Context, id uuid.UUID) (GetFi
 	err := row.Scan(
 		&i.ID,
 		&i.BookID,
+		&i.LibraryID,
 		&i.Format,
 		&i.RelPath,
 		&i.Sha256,
@@ -834,23 +836,6 @@ func (q *Queries) SetFileWritten(ctx context.Context, arg SetFileWrittenParams) 
 		arg.ModifiedAt,
 		arg.ID,
 	)
-	return err
-}
-
-const setPrimaryTextFile = `-- name: SetPrimaryTextFile :exec
-UPDATE books
-SET primary_text_file_id = $2
-WHERE id = $1 AND primary_text_file_id IS NULL
-`
-
-type SetPrimaryTextFileParams struct {
-	ID                uuid.UUID
-	PrimaryTextFileID *uuid.UUID
-}
-
-// The first file of a book that has text is the one its text is read from.
-func (q *Queries) SetPrimaryTextFile(ctx context.Context, arg SetPrimaryTextFileParams) error {
-	_, err := q.db.Exec(ctx, setPrimaryTextFile, arg.ID, arg.PrimaryTextFileID)
 	return err
 }
 

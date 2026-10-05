@@ -54,6 +54,22 @@ type Book struct {
 	Placeholder        bool
 }
 
+type BookChunk struct {
+	ID         int64
+	BookID     uuid.UUID
+	LibraryID  uuid.UUID
+	FileID     uuid.UUID
+	Position   int32
+	Chapter    string
+	PageFrom   *int32
+	PageTo     *int32
+	CharOffset int32
+	Lang       string
+	BodyEn     *string
+	BodyDe     *string
+	BodyXx     *string
+}
+
 type BookContributor struct {
 	BookID   uuid.UUID
 	AuthorID uuid.UUID
@@ -88,6 +104,7 @@ type BookFile struct {
 	UpdatedAt      time.Time
 	TrackNumber    *int32
 	DiscNumber     *int32
+	ChunkedAt      *time.Time
 }
 
 type BookIdentifier struct {
@@ -254,6 +271,10 @@ type ReadingSession struct {
 	EndedAt      time.Time
 	FromFraction float64
 	ToFraction   float64
+}
+
+type SearchWord struct {
+	Word string
 }
 
 type Series struct {

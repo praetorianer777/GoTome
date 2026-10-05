@@ -162,6 +162,7 @@ func serve() error {
 	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
+	river.AddWorker(workers, &ingest.ChunkWorker{Service: scans})
 	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
@@ -180,6 +181,11 @@ func serve() error {
 	changes.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
+	}
+	// Books read before their text was kept, or whose chunks were dropped to
+	// be rebuilt. Search works without them meanwhile, only knows less.
+	if err := scans.EnqueueUnchunked(ctx); err != nil {
+		log.Warn("could not queue chunking", "error", err)
 	}
 	// Stopped last, after the HTTP server has drained: a request in flight may
 	// still enqueue a job.
