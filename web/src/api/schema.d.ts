@@ -570,6 +570,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a trashed file for good, before its time is up */
+        delete: operations["purgeFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/download": {
         parameters: {
             query?: never;
@@ -598,6 +615,40 @@ export interface paths {
         put?: never;
         /** Read a file again for its details, cover and text */
         post: operations["rereadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bring a trashed file back to where it was and to its book */
+        post: operations["restoreFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a file of a writable library into its trash; it can be restored until the trash is purged */
+        post: operations["trashFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1081,6 +1132,23 @@ export interface paths {
         };
         /** One page of the books on a smart shelf, as they match for the caller now */
         get: operations["listSmartShelfBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The trashed files of the libraries the caller sees, the latest first */
+        get: operations["listTrash"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1960,6 +2028,27 @@ export interface components {
         };
         TextRereadResult: {
             files: number;
+        };
+        TrashList: {
+            files: components["schemas"]["TrashedFile"][];
+        };
+        TrashedFile: {
+            /** Format: uuid */
+            bookId: string;
+            bookTitle: string;
+            format: string;
+            /** Format: uuid */
+            id: string;
+            library: string;
+            /** Format: uuid */
+            libraryId: string;
+            name: string;
+            /** Format: date-time */
+            purgeAt: string;
+            size: number;
+            /** Format: date-time */
+            trashedAt: string;
+            trashedBy?: string;
         };
         UnreadCount: {
             unread: number;
@@ -3283,6 +3372,35 @@ export interface operations {
             };
         };
     };
+    purgeFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     downloadFile: {
         parameters: {
             query?: never;
@@ -3333,6 +3451,64 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RereadResult"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    restoreFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    trashFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -4525,6 +4701,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrashList"];
                 };
             };
             /** @description The request failed. */

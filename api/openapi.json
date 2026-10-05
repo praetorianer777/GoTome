@@ -21,6 +21,9 @@
       "name": "collections"
     },
     {
+      "name": "files"
+    },
+    {
       "name": "jobs"
     },
     {
@@ -1998,6 +2001,46 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/files/{fileId}": {
+      "delete": {
+        "operationId": "purgeFile",
+        "summary": "Delete a trashed file for good, before its time is up",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
     "/files/{fileId}/download": {
       "get": {
         "operationId": "downloadFile",
@@ -2091,6 +2134,86 @@
           }
         ],
         "x-permission": "index:rebuild"
+      }
+    },
+    "/files/{fileId}/restore": {
+      "post": {
+        "operationId": "restoreFile",
+        "summary": "Bring a trashed file back to where it was and to its book",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/files/{fileId}/trash": {
+      "post": {
+        "operationId": "trashFile",
+        "summary": "Move a file of a writable library into its trash; it can be restored until the trash is purged",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
       }
     },
     "/jobs": {
@@ -3894,6 +4017,53 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/trash": {
+      "get": {
+        "operationId": "listTrash",
+        "summary": "The trashed files of the libraries the caller sees, the latest first",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrashList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
       }
     },
     "/users": {
@@ -7007,6 +7177,75 @@
         },
         "required": [
           "files"
+        ]
+      },
+      "TrashList": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrashedFile"
+            }
+          }
+        },
+        "required": [
+          "files"
+        ]
+      },
+      "TrashedFile": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookTitle": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "type": "string"
+          },
+          "libraryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "purgeAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "trashedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trashedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "format",
+          "size",
+          "bookId",
+          "bookTitle",
+          "libraryId",
+          "library",
+          "trashedAt",
+          "purgeAt"
         ]
       },
       "UnreadCount": {

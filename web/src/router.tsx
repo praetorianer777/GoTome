@@ -36,6 +36,7 @@ import { RouteError } from "@/routes/route-error";
 import { SearchPage, type TextSearch } from "@/routes/search";
 import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
 import { Setup } from "@/routes/setup";
+import { Trash } from "@/routes/trash";
 import { Upload } from "@/routes/upload";
 
 interface RouterContext {
@@ -360,6 +361,19 @@ const jobsRoute = createRoute({
 	component: Jobs,
 });
 
+const trashRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/trash",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function TrashPage() {
+		return <Trash user={useRouteContext({ from: "/app" }).user} />;
+	},
+});
+
 const adminUsersRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/admin/users",
@@ -384,7 +398,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

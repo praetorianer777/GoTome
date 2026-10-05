@@ -57,6 +57,7 @@ const (
 	// running jobs, so that its own cancelling of them still happens.
 	jobsShutdownWait     = 40 * time.Second
 	sessionSweepInterval = time.Hour
+	trashPurgeInterval   = 6 * time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -166,6 +167,7 @@ func serve() error {
 		return duplicates.EnqueueTx(ctx, tx, bookID)
 	}
 	scans.OnChunked = duplicates.ChunkedTx
+	scans.OnFilesChanged = duplicates.EnqueueTx
 	changes := bulk.NewService(pool, scans, matches, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
@@ -180,8 +182,18 @@ func serve() error {
 	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
+	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
+		retention, err := settingStore.TrashRetention(ctx)
+		if err != nil {
+			log.Warn("trash retention unreadable; keeping files", "error", err)
+			// Nothing is purged until the setting can be read.
+			return 100 * 365 * 24 * time.Hour
+		}
+		return retention
+	}})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
+		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is

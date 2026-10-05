@@ -30,6 +30,7 @@ import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
 import type { DuplicatePair } from "@/duplicates/api";
+import type { TrashedFile } from "@/trash/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -142,6 +143,9 @@ export class FakeServer {
 		this.pairs.push({ id, state: "open", score, foundAt: "2026-01-02T00:00:00Z", books, evidence });
 		return this;
 	}
+
+	/** The files in the trash, with the record each came from. */
+	trashed: { view: TrashedFile; file: BookDetail["files"][number] }[] = [];
 	/** How much of the text search knows; rebuilding and rereading change it. */
 	searchStatus = { files: 4, indexed: 4, rebuilding: false, engine: "0.25.11" };
 	/** The signed-in person's statistics, the same whatever the window. */
@@ -271,6 +275,13 @@ export class FakeServer {
 				}
 				pair.state = (body as { state: DuplicatePair["state"] }).state;
 				return new Response(null, { status: 204 });
+			}
+			if (path === "/trash") {
+				return Response.json({ files: this.trashed.map((t) => t.view) });
+			}
+			const fileAction = /^\/files\/([^/]+)(?:\/(trash|restore))?$/.exec(path);
+			if (fileAction && (fileAction[2] || request.method === "DELETE")) {
+				return this.trashAction(fileAction[1] ?? "", fileAction[2] ?? "purge");
 			}
 			if (path === "/search/status") {
 				return Response.json(this.searchStatus);
@@ -1572,6 +1583,39 @@ export class FakeServer {
 				return hits.length > 0 ? [{ book: summaryOf(b), hits }] : [];
 			});
 		return Response.json({ books, more: false });
+	}
+
+	private trashAction(fileID: string, action: string) {
+		const refuse = (status: number, message: string) =>
+			Response.json({ error: { code: "refused", message } }, { status });
+		if (action === "purge" && !this.session?.permissions.includes("storage:manage")) {
+			return refuse(403, "You do not have permission to do that.");
+		}
+		if (action === "trash") {
+			const book = this.books.find((b) => b.files.some((f) => f.id === fileID));
+			const file = book?.files.find((f) => f.id === fileID);
+			if (!book || !file) return refuse(404, "There is no such file.");
+			book.files = book.files.filter((f) => f.id !== fileID);
+			this.trashed.push({
+				file,
+				view: {
+					id: file.id, name: file.name, format: file.format, size: file.size,
+					bookId: book.id, bookTitle: book.title, libraryId: book.libraryId,
+					library: this.libraries.find((l) => l.id === book.libraryId)?.name ?? "",
+					trashedAt: "2026-10-05T10:00:00Z", purgeAt: "2026-11-04T10:00:00Z",
+					trashedBy: this.session?.username,
+				},
+			});
+			return new Response(null, { status: 204 });
+		}
+		const at = this.trashed.findIndex((t) => t.view.id === fileID);
+		const entry = this.trashed[at];
+		if (!entry) return refuse(404, "There is no such file in the trash.");
+		this.trashed.splice(at, 1);
+		if (action === "restore") {
+			this.books.find((b) => b.id === entry.view.bookId)?.files.push(entry.file);
+		}
+		return new Response(null, { status: 204 });
 	}
 
 	/** The facets the server would count, from the same books. */

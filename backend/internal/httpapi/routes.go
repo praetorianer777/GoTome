@@ -242,6 +242,26 @@ func (s *Server) routes() []Route {
 			Response: rereadResult{}, Status: http.StatusAccepted, Permission: auth.IndexRebuild, Handler: s.rereadFile,
 		},
 		{
+			Method: http.MethodGet, Path: "/trash", ID: "listTrash",
+			Summary: "The trashed files of the libraries the caller sees, the latest first", Tag: "files",
+			Query: trashQuery{}, Response: trashList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listTrash,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/trash", ID: "trashFile",
+			Summary: "Move a file of a writable library into its trash; it can be restored until the trash is purged", Tag: "files",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.trashFile,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
+			Summary: "Bring a trashed file back to where it was and to its book", Tag: "files",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.restoreFile,
+		},
+		{
+			Method: http.MethodDelete, Path: "/files/{fileId}", ID: "purgeFile",
+			Summary: "Delete a trashed file for good, before its time is up", Tag: "files",
+			Status: http.StatusNoContent, Permission: auth.StorageManage, Handler: s.purgeFile,
+		},
+		{
 			Method: http.MethodPost, Path: "/libraries/{libraryId}/extractions", ID: "rereadLibrary",
 			Summary: "Read a library's files again: those that failed, or all", Tag: "jobs",
 			Request: rereadLibraryRequest{}, Response: rereadResult{}, Status: http.StatusAccepted,

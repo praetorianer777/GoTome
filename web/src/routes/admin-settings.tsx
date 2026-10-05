@@ -31,6 +31,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.providers",
 		hint: "settings.providers.hint",
 	},
+	"trash.retentionDays": {
+		label: "settings.trashRetention",
+		hint: "settings.trashRetention.hint",
+	},
 };
 
 export function AdminSettings() {

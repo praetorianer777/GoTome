@@ -105,6 +105,7 @@ type BookFile struct {
 	TrackNumber    *int32
 	DiscNumber     *int32
 	ChunkedAt      *time.Time
+	TrashedBy      *uuid.UUID
 }
 
 type BookIdentifier struct {

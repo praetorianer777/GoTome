@@ -186,6 +186,12 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- A trash for files. Editors move a file to the trash from its book's page
+  in a library GOtome writes to; it leaves the book and the library's lists
+  but stays on disk in the library's `.trash` folder. The Trash page lists
+  what is there, says when each goes for good, and restores a file to its
+  book. Files are deleted for good after 30 days (an administrator sets how
+  many in Settings), or at once by an administrator who confirms it twice.
 - A Duplicates page lists books that look like one another, the surest
   first: the same file, the same text with other details, a shared ISBN,
   the same title and author, or text they share ("Persuasion is 97%

@@ -17,6 +17,8 @@ import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
 import { useRereadFile } from "@/jobs/api";
 import { RereadText } from "@/jobs/search-controls";
+import { librariesQuery } from "@/libraries/api";
+import { useTrashFile } from "@/trash/api";
 import { type MessageKey, t } from "@/i18n";
 import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
 
@@ -222,7 +224,7 @@ function BookPage({ book }: { book: BookDetail }) {
 						</section>
 					)}
 
-					<Files bookId={book.id} files={book.files} />
+					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
 				</div>
 			</div>
 		</article>
@@ -242,10 +244,24 @@ function fileNotes(file: BookFile): string[] {
 	return notes;
 }
 
-function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
+function Files({
+	bookId,
+	libraryId,
+	files,
+}: {
+	bookId: string;
+	libraryId: string;
+	files: BookFile[];
+}) {
 	const { user } = useRouteContext({ from: "/app" });
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
+	const trash = useTrashFile();
+	const libraries = useQuery(librariesQuery);
+	// Files go to the trash only in a library GOtome writes to.
+	const canTrash =
+		can(user, "metadata:edit") &&
+		Boolean(libraries.data?.find((l) => l.id === libraryId)?.writable);
 	if (files.length === 0) {
 		return null;
 	}
@@ -300,6 +316,17 @@ function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
 								{t("book.file.read")}
 							</Link>
 						)}
+						{canTrash && !file.missing && (
+							<button
+								type="button"
+								disabled={trash.isPending}
+								onClick={() => trash.mutate(file.id)}
+								aria-label={t("book.file.trashNamed", { name: file.name })}
+								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.file.trash")}
+							</button>
+						)}
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}
@@ -313,7 +340,7 @@ function Files({ bookId, files }: { bookId: string; files: BookFile[] }) {
 					</li>
 				))}
 			</ul>
-			<FormError error={reread.error} />
+			<FormError error={reread.error ?? trash.error} />
 			{canReread && files.some((f) => f.hasText) && (
 				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />
 			)}

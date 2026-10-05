@@ -267,6 +267,27 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - The web app sends uploads with `XMLHttpRequest` (`web/src/books/upload.ts`)
   for the progress, not through the typed client; the fake server stubs it.
 
+## Trash
+
+- Nothing is deleted by one click. `ingest.Service.Trash` moves a file of a
+  writable library (managed, or external with `writable`) to
+  `<library>/.trash/<file id>/<name>` by a rename, last in the transaction
+  that sets `trashed_at` and `trashed_by`, under `LockLibraryFiles`; a
+  failed commit moves it back. The record keeps its `rel_path`, which stays
+  taken; the scan passes by both the dot folder and the trashed record.
+  The file's chunks and signature go and the book's text is chosen again
+  (`textGoneTx`); `OnFilesChanged` queues its duplicate check.
+- `Restore` moves it back if nothing else lies at its path (409 otherwise),
+  and queues its text if it is the book's primary text file again.
+  `Purge` deletes the record and the folder; the book stays, with or
+  without files. Purging is an administrator's (`DELETE /files/{id}`,
+  `storage:manage`) or the `ingest.purge_trash` job's, every six hours, for
+  files older than the setting `trash.retentionDays` (30); an unreadable
+  setting purges nothing.
+- `GET /trash` lists the trashed files of visible libraries for editors,
+  with when each goes for good; `routes/trash.tsx` is its page, and a
+  book's files offer "Move to trash" where the library is writable.
+
 ## Extraction
 
 - Readers exist for EPUB (`format/epub`), MOBI, AZW and AZW3 (`format/mobi`, see
