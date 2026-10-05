@@ -175,6 +175,7 @@ type DuplicatePair struct {
 	State     string
 	FoundAt   time.Time
 	UpdatedAt time.Time
+	Score     float32
 }
 
 type FileLsh struct {

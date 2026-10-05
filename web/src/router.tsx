@@ -34,6 +34,7 @@ import { NotFound } from "@/routes/not-found";
 import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
 import { SearchPage, type TextSearch } from "@/routes/search";
+import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
 import { Setup } from "@/routes/setup";
 import { Upload } from "@/routes/upload";
 
@@ -152,6 +153,32 @@ const searchRoute = createRoute({
 				onSearch={(change) =>
 					navigate({ search: (previous) => ({ ...previous, ...change }) })
 				}
+			/>
+		);
+	},
+});
+
+const KINDS = ["sha256", "content", "isbn", "title_author", "overlap"] as const;
+
+const duplicatesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/duplicates",
+	validateSearch: (search): DuplicatesSearch => {
+		const least = Number(search.least);
+		return {
+			state: search.state === "kept_both" ? "kept_both" : undefined,
+			kind: oneOf(KINDS, search.kind),
+			least: Number.isInteger(least) && least > 0 && least <= 100 ? least : undefined,
+			library: typeof search.library === "string" ? search.library : undefined,
+		};
+	},
+	component: function DuplicatesRoute() {
+		const navigate = duplicatesRoute.useNavigate();
+		return (
+			<Duplicates
+				user={useRouteContext({ from: "/app" }).user}
+				search={duplicatesRoute.useSearch()}
+				onSearch={(change) => navigate({ search: (previous) => ({ ...previous, ...change }) })}
 			/>
 		);
 	},
@@ -357,7 +384,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

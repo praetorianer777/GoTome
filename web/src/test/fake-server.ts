@@ -29,6 +29,7 @@ import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
+import type { DuplicatePair } from "@/duplicates/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -127,6 +128,20 @@ export class FakeServer {
 	 * filter.
 	 */
 	passages: { bookId: string; hit: TextHit }[] = [];
+	/** The pairs of books that look like one, strongest first. */
+	pairs: DuplicatePair[] = [];
+
+	/** Adds an open pair of two of the books, with its evidence. */
+	withPair(id: string, a: string, b: string, evidence: DuplicatePair["evidence"]): this {
+		const books = [a, b].map((bookId) => {
+			const book = this.books.find((x) => x.id === bookId);
+			if (!book) throw new Error(`no book ${bookId}`);
+			return summaryOf(book);
+		});
+		const score = Math.max(...evidence.map((e) => e.score));
+		this.pairs.push({ id, state: "open", score, foundAt: "2026-01-02T00:00:00Z", books, evidence });
+		return this;
+	}
 	/** How much of the text search knows; rebuilding and rereading change it. */
 	searchStatus = { files: 4, indexed: 4, rebuilding: false, engine: "0.25.11" };
 	/** The signed-in person's statistics, the same whatever the window. */
@@ -236,6 +251,26 @@ export class FakeServer {
 			});
 			if (path === "/search") {
 				return this.searchText(url.searchParams);
+			}
+			if (path === "/duplicates") {
+				const q = url.searchParams;
+				const least = Number(q.get("least") ?? 0) / 100;
+				const pairs = this.pairs.filter(
+					(p) =>
+						p.state === (q.get("state") ?? "open") &&
+						p.score >= least &&
+						(!q.get("kind") || p.evidence.some((e) => e.kind === q.get("kind"))),
+				);
+				return Response.json({ pairs });
+			}
+			const pairState = /^\/duplicates\/([^/]+)\/state$/.exec(path);
+			if (pairState && request.method === "PUT") {
+				const pair = this.pairs.find((p) => p.id === pairState[1]);
+				if (!pair) {
+					return Response.json({ error: { code: "not_found", message: "There is no such pair." } }, { status: 404 });
+				}
+				pair.state = (body as { state: DuplicatePair["state"] }).state;
+				return new Response(null, { status: 204 });
 			}
 			if (path === "/search/status") {
 				return Response.json(this.searchStatus);

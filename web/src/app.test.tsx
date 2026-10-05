@@ -2075,3 +2075,68 @@ describe("the search index", () => {
 		expect(screen.queryByRole("button", { name: "Read the text again for search" })).not.toBeInTheDocument();
 	});
 });
+
+describe("the duplicates page", () => {
+	function withPairs(role: "editor" | "reader") {
+		const file = (id: string, format: string, name: string, size: number) => ({
+			id, kind: "ebook", format, name, size, missing: false, drm: false, extractState: "done",
+		});
+		server
+			.withAccount("Edith", "a long password", role)
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [file("f1", "epub", "Emma.epub", 300_000)] })
+			.withBook("Emma (print)", { files: [file("f2", "pdf", "Emma.pdf", 2_000_000)] })
+			.withBook("The Complete Austen", { files: [file("f3", "epub", "Austen.epub", 5_000_000)] })
+			.withBook("Persuasion", { files: [file("f4", "epub", "Persuasion.epub", 280_000)] });
+		server
+			.withPair("pair-1", "book-1", "book-2", [
+				{ kind: "isbn", detail: "9780141439587", score: 0.9 },
+				{ kind: "overlap", detail: "jaccard=0.92 a_in_b=0.95 b_in_a=0.94", score: 0.95 },
+			])
+			.withPair("pair-2", "book-4", "book-3", [
+				{ kind: "overlap", detail: "jaccard=0.18 a_in_b=0.97 b_in_a=0.19", score: 0.97 },
+			]);
+		server.pairs.sort((x, y) => y.score - x.score);
+	}
+
+	it("says why each pair looks like one, compares them side by side, and keeps both", async () => {
+		const person = userEvent.setup();
+		withPairs("editor");
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Duplicates" }));
+		const list = within(await screen.findByRole("region", { name: "Pairs" }));
+		const omnibus = within(await list.findByRole("listitem", { name: "Persuasion is 97% contained in The Complete Austen." }));
+		const emma = within(list.getByRole("listitem", { name: "92% text overlap between Emma and Emma (print)." }));
+		expect(omnibus.getByText("Score 97%")).toBeInTheDocument();
+		const evidence = within(emma.getByRole("list", { name: "Evidence" }));
+		expect(evidence.getByText("The ISBN 9780141439587")).toBeInTheDocument();
+		expect(evidence.getByText(/^Shared text: 92% overlap; 95% of Emma is in Emma \(print\)/)).toBeInTheDocument();
+		expect(evidence.getAllByText(/^\d+%$/).map((n) => n.textContent)).toEqual(["95%", "90%"]);
+
+		await person.click(emma.getByRole("button", { name: "Compare" }));
+		const files = await emma.findByRole("row", { name: /^Files/ });
+		expect(files).toHaveTextContent("EPUB Emma.epub");
+		expect(files).toHaveTextContent("PDF Emma.pdf");
+
+		await person.selectOptions(screen.getByRole("combobox", { name: "Evidence" }), "isbn");
+		await waitFor(() => expect(list.queryByRole("listitem", { name: /Persuasion/ })).not.toBeInTheDocument());
+		expect(router.state.location.search).toMatchObject({ kind: "isbn" });
+		await person.selectOptions(screen.getByRole("combobox", { name: "Evidence" }), "");
+
+		await person.click(within(await list.findByRole("listitem", { name: /^Persuasion/ })).getByRole("button", { name: "Keep both" }));
+		await waitFor(() => expect(list.queryByRole("listitem", { name: /^Persuasion/ })).not.toBeInTheDocument());
+		expect(server.pairs.find((p) => p.id === "pair-2")?.state).toBe("kept_both");
+		await person.click(screen.getByRole("button", { name: "Kept both" }));
+		expect(await list.findByRole("listitem", { name: /^Persuasion/ })).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ state: "kept_both" });
+	});
+
+	it("shows a reader the pairs but no way to decide", async () => {
+		withPairs("reader");
+		renderApp("/duplicates");
+		const list = within(await screen.findByRole("region", { name: "Pairs" }));
+		expect(await list.findAllByRole("button", { name: "Compare" })).toHaveLength(2);
+		expect(list.queryByRole("button", { name: "Keep both" })).not.toBeInTheDocument();
+	});
+});

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,8 +17,9 @@ import (
 )
 
 type pairView struct {
-	ID    string `json:"id"`
-	State string `json:"state"`
+	ID    string  `json:"id"`
+	State string  `json:"state"`
+	Score float64 `json:"score"`
 	Books []struct {
 		ID    string `json:"id"`
 		Title string `json:"title"`
@@ -30,17 +32,25 @@ type pairView struct {
 
 func (a *app) duplicates(c *http.Client, query string) []pairView {
 	a.t.Helper()
+	pairs, _ := a.duplicatePage(c, query)
+	return pairs
+}
+
+// duplicatePage is a page of pairs and the cursor of the next.
+func (a *app) duplicatePage(c *http.Client, query string) ([]pairView, string) {
+	a.t.Helper()
 	status, body := a.get(c, "/duplicates"+query)
 	if status != 200 {
 		a.t.Fatalf("duplicates: %d %s", status, body)
 	}
 	var out struct {
-		Pairs []pairView `json:"pairs"`
+		Pairs      []pairView `json:"pairs"`
+		NextCursor string     `json:"nextCursor"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		a.t.Fatal(err)
 	}
-	return out.Pairs
+	return out.Pairs, out.NextCursor
 }
 
 // described is each pair as "title + title: kinds", sorted, to compare.
@@ -193,10 +203,48 @@ func TestDuplicatesAreFoundWithTheirEvidence(t *testing.T) {
 	if status, _, _ := a.call(admin, http.MethodPost, "/duplicates/checks", map[string]any{"library": uuid.NewString()}); status != 404 {
 		t.Errorf("no such library: %d", status)
 	}
-	// Pages, newest first.
-	first := a.duplicates(admin, "?limit=1")
-	second := a.duplicates(admin, "?limit=1&before="+first[0].ID)
-	if len(first) != 1 || len(second) != 1 || first[0].ID <= second[0].ID {
-		t.Errorf("pages: %v then %v", first, second)
+	// The strongest first, by score, a page at a time; filtered by kind
+	// and least score.
+	first, next := a.duplicatePage(admin, "?limit=1")
+	second, last := a.duplicatePage(admin, "?limit=1&cursor="+url.QueryEscape(next))
+	if len(first) != 1 || len(second) != 1 || first[0].Books[0].Title != "Alpha" || first[0].Score != 1 ||
+		!strings.HasPrefix(second[0].Books[0].Title, "Beta") || second[0].Score < 0.98 || last != "" {
+		t.Errorf("pages: %+v (%q) then %+v (%q)", first, next, second, last)
+	}
+	if got := described(a.duplicates(admin, "?kind=content")); !slices.Equal(got, []string{"Beta + Beta, Revised: content"}) {
+		t.Errorf("kind content: %v", got)
+	}
+	if got := a.duplicates(admin, "?least=100"); len(got) != 1 || got[0].Books[0].Title != "Alpha" {
+		t.Errorf("least 100: %v", described(got))
+	}
+
+	// Keeping both takes a pair off the open list, until it is opened again;
+	// only an editor may, and only on a pair they see.
+	beta := second[0].ID
+	setState := func(c *http.Client, id, state string) int {
+		status, _, _ := a.call(c, http.MethodPut, "/duplicates/"+id+"/state", map[string]any{"state": state})
+		return status
+	}
+	if status := setState(reader, beta, "kept_both"); status != 403 {
+		t.Errorf("a reader keeps both: %d", status)
+	}
+	if status := setState(admin, beta, "merged"); status != 422 {
+		t.Errorf("set merged by hand: %d", status)
+	}
+	if status := setState(admin, uuid.NewString(), "kept_both"); status != 404 {
+		t.Errorf("no such pair: %d", status)
+	}
+	if status := setState(admin, beta, "kept_both"); status != 204 {
+		t.Fatalf("keep both: %d", status)
+	}
+	check()
+	if got := described(a.duplicates(admin, "")); !slices.Equal(got, []string{"Alpha + Alpha: sha256,title_author"}) {
+		t.Errorf("open after keeping both: %v", got)
+	}
+	if status := setState(admin, beta, "open"); status != 204 {
+		t.Errorf("open again: %d", status)
+	}
+	if got := a.duplicates(admin, ""); len(got) != 2 {
+		t.Errorf("open again: %v", described(got))
 	}
 }

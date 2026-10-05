@@ -186,6 +186,12 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- A Duplicates page lists books that look like one another, the surest
+  first: the same file, the same text with other details, a shared ISBN,
+  the same title and author, or text they share ("Persuasion is 97%
+  contained in The Complete Austen"). Each pair says why and how sure, and
+  the two books can be compared side by side. Editors keep both where they
+  are different books. Filter by kind of evidence, score and library.
 - The search index rebuilds itself when an upgrade brings a new search
   engine or a new way of reading text, and search keeps answering while it
   does. Editors can have a book's, a library's or every book's text read
