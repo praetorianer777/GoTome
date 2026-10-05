@@ -75,7 +75,7 @@ func (s *Service) textReadTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, 
 		return err
 	}
 	if primary == fileID {
-		return writeChunksTx(ctx, tx, bookID, libraryID, fileID, format, langHint, sections)
+		return s.writeChunksTx(ctx, tx, bookID, libraryID, fileID, format, langHint, sections)
 	}
 	if err := q.DeleteFileChunks(ctx, fileID); err != nil {
 		return err
@@ -106,7 +106,7 @@ func chunkSections(format string, sections []Section) []textproc.Section {
 
 // writeChunksTx replaces the book's chunks with those of the file's text,
 // adds their words to the vocabulary, and records the file as chunked.
-func writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, format, langHint string, sections []Section) error {
+func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, format, langHint string, sections []Section) error {
 	q := sqlc.New(tx)
 	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
 		return err
@@ -141,7 +141,13 @@ func writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uui
 			return err
 		}
 	}
-	return q.SetFileChunked(ctx, fileID)
+	if err := q.SetFileChunked(ctx, fileID); err != nil {
+		return err
+	}
+	if s.OnChunked != nil {
+		return s.OnChunked(ctx, tx, bookID, fileID)
+	}
+	return nil
 }
 
 // chunkTimeout ends the reading of one file that does not end.
@@ -181,7 +187,7 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 		if err != nil || primary == nil || *primary != fileID {
 			return err
 		}
-		return writeChunksTx(ctx, tx, file.BookID, file.LibraryID, fileID, file.Format, lang, got.Sections)
+		return s.writeChunksTx(ctx, tx, file.BookID, file.LibraryID, fileID, file.Format, lang, got.Sections)
 	})
 }
 

@@ -177,6 +177,20 @@ type DuplicatePair struct {
 	UpdatedAt time.Time
 }
 
+type FileLsh struct {
+	Band   int16
+	Bucket int64
+	FileID uuid.UUID
+}
+
+type FileSignature struct {
+	FileID    uuid.UUID
+	Version   int16
+	Shingles  int32
+	Signature []byte
+	SignedAt  time.Time
+}
+
 type IndexVersion struct {
 	Name      string
 	Version   string

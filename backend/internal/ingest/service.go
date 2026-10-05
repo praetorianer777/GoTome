@@ -111,6 +111,9 @@ type Service struct {
 	// OnExtracted, when set, runs in the transaction that records what a
 	// file says about its book: looking the book up starts there.
 	OnExtracted func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// OnChunked, when set, runs in the transaction that wrote a book's
+	// chunks from the file: its signature for overlap is made there.
+	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.

@@ -392,6 +392,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   (`dedupe.check_book`, through `OnExtracted`), after the commit so that
   it sees the file; `POST /duplicates/checks` queues it for a library's or
   every visible book.
+- Shared text is `overlap` evidence (`signatures.go`, `minhash.go`): the
+  primary text file is signed from its chunks in the transaction that wrote
+  them (`OnChunked` → `ChunkedTx`): 5-word shingles, 256 MinHash values
+  (`file_signatures`, with the number of shingles), and buckets in
+  `file_lsh` from 64 bands of 4 over the whole text plus 2 bands per
+  segment. Segments are cut where a shingle's hash says, so the same text
+  cuts the same way in any book that holds it: a novel's inner segments are
+  its omnibus's, which the whole-text bands miss when the novel is a small
+  part of it. A check follows the book's buckets (each one look into the
+  primary key, buckets of more than `crowd` files passed over), then
+  estimates the Jaccard and the containment both ways from the signatures
+  and their sizes; at least 0.5, or 0.8 contained, is evidence, with the
+  numbers in its detail (`jaccard=… a_in_b=… b_in_a=…`, from the pair's
+  first book). Texts under 500 shingles get a row without a signature.
+  Raising `SignatureVersion` re-signs every file from its chunks at start
+  (`EnqueueUnsigned`, `dedupe.sign_file`).
 - `GET /duplicates` lists pairs of which the caller sees both books, by
   state, newest first, paged by `before`. The dashboard is #60; merging and
   replacing are #62 and #63, which set the state.

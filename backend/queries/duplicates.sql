@@ -2,27 +2,23 @@
 -- Every other book that looks like this one, with why: a file of the same
 -- bytes, a file of the same content where the bytes differ, a shared ISBN,
 -- or the same title and an author in common. Only books in the library,
--- neither deleted, merged nor wished for, count.
+-- neither deleted, merged nor wished for, count. Each branch starts from the
+-- book's own rows and reaches the others through an index.
 WITH me AS (
     SELECT bk.id, bk.title_key FROM books bk
     WHERE bk.id = sqlc.arg(book_id) AND bk.deleted_at IS NULL AND NOT bk.placeholder
-),
-files AS (
-    SELECT f.book_id, f.sha256, f.content_sha256
-    FROM book_files f
-    JOIN books b ON b.id = f.book_id
-    WHERE f.missing_at IS NULL AND f.trashed_at IS NULL
-      AND b.deleted_at IS NULL AND NOT b.placeholder
 )
 SELECT o.book_id AS other, 'sha256'::text AS kind, encode(f.sha256, 'hex') AS detail
 FROM me
-JOIN files f ON f.book_id = me.id
-JOIN files o ON o.sha256 = f.sha256 AND o.book_id <> me.id
+JOIN book_files f ON f.book_id = me.id AND f.missing_at IS NULL AND f.trashed_at IS NULL
+JOIN book_files o ON o.sha256 = f.sha256 AND o.book_id <> me.id AND o.missing_at IS NULL AND o.trashed_at IS NULL
+JOIN books ob ON ob.id = o.book_id AND ob.deleted_at IS NULL AND NOT ob.placeholder
 UNION
 SELECT o.book_id, 'content', encode(f.content_sha256, 'hex')
 FROM me
-JOIN files f ON f.book_id = me.id
-JOIN files o ON o.content_sha256 = f.content_sha256 AND o.book_id <> me.id
+JOIN book_files f ON f.book_id = me.id AND f.missing_at IS NULL AND f.trashed_at IS NULL
+JOIN book_files o ON o.content_sha256 = f.content_sha256 AND o.book_id <> me.id AND o.missing_at IS NULL AND o.trashed_at IS NULL
+JOIN books ob ON ob.id = o.book_id AND ob.deleted_at IS NULL AND NOT ob.placeholder
 WHERE o.sha256 IS DISTINCT FROM f.sha256
 UNION
 SELECT o.book_id, 'isbn', i.value
@@ -94,3 +90,61 @@ LIMIT sqlc.arg(page_size);
 SELECT pair_id, kind, detail FROM duplicate_evidence
 WHERE pair_id = ANY(sqlc.arg(pair_ids)::uuid[])
 ORDER BY pair_id, kind, detail;
+
+-- name: ListFileChunkTexts :many
+-- The file's text as its chunks hold it, in order.
+SELECT coalesce(body_en, body_de, body_xx)::text AS body
+FROM book_chunks WHERE file_id = $1 ORDER BY position;
+
+-- name: DropBookSignatures :exec
+-- The signatures of the book's files other than the one its text is read
+-- from, which stand for it no more.
+DELETE FROM file_signatures s
+USING book_files f
+WHERE s.file_id = f.id AND f.book_id = sqlc.arg(book_id) AND f.id <> sqlc.arg(file_id);
+
+-- name: DropFileSignature :exec
+DELETE FROM file_signatures WHERE file_id = $1;
+
+-- name: PutFileSignature :exec
+INSERT INTO file_signatures (file_id, version, shingles, signature) VALUES ($1, $2, $3, $4)
+ON CONFLICT (file_id) DO UPDATE SET version = EXCLUDED.version, shingles = EXCLUDED.shingles,
+    signature = EXCLUDED.signature, signed_at = now();
+
+-- name: DropFileBuckets :exec
+DELETE FROM file_lsh WHERE file_id = $1;
+
+-- name: PutFileBuckets :exec
+INSERT INTO file_lsh (band, bucket, file_id)
+SELECT unnest(sqlc.arg(bands)::smallint[]), unnest(sqlc.arg(buckets)::bigint[]), sqlc.arg(file_id)::uuid
+ON CONFLICT DO NOTHING;
+
+-- name: GetBookSignature :one
+-- The signature of the book's primary text file, if it has one.
+SELECT s.file_id, s.shingles, s.signature
+FROM books b JOIN file_signatures s ON s.file_id = b.primary_text_file_id
+WHERE b.id = $1 AND b.deleted_at IS NULL AND NOT b.placeholder AND s.signature IS NOT NULL;
+
+-- name: ListSignatureCompanions :many
+-- The signatures of other books' primary text files that share a bucket
+-- with the file. A bucket shared by more than sqlc.arg(crowd) files is
+-- passed over: text every book of a kind carries, such as a licence, says
+-- nothing about two of them.
+SELECT DISTINCT s.file_id, b.id AS book_id, s.shingles, s.signature
+FROM file_lsh me
+JOIN file_lsh o ON o.band = me.band AND o.bucket = me.bucket AND o.file_id <> me.file_id
+JOIN file_signatures s ON s.file_id = o.file_id
+JOIN book_files f ON f.id = s.file_id
+JOIN books b ON b.id = f.book_id AND b.primary_text_file_id = f.id
+WHERE me.file_id = sqlc.arg(file_id)
+  AND b.id <> sqlc.arg(book_id) AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND (SELECT count(*) FROM file_lsh c WHERE c.band = me.band AND c.bucket = me.bucket) <= sqlc.arg(crowd)::bigint;
+
+-- name: ListUnsignedFiles :many
+-- The chunked primary text files without a signature of this version.
+SELECT f.id, f.book_id
+FROM books b
+JOIN book_files f ON f.id = b.primary_text_file_id
+LEFT JOIN file_signatures s ON s.file_id = f.id
+WHERE f.chunked_at IS NOT NULL AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND (s.file_id IS NULL OR s.version <> sqlc.arg(version)::smallint);
