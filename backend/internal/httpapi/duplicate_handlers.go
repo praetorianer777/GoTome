@@ -9,7 +9,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -54,6 +56,15 @@ type duplicateList struct {
 type pairStateRequest struct {
 	// State is kept_both, that both books stay as they are, or open.
 	State string `json:"state"`
+	// Relation, with kept_both, links the two as another edition, a
+	// translation or a related book.
+	Relation string `json:"relation,omitempty"`
+}
+
+type replaceRequest struct {
+	// Keep is the pair's book that stays; the other's files go to the
+	// trash and the book into this one.
+	Keep uuid.UUID `json:"keep"`
 }
 
 type duplicateCheckRequest struct {
@@ -133,12 +144,57 @@ func (s *Server) setPairState(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	err = s.Duplicates.SetState(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id, req.State)
+	err = s.Duplicates.SetState(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id, req.State, req.Relation)
 	switch {
 	case errors.Is(err, dedupe.ErrNotFound):
 		return ErrNotFound("There is no such pair.")
 	case errors.Is(err, dedupe.ErrState):
 		return ErrValidation(map[string]string{"state": "Use kept_both or open."})
+	case errors.Is(err, dedupe.ErrRelation):
+		return ErrValidation(map[string]string{"relation": "With kept_both, use edition, translation or related."})
+	case err != nil:
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) replaceDuplicate(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "pairId", "pair")
+	if err != nil {
+		return err
+	}
+	var req replaceRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	scope := library.ScopeOf(*UserFrom(r.Context()))
+	a, b, state, err := s.Duplicates.Books(r.Context(), scope, id)
+	if errors.Is(err, dedupe.ErrNotFound) {
+		return ErrNotFound("There is no such pair.")
+	}
+	if err != nil {
+		return err
+	}
+	if state != dedupe.StateOpen {
+		return ErrConflict("This pair has been decided about; open it again first.")
+	}
+	gone := a
+	switch req.Keep {
+	case a:
+		gone = b
+	case b:
+	default:
+		return ErrValidation(map[string]string{"keep": "Name one of the pair's two books."})
+	}
+	err = s.Scans.Replace(r.Context(), scope, req.Keep, gone)
+	switch {
+	case errors.Is(err, catalog.ErrNotFound):
+		return ErrNotFound("There is no such pair.")
+	case errors.Is(err, ingest.ErrMergeLibraries):
+		return ErrValidation(map[string]string{"keep": "Only books of one library are replaced: a file stays in its library's folder."})
+	case errors.Is(err, ingest.ErrReadOnly):
+		return ErrConflict("This library is read-only: GOtome does not move its files.")
 	case err != nil:
 		return err
 	}

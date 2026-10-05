@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -259,22 +260,48 @@ var ErrNotFound = errors.New("no such pair")
 // what merging and replacing set.
 var ErrState = errors.New("a pair is kept both or open")
 
+// Relations a person may record between two books kept both.
+var Relations = []string{"edition", "translation", "related"}
+
+// ErrRelation is a relation that is not one of Relations.
+var ErrRelation = errors.New("no such relation")
+
 // SetState records what a person decided about a pair of which they see
-// both books: that both books stay (kept_both), or that it is open again.
-// A pair kept both stays so when it is found again.
-func (s *Service) SetState(ctx context.Context, scope library.Scope, id uuid.UUID, state string) error {
+// both books: that both books stay (kept_both), as another edition, a
+// translation or a related book when relation names one, or that it is
+// open again. A pair kept both stays so when it is found again.
+func (s *Service) SetState(ctx context.Context, scope library.Scope, id uuid.UUID, state, relation string) error {
 	if state != StateKeptBoth && state != StateOpen {
 		return ErrState
 	}
+	if relation != "" && (state != StateKeptBoth || !slices.Contains(Relations, relation)) {
+		return ErrRelation
+	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		if _, err := q.GetVisiblePair(ctx, sqlc.GetVisiblePairParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll}); errors.Is(err, pgx.ErrNoRows) {
+		pair, err := q.GetVisiblePair(ctx, sqlc.GetVisiblePairParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
-		} else if err != nil {
+		}
+		if err != nil {
 			return err
+		}
+		if relation != "" {
+			if err := q.RelateBooks(ctx, sqlc.RelateBooksParams{One: pair.BookA, Other: pair.BookB, Kind: relation}); err != nil {
+				return err
+			}
 		}
 		return q.SetPairState(ctx, sqlc.SetPairStateParams{ID: id, State: state})
 	})
+}
+
+// Books are a pair's two books, if the scope sees both, and its state.
+func (s *Service) Books(ctx context.Context, scope library.Scope, id uuid.UUID) (a, b uuid.UUID, state string, err error) {
+	pair, err := sqlc.New(s.pool).GetVisiblePair(ctx, sqlc.GetVisiblePairParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return a, b, "", ErrNotFound
+	}
+	return pair.BookA, pair.BookB, pair.State, err
 }
 
 // checkAttempts is how often a failed check is tried.

@@ -186,6 +186,11 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- Replace a copy of a book with the one you keep, from the Duplicates page:
+  the other copy's files go to the trash and everyone's status, shelves and
+  place read go to the copy kept, the place by how far into the book it
+  was. Restoring the file from the trash undoes it. Keeping both copies
+  can link them as other editions, translations or related books.
 - Merge two copies of a book into one from the Duplicates page: pick the
   book that stays and, where they differ, whose title, authors, series and
   other details it keeps. It gets the other's files and identifiers, and

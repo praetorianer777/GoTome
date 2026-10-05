@@ -384,7 +384,8 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		if ferr != nil || survivor == id {
 			return Book{}, ErrNotFound
 		}
-		row, err = q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: survivor, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		id = survivor
+		row, err = q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Book{}, ErrNotFound

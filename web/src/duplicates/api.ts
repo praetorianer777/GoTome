@@ -60,16 +60,43 @@ export function useSetPairState() {
 		mutationFn: async ({
 			id,
 			state,
+			relation,
 		}: {
 			id: string;
 			state: "kept_both" | "open";
+			relation?: Relation;
 		}) =>
 			api.PUT("/duplicates/{pairId}/state", {
 				params: { path: { pairId: id } },
-				body: { state },
+				body: { state, relation },
 			}),
 		onSuccess: () =>
 			queryClient.invalidateQueries({ queryKey: ["duplicates"] }),
+	});
+}
+
+export type Relation = NonNullable<
+	components["schemas"]["PairStateRequest"]["relation"]
+>;
+
+/**
+ * Keeps one book of a pair: the other's files go to the trash and the
+ * book into the one kept.
+ */
+export function useReplacePair() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({ id, keep }: { id: string; keep: string }) =>
+			api.POST("/duplicates/{pairId}/replace", {
+				params: { path: { pairId: id } },
+				body: { keep },
+			}),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["duplicates"] });
+			queryClient.invalidateQueries({ queryKey: ["book"] });
+			queryClient.invalidateQueries({ queryKey: ["books"] });
+			queryClient.invalidateQueries({ queryKey: ["trash"] });
+		},
 	});
 }
 

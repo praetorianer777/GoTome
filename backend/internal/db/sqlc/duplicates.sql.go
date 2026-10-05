@@ -164,7 +164,7 @@ func (q *Queries) GetBookSignature(ctx context.Context, id uuid.UUID) (GetBookSi
 }
 
 const getVisiblePair = `-- name: GetVisiblePair :one
-SELECT p.id, p.state FROM duplicate_pairs p
+SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = $1
@@ -183,13 +183,20 @@ type GetVisiblePairParams struct {
 type GetVisiblePairRow struct {
 	ID    uuid.UUID
 	State string
+	BookA uuid.UUID
+	BookB uuid.UUID
 }
 
 // The pair, if the viewer sees both its books.
 func (q *Queries) GetVisiblePair(ctx context.Context, arg GetVisiblePairParams) (GetVisiblePairRow, error) {
 	row := q.db.QueryRow(ctx, getVisiblePair, arg.ID, arg.Viewer, arg.SeesAll)
 	var i GetVisiblePairRow
-	err := row.Scan(&i.ID, &i.State)
+	err := row.Scan(
+		&i.ID,
+		&i.State,
+		&i.BookA,
+		&i.BookB,
+	)
 	return i, err
 }
 

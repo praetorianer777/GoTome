@@ -63,30 +63,43 @@ func empty(b catalog.Book) []string {
 // deleted and points to into, so that links to it lead there. All of it
 // happens in one transaction, or none of it.
 func (s *Service) Merge(ctx context.Context, scope library.Scope, into, from uuid.UUID, take []string) error {
+	into, from, fields, err := s.prepareMerge(ctx, scope, into, from, take)
+	if err != nil {
+		return err
+	}
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		return s.mergeTx(ctx, tx, scope, into, from, fields)
+	})
+}
+
+// prepareMerge checks a merge before its transaction, and says which books
+// it is between, as merges before may have moved them, and which fields it
+// takes.
+func (s *Service) prepareMerge(ctx context.Context, scope library.Scope, into, from uuid.UUID, take []string) (uuid.UUID, uuid.UUID, []string, error) {
 	if into == from {
-		return ErrMergeSelf
+		return into, from, nil, ErrMergeSelf
 	}
 	for _, f := range take {
 		if !slices.Contains(MergeFields, f) {
-			return ErrMergeField
+			return into, from, nil, ErrMergeField
 		}
 	}
 	books := catalog.NewService(s.pool)
 	survivor, err := books.Get(ctx, scope, into)
 	if err != nil {
-		return err
+		return into, from, nil, err
 	}
 	merged, err := books.Get(ctx, scope, from)
 	if err != nil {
-		return err
+		return into, from, nil, err
 	}
 	// An ID of a book merged before is the book it lives on as.
 	into, from = survivor.ID, merged.ID
 	if into == from {
-		return ErrMergeSelf
+		return into, from, nil, ErrMergeSelf
 	}
 	if survivor.LibraryID != merged.LibraryID {
-		return ErrMergeLibraries
+		return into, from, nil, ErrMergeLibraries
 	}
 	fields := slices.Clone(take)
 	lacking := empty(merged)
@@ -95,97 +108,99 @@ func (s *Service) Merge(ctx context.Context, scope library.Scope, into, from uui
 			fields = append(fields, f)
 		}
 	}
+	return into, from, fields, nil
+}
 
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
-		locked, err := q.LockBooksForMerge(ctx, sqlc.LockBooksForMergeParams{
-			Ids: []uuid.UUID{into, from}, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
-		})
-		if err != nil {
-			return err
-		}
-		if len(locked) != 2 {
-			return catalog.ErrNotFound
-		}
-		if locked[0].LibraryID != locked[1].LibraryID {
-			return ErrMergeLibraries
-		}
-		if err := q.CopyBookFields(ctx, sqlc.CopyBookFieldsParams{Fields: fields, IntoBook: into, FromBook: from}); err != nil {
-			return err
-		}
-		if slices.Contains(fields, catalog.FieldContributors) {
-			if err := q.DropContributors(ctx, into); err != nil {
-				return err
-			}
-			if err := q.CopyContributors(ctx, sqlc.CopyContributorsParams{IntoBook: into, FromBook: from}); err != nil {
-				return err
-			}
-			if err := q.RefreshAuthorSort(ctx, into); err != nil {
-				return err
-			}
-		}
-		if slices.Contains(fields, catalog.FieldTags) {
-			if err := q.DropTags(ctx, into); err != nil {
-				return err
-			}
-			if err := q.CopyTags(ctx, sqlc.CopyTagsParams{IntoBook: into, FromBook: from}); err != nil {
-				return err
-			}
-		}
-		steps := []func() error{
-			func() error {
-				return q.MoveFileIdentifiers(ctx, sqlc.MoveFileIdentifiersParams{ToBook: into, FromBook: from})
-			},
-			func() error { return q.MoveBookFiles(ctx, sqlc.MoveBookFilesParams{ToBook: into, FromBook: from}) },
-			func() error {
-				return q.MergeBookIdentifiers(ctx, sqlc.MergeBookIdentifiersParams{IntoBook: into, FromBook: from})
-			},
-			func() error { return q.MergeUserBooks(ctx, sqlc.MergeUserBooksParams{IntoBook: into, FromBook: from}) },
-			func() error {
-				return q.MergeReadingProgress(ctx, sqlc.MergeReadingProgressParams{IntoBook: into, FromBook: from})
-			},
-			func() error {
-				return q.MoveReadingHistory(ctx, sqlc.MoveReadingHistoryParams{IntoBook: into, FromBook: from})
-			},
-			func() error {
-				return q.MergeCollectionItems(ctx, sqlc.MergeCollectionItemsParams{IntoBook: into, FromBook: from})
-			},
-			func() error { return q.MergeRelations(ctx, sqlc.MergeRelationsParams{IntoBook: into, FromBook: from}) },
-			func() error {
-				return q.MoveNotifications(ctx, sqlc.MoveNotificationsParams{IntoBook: &into, FromBook: &from})
-			},
-			func() error { return q.DropBookMatches(ctx, from) },
-			func() error {
-				return q.SettleMergedPairs(ctx, sqlc.SettleMergedPairsParams{IntoBook: into, FromBook: from})
-			},
-			func() error { return q.DropBookChunks(ctx, from) },
-			func() error {
-				return q.ForwardMergedBooks(ctx, sqlc.ForwardMergedBooksParams{IntoBook: &into, FromBook: &from})
-			},
-			func() error { return q.MergeBookInto(ctx, sqlc.MergeBookIntoParams{ID: from, IntoBook: &into}) },
-			func() error { return q.SetHeldFiles(ctx, into) },
-		}
-		for _, step := range steps {
-			if err := step(); err != nil {
-				return err
-			}
-		}
-		// The book's text may now be read better from one of the files it
-		// gained; its chunks are made again if so.
-		primary, changed, err := choosePrimaryTx(ctx, q, into)
-		if err != nil {
-			return err
-		}
-		if changed && primary != uuid.Nil {
-			if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: into, FileID: primary}); err != nil {
-				return err
-			}
-			if _, err := s.Queue.InsertTx(ctx, tx, ChunkArgs{FileID: primary}, jobs.InsertOpts{
-				Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
-			}); err != nil {
-				return err
-			}
-		}
-		return s.filesChangedTx(ctx, tx, into)
+// mergeTx is the merge, in the transaction given.
+func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, into, from uuid.UUID, fields []string) error {
+	q := sqlc.New(tx)
+	locked, err := q.LockBooksForMerge(ctx, sqlc.LockBooksForMergeParams{
+		Ids: []uuid.UUID{into, from}, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
 	})
+	if err != nil {
+		return err
+	}
+	if len(locked) != 2 {
+		return catalog.ErrNotFound
+	}
+	if locked[0].LibraryID != locked[1].LibraryID {
+		return ErrMergeLibraries
+	}
+	if err := q.CopyBookFields(ctx, sqlc.CopyBookFieldsParams{Fields: fields, IntoBook: into, FromBook: from}); err != nil {
+		return err
+	}
+	if slices.Contains(fields, catalog.FieldContributors) {
+		if err := q.DropContributors(ctx, into); err != nil {
+			return err
+		}
+		if err := q.CopyContributors(ctx, sqlc.CopyContributorsParams{IntoBook: into, FromBook: from}); err != nil {
+			return err
+		}
+		if err := q.RefreshAuthorSort(ctx, into); err != nil {
+			return err
+		}
+	}
+	if slices.Contains(fields, catalog.FieldTags) {
+		if err := q.DropTags(ctx, into); err != nil {
+			return err
+		}
+		if err := q.CopyTags(ctx, sqlc.CopyTagsParams{IntoBook: into, FromBook: from}); err != nil {
+			return err
+		}
+	}
+	steps := []func() error{
+		func() error {
+			return q.MoveFileIdentifiers(ctx, sqlc.MoveFileIdentifiersParams{ToBook: into, FromBook: from})
+		},
+		func() error { return q.MoveBookFiles(ctx, sqlc.MoveBookFilesParams{ToBook: into, FromBook: from}) },
+		func() error {
+			return q.MergeBookIdentifiers(ctx, sqlc.MergeBookIdentifiersParams{IntoBook: into, FromBook: from})
+		},
+		func() error { return q.MergeUserBooks(ctx, sqlc.MergeUserBooksParams{IntoBook: into, FromBook: from}) },
+		func() error {
+			return q.MergeReadingProgress(ctx, sqlc.MergeReadingProgressParams{IntoBook: into, FromBook: from})
+		},
+		func() error {
+			return q.MoveReadingHistory(ctx, sqlc.MoveReadingHistoryParams{IntoBook: into, FromBook: from})
+		},
+		func() error {
+			return q.MergeCollectionItems(ctx, sqlc.MergeCollectionItemsParams{IntoBook: into, FromBook: from})
+		},
+		func() error { return q.MergeRelations(ctx, sqlc.MergeRelationsParams{IntoBook: into, FromBook: from}) },
+		func() error {
+			return q.MoveNotifications(ctx, sqlc.MoveNotificationsParams{IntoBook: &into, FromBook: &from})
+		},
+		func() error { return q.DropBookMatches(ctx, from) },
+		func() error {
+			return q.SettleMergedPairs(ctx, sqlc.SettleMergedPairsParams{IntoBook: into, FromBook: from})
+		},
+		func() error { return q.DropBookChunks(ctx, from) },
+		func() error {
+			return q.ForwardMergedBooks(ctx, sqlc.ForwardMergedBooksParams{IntoBook: &into, FromBook: &from})
+		},
+		func() error { return q.MergeBookInto(ctx, sqlc.MergeBookIntoParams{ID: from, IntoBook: &into}) },
+		func() error { return q.SetHeldFiles(ctx, into) },
+	}
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+	// The book's text may now be read better from one of the files it
+	// gained; its chunks are made again if so.
+	primary, changed, err := choosePrimaryTx(ctx, q, into)
+	if err != nil {
+		return err
+	}
+	if changed && primary != uuid.Nil {
+		if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: into, FileID: primary}); err != nil {
+			return err
+		}
+		if _, err := s.Queue.InsertTx(ctx, tx, ChunkArgs{FileID: primary}, jobs.InsertOpts{
+			Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
+		}); err != nil {
+			return err
+		}
+	}
+	return s.filesChangedTx(ctx, tx, into)
 }

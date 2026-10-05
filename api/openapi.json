@@ -2008,6 +2008,56 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/duplicates/{pairId}/replace": {
+      "post": {
+        "operationId": "replaceDuplicate",
+        "summary": "Keep one book of a pair: the other's files go to the trash and the book into the one kept",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "pairId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/duplicates/{pairId}/state": {
       "put": {
         "operationId": "setDuplicateState",
@@ -6310,6 +6360,14 @@
       "PairStateRequest": {
         "type": "object",
         "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "edition",
+              "translation",
+              "related"
+            ]
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -6616,6 +6674,18 @@
         },
         "required": [
           "queued"
+        ]
+      },
+      "ReplaceRequest": {
+        "type": "object",
+        "properties": {
+          "keep": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "keep"
         ]
       },
       "RereadLibraryRequest": {

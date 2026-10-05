@@ -12,8 +12,10 @@ import {
 	type Evidence,
 	type EvidenceKind,
 	type PairState,
+	type Relation,
 	duplicatesQuery,
 	overlapOf,
+	useReplacePair,
 	useSetPairState,
 } from "@/duplicates/api";
 import { type MessageKey, t } from "@/i18n";
@@ -266,6 +268,9 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 	const [merging, setMerging] = useState(false);
 	const oneLibrary = pair.books[0]?.libraryId === pair.books[1]?.libraryId;
 	const setState = useSetPairState();
+	const replace = useReplacePair();
+	const [replacing, setReplacing] = useState(false);
+	const [relation, setRelation] = useState<Relation | "">("");
 	const said = statement(pair);
 	return (
 		<li
@@ -305,6 +310,21 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 				>
 					{t(comparing ? "duplicates.compareClose" : "duplicates.compare")}
 				</button>
+				{canAct && pair.state === "open" && (
+					<label className="flex items-center gap-2 text-sm">
+						<span>{t("duplicates.relation")}</span>
+						<select
+							value={relation}
+							onChange={(e) => setRelation(e.target.value as Relation | "")}
+							className="rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-900"
+						>
+							<option value="">{t("duplicates.relation.none")}</option>
+							<option value="edition">{t("duplicates.relation.edition")}</option>
+							<option value="translation">{t("duplicates.relation.translation")}</option>
+							<option value="related">{t("duplicates.relation.related")}</option>
+						</select>
+					</label>
+				)}
 				{canAct && (
 					<button
 						type="button"
@@ -313,6 +333,7 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 							setState.mutate({
 								id: pair.id,
 								state: pair.state === "kept_both" ? "open" : "kept_both",
+								relation: pair.state === "open" && relation ? relation : undefined,
 							})
 						}
 						className={button}
@@ -322,6 +343,16 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 								? "duplicates.reopen"
 								: "duplicates.keepBoth",
 						)}
+					</button>
+				)}
+				{canAct && pair.state === "open" && oneLibrary && (
+					<button
+						type="button"
+						aria-expanded={replacing}
+						onClick={() => setReplacing(!replacing)}
+						className={button}
+					>
+						{t(replacing ? "duplicates.replaceClose" : "duplicates.replace")}
 					</button>
 				)}
 				{canAct && pair.state === "open" && oneLibrary && (
@@ -340,7 +371,31 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 					{t("duplicates.otherLibraries")}
 				</p>
 			)}
-			<FormError error={setState.error} />
+			{replacing && (
+				<div className="flex flex-col gap-2 rounded-md border border-slate-200 p-3 text-sm dark:border-slate-700">
+					<p className="text-slate-600 dark:text-slate-400">{t("duplicates.replaceIntro")}</p>
+					<div className="flex flex-wrap gap-2">
+						{pair.books.map((book) => {
+							const other = pair.books.find((b) => b.id !== book.id);
+							return (
+								<button
+									key={book.id}
+									type="button"
+									disabled={replace.isPending}
+									onClick={() => replace.mutate({ id: pair.id, keep: book.id })}
+									className={button}
+								>
+									{t("duplicates.replaceKeep", {
+										keep: `${book.title} (${book.formats.join(", ").toUpperCase()})`,
+										gone: other?.title ?? "",
+									})}
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			)}
+			<FormError error={setState.error ?? replace.error} />
 			{comparing && <Compare pair={pair} />}
 			{merging && <MergeForm pair={pair} onDone={() => setMerging(false)} />}
 		</li>

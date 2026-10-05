@@ -93,7 +93,7 @@ LIMIT sqlc.arg(page_size);
 
 -- name: GetVisiblePair :one
 -- The pair, if the viewer sees both its books.
-SELECT p.id, p.state FROM duplicate_pairs p
+SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = sqlc.arg(id)

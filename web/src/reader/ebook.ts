@@ -101,6 +101,7 @@ export async function openEbook(
 	into: HTMLElement,
 	file: File,
 	options: {
+		/** A CFI, or "fraction:<0 to 1>" for how far into the book. */
 		start?: string;
 		look: Look;
 		onPlace: (place: Place) => void;
@@ -131,8 +132,16 @@ export async function openEbook(
 		view.renderer.setStyles?.(lookCss(look));
 	};
 	setLook(options.look);
+	const fraction = options.start?.startsWith("fraction:")
+		? Number(options.start.slice("fraction:".length))
+		: undefined;
 	try {
-		await view.init(options.start ? { lastLocation: options.start } : {});
+		if (fraction !== undefined) {
+			await view.init({});
+			await view.goToFraction(Math.min(Math.max(fraction, 0), 1));
+		} else {
+			await view.init(options.start ? { lastLocation: options.start } : {});
+		}
 	} catch {
 		// A place saved in another file, or by a version of the book that
 		// has since changed, is no place in this one.

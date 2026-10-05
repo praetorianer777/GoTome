@@ -323,6 +323,12 @@ func (s *Server) routes() []Route {
 			Permission: auth.MetadataEdit, Handler: s.setPairState,
 		},
 		{
+			Method: http.MethodPost, Path: "/duplicates/{pairId}/replace", ID: "replaceDuplicate",
+			Summary: "Keep one book of a pair: the other's files go to the trash and the book into the one kept", Tag: "books",
+			Request: replaceRequest{}, Status: http.StatusNoContent,
+			Permission: auth.MetadataEdit, Handler: s.replaceDuplicate,
+		},
+		{
 			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
 			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
 			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,
