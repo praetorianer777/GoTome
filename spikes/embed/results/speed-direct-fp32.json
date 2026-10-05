@@ -1,18 +1,18 @@
 {
-  "backend": "ort",
+  "backend": "direct",
   "weights": "fp32",
   "threads": 4,
   "batch": 8,
   "passages": 128,
-  "meanTokens": 511.640625,
-  "loadSeconds": 2.204759993,
-  "loadedAnon": 691380224,
+  "meanTokens": 512,
+  "loadSeconds": 2.025448394,
+  "loadedAnon": 624168960,
   "memoryLimit": 2147483648,
-  "seconds": 22.930945515,
-  "passagesPerSecond": 5.581976544153853,
+  "seconds": 20.373035139,
+  "passagesPerSecond": 6.282814471515353,
   "memory": {
-    "anon": 1131995136,
-    "current": 1277308928
+    "anon": 1113378816,
+    "current": 1170800640
   },
   "oomKills": 0,
   "modelFileBytes": 470268510,

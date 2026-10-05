@@ -96,7 +96,8 @@ func (e *Embedder) truncate(text string) string {
 	enc := e.spans.EncodeWithAnnotations(text)
 	k := limit
 	for len(enc.IDs) > limit && k > 0 {
-		cut := text[:enc.Spans[k].Start]
+		// The spans can even point past the end of the text.
+		cut := text[:min(enc.Spans[k].Start, len(text))]
 		n := len(e.spans.EncodeWithAnnotations(cut).IDs)
 		if n <= limit {
 			return cut

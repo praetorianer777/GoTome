@@ -1,10 +1,11 @@
 # Embedding runtime benchmark
 
 The harness behind `docs/decisions/embedding-runtime.md` (#15). It runs
-`intfloat/multilingual-e5-small` through [hugot](https://github.com/knights-analytics/hugot)
-in two backends, pure Go (GoMLX) and ONNX Runtime, with the model's fp32 and
-int8 weights, and measures each on the benchmark corpus. Nothing here runs in
-the gate.
+`intfloat/multilingual-e5-small` three ways: through [hugot](https://github.com/knights-analytics/hugot)
+in its two backends, pure Go (GoMLX) and ONNX Runtime, and on ONNX Runtime
+directly with a tokenizer of its own (`direct.go`, `unigram.go`), each with
+the model's fp32 and int8 weights, and measures them on the benchmark corpus.
+Nothing here runs in the gate.
 
 ```bash
 make embed-assets                      # owner: model and ONNX Runtime, about 640 MB
@@ -32,18 +33,19 @@ than the model's 512 tokens.
 
 ## What it measures
 
-- **check**: the token IDs of hugot's pure-Go tokenizer against the
-  reference's, and the cosine of each vector to the reference vector, for
+- **check**: the token IDs of hugot's pure-Go tokenizer, and of the Viterbi
+  Unigram tokenizer the direct backend uses, against the reference's, and the cosine of each vector to the reference vector, for
   both backends and both weights. hugot cuts texts to the model's
   `max_position_embeddings`, which is 514 for this model while it takes 512
   tokens; the harness cuts to 512, and one run shows what the default does.
-- **speed**: 256 chunks of the corpus, round-robin over the books so that all
-  three languages are in it, each cut to 512 tokens and prefixed with
-  `passage: `, in batches of 32 after one batch to warm up. It reports
+- **speed**: 128 chunks of the corpus (`SPEED_PASSAGES`), round-robin over
+  the books so that all three languages are in it, each cut to 512 tokens
+  and prefixed with `passage: `, in batches of 8 after one batch to warm up;
+  `BACKENDS` picks which of `go ort direct` run. It reports
   passages per second, the highest anonymous memory of the container, the
   size of the weights, of the executable and of the ONNX Runtime library.
-- **books**: for every book, up to 64 chunks spread evenly over it, each
-  embedded as a passage. 32 and 16 samples are every second and every fourth
+- **books**: for every book, up to `SAMPLES` chunks (64) spread evenly over
+  it, each embedded with `PREFIX` (`passage: `) before it. 32 and 16 samples are every second and every fourth
   of these, so one run serves all three counts.
 - **quality**: a book's vector is the normalised mean of its samples'.
   For every book, the others are ranked by cosine, and the harness reports

@@ -120,6 +120,11 @@ func normalize(text string) string {
 func (u *Unigram) Encode(text string, maxTokens int) []int {
 	ids := []int{u.bos}
 	for word := range strings.FieldsSeq(normalize(text)) {
+		// A chunk is four times what the model reads; the rest is not
+		// worth segmenting.
+		if maxTokens > 0 && len(ids) >= maxTokens {
+			break
+		}
 		ids = append(ids, u.word("▁"+word)...)
 	}
 	if maxTokens > 0 && len(ids) > maxTokens-1 {

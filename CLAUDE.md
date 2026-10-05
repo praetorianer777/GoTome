@@ -25,6 +25,9 @@ ever in the compose file or an environment variable. init only adds what is miss
   under `docs/decisions/`. No search or embedding feature work starts before them.
   #14 chose pg_search in the pinned ParadeDB image
   (`docs/decisions/search-engine.md`); its harness is `spikes/search`.
+  #15 chose ONNX Runtime directly, with a tokenizer of GOtome's own, int8
+  weights, 16 passages per book prefixed `query: `
+  (`docs/decisions/embedding-runtime.md`); its harness is `spikes/embed`.
 
 ## Layout and toolchain
 

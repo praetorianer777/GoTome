@@ -20,6 +20,8 @@ mkdir -p "$results"
 run() {
 	local name=$1 backend=$2
 	shift 2
+	# The direct backend needs cgo, as ONNX Runtime does: it is in embed-ort.
+	[[ $backend == direct ]] && backend=ort
 	docker run --rm --name "gotome-embed-$name" -u "$(id -u):$(id -g)" \
 		--memory "${MEMORY:-2g}" --memory-swap "${MEMORY:-2g}" --cpus 4 -e HOME=/tmp \
 		-v "$root:/work" -v "$embed:/embed" -v "$root/.cache/corpus:/corpus" \
@@ -42,7 +44,8 @@ check)
 	run check-ort-fp32-default ort check -backend ort -weights fp32 "${ortflags[@]}" -max-tokens 0 -out results/check-ort-fp32-default.json || true
 	;;
 speed)
-	for b in go ort; do
+	# BACKENDS narrows the run, as BACKENDS="ort direct" for those two.
+	for b in ${BACKENDS:-go ort direct}; do
 		for w in fp32 int8; do
 			# The pure-Go backend with fp32 weights does not fit in 2 GB.
 			mem=2g
