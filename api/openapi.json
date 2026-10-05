@@ -1801,6 +1801,130 @@
         "x-permission": "personal:manage"
       }
     },
+    "/duplicates": {
+      "get": {
+        "operationId": "listDuplicates",
+        "summary": "Pairs of books that look like one, both of which the caller sees, with why",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "Which pairs: open (the default) are those nobody has decided about.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "kept_both",
+                "merged",
+                "replaced"
+              ]
+            }
+          },
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID: the pairs with a book in it. Left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "The ID of the last pair of the page before; pairs come newest first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many pairs a page holds, at most 100; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/duplicates/checks": {
+      "post": {
+        "operationId": "checkDuplicates",
+        "summary": "Look for duplicates among the books of a library, or of every library the caller sees",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateCheckResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/files/{fileId}/download": {
       "get": {
         "operationId": "downloadFile",
@@ -5180,6 +5304,106 @@
           "username",
           "role",
           "permissions"
+        ]
+      },
+      "DuplicateCheckRequest": {
+        "type": "object",
+        "properties": {
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "DuplicateCheckResult": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "books"
+        ]
+      },
+      "DuplicateEvidence": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "content",
+              "isbn",
+              "title_author"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "detail"
+        ]
+      },
+      "DuplicateList": {
+        "type": "object",
+        "properties": {
+          "more": {
+            "type": "boolean"
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicatePair"
+            }
+          }
+        },
+        "required": [
+          "pairs",
+          "more"
+        ]
+      },
+      "DuplicatePair": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookSummary"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateEvidence"
+            }
+          },
+          "foundAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "kept_both",
+              "merged",
+              "replaced"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "foundAt",
+          "books",
+          "evidence"
         ]
       },
       "EditBookRequest": {

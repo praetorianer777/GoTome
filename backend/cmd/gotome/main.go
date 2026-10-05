@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -154,7 +157,14 @@ func serve() error {
 		},
 	})
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
-	scans.OnExtracted = matches.EnqueueTx
+	books := catalog.NewService(pool)
+	duplicates := dedupe.NewService(pool, books, log)
+	scans.OnExtracted = func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error {
+		if err := matches.EnqueueTx(ctx, tx, bookID); err != nil {
+			return err
+		}
+		return duplicates.EnqueueTx(ctx, tx, bookID)
+	}
 	changes := bulk.NewService(pool, scans, matches, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
@@ -167,6 +177,7 @@ func serve() error {
 	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
 	searchIndex := search.NewIndex(pool, log)
 	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
+	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 	}
@@ -183,6 +194,7 @@ func serve() error {
 	matches.Queue = runner
 	changes.Queue = runner
 	searchIndex.Queue = runner
+	duplicates.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -209,26 +221,26 @@ func serve() error {
 		}
 	}()
 
-	books := catalog.NewService(pool)
 	hub := notify.NewHub(pool, log)
 	go hub.Run(ctx)
 	server := &httpapi.Server{
-		Log:       log,
-		DB:        pool,
-		Auth:      accounts,
-		Logins:    httpapi.NewLoginLimits(time.Now),
-		Libraries: libraries,
-		Settings:  settingStore,
-		Scans:     scans,
-		Books:     books,
-		Covers:    coverStore,
-		Metadata:  meta,
-		Matches:   matches,
-		Bulk:      changes,
-		Reading:   reading.NewService(pool),
-		Shelves:   shelves.NewService(pool, books),
-		Search:    search.NewPGSearch(pool, books),
-		Index:     searchIndex,
+		Log:        log,
+		DB:         pool,
+		Auth:       accounts,
+		Logins:     httpapi.NewLoginLimits(time.Now),
+		Libraries:  libraries,
+		Settings:   settingStore,
+		Scans:      scans,
+		Books:      books,
+		Covers:     coverStore,
+		Metadata:   meta,
+		Matches:    matches,
+		Bulk:       changes,
+		Reading:    reading.NewService(pool),
+		Shelves:    shelves.NewService(pool, books),
+		Search:     search.NewPGSearch(pool, books),
+		Duplicates: duplicates,
+		Index:      searchIndex,
 
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,

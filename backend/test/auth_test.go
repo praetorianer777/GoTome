@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
+	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -152,6 +153,8 @@ func newApp(t *testing.T) *app {
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
+	a.server.Duplicates = dedupe.NewService(a.pool, a.server.Books, quiet)
+	a.server.Duplicates.Queue = queue
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)

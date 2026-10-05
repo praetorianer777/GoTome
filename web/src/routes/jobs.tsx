@@ -50,6 +50,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
 		case "search.rebuild_index":
 			return t("jobs.kind.rebuildIndex");
+		case "dedupe.check_book":
+			return t("jobs.kind.duplicates", { book: job.bookTitle || t("jobs.goneBook") });
 		case "ingest.write_metadata":
 			return t("jobs.kind.write", { file: job.filePath || t("jobs.goneFile") });
 		case "enrich.match_book":

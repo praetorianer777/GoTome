@@ -519,6 +519,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pairs of books that look like one, both of which the caller sees, with why */
+        get: operations["listDuplicates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/duplicates/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look for duplicates among the books of a library, or of every library the caller sees */
+        post: operations["checkDuplicates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/download": {
         parameters: {
             query?: never;
@@ -1458,6 +1492,32 @@ export interface components {
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             username: string;
+        };
+        DuplicateCheckRequest: {
+            /** Format: uuid */
+            library?: string;
+        };
+        DuplicateCheckResult: {
+            books: number;
+        };
+        DuplicateEvidence: {
+            detail: string;
+            /** @enum {string} */
+            kind: "sha256" | "content" | "isbn" | "title_author";
+        };
+        DuplicateList: {
+            more: boolean;
+            pairs: components["schemas"]["DuplicatePair"][];
+        };
+        DuplicatePair: {
+            books: components["schemas"]["BookSummary"][];
+            evidence: components["schemas"]["DuplicateEvidence"][];
+            /** Format: date-time */
+            foundAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            state: "open" | "kept_both" | "merged" | "replaced";
         };
         EditBookRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -3079,6 +3139,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDuplicates: {
+        parameters: {
+            query?: {
+                /** @description Which pairs: open (the default) are those nobody has decided about. */
+                state?: "open" | "kept_both" | "merged" | "replaced";
+                /** @description A library's ID: the pairs with a book in it. Left out, every library the caller may see. */
+                library?: string;
+                /** @description The ID of the last pair of the page before; pairs come newest first. */
+                before?: string;
+                /** @description How many pairs a page holds, at most 100; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkDuplicates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateCheckResult"];
                 };
             };
             /** @description The request failed. */

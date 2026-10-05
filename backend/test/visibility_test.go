@@ -69,6 +69,10 @@ func readCases() map[string][]readCase {
 		// Counts name no book; the call about the library proves it is
 		// kept to those who see it.
 		"searchStatus": {{path: "/search/status", query: q("library", "{library}"), control: "insider"}},
+		"listDuplicates": {
+			{path: "/duplicates", control: "insider"},
+			{path: "/duplicates", query: q("library", "{library}"), control: "insider"},
+		},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
@@ -160,8 +164,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 			t.Fatalf("membership: %d %v", status, out)
 		}
 	}
-	if status, out := a.upload(admin, open, "Plain.pdf", []byte("%PDF-1.4 plain")); status != 200 {
-		t.Fatalf("upload: %d %v", status, out)
+	status, plain := a.upload(admin, open, "Plain.pdf", []byte("%PDF-1.4 plain"))
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, plain)
 	}
 	status, up := a.upload(admin, vault, "secret.pdf", []byte("%PDF-1.4 "+mark))
 	if status != 200 {
@@ -197,6 +202,16 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	// the book, for the full-text search to find.
 	if _, err := a.pool.Exec(ctx, `INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang, body_en)
 		VALUES ($1, $2, $3, 0, 0, 'en', $4)`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
+		t.Fatal(err)
+	}
+	// The secret and a book of the open library look like one: a pair the
+	// stranger, who sees only the one, must not be shown.
+	pairA, pairB := book, plain["bookId"].(string)
+	if pairB < pairA {
+		pairA, pairB = pairB, pairA
+	}
+	if _, err := a.pool.Exec(ctx, `WITH p AS (INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2) RETURNING id)
+		INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, 'isbn', '9780306406157' FROM p`, pairA, pairB); err != nil {
 		t.Fatal(err)
 	}
 	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}
