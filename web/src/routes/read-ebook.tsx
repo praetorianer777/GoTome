@@ -68,11 +68,14 @@ export function EbookReader({
 	fileId,
 	fileName,
 	title,
+	find,
 }: {
 	bookId: string;
 	fileId: string;
 	fileName: string;
 	title: string;
+	/** A passage to open at instead of the saved place: a word of it to look for, and its text. */
+	find?: { word: string; passage: string };
 }) {
 	const progress = useQuery(progressQuery(bookId));
 	const queryClient = useQueryClient();
@@ -90,12 +93,16 @@ export function EbookReader({
 	const lookNow = useRef(look);
 	lookNow.current = look;
 	const keys = useRef<(e: KeyboardEvent) => void>(() => {});
+	const finding = useRef(Boolean(find));
+	const latest = useRef<Place | undefined>(undefined);
+	const findNow = useRef(find);
 
 	const ready = !progress.isPending;
 	// The saved place is read once, when the book opens: later saves must
 	// not open it again.
 	const start = useRef<string | undefined>(undefined);
-	start.current = ready ? cfiIn(progress.data?.ebook, fileId) : undefined;
+	start.current =
+		ready && !findNow.current ? cfiIn(progress.data?.ebook, fileId) : undefined;
 	useEffect(() => {
 		if (!ready || !pages.current) return;
 		const into = pages.current;
@@ -110,7 +117,10 @@ export function EbookReader({
 			const book = await openEbook(into, file, {
 				start: start.current,
 				look: lookNow.current,
-				onPlace: (p) => open && setPlace(p),
+				onPlace: (p) => {
+					latest.current = p;
+					if (open) setPlace(p);
+				},
 				onKey: (e) => keys.current(e),
 			});
 			if (open) {
@@ -133,8 +143,19 @@ export function EbookReader({
 		storeLook(look);
 	}, [ebook, look]);
 
+	// The passage looked for is where the person is, but not a place they
+	// read up to: it is not saved until they move on from it.
 	useEffect(() => {
-		if (!place || place.cfi === kept.current) return;
+		const wanted = findNow.current;
+		if (!ebook || !wanted) return;
+		void ebook.find(wanted.word, wanted.passage).finally(() => {
+			kept.current = latest.current?.cfi;
+			finding.current = false;
+		});
+	}, [ebook]);
+
+	useEffect(() => {
+		if (!place || finding.current || place.cfi === kept.current) return;
 		const timer = setTimeout(() => {
 			kept.current = place.cfi;
 			savePlace(

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { Suspense, lazy } from "react";
 import { bookQuery } from "@/books/api";
 import { FormError } from "@/components/form";
@@ -22,9 +22,38 @@ export function readable(format: string): boolean {
 	return format === "pdf" || EBOOK_FORMATS.includes(format);
 }
 
+/**
+ * Where a reader opens instead of the saved place, as the address carries
+ * it: a page of a PDF, or a passage, by a word of it and its text, which the
+ * reader looks for; in a PDF on the pages from page to to.
+ */
+export interface ReaderSearch {
+	page?: number;
+	to?: number;
+	find?: string;
+	near?: string;
+}
+
+function pageNumber(value: unknown): number | undefined {
+	const n = Number(value);
+	return Number.isInteger(n) && n > 0 ? n : undefined;
+}
+
+export function readerSearch(search: Record<string, unknown>): ReaderSearch {
+	return {
+		page: pageNumber(search.page),
+		to: pageNumber(search.to),
+		find: typeof search.find === "string" && search.find ? search.find : undefined,
+		near: typeof search.near === "string" ? search.near : undefined,
+	};
+}
+
 /** The reader for a file of a book, by its format. */
 export function ReaderRoute() {
 	const { bookId, fileId } = useParams({
+		from: "/app/books/$bookId/read/$fileId",
+	});
+	const { page, to, find, near } = useSearch({
 		from: "/app/books/$bookId/read/$fileId",
 	});
 	const book = useQuery(bookQuery(bookId));
@@ -43,7 +72,12 @@ export function ReaderRoute() {
 	if (file?.format === "pdf") {
 		return (
 			<Suspense fallback={opening}>
-				<PdfReader bookId={bookId} fileId={fileId} />
+				<PdfReader
+					bookId={bookId}
+					fileId={fileId}
+					at={page}
+					find={find ? { word: find, passage: near ?? find, to } : undefined}
+				/>
 			</Suspense>
 		);
 	}
@@ -55,6 +89,7 @@ export function ReaderRoute() {
 					fileId={fileId}
 					fileName={file.name}
 					title={book.data.title}
+					find={find ? { word: find, passage: near ?? find } : undefined}
 				/>
 			</Suspense>
 		);

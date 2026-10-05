@@ -2,10 +2,15 @@
  * A PDF of the pages given, each saying "Page n" and carrying filler, so a
  * test can have a file as large as it needs without one in the repository.
  * The filler is a comment in each page's content stream: it weighs, and
- * draws nothing. The tag goes into the file as a comment, which makes each
+ * draws nothing. A page numbered in passages also says that text. The tag goes into the file as a comment, which makes each
  * test's file another file to the upload's duplicate check.
  */
-export function makePdf(pages: number, fillerPerPage = 0, tag = ""): Buffer {
+export function makePdf(
+	pages: number,
+	fillerPerPage = 0,
+	tag = "",
+	passages: Record<number, string> = {},
+): Buffer {
 	const objects: string[] = [];
 	const add = (body: string) => {
 		objects.push(body);
@@ -22,7 +27,8 @@ export function makePdf(pages: number, fillerPerPage = 0, tag = ""): Buffer {
 	for (let n = 1; n <= pages; n++) {
 		const branch = Math.floor((n - 1) / 10);
 		const filler = fillerPerPage > 0 ? `%${"x".repeat(fillerPerPage)}\n` : "";
-		const content = `${filler}BT /F1 36 Tf 72 700 Td (Page ${n}) Tj ET`;
+		const passage = passages[n] ? ` BT /F1 12 Tf 72 640 Td (${passages[n]}) Tj ET` : "";
+		const content = `${filler}BT /F1 36 Tf 72 700 Td (Page ${n}) Tj ET${passage}`;
 		const stream = add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
 		leaves[branch]?.push(
 			add(

@@ -10,6 +10,7 @@ import {
 } from "@/books/progress";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { closestPage } from "@/reader/passage";
 import { type OutlineItem, openPdf, type PdfDocument } from "@/reader/pdf";
 import { typing } from "@/routes/book-find";
 import "@/reader/text-layer.css";
@@ -39,9 +40,15 @@ function pageIn(
 export function PdfReader({
 	bookId,
 	fileId,
+	at,
+	find,
 }: {
 	bookId: string;
 	fileId: string;
+	/** A page to open at instead of the saved place. */
+	at?: number;
+	/** A passage to look for on the pages from at to to, to open at its page. */
+	find?: { word: string; passage: string; to?: number };
 }) {
 	const book = useQuery(bookQuery(bookId));
 	const progress = useQuery(progressQuery(bookId));
@@ -80,12 +87,43 @@ export function PdfReader({
 		};
 	}, [fileId]);
 
+	// A passage's pages are read for its words; the page that holds them is
+	// where the reader opens.
+	const [found, setFound] = useState<number>();
+	const wanted = useRef(find);
+	useEffect(() => {
+		const passage = wanted.current;
+		if (!doc || !passage || at === undefined) return;
+		let open = true;
+		const last = Math.min(Math.max(passage.to ?? at, at), doc.pages);
+		(async () => {
+			const pages = [];
+			for (let n = at; n <= last; n++) {
+				pages.push({ page: n, text: await doc.text(n) });
+			}
+			return closestPage(pages, passage.word, passage.passage) ?? at;
+		})().then(
+			(n) => open && setFound(n),
+			() => open && setFound(at),
+		);
+		return () => {
+			open = false;
+		};
+	}, [doc, at]);
+	const target = find && at !== undefined ? found : at;
+
 	// Once the file and the saved place are both known, the reader starts
-	// there.
-	if (doc && !progress.isPending && page === undefined) {
+	// there, or at the page asked for, which is not saved until the person
+	// moves on from it.
+	if (
+		doc &&
+		!progress.isPending &&
+		page === undefined &&
+		(target !== undefined || at === undefined)
+	) {
 		const resumed = pageIn(progress.data?.ebook, fileId);
-		const start = Math.min(Math.max(resumed ?? 1, 1), doc.pages);
-		kept.current = resumed;
+		const start = Math.min(Math.max(target ?? resumed ?? 1, 1), doc.pages);
+		kept.current = target === undefined ? resumed : start;
 		setPage(start);
 	}
 

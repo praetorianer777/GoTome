@@ -24,6 +24,8 @@ export interface PdfDocument {
 	/** The width of a page at scale 1, in CSS pixels. */
 	pageWidth(page: number): Promise<number>;
 	outline(): Promise<OutlineItem[]>;
+	/** The text of a page, its pieces joined by spaces. */
+	text(page: number): Promise<string>;
 	/**
 	 * Draws a page into the canvas at the scale, with its text laid over it
 	 * in the text layer so that it can be selected. The promise ends when
@@ -76,6 +78,10 @@ function wrap(doc: PDFDocumentProxy): PdfDocument {
 					})),
 				);
 			return walk(items, "");
+		},
+		async text(n) {
+			const content = await (await doc.getPage(n)).getTextContent();
+			return content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
 		},
 		render(n, scale, canvas, textLayer) {
 			let cancelled = false;

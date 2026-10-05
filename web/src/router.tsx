@@ -19,7 +19,7 @@ import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
 import { Stats } from "@/routes/stats";
-import { ReaderRoute } from "@/routes/read";
+import { ReaderRoute, readerSearch } from "@/routes/read";
 import { CollectionPage } from "@/routes/collection";
 import { Collections } from "@/routes/collections";
 import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
@@ -33,6 +33,7 @@ import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
 import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
+import { SearchPage, type TextSearch } from "@/routes/search";
 import { Setup } from "@/routes/setup";
 import { Upload } from "@/routes/upload";
 
@@ -135,6 +136,27 @@ const libraryRoute = createRoute({
 	},
 });
 
+const searchRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/search",
+	validateSearch: (search): TextSearch => ({
+		...picksFrom(search),
+		q: typeof search.q === "string" && search.q ? search.q : undefined,
+		library: typeof search.library === "string" ? search.library : undefined,
+	}),
+	component: function SearchRoute() {
+		const navigate = searchRoute.useNavigate();
+		return (
+			<SearchPage
+				search={searchRoute.useSearch()}
+				onSearch={(change) =>
+					navigate({ search: (previous) => ({ ...previous, ...change }) })
+				}
+			/>
+		);
+	},
+});
+
 const bookRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId",
@@ -220,6 +242,7 @@ const reviewRoute = createRoute({
 const readPdfRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId/read/$fileId",
+	validateSearch: readerSearch,
 	component: ReaderRoute,
 });
 
@@ -334,7 +357,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

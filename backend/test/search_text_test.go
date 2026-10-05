@@ -21,6 +21,7 @@ type textResult struct {
 		Corrected bool `json:"corrected"`
 		Hits      []struct {
 			FileID   string `json:"fileId"`
+			Format   string `json:"format"`
 			Position int    `json:"position"`
 			Chapter  string `json:"chapter"`
 			PageFrom int    `json:"pageFrom"`
@@ -89,7 +90,7 @@ func TestTheTextOfBooksIsSearched(t *testing.T) {
 			matched = append(matched, p.Text)
 		}
 	}
-	if len(matched) == 0 || matched[0] != "runs" || hit.PageFrom == 0 || hit.FileID == "" {
+	if len(matched) == 0 || matched[0] != "runs" || hit.PageFrom == 0 || hit.FileID == "" || hit.Format != "epub" {
 		t.Errorf("the hit: %+v", hit)
 	}
 

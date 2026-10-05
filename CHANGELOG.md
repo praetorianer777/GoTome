@@ -179,3 +179,10 @@ What changes for someone who runs or uses GOtome. The format follows
   and updates as things happen, without reloading the page. A bulk change
   tells you when it is done. Open the bell to see them, go to what one is
   about, or mark them all as read.
+- Search the text of the books: the Search page, or the last entry under
+  the search box in the header, finds books whose text holds every word in
+  any form, or a phrase in quotes, best first, with the passages that do.
+  Typos are repaired when the words as typed find little. Narrow the
+  results by library and the library's filters; the address keeps both.
+  "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
+  at the passage, without moving where you left off until you read on.

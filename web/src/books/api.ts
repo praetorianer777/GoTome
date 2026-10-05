@@ -27,7 +27,10 @@ const PAGE_SIZE = 60;
  * the last book's sort keys, so asking for the next page is handing back the
  * cursor it gave.
  */
-export function booksQuery(params: BookListParams, refetchInterval: number | false = false) {
+export function booksQuery(
+	params: BookListParams,
+	refetchInterval: number | false = false,
+) {
 	return infiniteQueryOptions({
 		queryKey: ["books", params],
 		queryFn: async ({ pageParam }) =>
@@ -76,6 +79,37 @@ export function searchQuery(words: string) {
 				?.books ?? [],
 		// While the next answer is on its way, the last one stays in view.
 		placeholderData: (previous) => previous,
+	});
+}
+
+export type TextBook = components["schemas"]["TextBook"];
+export type TextHit = components["schemas"]["TextHit"];
+
+const TEXT_PAGE_SIZE = 20;
+
+/**
+ * The books whose text holds the words, best first, a page at a time. The
+ * results are ranked, so pages are counted rather than keyed.
+ */
+export function textSearchQuery(params: {
+	q: string;
+	library?: string;
+	filter?: string;
+}) {
+	return infiniteQueryOptions({
+		queryKey: ["books", "text", params],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET("/search", {
+					params: {
+						// The server takes no offset of 0: the first page leaves it out.
+						query: { ...params, limit: TEXT_PAGE_SIZE, offset: pageParam || undefined },
+					},
+				})
+			).data ?? { books: [], more: false },
+		initialPageParam: 0,
+		getNextPageParam: (last, pages) =>
+			last.more ? pages.length * TEXT_PAGE_SIZE : undefined,
 	});
 }
 

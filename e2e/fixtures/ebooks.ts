@@ -56,11 +56,11 @@ function zip(files: [string, string][]): Buffer {
 	return Buffer.concat([...local, directory, end]);
 }
 
-function paragraphs(chapter: number, count: number): string {
+function paragraphs(chapter: number, count: number, from = 1): string {
 	return Array.from(
 		{ length: count },
 		(_, i) =>
-			`<p>Chapter ${chapter}, paragraph ${i + 1}. It is a truth universally acknowledged that a reader in want of a test must be in possession of many words, and these are some of them.</p>`,
+			`<p>Chapter ${chapter}, paragraph ${from + i}. It is a truth universally acknowledged that a reader in want of a test must be in possession of many words, and these are some of them.</p>`,
 	).join("\n");
 }
 
@@ -68,12 +68,15 @@ function paragraphs(chapter: number, count: number): string {
  * An EPUB 3 of the chapters, each with a heading and a table of contents
  * entry. With hostile, the first chapter carries a script, an event
  * handler and an image from another host, none of which may do anything.
+ * A chapter numbered in passages has that text as a paragraph halfway
+ * through.
  */
 export function makeEpub(
 	title: string,
 	chapters: number,
 	tag: string,
 	hostile = false,
+	passages: Record<number, string> = {},
 ): Buffer {
 	const ids = Array.from({ length: chapters }, (_, i) => i + 1);
 	const attack = hostile
@@ -87,7 +90,9 @@ export function makeEpub(
 <body>
 <h1>Chapter ${n}</h1>
 ${n === 1 ? attack : ""}
-${paragraphs(n, 40)}
+${paragraphs(n, 20)}
+${passages[n] ? `<p>${passages[n]}</p>` : ""}
+${paragraphs(n, 20, 21)}
 </body>
 </html>`;
 	const nav = `<?xml version="1.0" encoding="UTF-8"?>
