@@ -880,6 +880,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose text holds the words, best first, with the passages that do */
+        get: operations["searchText"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -1429,6 +1446,10 @@ export interface components {
             /** @enum {string} */
             source?: "file" | "filename" | "manual" | "provider";
         };
+        FullTextResult: {
+            books: components["schemas"]["TextBook"][];
+            more: boolean;
+        };
         Identifier: {
             type: string;
             value: string;
@@ -1745,6 +1766,10 @@ export interface components {
             /** @enum {string} */
             visibility?: "private" | "shared";
         };
+        SnippetPart: {
+            match?: boolean;
+            text: string;
+        };
         StatsDay: {
             date: string;
             listeningMinutes: number;
@@ -1767,6 +1792,20 @@ export interface components {
         Storage: {
             quotaBytes?: number;
             usedBytes: number;
+        };
+        TextBook: {
+            book: components["schemas"]["BookSummary"];
+            hits: components["schemas"]["TextHit"][];
+        };
+        TextHit: {
+            chapter?: string;
+            /** Format: uuid */
+            fileId: string;
+            offset: number;
+            pageFrom?: number;
+            pageTo?: number;
+            position: number;
+            snippet: components["schemas"]["SnippetPart"][];
         };
         UnreadCount: {
             unread: number;
@@ -3769,6 +3808,46 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchText: {
+        parameters: {
+            query?: {
+                /** @description The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order. */
+                q?: string;
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description A rule tree the books must match, as listBooks takes it. */
+                filter?: string;
+                /** @description How many books a page holds, at most 50; 20 when left out. */
+                limit?: number;
+                /** @description How many of the books found to pass over: results are ranked, so pages are counted, not keyed. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FullTextResult"];
                 };
             };
             /** @description The request failed. */

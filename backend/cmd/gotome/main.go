@@ -33,6 +33,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -215,6 +216,7 @@ func serve() error {
 		Bulk:      changes,
 		Reading:   reading.NewService(pool),
 		Shelves:   shelves.NewService(pool, books),
+		Search:    search.NewPGSearch(pool, books),
 
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,

@@ -269,6 +269,11 @@ func (s *Server) routes() []Route {
 			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/search", ID: "searchText",
+			Summary: "Books whose text holds the words, best first, with the passages that do", Tag: "books",
+			Query: fullTextQuery{}, Response: fullTextResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchText,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
 			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,

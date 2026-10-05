@@ -327,6 +327,29 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Placeholders have no files and so no chunks. A merge of books (#62) must
   choose the survivor's primary text file and rechunk it.
 
+## Full-text search
+
+- `internal/search` is the `Searcher`; `PGSearch` runs it on the BM25 index
+  `book_chunks_bm25` (migration 00022), as `docs/decisions/search-engine.md`
+  decided. `GET /search` takes words, all of which a chunk must hold in any
+  form (`&&&`), and phrases in double quotes (`###`), in every language
+  column at once.
+- Visibility is inside the index: the visible libraries
+  (`visible_library_ids`), and the books of a filter when
+  `catalog.Service.Select` names few enough, are term sets in the query, so
+  the best chunks are taken among them alone. The outer query checks
+  `catalog.BookConditions` again on the books found.
+- The best `window` chunks are grouped by book in Go, the best book first,
+  and pages are counted by `offset`: ranked results have no keys to page by.
+  Snippets are read for the page's passages only, wrapped in control
+  characters and returned as parts, so no client puts HTML from a book on a
+  page.
+- Its transaction sets `plan_cache_mode = force_custom_plan`: pg_search
+  needs the query text as a constant, and a prepared statement's generic
+  plan hands it a parameter instead.
+- Stemming is Snowball's: "running" finds "runs", but irregular forms such
+  as "ran" are other words to it.
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by

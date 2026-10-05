@@ -62,6 +62,10 @@ func readCases() map[string][]readCase {
 			{path: "/books", query: q("filter", byAuthor), control: "insider"},
 		},
 		"searchBooks": {{path: "/books/search", query: q("q", "{title}"), control: "insider"}},
+		"searchText": {
+			{path: "/search", query: q("q", "{title}"), control: "insider"},
+			{path: "/search", query: q("q", "{title}", "library", "{library}"), control: "insider"},
+		},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
@@ -184,6 +188,12 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	record, _ := json.Marshal(metadata.Record{ID: "secret", Title: secret["title"]})
 	if _, err := a.pool.Exec(ctx, `INSERT INTO metadata_matches (book_id, provider, record_id, score, record)
 		VALUES ($1, 'shelf', 'secret', 0.5, $2)`, book, record); err != nil {
+		t.Fatal(err)
+	}
+	// The file is no PDF, so its text is the test's: a passage that names
+	// the book, for the full-text search to find.
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang, body_en)
+		VALUES ($1, $2, $3, 0, 0, 'en', $4)`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
 		t.Fatal(err)
 	}
 	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}
