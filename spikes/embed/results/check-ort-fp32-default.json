@@ -1,0 +1,8 @@
+{
+  "backend": "ort",
+  "weights": "fp32",
+  "minCosine": 1,
+  "tokensMatch": 0,
+  "texts": null,
+  "error": "ort: run: onnxruntime: Fail: Non-zero status code returned while running Add node. Name:'/embeddings/Add_1' Status Message: /onnxruntime_src/onnxruntime/core/providers/cpu/math/element_wise_ops.h:583 void onnxruntime::BroadcastIterator::Append(ptrdiff_t, ptrdiff_t) axis == 1 || axis == largest was false. Attempting to broadcast an axis by a dimension other than 1. 512 by 1205\n"
+}

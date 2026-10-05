@@ -47,7 +47,7 @@ type common struct {
 }
 
 func (c *common) flags(fs *flag.FlagSet) {
-	fs.StringVar(&c.backend, "backend", "go", "go or ort")
+	fs.StringVar(&c.backend, "backend", "go", "go or ort (hugot), or direct (ONNX Runtime with this package's tokenizer)")
 	fs.StringVar(&c.weights, "weights", "fp32", "fp32 or int8")
 	fs.StringVar(&c.model, "model", "/embed/model", "the model directory")
 	fs.StringVar(&c.ortLib, "ort", "", "the directory of the ONNX Runtime library, for ort")
@@ -56,7 +56,24 @@ func (c *common) flags(fs *flag.FlagSet) {
 	fs.StringVar(&c.out, "out", "", "the result file")
 }
 
-func (c *common) open(ctx context.Context) (*Embedder, error) {
+// embedder is what every backend offers the commands.
+type embedder interface {
+	Embed(ctx context.Context, texts []string) ([][]float32, error)
+	TokenIDs(text string) []int
+	Close()
+}
+
+// openDirect is set by direct.go in builds with cgo, which the ONNX Runtime
+// binding needs.
+var openDirect func(weights, dir, ortLib string, threads, maxTokens int) (embedder, error)
+
+func (c *common) open(ctx context.Context) (embedder, error) {
+	if c.backend == "direct" {
+		if openDirect == nil {
+			return nil, errors.New("the direct backend needs a build with cgo")
+		}
+		return openDirect(c.weights, c.model, c.ortLib, c.threads, c.maxTokens)
+	}
 	return Open(ctx, c.backend, c.weights, c.model, c.ortLib, c.threads, c.maxTokens)
 }
 
@@ -170,13 +187,13 @@ type SpeedResult struct {
 	Batch    int    `json:"batch"`
 	Passages int    `json:"passages"`
 	// Tokens is the mean number of tokens per passage, after truncation.
-	Tokens          float64    `json:"meanTokens"`
-	LoadSeconds     float64    `json:"loadSeconds"`
+	Tokens      float64 `json:"meanTokens"`
+	LoadSeconds float64 `json:"loadSeconds"`
 	// LoadedAnon is the container's anonymous memory once the model is
 	// loaded, before the first passage.
 	LoadedAnon int64 `json:"loadedAnon"`
 	// MemoryLimit is the container's, in bytes.
-	MemoryLimit int64 `json:"memoryLimit"`
+	MemoryLimit     int64      `json:"memoryLimit"`
 	Seconds         float64    `json:"seconds"`
 	PassagesPerSec  float64    `json:"passagesPerSecond"`
 	Memory          MemoryPeak `json:"memory"`
@@ -232,7 +249,7 @@ func runSpeed(ctx context.Context, args []string) error {
 	res.Memory = mem.Stop()
 	res.OOMKills = OOMKills(*cgroup)
 	res.ModelFileBytes = fileSize(c.model + "/" + Weights[c.weights])
-	if c.backend == "ort" {
+	if c.backend != "go" {
 		res.LibraryBytes = fileSize(c.ortLib + "/libonnxruntime.so")
 	}
 	if exe, err := os.Executable(); err == nil {
