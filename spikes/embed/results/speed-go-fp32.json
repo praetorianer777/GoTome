@@ -1,0 +1,20 @@
+{
+  "backend": "go",
+  "weights": "fp32",
+  "threads": 4,
+  "batch": 8,
+  "passages": 128,
+  "meanTokens": 511.640625,
+  "loadSeconds": 1.792373794,
+  "loadedAnon": 1788305408,
+  "memoryLimit": 8589934592,
+  "seconds": 760.436724082,
+  "passagesPerSecond": 0.16832432725355517,
+  "memory": {
+    "anon": 2583552000,
+    "current": 2596700160
+  },
+  "oomKills": 0,
+  "modelFileBytes": 470268510,
+  "executableBytes": 21644478
+}

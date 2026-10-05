@@ -16,10 +16,14 @@ import (
 
 // Book is one book of the corpus as the engines index it.
 type Book struct {
-	ID     int      `json:"id"`
-	Lang   string   `json:"lang"`
-	Title  string   `json:"title"`
-	Chunks []string `json:"chunks"`
+	ID    int    `json:"id"`
+	Lang  string `json:"lang"`
+	Title string `json:"title"`
+	// Authors and Subjects are for the embedding spike (#15), which judges
+	// which books are related by them.
+	Authors  []string `json:"authors,omitempty"`
+	Subjects []string `json:"subjects,omitempty"`
+	Chunks   []string `json:"chunks"`
 }
 
 // extract reads every EPUB under dir/<lang>/ with the app's own reader and
@@ -80,7 +84,10 @@ func readBook(path string) (Book, error) {
 	if len(chunks) == 0 {
 		return Book{}, errors.New("no text")
 	}
-	return Book{Lang: filepath.Base(filepath.Dir(path)), Title: b.Metadata.Title, Chunks: chunks}, nil
+	return Book{
+		Lang: filepath.Base(filepath.Dir(path)), Title: b.Metadata.Title,
+		Authors: b.Metadata.Authors(), Subjects: b.Metadata.Subjects, Chunks: chunks,
+	}, nil
 }
 
 // readBooks calls fn for each book in the file extract wrote.
