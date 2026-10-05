@@ -207,6 +207,13 @@ func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, p
 	return where, nil
 }
 
+// BookConditions are visibleBooks's conditions on books aliased b, for
+// queries outside this package that start from the same books, such as the
+// full-text search. Placeholders are left out.
+func BookConditions(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, arg func(any) string) ([]string, error) {
+	return visibleBooks(scope, libraryID, tree, false, arg)
+}
+
 // FacetValue is one value of a field and how many books have it.
 type FacetValue struct {
 	// Value is what a rule on the field takes: a name's key, a language

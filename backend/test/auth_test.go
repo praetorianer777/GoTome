@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -150,6 +151,7 @@ func newApp(t *testing.T) *app {
 	a.server.Bulk.Queue = queue
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
+	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
 	a.server.Notifications = notify.NewService(a.pool)
 	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
 	hubCtx, stopHub := context.WithCancel(context.Background())

@@ -3025,6 +3025,85 @@
         "x-permission": "signed-in"
       }
     },
+    "/search": {
+      "get": {
+        "operationId": "searchText",
+        "summary": "Books whose text holds the words, best first, with the passages that do",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "The words to look for in the books' text, all of which a passage must hold in any form; a phrase in double quotes must stand in that order.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "A rule tree the books must match, as listBooks takes it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books a page holds, at most 50; 20 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "How many of the books found to pass over: results are ranked, so pages are counted, not keyed.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FullTextResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "listSettings",
@@ -5120,6 +5199,24 @@
           "locked"
         ]
       },
+      "FullTextResult": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TextBook"
+            }
+          },
+          "more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "books",
+          "more"
+        ]
+      },
       "Identifier": {
         "type": "object",
         "properties": {
@@ -6244,6 +6341,20 @@
           "filter"
         ]
       },
+      "SnippetPart": {
+        "type": "object",
+        "properties": {
+          "match": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
       "StatsDay": {
         "type": "object",
         "properties": {
@@ -6326,6 +6437,60 @@
         },
         "required": [
           "usedBytes"
+        ]
+      },
+      "TextBook": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookSummary"
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TextHit"
+            }
+          }
+        },
+        "required": [
+          "book",
+          "hits"
+        ]
+      },
+      "TextHit": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "pageFrom": {
+            "type": "integer"
+          },
+          "pageTo": {
+            "type": "integer"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "snippet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnippetPart"
+            }
+          }
+        },
+        "required": [
+          "fileId",
+          "position",
+          "offset",
+          "snippet"
         ]
       },
       "UnreadCount": {

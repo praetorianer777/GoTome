@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 )
@@ -67,6 +68,8 @@ type Server struct {
 	Reading *reading.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
+	// Search finds books by the words of their text.
+	Search search.Searcher
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service
