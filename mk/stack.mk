@@ -141,13 +141,15 @@ stack-check: ## Check the running stack: two services, web app and API answering
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
 	done
+	@test "$$(docker compose exec -T db cat /proc/1/comm)" != postgres \
+		|| { echo "Postgres is process 1 in its container: without init, a stray child restarts it (#168)"; exit 1; }
 	@for program in pdfinfo pdftotext pdftoppm ffprobe ffmpeg prlimit; do \
 		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
 			|| { echo "the app image has no $$program"; exit 1; }; \
 	done
 	@docker compose exec -T app gotome embed-check >/dev/null \
 		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler, ffmpeg and ONNX Runtime installed"
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, db behind an init, poppler, ffmpeg and ONNX Runtime installed"
 
 # The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
 # there already, so this reaches Hugging Face once per cache; the gate leaves

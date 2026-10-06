@@ -81,6 +81,11 @@ services:
     # read every book to find a few thousand of them. The image tunes its
     # memory to the machine's when the database is first made.
     command: ["postgres", "-c", "random_page_cost=1.1"]
+    # Docker's init as process 1, not Postgres: a health check that runs past
+    # its timeout is left running and handed to process 1, and Postgres takes
+    # a child it did not start that exits with 2 (pg_isready's "no answer")
+    # for a crashed backend and restarts, dropping every connection (#168).
+    init: true
     environment:
       POSTGRES_USER: gotome
       POSTGRES_DB: gotome

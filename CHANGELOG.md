@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The database no longer restarts itself, dropping every connection, when
+  the machine is busy enough for its health check to time out. Take the
+  `init: true` of the `db` service into your compose file.
+
 ### Added
 
 - Scrolling far into a large library stays smooth: the page keeps only the
