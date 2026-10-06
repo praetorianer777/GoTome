@@ -186,6 +186,12 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- CrossRef is asked for book details beside OpenLibrary: by DOI, by ISBN
+  and by title and author. A PDF's DOI is read from its metadata or its
+  first pages, so a paper or a scholarly book finds its record. An
+  administrator may give a contact e-mail address in Settings, which
+  CrossRef serves faster. Installations that chose their sources keep
+  their choice; add `crossref` to use it.
 - Hardcover is asked for book details beside OpenLibrary once an
   administrator gives a Hardcover API token in Settings (from your
   Hardcover account settings). It knows series and their order, which

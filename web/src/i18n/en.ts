@@ -583,8 +583,11 @@ export const en = {
 	"settings.matchThreshold": "Sure enough to take without asking",
 	"settings.matchThreshold.hint":
 		"A score from 0.5 to 1. A match with the same ISBN scores 1; title, author and year alone at most 0.99.",
+	"settings.contactEmail": "Contact address for sources",
+	"settings.contactEmail.hint":
+		"Optional. Given to sources that ask whom to write to about the requests they get; CrossRef answers faster with one.",
 	"settings.providers": "Sources to ask",
-	"settings.providers.hint": "Their names, separated by commas: openlibrary, hardcover.",
+	"settings.providers.hint": "Their names, separated by commas: openlibrary, crossref, hardcover.",
 	"settings.secret.set": "Saved on {date}.",
 	"settings.secret.unset": "Not set.",
 	"settings.secret.new": "Paste it here",

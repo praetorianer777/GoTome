@@ -1,0 +1,6 @@
+{
+  "method": "GET",
+  "url": "https://api.crossref.org/works?filter=isbn%3A9799999999990%2Ctype%3Abook%2Ctype%3Amonograph%2Ctype%3Aedited-book%2Ctype%3Areference-book\u0026rows=5",
+  "status": 200,
+  "answer": "eyJzdGF0dXMiOiJvayIsIm1lc3NhZ2UtdHlwZSI6IndvcmstbGlzdCIsIm1lc3NhZ2UtdmVyc2lvbiI6IjEuMC4wIiwibWVzc2FnZSI6eyJmYWNldHMiOnt9LCJ0b3RhbC1yZXN1bHRzIjowLCJpdGVtcyI6W10sIml0ZW1zLXBlci1wYWdlIjo1LCJxdWVyeSI6eyJzdGFydC1pbmRleCI6MCwic2VhcmNoLXRlcm1zIjpudWxsfX19"
+}

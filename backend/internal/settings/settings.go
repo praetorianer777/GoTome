@@ -45,6 +45,9 @@ const (
 	MatchThreshold = "metadata.matchThreshold"
 	// Providers lists the metadata providers asked, comma-separated.
 	Providers = "metadata.providers"
+	// ContactEmail is the address given to providers that ask whom to
+	// write to about the requests they get: CrossRef serves those faster.
+	ContactEmail = "metadata.contactEmail"
 	// TrashRetentionDays is how many days a trashed file is kept before it
 	// is deleted for good.
 	TrashRetentionDays = "trash.retentionDays"
@@ -82,7 +85,8 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: Providers, Kind: KindText, Default: "openlibrary,hardcover", Check: names},
+	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names},
+	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
@@ -118,6 +122,14 @@ func threshold(v string) (string, error) {
 		return "", errors.New("Give a number from 0.5 to 1, such as 0.95.")
 	}
 	return strconv.FormatFloat(f, 'f', -1, 64), nil
+}
+
+func email(v string) (string, error) {
+	local, domain, ok := strings.Cut(v, "@")
+	if !ok || local == "" || !strings.Contains(domain, ".") || strings.ContainsAny(v, " \t<>,;\"") {
+		return "", errors.New("Give an e-mail address, such as library@example.org.")
+	}
+	return v, nil
 }
 
 // days is a whole number of days, from one to ten years.

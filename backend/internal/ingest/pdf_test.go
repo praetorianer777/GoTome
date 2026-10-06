@@ -9,9 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 )
 
 func needPoppler(t *testing.T) {
@@ -180,5 +183,38 @@ func TestPDFLockedWithAPassword(t *testing.T) {
 	got, err := extractPDF(context.Background(), writePDF(t, nil, textPage("x")))
 	if err != nil || !got.DRM {
 		t.Fatalf("got %+v, %v; want it catalogued as locked", got, err)
+	}
+}
+
+func TestFindDOI(t *testing.T) {
+	for _, tc := range []struct {
+		texts []string
+		want  string
+	}{
+		{[]string{"", "Nature 521, 436–444 (2015). doi:10.1038/nature14539."}, "10.1038/nature14539"},
+		{[]string{"https://doi.org/10.1007/978-0-387-84858-7"}, "10.1007/978-0-387-84858-7"},
+		{[]string{"(DOI 10.1000/XYZ-123)"}, "10.1000/xyz-123"},
+		{[]string{"Version 10.2 of the manual, page 10.4/5"}, ""},
+		{[]string{"no identifier here"}, ""},
+	} {
+		got, ok := findDOI(tc.texts...)
+		if got.Value != tc.want || ok != (tc.want != "") || (ok && got.Type != catalog.IDDOI) {
+			t.Errorf("findDOI(%q) = %v, %v; want %q", tc.texts, got, ok, tc.want)
+		}
+	}
+}
+
+func TestAPDFNamesItsDOI(t *testing.T) {
+	needPoppler(t)
+	path := writePDF(t, map[string]string{"Title": "Deep learning"},
+		textPage("Deep learning", "Yann LeCun, Yoshua Bengio and Geoffrey Hinton"),
+		textPage("Nature 521, 436-444 (2015)", "doi:10.1038/nature14539"),
+	)
+	got, err := extractPDF(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(got.Metadata.Identifiers, catalog.Identifier{Type: catalog.IDDOI, Value: "10.1038/nature14539"}) {
+		t.Errorf("identifiers = %v", got.Metadata.Identifiers)
 	}
 }

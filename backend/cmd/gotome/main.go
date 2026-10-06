@@ -35,6 +35,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -153,6 +154,10 @@ func serve() error {
 	scans.UploadLimit = cfg.UploadLimit
 	providers := []metadata.Provider{
 		openlibrary.New(),
+		crossref.New(func(ctx context.Context) string {
+			contact, _ := settingStore.Text(ctx, settings.ContactEmail)
+			return contact
+		}),
 		hardcover.New(func(ctx context.Context) string {
 			token, _, err := settingStore.Secret(ctx, settings.HardcoverToken)
 			if err != nil {
