@@ -54,5 +54,5 @@ UPDATE books SET deleted_at = now(), merged_into_id = sqlc.arg(into_book) WHERE 
 SELECT EXISTS (
     SELECT 1 FROM libraries l
     WHERE l.id = sqlc.arg(id)
-      AND l.id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND l.id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 );

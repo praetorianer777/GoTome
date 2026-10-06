@@ -30,7 +30,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY b.id
 ORDER BY min(m.created_at), b.id
 LIMIT sqlc.arg(max_books);
@@ -41,7 +41,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListPendingMatches :many
 SELECT * FROM metadata_matches
@@ -54,7 +54,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.id = sqlc.arg(id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: SetMatchState :exec
 UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1;

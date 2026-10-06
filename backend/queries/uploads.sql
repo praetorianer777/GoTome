@@ -17,7 +17,7 @@ FROM book_files f
 JOIN books b ON b.id = f.book_id
 WHERE f.sha256 = sqlc.arg(sha256)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY f.created_at, f.id
 LIMIT 1;
 

@@ -18,7 +18,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 `
 
 type CountReviewBooksParams struct {
@@ -78,7 +78,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleMatchParams struct {
@@ -146,7 +146,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY b.id
 ORDER BY min(m.created_at), b.id
 LIMIT $3

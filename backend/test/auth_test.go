@@ -114,7 +114,14 @@ func (a *app) advance(d time.Duration) {
 
 func newApp(t *testing.T) *app {
 	t.Helper()
-	a := &app{t: t, pool: dbtest.New(t), now: time.Now()}
+	return newAppOn(t, dbtest.New(t))
+}
+
+// newAppOn is newApp on a pool the test made, such as one that reports the
+// plans of the queries it runs.
+func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
+	t.Helper()
+	a := &app{t: t, pool: pool, now: time.Now()}
 	accounts, err := auth.NewService(a.pool, fastHash, auth.DefaultSessionTTL)
 	if err != nil {
 		t.Fatal(err)

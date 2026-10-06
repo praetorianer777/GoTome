@@ -76,6 +76,11 @@ services:
     # extensions are pre-1.0 and an index may need rebuilding across versions,
     # so the image only changes in a commit that says so.
     image: paradedb/paradedb:0.25.11-pg18@sha256:a9cbdcfd8a1c349ab21590fd6d6dcbe7da489878df6502922d032dd64c1a7ae7
+    # A random read costs little more than a sequential one on an SSD, and
+    # GOtome's tables are mostly in memory: Postgres's default of 4 has it
+    # read every book to find a few thousand of them. The image tunes its
+    # memory to the machine's when the database is first made.
+    command: ["postgres", "-c", "random_page_cost=1.1"]
     environment:
       POSTGRES_USER: gotome
       POSTGRES_DB: gotome

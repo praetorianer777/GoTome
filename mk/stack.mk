@@ -109,6 +109,19 @@ test-integration: | $(GO_CACHE) go-toolchain ## Run the integration suite agains
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
 	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
 
+# The main views on a library of 50,000 books (test/scale_test.go), with the
+# plans of their queries written to .cache/scale-plans, and with the
+# app, which runs inside the test, held to the 2 GB a modest server gives it.
+# Without the race detector, which would measure itself. Minutes, so not in
+# the gate.
+.PHONY: scale-test
+scale-test: | $(GO_CACHE) go-toolchain ## Time the main views at 50,000 books and check their plans, against the running stack
+	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
+		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
+	$(call go_run,--memory 2g --network $(STACK_NET) -e GOTOME_SCALE=1 -e GOTOME_SCALE_PLANS=/work/.cache/scale-plans \
+		-e GOTOME_TEST_DATABASE_URL="postgres://gotome:$$(docker compose exec -T db cat /secrets/db-password)@db:5432/gotome?sslmode=disable") \
+		go test -tags integration -count=1 -timeout 30m -v -run TestTheMainViewsAtFiftyThousandBooks ./test/
+
 # The pinned database image is what promises pg_search and pgvector; this fails
 # the gate when a new pin no longer carries them.
 .PHONY: stack-check

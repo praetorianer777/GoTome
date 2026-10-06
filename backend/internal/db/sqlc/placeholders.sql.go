@@ -81,7 +81,7 @@ const isLibraryVisible = `-- name: IsLibraryVisible :one
 SELECT EXISTS (
     SELECT 1 FROM libraries l
     WHERE l.id = $1
-      AND l.id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+      AND l.id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 )
 `
 

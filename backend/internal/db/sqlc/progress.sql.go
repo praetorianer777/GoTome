@@ -24,7 +24,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY s.medium
 ORDER BY s.medium
 `
@@ -112,7 +112,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $2
   AND s.started_at >= $3
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $4::boolean))
 GROUP BY 1, 2
 ORDER BY 1, 2
 `
@@ -228,7 +228,7 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = $2
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 GROUP BY 1
 ORDER BY 1 DESC
 `
@@ -403,7 +403,7 @@ FROM (
 ) h
 JOIN books b ON b.id = h.book_id
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT $4
 `

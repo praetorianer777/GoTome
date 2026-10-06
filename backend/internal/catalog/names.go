@@ -36,7 +36,7 @@ func (s *Service) Names(ctx context.Context, scope library.Scope, kind, typed st
 SELECT n.name
 FROM `+from+`
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1, $2))
+  AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2))
   AND (n.name_key LIKE $3 || '%' OR n.name_key LIKE '% ' || $3 || '%')
 GROUP BY n.name, n.name_key
 ORDER BY n.name_key LIKE $3 || '%' DESC, count(*) DESC, n.name_key

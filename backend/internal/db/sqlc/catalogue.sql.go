@@ -309,7 +309,7 @@ SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.des
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleBookParams struct {
@@ -359,7 +359,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleBookCoverParams struct {
@@ -385,7 +385,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleFileParams struct {
@@ -713,7 +713,7 @@ SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.des
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 FOR UPDATE
 `
 

@@ -1,14 +1,14 @@
 -- name: ListVisibleLibraries :many
 SELECT l.*
 FROM libraries l
-WHERE l.id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE l.id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY lower(l.name);
 
 -- name: GetVisibleLibrary :one
 SELECT l.*
 FROM libraries l
 WHERE l.id = $1
-  AND l.id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND l.id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListLibraryRoots :many
 -- Every root, whoever may see it: a new library must not overlap any of them.

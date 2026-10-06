@@ -56,7 +56,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND s.started_at >= sqlc.arg(since)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
@@ -73,7 +73,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY s.medium
 ORDER BY s.medium;
 
@@ -87,7 +87,7 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY 1
 ORDER BY 1 DESC;
 
@@ -105,6 +105,6 @@ FROM (
 ) h
 JOIN books b ON b.id = h.book_id
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT sqlc.arg(max_rows);

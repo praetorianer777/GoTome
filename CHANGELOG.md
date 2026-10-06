@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Large libraries are fast: at 50,000 books every page answers within a
+  quarter of a second, most within a few milliseconds, and the library's
+  filters count in about a tenth of a second.
+  docs/performance.md has the figures. The database now takes random reads
+  for cheap (`random_page_cost = 1.1` in the compose file), and GOtome keeps
+  its memory under the container's limit when it has one.
 - Sign in through your own identity provider (OpenID Connect, such as
   Authentik, Authelia or Keycloak). An administrator sets it up in
   Settings, where the address to register at the provider is shown. A first

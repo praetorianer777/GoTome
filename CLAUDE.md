@@ -252,6 +252,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   transaction lowers the word-similarity threshold and turns off sequential
   scans, without which the planner reads every title; a test holds it under
   300 ms on 50,000 books.
+- `make scale-test` (`test/scale_test.go`, in the full gate) seeds 50,000
+  books and asks every main view as two people: each within a second, and
+  none reading `books`, `book_files` or `book_chunks` whole except those in
+  `wholeByDesign`. It catches the plans that ran through `auto_explain` on
+  the connection and writes them to `.cache/scale-plans`. A new main view
+  goes into `scaleViews`. `docs/performance.md` has the table.
+- Call `visible_library_ids` in `FROM` (`IN (SELECT * FROM
+  visible_library_ids(...))`): in a select list the planner cannot see
+  into it and takes half the books for visible. A filter on the viewer's
+  own rows is an `EXISTS` (`filtersFor`), not a value looked up per book.
 - Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
   and without the server's write deadline.
 
@@ -808,6 +818,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   library is shown to everyone with `index:rebuild`. A job about one of those
   must name it by that argument, or it shows without one. Retry and cancel go through River's
   client, after the same visibility check.
+- `serve` sets Go's soft memory limit to three quarters of the container's
+  (`internal/memlimit`, unless `GOMEMLIMIT` is set): the runtime does not
+  read a cgroup's limit, and the rest is for ONNX Runtime and the programs
+  extraction runs.
 - Queues: `scan`, `extract`, `metadata`, `embed`, `notify`, and `default` for
   housekeeping. A job may run twice (after a crash or a cancelled shutdown), so it
   must be safe to repeat.

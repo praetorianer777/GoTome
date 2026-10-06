@@ -41,7 +41,7 @@ SELECT library_id, count(*)::int AS failed
 FROM book_files
 WHERE extract_state = 'failed'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY library_id
 `
 
@@ -81,7 +81,7 @@ SELECT library_id, count(*)::int AS pending
 FROM book_files
 WHERE extract_state = 'pending'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY library_id
 `
 
@@ -229,7 +229,7 @@ func (q *Queries) GetFileForWriteBack(ctx context.Context, id uuid.UUID) (GetFil
 const latestVisibleScans = `-- name: LatestVisibleScans :many
 SELECT DISTINCT ON (s.library_id) s.id, s.library_id, s.state, s.requested_by, s.requested_at, s.job_id, s.started_at, s.finished_at, s.files_seen, s.files_added, s.files_changed, s.files_moved, s.files_restored, s.files_missing, s.files_skipped, s.books_added, s.error
 FROM library_scans s
-WHERE s.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE s.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY s.library_id, s.requested_at DESC, s.id DESC
 `
 
