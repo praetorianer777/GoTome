@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Scrolling far into a large library stays smooth: the page keeps only the
+  books near the window, however many it has loaded, and going back from
+  a book returns to the same place in the list. In Safari the list no
+  longer stops loading after its second page.
 - Large libraries are fast: at 50,000 books every page answers within a
   quarter of a second, most within a few milliseconds, and the library's
   filters count in about a tenth of a second.
