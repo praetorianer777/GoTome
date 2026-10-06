@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -75,6 +76,8 @@ type Server struct {
 	Index  *search.Index
 	// Duplicates finds books that look like one another.
 	Duplicates *dedupe.Service
+	// Similar finds books about the same as another.
+	Similar *similar.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

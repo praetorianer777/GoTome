@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
 // readCase is one way to call a read route. Path and query hold
@@ -89,9 +90,13 @@ func readCases() map[string][]readCase {
 			{path: "/books/names", query: q("kind", "author", "q", "{author}"), control: "insider"},
 			{path: "/books/names", query: q("kind", "tag", "q", "{tag}"), control: "insider"},
 		},
-		"getBook":         {{path: "/books/{book}", control: "insider"}},
-		"listCandidates":  {{path: "/books/{book}/candidates", control: "insider"}},
-		"getAudio":        {{path: "/books/{book}/audio", control: "insider"}},
+		"getBook":        {{path: "/books/{book}", control: "insider"}},
+		"listCandidates": {{path: "/books/{book}/candidates", control: "insider"}},
+		"getAudio":       {{path: "/books/{book}/audio", control: "insider"}},
+		"listSimilarBooks": {
+			{path: "/books/{book}/similar", control: "insider"},
+			{path: "/books/{neighbour}/similar", control: "insider"},
+		},
 		"getProgress":     {{path: "/books/{book}/progress", control: "insider"}},
 		"getBookCover":    {{path: "/books/{book}/covers/small", control: "insider"}},
 		"downloadFile":    {{path: "/files/{file}/download", control: "insider"}},
@@ -223,11 +228,21 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		VALUES ($1, $2, 'ebook', 'pdf', 'old secret.pdf', 1, now(), now())`, book, vault); err != nil {
 		t.Fatal(err)
 	}
+	// A book of the open library about the same as the secret, whose
+	// similar books the secret would be among.
+	status, near := a.upload(admin, open, "Near.pdf", []byte("%PDF-1.4 near "+mark))
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, near)
+	}
+	same := direction(map[int]float32{0: 1})
+	for _, b := range []string{book, near["bookId"].(string)} {
+		a.putVector(uuid.MustParse(b), similar.KindMetadata, same)
+	}
 	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.
-	owned := map[string]string{}
+	owned := map[string]string{"neighbour": near["bookId"].(string)}
 	// A shelf's rules are its owner's own words, which they may share; so
 	// that they tell nothing, the shelves here match the book by rating.
 	rated := `{"field":"rating","op":"in","values":["5"]}`

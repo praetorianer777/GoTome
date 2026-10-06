@@ -289,6 +289,7 @@ func serve() error {
 		Shelves:    shelves.NewService(pool, books),
 		Search:     search.NewPGSearch(pool, books),
 		Duplicates: duplicates,
+		Similar:    vectors,
 		Index:      searchIndex,
 
 		Notifications: notify.NewService(pool),

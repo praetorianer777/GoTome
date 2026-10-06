@@ -188,6 +188,90 @@ func (q *Queries) ListChunkPositions(ctx context.Context, fileID uuid.UUID) ([]i
 	return items, nil
 }
 
+const listSimilarBooks = `-- name: ListSimilarBooks :many
+WITH mine AS (
+    SELECT v.kind, v.embedding
+    FROM book_vectors v
+    WHERE v.book_id = $3::uuid
+      AND v.model = $5::text AND v.model_version = $6::text
+),
+near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    JOIN mine m ON m.kind = v.kind
+    WHERE v.model = $5::text AND v.model_version = $6::text
+      AND v.book_id <> $3::uuid
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata)
+        END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND NOT EXISTS (
+      SELECT 1 FROM duplicate_pairs p
+      WHERE (p.book_a, p.book_b) IN ((n.book_id, $3::uuid), ($3::uuid, n.book_id)))
+  AND NOT EXISTS (
+      SELECT 1 FROM book_relations r
+      WHERE (r.book_a, r.book_b) IN ((n.book_id, $3::uuid), ($3::uuid, n.book_id)))
+ORDER BY score DESC, n.book_id
+LIMIT $4::int
+`
+
+type ListSimilarBooksParams struct {
+	Viewer       uuid.UUID
+	SeesAll      bool
+	BookID       uuid.UUID
+	Max          int32
+	Model        string
+	ModelVersion string
+}
+
+type ListSimilarBooksRow struct {
+	BookID uuid.UUID
+	Score  float64
+}
+
+// The books nearest the given one among those the viewer sees, by the
+// cosine of their vectors of the model: an exact scan, which at two vectors
+// a book needs no index. Where two books both have a content and a metadata
+// vector the two are blended, the text weighing more, as it says more of
+// what a book is about than its description; otherwise the kind they share
+// decides. The book itself, books it is known to be a copy of (a duplicate
+// pair in any state) and books it is related to are left out.
+func (q *Queries) ListSimilarBooks(ctx context.Context, arg ListSimilarBooksParams) ([]ListSimilarBooksRow, error) {
+	rows, err := q.db.Query(ctx, listSimilarBooks,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.BookID,
+		arg.Max,
+		arg.Model,
+		arg.ModelVersion,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSimilarBooksRow{}
+	for rows.Next() {
+		var i ListSimilarBooksRow
+		if err := rows.Scan(&i.BookID, &i.Score); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const putBookVector = `-- name: PutBookVector :exec
 INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
 SELECT b.id, $1::text, $2::text, $3::text,

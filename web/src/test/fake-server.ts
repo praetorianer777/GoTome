@@ -154,6 +154,8 @@ export class FakeServer {
 	stats?: ReadingStats;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
+	/** The IDs of the books like each book, the nearest first. */
+	similar: Record<string, string[]> = {};
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
 	/** The collections the signed-in person sees, with their books in order. */
@@ -728,6 +730,14 @@ export class FakeServer {
 				[saving[2] ?? "ebook"]: written,
 			};
 			return Response.json({ saved: true, progress: written });
+		}
+		const similar = /^\/books\/([^/]+)\/similar$/.exec(path);
+		if (similar) {
+			const books = (this.similar[similar[1] ?? ""] ?? [])
+				.map((id) => this.books.find((b) => b.id === id))
+				.filter((b) => b !== undefined)
+				.map(summaryOf);
+			return Response.json({ books });
 		}
 		const audio = /^\/books\/([^/]+)\/audio$/.exec(path);
 		if (audio) {

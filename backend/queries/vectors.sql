@@ -58,3 +58,45 @@ DELETE FROM book_vectors WHERE book_id = $1 AND kind = $2;
 -- Deleted, merged and placeholder books have none.
 DELETE FROM book_vectors v USING books b
 WHERE b.id = v.book_id AND (b.deleted_at IS NOT NULL OR b.placeholder);
+
+-- name: ListSimilarBooks :many
+-- The books nearest the given one among those the viewer sees, by the
+-- cosine of their vectors of the model: an exact scan, which at two vectors
+-- a book needs no index. Where two books both have a content and a metadata
+-- vector the two are blended, the text weighing more, as it says more of
+-- what a book is about than its description; otherwise the kind they share
+-- decides. The book itself, books it is known to be a copy of (a duplicate
+-- pair in any state) and books it is related to are left out.
+WITH mine AS (
+    SELECT v.kind, v.embedding
+    FROM book_vectors v
+    WHERE v.book_id = sqlc.arg(book_id)::uuid
+      AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
+),
+near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    JOIN mine m ON m.kind = v.kind
+    WHERE v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
+      AND v.book_id <> sqlc.arg(book_id)::uuid
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata)
+        END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND NOT EXISTS (
+      SELECT 1 FROM duplicate_pairs p
+      WHERE (p.book_a, p.book_b) IN ((n.book_id, sqlc.arg(book_id)::uuid), (sqlc.arg(book_id)::uuid, n.book_id)))
+  AND NOT EXISTS (
+      SELECT 1 FROM book_relations r
+      WHERE (r.book_a, r.book_b) IN ((n.book_id, sqlc.arg(book_id)::uuid), (sqlc.arg(book_id)::uuid, n.book_id)))
+ORDER BY score DESC, n.book_id
+LIMIT sqlc.arg(max)::int;

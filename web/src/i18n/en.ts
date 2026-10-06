@@ -624,6 +624,7 @@ export const en = {
 	"book.pages": "Pages",
 	"book.duration": "Length",
 	"book.identifiers": "Identifiers",
+	"book.similar": "Similar books",
 	"book.tags": "Tags",
 	"book.description": "Description",
 	"book.files": "Files",

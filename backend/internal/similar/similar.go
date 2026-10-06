@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
 // Kinds of vector, as book_vectors.kind stores them.
@@ -284,4 +285,30 @@ func literal(v []float32) string {
 	}
 	b.WriteByte(']')
 	return b.String()
+}
+
+// MaxSimilar is the most books Similar returns.
+const MaxSimilar = 50
+
+// Similar returns the books nearest the given one among those the scope
+// sees, the nearest first, at most limit of them (MaxSimilar at most). A book
+// without vectors of the chosen model has none yet; whether the caller may
+// see the book itself is the caller's to check.
+func (s *Service) Similar(ctx context.Context, scope library.Scope, bookID uuid.UUID, limit int) ([]uuid.UUID, error) {
+	spec, _, err := s.config(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := sqlc.New(s.pool).ListSimilarBooks(ctx, sqlc.ListSimilarBooksParams{
+		BookID: bookID, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: int32(min(max(limit, 1), MaxSimilar)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(rows))
+	for i, r := range rows {
+		ids[i] = r.BookID
+	}
+	return ids, nil
 }
