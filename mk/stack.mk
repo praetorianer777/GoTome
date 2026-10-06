@@ -101,8 +101,8 @@ test-integration: | $(GO_CACHE) go-toolchain ## Run the integration suite agains
 # the gate when a new pin no longer carries them.
 .PHONY: stack-check
 stack-check: ## Check the running stack: two services, web app and API answering, extensions and programs available
-	@test "$$(docker compose ps --status running --services | sort | tr '\n' ' ')" = "app db " \
-		|| { echo "expected exactly the services app and db to run:"; docker compose ps; exit 1; }
+	@test "$$(docker compose ps --status running --services | grep -vx keycloak | sort | tr '\n' ' ')" = "app db " \
+		|| { echo "expected exactly the services app and db to run, beside the tests' Keycloak:"; docker compose ps; exit 1; }
 	@docker compose exec -T app gotome healthcheck \
 		|| { echo "the app does not answer its health check"; exit 1; }
 	@test "$$(docker compose exec -T app gotome version | cut -d' ' -f1)" = "$(VERSION)" \
