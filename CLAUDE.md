@@ -44,6 +44,15 @@ ever in the compose file or an environment variable. init only adds what is miss
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
   `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit
   about that.
+- `deploy/backup.sh` and `deploy/restore.sh` are the operator's backup and
+  restore (`docs/backup-and-upgrade.md`). A backup leaves out the rows GOtome
+  makes again (`derived` in backup.sh: chunks, search words, signatures,
+  vectors, provider answers); a restore clears `chunked_at`, so every text is
+  read again. A new table of that kind goes into `derived`. `make
+  upgrade-test` (its own CI job, `tests/test-upgrade.sh`) sets an installation
+  up on the previous release's image, or before the first release on one
+  built from the merge base (`tests/upgrade-from.sh`), backs it up, upgrades
+  it, and restores the backup on this checkout's image.
 - `make up` builds and starts the stack for this checkout and prints its URL;
   `make down`, `make clean`, `make logs`, `make psql` go with it. Project name and
   port come from the checkout path (`mk/stack.mk`) and are written to

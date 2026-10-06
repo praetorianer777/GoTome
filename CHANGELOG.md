@@ -18,6 +18,10 @@ What changes for someone who runs or uses GOtome. The format follows
   administrators keep it until one of them has linked an account, and
   `GOTOME_FORCE_PASSWORD_LOGIN=true` brings it back if the provider is
   gone.
+- `deploy/backup.sh` backs a running installation up (database, covers,
+  managed libraries and the secret key), and `deploy/restore.sh` brings a
+  backup back into a new installation, which makes the search again in the
+  background. docs/backup-and-upgrade.md says how, and how to upgrade.
 - Every installation gets its own random database password on its first
   start, written by a short-lived `init` container and kept in the `secrets`
   volume. There is no default password any more. An installation that set

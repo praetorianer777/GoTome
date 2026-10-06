@@ -58,6 +58,22 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # An installation of the previous release (before the first one, of the
+  # commit this change started from) is upgraded to this change's image, and
+  # its backup restored into a new one: docs/backup-and-upgrade.md.
+  upgrade:
+    name: backup, restore and upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The release tags and the commit the change started from.
+          fetch-depth: 0
+
+      - name: Upgrade an installation and restore its backup
+        run: make upgrade-test
+
   # Home servers are often arm64. Building the image and starting the stack on
   # an arm64 runner finds what only breaks there before a release does.
   arm64:

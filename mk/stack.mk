@@ -11,7 +11,19 @@ STACK_NET := $(STACK_PROJECT)_default
 # ephemeral range so an outgoing connection never holds one of them.
 STACK_PORT_SLOTS := 500
 STACK_PORT_STRIDE := 20
-STACK_PORT_BASE ?= $(shell echo $$((20000 + $(STACK_HASH) % $(STACK_PORT_SLOTS) * $(STACK_PORT_STRIDE))))
+# A slot whose first port another program holds (another project with the
+# same scheme, say) is passed over for the next one; the one this checkout's
+# own stack holds is kept.
+STACK_PORT_BASE ?= $(shell \
+	slot=$$(( $(STACK_HASH) % $(STACK_PORT_SLOTS) )); \
+	for _ in $$(seq $(STACK_PORT_SLOTS)); do \
+		port=$$(( 20000 + slot * $(STACK_PORT_STRIDE) )); \
+		if ! ss -Hltn "sport = :$$port" 2>/dev/null | grep -q . || \
+			[ "$$(docker ps --filter publish=$$port --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null)" = "$(STACK_PROJECT)" ]; then \
+			echo $$port; break; \
+		fi; \
+		slot=$$(( (slot + 1) % $(STACK_PORT_SLOTS) )); \
+	done)
 stack_port = $(shell echo $$(($(STACK_PORT_BASE) + $(1))))
 
 GOTOME_PORT := $(call stack_port,0)
@@ -138,6 +150,13 @@ embed-check: ## Run the app image's embedding model against the reference vector
 		-v $(EMBED_MODEL_CACHE):/models/multilingual-e5-small \
 		-v $(ROOT)/backend/internal/embed/testdata:/reference:ro \
 		$(GOTOME_IMAGE) embed-check -reference /reference/reference.json
+
+
+.PHONY: upgrade-test
+upgrade-test: ## Upgrade an earlier image's installation to this checkout's, and restore its backup into a new one (builds both images)
+	docker compose build app
+	@# A stack of its own, beside the checkout's.
+	tests/test-upgrade.sh "$$(tests/upgrade-from.sh)" $(GOTOME_IMAGE) $(STACK_PROJECT)-upgrade
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
