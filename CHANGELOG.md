@@ -8,6 +8,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Sign in through your own identity provider (OpenID Connect, such as
+  Authentik, Authelia or Keycloak). An administrator sets it up in
+  Settings, where the address to register at the provider is shown. A first
+  sign-in makes an account, or takes the one with the address the provider
+  verified if you allow that; anyone signed in can link their account from
+  their profile. Groups at the provider can decide who is an administrator,
+  an editor or a reader. Signing in with a password can then be turned off;
+  administrators keep it until one of them has linked an account, and
+  `GOTOME_FORCE_PASSWORD_LOGIN=true` brings it back if the provider is
+  gone.
 - Every installation gets its own random database password on its first
   start, written by a short-lived `init` container and kept in the `secrets`
   volume. There is no default password any more. An installation that set

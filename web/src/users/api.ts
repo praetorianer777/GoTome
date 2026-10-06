@@ -26,6 +26,15 @@ export const ownSessionsQuery = queryOptions({
 		(await api.GET("/auth/sessions")).data?.sessions ?? [],
 });
 
+export type LinkedIdentity = components["schemas"]["LinkedIdentity"];
+
+/** The accounts at the identity provider linked to the signed-in person's. */
+export const ownIdentitiesQuery = queryOptions({
+	queryKey: ["auth", "identities"],
+	queryFn: async (): Promise<LinkedIdentity[]> =>
+		(await api.GET("/auth/identities")).data?.items ?? [],
+});
+
 /** What the signed-in person's uploads take up, and how much they may. */
 export const storageQuery = queryOptions({
 	queryKey: ["auth", "storage"],
@@ -78,6 +87,17 @@ export function useEndOwnSession() {
 			});
 		},
 		onSuccess: useInvalidate(ownSessionsQuery.queryKey),
+	});
+}
+
+export function useUnlinkIdentity() {
+	return useMutation({
+		mutationFn: async (id: string) => {
+			await api.DELETE("/auth/identities/{identityId}", {
+				params: { path: { identityId: id } },
+			});
+		},
+		onSuccess: useInvalidate(ownIdentitiesQuery.queryKey),
 	});
 }
 

@@ -43,6 +43,118 @@
     }
   ],
   "paths": {
+    "/auth/identities": {
+      "get": {
+        "operationId": "listOwnIdentities",
+        "summary": "The identity provider accounts linked to the caller's account",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      },
+      "post": {
+        "operationId": "linkOwnIdentity",
+        "summary": "Begin linking an identity provider account to the caller's: where to send the browser",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoRedirect"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/auth/identities/{identityId}": {
+      "delete": {
+        "operationId": "unlinkOwnIdentity",
+        "summary": "Unlink an identity provider account from the caller's",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/auth/login": {
       "post": {
         "operationId": "login",
@@ -145,6 +257,139 @@
           }
         ],
         "x-permission": "signed-in"
+      }
+    },
+    "/auth/methods": {
+      "get": {
+        "operationId": "getSignInMethods",
+        "summary": "How one may sign in: with a password, through an identity provider, or both",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignInMethods"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
+      }
+    },
+    "/auth/oidc/callback": {
+      "get": {
+        "operationId": "finishSingleSignOn",
+        "summary": "Where the identity provider sends the browser back to; redirects into the app",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "The state the sign-in was started with",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "The authorization code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "in": "query",
+            "description": "The issuer of the answer (RFC 9207)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "What the identity provider refused, instead of a code",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
+      }
+    },
+    "/auth/oidc/start": {
+      "post": {
+        "operationId": "startSingleSignOn",
+        "summary": "Begin signing in through the identity provider: where to send the browser",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoStartRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoRedirect"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
       }
     },
     "/auth/password": {
@@ -6082,6 +6327,20 @@
           "value"
         ]
       },
+      "IdentityList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkedIdentity"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "IndexStatus": {
         "type": "object",
         "properties": {
@@ -6251,6 +6510,35 @@
           "createdAt",
           "filesPending",
           "filesFailed"
+        ]
+      },
+      "LinkedIdentity": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "issuer",
+          "createdAt",
+          "lastUsedAt"
         ]
       },
       "LoginRequest": {
@@ -7236,6 +7524,20 @@
           "needed"
         ]
       },
+      "SignInMethods": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "boolean"
+          },
+          "sso": {
+            "$ref": "#/components/schemas/SsoMethod"
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
       "SimilarList": {
         "type": "object",
         "properties": {
@@ -7349,6 +7651,36 @@
         "required": [
           "text"
         ]
+      },
+      "SsoMethod": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SsoRedirect": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "SsoStartRequest": {
+        "type": "object",
+        "properties": {
+          "returnTo": {
+            "type": "string"
+          }
+        }
       },
       "StatsDay": {
         "type": "object",

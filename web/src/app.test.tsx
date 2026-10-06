@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { leave } from "@/auth/sso";
 import type { BookDetail } from "@/books/api";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -202,6 +203,33 @@ describe("an installation that is set up", () => {
 			await screen.findByRole("heading", { name: "Library" }),
 		).toBeInTheDocument();
 		expect(router.state.location.href).toBe("/");
+	});
+
+	it("sends the browser to the identity provider with where the person was going", async () => {
+		const person = userEvent.setup();
+		const leaving = vi.spyOn(leave, "to").mockImplementation(() => {});
+		server.signInMethods = { password: true, sso: { name: "Authentik" } };
+		renderApp("/collections?page=2");
+
+		await person.click(await screen.findByRole("button", { name: "Sign in with Authentik" }));
+		await waitFor(() =>
+			expect(leaving).toHaveBeenCalledWith(
+				"https://id.example/authorize?returnTo=%2Fcollections%3Fpage%3D2",
+			),
+		);
+		// The password stays on offer beside it.
+		expect(screen.getByLabelText("Password")).toBeInTheDocument();
+	});
+
+	it("offers only single sign-on when passwords are off, and says why one failed", async () => {
+		server.signInMethods = { password: false, sso: { name: "Authentik" } };
+		renderApp("/login?sso=no-role");
+
+		expect(await screen.findByRole("button", { name: "Sign in with Authentik" })).toBeInTheDocument();
+		expect(screen.getByRole("alert")).toHaveTextContent(
+			"Your groups at the identity provider give you no access here.",
+		);
+		expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
 	});
 
 	it("keeps setup closed", async () => {
@@ -890,6 +918,39 @@ describe("users", () => {
 });
 
 describe("profile", () => {
+	it("links and unlinks an account at the identity provider", async () => {
+		const person = userEvent.setup();
+		const leaving = vi.spyOn(leave, "to").mockImplementation(() => {});
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		server.signInMethods = { password: true, sso: { name: "Authentik" } };
+		server.identities = [
+			{
+				id: "id-1",
+				issuer: "https://auth.example",
+				email: "rita@example.org",
+				createdAt: "2026-10-01T10:00:00Z",
+				lastUsedAt: "2026-10-05T10:00:00Z",
+			},
+		];
+		renderApp("/profile?sso=linked");
+
+		const sso = within(await screen.findByRole("region", { name: "Single sign-on" }));
+		expect(sso.getByRole("status")).toHaveTextContent("Your account at the identity provider is linked.");
+		expect(await sso.findByText("rita@example.org")).toBeInTheDocument();
+		await person.click(sso.getByRole("button", { name: "Unlink" }));
+		expect(await sso.findByText("No account at the identity provider is linked to yours.")).toBeInTheDocument();
+
+		await person.click(sso.getByRole("button", { name: "Link your Authentik account" }));
+		await waitFor(() => expect(leaving).toHaveBeenCalledWith("https://id.example/authorize?link=1"));
+	});
+
+	it("leaves single sign-on out of the profile where there is none", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		expect(await screen.findByRole("heading", { name: "Your account", level: 1 })).toBeInTheDocument();
+		expect(screen.queryByRole("region", { name: "Single sign-on" })).not.toBeInTheDocument();
+	});
+
 	it("changes the password and signs out another browser", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");

@@ -4,7 +4,7 @@ import { render } from "@testing-library/react";
 import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
-import type { CurrentUser } from "@/auth/session";
+import type { CurrentUser, SignInMethods } from "@/auth/session";
 import type { BookDetail, BookSummary, TextHit } from "@/books/api";
 import type {
 	Collection,
@@ -34,6 +34,7 @@ import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
 import type { DuplicatePair } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
+import type { LinkedIdentity } from "@/users/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -173,6 +174,10 @@ export class FakeServer {
 		{ kind: "books.added", app: true },
 		{ kind: "wish.fulfilled", app: true },
 	];
+	/** How one may sign in; a test gives `sso` to offer an identity provider. */
+	signInMethods: SignInMethods = { password: true };
+	/** The signed-in person's accounts at the identity provider. */
+	identities: LinkedIdentity[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -682,12 +687,37 @@ export class FakeServer {
 			case "POST /auth/logout":
 				this.session = null;
 				return new Response(null, { status: 204 });
+			case "GET /auth/methods":
+				return Response.json(this.signInMethods);
+			case "POST /auth/oidc/start":
+				if (!this.signInMethods.sso) {
+					return refuse(409, "conflict", "Single sign-on is not set up.");
+				}
+				return Response.json({
+					url: `https://id.example/authorize?returnTo=${encodeURIComponent(
+						(body as { returnTo?: string }).returnTo ?? "/",
+					)}`,
+				});
+			case "GET /auth/identities":
+				return this.session
+					? Response.json({ items: this.identities })
+					: refuse(401, "unauthorized", "Sign in to continue.");
+			case "POST /auth/identities":
+				return this.session
+					? Response.json({ url: "https://id.example/authorize?link=1" })
+					: refuse(401, "unauthorized", "Sign in to continue.");
 			case "GET /auth/me":
 				return this.session
 					? Response.json(this.session)
 					: refuse(401, "unauthorized", "Sign in to continue.");
-			default:
+			default: {
+				const identity = path.match(/^\/auth\/identities\/([^/]+)$/);
+				if (identity && method === "DELETE" && this.session) {
+					this.identities = this.identities.filter((i) => i.id !== identity[1]);
+					return new Response(null, { status: 204 });
+				}
 				return refuse(404, "not_found", "There is nothing at this address.");
+			}
 		}
 	}
 	private answerBooks(

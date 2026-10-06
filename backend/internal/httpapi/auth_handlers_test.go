@@ -88,3 +88,32 @@ func TestClientAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestAppPathStaysInTheApp(t *testing.T) {
+	for in, want := range map[string]string{
+		"/books?sort=title":    "/books?sort=title",
+		"":                     "/",
+		"books":                "/",
+		"//evil.example":       "/",
+		"/\\evil.example":      "/",
+		"https://evil.example": "/",
+		"/api/v1/setup":        "/",
+		"/a\r\nSet-Cookie:":    "/",
+	} {
+		if got := appPath(in); got != want {
+			t.Errorf("appPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestTheCallbackIsWhereTheBrowserReachedTheServer(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/start", nil)
+	r.Host = "books.example:8080"
+	if got := callbackURL(r); got != "http://books.example:8080/api/v1/auth/oidc/callback" {
+		t.Errorf("plain: %s", got)
+	}
+	r.Header.Set("X-Forwarded-Proto", "https")
+	if got := callbackURL(r); got != "https://books.example:8080/api/v1/auth/oidc/callback" {
+		t.Errorf("behind a proxy over TLS: %s", got)
+	}
+}

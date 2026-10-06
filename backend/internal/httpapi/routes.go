@@ -113,6 +113,36 @@ func (s *Server) routes() []Route {
 			Permission: auth.Public, Handler: s.postLogout,
 		},
 		{
+			Method: http.MethodGet, Path: "/auth/methods", ID: "getSignInMethods",
+			Summary: "How one may sign in: with a password, through an identity provider, or both", Tag: "auth",
+			Response: signInMethods{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getSignInMethods,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/oidc/start", ID: "startSingleSignOn",
+			Summary: "Begin signing in through the identity provider: where to send the browser", Tag: "auth",
+			Request: ssoStartRequest{}, Response: ssoRedirect{}, Permission: auth.Public, Handler: s.postSSOStart,
+		},
+		{
+			Method: http.MethodGet, Path: callbackPath, ID: "finishSingleSignOn",
+			Summary: "Where the identity provider sends the browser back to; redirects into the app", Tag: "auth",
+			Query: ssoCallbackQuery{}, Status: http.StatusFound, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.ssoCallback,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/identities", ID: "listOwnIdentities",
+			Summary: "The identity provider accounts linked to the caller's account", Tag: "auth",
+			Response: identityList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listIdentities,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/identities", ID: "linkOwnIdentity",
+			Summary: "Begin linking an identity provider account to the caller's: where to send the browser", Tag: "auth",
+			Response: ssoRedirect{}, Permission: auth.SignedIn, Handler: s.postIdentity,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/identities/{identityId}", ID: "unlinkOwnIdentity",
+			Summary: "Unlink an identity provider account from the caller's", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.deleteIdentity,
+		},
+		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
 			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getMe,

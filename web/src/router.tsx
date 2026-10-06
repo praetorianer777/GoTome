@@ -70,8 +70,10 @@ const setupRoute = createRoute({
 const loginRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/login",
-	validateSearch: (search): { redirect?: string } =>
-		typeof search.redirect === "string" ? { redirect: search.redirect } : {},
+	validateSearch: (search): { redirect?: string; sso?: string } => ({
+		...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
+		...(typeof search.sso === "string" ? { sso: search.sso } : {}),
+	}),
 	beforeLoad: async ({ context }) => {
 		if (await context.queryClient.ensureQueryData(setupNeededQuery)) {
 			throw redirect({ to: "/setup" });
@@ -81,7 +83,8 @@ const loginRoute = createRoute({
 		}
 	},
 	component: function LoginPage() {
-		return <Login redirect={loginRoute.useSearch().redirect} />;
+		const { redirect: to, sso } = loginRoute.useSearch();
+		return <Login redirect={to} sso={sso} />;
 	},
 });
 
@@ -390,8 +393,15 @@ const adminUsersRoute = createRoute({
 const profileRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/profile",
+	validateSearch: (search): { sso?: string } =>
+		typeof search.sso === "string" ? { sso: search.sso } : {},
 	component: function ProfilePage() {
-		return <Profile user={useRouteContext({ from: "/app" }).user} />;
+		return (
+			<Profile
+				user={useRouteContext({ from: "/app" }).user}
+				sso={profileRoute.useSearch().sso}
+			/>
+		);
 	},
 });
 

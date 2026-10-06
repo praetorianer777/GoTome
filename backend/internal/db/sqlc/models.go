@@ -289,6 +289,15 @@ type NotificationSubscription struct {
 	Enabled bool
 }
 
+type OidcLogin struct {
+	StateHash  []byte
+	Nonce      string
+	Verifier   string
+	ReturnTo   string
+	LinkUserID *uuid.UUID
+	ExpiresAt  time.Time
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte
@@ -409,4 +418,14 @@ type UserBook struct {
 	StartedOn  *time.Time
 	FinishedOn *time.Time
 	UpdatedAt  time.Time
+}
+
+type UserIdentity struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Issuer     string
+	Subject    string
+	Email      *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
 }

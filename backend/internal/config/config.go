@@ -60,6 +60,9 @@ type Config struct {
 	// Offline asks no metadata provider on the internet and downloads no
 	// embedding model.
 	Offline bool
+	// ForcePasswords lets everyone sign in with a password whatever the
+	// setting says: the way back in when the identity provider is gone.
+	ForcePasswords bool
 	// ModelDir is where embedding models are downloaded to; DataDir/models
 	// unless set.
 	ModelDir string
@@ -144,6 +147,10 @@ func load(getenv func(string) string) (Config, error) {
 	offline := get("GOTOME_OFFLINE", "false")
 	if cfg.Offline, err = strconv.ParseBool(offline); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_OFFLINE is %q, want true or false", offline)
+	}
+	force := get("GOTOME_FORCE_PASSWORD_LOGIN", "false")
+	if cfg.ForcePasswords, err = strconv.ParseBool(force); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_FORCE_PASSWORD_LOGIN is %q, want true or false", force)
 	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {

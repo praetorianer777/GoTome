@@ -46,8 +46,64 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 	"embedding.model": {
 		label: "settings.embeddingModel",
 		hint: "settings.embeddingModel.hint",
+	},	"auth.passwords": {
+		label: "settings.passwords",
+		hint: "settings.passwords.hint",
+	},
+	"oidc.issuer": {
+		label: "settings.oidcIssuer",
+		hint: "settings.oidcIssuer.hint",
+	},
+	"oidc.clientId": {
+		label: "settings.oidcClientId",
+		hint: "settings.oidcClientId.hint",
+	},
+	"oidc.clientSecret": {
+		label: "settings.oidcClientSecret",
+		hint: "settings.oidcClientSecret.hint",
+	},
+	"oidc.name": {
+		label: "settings.oidcName",
+		hint: "settings.oidcName.hint",
+	},
+	"oidc.scopes": {
+		label: "settings.oidcScopes",
+		hint: "settings.oidcScopes.hint",
+	},
+	"oidc.groupsClaim": {
+		label: "settings.oidcGroupsClaim",
+		hint: "settings.oidcGroupsClaim.hint",
+	},
+	"oidc.adminGroups": {
+		label: "settings.oidcAdminGroups",
+		hint: "settings.oidcAdminGroups.hint",
+	},
+	"oidc.editorGroups": {
+		label: "settings.oidcEditorGroups",
+		hint: "settings.oidcEditorGroups.hint",
+	},
+	"oidc.readerGroups": {
+		label: "settings.oidcReaderGroups",
+		hint: "settings.oidcReaderGroups.hint",
+	},
+	"oidc.defaultRole": {
+		label: "settings.oidcDefaultRole",
+		hint: "settings.oidcDefaultRole.hint",
+	},
+	"oidc.signup": {
+		label: "settings.oidcSignup",
+		hint: "settings.oidcSignup.hint",
+	},
+	"oidc.linkByEmail": {
+		label: "settings.oidcLinkByEmail",
+		hint: "settings.oidcLinkByEmail.hint",
 	},
 };
+
+/** Values hints may name: the address the identity provider sends people back to. */
+function hintValues() {
+	return { callback: `${window.location.origin}/api/v1/auth/oidc/callback` };
+}
 
 export function AdminSettings() {
 	const settings = useQuery(settingsQuery);
@@ -109,7 +165,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 						<Field
 							key={s.key}
 							label={label}
-							hint={texts && t(texts.hint)}
+							hint={texts && t(texts.hint, hintValues())}
 							value={typed[s.key] ?? s.value ?? ""}
 							onChange={(e) => setTyped({ ...typed, [s.key]: e.target.value })}
 							error={errors[s.key]}
@@ -121,7 +177,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 						<Field
 							label={label}
 							hint={[
-								texts && t(texts.hint),
+								texts && t(texts.hint, hintValues()),
 								s.isSet && s.updatedAt
 									? t("settings.secret.set", { date: formatDate(s.updatedAt) })
 									: t("settings.secret.unset"),

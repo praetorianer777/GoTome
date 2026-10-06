@@ -39,6 +39,9 @@ services:
       # true asks no metadata source on the internet, for a server that must
       # not reach out.
       GOTOME_OFFLINE: ${GOTOME_OFFLINE:-false}
+      # true lets everyone sign in with a password even where the settings
+      # turned that off: the way back in when the identity provider is gone.
+      GOTOME_FORCE_PASSWORD_LOGIN: ${GOTOME_FORCE_PASSWORD_LOGIN:-false}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
       # Encrypts the secrets kept in the database, such as provider keys.

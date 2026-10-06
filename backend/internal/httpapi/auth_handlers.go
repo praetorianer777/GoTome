@@ -27,12 +27,16 @@ const (
 	loginWindow         = 5 * time.Minute
 	loginFailuresPerKey = 5
 	loginFailuresPerIP  = 30
+	// ssoStartsPerIP bounds the sign-ins through the identity provider one
+	// address may start in the window: each leaves a row until it expires.
+	ssoStartsPerIP = 30
 )
 
 // LoginLimits is the pair of limiters the login route consults.
 type LoginLimits struct {
 	perAccount *auth.Limiter
 	perAddress *auth.Limiter
+	ssoStarts  *auth.Limiter
 }
 
 // NewLoginLimits returns limiters on the given clock.
@@ -40,6 +44,7 @@ func NewLoginLimits(now func() time.Time) *LoginLimits {
 	return &LoginLimits{
 		perAccount: auth.NewLimiter(loginFailuresPerKey, loginWindow, now),
 		perAddress: auth.NewLimiter(loginFailuresPerIP, loginWindow, now),
+		ssoStarts:  auth.NewLimiter(ssoStartsPerIP, loginWindow, now),
 	}
 }
 
@@ -110,6 +115,9 @@ func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) error {
 		s.Logins.perAccount.Fail(account)
 		s.Logins.perAddress.Fail(address)
 		return ErrUnauthorized("The user name or the password is wrong.")
+	}
+	if errors.Is(err, auth.ErrPasswordsOff) {
+		return ErrForbidden("Signing in with a password is turned off here. Use single sign-on.")
 	}
 	if err != nil {
 		return err
