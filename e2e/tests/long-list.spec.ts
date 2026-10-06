@@ -112,7 +112,11 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await page.getByRole("link", { name: new RegExp(`^${name}`) }).click();
 	await expect(page).toHaveURL(/\/books\//);
 	await page.goBack();
-	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport();
+	// Back draws the list from its start, then scrolls to the row: in WebKit
+	// on CI's runners that has taken more than five seconds.
+	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport({
+		timeout: 15_000,
+	});
 	expect(await cards.count()).toBeLessThan(150);
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
