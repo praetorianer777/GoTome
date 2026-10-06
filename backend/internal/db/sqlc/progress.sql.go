@@ -401,9 +401,13 @@ FROM (
     FROM reading_finishes rf
     WHERE rf.user_id = $1
 ) h
-JOIN books b ON b.id = h.book_id
-WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
+JOIN LATERAL (
+    SELECT bk.title
+    FROM books bk
+    WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
+    OFFSET 0
+) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT $4
 `
@@ -422,7 +426,11 @@ type ReadingHistoryRow struct {
 	Day    *time.Time
 }
 
-// When a person began and finished books, the latest first.
+// When a person began and finished books, the latest first. Each event
+// finds its book by its key: a person's events are a few thousand at most,
+// and joined as a set the planner may read every book of the library
+// instead. OFFSET 0 keeps the subquery from being flattened into such a
+// join.
 func (q *Queries) ReadingHistory(ctx context.Context, arg ReadingHistoryParams) ([]ReadingHistoryRow, error) {
 	rows, err := q.db.Query(ctx, readingHistory,
 		arg.UserID,
