@@ -41,7 +41,9 @@ if has_target stack-up; then
   layers="stack-check test-integration test-e2e"
   # The real embedding model is downloaded once per cache, which a push does
   # not wait for.
-  [[ -n $FULL ]] && layers="stack-check embed-check test-integration test-e2e"
+  # Keycloak, for the single sign-on browser tests, takes half a minute
+  # to start, which a push does not wait for either.
+  [[ -n $FULL ]] && layers="stack-check embed-check sso-up test-integration test-e2e"
   for layer in $layers; do
     if has_target "$layer"; then
       echo "🧪 $layer"

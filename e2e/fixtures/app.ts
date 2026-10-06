@@ -5,7 +5,9 @@ import { ADMIN } from "./stack";
 export async function signIn(page: Page, credentials: { username: string; password: string } = ADMIN): Promise<void> {
 	await page.getByLabel("User name").fill(credentials.username);
 	await page.getByLabel("Password").fill(credentials.password);
-	await page.getByRole("button", { name: "Sign in" }).click();
+	// Exactly: an identity provider set up by another test adds "Sign in
+	// with …".
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 /** Opens the app signed in, ending on the library. */

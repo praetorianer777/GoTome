@@ -15,6 +15,10 @@ STACK_PORT_BASE ?= $(shell echo $$((20000 + $(STACK_HASH) % $(STACK_PORT_SLOTS) 
 stack_port = $(shell echo $$(($(STACK_PORT_BASE) + $(1))))
 
 GOTOME_PORT := $(call stack_port,0)
+# Keycloak, for the single sign-on tests (make sso-up), on the next port,
+# inside its container too: the app and the browser use one issuer URL.
+KEYCLOAK_PORT := $(call stack_port,1)
+KEYCLOAK_URL := http://keycloak:$(KEYCLOAK_PORT)
 
 # The image is built from this checkout and tagged with its project, so a
 # worktree never runs another worktree's build, and nothing is pulled.
@@ -25,7 +29,7 @@ GOTOME_ENV ?= development
 # the tests need.
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml:$(ROOT)/deploy/docker-compose.dev.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV
+export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV KEYCLOAK_PORT
 
 # The Go toolchain container on the stack's network, with the database URL the
 # integration suite makes its own databases through. The password is the one
@@ -45,6 +49,7 @@ stack-env:
 		'STACK_NETWORK=$(STACK_NET)' \
 		'GOTOME_PORT=$(GOTOME_PORT)' \
 		'GOTOME_URL=http://localhost:$(GOTOME_PORT)' \
+		'KEYCLOAK_URL=$(KEYCLOAK_URL)' \
 		> $(STACK_ENV_FILE)
 
 .PHONY: up
@@ -53,13 +58,18 @@ up: stack-env ## Build and start the stack in the background, and say where it i
 	@echo "GOtome  http://localhost:$(GOTOME_PORT)"
 	@echo "Port and project name are in $(STACK_ENV_FILE)."
 
+.PHONY: sso-up
+sso-up: stack-env ## Start Keycloak beside the stack, for the single sign-on browser tests
+	COMPOSE_PROFILES=sso docker compose up -d --wait --quiet-pull keycloak
+	@echo "Keycloak  $(KEYCLOAK_URL), realm gotome; from this machine http://localhost:$(KEYCLOAK_PORT)"
+
 .PHONY: down
 down: ## Stop the stack, keeping its data
-	docker compose down
+	COMPOSE_PROFILES=sso docker compose down
 
 .PHONY: clean
 clean: ## Stop the stack and delete its volumes
-	docker compose down -v --remove-orphans
+	COMPOSE_PROFILES=sso docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)
 
 .PHONY: logs
@@ -131,5 +141,5 @@ embed-check: ## Run the app image's embedding model against the reference vector
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
-	docker compose down -v --remove-orphans
+	COMPOSE_PROFILES=sso docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)

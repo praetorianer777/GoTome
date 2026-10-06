@@ -138,7 +138,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `GOTOME_FORCE_PASSWORD_LOGIN` overrides it. Starting a sign-in is limited
   per address, as each leaves a row until it expires. The one identity of an
   account that has no usable password cannot be unlinked.
-  `internal/sso/ssotest` is the identity provider the tests sign in at.
+  `internal/sso/ssotest` is the identity provider the integration tests
+  sign in at, and can be made to tamper with its answers.
+- The browser tests sign in at a real Keycloak (`tests/sso.spec.ts`):
+  `make sso-up` starts it beside the stack (compose profile `sso`, realm,
+  client and people in `deploy/keycloak/gotome-realm.json`, all test
+  values). It listens on the checkout's second port inside its container
+  too, so the issuer `http://keycloak:<port>` is one address for the app,
+  on the stack's network, and for the browser, whose container maps the
+  name to this machine. The full gate starts it; a push does not, and the
+  test skips without it except in CI.
 
 ## Browser tests
 
