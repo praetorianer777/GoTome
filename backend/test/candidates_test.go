@@ -81,7 +81,16 @@ func TestCandidatesAreFoundAndChosenFieldsTaken(t *testing.T) {
 	if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "image/png" || len(image) == 0 {
 		t.Errorf("the cover: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
-	if status, _, _ := a.call(editor, http.MethodGet, "/metadata/covers/"+token[:len(token)-2]+"xx", nil); status != 404 {
+	// One character of the signature changed to another: a fixed
+	// replacement is the token itself once in a few thousand runs, and the
+	// last character holds padding bits a decoder may ignore.
+	at := len(token) - 5
+	swap := byte('A')
+	if token[at] == swap {
+		swap = 'B'
+	}
+	forged := token[:at] + string(swap) + token[at+1:]
+	if status, _, _ := a.call(editor, http.MethodGet, "/metadata/covers/"+forged, nil); status != 404 {
 		t.Errorf("a forged token: %d", status)
 	}
 
