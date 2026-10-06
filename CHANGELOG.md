@@ -186,6 +186,11 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- Hardcover is asked for book details beside OpenLibrary once an
+  administrator gives a Hardcover API token in Settings (from your
+  Hardcover account settings). It knows series and their order, which
+  OpenLibrary often does not. Installations that chose their sources keep
+  their choice; add `hardcover` to use it.
 - GOtome tells you, in the app, of what happens in your libraries: new
   books found by a scan, a book you wished for arriving, details waiting
   for review, new possible duplicates, files that cannot be read, and a

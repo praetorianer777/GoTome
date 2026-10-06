@@ -1,0 +1,7 @@
+{
+  "method": "POST",
+  "url": "https://api.hardcover.app/v1/graphql",
+  "request": "{\"query\":\"query EditionsByISBN($isbn: String!) {\\n  editions(where: {isbn_13: {_eq: $isbn}}, limit: 5) {\\n    id title subtitle isbn_10 isbn_13 pages release_date book_id\\n    publisher { name }\\n    language { code2 }\\n    image { url }\\n  }\\n}\",\"variables\":{\"isbn\":\"9799999999990\"}}",
+  "status": 200,
+  "answer": "eyJkYXRhIjp7ImVkaXRpb25zIjpbXX19"
+}

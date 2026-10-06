@@ -584,7 +584,7 @@ export const en = {
 	"settings.matchThreshold.hint":
 		"A score from 0.5 to 1. A match with the same ISBN scores 1; title, author and year alone at most 0.99.",
 	"settings.providers": "Sources to ask",
-	"settings.providers.hint": "Their names, separated by commas: openlibrary.",
+	"settings.providers.hint": "Their names, separated by commas: openlibrary, hardcover.",
 	"settings.secret.set": "Saved on {date}.",
 	"settings.secret.unset": "Not set.",
 	"settings.secret.new": "Paste it here",

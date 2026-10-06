@@ -1,0 +1,7 @@
+{
+  "method": "POST",
+  "url": "https://api.hardcover.app/v1/graphql",
+  "request": "{\"query\":\"query EditionsByISBN($isbn: String!) {\\n  editions(where: {isbn_13: {_eq: $isbn}}, limit: 5) {\\n    id title subtitle isbn_10 isbn_13 pages release_date book_id\\n    publisher { name }\\n    language { code2 }\\n    image { url }\\n  }\\n}\",\"variables\":{\"isbn\":\"9780547928210\"}}",
+  "status": 200,
+  "answer": "eyJkYXRhIjp7ImVkaXRpb25zIjpbeyJpZCI6MjkwMjk2MDEsInRpdGxlIjoiVGhlIEZlbGxvd3NoaXAgb2YgdGhlIFJpbmciLCJzdWJ0aXRsZSI6bnVsbCwiaXNibl8xMCI6IjA1NDc5MjgyMTEiLCJpc2JuXzEzIjoiOTc4MDU0NzkyODIxMCIsInBhZ2VzIjo0MDcsInJlbGVhc2VfZGF0ZSI6IjIwMTItMDktMTgiLCJib29rX2lkIjoxMzk3NzMsInB1Ymxpc2hlciI6eyJuYW1lIjoiV2lsbGlhbSBNb3Jyb3cgUGFwZXJiYWNrcyJ9LCJsYW5ndWFnZSI6eyJjb2RlMiI6ImVuIn0sImltYWdlIjp7InVybCI6Imh0dHBzOi8vYXNzZXRzLmhhcmRjb3Zlci5hcHAvZWRpdGlvbi8yOTAyOTYwMS82ZDY0YjA1ZWZlYzBjY2IyMTU2NDBiMzhkOGM2YmM0YzcxMmRhMGY1LmpwZWcifX1dfX0="
+}

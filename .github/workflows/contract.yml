@@ -28,3 +28,6 @@ jobs:
 
       - name: Ask the live providers
         run: make contract-test
+        env:
+          # Without it Hardcover's contract test is skipped.
+          GOTOME_HARDCOVER_TOKEN: ${{ secrets.GOTOME_HARDCOVER_TOKEN }}
