@@ -35,6 +35,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.trashRetention",
 		hint: "settings.trashRetention.hint",
 	},
+	"embedding.enabled": {
+		label: "settings.embeddingEnabled",
+		hint: "settings.embeddingEnabled.hint",
+	},
+	"embedding.model": {
+		label: "settings.embeddingModel",
+		hint: "settings.embeddingModel.hint",
+	},
 };
 
 export function AdminSettings() {

@@ -71,10 +71,66 @@ var E5Small = Spec{
 	},
 }
 
+// E5SmallFP32 is the same model with its full-precision weights: four times
+// the download and a third more memory, for no better suggestions in #15,
+// but faster on a CPU without int8 dot-product instructions.
+var E5SmallFP32 = Spec{
+	Model: Model{
+		Name:      E5Small.Model.Name,
+		Revision:  E5Small.Model.Revision,
+		Weights:   "fp32",
+		Dim:       384,
+		MaxTokens: 512,
+	},
+	Dir: E5Small.Dir,
+	Weights: File{
+		Name:   "model.onnx",
+		Size:   470268510,
+		SHA256: "ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665",
+	},
+	Tokenizer: E5Small.Tokenizer,
+}
+
+// Specs are the models an administrator chooses between, by the names the
+// setting embedding.model takes.
+var Specs = map[string]Spec{
+	"multilingual-e5-small":      E5Small,
+	"multilingual-e5-small-fp32": E5SmallFP32,
+}
+
+// DefaultSpec is the name in Specs used unless another is chosen.
+const DefaultSpec = "multilingual-e5-small"
+
 // Prefix goes before every passage of a book. A book is compared with
 // books, which the model's authors call a symmetric task and give the query
 // prefix.
 const Prefix = "query: "
+
+// Mean is the weighted mean of the vectors, normalised to length 1.
+func Mean(vecs [][]float32, weights []float64) []float32 {
+	if len(vecs) == 0 {
+		return nil
+	}
+	sum := make([]float64, len(vecs[0]))
+	for i, v := range vecs {
+		for k, x := range v {
+			sum[k] += weights[i] * float64(x)
+		}
+	}
+	var norm float64
+	for _, x := range sum {
+		norm += x * x
+	}
+	norm = math.Sqrt(norm)
+	out := make([]float32, len(sum))
+	if norm == 0 {
+		return out
+	}
+	for k, x := range sum {
+		out[k] = float32(x / norm)
+	}
+	return out
+}
 
 // Cosine is the cosine of two vectors of the same length.
 func Cosine(a, b []float32) float64 {

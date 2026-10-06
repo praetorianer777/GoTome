@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -64,6 +65,8 @@ type Config struct {
 	ModelDir string
 	// OnnxRuntime is the path of the ONNX Runtime library.
 	OnnxRuntime string
+	// EmbedThreads is how many threads embedding a book uses.
+	EmbedThreads int
 	// SecretKey encrypts the secrets kept in the database. Commands that
 	// keep none run without it; see RequireSecretKey.
 	SecretKey []byte
@@ -117,12 +120,18 @@ func load(getenv func(string) string) (Config, error) {
 	if !filepath.IsAbs(cfg.DataDir) {
 		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
 	}
+	var err error
 	cfg.ModelDir = get("GOTOME_MODEL_DIR", filepath.Join(cfg.DataDir, "models"))
 	if !filepath.IsAbs(cfg.ModelDir) {
 		return Config{}, fmt.Errorf("GOTOME_MODEL_DIR is %q, want a full path such as %s", cfg.ModelDir, filepath.Join(DefaultDataDir, "models"))
 	}
+	// Half the CPUs by default: embedding is the least urgent work there
+	// is, and the rest of the app has to answer meanwhile.
+	threads := get("GOTOME_EMBED_THREADS", strconv.Itoa(max(1, runtime.NumCPU()/2)))
+	if cfg.EmbedThreads, err = strconv.Atoi(threads); err != nil || cfg.EmbedThreads < 1 || cfg.EmbedThreads > 256 {
+		return Config{}, fmt.Errorf("GOTOME_EMBED_THREADS is %q, want a whole number from 1 to 256", threads)
+	}
 	interval := get("GOTOME_SCAN_INTERVAL", DefaultScanInterval.String())
-	var err error
 	if cfg.ScanInterval, err = time.ParseDuration(interval); err != nil || (cfg.ScanInterval != 0 && cfg.ScanInterval < time.Minute) {
 		return Config{}, fmt.Errorf("GOTOME_SCAN_INTERVAL is %q, want a duration of a minute or more such as 6h, or 0 to switch scheduled scans off", interval)
 	}

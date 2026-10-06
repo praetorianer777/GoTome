@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -40,6 +42,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -58,6 +61,7 @@ const (
 	jobsShutdownWait     = 40 * time.Second
 	sessionSweepInterval = time.Hour
 	trashPurgeInterval   = 6 * time.Hour
+	embedInterval        = time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -169,7 +173,28 @@ func serve() error {
 		}
 		return duplicates.EnqueueTx(ctx, tx, bookID)
 	}
-	scans.OnChunked = duplicates.ChunkedTx
+	vectors := similar.NewService(pool, settingStore.Embedding, similar.OnnxOpener(embed.OnnxOptions{
+		Runtime:  cfg.OnnxRuntime,
+		ModelDir: cfg.ModelDir,
+		Threads:  cfg.EmbedThreads,
+		Fetch:    embed.FetchOptions{Offline: cfg.Offline, Log: log},
+	}), log)
+	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
+		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID); err != nil {
+			return err
+		}
+		return vectors.EnqueueTx(ctx, tx)
+	}
+	settingStore.OnChange = func(ctx context.Context, keys []string) {
+		if !slices.ContainsFunc(keys, func(k string) bool { return strings.HasPrefix(k, "embedding.") }) {
+			return
+		}
+		// Switched on, or another model: a pass goes on with, or redoes,
+		// the books. Switched off, the pass finds nothing to do.
+		if err := vectors.Enqueue(ctx); err != nil {
+			log.Warn("could not queue embedding", "error", err)
+		}
+	}
 	scans.OnFilesChanged = duplicates.EnqueueTx
 	changes := bulk.NewService(pool, scans, matches, log)
 	workers := jobs.NewWorkers()
@@ -185,6 +210,7 @@ func serve() error {
 	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
+	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
 		retention, err := settingStore.TrashRetention(ctx)
 		if err != nil {
@@ -197,6 +223,7 @@ func serve() error {
 	periodic := []*river.PeriodicJob{
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
+		similar.Periodic(embedInterval),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is
@@ -212,6 +239,7 @@ func serve() error {
 	changes.Queue = runner
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
+	vectors.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}

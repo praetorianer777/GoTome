@@ -694,6 +694,26 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   full gate and the arm64 CI job run it, a push does not.
   `TestOnnxMatchesTheReference` does the same in the toolchain when
   `GOTOME_TEST_EMBED_MODEL` and `GOTOME_TEST_ONNXRUNTIME` name the files.
+- `internal/similar` keeps `book_vectors`: per book a `metadata` vector of
+  `book_metadata_text` (title, authors, series, tags, description; the SQL
+  function is the one place that says what it is made of) and, for a book
+  with chunked text, a `content` vector, the mean of `Samples` passages
+  spread over its chunks, weighted by the tokens the model read. Each row
+  holds the model, its revision and weights (`Version`), and the hash of
+  its source: the metadata text, or the primary text file with when it was
+  chunked and `recipe`. Placeholders and deleted or merged books have none.
+- Nothing records which books are done but the vectors: `Service.Embed`
+  walks the books in ID order and embeds those whose vectors are missing,
+  of another model or of another source, so any pass may stop and the next
+  one goes on. The `similar.embed_books` job (queue `embed`, one worker)
+  runs for `passBudget` and snoozes; chunking a text, changing an
+  `embedding.*` setting (`settings.Store.OnChange`) and an hourly schedule
+  queue it. `embedding.enabled` off stops a pass at the next book;
+  `embedding.model` names one of `embed.Specs`, and another one is every
+  book again. A model that cannot run (no runtime, or not downloaded while
+  offline) is `ErrUnavailable`: the pass ends without a retry and the next
+  one tries again. `GOTOME_EMBED_THREADS` (half the CPUs) bounds a pass.
+  Tests embed with `embed.Fake` under the model the settings name.
 
 ## Background jobs
 

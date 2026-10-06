@@ -46,3 +46,12 @@ sql:
             go_type:
               type: string
               pointer: true
+          # pgvector's type, in and out as its text form "[0.1,0.2,…]":
+          # the vectors are compared in SQL, never in Go.
+          - db_type: vector
+            go_type: string
+          - db_type: vector
+            nullable: true
+            go_type:
+              type: string
+              pointer: true
