@@ -931,6 +931,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/notification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The kinds of event the caller may be told of, and whether they are */
+        get: operations["getNotificationSettings"];
+        /** Choose which kinds of event the caller is told of; kinds left out stay as they are */
+        put: operations["putNotificationSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/stats": {
         parameters: {
             query?: never;
@@ -1810,7 +1828,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished";
+            kind: "bulk.finished" | "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -1819,6 +1837,14 @@ export interface components {
             nextCursor?: string;
             notifications: components["schemas"]["Notification"][];
             unread: number;
+        };
+        NotificationSetting: {
+            app: boolean;
+            /** @enum {string} */
+            kind: "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+        };
+        NotificationSettings: {
+            kinds: components["schemas"]["NotificationSetting"][];
         };
         NotificationsRead: {
             all?: boolean;
@@ -4217,6 +4243,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
             };
             /** @description The request failed. */
             default: {

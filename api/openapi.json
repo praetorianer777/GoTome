@@ -3201,6 +3201,88 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/me/notification-settings": {
+      "get": {
+        "operationId": "getNotificationSettings",
+        "summary": "The kinds of event the caller may be told of, and whether they are",
+        "tags": [
+          "notifications"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      },
+      "put": {
+        "operationId": "putNotificationSettings",
+        "summary": "Choose which kinds of event the caller is told of; kinds left out stay as they are",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/me/stats": {
       "get": {
         "operationId": "getStats",
@@ -6358,7 +6440,13 @@
           "kind": {
             "type": "string",
             "enum": [
-              "bulk.finished"
+              "bulk.finished",
+              "books.added",
+              "wish.fulfilled",
+              "review.needed",
+              "duplicates.found",
+              "files.unreadable",
+              "scan.failed"
             ]
           },
           "link": {
@@ -6395,6 +6483,43 @@
         "required": [
           "notifications",
           "unread"
+        ]
+      },
+      "NotificationSetting": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "books.added",
+              "wish.fulfilled",
+              "review.needed",
+              "duplicates.found",
+              "files.unreadable",
+              "scan.failed"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "app"
+        ]
+      },
+      "NotificationSettings": {
+        "type": "object",
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationSetting"
+            }
+          }
+        },
+        "required": [
+          "kinds"
         ]
       },
       "NotificationsRead": {

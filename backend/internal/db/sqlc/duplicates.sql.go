@@ -564,7 +564,7 @@ func (q *Queries) SetPairState(ctx context.Context, arg SetPairStateParams) erro
 const upsertDuplicatePair = `-- name: UpsertDuplicatePair :one
 INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2)
 ON CONFLICT (book_a, book_b) DO UPDATE SET updated_at = duplicate_pairs.updated_at
-RETURNING id
+RETURNING id, (xmax = 0)::boolean AS inserted
 `
 
 type UpsertDuplicatePairParams struct {
@@ -572,9 +572,15 @@ type UpsertDuplicatePairParams struct {
 	BookB uuid.UUID
 }
 
-func (q *Queries) UpsertDuplicatePair(ctx context.Context, arg UpsertDuplicatePairParams) (uuid.UUID, error) {
+type UpsertDuplicatePairRow struct {
+	ID       uuid.UUID
+	Inserted bool
+}
+
+// inserted is false for a pair that was there already.
+func (q *Queries) UpsertDuplicatePair(ctx context.Context, arg UpsertDuplicatePairParams) (UpsertDuplicatePairRow, error) {
 	row := q.db.QueryRow(ctx, upsertDuplicatePair, arg.BookA, arg.BookB)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i UpsertDuplicatePairRow
+	err := row.Scan(&i.ID, &i.Inserted)
+	return i, err
 }

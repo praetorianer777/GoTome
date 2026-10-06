@@ -473,6 +473,16 @@ func (s *Server) routes() []Route {
 			Request: notificationsRead{}, Response: unreadCount{}, Permission: auth.SignedIn, Handler: s.markNotificationsRead,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/notification-settings", ID: "getNotificationSettings",
+			Summary: "The kinds of event the caller may be told of, and whether they are", Tag: "notifications",
+			Response: notificationSettings{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getNotificationSettings,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/notification-settings", ID: "putNotificationSettings",
+			Summary: "Choose which kinds of event the caller is told of; kinds left out stay as they are", Tag: "notifications",
+			Request: notificationSettings{}, Response: notificationSettings{}, Permission: auth.SignedIn, Handler: s.putNotificationSettings,
+		},
+		{
 			Method: http.MethodGet, Path: "/notifications/stream", ID: "streamNotifications",
 			Summary: "Server-sent events: the caller's unread count, now and whenever it may have changed", Tag: "notifications",
 			Produces: "text/event-stream", Reads: ReadsLibraries, Permission: auth.SignedIn, Handler: s.streamNotifications,

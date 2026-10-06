@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
 
 // Scan states, as stored.
@@ -111,6 +112,8 @@ type Service struct {
 	// OnExtracted, when set, runs in the transaction that records what a
 	// file says about its book: looking the book up starts there.
 	OnExtracted func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// Events, when set, hears of scans and of files that cannot be read.
+	Events *notify.Events
 	// OnChunked, when set, runs in the transaction that wrote a book's
 	// chunks from the file: its signature for overlap is made there.
 	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error
@@ -285,7 +288,15 @@ func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (co
 		if errors.Is(scanErr, ErrNoFolder) {
 			message = messageNoFolder
 		}
-		if err := q.FinishScan(record, sqlc.FinishScanParams{ID: scan.ID, State: StateFailed, Error: &message}); err != nil {
+		if err := db.InTx(record, s.pool, func(tx pgx.Tx) error {
+			if _, err := sqlc.New(tx).FinishScan(record, sqlc.FinishScanParams{ID: scan.ID, State: StateFailed, Error: &message}); err != nil {
+				return err
+			}
+			return s.Events.QueueTx(record, tx, notify.Event{
+				Kind: notify.KindScanFailed, Libraries: []uuid.UUID{libraryID},
+				Data: map[string]any{"library": lib.Name, "error": message}, Link: "/admin/libraries",
+			})
+		}); err != nil {
 			return false, err
 		}
 		return false, scanErr
@@ -293,7 +304,17 @@ func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (co
 		return false, nil
 	}
 
-	if err := q.FinishScan(record, sqlc.FinishScanParams{ID: scan.ID, State: StateDone}); err != nil {
+	// Told once for the whole scan, however many runs it took.
+	if err := db.InTx(record, s.pool, func(tx pgx.Tx) error {
+		added, err := sqlc.New(tx).FinishScan(record, sqlc.FinishScanParams{ID: scan.ID, State: StateDone})
+		if err != nil || added == 0 {
+			return err
+		}
+		return s.Events.QueueTx(record, tx, notify.Event{
+			Kind: notify.KindBooksAdded, Libraries: []uuid.UUID{libraryID},
+			Data: map[string]any{"library": lib.Name, "count": added}, Link: "/?library=" + libraryID.String(),
+		})
+	}); err != nil {
 		return false, err
 	}
 	if err := q.PruneScans(record, sqlc.PruneScansParams{LibraryID: libraryID, Keep: keptScans}); err != nil {

@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
 
 // What a pair's evidence says the books share.
@@ -62,6 +63,8 @@ type Service struct {
 	books *catalog.Service
 	log   *slog.Logger
 	Queue *jobs.Runner
+	// Events, when set, hears of new pairs.
+	Events *notify.Events
 }
 
 // NewService returns the Service on the pool; Queue is set once the runner
@@ -88,6 +91,7 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		}
 		found = append(found, shared...)
 		pairs := map[uuid.UUID]uuid.UUID{}
+		var others []uuid.UUID
 		var ev sqlc.AddDuplicateEvidenceParams
 		for _, f := range found {
 			pair, ok := pairs[f.Other]
@@ -96,10 +100,15 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 				if b.String() < a.String() {
 					a, b = b, a
 				}
-				if pair, err = q.UpsertDuplicatePair(ctx, sqlc.UpsertDuplicatePairParams{BookA: a, BookB: b}); err != nil {
+				row, err := q.UpsertDuplicatePair(ctx, sqlc.UpsertDuplicatePairParams{BookA: a, BookB: b})
+				if err != nil {
 					return err
 				}
+				pair = row.ID
 				pairs[f.Other] = pair
+				if row.Inserted {
+					others = append(others, f.Other)
+				}
 			}
 			ev.PairIds = append(ev.PairIds, pair)
 			ev.Kinds = append(ev.Kinds, f.Kind)
@@ -118,7 +127,32 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		if err := q.DropEmptyDuplicatePairs(ctx, bookID); err != nil {
 			return err
 		}
-		return q.RefreshPairScores(ctx, bookID)
+		if err := q.RefreshPairScores(ctx, bookID); err != nil {
+			return err
+		}
+		return s.newPairsTx(ctx, tx, bookID, others)
+	})
+}
+
+// newPairsTx tells of the pairs the book's check made, to those who see
+// both books of each: the book's library first, then the others'.
+func (s *Service) newPairsTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID, others []uuid.UUID) error {
+	if len(others) == 0 || s.Events == nil {
+		return nil
+	}
+	q := sqlc.New(tx)
+	book, err := q.GetBookTitleAndLibrary(ctx, bookID)
+	if err != nil {
+		return err
+	}
+	libraries, err := q.ListBookLibraries(ctx, others)
+	if err != nil {
+		return err
+	}
+	libraries = slices.DeleteFunc(libraries, func(l uuid.UUID) bool { return l == book.LibraryID })
+	return s.Events.QueueTx(ctx, tx, notify.Event{
+		Kind: notify.KindDuplicatesFound, Libraries: append([]uuid.UUID{book.LibraryID}, libraries...),
+		BookID: &bookID, Data: map[string]any{"title": book.Title, "count": len(others)}, Link: "/duplicates",
 	})
 }
 

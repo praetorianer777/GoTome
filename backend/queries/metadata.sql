@@ -11,14 +11,16 @@ SET url = EXCLUDED.url, status = EXCLUDED.status, body = EXCLUDED.body,
     fetched_at = now(), expires_at = EXCLUDED.expires_at;
 
 
--- name: RecordMatch :exec
+-- name: RecordMatch :one
 -- A match found again keeps what became of it: a dismissed one is not
--- brought back, an applied one not made pending.
+-- brought back, an applied one not made pending. inserted is false for a
+-- match that was there already.
 INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (book_id, provider, record_id) DO UPDATE
 SET score = EXCLUDED.score, record = EXCLUDED.record, updated_at = now(),
-    state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END;
+    state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END
+RETURNING (xmax = 0)::boolean AS inserted;
 
 -- name: ListReviewBooks :many
 -- The books with matches waiting, those waiting longest first, of the

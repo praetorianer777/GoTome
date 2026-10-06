@@ -209,12 +209,13 @@ func (q *Queries) PutProviderRecord(ctx context.Context, arg PutProviderRecordPa
 	return err
 }
 
-const recordMatch = `-- name: RecordMatch :exec
+const recordMatch = `-- name: RecordMatch :one
 INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
 VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (book_id, provider, record_id) DO UPDATE
 SET score = EXCLUDED.score, record = EXCLUDED.record, updated_at = now(),
     state = CASE WHEN metadata_matches.state = 'pending' THEN EXCLUDED.state ELSE metadata_matches.state END
+RETURNING (xmax = 0)::boolean AS inserted
 `
 
 type RecordMatchParams struct {
@@ -227,9 +228,10 @@ type RecordMatchParams struct {
 }
 
 // A match found again keeps what became of it: a dismissed one is not
-// brought back, an applied one not made pending.
-func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) error {
-	_, err := q.db.Exec(ctx, recordMatch,
+// brought back, an applied one not made pending. inserted is false for a
+// match that was there already.
+func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) (bool, error) {
+	row := q.db.QueryRow(ctx, recordMatch,
 		arg.BookID,
 		arg.Provider,
 		arg.RecordID,
@@ -237,7 +239,9 @@ func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) error 
 		arg.Record,
 		arg.State,
 	)
-	return err
+	var inserted bool
+	err := row.Scan(&inserted)
+	return inserted, err
 }
 
 const setMatchState = `-- name: SetMatchState :exec

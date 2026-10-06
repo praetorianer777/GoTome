@@ -2284,3 +2284,43 @@ describe("similar books", () => {
 		expect(screen.queryByRole("region", { name: "Similar books" })).not.toBeInTheDocument();
 	});
 });
+
+describe("notifications of what happens in the libraries", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("words one event by its book and several by their count", async () => {
+		const person = userEvent.setup();
+		server
+			.notify({ kind: "books.added", data: { library: "Novels", count: 3 }, link: "/?library=lib-1" })
+			.notify({ kind: "wish.fulfilled", data: { title: "Emma" }, link: "/books/book-1" })
+			.notify({ kind: "duplicates.found", data: { count: 4 }, link: "/duplicates" })
+			.notify({ kind: "files.unreadable", data: { file: "Torn.epub", title: "Torn" }, link: "/books/book-2" });
+		renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Notifications, 4 unread" }));
+		const panel = within(screen.getByRole("region", { name: "Notifications" }));
+		expect(panel.getByRole("button", { name: /^Unread: New books in Novels/ })).toHaveTextContent("3 books were added.");
+		expect(panel.getByRole("button", { name: /^Unread: A wish came in/ })).toHaveTextContent("Emma is in the library now.");
+		expect(panel.getByRole("button", { name: /^Unread: Possible duplicates/ })).toHaveTextContent("4 new pairs to look at.");
+		expect(panel.getByRole("button", { name: /^Unread: A file could not be read/ })).toHaveTextContent("Torn.epub, of Torn.");
+	});
+
+	it("lets a person choose what they are told of on their profile", async () => {
+		const person = userEvent.setup();
+		renderApp("/profile");
+		const section = within(await screen.findByRole("region", { name: "Notifications" }));
+		const books = await section.findByRole("checkbox", { name: "New books in a library" });
+		expect(books).toBeChecked();
+		expect(section.getByRole("checkbox", { name: "A book on my wishlist arrives" })).toBeChecked();
+		expect(section.queryByRole("checkbox", { name: "New possible duplicates" })).not.toBeInTheDocument();
+
+		await person.click(books);
+		await waitFor(() => expect(books).not.toBeChecked());
+		expect(server.requests.find((r) => r.method === "PUT" && r.path === "/me/notification-settings")?.body).toEqual({
+			kinds: [{ kind: "books.added", app: false }],
+		});
+	});
+});

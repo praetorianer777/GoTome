@@ -186,6 +186,12 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- GOtome tells you, in the app, of what happens in your libraries: new
+  books found by a scan, a book you wished for arriving, details waiting
+  for review, new possible duplicates, files that cannot be read, and a
+  library that cannot be scanned, each to those who may act on it. A large
+  import is one notification, not one per book. Choose what you are told
+  of on your profile.
 - A book's page suggests similar books: those most like it in what its text
   and its description are about, among the libraries you see. Copies of
   the book and its other editions and translations are not suggested.

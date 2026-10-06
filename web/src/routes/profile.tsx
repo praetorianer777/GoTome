@@ -5,6 +5,11 @@ import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import {
+	EVENT_LABELS,
+	notificationSettingsQuery,
+	useSetNotificationSetting,
+} from "@/notifications/api";
+import {
 	ownSessionsQuery,
 	useChangePassword,
 	useEndOwnSession,
@@ -65,9 +70,41 @@ export function Profile({ user }: { user: CurrentUser }) {
 				</h2>
 				<StorageUse />
 			</section>
+			<NotificationSettings />
 			<ChangePassword />
 			<Sessions />
 		</div>
+	);
+}
+
+function NotificationSettings() {
+	const settings = useQuery(notificationSettingsQuery);
+	const set = useSetNotificationSetting();
+	if (!settings.data?.length) return null;
+	return (
+		<section aria-labelledby="notification-settings" className="flex flex-col gap-2">
+			<h2 id="notification-settings" className="text-lg font-medium">
+				{t("notifications.settings")}
+			</h2>
+			<p className="text-sm text-slate-600 dark:text-slate-400">
+				{t("notifications.settings.hint")}
+			</p>
+			<ul className="flex flex-col gap-1">
+				{settings.data.map((s) => (
+					<li key={s.kind}>
+						<label className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								checked={s.app}
+								disabled={set.isPending}
+								onChange={(e) => set.mutate({ kind: s.kind, app: e.target.checked })}
+							/>
+							{t(EVENT_LABELS[s.kind])}
+						</label>
+					</li>
+				))}
+			</ul>
+		</section>
 	);
 }
 

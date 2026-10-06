@@ -666,8 +666,25 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `bulk` does by notifying only when its finish changed a row.
 - `GET /notifications/stream` is a server-sent event stream of the unread
   count only, sent when it opens and whenever something changed; the list
-  comes from `GET /notifications`. A notification about a book is seen only
-  while its library is, and counted only then.
+  comes from `GET /notifications`. A notification about a book or a library
+  is seen only while that library is, and counted only then.
+- What happens in the libraries (#71) is told through `notify.Events`, which
+  `serve` hands to the scan (`books.added` once per finished scan with the
+  books it took in, `scan.failed`), extraction (`files.unreadable`,
+  `wish.fulfilled` to the wishers), duplicate checks (`duplicates.found`
+  for pairs the check made) and lookups (`review.needed` when a match to
+  review is new). `QueueTx`, in the change's transaction, writes one
+  `notification_events` row per person who is to hear of it, in SQL: an
+  active account of a role with the kind's permission (`EventKinds`),
+  subscribed (`notification_subscriptions`, or the kind's default) and
+  seeing every library the event names. The `notify.flush_events` job folds
+  them once none has come for a minute (or the oldest has waited ten) into
+  one notification per person, kind and library: the event itself when
+  alone, else a count, so an import is told once. A nil `Events` tells
+  nothing.
+- People choose per kind on their profile (`GET`/`PUT
+  /me/notification-settings`); the web app is the only channel so far,
+  and the owner put the others (#68) off on 2026-10-06.
 
 ## Embeddings
 

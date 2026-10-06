@@ -131,7 +131,11 @@ func TestALowConfidenceMatchWaitsForAPerson(t *testing.T) {
 	t.Parallel()
 	a := newApp(t)
 	m, _ := a.matcher()
+	events := a.withEvents()
+	m.Events = events
 	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	reader, _ := a.signedIn("reader", "reader")
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
 	id, err := catalog.NewService(a.pool).CreateBook(context.Background(), catalog.NewBook{
 		LibraryID: lib, Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Donoghue"}},
@@ -143,6 +147,14 @@ func TestALowConfidenceMatchWaitsForAPerson(t *testing.T) {
 		if err := m.Match(context.Background(), id); err != nil {
 			t.Fatal(err)
 		}
+	}
+	// Found twice, told once, to those who review.
+	a.flush(events)
+	if got := a.told(editor); len(got) != 1 || got[0].Kind != "review.needed" || got[0].Data["title"] != "Emma" || got[0].Link != "/review" {
+		t.Errorf("the editor is told %v", got)
+	}
+	if got := a.told(reader); len(got) != 0 {
+		t.Errorf("a reader is told %v", got)
 	}
 	if book := a.book(id); book.Publisher != "" || book.Description != "" || book.CoverKey != "" {
 		t.Errorf("a doubtful match changed the book: %+v", book)
