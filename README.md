@@ -48,6 +48,8 @@ such as API tokens: back up the `secrets` volume together with the database, or
 those have to be entered again.
 Once a release is published, the same file pulls the image instead of building it.
 
+Backing up, restoring and upgrading: [docs/backup-and-upgrade.md](docs/backup-and-upgrade.md).
+
 ## Development
 
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;
