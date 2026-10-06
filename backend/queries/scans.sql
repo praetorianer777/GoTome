@@ -38,10 +38,11 @@ SET files_seen     = sqlc.arg(files_seen),
     books_added    = books_added + sqlc.arg(books_added)
 WHERE id = $1;
 
--- name: FinishScan :exec
+-- name: FinishScan :one
 UPDATE library_scans
 SET state = $2, error = $3, finished_at = now()
-WHERE id = $1;
+WHERE id = $1
+RETURNING books_added;
 
 -- name: PruneScans :exec
 -- A library scanned four times a day would otherwise grow a row each time.

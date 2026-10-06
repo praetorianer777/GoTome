@@ -268,6 +268,25 @@ type Notification struct {
 	BookID    *uuid.UUID
 	CreatedAt time.Time
 	ReadAt    *time.Time
+	LibraryID *uuid.UUID
+}
+
+type NotificationEvent struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Kind      string
+	LibraryID *uuid.UUID
+	BookID    *uuid.UUID
+	Data      []byte
+	Link      string
+	CreatedAt time.Time
+}
+
+type NotificationSubscription struct {
+	UserID  uuid.UUID
+	Kind    string
+	Channel string
+	Enabled bool
 }
 
 type ProviderRecord struct {

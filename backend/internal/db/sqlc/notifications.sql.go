@@ -19,6 +19,8 @@ LEFT JOIN books b ON b.id = n.book_id
 WHERE n.user_id = $1::uuid AND n.read_at IS NULL
   AND (n.book_id IS NULL OR (b.deleted_at IS NULL
        AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))))
+  AND (n.library_id IS NULL
+       OR n.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean)))
 `
 
 type CountUnreadNotificationsParams struct {
@@ -34,17 +36,18 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, arg CountUnreadN
 }
 
 const createNotification = `-- name: CreateNotification :one
-INSERT INTO notifications (user_id, kind, data, link, book_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO notifications (user_id, kind, data, link, book_id, library_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 type CreateNotificationParams struct {
-	UserID uuid.UUID
-	Kind   string
-	Data   []byte
-	Link   string
-	BookID *uuid.UUID
+	UserID    uuid.UUID
+	Kind      string
+	Data      []byte
+	Link      string
+	BookID    *uuid.UUID
+	LibraryID *uuid.UUID
 }
 
 func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) (uuid.UUID, error) {
@@ -54,10 +57,80 @@ func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotification
 		arg.Data,
 		arg.Link,
 		arg.BookID,
+		arg.LibraryID,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getBookTitleAndLibrary = `-- name: GetBookTitleAndLibrary :one
+SELECT title, library_id FROM books WHERE id = $1
+`
+
+type GetBookTitleAndLibraryRow struct {
+	Title     string
+	LibraryID uuid.UUID
+}
+
+func (q *Queries) GetBookTitleAndLibrary(ctx context.Context, id uuid.UUID) (GetBookTitleAndLibraryRow, error) {
+	row := q.db.QueryRow(ctx, getBookTitleAndLibrary, id)
+	var i GetBookTitleAndLibraryRow
+	err := row.Scan(&i.Title, &i.LibraryID)
+	return i, err
+}
+
+const listBookLibraries = `-- name: ListBookLibraries :many
+SELECT DISTINCT library_id FROM books WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListBookLibraries(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listBookLibraries, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var library_id uuid.UUID
+		if err := rows.Scan(&library_id); err != nil {
+			return nil, err
+		}
+		items = append(items, library_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNotificationSubscriptions = `-- name: ListNotificationSubscriptions :many
+SELECT kind, enabled FROM notification_subscriptions WHERE user_id = $1 AND channel = 'app'
+`
+
+type ListNotificationSubscriptionsRow struct {
+	Kind    string
+	Enabled bool
+}
+
+func (q *Queries) ListNotificationSubscriptions(ctx context.Context, userID uuid.UUID) ([]ListNotificationSubscriptionsRow, error) {
+	rows, err := q.db.Query(ctx, listNotificationSubscriptions, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListNotificationSubscriptionsRow{}
+	for rows.Next() {
+		var i ListNotificationSubscriptionsRow
+		if err := rows.Scan(&i.Kind, &i.Enabled); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listNotifications = `-- name: ListNotifications :many
@@ -67,6 +140,8 @@ LEFT JOIN books b ON b.id = n.book_id
 WHERE n.user_id = $1::uuid
   AND (n.book_id IS NULL OR (b.deleted_at IS NULL
        AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))))
+  AND (n.library_id IS NULL
+       OR n.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean)))
   AND ($3::timestamptz IS NULL OR (n.created_at, n.id) < ($3::timestamptz, $4::uuid))
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT $5
@@ -91,7 +166,7 @@ type ListNotificationsRow struct {
 }
 
 // The viewer's notifications, newest first, after the cursor; one about a
-// book is left out while its library may not be seen.
+// book or a library is left out while that library may not be seen.
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
 	rows, err := q.db.Query(ctx, listNotifications,
 		arg.Viewer,
@@ -126,6 +201,31 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 	return items, nil
 }
 
+const listWishers = `-- name: ListWishers :many
+SELECT user_id FROM user_books WHERE book_id = $1 AND status = 'wishlist'
+`
+
+// Who has the book on their wishlist.
+func (q *Queries) ListWishers(ctx context.Context, bookID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listWishers, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markNotificationsRead = `-- name: MarkNotificationsRead :exec
 UPDATE notifications SET read_at = now()
 WHERE user_id = $1::uuid AND read_at IS NULL
@@ -142,4 +242,129 @@ type MarkNotificationsReadParams struct {
 func (q *Queries) MarkNotificationsRead(ctx context.Context, arg MarkNotificationsReadParams) error {
 	_, err := q.db.Exec(ctx, markNotificationsRead, arg.Viewer, arg.Ids)
 	return err
+}
+
+const notificationEventSpan = `-- name: NotificationEventSpan :one
+SELECT coalesce(min(created_at), now())::timestamptz AS oldest, coalesce(max(created_at), now())::timestamptz AS newest,
+       count(*)::int AS events
+FROM notification_events
+`
+
+type NotificationEventSpanRow struct {
+	Oldest time.Time
+	Newest time.Time
+	Events int32
+}
+
+// When the oldest and the newest waiting event were queued.
+func (q *Queries) NotificationEventSpan(ctx context.Context) (NotificationEventSpanRow, error) {
+	row := q.db.QueryRow(ctx, notificationEventSpan)
+	var i NotificationEventSpanRow
+	err := row.Scan(&i.Oldest, &i.Newest, &i.Events)
+	return i, err
+}
+
+const putNotificationSubscription = `-- name: PutNotificationSubscription :exec
+INSERT INTO notification_subscriptions (user_id, kind, channel, enabled)
+VALUES ($1, $2, 'app', $3)
+ON CONFLICT (user_id, kind, channel) DO UPDATE SET enabled = EXCLUDED.enabled
+`
+
+type PutNotificationSubscriptionParams struct {
+	UserID  uuid.UUID
+	Kind    string
+	Enabled bool
+}
+
+func (q *Queries) PutNotificationSubscription(ctx context.Context, arg PutNotificationSubscriptionParams) error {
+	_, err := q.db.Exec(ctx, putNotificationSubscription, arg.UserID, arg.Kind, arg.Enabled)
+	return err
+}
+
+const queueNotificationEvent = `-- name: QueueNotificationEvent :execrows
+INSERT INTO notification_events (user_id, kind, library_id, book_id, data, link)
+SELECT u.id, $1::text, $2::uuid, $3::uuid,
+       $4::jsonb, $5::text
+FROM users u
+LEFT JOIN notification_subscriptions s
+       ON s.user_id = u.id AND s.kind = $1::text AND s.channel = 'app'
+WHERE u.disabled_at IS NULL
+  AND u.role = ANY($6::text[])
+  AND ($7::uuid[] IS NULL OR u.id = ANY($7::uuid[]))
+  AND coalesce(s.enabled, $8::boolean)
+  AND NOT EXISTS (
+      SELECT unnest($9::uuid[])
+      EXCEPT
+      SELECT visible_library_ids(u.id, u.role = ANY($10::text[])))
+`
+
+type QueueNotificationEventParams struct {
+	Kind         string
+	LibraryID    *uuid.UUID
+	BookID       *uuid.UUID
+	Data         []byte
+	Link         string
+	Roles        []string
+	Recipients   []uuid.UUID
+	DefaultOn    bool
+	Libraries    []uuid.UUID
+	SeesAllRoles []string
+}
+
+// One event for each person who is to hear of it: active, of a role the
+// kind is for, among the recipients when they are given, subscribed to the
+// kind (or it is on by default), and seeing every library the event names.
+func (q *Queries) QueueNotificationEvent(ctx context.Context, arg QueueNotificationEventParams) (int64, error) {
+	result, err := q.db.Exec(ctx, queueNotificationEvent,
+		arg.Kind,
+		arg.LibraryID,
+		arg.BookID,
+		arg.Data,
+		arg.Link,
+		arg.Roles,
+		arg.Recipients,
+		arg.DefaultOn,
+		arg.Libraries,
+		arg.SeesAllRoles,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const takeNotificationEvents = `-- name: TakeNotificationEvents :many
+DELETE FROM notification_events
+WHERE created_at <= $1::timestamptz
+RETURNING id, user_id, kind, library_id, book_id, data, link, created_at
+`
+
+// The events queued until then, oldest first, gone from the queue.
+func (q *Queries) TakeNotificationEvents(ctx context.Context, until time.Time) ([]NotificationEvent, error) {
+	rows, err := q.db.Query(ctx, takeNotificationEvents, until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NotificationEvent{}
+	for rows.Next() {
+		var i NotificationEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Kind,
+			&i.LibraryID,
+			&i.BookID,
+			&i.Data,
+			&i.Link,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

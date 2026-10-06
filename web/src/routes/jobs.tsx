@@ -66,6 +66,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.scanAll");
 		case "auth.sweep_sessions":
 			return t("jobs.kind.sweep");
+		case "notify.flush_events":
+			return t("jobs.kind.notify");
 	}
 	return job.kind;
 }

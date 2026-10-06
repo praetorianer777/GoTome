@@ -66,12 +66,101 @@ const BULK_ACTIONS: Record<string, MessageKey> = {
 	writeBack: "notification.bulk.writeBack",
 };
 
+export type NotificationSetting =
+	components["schemas"]["NotificationSetting"];
+
+/** The kinds of event the person may be told of, and whether they are. */
+export const notificationSettingsQuery = queryOptions({
+	queryKey: ["notification-settings"],
+	queryFn: async () =>
+		(await api.GET("/me/notification-settings")).data?.kinds ?? [],
+});
+
+/** Changes whether the person is told of a kind of event. */
+export function useSetNotificationSetting() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (setting: NotificationSetting) =>
+			(
+				await api.PUT("/me/notification-settings", {
+					body: { kinds: [setting] },
+				})
+			).data?.kinds ?? [],
+		onSuccess: (kinds) =>
+			queryClient.setQueryData(notificationSettingsQuery.queryKey, kinds),
+	});
+}
+
+/** What each kind of event is called where the person chooses. */
+export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
+	"books.added": "notifications.kind.booksAdded",
+	"wish.fulfilled": "notifications.kind.wishFulfilled",
+	"review.needed": "notifications.kind.reviewNeeded",
+	"duplicates.found": "notifications.kind.duplicatesFound",
+	"files.unreadable": "notifications.kind.filesUnreadable",
+	"scan.failed": "notifications.kind.scanFailed",
+};
+
+const text = (v: unknown) => (typeof v === "string" ? v : "");
+const count = (v: unknown) => (typeof v === "number" ? v : 1);
+
 /** What a notification says, as a heading and a line. */
 export function notificationText(n: Notification): {
 	title: string;
 	detail: string;
 } {
+	const d = n.data;
+	// One event names its book; several are a count.
+	const one = typeof d.title === "string" || typeof d.file === "string";
 	switch (n.kind) {
+		case "books.added":
+			return {
+				title: t("notification.booksAdded", { library: text(d.library) }),
+				detail:
+					count(d.count) === 1
+						? t("notification.booksAdded.one")
+						: t("notification.booksAdded.many", { count: count(d.count) }),
+			};
+		case "scan.failed":
+			return {
+				title: t("notification.scanFailed", { library: text(d.library) }),
+				detail: d.error
+					? text(d.error)
+					: t("notification.scanFailed.many", { count: count(d.count) }),
+			};
+		case "files.unreadable":
+			return one
+				? {
+						title: t("notification.fileUnreadable"),
+						detail: t("notification.fileUnreadable.one", { file: text(d.file), title: text(d.title) }),
+					}
+				: {
+						title: t("notification.filesUnreadable"),
+						detail: t("notification.filesUnreadable.many", { count: count(d.count) }),
+					};
+		case "duplicates.found":
+			return {
+				title: t("notification.duplicatesFound"),
+				detail: !one
+					? t("notification.duplicatesFound.many", { count: count(d.count) })
+					: count(d.count) === 1
+						? t("notification.duplicatesFound.one", { title: text(d.title) })
+						: t("notification.duplicatesFound.some", { title: text(d.title), count: count(d.count) }),
+			};
+		case "review.needed":
+			return {
+				title: t("notification.reviewNeeded"),
+				detail: one
+					? t("notification.reviewNeeded.one", { title: text(d.title) })
+					: t("notification.reviewNeeded.many", { count: count(d.count) }),
+			};
+		case "wish.fulfilled":
+			return {
+				title: t("notification.wishFulfilled"),
+				detail: one
+					? t("notification.wishFulfilled.one", { title: text(d.title) })
+					: t("notification.wishFulfilled.many", { count: count(d.count) }),
+			};
 		case "bulk.finished": {
 			const action = typeof n.data.action === "string" ? n.data.action : "";
 			const outcomes = (n.data.outcomes ?? {}) as Partial<

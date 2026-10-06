@@ -125,10 +125,11 @@ func (q *Queries) DeleteFileChapters(ctx context.Context, fileID uuid.UUID) erro
 	return err
 }
 
-const finishScan = `-- name: FinishScan :exec
+const finishScan = `-- name: FinishScan :one
 UPDATE library_scans
 SET state = $2, error = $3, finished_at = now()
 WHERE id = $1
+RETURNING books_added
 `
 
 type FinishScanParams struct {
@@ -137,9 +138,11 @@ type FinishScanParams struct {
 	Error *string
 }
 
-func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) error {
-	_, err := q.db.Exec(ctx, finishScan, arg.ID, arg.State, arg.Error)
-	return err
+func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) (int32, error) {
+	row := q.db.QueryRow(ctx, finishScan, arg.ID, arg.State, arg.Error)
+	var books_added int32
+	err := row.Scan(&books_added)
+	return books_added, err
 }
 
 const getFileForExtraction = `-- name: GetFileForExtraction :one

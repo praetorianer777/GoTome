@@ -43,6 +43,9 @@ type New struct {
 	Link string
 	// BookID is the book it is about; it is seen only while the book is.
 	BookID *uuid.UUID
+	// LibraryID is the library it is about; it is seen only while the
+	// library is.
+	LibraryID *uuid.UUID
 }
 
 // Notification is one notification as its user sees it.
@@ -67,7 +70,7 @@ func CreateTx(ctx context.Context, tx pgx.Tx, user uuid.UUID, n New) (uuid.UUID,
 		data = []byte("{}")
 	}
 	id, err := sqlc.New(tx).CreateNotification(ctx, sqlc.CreateNotificationParams{
-		UserID: user, Kind: n.Kind, Data: data, Link: n.Link, BookID: n.BookID,
+		UserID: user, Kind: n.Kind, Data: data, Link: n.Link, BookID: n.BookID, LibraryID: n.LibraryID,
 	})
 	if err != nil {
 		return uuid.Nil, err

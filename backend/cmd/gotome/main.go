@@ -167,6 +167,10 @@ func serve() error {
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
 	books := catalog.NewService(pool)
 	duplicates := dedupe.NewService(pool, books, log)
+	events := &notify.Events{Pool: pool}
+	scans.Events = events
+	duplicates.Events = events
+	matches.Events = events
 	scans.OnExtracted = func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error {
 		if err := matches.EnqueueTx(ctx, tx, bookID); err != nil {
 			return err
@@ -211,6 +215,7 @@ func serve() error {
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
+	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
 		retention, err := settingStore.TrashRetention(ctx)
 		if err != nil {
@@ -240,6 +245,7 @@ func serve() error {
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
+	events.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}

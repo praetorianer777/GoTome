@@ -37,9 +37,10 @@ JOIN authors a ON a.id = c.author_id
 WHERE me.title_key <> '';
 
 -- name: UpsertDuplicatePair :one
+-- inserted is false for a pair that was there already.
 INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2)
 ON CONFLICT (book_a, book_b) DO UPDATE SET updated_at = duplicate_pairs.updated_at
-RETURNING id;
+RETURNING id, (xmax = 0)::boolean AS inserted;
 
 -- name: AddDuplicateEvidence :exec
 INSERT INTO duplicate_evidence (pair_id, kind, detail)

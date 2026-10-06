@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
 
 const (
@@ -140,7 +141,21 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 			// database would refuse.
 			message = strings.ToValidUTF8(message[:maxErrorLen], "")
 		}
-		return q.SetFileExtractFailed(ctx, sqlc.SetFileExtractFailedParams{ID: fileID, Sha256: file.Sha256, Error: &message})
+		return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+			qtx := sqlc.New(tx)
+			if err := qtx.SetFileExtractFailed(ctx, sqlc.SetFileExtractFailedParams{ID: fileID, Sha256: file.Sha256, Error: &message}); err != nil {
+				return err
+			}
+			book, err := qtx.GetBookTitleAndLibrary(ctx, file.BookID)
+			if err != nil {
+				return err
+			}
+			return s.Events.QueueTx(ctx, tx, notify.Event{
+				Kind: notify.KindFilesUnreadable, Libraries: []uuid.UUID{file.LibraryID}, BookID: &file.BookID,
+				Data: map[string]any{"file": filepath.Base(file.RelPath), "title": book.Title},
+				Link: "/books/" + file.BookID.String(),
+			})
+		})
 	case err != nil:
 		return err
 	}
@@ -173,6 +188,11 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		bookID, err := catalog.FulfilPlaceholderTx(ctx, tx, file.BookID, got.Metadata)
 		if err != nil {
 			return err
+		}
+		if bookID != file.BookID {
+			if err := s.wishFulfilledTx(ctx, tx, bookID, file.LibraryID); err != nil {
+				return err
+			}
 		}
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
 			return err
@@ -289,4 +309,21 @@ func openFile(path string) (*os.File, int64, error) {
 		return nil, 0, err
 	}
 	return f, info.Size(), nil
+}
+
+// wishFulfilledTx tells those who wished for the book that it arrived.
+func (s *Service) wishFulfilledTx(ctx context.Context, tx pgx.Tx, bookID, libraryID uuid.UUID) error {
+	q := sqlc.New(tx)
+	wishers, err := q.ListWishers(ctx, bookID)
+	if err != nil || len(wishers) == 0 {
+		return err
+	}
+	book, err := q.GetBookTitleAndLibrary(ctx, bookID)
+	if err != nil {
+		return err
+	}
+	return s.Events.QueueTx(ctx, tx, notify.Event{
+		Kind: notify.KindWishFulfilled, Libraries: []uuid.UUID{libraryID}, BookID: &bookID,
+		Data: map[string]any{"title": book.Title}, Link: "/books/" + bookID.String(), Recipients: wishers,
+	})
 }

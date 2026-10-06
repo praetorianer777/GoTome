@@ -11,7 +11,10 @@ import type {
 	CollectionAdd,
 	CollectionRequest,
 } from "@/books/collections";
-import type { Notification } from "@/notifications/api";
+import type {
+	Notification,
+	NotificationSetting,
+} from "@/notifications/api";
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
@@ -165,6 +168,11 @@ export class FakeServer {
 	smartShelves: Omit<SmartShelf, "books">[] = [];
 	/** The signed-in person's notifications, newest first. */
 	notifications: Notification[] = [];
+	/** What the signed-in person chose to be told of, as a reader may. */
+	notificationSettings: NotificationSetting[] = [
+		{ kind: "books.added", app: true },
+		{ kind: "wish.fulfilled", app: true },
+	];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -355,6 +363,15 @@ export class FakeServer {
 					notifications: this.notifications,
 					unread: this.unread(),
 				});
+			}
+			if (path === "/me/notification-settings") {
+				if (request.method === "PUT") {
+					for (const c of (body as { kinds: NotificationSetting[] }).kinds) {
+						const s = this.notificationSettings.find((x) => x.kind === c.kind);
+						if (s) s.app = c.app;
+					}
+				}
+				return Response.json({ kinds: this.notificationSettings });
 			}
 			if (path === "/notifications/read") {
 				const req = body as { ids?: string[]; all?: boolean };

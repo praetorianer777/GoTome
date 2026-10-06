@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -188,4 +189,55 @@ func (s *Server) streamNotifications(w http.ResponseWriter, r *http.Request) err
 			}
 		}
 	}
+}
+
+// notificationSettings are the kinds of event the caller may hear of and
+// whether they do, in the web app.
+type notificationSettings struct {
+	Kinds []notificationSetting `json:"kinds"`
+}
+
+type notificationSetting struct {
+	Kind string `json:"kind"`
+	App  bool   `json:"app"`
+}
+
+func (s *Server) getNotificationSettings(w http.ResponseWriter, r *http.Request) error {
+	subs, err := s.Notifications.Subscriptions(r.Context(), *UserFrom(r.Context()))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, settingsOf(subs))
+	return nil
+}
+
+func (s *Server) putNotificationSettings(w http.ResponseWriter, r *http.Request) error {
+	var in notificationSettings
+	if err := decodeJSON(w, r, &in); err != nil {
+		return err
+	}
+	user := *UserFrom(r.Context())
+	choices := make([]notify.Subscription, len(in.Kinds))
+	for i, k := range in.Kinds {
+		choices[i] = notify.Subscription{Kind: k.Kind, App: k.App}
+	}
+	if err := s.Notifications.Subscribe(r.Context(), user, choices); errors.Is(err, notify.ErrNotYours) {
+		return ErrValidation(map[string]string{"kinds": "There is no such kind of notification for you."})
+	} else if err != nil {
+		return err
+	}
+	subs, err := s.Notifications.Subscriptions(r.Context(), user)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, settingsOf(subs))
+	return nil
+}
+
+func settingsOf(subs []notify.Subscription) notificationSettings {
+	out := notificationSettings{Kinds: make([]notificationSetting, len(subs))}
+	for i, s := range subs {
+		out.Kinds[i] = notificationSetting{Kind: s.Kind, App: s.App}
+	}
+	return out
 }

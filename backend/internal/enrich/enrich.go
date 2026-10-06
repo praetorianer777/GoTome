@@ -20,10 +20,12 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
@@ -74,6 +76,8 @@ type Service struct {
 	log      *slog.Logger
 	// Queue is set once the job runner exists.
 	Queue Queue
+	// Events, when set, hears of matches left to review.
+	Events *notify.Events
 }
 
 // NewService returns a Service. Its Queue must be set before EnqueueTx is
@@ -165,19 +169,34 @@ func (s *Service) Fetch(ctx context.Context, bookID uuid.UUID) (string, error) {
 			}
 			outcome = OutcomeApplied
 		}
-		return outcome, s.record(ctx, bookID, best, StateApplied)
+		_, err = s.record(ctx, sqlc.New(s.pool), bookID, best, StateApplied)
+		return outcome, err
 	}
 	outcome := OutcomeNotFound
-	for i, c := range found {
-		if i == pendingPerBook || c.Score < keepAtLeast {
-			break
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		fresh := false
+		for i, c := range found {
+			if i == pendingPerBook || c.Score < keepAtLeast {
+				break
+			}
+			inserted, err := s.record(ctx, q, bookID, c, StatePending)
+			if err != nil {
+				return err
+			}
+			fresh = fresh || inserted
+			outcome = OutcomeReview
 		}
-		if err := s.record(ctx, bookID, c, StatePending); err != nil {
-			return "", err
+		// Found again, the matches were told of the first time.
+		if !fresh {
+			return nil
 		}
-		outcome = OutcomeReview
-	}
-	return outcome, nil
+		return s.Events.QueueTx(ctx, tx, notify.Event{
+			Kind: notify.KindReviewNeeded, Libraries: []uuid.UUID{book.LibraryID}, BookID: &bookID,
+			Data: map[string]any{"title": book.Title}, Link: "/review",
+		})
+	})
+	return outcome, err
 }
 
 func (s *Service) threshold(ctx context.Context) (float64, error) {
@@ -188,12 +207,13 @@ func (s *Service) threshold(ctx context.Context) (float64, error) {
 	return strconv.ParseFloat(v, 64)
 }
 
-func (s *Service) record(ctx context.Context, bookID uuid.UUID, c metadata.Candidate, state string) error {
+// record keeps a match and says whether it is new.
+func (s *Service) record(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID, c metadata.Candidate, state string) (bool, error) {
 	data, err := json.Marshal(c.Record)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return sqlc.New(s.pool).RecordMatch(ctx, sqlc.RecordMatchParams{
+	return q.RecordMatch(ctx, sqlc.RecordMatchParams{
 		BookID: bookID, Provider: c.Provider, RecordID: c.ID, Score: c.Score, Record: data, State: state,
 	})
 }
