@@ -213,7 +213,7 @@ SELECT n.book_id,
 FROM near n
 JOIN books b ON b.id = n.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND NOT EXISTS (
       SELECT 1 FROM duplicate_pairs p
       WHERE (p.book_a, p.book_b) IN ((n.book_id, $3::uuid), ($3::uuid, n.book_id)))

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -99,31 +100,40 @@ var Filters = filter.Registry{
 }
 
 // filtersFor is Filters with the fields that depend on who is looking.
+// They ask whether the viewer has a row that says so (EXISTS), which the
+// planner can match against the books as a set; a value looked up per book
+// is read again for every book a list passes on its way to a page.
 func filtersFor(viewer uuid.UUID) filter.Registry {
-	own := func(column string, arg func(any) string) string {
-		return `(SELECT ub.` + column + ` FROM user_books ub WHERE ub.book_id = b.id AND ub.user_id = ` + arg(viewer) + `)`
+	own := func(condition string, arg func(any) string) string {
+		return `EXISTS (SELECT 1 FROM user_books ub WHERE ub.book_id = b.id AND ub.user_id = ` + arg(viewer) + ` AND ` + condition + `)`
 	}
 	registry := maps.Clone(Filters)
 	registry[FieldStatus] = filter.Field{
 		OpIn: {Arity: -1, Value: status, SQL: func(v []string, arg func(any) string) string {
-			return "COALESCE(" + own("status", arg) + ", '" + StatusUnread + "') = ANY(" + arg(v) + "::text[])"
+			// Unread is having no row, or one without a status.
+			if slices.Contains(v, StatusUnread) {
+				return "NOT " + own("COALESCE(ub.status, '"+StatusUnread+"') <> ALL("+arg(v)+"::text[])", arg)
+			}
+			return own("ub.status = ANY("+arg(v)+"::text[])", arg)
 		}},
 	}
 	registry[FieldRating] = filter.Field{
 		OpIn: {Arity: -1, Value: rating, SQL: func(v []string, arg func(any) string) string {
-			return own("rating", arg) + " = ANY(" + arg(v) + "::smallint[])"
+			return own("ub.rating = ANY("+arg(v)+"::smallint[])", arg)
 		}},
 		OpBetween: {Arity: 2, Value: ratingOrNone, SQL: func(v []string, arg func(any) string) string {
-			conditions := []string{own("rating", arg) + " IS NOT NULL"}
+			conditions := []string{"ub.rating IS NOT NULL"}
 			if v[0] != "" {
-				conditions = append(conditions, own("rating", arg)+" >= "+arg(v[0])+"::smallint")
+				conditions = append(conditions, "ub.rating >= "+arg(v[0])+"::smallint")
 			}
 			if v[1] != "" {
-				conditions = append(conditions, own("rating", arg)+" <= "+arg(v[1])+"::smallint")
+				conditions = append(conditions, "ub.rating <= "+arg(v[1])+"::smallint")
 			}
-			return strings.Join(conditions, " AND ")
+			return own(strings.Join(conditions, " AND "), arg)
 		}},
-		OpEmpty: {SQL: func(_ []string, arg func(any) string) string { return own("rating", arg) + " IS NULL" }},
+		OpEmpty: {SQL: func(_ []string, arg func(any) string) string {
+			return "NOT " + own("ub.rating IS NOT NULL", arg)
+		}},
 	}
 	return registry
 }
@@ -189,7 +199,7 @@ func format(v string) (string, error) {
 func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, placeholders bool, arg func(any) string) ([]string, error) {
 	where := []string{
 		"b.deleted_at IS NULL",
-		"b.library_id IN (SELECT visible_library_ids(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + "))",
+		"b.library_id IN (SELECT * FROM visible_library_ids(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + "))",
 	}
 	if libraryID != nil {
 		where = append(where, "b.library_id = "+arg(*libraryID))
@@ -243,7 +253,7 @@ var facetQueries = []struct {
 	query string
 }{
 	{FieldAuthor, `
-SELECT a.name_key, a.name, count(DISTINCT b.id)
+SELECT a.name_key, a.name, count(*)
 FROM books b
 JOIN book_contributors c ON c.book_id = b.id AND c.role = '` + RoleAuthor + `'
 JOIN authors a ON a.id = c.author_id
@@ -318,8 +328,12 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 	if _, err := filtersFor(scope.Viewer).Compile(tree, func(any) string { return "NULL" }); err != nil {
 		return nil, err
 	}
-	batch := &pgx.Batch{}
-	for _, fq := range facetQueries {
+	// Each count reads the books the filter leaves on its own, so they run
+	// at once, each on a connection of its own: the view takes as long as
+	// the slowest count rather than all of them in a row.
+	facets := make([]Facet, len(facetQueries))
+	g, gctx := errgroup.WithContext(ctx)
+	for i, fq := range facetQueries {
 		var args []any
 		arg := func(v any) string {
 			args = append(args, v)
@@ -338,31 +352,25 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 			query = strings.ReplaceAll(query, "{viewer}", arg(scope.Viewer))
 		}
 		query = strings.ReplaceAll(query, "{limit}", arg(MaxFacetValues+len(picked)))
-		batch.Queue(query, args...)
-	}
-	results := s.pool.SendBatch(ctx, batch)
-	defer results.Close()
-
-	facets := make([]Facet, 0, len(facetQueries))
-	for _, fq := range facetQueries {
-		rows, err := results.Query()
-		if err != nil {
-			return nil, err
-		}
-		facet := Facet{Field: fq.field, Values: []FacetValue{}}
-		for rows.Next() {
-			var v FacetValue
-			if err := rows.Scan(&v.Value, &v.Label, &v.Count); err != nil {
-				rows.Close()
-				return nil, err
+		g.Go(func() error {
+			rows, err := s.pool.Query(gctx, query, args...)
+			if err != nil {
+				return err
 			}
-			facet.Values = append(facet.Values, v)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
-		facets = append(facets, facet)
+			values, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (FacetValue, error) {
+				var v FacetValue
+				err := row.Scan(&v.Value, &v.Label, &v.Count)
+				return v, err
+			})
+			if err != nil {
+				return err
+			}
+			facets[i] = Facet{Field: fq.field, Values: append([]FacetValue{}, values...)}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	return facets, nil
 }

@@ -27,7 +27,7 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.missing_at, f.trashed_at,
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
-  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetFileToTrashParams struct {
@@ -123,7 +123,7 @@ JOIN books b ON b.id = f.book_id
 JOIN libraries l ON l.id = f.library_id
 LEFT JOIN users u ON u.id = f.trashed_by
 WHERE f.trashed_at IS NOT NULL
-  AND f.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR f.library_id = $3::uuid)
 ORDER BY f.trashed_at DESC, f.id DESC
 `

@@ -59,7 +59,7 @@ WHERE s.library_id = $1
 -- The newest scan of each library the viewer may see.
 SELECT DISTINCT ON (s.library_id) s.*
 FROM library_scans s
-WHERE s.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE s.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY s.library_id, s.requested_at DESC, s.id DESC;
 
 -- name: ListLibraryIDs :many
@@ -165,7 +165,7 @@ SELECT library_id, count(*)::int AS pending
 FROM book_files
 WHERE extract_state = 'pending'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY library_id;
 
 -- name: ResetExtraction :many
@@ -189,7 +189,7 @@ SELECT library_id, count(*)::int AS failed
 FROM book_files
 WHERE extract_state = 'failed'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY library_id;
 
 -- name: ListFilesToWriteBack :many

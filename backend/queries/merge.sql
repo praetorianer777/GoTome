@@ -4,7 +4,7 @@
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY b.id
 FOR UPDATE OF b;
 

@@ -66,7 +66,7 @@ FROM river_job j
 LEFT JOIN book_files f ON f.id = (j.args->>'fileId')::uuid
 LEFT JOIN books bk ON bk.id = COALESCE((j.args->>'bookId')::uuid, f.book_id)
 LEFT JOIN libraries lib ON lib.id = COALESCE((j.args->>'libraryId')::uuid, f.library_id, bk.library_id)
-WHERE (lib.id IS NULL OR lib.id IN (SELECT visible_library_ids($1, $2)))
+WHERE (lib.id IS NULL OR lib.id IN (SELECT * FROM visible_library_ids($1, $2)))
   AND (cardinality($3::text[]) = 0 OR j.state::text = ANY($3::text[]))
   AND ($4::bigint = 0 OR j.id = $4)
 ORDER BY j.id DESC

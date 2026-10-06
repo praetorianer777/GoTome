@@ -24,7 +24,7 @@ const clearChunked = `-- name: ClearChunked :many
 UPDATE book_files f SET chunked_at = NULL
 FROM books b
 WHERE f.id = b.primary_text_file_id
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND ($4::uuid IS NULL OR b.id = $4::uuid)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL
@@ -71,7 +71,7 @@ const countChunked = `-- name: CountChunked :one
 SELECT count(*) AS files, count(f.chunked_at) AS chunked
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
-WHERE b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL AND NOT b.placeholder

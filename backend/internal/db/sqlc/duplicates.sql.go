@@ -168,8 +168,8 @@ SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = $1
-  AND a.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
 FOR UPDATE OF p
 `
@@ -244,8 +244,8 @@ FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.state = $1
-  AND a.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
   AND ($4::uuid IS NULL OR $4::uuid IN (a.library_id, b.library_id))
   AND ($5::text IS NULL OR EXISTS (
@@ -346,7 +346,7 @@ func (q *Queries) ListFileChunkTexts(ctx context.Context, fileID uuid.UUID) ([]s
 
 const listLibraryBookIDs = `-- name: ListLibraryBookIDs :many
 SELECT b.id FROM books b
-WHERE b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND b.deleted_at IS NULL AND NOT b.placeholder
 `

@@ -34,7 +34,7 @@ SELECT cb.book_id, cb.outcome, cb.message, cb.skipped, b.title
 FROM bulk_change_books cb
 JOIN books b ON b.id = cb.book_id
 WHERE cb.bulk_change_id = sqlc.arg(id)
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY cb.position;
 
 -- name: CountBulkOutcomes :many

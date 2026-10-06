@@ -41,7 +41,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: CreateBookFile :one
 INSERT INTO book_files (
@@ -113,7 +113,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 FOR UPDATE;
 
 -- name: SetBookLocks :exec
@@ -167,7 +167,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: RefreshAuthorSort :exec
 UPDATE books b
@@ -190,7 +190,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListAudioFiles :many
 -- A book's audio files that are there to be played: the parts of an

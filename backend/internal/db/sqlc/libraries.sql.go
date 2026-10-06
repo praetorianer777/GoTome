@@ -85,7 +85,7 @@ const getVisibleLibrary = `-- name: GetVisibleLibrary :one
 SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
 FROM libraries l
 WHERE l.id = $1
-  AND l.id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND l.id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleLibraryParams struct {
@@ -184,7 +184,7 @@ func (q *Queries) ListLibraryRoots(ctx context.Context) ([]ListLibraryRootsRow, 
 const listVisibleLibraries = `-- name: ListVisibleLibraries :many
 SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
 FROM libraries l
-WHERE l.id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE l.id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY lower(l.name)
 `
 

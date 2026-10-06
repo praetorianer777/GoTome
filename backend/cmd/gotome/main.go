@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/memlimit"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
@@ -122,6 +123,9 @@ func serve() error {
 		return err
 	}
 	log := newLogger(cfg)
+	if soft := memlimit.Apply(); soft > 0 {
+		log.Info("holding the heap under the container's memory limit", "softLimitMiB", soft>>20)
+	}
 	slog.SetDefault(log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

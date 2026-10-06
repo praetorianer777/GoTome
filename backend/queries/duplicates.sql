@@ -67,7 +67,7 @@ WHERE p.state = 'open'
 -- name: ListLibraryBookIDs :many
 -- The books of the visible libraries, of one when named, to check.
 SELECT b.id FROM books b
-WHERE b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND b.deleted_at IS NULL AND NOT b.placeholder;
 
@@ -80,8 +80,8 @@ FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.state = sqlc.arg(state)
-  AND a.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
   AND (sqlc.narg(library_id)::uuid IS NULL OR sqlc.narg(library_id)::uuid IN (a.library_id, b.library_id))
   AND (sqlc.narg(kind)::text IS NULL OR EXISTS (
@@ -98,8 +98,8 @@ SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = sqlc.arg(id)
-  AND a.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
 FOR UPDATE OF p;
 

@@ -6,10 +6,10 @@ SELECT c.id, c.owner_id, u.username::text AS owner_name, c.name, c.description, 
        c.created_at, c.updated_at,
        (SELECT count(*) FROM collection_items i JOIN books b ON b.id = i.book_id
         WHERE i.collection_id = c.id AND b.deleted_at IS NULL
-          AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS books,
+          AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS books,
        EXISTS (SELECT 1 FROM collection_items i JOIN books b ON b.id = i.book_id
                WHERE i.collection_id = c.id AND i.book_id = sqlc.narg(book)::uuid AND b.deleted_at IS NULL
-                 AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))) AS has_book
+                 AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))) AS has_book
 FROM collections c
 JOIN users u ON u.id = c.owner_id
 WHERE c.owner_id = sqlc.arg(viewer)::uuid OR c.visibility = 'shared'
@@ -48,7 +48,7 @@ FROM collection_items i
 JOIN books b ON b.id = i.book_id
 WHERE i.collection_id = sqlc.arg(collection_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY i.position, i.added_at, i.book_id;
 
 -- name: CollectionItems :many
@@ -67,7 +67,7 @@ SELECT sqlc.arg(collection_id), b.id,
 FROM unnest(sqlc.arg(ids)::uuid[]) WITH ORDINALITY AS n(id, ord)
 JOIN books b ON b.id = n.id
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ON CONFLICT (collection_id, book_id) DO NOTHING;
 
 -- name: RemoveCollectionItem :execrows
@@ -76,7 +76,7 @@ DELETE FROM collection_items i
 USING books b
 WHERE i.collection_id = sqlc.arg(collection_id) AND i.book_id = sqlc.arg(book_id)
   AND b.id = i.book_id AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: SetCollectionPositions :exec
 UPDATE collection_items i SET position = (sqlc.arg(positions)::int[])[n.ord]
