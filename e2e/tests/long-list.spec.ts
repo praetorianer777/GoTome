@@ -1,10 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect as base, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
 
 // The list of books is answered here, as a library of this many would: no
 // stack holds that many for a test, and only the page's handling of them is
 // under test.
 const TOTAL = 500;
+
+// Five hundred rows are heavy for WebKit on CI's runners: a check there
+// has taken seconds, and a card more than five to hold still for a click.
+test.use({ actionTimeout: 15_000 });
+const expect = base.configure({ timeout: 15_000 });
 
 function title(i: number): string {
 	return `Long Book ${String(i).padStart(3, "0")}`;
@@ -13,7 +18,7 @@ function title(i: number): string {
 test("a long list keeps only the books near the window, and back returns to the same place", async ({
 	page,
 }, testInfo) => {
-	test.setTimeout(45_000);
+	test.setTimeout(90_000);
 	await page.route(/\/api\/v1\/books\?/, async (route) => {
 		const query = new URL(route.request().url()).searchParams;
 		const limit = Number(query.get("limit") ?? 50);
@@ -112,11 +117,8 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await page.getByRole("link", { name: new RegExp(`^${name}`) }).click();
 	await expect(page).toHaveURL(/\/books\//);
 	await page.goBack();
-	// Back draws the list from its start, then scrolls to the row: in WebKit
-	// on CI's runners that has taken more than five seconds.
-	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport({
-		timeout: 15_000,
-	});
+	// Back draws the list from its start, then scrolls to the row.
+	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport();
 	expect(await cards.count()).toBeLessThan(150);
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
