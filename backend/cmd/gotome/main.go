@@ -66,6 +66,7 @@ Commands:
   serve        Bring the database schema up to date, then run the server
   init         Write the database password for a new installation, once
   healthcheck  Probe a running server; exits non-zero unless it is ready
+  embed-check  Load ONNX Runtime; with -reference, check the embedding model against it
   migrate      Bring the database schema up to date and exit
   openapi      Write the API's OpenAPI document to the given file, or to stdout
   version      Print the version
@@ -90,6 +91,8 @@ func run(args []string) error {
 		return runInit()
 	case "healthcheck":
 		return healthcheck()
+	case "embed-check":
+		return embedCheck(args[1:])
 	case "migrate":
 		return migrate()
 	case "openapi":
