@@ -35,6 +35,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
@@ -150,7 +151,16 @@ func serve() error {
 	coverStore := covers.NewStore(cfg.DataDir)
 	scans := ingest.NewService(pool, libraries, coverStore, log)
 	scans.UploadLimit = cfg.UploadLimit
-	providers := []metadata.Provider{openlibrary.New()}
+	providers := []metadata.Provider{
+		openlibrary.New(),
+		hardcover.New(func(ctx context.Context) string {
+			token, _, err := settingStore.Secret(ctx, settings.HardcoverToken)
+			if err != nil {
+				log.Warn("the Hardcover token cannot be read", "error", err)
+			}
+			return token
+		}),
+	}
 	if cfg.Offline {
 		providers = nil
 	}

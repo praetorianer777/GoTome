@@ -496,7 +496,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Each provider has a `TestLiveContract`, skipped unless `GOTOME_LIVE` is
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
   It is not a check on pull requests.
-- Providers: `openlibrary` (no key, 400 ms between requests).
+- Providers: `openlibrary` (no key, 400 ms between requests); `hardcover`
+  (GraphQL with the secret `metadata.hardcoverToken` in the
+  `Authorization` header, 1.1 s for its 60 requests a minute; without a
+  token it asks nothing. An ISBN lookup is two requests, the edition and
+  its book, as Hardcover answers three levels deep at most; the book gives
+  the series and its position. Its tests take the token from
+  `GOTOME_HARDCOVER_TOKEN`, which `make record-fixtures` and
+  `make contract-test` pass on by name).
 - `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
   `enrich.match_book` job (unique, 30 s later) when a file is read and
   `metadata.autoMatch` is on. A best candidate at or above

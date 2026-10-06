@@ -82,7 +82,7 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: Providers, Kind: KindText, Default: "openlibrary", Check: names},
+	{Key: Providers, Kind: KindText, Default: "openlibrary,hardcover", Check: names},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
