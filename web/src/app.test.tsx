@@ -2260,3 +2260,27 @@ describe("replacing and keeping both", () => {
 		expect(server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body).toEqual({ state: "kept_both", relation: "edition" });
 	});
 });
+
+describe("similar books", () => {
+	it("shows the books most like one on its page, each leading to its own", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] })
+			.withBook("Persuasion", { contributors: [{ name: "Jane Austen", role: "author" }] })
+			.withBook("Cranford", { contributors: [{ name: "Elizabeth Gaskell", role: "author" }] });
+		server.similar["book-1"] = ["book-3", "book-2"];
+		const { router } = renderApp("/books/book-1");
+
+		const rail = within(await screen.findByRole("region", { name: "Similar books" }));
+		const links = rail.getAllByRole("link");
+		expect(links.map((l) => l.textContent)).toEqual(["CranfordCranfordElizabeth Gaskell", "PersuasionPersuasionJane Austen"]);
+		await person.click(rail.getByRole("link", { name: /Persuasion/ }));
+		expect(await screen.findByRole("heading", { name: "Persuasion", level: 1 })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/books/book-2");
+		// Persuasion has no similar books yet: no empty heading.
+		expect(screen.queryByRole("region", { name: "Similar books" })).not.toBeInTheDocument();
+	});
+});

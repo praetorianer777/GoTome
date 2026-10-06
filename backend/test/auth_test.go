@@ -35,6 +35,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -155,6 +156,7 @@ func newApp(t *testing.T) *app {
 	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
 	a.server.Duplicates = dedupe.NewService(a.pool, a.server.Books, quiet)
 	a.server.Duplicates.Queue = queue
+	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding, nil, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)

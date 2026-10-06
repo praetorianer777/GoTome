@@ -714,6 +714,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   offline) is `ErrUnavailable`: the pass ends without a retry and the next
   one tries again. `GOTOME_EMBED_THREADS` (half the CPUs) bounds a pass.
   Tests embed with `embed.Fake` under the model the settings name.
+- `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
+  exact cosine scan over the vectors of the chosen model, with no ANN
+  index: two vectors a book stay small enough (a test holds it under
+  500 ms on 50,000 books). Content and metadata are blended 0.6 to 0.4
+  where both books have both, otherwise the kind they share decides.
+  Visibility is `visible_library_ids` in the query; the book itself, books
+  it shares a duplicate pair with in any state, and its `book_relations`
+  are left out. The book page shows them as a rail (`books/similar.tsx`),
+  and nothing while there are none.
 
 ## Background jobs
 

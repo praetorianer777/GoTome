@@ -11,6 +11,7 @@ import {
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
 import { ReadingControls } from "@/books/reading-controls";
+import { SimilarBooks } from "@/books/similar";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
@@ -127,7 +128,7 @@ function BookPage({ book }: { book: BookDetail }) {
 				<div className="mx-auto w-40 sm:w-full">
 					<Cover book={book} size="large" />
 				</div>
-				<div className="flex flex-col gap-4">
+				<div className="flex min-w-0 flex-col gap-4">
 					<header className="flex flex-col gap-1">
 						<h1 className="text-3xl font-semibold leading-tight">
 							{book.title}
@@ -235,6 +236,8 @@ function BookPage({ book }: { book: BookDetail }) {
 					)}
 
 					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
+
+					<SimilarBooks bookId={book.id} />
 				</div>
 			</div>
 		</article>

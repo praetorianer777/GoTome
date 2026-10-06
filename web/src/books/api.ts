@@ -116,6 +116,19 @@ export function textSearchQuery(params: {
 /** How often a book whose files are still being read is asked for again. */
 const READING_POLL_MS = 3000;
 
+/** The books most like one, the nearest first; none until books are embedded. */
+export function similarQuery(id: string) {
+	return queryOptions({
+		queryKey: ["book", id, "similar"],
+		queryFn: async () =>
+			(
+				await api.GET("/books/{bookId}/similar", {
+					params: { path: { bookId: id } },
+				})
+			).data?.books ?? [],
+	});
+}
+
 export function bookQuery(id: string) {
 	return queryOptions({
 		queryKey: ["book", id],

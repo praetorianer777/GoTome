@@ -186,6 +186,9 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- A book's page suggests similar books: those most like it in what its text
+  and its description are about, among the libraries you see. Copies of
+  the book and its other editions and translations are not suggested.
 - GOtome works out what each book is about, from passages of its text and
   from its title, authors, series, tags and description, so that it can
   suggest similar books. It reads one book at a time in the background,

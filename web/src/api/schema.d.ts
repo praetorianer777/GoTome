@@ -431,6 +431,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books most like one by what they are about, the nearest first; its copies and related books left out */
+        get: operations["listSimilarBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bulk/{bulkId}": {
         parameters: {
             query?: never;
@@ -1998,6 +2015,9 @@ export interface components {
         SetupStatus: {
             needed: boolean;
         };
+        SimilarList: {
+            books: components["schemas"]["BookSummary"][];
+        };
         SmartShelf: {
             books: number;
             filter: string;
@@ -3040,6 +3060,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadingState"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSimilarBooks: {
+        parameters: {
+            query?: {
+                /** @description How many books to return, at most 50; 12 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarList"];
                 };
             };
             /** @description The request failed. */
