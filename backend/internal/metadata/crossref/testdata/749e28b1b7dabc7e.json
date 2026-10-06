@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "url": "https://api.crossref.org/works/10.9999/no-such-work-in-gotome",
+  "status": 404
+}

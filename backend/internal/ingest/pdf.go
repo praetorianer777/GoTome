@@ -82,6 +82,9 @@ func extractPDF(ctx context.Context, path string) (Extracted, error) {
 		out.Sections = append(out.Sections, Section{Label: strconv.Itoa(i + 1), Text: strings.TrimSpace(page)})
 	}
 	out.HasText = len(pages) > 0 && letters >= minLettersPerPage*len(pages)
+	if id, ok := findDOI(append([]string{fields["Subject"], fields["Keywords"]}, pages[:min(len(pages), doiPages)]...)...); ok {
+		out.Metadata.Identifiers = append(out.Metadata.Identifiers, id)
+	}
 	if !out.HasText {
 		out.Sections = nil
 	}
@@ -92,6 +95,28 @@ func extractPDF(ctx context.Context, path string) (Extracted, error) {
 	}
 	out.Cover = cover
 	return out, nil
+}
+
+// doiPages is how many of a PDF's first pages are looked through for its
+// DOI: a paper prints it on its first, a book on the back of its title page.
+const doiPages = 3
+
+// doiPattern is a DOI as it is printed: the prefix 10. and a registrant,
+// then anything up to white space.
+var doiPattern = regexp.MustCompile(`\b10\.\d{4,9}/[^\s"<>]+`)
+
+// findDOI is the first DOI in the texts, without the punctuation a
+// sentence puts after it.
+func findDOI(texts ...string) (catalog.Identifier, bool) {
+	for _, text := range texts {
+		for _, m := range doiPattern.FindAllString(text, -1) {
+			m = strings.TrimRight(m, ".,;:)]}'")
+			if id, ok := catalog.NormalizeIdentifier(catalog.IDDOI, m); ok && strings.Contains(id.Value, "/") {
+				return id, true
+			}
+		}
+	}
+	return catalog.Identifier{}, false
 }
 
 // runPoppler runs one of poppler's programs. What goes wrong with it is

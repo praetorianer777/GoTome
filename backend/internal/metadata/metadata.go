@@ -94,7 +94,7 @@ func (e *ProviderError) Error() string { return e.Provider + ": " + e.Err.Error(
 func (e *ProviderError) Unwrap() error { return e.Err }
 
 // maxLookups is how many of a book's ISBNs are looked up at most: an omnibus
-// can list dozens.
+// can list dozens. A DOI is looked up besides.
 const maxLookups = 3
 
 // Candidates asks every provider about the book: by its ISBNs first, and by
@@ -102,11 +102,15 @@ const maxLookups = 3
 // best first. A provider that fails is reported in the error, joined from
 // ProviderErrors, beside what the others found.
 func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidate, error) {
-	var isbns []catalog.Identifier
+	var ids []catalog.Identifier
 	for _, id := range book.Identifiers {
-		if id.Type == catalog.IDISBN && !slices.Contains(isbns, id.Identifier) && len(isbns) < maxLookups {
-			isbns = append(isbns, id.Identifier)
+		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
+			ids = append(ids, id.Identifier)
 		}
+	}
+	// Papers and many scholarly books have a DOI and no ISBN.
+	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
+		ids = append(ids, book.Identifiers[i].Identifier)
 	}
 	q := Query{Title: book.Title, Authors: book.Authors(), Language: book.Language}
 	if q.Language == "" && s.language != nil {
@@ -126,8 +130,8 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 		web := s.webs[p.Name()]
 		records, err := func() ([]Record, error) {
 			var records []Record
-			for _, isbn := range isbns {
-				got, err := p.Lookup(ctx, web, isbn)
+			for _, id := range ids {
+				got, err := p.Lookup(ctx, web, id)
 				if err != nil && !errors.Is(err, ErrNotFound) {
 					return nil, err
 				}

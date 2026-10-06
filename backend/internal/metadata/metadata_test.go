@@ -294,3 +294,30 @@ func TestFixturesRecordOnceAndReplay(t *testing.T) {
 		}
 	}
 }
+
+// askedIDs is a provider that knows nothing and remembers what it was asked.
+type askedIDs struct{ ids []catalog.Identifier }
+
+func (*askedIDs) Name() string   { return "asked" }
+func (*askedIDs) Limits() Limits { return Limits{} }
+func (p *askedIDs) Lookup(_ context.Context, _ Web, id catalog.Identifier) ([]Record, error) {
+	p.ids = append(p.ids, id)
+	return nil, ErrNotFound
+}
+func (*askedIDs) Search(context.Context, Web, Query) ([]Record, error) { return nil, nil }
+
+func TestABookIsLookedUpByItsDOITooAsPapersHaveNoISBN(t *testing.T) {
+	doi := catalog.Identifier{Type: catalog.IDDOI, Value: "10.1038/nature14539"}
+	isbn := catalog.Identifier{Type: catalog.IDISBN, Value: "9780141439587"}
+	p := &askedIDs{}
+	s := NewService(nil, []Provider{p}, Options{})
+	book := catalog.Book{Title: "Deep learning", Identifiers: []catalog.BookIdentifier{
+		{Identifier: doi}, {Identifier: isbn}, {Identifier: catalog.Identifier{Type: catalog.IDASIN, Value: "B000"}},
+	}}
+	if _, err := s.Candidates(context.Background(), book); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(p.ids, []catalog.Identifier{isbn, doi}) {
+		t.Errorf("looked up %v, want the ISBN and the DOI", p.ids)
+	}
+}

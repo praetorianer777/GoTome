@@ -486,9 +486,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   private, link-local and other non-public addresses (also after redirects).
 - API keys and tokens go in `Request.SecretQuery` or `Request.Header`, which
   are never stored, never part of the cache key and never in an error.
-- `metadata.Service.Candidates` looks a book up by its ISBNs, searches by
-  title and authors where that finds nothing, and ranks with `Score`: 1 only
-  for a shared identifier.
+- `metadata.Service.Candidates` looks a book up by its ISBNs and its DOI,
+  searches by title and authors where that finds nothing, and ranks with
+  `Score`: 1 only for a shared identifier. The PDF extractor finds a DOI in
+  the document's subject and keywords or on its first pages (`findDOI`).
 - Provider tests run against `metadata.NewFixtures`, recorded answers in the
   provider's `testdata`; a missing one fails the test. `make record-fixtures`
   records what is missing from the live APIs; the owner runs it, as the agent
@@ -496,14 +497,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Each provider has a `TestLiveContract`, skipped unless `GOTOME_LIVE` is
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
   It is not a check on pull requests.
-- Providers: `openlibrary` (no key, 400 ms between requests); `hardcover`
+- Providers: `openlibrary` (no key, 400 ms between requests); `crossref`
+  (no key, 350 ms; DOI and ISBN lookups, bibliographic search; the setting
+  `metadata.contactEmail` goes as `mailto` in `SecretQuery`, which puts
+  the requests in CrossRef's polite pool and keeps the address out of the
+  cache and the fixtures); `hardcover`
   (GraphQL with the secret `metadata.hardcoverToken` in the
   `Authorization` header, 1.1 s for its 60 requests a minute; without a
   token it asks nothing. An ISBN lookup is two requests, the edition and
   its book, as Hardcover answers three levels deep at most; the book gives
   the series and its position. Its tests take the token from
   `GOTOME_HARDCOVER_TOKEN`, which `make record-fixtures` and
-  `make contract-test` pass on by name).
+  `make contract-test` pass on by name). All three are in
+  `metadata.providers` by default.
 - `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
   `enrich.match_book` job (unique, 30 s later) when a file is read and
   `metadata.autoMatch` is on. A best candidate at or above
