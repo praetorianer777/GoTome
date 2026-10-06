@@ -413,7 +413,9 @@ const routeTree = rootRoute.addChildren([
 
 /** history is for tests, which navigate in memory rather than in a browser. */
 export function makeRouter(queryClient: QueryClient, history?: RouterHistory) {
-	return createRouter({ routeTree, context: { queryClient }, history, defaultPreload: false });
+	// Back from a book returns to where the list was scrolled to: its pages
+	// are still cached, so the list is as long as it was.
+	return createRouter({ routeTree, context: { queryClient }, history, defaultPreload: false, scrollRestoration: true });
 }
 
 // Registers the router's type, so links and params are checked against the

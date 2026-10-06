@@ -12,6 +12,7 @@ import { BulkBar } from "@/books/bulk-bar";
 import { STATUS_LABELS } from "@/books/reading";
 import { Cover } from "@/books/cover";
 import { FilterPanel } from "@/books/filter-panel";
+import { useColumns, useWindowRows, VIRTUAL_FROM } from "@/books/virtual";
 import {
 	FACET_FIELDS,
 	type FilterPicks,
@@ -382,51 +383,112 @@ function Tick({ book, selection }: { book: BookSummary; selection: Selection }) 
 }
 
 function Grid({ books, selection }: { books: BookSummary[]; selection?: Selection }) {
+	if (books.length >= VIRTUAL_FROM) {
+		return <VirtualGrid books={books} selection={selection} />;
+	}
 	return (
-		<ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+		<ul className={GRID}>
 			{books.map((book) => (
 				<li key={book.id} className="relative">
-					{selection && (
-						<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 dark:bg-slate-900/90">
-							<Tick book={book} selection={selection} />
-						</span>
-					)}
-					<Link
-						to="/books/$bookId"
-						params={{ bookId: book.id }}
-						className="group flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
-					>
-						<Cover
-							book={book}
-							size="small"
-							className="transition group-hover:opacity-90"
-						/>
-						<span className="flex flex-col">
-							<span className="line-clamp-2 font-medium leading-snug">
-								{book.title}
-							</span>
-							{book.authors.length > 0 && (
-								<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
-									{book.authors.join(", ")}
-								</span>
-							)}
-							<Standing book={book} />
-						</span>
-					</Link>
+					<GridCard book={book} selection={selection} />
 				</li>
 			))}
 		</ul>
 	);
 }
 
+const GRID = "grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
+
+/** A card's height with its cover and three lines, before it is measured. */
+const CARD_ROW_ESTIMATE = 360;
+
+/**
+ * The grid of a long list, a row of cards at a time: only the rows near the
+ * window are in the page. Each says where it stands among them all.
+ */
+function VirtualGrid({ books, selection }: { books: BookSummary[]; selection?: Selection }) {
+	const columns = useColumns();
+	const list = useRef<HTMLDivElement>(null);
+	const rows = useWindowRows(Math.ceil(books.length / columns), CARD_ROW_ESTIMATE, list, `grid-${columns}`);
+	return (
+		<div
+			ref={list}
+			role="list"
+			className="relative"
+			style={{ height: rows.getTotalSize() }}
+		>
+			{rows.getVirtualItems().map((row) => (
+				<div
+					key={row.key}
+					data-index={row.index}
+					ref={rows.measureElement}
+					role="presentation"
+					className={`absolute inset-x-0 top-0 pb-6 ${GRID}`}
+					style={{ transform: `translateY(${row.start - rows.options.scrollMargin}px)` }}
+				>
+					{books.slice(row.index * columns, (row.index + 1) * columns).map((book, i) => (
+						<div
+							key={book.id}
+							role="listitem"
+							aria-posinset={row.index * columns + i + 1}
+							aria-setsize={books.length}
+							className="relative"
+						>
+							<GridCard book={book} selection={selection} />
+						</div>
+					))}
+				</div>
+			))}
+		</div>
+	);
+}
+
+function GridCard({ book, selection }: { book: BookSummary; selection?: Selection }) {
+	return (
+		<>
+			{selection && (
+				<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 dark:bg-slate-900/90">
+					<Tick book={book} selection={selection} />
+				</span>
+			)}
+			<Link
+				to="/books/$bookId"
+				params={{ bookId: book.id }}
+				className="group flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
+			>
+				<Cover
+					book={book}
+					size="small"
+					className="transition group-hover:opacity-90"
+				/>
+				<span className="flex flex-col">
+					<span className="line-clamp-2 font-medium leading-snug">
+						{book.title}
+					</span>
+					{book.authors.length > 0 && (
+						<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
+							{book.authors.join(", ")}
+						</span>
+					)}
+					<Standing book={book} />
+				</span>
+			</Link>
+		</>
+	);
+}
+
+/** A row of the table before it is measured. */
+const TABLE_ROW_ESTIMATE = 41;
+
 function Table({ books, selection }: { books: BookSummary[]; selection?: Selection }) {
 	const head =
 		"px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400";
+	const columns = selection ? 7 : 6;
 	return (
 		<div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-			<table className="w-full text-sm">
+			<table className="w-full text-sm" aria-rowcount={books.length + 1}>
 				<thead className="bg-slate-50 dark:bg-slate-900">
-					<tr>
+					<tr aria-rowindex={1}>
 						{selection && (
 							<th scope="col" className={head}>
 								<span className="sr-only">{t("bulk.title")}</span>
@@ -452,41 +514,111 @@ function Table({ books, selection }: { books: BookSummary[]; selection?: Selecti
 						</th>
 					</tr>
 				</thead>
-				<tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-					{books.map((book) => (
-						<tr key={book.id}>
-							{selection && (
-								<td className="w-8 px-3 py-2">
-									<Tick book={book} selection={selection} />
-								</td>
-							)}
-							<td className="px-3 py-2">
-								<Link
-									to="/books/$bookId"
-									params={{ bookId: book.id }}
-									className="font-medium hover:underline"
-								>
-									{book.title}
-								</Link>
-							</td>
-							<td className="px-3 py-2">{book.authors.join(", ")}</td>
-							<td className="hidden px-3 py-2 uppercase sm:table-cell">
-								{book.formats.join(", ")}
-							</td>
-							<td className="hidden px-3 py-2 md:table-cell">
-								{formatDate(book.addedAt)}
-							</td>
-							<td className="hidden px-3 py-2 lg:table-cell">
-								{t(STATUS_LABELS[book.status])}
-							</td>
-							<td className="hidden px-3 py-2 lg:table-cell">
-								{book.rating ? <Stars rating={book.rating} /> : null}
-							</td>
-						</tr>
-					))}
-				</tbody>
+				{books.length >= VIRTUAL_FROM ? (
+					<VirtualRows books={books} selection={selection} columns={columns} />
+				) : (
+					<tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+						{books.map((book, i) => (
+							<BookRow key={book.id} book={book} selection={selection} index={i} />
+						))}
+					</tbody>
+				)}
 			</table>
 		</div>
+	);
+}
+
+/**
+ * The rows of a long table near the window, between two empty rows that
+ * stand for the rest, so that the table keeps its columns and its height.
+ */
+function VirtualRows({
+	books,
+	selection,
+	columns,
+}: {
+	books: BookSummary[];
+	selection?: Selection;
+	columns: number;
+}) {
+	const body = useRef<HTMLTableSectionElement>(null);
+	const rows = useWindowRows(books.length, TABLE_ROW_ESTIMATE, body, "table");
+	const items = rows.getVirtualItems();
+	const first = items[0];
+	const last = items[items.length - 1];
+	const before = first ? first.start - rows.options.scrollMargin : 0;
+	const after = last ? rows.getTotalSize() - last.end + rows.options.scrollMargin : 0;
+	return (
+		<tbody ref={body} className="divide-y divide-slate-200 dark:divide-slate-800">
+			{before > 0 && (
+				<tr aria-hidden="true" style={{ height: before }}>
+					<td colSpan={columns} />
+				</tr>
+			)}
+			{items.map((item) => {
+				const book = books[item.index];
+				return (
+					book && (
+						<BookRow
+							key={book.id}
+							book={book}
+							selection={selection}
+							index={item.index}
+							measure={rows.measureElement}
+						/>
+					)
+				);
+			})}
+			{after > 0 && (
+				<tr aria-hidden="true" style={{ height: after }}>
+					<td colSpan={columns} />
+				</tr>
+			)}
+		</tbody>
+	);
+}
+
+function BookRow({
+	book,
+	selection,
+	index,
+	measure,
+}: {
+	book: BookSummary;
+	selection?: Selection;
+	index: number;
+	measure?: (element: HTMLTableRowElement | null) => void;
+}) {
+	return (
+		<tr ref={measure} data-index={index} aria-rowindex={index + 2}>
+			{selection && (
+				<td className="w-8 px-3 py-2">
+					<Tick book={book} selection={selection} />
+				</td>
+			)}
+			<td className="px-3 py-2">
+				<Link
+					to="/books/$bookId"
+					params={{ bookId: book.id }}
+					className="font-medium hover:underline"
+				>
+					{book.title}
+				</Link>
+			</td>
+			<td className="px-3 py-2">{book.authors.join(", ")}</td>
+			<td className="hidden px-3 py-2 uppercase sm:table-cell">
+				{book.formats.join(", ")}
+			</td>
+			<td className="hidden px-3 py-2 md:table-cell">
+				{formatDate(book.addedAt)}
+			</td>
+			<td className="hidden px-3 py-2 lg:table-cell">
+				{t(STATUS_LABELS[book.status])}
+			</td>
+			<td className="hidden px-3 py-2 lg:table-cell">
+				{book.rating ? <Stars rating={book.rating} /> : null}
+			</td>
+		</tr>
 	);
 }
 
@@ -505,22 +637,27 @@ function MoreBooks({
 	const button = useRef<HTMLButtonElement>(null);
 	const more = useRef(onMore);
 	more.current = onMore;
+	// Whether the end is near, not only when it comes near: a page that
+	// leaves it in view, as one too short to fill the window does, asks for
+	// the next one too. The observer says only when that changes.
+	const [near, setNear] = useState(false);
 	useEffect(() => {
 		const target = button.current;
 		if (!target || typeof IntersectionObserver === "undefined") {
 			return;
 		}
 		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((e) => e.isIntersecting)) {
-					more.current();
-				}
-			},
+			(entries) => setNear(entries.some((e) => e.isIntersecting)),
 			{ rootMargin: "600px" },
 		);
 		observer.observe(target);
 		return () => observer.disconnect();
 	}, []);
+	useEffect(() => {
+		if (near && !loading) {
+			more.current();
+		}
+	}, [near, loading]);
 	return (
 		<button
 			ref={button}

@@ -92,7 +92,11 @@ GROUP BY 1
 ORDER BY 1 DESC;
 
 -- name: ReadingHistory :many
--- When a person began and finished books, the latest first.
+-- When a person began and finished books, the latest first. Each event
+-- finds its book by its key: a person's events are a few thousand at most,
+-- and joined as a set the planner may read every book of the library
+-- instead. OFFSET 0 keeps the subquery from being flattened into such a
+-- join.
 SELECT h.book_id, b.title, h.event, h.day
 FROM (
     SELECT ub.book_id, 'started' AS event, ub.started_on AS day
@@ -103,8 +107,12 @@ FROM (
     FROM reading_finishes rf
     WHERE rf.user_id = sqlc.arg(user_id)
 ) h
-JOIN books b ON b.id = h.book_id
-WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+JOIN LATERAL (
+    SELECT bk.title
+    FROM books bk
+    WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+    OFFSET 0
+) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT sqlc.arg(max_rows);

@@ -105,6 +105,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   decided by the route guards in `web/src/router.tsx`.
 - A navigation entry is listed in `NAV_ITEMS` with the permission its page needs.
 - App tests render the whole app against `web/src/test/fake-server.ts`.
+- The library's grid and table render only the rows near the window once
+  they hold `VIRTUAL_FROM` books (`books/virtual.ts`, TanStack Virtual over
+  the window's scroll); shorter lists render whole. Rows are measured as
+  they render, and the measurements and the first row in view are kept per
+  list and history entry, so back returns to the same row. The next page
+  loads while the end of a list is near, not only as it comes near.
+  `e2e/tests/long-list.spec.ts` answers `GET /books` itself with 500 books.
 
 ## Authentication
 
