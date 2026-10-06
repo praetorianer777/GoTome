@@ -96,3 +96,13 @@ func TestOnnxMatchesTheReference(t *testing.T) {
 		t.Errorf("tokens differ for %q; lowest cosine %.4f for %.40q", res.TokenMismatches, res.MinCosine, res.Worst)
 	}
 }
+
+func TestMeanWeighsAndNormalises(t *testing.T) {
+	got := Mean([][]float32{{1, 0}, {0, 1}}, []float64{3, 1})
+	want := []float32{0.9486833, 0.31622776}
+	for k := range want {
+		if math.Abs(float64(got[k]-want[k])) > 1e-6 {
+			t.Fatalf("Mean = %v, want %v", got, want)
+		}
+	}
+}

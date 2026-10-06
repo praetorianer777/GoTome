@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 )
 
@@ -46,6 +48,13 @@ const (
 	// TrashRetentionDays is how many days a trashed file is kept before it
 	// is deleted for good.
 	TrashRetentionDays = "trash.retentionDays"
+	// EmbeddingEnabled is "on" or "off": whether books are embedded for
+	// suggesting similar ones. Off pauses it; on again goes on with the
+	// books that have no vector yet.
+	EmbeddingEnabled = "embedding.enabled"
+	// EmbeddingModel is the name of one of embed.Specs. Another one has
+	// every book embedded again.
+	EmbeddingModel = "embedding.model"
 )
 
 // maxValueLen bounds a value; no key or token comes near it.
@@ -75,6 +84,8 @@ var Definitions = []Definition{
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
 	{Key: Providers, Kind: KindText, Default: "openlibrary", Check: names},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
+	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
+	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
 }
 
 func definition(key string) (Definition, bool) {
@@ -116,6 +127,15 @@ func days(v string) (string, error) {
 		return "", errors.New("Give a whole number of days from 1 to 3650.")
 	}
 	return strconv.Itoa(n), nil
+}
+
+func embeddingModel(v string) (string, error) {
+	v = strings.ToLower(v)
+	if _, ok := embed.Specs[v]; !ok {
+		names := slices.Sorted(maps.Keys(embed.Specs))
+		return "", fmt.Errorf("Choose one of %s.", strings.Join(names, ", "))
+	}
+	return v, nil
 }
 
 // names keeps a list of provider names in one spelling: "openlibrary,google".
@@ -169,6 +189,9 @@ type Setting struct {
 type Store struct {
 	pool *pgxpool.Pool
 	box  *secret.Box
+	// OnChange, when set, is told the keys of every update after it is
+	// saved.
+	OnChange func(ctx context.Context, keys []string)
 }
 
 // Open returns the store, after making sure that the key is the one the
@@ -258,7 +281,7 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 	if len(fields) > 0 {
 		return &ValidationError{Fields: fields}
 	}
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		for _, p := range puts {
 			if p.remove {
@@ -283,6 +306,10 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 		}
 		return nil
 	})
+	if err == nil && s.OnChange != nil {
+		s.OnChange(ctx, slices.Sorted(maps.Keys(values)))
+	}
+	return err
 }
 
 // Text returns a text setting, or its default while unset.
@@ -320,6 +347,24 @@ func (s *Store) Secret(ctx context.Context, key string) (string, bool, error) {
 		return "", false, fmt.Errorf("setting %s: %w", key, err)
 	}
 	return string(value), true, nil
+}
+
+// Embedding says which model books are embedded with, and whether they are
+// embedded at all.
+func (s *Store) Embedding(ctx context.Context) (embed.Spec, bool, error) {
+	on, err := s.Text(ctx, EmbeddingEnabled)
+	if err != nil {
+		return embed.Spec{}, false, err
+	}
+	name, err := s.Text(ctx, EmbeddingModel)
+	if err != nil {
+		return embed.Spec{}, false, err
+	}
+	spec, ok := embed.Specs[name]
+	if !ok {
+		return embed.Spec{}, false, fmt.Errorf("%s: no model %q", EmbeddingModel, name)
+	}
+	return spec, on == "on", nil
 }
 
 // TrashRetention is how long a trashed file is kept before it is deleted

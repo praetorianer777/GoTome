@@ -52,6 +52,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
 		case "search.rebuild_index":
 			return t("jobs.kind.rebuildIndex");
+		case "similar.embed_books":
+			return t("jobs.kind.embed");
 		case "dedupe.sign_file":
 			return t("jobs.kind.sign", { file: job.filePath || t("jobs.goneFile") });
 		case "dedupe.check_book":

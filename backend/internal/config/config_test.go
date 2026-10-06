@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
+	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, EmbedThreads: max(1, runtime.NumCPU()/2), ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -40,11 +41,12 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_OFFLINE":         "true",
 		"GOTOME_MODEL_DIR":       "/models",
 		"GOTOME_ONNXRUNTIME":     "/opt/libonnxruntime.so",
+		"GOTOME_EMBED_THREADS":   "3",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", UploadLimit: 100 << 20, Offline: true}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -57,6 +59,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_LOG_LEVEL", "loud"},
 		{"GOTOME_DATA_DIR", "data"},
 		{"GOTOME_MODEL_DIR", "models"},
+		{"GOTOME_EMBED_THREADS", "0"},
+		{"GOTOME_EMBED_THREADS", "some"},
 		{"GOTOME_SCAN_INTERVAL", "often"},
 		{"GOTOME_SCAN_INTERVAL", "5s"},
 		{"GOTOME_SCAN_INTERVAL", "-6h"},

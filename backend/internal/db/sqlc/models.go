@@ -127,6 +127,16 @@ type BookTag struct {
 	TagID  uuid.UUID
 }
 
+type BookVector struct {
+	BookID       uuid.UUID
+	Kind         string
+	Model        string
+	ModelVersion string
+	SourceHash   []byte
+	Embedding    string
+	EmbeddedAt   time.Time
+}
+
 type BulkChange struct {
 	ID         uuid.UUID
 	CreatedBy  uuid.UUID

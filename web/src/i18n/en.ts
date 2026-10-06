@@ -431,6 +431,7 @@ export const en = {
 	"jobs.kind.read": "Read {file}",
 	"jobs.kind.chunk": "Keep the text of {file} for search",
 	"jobs.kind.purgeTrash": "Empty the trash of what has been there long enough",
+	"jobs.kind.embed": "Work out what books are about",
 	"nav.trash": "Trash",
 	"trash.title": "Trash",
 	"trash.intro":
@@ -448,6 +449,12 @@ export const en = {
 	"book.file.trashNamed": "Move {name} to the trash",
 	"settings.trashRetention": "Days a file stays in the trash",
 	"settings.trashRetention.hint": "After this many days, a trashed file is deleted for good. From 1 to 3650.",
+	"settings.embeddingEnabled": "Work out what books are about",
+	"settings.embeddingEnabled.hint":
+		"on or off. When on, every book is read in the background, a book at a time, so that similar books can be suggested. Off pauses it; on again goes on where it stopped.",
+	"settings.embeddingModel": "Language model",
+	"settings.embeddingModel.hint":
+		"multilingual-e5-small, or multilingual-e5-small-fp32: four times the download and more memory, faster on some processors, no better. Another model reads every book again.",
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.duplicates": "Look for duplicates of {book}",
 	"jobs.kind.sign": "Compare the text of {file} with other books",

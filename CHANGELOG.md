@@ -186,6 +186,13 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- GOtome works out what each book is about, from passages of its text and
+  from its title, authors, series, tags and description, so that it can
+  suggest similar books. It reads one book at a time in the background,
+  using half the processor (`GOTOME_EMBED_THREADS` sets how many threads);
+  a library of 50,000 books takes days on a small server. An administrator pauses
+  and resumes it, or chooses the model's full-precision weights, in
+  Settings. Choosing another model reads every book again.
 - The image carries ONNX Runtime for suggesting similar books, which comes
   next. Its language model, 135 MB, will be downloaded into the data volume
   (`models`, or `GOTOME_MODEL_DIR`) the first time it is needed, and checked
