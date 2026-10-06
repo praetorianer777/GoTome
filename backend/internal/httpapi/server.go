@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/sso"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -50,8 +51,10 @@ type Server struct {
 	Log *slog.Logger
 	DB  Database
 	// Auth signs people in; Logins slows down guessing at passwords.
-	Auth      *auth.Service
-	Logins    *LoginLimits
+	Auth   *auth.Service
+	Logins *LoginLimits
+	// SSO signs people in through an identity provider; nil offers none.
+	SSO       *sso.Service
 	Libraries *library.Service
 	// Settings are what an administrator changes while GOtome runs.
 	Settings *settings.Store

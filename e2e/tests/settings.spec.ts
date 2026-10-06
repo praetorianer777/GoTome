@@ -26,12 +26,13 @@ test("a token is saved encrypted and never shown again", async ({
 
 	await page.reload();
 	await expect(page.getByLabel("Hardcover API token")).toHaveValue("");
-	await expect(page.getByText(/Saved on/)).toBeVisible();
+	// Of this token: other secrets may be set beside it.
+	await expect(page.getByLabel("Hardcover API token")).toHaveAccessibleDescription(/Saved on/);
 	const answer = await page.request.get("/api/v1/settings");
 	expect(await answer.text()).not.toContain(token);
 
 	await page
 		.getByRole("button", { name: "Remove the Hardcover API token" })
 		.click();
-	await expect(page.getByText(/Not set\./).first()).toBeVisible();
+	await expect(page.getByLabel("Hardcover API token")).toHaveAccessibleDescription(/Not set\./);
 });

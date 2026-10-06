@@ -109,3 +109,27 @@ func TestAnotherKeyIsRefusedAtStart(t *testing.T) {
 		t.Errorf("another key: err = %v, want ErrWrongKey naming the variable", err)
 	}
 }
+
+func TestSingleSignOnSettingsAreChecked(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	status, body, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.OIDCIssuer: "auth.example.org", settings.OIDCScopes: "profile email", settings.OIDCDefaultRole: "owner",
+		settings.Passwords: "maybe",
+	}})
+	for _, key := range []string{settings.OIDCIssuer, settings.OIDCScopes, settings.OIDCDefaultRole, settings.Passwords} {
+		if status != 422 || fieldError(body, key) == "" {
+			t.Errorf("%s: %d %v", key, status, body)
+		}
+	}
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.OIDCIssuer: "https://auth.example.org/realms/home", settings.OIDCScopes: "openid,profile  groups",
+		settings.OIDCAdminGroups: " admins , ,Library Admins ", settings.OIDCDefaultRole: "None",
+	}})
+	if status != 200 || setting(t, body, settings.OIDCScopes)["value"] != "openid profile groups" ||
+		setting(t, body, settings.OIDCAdminGroups)["value"] != "admins,Library Admins" ||
+		setting(t, body, settings.OIDCDefaultRole)["value"] != "none" {
+		t.Errorf("kept as: %d %v", status, body)
+	}
+}

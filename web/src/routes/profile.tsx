@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import type { CurrentUser } from "@/auth/session";
+import {
+	type CurrentUser,
+	signInMethodsQuery,
+	useSingleSignOn,
+} from "@/auth/session";
+import { ssoMessage } from "@/auth/sso";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
@@ -10,9 +15,11 @@ import {
 	useSetNotificationSetting,
 } from "@/notifications/api";
 import {
+	ownIdentitiesQuery,
 	ownSessionsQuery,
 	useChangePassword,
 	useEndOwnSession,
+	useUnlinkIdentity,
 } from "@/users/api";
 import { StorageUse } from "@/users/storage";
 
@@ -50,7 +57,7 @@ export function describeAgent(agent: string): string {
 	return agent.length > 60 ? `${agent.slice(0, 57)}…` : agent;
 }
 
-export function Profile({ user }: { user: CurrentUser }) {
+export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 	return (
 		<div className="flex max-w-2xl flex-col gap-8">
 			<div>
@@ -71,6 +78,7 @@ export function Profile({ user }: { user: CurrentUser }) {
 				<StorageUse />
 			</section>
 			<NotificationSettings />
+			<SingleSignOn sso={sso} />
 			<ChangePassword />
 			<Sessions />
 		</div>
@@ -104,6 +112,68 @@ function NotificationSettings() {
 					</li>
 				))}
 			</ul>
+		</section>
+	);
+}
+
+function SingleSignOn({ sso }: { sso?: string }) {
+	const methods = useQuery(signInMethodsQuery);
+	const identities = useQuery(ownIdentitiesQuery);
+	const link = useSingleSignOn();
+	const unlink = useUnlinkIdentity();
+	const provider = methods.data?.sso;
+	if (!provider && !identities.data?.length) return null;
+	const message = ssoMessage(sso);
+	return (
+		<section aria-labelledby="single-sign-on" className="flex flex-col gap-3">
+			<h2 id="single-sign-on" className="text-lg font-medium">
+				{t("profile.sso")}
+			</h2>
+			{message && (
+				<p
+					role={sso === "linked" ? "status" : "alert"}
+					className={
+						sso === "linked"
+							? "text-sm text-green-800 dark:text-green-300"
+							: "text-sm text-red-700 dark:text-red-400"
+					}
+				>
+					{message}
+				</p>
+			)}
+			{identities.data?.length ? (
+				<ul className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+					{identities.data.map((i) => (
+						<li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+							<span className="font-medium">{i.email ?? i.issuer}</span>
+							<span className="text-sm text-slate-600 dark:text-slate-400">
+								{t("profile.sso.lastUsed", { date: formatDate(i.lastUsedAt) })}
+							</span>
+							<button
+								type="button"
+								disabled={unlink.isPending}
+								onClick={() => unlink.mutate(i.id)}
+								className="ml-auto rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("profile.sso.unlink")}
+							</button>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p className="text-slate-600 dark:text-slate-400">{t("profile.sso.none")}</p>
+			)}
+			<FormError error={identities.error ?? unlink.error ?? link.error} />
+			{provider && (
+				<button
+					type="button"
+					disabled={link.isPending}
+					onClick={() => link.mutate({ link: true })}
+					className="self-start rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+				>
+					{t("profile.sso.link", { name: provider.name })}
+				</button>
+			)}
 		</section>
 	);
 }

@@ -80,6 +80,10 @@ type Service struct {
 	// decoy is verified when the user does not exist, so that answer takes as
 	// long as a wrong password does.
 	decoy string
+	// PasswordsOff says whether signing in with a password is turned off.
+	// An administrator may still, while no administrator can sign in
+	// through an identity provider. Nil is never.
+	PasswordsOff func(context.Context) bool
 }
 
 // NewService returns a Service on the pool.
@@ -164,6 +168,13 @@ func (s *Service) Login(ctx context.Context, username, password, userAgent strin
 	}
 	if !ok || row.PasswordHash == nil || row.DisabledAt != nil {
 		return User{}, "", time.Time{}, ErrInvalidCredentials
+	}
+	refused, err := s.passwordLoginRefused(ctx, q, row.Role)
+	if err != nil {
+		return User{}, "", time.Time{}, err
+	}
+	if refused {
+		return User{}, "", time.Time{}, ErrPasswordsOff
 	}
 
 	token, expires, err := s.openSession(ctx, q, row.ID, userAgent)

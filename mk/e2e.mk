@@ -15,9 +15,11 @@ ONLY ?=
 E2E_REPORT_PORT ?= 9323
 
 # On the host's network: the browser reaches the app on its published port,
-# exactly as a person at this machine does. --ipc=host because Chromium runs
-# out of the default 64 MB of shared memory.
+# exactly as a person at this machine does, and Keycloak (make sso-up) by
+# the name the app knows it by, mapped to this machine. --ipc=host because
+# Chromium runs out of the default 64 MB of shared memory.
 DOCKER_PLAYWRIGHT = docker run --rm --init --ipc=host --network host $(DOCKER_NODE_TTY) \
+	--add-host keycloak:127.0.0.1 \
 	-u $(UID_GID) \
 	-v $(ROOT):/src \
 	-v $(NPM_CACHE):/npmcache \

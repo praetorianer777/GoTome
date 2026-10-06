@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -58,6 +59,36 @@ const (
 	// EmbeddingModel is the name of one of embed.Specs. Another one has
 	// every book embedded again.
 	EmbeddingModel = "embedding.model"
+	// Passwords is "on" or "off": whether people may sign in with a
+	// password. Off leaves it to administrators while none of them can sign
+	// in through the identity provider.
+	Passwords = "auth.passwords"
+	// OIDCIssuer is the identity provider's issuer URL; while it is unset
+	// nobody signs in through one.
+	OIDCIssuer       = "oidc.issuer"
+	OIDCClientID     = "oidc.clientId"
+	OIDCClientSecret = "oidc.clientSecret"
+	// OIDCName is what the sign-in button calls the provider.
+	OIDCName   = "oidc.name"
+	OIDCScopes = "oidc.scopes"
+	// OIDCGroupsClaim names the claim of the ID token that lists the
+	// person's groups.
+	OIDCGroupsClaim = "oidc.groupsClaim"
+	// OIDCAdminGroups, OIDCEditorGroups and OIDCReaderGroups list the
+	// groups, comma-separated, that make someone that role. While all are
+	// unset, roles are given in GOtome; once one is set, the groups decide
+	// at every sign-in.
+	OIDCAdminGroups  = "oidc.adminGroups"
+	OIDCEditorGroups = "oidc.editorGroups"
+	OIDCReaderGroups = "oidc.readerGroups"
+	// OIDCDefaultRole is the role of someone in none of the groups, or
+	// "none" to refuse them.
+	OIDCDefaultRole = "oidc.defaultRole"
+	// OIDCSignup is "on" or "off": whether a first sign-in makes an account.
+	OIDCSignup = "oidc.signup"
+	// OIDCLinkByEmail is "on" or "off": whether a first sign-in takes the
+	// account of the address the provider says it has verified.
+	OIDCLinkByEmail = "oidc.linkByEmail"
 )
 
 // maxValueLen bounds a value; no key or token comes near it.
@@ -90,6 +121,19 @@ var Definitions = []Definition{
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
+	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
+	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
+	{Key: OIDCClientID, Kind: KindText},
+	{Key: OIDCClientSecret, Kind: KindSecret},
+	{Key: OIDCName, Kind: KindText, Default: "single sign-on"},
+	{Key: OIDCScopes, Kind: KindText, Default: "openid profile email", Check: scopes},
+	{Key: OIDCGroupsClaim, Kind: KindText, Default: "groups"},
+	{Key: OIDCAdminGroups, Kind: KindText, Check: list},
+	{Key: OIDCEditorGroups, Kind: KindText, Check: list},
+	{Key: OIDCReaderGroups, Kind: KindText, Check: list},
+	{Key: OIDCDefaultRole, Kind: KindText, Default: "reader", Check: role},
+	{Key: OIDCSignup, Kind: KindText, Default: "on", Check: onOff},
+	{Key: OIDCLinkByEmail, Kind: KindText, Default: "off", Check: onOff},
 }
 
 func definition(key string) (Definition, bool) {
@@ -130,6 +174,66 @@ func email(v string) (string, error) {
 		return "", errors.New("Give an e-mail address, such as library@example.org.")
 	}
 	return v, nil
+}
+
+// issuer is an identity provider's issuer URL, as it names itself: plain
+// HTTP only for one on the same network, which a home installation may run.
+func issuer(v string) (string, error) {
+	u, err := url.Parse(v)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
+		return "", errors.New("Give the provider's issuer URL, such as https://auth.example.org/application/o/gotome/.")
+	}
+	return v, nil
+}
+
+// scopes keeps the scopes space-separated, with openid among them.
+func scopes(v string) (string, error) {
+	fields := strings.FieldsFunc(v, func(r rune) bool { return r == ' ' || r == ',' })
+	if !slices.Contains(fields, "openid") {
+		return "", errors.New("The scopes must include openid.")
+	}
+	return strings.Join(fields, " "), nil
+}
+
+// list keeps a comma-separated list without blanks around its items.
+func list(v string) (string, error) {
+	var items []string
+	for item := range strings.SplitSeq(v, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			items = append(items, item)
+		}
+	}
+	return strings.Join(items, ","), nil
+}
+
+func role(v string) (string, error) {
+	switch v = strings.ToLower(strings.TrimSpace(v)); v {
+	case "admin", "editor", "reader", "none":
+		return v, nil
+	}
+	return "", errors.New("Say admin, editor, reader or none.")
+}
+
+// PasswordsOff says whether signing in with a password is turned off: only
+// while an identity provider is set up, the other way in. A setting that
+// cannot be read leaves them on.
+func (s *Store) PasswordsOff(ctx context.Context) bool {
+	for _, key := range []string{OIDCIssuer, OIDCClientID} {
+		if v, err := s.Text(ctx, key); err != nil || v == "" {
+			return false
+		}
+	}
+	v, err := s.Text(ctx, Passwords)
+	return err == nil && v == "off"
+}
+
+// Items returns a comma-separated text setting as its items.
+func (s *Store) Items(ctx context.Context, key string) ([]string, error) {
+	v, err := s.Text(ctx, key)
+	if err != nil || v == "" {
+		return nil, err
+	}
+	return strings.Split(v, ","), nil
 }
 
 // days is a whole number of days, from one to ten years.

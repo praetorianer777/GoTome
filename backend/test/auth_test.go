@@ -36,6 +36,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/sso"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -149,6 +150,8 @@ func newApp(t *testing.T) *app {
 		Books:     catalog.NewService(a.pool),
 		Covers:    a.covers,
 	}
+	a.server.Auth.PasswordsOff = a.settings.PasswordsOff
+	a.server.SSO = sso.NewService(a.pool, a.server.Auth, a.settings)
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
 	a.server.Reading = reading.NewService(a.pool)

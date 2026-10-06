@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/auth/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The identity provider accounts linked to the caller's account */
+        get: operations["listOwnIdentities"];
+        put?: never;
+        /** Begin linking an identity provider account to the caller's: where to send the browser */
+        post: operations["linkOwnIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/identities/{identityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink an identity provider account from the caller's */
+        delete: operations["unlinkOwnIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -49,6 +84,57 @@ export interface paths {
         get: operations["getCurrentUser"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How one may sign in: with a password, through an identity provider, or both */
+        get: operations["getSignInMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the identity provider sends the browser back to; redirects into the app */
+        get: operations["finishSingleSignOn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin signing in through the identity provider: where to send the browser */
+        post: operations["startSingleSignOn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1721,6 +1807,9 @@ export interface components {
             type: string;
             value: string;
         };
+        IdentityList: {
+            items: components["schemas"]["LinkedIdentity"][];
+        };
         IndexStatus: {
             engine: string;
             files: number;
@@ -1773,6 +1862,16 @@ export interface components {
             rootPath?: string;
             visibility: string;
             writable: boolean;
+        };
+        LinkedIdentity: {
+            /** Format: date-time */
+            createdAt: string;
+            email?: string;
+            /** Format: uuid */
+            id: string;
+            issuer: string;
+            /** Format: date-time */
+            lastUsedAt: string;
         };
         LoginRequest: {
             password: string;
@@ -2041,6 +2140,10 @@ export interface components {
         SetupStatus: {
             needed: boolean;
         };
+        SignInMethods: {
+            password: boolean;
+            sso?: components["schemas"]["SsoMethod"];
+        };
         SimilarList: {
             books: components["schemas"]["BookSummary"][];
         };
@@ -2071,6 +2174,15 @@ export interface components {
         SnippetPart: {
             match?: boolean;
             text: string;
+        };
+        SsoMethod: {
+            name: string;
+        };
+        SsoRedirect: {
+            url: string;
+        };
+        SsoStartRequest: {
+            returnTo?: string;
         };
         StatsDay: {
             date: string;
@@ -2213,6 +2325,93 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listOwnIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkOwnIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoRedirect"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unlinkOwnIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -2289,6 +2488,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSignInMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInMethods"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    finishSingleSignOn: {
+        parameters: {
+            query?: {
+                /** @description The state the sign-in was started with */
+                state?: string;
+                /** @description The authorization code */
+                code?: string;
+                /** @description The issuer of the answer (RFC 9207) */
+                iss?: string;
+                /** @description What the identity provider refused, instead of a code */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startSingleSignOn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SsoStartRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoRedirect"];
                 };
             };
             /** @description The request failed. */

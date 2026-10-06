@@ -45,6 +45,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -146,6 +147,9 @@ func serve() error {
 	accounts, err := auth.NewService(pool, auth.DefaultPasswordParams(), auth.DefaultSessionTTL)
 	if err != nil {
 		return err
+	}
+	if !cfg.ForcePasswords {
+		accounts.PasswordsOff = settingStore.PasswordsOff
 	}
 	// Background work runs in this process, on the same database.
 	libraries := library.NewService(pool, cfg.DataDir)
@@ -297,6 +301,7 @@ func serve() error {
 		Log:        log,
 		DB:         pool,
 		Auth:       accounts,
+		SSO:        sso.NewService(pool, accounts, settingStore),
 		Logins:     httpapi.NewLoginLimits(time.Now),
 		Libraries:  libraries,
 		Settings:   settingStore,

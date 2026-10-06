@@ -117,6 +117,37 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   sessions; changing one's own password ends all but the current one.
 - A session has an `id` for its owner to see and end it by; the token's hash is
   never sent.
+- Single sign-on is OpenID Connect through `internal/sso` (go-oidc), set up
+  by the `oidc.*` settings: the authorization code flow with PKCE, the
+  state hashed in `oidc_logins` (ten minutes, taken once) and also in the
+  `gotome_oidc` cookie, which the callback must bring back, a nonce the ID
+  token must carry, and the issuer checked in the token and, where the
+  provider names it, in the answer (RFC 9207). The redirect URI is
+  `/api/v1/auth/oidc/callback` on the host the browser used. A callback
+  always ends at a page of the app, an error as `?sso=<reason>`.
+- `user_identities` links an account to a provider's issuer and subject.
+  What a sign-in may do besides is `auth.IdentityPolicy`
+  (`SignInIdentity`): make an account, take the one of a verified address,
+  and, once any `oidc.*Groups` is set, set the role from the groups at
+  every sign-in, except that it never demotes the last administrator.
+  Linking from the profile starts with a POST, so no other site can link
+  its own identity to a person's account.
+- `auth.passwords` off refuses passwords (`auth.ErrPasswordsOff`) while an
+  identity provider is set up (`settings.Store.PasswordsOff`), except to
+  administrators while no active administrator has an identity;
+  `GOTOME_FORCE_PASSWORD_LOGIN` overrides it. Starting a sign-in is limited
+  per address, as each leaves a row until it expires. The one identity of an
+  account that has no usable password cannot be unlinked.
+  `internal/sso/ssotest` is the identity provider the integration tests
+  sign in at, and can be made to tamper with its answers.
+- The browser tests sign in at a real Keycloak (`tests/sso.spec.ts`):
+  `make sso-up` starts it beside the stack (compose profile `sso`, realm,
+  client and people in `deploy/keycloak/gotome-realm.json`, all test
+  values). It listens on the checkout's second port inside its container
+  too, so the issuer `http://keycloak:<port>` is one address for the app,
+  on the stack's network, and for the browser, whose container maps the
+  name to this machine. The full gate starts it; a push does not, and the
+  test skips without it except in CI.
 
 ## Browser tests
 

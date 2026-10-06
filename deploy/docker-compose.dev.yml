@@ -14,3 +14,33 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+
+  # An identity provider for the single sign-on browser tests, started only
+  # with the profile (make sso-up). Its realm, client and people are test
+  # values from keycloak/gotome-realm.json and exist nowhere else.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2@sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9
+    profiles: [sso]
+    command: [start-dev, --import-realm]
+    environment:
+      # One address for the app and the browser: the app reaches the
+      # service by its name on the stack's network, the browser test maps
+      # the name to this machine (mk/e2e.mk), where the same port is
+      # published.
+      KC_HOSTNAME: http://keycloak:${KEYCLOAK_PORT:-8180}
+      KC_HTTP_PORT: ${KEYCLOAK_PORT:-8180}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: e2e-keycloak-only
+    volumes:
+      - ./keycloak/gotome-realm.json:/opt/keycloak/data/import/gotome-realm.json:ro
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:${KEYCLOAK_PORT:-8180}"
+    healthcheck:
+      # The image has no curl; bash talks HTTP to the management port.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
