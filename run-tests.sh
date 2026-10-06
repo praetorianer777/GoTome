@@ -38,7 +38,11 @@ if has_target stack-up; then
   trap 'make stack-down >/dev/null 2>&1 || true' EXIT
   echo "🐳 Stack"
   make stack-up
-  for layer in stack-check test-integration test-e2e; do
+  layers="stack-check test-integration test-e2e"
+  # The real embedding model is downloaded once per cache, which a push does
+  # not wait for.
+  [[ -n $FULL ]] && layers="stack-check embed-check test-integration test-e2e"
+  for layer in $layers; do
     if has_target "$layer"; then
       echo "🧪 $layer"
       make "$layer"

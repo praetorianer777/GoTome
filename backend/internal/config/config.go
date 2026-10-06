@@ -37,6 +37,8 @@ const (
 	// DefaultUploadLimitMB is the largest file one upload may carry, in
 	// mebibytes: room for an audiobook in one file.
 	DefaultUploadLimitMB = 4096
+	// DefaultOnnxRuntime is where the image puts the ONNX Runtime library.
+	DefaultOnnxRuntime = "/usr/local/lib/libonnxruntime.so.1.30.0"
 )
 
 // Config is the fully resolved configuration of the process.
@@ -54,8 +56,14 @@ type Config struct {
 	ScanInterval time.Duration
 	// UploadLimit is the largest file one upload may carry, in bytes.
 	UploadLimit int64
-	// Offline asks no metadata provider on the internet.
+	// Offline asks no metadata provider on the internet and downloads no
+	// embedding model.
 	Offline bool
+	// ModelDir is where embedding models are downloaded to; DataDir/models
+	// unless set.
+	ModelDir string
+	// OnnxRuntime is the path of the ONNX Runtime library.
+	OnnxRuntime string
 	// SecretKey encrypts the secrets kept in the database. Commands that
 	// keep none run without it; see RequireSecretKey.
 	SecretKey []byte
@@ -98,6 +106,7 @@ func load(getenv func(string) string) (Config, error) {
 		HTTPAddr:    get("GOTOME_HTTP_ADDR", DefaultHTTPAddr),
 		DatabaseURL: get("GOTOME_DATABASE_URL", ""),
 		DataDir:     get("GOTOME_DATA_DIR", DefaultDataDir),
+		OnnxRuntime: get("GOTOME_ONNXRUNTIME", DefaultOnnxRuntime),
 	}
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
 		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)
@@ -107,6 +116,10 @@ func load(getenv func(string) string) (Config, error) {
 	}
 	if !filepath.IsAbs(cfg.DataDir) {
 		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
+	}
+	cfg.ModelDir = get("GOTOME_MODEL_DIR", filepath.Join(cfg.DataDir, "models"))
+	if !filepath.IsAbs(cfg.ModelDir) {
+		return Config{}, fmt.Errorf("GOTOME_MODEL_DIR is %q, want a full path such as %s", cfg.ModelDir, filepath.Join(DefaultDataDir, "models"))
 	}
 	interval := get("GOTOME_SCAN_INTERVAL", DefaultScanInterval.String())
 	var err error

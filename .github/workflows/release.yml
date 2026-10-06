@@ -76,12 +76,14 @@ jobs:
             org.opencontainers.image.licenses=AGPL-3.0-only
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
-      # The image that was just pushed must at least say which release it is.
+      # The image that was just pushed must at least say which release it is,
+      # and load the ONNX Runtime library of its architecture.
       - name: Check the image reports the release
         run: |
           reported="$(docker run --rm "${IMAGE}@${{ steps.build.outputs.digest }}" version)"
           echo "$reported"
           [[ "$reported" == "${{ needs.check.outputs.version }} "* ]]
+          docker run --rm "${IMAGE}@${{ steps.build.outputs.digest }}" embed-check
 
       - name: Hand the digest to the manifest job
         run: |

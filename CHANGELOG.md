@@ -186,6 +186,11 @@ What changes for someone who runs or uses GOtome. The format follows
   results by library and the library's filters; the address keeps both.
   "Read from here" opens a PDF at the passage's page and an EPUB or MOBI
   at the passage, without moving where you left off until you read on.
+- The image carries ONNX Runtime for suggesting similar books, which comes
+  next. Its language model, 135 MB, will be downloaded into the data volume
+  (`models`, or `GOTOME_MODEL_DIR`) the first time it is needed, and checked
+  against fixed checksums; `GOTOME_OFFLINE=true` stops the download.
+  `gotome embed-check` says whether the runtime loads.
 - Replace a copy of a book with the one you keep, from the Duplicates page:
   the other copy's files go to the trash and everyone's status, shelves and
   place read go to the copy kept, the place by how far into the book it

@@ -110,7 +110,24 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
 			|| { echo "the app image has no $$program"; exit 1; }; \
 	done
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler and ffmpeg installed"
+	@docker compose exec -T app gotome embed-check >/dev/null \
+		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler, ffmpeg and ONNX Runtime installed"
+
+# The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
+# there already, so this reaches Hugging Face once per cache; the gate leaves
+# it to the full run. The image checks the model against the pinned hashes,
+# so a cache filled by spikes/embed/fetch.sh serves as well.
+EMBED_MODEL_CACHE ?= $(ROOT)/.cache/embed/model
+
+.PHONY: embed-check
+embed-check: ## Run the app image's embedding model against the reference vectors (downloads the model once)
+	@mkdir -p $(EMBED_MODEL_CACHE)
+	docker run --rm -u $(UID_GID) \
+		-e GOTOME_MODEL_DIR=/models -e HOME=/tmp \
+		-v $(EMBED_MODEL_CACHE):/models/multilingual-e5-small \
+		-v $(ROOT)/backend/internal/embed/testdata:/reference:ro \
+		$(GOTOME_IMAGE) embed-check -reference /reference/reference.json
 
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes

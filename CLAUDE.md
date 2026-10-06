@@ -669,6 +669,32 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   comes from `GET /notifications`. A notification about a book is seen only
   while its library is, and counted only then.
 
+## Embeddings
+
+- `internal/embed` is the `Embedder` (`docs/decisions/embedding-runtime.md`):
+  `Onnx` runs `E5Small` (multilingual-e5-small, int8) on ONNX Runtime with
+  the package's own Unigram tokenizer and mean pooling; `Fake` makes
+  vectors from a text's hash for tests. Passages are prefixed `Prefix`.
+- The binary is built with cgo and loads the library at run time
+  (`LoadRuntime`, `GOTOME_ONNXRUNTIME`); the Dockerfile's `onnxruntime`
+  stage takes it from ONNX Runtime's release for the image's architecture,
+  checked by SHA-256. Nothing of it is needed to build or test: the binding
+  carries its headers, and a build without cgo answers that it has none.
+- The model is not in the image. `Fetch` puts its files under
+  `GOTOME_MODEL_DIR` (`<data>/models`) and checks size and SHA-256 every
+  time it opens them; a missing or corrupted file is downloaded again from
+  Hugging Face at the pinned revision, beside its place and renamed in once
+  its hash is right. `GOTOME_OFFLINE` downloads nothing (`ErrModelMissing`);
+  the development stack sets it.
+- `gotome embed-check` loads the runtime (`make stack-check` runs it);
+  with `-reference` it also fetches the model and compares tokens and
+  vectors with `testdata/reference.json`, sentence-transformers' own
+  output, to `MinCosine`. `make embed-check` does that in the built image
+  with the model cached in `.cache/embed/model`, downloading it once; the
+  full gate and the arm64 CI job run it, a push does not.
+  `TestOnnxMatchesTheReference` does the same in the toolchain when
+  `GOTOME_TEST_EMBED_MODEL` and `GOTOME_TEST_ONNXRUNTIME` name the files.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

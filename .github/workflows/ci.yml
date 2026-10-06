@@ -34,6 +34,14 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
+      # The embedding model the full gate checks the image with (make
+      # embed-check), 135 MB from Hugging Face, kept until its pins change.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: .cache/embed/model
+          key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
+
       # A push runs the gate with the browser smoke tests; here every browser
       # test runs in every browser.
       - name: Run the test suite
@@ -59,11 +67,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The embedding model the full gate checks the image with (make
+      # embed-check), 135 MB from Hugging Face, kept until its pins change.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: .cache/embed/model
+          key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
+
       - name: Build the image and start the stack
         run: make stack-up
 
       - name: Check the running stack
         run: make stack-check
+
+      - name: Check the embedding model against the reference vectors
+        run: make embed-check
 
       - name: Show the logs
         if: failure()
