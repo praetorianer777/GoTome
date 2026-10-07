@@ -1,10 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect as base, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
 
 // The list of books is answered here, as a library of this many would: no
 // stack holds that many for a test, and only the page's handling of them is
 // under test.
 const TOTAL = 500;
+
+// Five hundred rows are heavy for WebKit on CI's runners: a check there
+// has taken seconds, and a card more than five to hold still for a click.
+test.use({ actionTimeout: 15_000 });
+const expect = base.configure({ timeout: 15_000 });
 
 function title(i: number): string {
 	return `Long Book ${String(i).padStart(3, "0")}`;
@@ -13,7 +18,7 @@ function title(i: number): string {
 test("a long list keeps only the books near the window, and back returns to the same place", async ({
 	page,
 }, testInfo) => {
-	test.setTimeout(45_000);
+	test.setTimeout(90_000);
 	await page.route(/\/api\/v1\/books\?/, async (route) => {
 		const query = new URL(route.request().url()).searchParams;
 		const limit = Number(query.get("limit") ?? 50);
@@ -39,7 +44,11 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await openSignedIn(page);
 	// A library of its own, for the page to list from at all.
 	const created = await page.request.post("/api/v1/libraries", {
-		data: { name: `Long list ${testInfo.project.name} ${Date.now()}`, mode: "managed", visibility: "private" },
+		data: {
+			name: `Long list ${testInfo.project.name} ${Date.now()}`,
+			mode: "managed",
+			visibility: "private",
+		},
 	});
 	expect(created.status()).toBe(201);
 	const library = (await created.json()).id as string;
@@ -49,8 +58,13 @@ test("a long list keeps only the books near the window, and back returns to the 
 	const region = page.getByRole("region", { name: "Books" });
 	// While a page loads, the button says so instead.
 	const more = region.getByRole("button", { name: /^(Show more|Loading…)$/ });
-	await expect(region.getByText(title(0), { exact: true }).first()).toBeVisible();
-	const toEnd = () => page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+	await expect(
+		region.getByText(title(0), { exact: true }).first(),
+	).toBeVisible();
+	const toEnd = () =>
+		page.evaluate(() =>
+			window.scrollTo(0, document.documentElement.scrollHeight),
+		);
 	await expect
 		.poll(
 			async () => {
@@ -60,11 +74,22 @@ test("a long list keeps only the books near the window, and back returns to the 
 			{ timeout: 30_000 },
 		)
 		.toBe(0);
-	await toEnd();
+	// Rows measured on the way down make the page taller than the estimate
+	// did, so the end is scrolled to again until the last book is there.
+	const last = page.getByText(title(TOTAL - 1), { exact: true }).first();
+	await expect
+		.poll(
+			async () => {
+				await toEnd();
+				return last.isVisible();
+			},
+			{ timeout: 15_000 },
+		)
+		.toBe(true);
+	await expect(last).toBeInViewport();
 	const cards = region.getByRole("listitem");
 	await expect(cards.first()).toHaveAttribute("aria-setsize", String(TOTAL));
 	expect(await cards.count()).toBeLessThan(150);
-	await expect(page.getByText(title(TOTAL - 1), { exact: true }).first()).toBeInViewport();
 	await expect(page.getByText(title(0), { exact: true })).toHaveCount(0);
 
 	// Halfway down, a book is opened and left again.
@@ -78,10 +103,12 @@ test("a long list keeps only the books near the window, and back returns to the 
 		.poll(async () => {
 			name = await page.evaluate(() => {
 				const middle = window.innerHeight / 2;
-				const card = [...document.querySelectorAll("[role=listitem]")].find((c) => {
-					const box = c.getBoundingClientRect();
-					return box.top <= middle && box.bottom >= middle;
-				});
+				const card = [...document.querySelectorAll("[role=listitem]")].find(
+					(c) => {
+						const box = c.getBoundingClientRect();
+						return box.top <= middle && box.bottom >= middle;
+					},
+				);
 				return card?.querySelector(".line-clamp-2")?.textContent ?? "";
 			});
 			return name;
@@ -90,8 +117,10 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await page.getByRole("link", { name: new RegExp(`^${name}`) }).click();
 	await expect(page).toHaveURL(/\/books\//);
 	await page.goBack();
+	// Back draws the list from its start, then scrolls to the row.
 	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport();
 	expect(await cards.count()).toBeLessThan(150);
-	expect((await page.request.delete(`/api/v1/libraries/${library}`)).status()).toBe(204);
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
+	).toBe(204);
 });
-

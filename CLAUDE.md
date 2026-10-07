@@ -43,7 +43,10 @@ ever in the compose file or an environment variable. init only adds what is miss
 - `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
   `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit
-  about that.
+  about that. `db` runs with `init: true`: Postgres as process 1 inherits
+  every orphan in its container, such as a health check past its timeout,
+  and restarts when one exits with a code above 1 (#168). `make
+  stack-check` fails when Postgres is process 1.
 - `deploy/backup.sh` and `deploy/restore.sh` are the operator's backup and
   restore (`docs/backup-and-upgrade.md`). A backup leaves out the rows GOtome
   makes again (`derived` in backup.sh: chunks, search words, signatures,
