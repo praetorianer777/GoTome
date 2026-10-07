@@ -33,6 +33,9 @@
       "name": "notifications"
     },
     {
+      "name": "releases"
+    },
+    {
       "name": "settings"
     },
     {
@@ -3834,6 +3837,57 @@
         "x-permission": "signed-in"
       }
     },
+    "/releases": {
+      "get": {
+        "operationId": "listReleases",
+        "summary": "Upcoming and recent books of what the caller follows, and whether a library they see has each",
+        "tags": [
+          "releases"
+        ],
+        "parameters": [
+          {
+            "name": "when",
+            "in": "query",
+            "description": "upcoming (the default) lists the books still to come, the soonest first; recent those out within the last year, the newest first.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "recent"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/search": {
       "get": {
         "operationId": "searchText",
@@ -4506,6 +4560,128 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/trackers": {
+      "get": {
+        "operationId": "listTrackers",
+        "summary": "The authors and series the caller follows for new books",
+        "tags": [
+          "releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "post": {
+        "operationId": "follow",
+        "summary": "Follow an author or a series for new books; following it again is the same tracker",
+        "tags": [
+          "releases"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tracker"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/trackers/{trackerId}": {
+      "delete": {
+        "operationId": "unfollow",
+        "summary": "Stop following an author or a series",
+        "tags": [
+          "releases"
+        ],
+        "parameters": [
+          {
+            "name": "trackerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/trash": {
@@ -6294,6 +6470,44 @@
           "locked"
         ]
       },
+      "FollowRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ]
+      },
+      "Following": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ]
+      },
       "FullTextResult": {
         "type": "object",
         "properties": {
@@ -6731,6 +6945,8 @@
               "bulk.finished",
               "books.added",
               "wish.fulfilled",
+              "release.announced",
+              "release.out",
               "review.needed",
               "duplicates.found",
               "files.unreadable",
@@ -6784,6 +7000,8 @@
             "enum": [
               "books.added",
               "wish.fulfilled",
+              "release.announced",
+              "release.out",
               "review.needed",
               "duplicates.found",
               "files.unreadable",
@@ -7142,6 +7360,75 @@
         },
         "required": [
           "queued"
+        ]
+      },
+      "Release": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "following": {
+            "$ref": "#/components/schemas/Following"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inLibrary": {
+            "type": "boolean"
+          },
+          "precision": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month",
+              "year"
+            ]
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "authors",
+          "source",
+          "following",
+          "inLibrary"
+        ]
+      },
+      "ReleaseList": {
+        "type": "object",
+        "properties": {
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Release"
+            }
+          }
+        },
+        "required": [
+          "releases"
         ]
       },
       "ReplaceRequest": {
@@ -7849,6 +8136,53 @@
         },
         "required": [
           "files"
+        ]
+      },
+      "Tracker": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "polledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "createdAt"
+        ]
+      },
+      "TrackerList": {
+        "type": "object",
+        "properties": {
+          "trackers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tracker"
+            }
+          }
+        },
+        "required": [
+          "trackers"
         ]
       },
       "TrashList": {

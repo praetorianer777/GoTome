@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 )
@@ -85,6 +86,11 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["DuplicatePair.state"] = &openapi.Schema{Type: "string", Enum: dedupe.States}
 	b.FieldOverrides["PairStateRequest.relation"] = &openapi.Schema{Type: "string", Enum: dedupe.Relations}
 	b.FieldOverrides["PairStateRequest.state"] = &openapi.Schema{Type: "string", Enum: []string{dedupe.StateKeptBoth, dedupe.StateOpen}}
+	follows := &openapi.Schema{Type: "string", Enum: releases.Kinds}
+	b.FieldOverrides["Tracker.kind"] = follows
+	b.FieldOverrides["FollowRequest.kind"] = follows
+	b.FieldOverrides["Following.kind"] = follows
+	b.FieldOverrides["Release.precision"] = &openapi.Schema{Type: "string", Enum: []string{"day", "month", "year"}}
 	b.FieldOverrides["StatsEvent.event"] = &openapi.Schema{Type: "string", Enum: []string{"started", "finished"}}
 	failure := &openapi.Response{
 		Description: "The request failed.",

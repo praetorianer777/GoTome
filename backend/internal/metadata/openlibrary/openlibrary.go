@@ -252,8 +252,65 @@ func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Quer
 	return out, nil
 }
 
+// worksLimit is how many of an author's works are asked for, the newest
+// first: what is new is among them.
+const worksLimit = 50
+
+const worksFields = "key,title,subtitle,author_name,first_publish_year,cover_i"
+
+// ByAuthor lists the works OpenLibrary credits to the name, newest first.
+// OpenLibrary knows a work's year, and seldom one not out yet.
+func (p *Provider) ByAuthor(ctx context.Context, web metadata.Web, name string) ([]metadata.Record, error) {
+	name = metadata.NaturalName(name)
+	if name == "" {
+		return nil, nil
+	}
+	params := url.Values{"author": {name}, "sort": {"new"}, "limit": {strconv.Itoa(worksLimit)}, "fields": {worksFields}}
+	var answer searchAnswer
+	// Asked afresh every time: what is new is the point.
+	if err := fetchJSON(ctx, web, metadata.Request{URL: site + "/search.json?" + params.Encode(), NoCache: true}, &answer); err != nil {
+		return nil, err
+	}
+	var out []metadata.Record
+	for _, d := range answer.Docs {
+		// The search matches the words of a name anywhere; only works the
+		// person is credited with as a whole are theirs.
+		if d.Title == "" || !slices.ContainsFunc(d.AuthorName, func(a string) bool { return metadata.SameName(a, name) }) {
+			continue
+		}
+		id := strings.TrimPrefix(d.Key, "/works/")
+		r := metadata.Record{ID: id, Title: d.Title, Subtitle: d.Subtitle}
+		for i, a := range d.AuthorName {
+			if i < maxAuthors {
+				r.Contributors = append(r.Contributors, catalog.NewContributor{Name: a, Role: catalog.RoleAuthor})
+			}
+		}
+		if d.FirstPublishYear > 0 {
+			r.Published = strconv.Itoa(d.FirstPublishYear)
+		}
+		if d.CoverI > 0 {
+			r.CoverURL = coverURL([]int64{d.CoverI})
+		}
+		if id != "" {
+			r.Identifiers = []catalog.Identifier{{Type: catalog.IDOpenLibrary, Value: id}}
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// BySeries finds nothing: OpenLibrary keeps no list of a series' books.
+func (p *Provider) BySeries(context.Context, metadata.Web, string) ([]metadata.Record, error) {
+	return nil, nil
+}
+
 func getJSON(ctx context.Context, web metadata.Web, u string, into any) error {
-	body, err := web.Get(ctx, metadata.Request{URL: u})
+	return fetchJSON(ctx, web, metadata.Request{URL: u}, into)
+}
+
+func fetchJSON(ctx context.Context, web metadata.Web, r metadata.Request, into any) error {
+	u := r.URL
+	body, err := web.Get(ctx, r)
 	if err != nil {
 		return err
 	}

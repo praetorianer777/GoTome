@@ -315,6 +315,101 @@ func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Quer
 	return out, nil
 }
 
+// worksLimit is how many of an author's or a series' books are asked for,
+// the newest first: what is new is among them.
+const worksLimit = 50
+
+const searchNamed = `query SearchNamed($query: String!, $type: String!) {
+  search(query: $query, query_type: $type, per_page: 5) { results }
+}`
+
+// The books an author wrote, not those they translated or narrated.
+const booksByAuthor = `query BooksByAuthor($id: Int!, $limit: Int!) {
+  books(where: {contributions: {author_id: {_eq: $id}, contribution: {_is_null: true}}},
+        order_by: {release_date: desc_nulls_last}, limit: $limit) {
+    id title subtitle release_date
+    image { url }
+    contributions { contribution author { name } }
+    book_series(order_by: {featured: desc}, limit: 1) { position series { name } }
+  }
+}`
+
+const booksInSeries = `query BooksInSeries($id: Int!, $limit: Int!) {
+  books(where: {book_series: {series_id: {_eq: $id}}},
+        order_by: {release_date: desc_nulls_last}, limit: $limit) {
+    id title subtitle release_date
+    image { url }
+    contributions { contribution author { name } }
+    book_series(where: {series_id: {_eq: $id}}, limit: 1) { position series { name } }
+  }
+}`
+
+// ByAuthor lists the books of the author Hardcover's search finds under
+// the name, newest first; release dates in the future are announcements.
+func (p *Provider) ByAuthor(ctx context.Context, web metadata.Web, name string) ([]metadata.Record, error) {
+	return p.works(ctx, web, "Author", booksByAuthor, name)
+}
+
+// BySeries lists the books of the series Hardcover's search finds under
+// the name, newest first.
+func (p *Provider) BySeries(ctx context.Context, web metadata.Web, name string) ([]metadata.Record, error) {
+	return p.works(ctx, web, "Series", booksInSeries, name)
+}
+
+func (p *Provider) works(ctx context.Context, web metadata.Web, kind, query, name string) ([]metadata.Record, error) {
+	token := p.tokenOf(ctx)
+	name = metadata.NaturalName(name)
+	if token == "" || name == "" {
+		return nil, nil
+	}
+	id, err := p.findNamed(ctx, web, token, kind, name)
+	if err != nil {
+		return nil, err
+	}
+	var found struct {
+		Books []book `json:"books"`
+	}
+	// Asked afresh every time: what is new is the point.
+	if err := p.queryWith(ctx, web, token, query, map[string]any{"id": id, "limit": worksLimit}, &found, true); err != nil {
+		return nil, err
+	}
+	var out []metadata.Record
+	for _, b := range found.Books {
+		if r := b.record(); r.Title != "" {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// findNamed is the ID of the author or series Hardcover's search finds
+// under exactly the name, in either order.
+func (p *Provider) findNamed(ctx context.Context, web metadata.Web, token, kind, name string) (int, error) {
+	var found struct {
+		Search struct {
+			Results struct {
+				Hits []struct {
+					Document struct {
+						ID   json.Number `json:"id"`
+						Name string      `json:"name"`
+					} `json:"document"`
+				} `json:"hits"`
+			} `json:"results"`
+		} `json:"search"`
+	}
+	if err := p.query(ctx, web, token, searchNamed, map[string]any{"query": name, "type": kind}, &found); err != nil {
+		return 0, err
+	}
+	for _, h := range found.Search.Results.Hits {
+		if metadata.SameName(h.Document.Name, name) {
+			if id, err := strconv.Atoi(h.Document.ID.String()); err == nil {
+				return id, nil
+			}
+		}
+	}
+	return 0, metadata.ErrNotFound
+}
+
 func (p *Provider) tokenOf(ctx context.Context) string {
 	if p.token == nil {
 		return ""
@@ -330,12 +425,16 @@ var errUnauthorized = errors.New("hardcover refused the API token; set a new one
 // query posts a GraphQL query. Hardcover answers errors with 200 and an
 // errors list, which is an error here.
 func (p *Provider) query(ctx context.Context, web metadata.Web, token, query string, vars map[string]any, into any) error {
+	return p.queryWith(ctx, web, token, query, vars, into, false)
+}
+
+func (p *Provider) queryWith(ctx context.Context, web metadata.Web, token, query string, vars map[string]any, into any, fresh bool) error {
 	body, err := json.Marshal(map[string]any{"query": query, "variables": vars})
 	if err != nil {
 		return err
 	}
 	answer, err := web.Get(ctx, metadata.Request{
-		Method: http.MethodPost, URL: api, Body: body,
+		Method: http.MethodPost, URL: api, Body: body, NoCache: fresh,
 		Header: http.Header{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}},
 	})
 	if err != nil {

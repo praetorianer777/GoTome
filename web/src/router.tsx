@@ -37,6 +37,7 @@ import { SearchPage, type TextSearch } from "@/routes/search";
 import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
 import { Setup } from "@/routes/setup";
 import { Trash } from "@/routes/trash";
+import { Releases } from "@/routes/releases";
 import { Upload } from "@/routes/upload";
 
 interface RouterContext {
@@ -296,6 +297,17 @@ const wishlistRoute = createRoute({
 	component: Wishlist,
 });
 
+const releasesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/releases",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Releases,
+});
+
 const statsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/stats",
@@ -408,7 +420,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

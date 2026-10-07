@@ -12,6 +12,7 @@ import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
+import { FollowButtons } from "@/releases/follow";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
@@ -156,6 +157,7 @@ function BookPage({ book }: { book: BookDetail }) {
 									: t("book.series", { series: book.series })}
 							</p>
 						)}
+						{can(user, "personal:manage") && <FollowButtons book={book} />}
 						{book.files.some((f) => f.kind === "audio" && !f.missing) && (
 							<ListenButton bookId={book.id} />
 						)}

@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -81,6 +82,8 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Releases follows authors and series for their new books.
+	Releases *releases.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

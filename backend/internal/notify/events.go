@@ -38,6 +38,13 @@ const (
 	KindReviewNeeded = "review.needed"
 	// KindWishFulfilled is a wished-for book that arrived. Data: title.
 	KindWishFulfilled = "wish.fulfilled"
+	// KindReleaseAnnounced is a new book of an author or a series the
+	// person follows, still to come. Data: title, authors, subject, and
+	// date and precision where known.
+	KindReleaseAnnounced = "release.announced"
+	// KindReleaseOut is a book the person follows that came out. Data as
+	// KindReleaseAnnounced.
+	KindReleaseOut = "release.out"
 )
 
 // EventKind says who hears of a kind of event and where a summary of
@@ -57,6 +64,8 @@ type EventKind struct {
 var EventKinds = []EventKind{
 	{Kind: KindBooksAdded, Permission: auth.LibraryRead, Default: true, Summary: libraryPage},
 	{Kind: KindWishFulfilled, Permission: auth.PersonalManage, Default: true, Summary: page("/wishlist")},
+	{Kind: KindReleaseAnnounced, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
+	{Kind: KindReleaseOut, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
 	{Kind: KindReviewNeeded, Permission: auth.MetadataEdit, Default: true, Summary: page("/review")},
 	{Kind: KindDuplicatesFound, Permission: auth.MetadataEdit, Default: true, Summary: page("/duplicates")},
 	{Kind: KindFilesUnreadable, Permission: auth.MetadataEdit, Default: true, Summary: page("/jobs")},

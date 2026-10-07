@@ -248,7 +248,7 @@ func TestPeopleChooseOnlyWhatTheyMayHearOf(t *testing.T) {
 			t.Errorf("%v is off by default", k)
 		}
 	}
-	if !slices.Equal(kinds, []string{"books.added", "wish.fulfilled"}) {
+	if !slices.Equal(kinds, []string{"books.added", "wish.fulfilled", "release.announced", "release.out"}) {
 		t.Errorf("a reader may choose %v", kinds)
 	}
 	if status, _, _ := a.call(reader, http.MethodPut, "/me/notification-settings", map[string]any{

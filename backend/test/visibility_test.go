@@ -97,10 +97,14 @@ func readCases() map[string][]readCase {
 			{path: "/books/{book}/similar", control: "insider"},
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
-		"getProgress":     {{path: "/books/{book}/progress", control: "insider"}},
-		"getBookCover":    {{path: "/books/{book}/covers/small", control: "insider"}},
-		"downloadFile":    {{path: "/files/{file}/download", control: "insider"}},
-		"getStats":        {{path: "/me/stats", control: "insider"}},
+		"getProgress":  {{path: "/books/{book}/progress", control: "insider"}},
+		"getBookCover": {{path: "/books/{book}/covers/small", control: "insider"}},
+		"downloadFile": {{path: "/files/{file}/download", control: "insider"}},
+		"getStats":     {{path: "/me/stats", control: "insider"}},
+		// The releases are of what the caller follows, which the sources
+		// list for anyone; that one is in a library only those who see it
+		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.
+		"listReleases":    {{path: "/releases", why: "the caller's own follows; proven in TestAReleaseIsInTheLibraryOnlyWhereItIsSeen"}},
 		"listReview":      {{path: "/matches", control: "insider"}},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {

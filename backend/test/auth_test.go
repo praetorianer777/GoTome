@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -96,8 +97,10 @@ type app struct {
 	box      *secret.Box
 	settings *settings.Store
 	logs     lockedBuffer
-	now      time.Time
-	mu       sync.Mutex
+	// works is what the providers list for following authors and series.
+	works *fakeWorks
+	now   time.Time
+	mu    sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -169,6 +172,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding, nil, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
+	a.works = &fakeWorks{}
+	a.server.Releases = releases.NewService(a.pool, a.works, quiet)
+	a.server.Releases.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)
 	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
 	hubCtx, stopHub := context.WithCancel(context.Background())

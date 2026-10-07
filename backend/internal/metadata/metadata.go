@@ -76,6 +76,68 @@ type Provider interface {
 	Search(ctx context.Context, web Web, q Query) ([]Record, error)
 }
 
+// Works is a provider that also lists the books of an author or of a
+// series, for following them (#69). A record's Published says when a book
+// came or comes out, as exactly as the provider knows it. A name the
+// provider does not know is ErrNotFound.
+type Works interface {
+	ByAuthor(ctx context.Context, web Web, name string) ([]Record, error)
+	BySeries(ctx context.Context, web Web, name string) ([]Record, error)
+}
+
+// What WorksOf lists the books of.
+const (
+	WorksAuthor = "author"
+	WorksSeries = "series"
+)
+
+// Answer is what one provider listed.
+type Answer struct {
+	Provider string
+	Records  []Record
+}
+
+// WorksOf asks every enabled provider that lists works for the books of an
+// author or a series. A provider that knows no such name answers with
+// none; one that fails is reported in the error, joined from
+// ProviderErrors, beside the answers of the others.
+func (s *Service) WorksOf(ctx context.Context, kind, name string) ([]Answer, error) {
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	var out []Answer
+	var errs []error
+	for _, p := range s.providers {
+		w, ok := p.(Works)
+		if !ok || (s.enabled != nil && !slices.Contains(enabled, p.Name())) {
+			continue
+		}
+		web := s.webs[p.Name()]
+		var records []Record
+		var err error
+		if kind == WorksSeries {
+			records, err = w.BySeries(ctx, web, name)
+		} else {
+			records, err = w.ByAuthor(ctx, web, name)
+		}
+		switch {
+		case errors.Is(err, ErrNotFound):
+			records, err = nil, nil
+		case err != nil && ctx.Err() != nil:
+			return nil, ctx.Err()
+		case err != nil:
+			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
+			continue
+		}
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		out = append(out, Answer{Provider: p.Name(), Records: records})
+	}
+	return out, errors.Join(errs...)
+}
+
 // Candidate is a record and how well it fits the book it was found for.
 type Candidate struct {
 	Record

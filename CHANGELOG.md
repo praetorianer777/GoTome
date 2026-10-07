@@ -14,6 +14,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Follow authors and series for their new books: from a book's page, or by
+  name on the new "New books" page, which lists what is announced and what
+  came out in the last year. GOtome asks Hardcover (with its token) and
+  Open Library once a day and tells you when a book is announced and when
+  it comes out, unless a library you see has it already. Following an
+  author does not tell you of their older books. Both kinds of
+  notification can be switched off on your profile.
 - Scrolling far into a large library stays smooth: the page keeps only the
   books near the window, however many it has loaded, and going back from
   a book returns to the same place in the list. In Safari the list no

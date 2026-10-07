@@ -432,6 +432,27 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.createWish,
 		},
 		{
+			Method: http.MethodGet, Path: "/trackers", ID: "listTrackers",
+			Summary: "The authors and series the caller follows for new books", Tag: "releases",
+			Response: trackerList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listTrackers,
+		},
+		{
+			Method: http.MethodPost, Path: "/trackers", ID: "follow",
+			Summary: "Follow an author or a series for new books; following it again is the same tracker", Tag: "releases",
+			Request: followRequest{}, Response: tracker{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.follow,
+		},
+		{
+			Method: http.MethodDelete, Path: "/trackers/{trackerId}", ID: "unfollow",
+			Summary: "Stop following an author or a series", Tag: "releases",
+			Permission: auth.PersonalManage, Handler: s.unfollow,
+		},
+		{
+			Method: http.MethodGet, Path: "/releases", ID: "listReleases",
+			Summary: "Upcoming and recent books of what the caller follows, and whether a library they see has each", Tag: "releases",
+			Query: releasesQuery{}, Response: releaseList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReleases,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
 			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,
