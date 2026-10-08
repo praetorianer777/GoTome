@@ -375,7 +375,19 @@ func releaseOf(subject uuid.UUID, r metadata.Record) (sqlc.PutReleaseParams, boo
 		p.CoverUrl = &r.CoverURL
 	}
 	p.ReleaseDate, p.Precision = publishedDate(r.Published)
+	if placeholderDay(p.ReleaseDate, p.Precision, time.Now()) {
+		year := "year"
+		p.Precision = &year
+	}
 	return p, true
+}
+
+// placeholderDay is a first of January more than a year ahead, which
+// providers give a book they know no day for (Hardcover: 2030-01-01):
+// it says the year at most.
+func placeholderDay(date *time.Time, precision *string, now time.Time) bool {
+	return date != nil && precision != nil && *precision == "day" &&
+		date.Month() == time.January && date.Day() == 1 && date.After(now.AddDate(1, 0, 0))
 }
 
 // titleKey compares titles without what providers add after a colon or in

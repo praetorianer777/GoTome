@@ -321,3 +321,39 @@ func TestABookIsLookedUpByItsDOITooAsPapersHaveNoISBN(t *testing.T) {
 		t.Errorf("looked up %v, want the ISBN and the DOI", p.ids)
 	}
 }
+
+// listing is a provider that lists works in several languages.
+type listing struct{ records []Record }
+
+func (*listing) Name() string                                                      { return "listing" }
+func (*listing) Limits() Limits                                                    { return Limits{} }
+func (*listing) Lookup(context.Context, Web, catalog.Identifier) ([]Record, error) { return nil, nil }
+func (*listing) Search(context.Context, Web, Query) ([]Record, error)              { return nil, nil }
+func (l *listing) ByAuthor(context.Context, Web, string) ([]Record, error) {
+	return slices.Clone(l.records), nil
+}
+func (l *listing) BySeries(context.Context, Web, string) ([]Record, error) { return nil, nil }
+
+func TestWorksAreKeptInTheLanguagesAsked(t *testing.T) {
+	l := &listing{records: []Record{
+		{Title: "The Original", Language: "en"},
+		{Title: "Die Übersetzung", Language: "de-AT"},
+		{Title: "La traducción", Language: "es"},
+		{Title: "Unknown"},
+	}}
+	s := NewService(nil, []Provider{l}, Options{Language: func(context.Context) string { return "de" }})
+	answers, err := s.WorksOf(context.Background(), WorksAuthor, "Someone")
+	if err != nil || len(answers) != 1 {
+		t.Fatalf("WorksOf: %+v, %v", answers, err)
+	}
+	var titles []string
+	for _, r := range answers[0].Records {
+		titles = append(titles, r.Title)
+		if r.Provider != "listing" {
+			t.Errorf("%q has provider %q", r.Title, r.Provider)
+		}
+	}
+	if !slices.Equal(titles, []string{"The Original", "Die Übersetzung", "Unknown"}) {
+		t.Errorf("kept %v", titles)
+	}
+}

@@ -149,8 +149,7 @@ func TestLiveContract(t *testing.T) {
 	checkFellowship(t, got[0])
 }
 
-// The works tests ask about an author with a short list, so that his first
-// novel is among the newest the provider sends, and about his series.
+// The works tests ask about an author and his series.
 func TestTheBooksOfAnAuthor(t *testing.T) {
 	got, err := provider().ByAuthor(context.Background(), web(), "Rothfuss, Patrick")
 	if err != nil || len(got) == 0 {
@@ -165,11 +164,17 @@ func TestTheBooksOfAnAuthor(t *testing.T) {
 			dated++
 		}
 	}
-	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Title == "The Name of the Wind" }) {
-		t.Errorf("his first novel is not among %d books", len(got))
+	// The newest are asked for: his announced novel is among them.
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Title == "The Doors of Stone" }) {
+		t.Errorf("his announced novel is not among %d books", len(got))
 	}
 	if dated == 0 {
 		t.Error("no book has a release date")
+	}
+	// Hardcover keeps translations as books of their own; each says its
+	// language, for WorksOf to keep those asked for.
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Language != "" && r.Language != "en" }) {
+		t.Error("no translation says its language")
 	}
 }
 

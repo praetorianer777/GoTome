@@ -256,7 +256,7 @@ func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Quer
 // first: what is new is among them.
 const worksLimit = 50
 
-const worksFields = "key,title,subtitle,author_name,first_publish_year,cover_i"
+const worksFields = "key,title,subtitle,author_name,first_publish_year,cover_i,language"
 
 // ByAuthor lists the works OpenLibrary credits to the name, newest first.
 // OpenLibrary knows a work's year, and seldom one not out yet.
@@ -273,20 +273,24 @@ func (p *Provider) ByAuthor(ctx context.Context, web metadata.Web, name string) 
 	}
 	var out []metadata.Record
 	for _, d := range answer.Docs {
-		// The search matches the words of a name anywhere; only works the
-		// person is credited with as a whole are theirs.
-		if d.Title == "" || !slices.ContainsFunc(d.AuthorName, func(a string) bool { return metadata.SameName(a, name) }) {
+		// The search matches the words of a name anywhere, and finds the
+		// anthologies a person wrote a story for; a work is theirs only
+		// when they are among its first authors.
+		credited := d.AuthorName[:min(len(d.AuthorName), maxAuthors)]
+		if d.Title == "" || !slices.ContainsFunc(credited, func(a string) bool { return metadata.SameName(a, name) }) {
 			continue
 		}
 		id := strings.TrimPrefix(d.Key, "/works/")
 		r := metadata.Record{ID: id, Title: d.Title, Subtitle: d.Subtitle}
-		for i, a := range d.AuthorName {
-			if i < maxAuthors {
-				r.Contributors = append(r.Contributors, catalog.NewContributor{Name: a, Role: catalog.RoleAuthor})
-			}
+		for _, a := range credited {
+			r.Contributors = append(r.Contributors, catalog.NewContributor{Name: a, Role: catalog.RoleAuthor})
 		}
 		if d.FirstPublishYear > 0 {
 			r.Published = strconv.Itoa(d.FirstPublishYear)
+		}
+		// A work in many languages is in none in particular.
+		if len(d.Language) == 1 {
+			r.Language = languageTag(d.Language[0])
 		}
 		if d.CoverI > 0 {
 			r.CoverURL = coverURL([]int64{d.CoverI})

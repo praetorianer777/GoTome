@@ -120,6 +120,29 @@ type book struct {
 			Name string `json:"name"`
 		} `json:"series"`
 	} `json:"book_series"`
+	// Editions are asked for only by the works queries, for the language.
+	Editions []struct {
+		Language *struct {
+			Code2 string `json:"code2"`
+		} `json:"language"`
+	} `json:"editions"`
+}
+
+// language is the one language of the book's editions Hardcover names, or
+// none where they name several or none: Hardcover keeps a translation as
+// a book of its own.
+func (b book) language() string {
+	found := ""
+	for _, e := range b.Editions {
+		if e.Language == nil || e.Language.Code2 == "" {
+			continue
+		}
+		if found != "" && found != e.Language.Code2 {
+			return ""
+		}
+		found = e.Language.Code2
+	}
+	return found
 }
 
 // roles are Hardcover's contributions as GOtome's roles; one it names
@@ -323,14 +346,15 @@ const searchNamed = `query SearchNamed($query: String!, $type: String!) {
   search(query: $query, query_type: $type, per_page: 5) { results }
 }`
 
-// The books an author wrote, not those they translated or narrated.
+// The books an author is credited on; ByAuthor keeps those they wrote.
 const booksByAuthor = `query BooksByAuthor($id: Int!, $limit: Int!) {
-  books(where: {contributions: {author_id: {_eq: $id}, contribution: {_is_null: true}}},
+  books(where: {contributions: {author_id: {_eq: $id}}},
         order_by: {release_date: desc_nulls_last}, limit: $limit) {
     id title subtitle release_date
     image { url }
     contributions { contribution author { name } }
     book_series(order_by: {featured: desc}, limit: 1) { position series { name } }
+    editions(limit: 5) { language { code2 } }
   }
 }`
 
@@ -341,13 +365,20 @@ const booksInSeries = `query BooksInSeries($id: Int!, $limit: Int!) {
     image { url }
     contributions { contribution author { name } }
     book_series(where: {series_id: {_eq: $id}}, limit: 1) { position series { name } }
+    editions(limit: 5) { language { code2 } }
   }
 }`
 
 // ByAuthor lists the books of the author Hardcover's search finds under
-// the name, newest first; release dates in the future are announcements.
+// the name, newest first, leaving out those they only narrated or
+// translated; release dates in the future are announcements.
 func (p *Provider) ByAuthor(ctx context.Context, web metadata.Web, name string) ([]metadata.Record, error) {
-	return p.works(ctx, web, "Author", booksByAuthor, name)
+	records, err := p.works(ctx, web, "Author", booksByAuthor, name)
+	return slices.DeleteFunc(records, func(r metadata.Record) bool {
+		return !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool {
+			return c.Role == catalog.RoleAuthor && metadata.SameName(c.Name, name)
+		})
+	}), err
 }
 
 // BySeries lists the books of the series Hardcover's search finds under
@@ -376,6 +407,7 @@ func (p *Provider) works(ctx context.Context, web metadata.Web, kind, query, nam
 	var out []metadata.Record
 	for _, b := range found.Books {
 		if r := b.record(); r.Title != "" {
+			r.Language = b.language()
 			out = append(out, r)
 		}
 	}

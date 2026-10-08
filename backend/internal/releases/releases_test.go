@@ -99,3 +99,15 @@ func TestAnAuthorIsOneSubjectInEitherOrder(t *testing.T) {
 		t.Error("a series' name is turned round like a person's")
 	}
 }
+
+func TestAFirstOfJanuaryFarAheadIsAYear(t *testing.T) {
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	for published, placeholder := range map[string]bool{
+		"2030-01-01": true, "2027-01-01": false, "2030-01-02": false, "2030": false,
+	} {
+		date, precision := publishedDate(published)
+		if got := placeholderDay(date, precision, now); got != placeholder {
+			t.Errorf("%s: %v, want %v", published, got, placeholder)
+		}
+	}
+}

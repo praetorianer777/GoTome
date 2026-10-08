@@ -98,13 +98,21 @@ type Answer struct {
 }
 
 // WorksOf asks every enabled provider that lists works for the books of an
-// author or a series. A provider that knows no such name answers with
-// none; one that fails is reported in the error, joined from
-// ProviderErrors, beside the answers of the others.
+// author or a series. It keeps those in the metadata language, in English,
+// where most books are announced first, and those of no one language: the
+// providers list every translation as a book of its own. A provider that
+// knows no such name answers with none; one that fails is reported in the
+// error, joined from ProviderErrors, beside the answers of the others.
 func (s *Service) WorksOf(ctx context.Context, kind, name string) ([]Answer, error) {
 	var enabled []string
 	if s.enabled != nil {
 		enabled = s.enabled(ctx)
+	}
+	wanted := []string{"en"}
+	if s.language != nil {
+		if l := baseLanguage(s.language(ctx)); l != "" {
+			wanted = append(wanted, l)
+		}
 	}
 	var out []Answer
 	var errs []error
@@ -130,12 +138,21 @@ func (s *Service) WorksOf(ctx context.Context, kind, name string) ([]Answer, err
 			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
 			continue
 		}
+		records = slices.DeleteFunc(records, func(r Record) bool {
+			return r.Language != "" && !slices.Contains(wanted, baseLanguage(r.Language))
+		})
 		for i := range records {
 			records[i].Provider = p.Name()
 		}
 		out = append(out, Answer{Provider: p.Name(), Records: records})
 	}
 	return out, errors.Join(errs...)
+}
+
+// baseLanguage is a BCP 47 tag's language alone: "de" of "de-AT".
+func baseLanguage(tag string) string {
+	base, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(tag)), "-")
+	return base
 }
 
 // Candidate is a record and how well it fits the book it was found for.
