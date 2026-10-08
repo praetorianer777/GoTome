@@ -1137,6 +1137,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Upcoming and recent books of what the caller follows, and whether a library they see has each */
+        get: operations["listReleases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -1290,6 +1307,41 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trackers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The authors and series the caller follows for new books */
+        get: operations["listTrackers"];
+        put?: never;
+        /** Follow an author or a series for new books; following it again is the same tracker */
+        post: operations["follow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trackers/{trackerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop following an author or a series */
+        delete: operations["unfollow"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1799,6 +1851,16 @@ export interface components {
             /** @enum {string} */
             source?: "file" | "filename" | "manual" | "provider";
         };
+        FollowRequest: {
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+        };
+        Following: {
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+        };
         FullTextResult: {
             books: components["schemas"]["TextBook"][];
             more: boolean;
@@ -1927,7 +1989,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "bulk.finished" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -1940,7 +2002,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -2034,6 +2096,24 @@ export interface components {
         };
         RebuildResult: {
             queued: boolean;
+        };
+        Release: {
+            authors: string[];
+            coverToken?: string;
+            date?: string;
+            following: components["schemas"]["Following"];
+            /** Format: uuid */
+            id: string;
+            inLibrary: boolean;
+            /** @enum {string} */
+            precision?: "day" | "month" | "year";
+            series?: string;
+            seriesIndex?: number;
+            source: string;
+            title: string;
+        };
+        ReleaseList: {
+            releases: components["schemas"]["Release"][];
         };
         ReplaceRequest: {
             /** Format: uuid */
@@ -2231,6 +2311,20 @@ export interface components {
         };
         TextRereadResult: {
             files: number;
+        };
+        Tracker: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+            /** Format: date-time */
+            polledAt?: string;
+        };
+        TrackerList: {
+            trackers: components["schemas"]["Tracker"][];
         };
         TrashList: {
             files: components["schemas"]["TrashedFile"][];
@@ -4811,6 +4905,38 @@ export interface operations {
             };
         };
     };
+    listReleases: {
+        parameters: {
+            query?: {
+                /** @description upcoming (the default) lists the books still to come, the soonest first; recent those out within the last year, the newest first. */
+                when?: "upcoming" | "recent";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchText: {
         parameters: {
             query?: {
@@ -5254,6 +5380,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BookList"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listTrackers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackerList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    follow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tracker"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unfollow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

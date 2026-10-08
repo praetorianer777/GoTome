@@ -348,6 +348,48 @@ type ReadingSession struct {
 	ToFraction   float64
 }
 
+type Release struct {
+	ID          uuid.UUID
+	SubjectID   uuid.UUID
+	DedupeKey   string
+	Title       string
+	Authors     []string
+	AuthorKeys  []string
+	Series      *string
+	SeriesIndex *float64
+	ReleaseDate *time.Time
+	Precision   *string
+	Isbns       []string
+	Provider    string
+	ProviderID  string
+	CoverUrl    *string
+	Backlog     bool
+	FirstSeenAt time.Time
+}
+
+type ReleaseNotice struct {
+	UserID    uuid.UUID
+	ReleaseID uuid.UUID
+	Stage     string
+	CreatedAt time.Time
+}
+
+type ReleasePoll struct {
+	SubjectID uuid.UUID
+	Provider  string
+	FirstAt   time.Time
+	LastAt    time.Time
+}
+
+type ReleaseSubject struct {
+	ID        uuid.UUID
+	Kind      string
+	Name      string
+	NameKey   string
+	PolledAt  *time.Time
+	CreatedAt time.Time
+}
+
 type SearchWord struct {
 	Word string
 }
@@ -396,6 +438,13 @@ type Tag struct {
 	ID      uuid.UUID
 	Name    string
 	NameKey string
+}
+
+type Tracker struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	SubjectID uuid.UUID
+	CreatedAt time.Time
 }
 
 type User struct {

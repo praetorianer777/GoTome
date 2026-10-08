@@ -148,3 +148,55 @@ func TestLiveContract(t *testing.T) {
 	}
 	checkFellowship(t, got[0])
 }
+
+// The works tests ask about an author and his series.
+func TestTheBooksOfAnAuthor(t *testing.T) {
+	got, err := provider().ByAuthor(context.Background(), web(), "Rothfuss, Patrick")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
+	}
+	dated := 0
+	for _, r := range got {
+		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Patrick Rothfuss") }) {
+			t.Errorf("%q does not credit the author: %+v", r.Title, r.Contributors)
+		}
+		if r.Published != "" {
+			dated++
+		}
+	}
+	// The newest are asked for: his announced novel is among them.
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Title == "The Doors of Stone" }) {
+		t.Errorf("his announced novel is not among %d books", len(got))
+	}
+	if dated == 0 {
+		t.Error("no book has a release date")
+	}
+	// Hardcover keeps translations as books of their own; each says its
+	// language, for WorksOf to keep those asked for.
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Language != "" && r.Language != "en" }) {
+		t.Error("no translation says its language")
+	}
+}
+
+func TestTheBooksOfASeries(t *testing.T) {
+	got, err := provider().BySeries(context.Background(), web(), "The Kingkiller Chronicle")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("BySeries: %d records, %v", len(got), err)
+	}
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return r.Title == "The Name of the Wind" })
+	if i < 0 {
+		t.Fatalf("the first book is not among %d", len(got))
+	}
+	if r := got[i]; r.Series != "The Kingkiller Chronicle" || r.SeriesIndex == nil || *r.SeriesIndex != 1 {
+		t.Errorf("series %q, index %v", r.Series, r.SeriesIndex)
+	}
+}
+
+func TestTheBooksOfNobody(t *testing.T) {
+	if got, err := provider().ByAuthor(context.Background(), web(), "Qwzx Vrbnkt"); !errors.Is(err, metadata.ErrNotFound) || len(got) != 0 {
+		t.Errorf("an unknown author: %d records, %v", len(got), err)
+	}
+	if got, err := New(nil).ByAuthor(context.Background(), web(), "Patrick Rothfuss"); err != nil || got != nil {
+		t.Errorf("without a token: %+v, %v", got, err)
+	}
+}

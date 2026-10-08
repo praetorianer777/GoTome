@@ -759,6 +759,46 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   /me/notification-settings`); the web app is the only channel so far,
   and the owner put the others (#68) off on 2026-10-06.
 
+## Following authors and series
+
+- `internal/releases` follows an author or a series for new books (#69). A
+  `release_subjects` row is one author or series, by kind and
+  `catalog.Key`, an author's in the order providers write names
+  (`metadata.NaturalName`: "Cornwell, Bernard" is Bernard Cornwell);
+  `trackers` are who follows it, and a subject nobody follows goes with
+  what was found for it. `POST`/`GET /trackers`, `DELETE
+  /trackers/{id}` (`personal:manage`); the book page follows its authors
+  and series (`releases/follow.tsx`), and `routes/releases.tsx`
+  (`/releases`, "New books") lists them.
+- A provider that lists works implements `metadata.Works` (`ByAuthor`,
+  `BySeries`; Hardcover both, by the ID its search finds under exactly the
+  name; Open Library authors only), asked through
+  `metadata.Service.WorksOf` with `NoCache`: what is new is the point. The
+  `releases.poll` job (metadata queue, hourly and when a subject is first
+  followed) asks about each followed subject once a day (`pollEvery`),
+  for `passBudget`, then snoozes.
+- `releases` holds each book once per subject, by the key of its title
+  without what providers add after a colon or in brackets (`titleKey`);
+  another provider's listing of it adds a more exact date and what was
+  missing, and the provider that listed it first may move its date. A
+  date is the first day of its span and `precision` (day, month, year).
+- What a provider lists in its first answer about a subject
+  (`release_polls`) is the subject's past (`backlog`): never told as
+  news, only as out once its day comes. A release found later is told
+  (`stageOf`) as announced while its span is still to come, or as out if
+  it ended within `recentlyOut`; a release whose day came in the last
+  week is told as out to those who followed before that day
+  (`ListDueReleases`). `QueueReleaseNotices` picks the people, each once
+  per book and stage (`release_notices`), and leaves out whoever sees a
+  library with the book already: the same `title_key` and an author's
+  key (`author_keys`, both orders), or an ISBN, through
+  `visible_library_ids`. They are told through `notify.Events` with
+  recipients (`release.announced`, `release.out`), so a poll that finds
+  several is one notification.
+- `GET /releases` (`when=upcoming|recent`) lists the books of what the
+  caller follows, each once, with `inLibrary` for the libraries they see;
+  `TestAReleaseIsInTheLibraryOnlyWhereItIsSeen` is its visibility proof.
+
 ## Embeddings
 
 - `internal/embed` is the `Embedder` (`docs/decisions/embedding-runtime.md`):

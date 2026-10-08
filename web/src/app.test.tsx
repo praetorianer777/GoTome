@@ -4027,3 +4027,125 @@ describe("notifications of what happens in the libraries", () => {
 		});
 	});
 });
+
+describe("following authors and series", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Eislotus", {
+				contributors: [{ name: "Grimm, Liza", role: "author" }],
+				series: "Die Götter",
+				seriesIndex: 1,
+			});
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("follows a book's author from its page, and stops again", async () => {
+		const person = userEvent.setup();
+		renderApp("/books/book-1");
+		const author = await screen.findByRole("button", { name: "Grimm, Liza" });
+		expect(author).toHaveAttribute("aria-pressed", "false");
+		await person.click(author);
+		await waitFor(() =>
+			expect(screen.getByRole("button", { name: "✓ Grimm, Liza" })).toHaveAttribute("aria-pressed", "true"),
+		);
+		expect(server.requests.find((r) => r.method === "POST" && r.path === "/trackers")?.body).toEqual({
+			kind: "author",
+			name: "Grimm, Liza",
+		});
+		expect(screen.getByRole("button", { name: "Series Die Götter" })).toHaveAttribute("aria-pressed", "false");
+
+		await person.click(screen.getByRole("button", { name: "✓ Grimm, Liza" }));
+		await waitFor(() => expect(server.trackers).toHaveLength(0));
+		expect(await screen.findByRole("button", { name: "Grimm, Liza" })).toHaveAttribute("aria-pressed", "false");
+	});
+
+	it("knows an author it follows in the other order of the name", async () => {
+		server.trackers = [{ id: "tracker-1", kind: "author", name: "Liza Grimm", createdAt: "2026-01-02T00:00:00Z" }];
+		renderApp("/books/book-1");
+		expect(await screen.findByRole("button", { name: "✓ Grimm, Liza" })).toHaveAttribute("aria-pressed", "true");
+	});
+
+	it("lists what the person follows and its new books, and follows by name", async () => {
+		const person = userEvent.setup();
+		server.trackers = [
+			{ id: "tracker-1", kind: "author", name: "Liza Grimm", createdAt: "2026-01-02T00:00:00Z", polledAt: "2026-01-03T00:00:00Z" },
+		];
+		server.releases.upcoming = [
+			{
+				id: "r-1",
+				title: "Feuerlotus",
+				authors: ["Liza Grimm"],
+				series: "Die Götter",
+				seriesIndex: 2,
+				date: "2026-11-03",
+				precision: "day",
+				source: "hardcover",
+				following: { kind: "author", name: "Liza Grimm" },
+				inLibrary: false,
+			},
+			{
+				id: "r-2",
+				title: "Ohne Tag",
+				authors: ["Liza Grimm"],
+				source: "openlibrary",
+				following: { kind: "author", name: "Liza Grimm" },
+				inLibrary: true,
+			},
+		];
+		server.releases.recent = [];
+		renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "New books" }));
+
+		const coming = within(await screen.findByRole("region", { name: "Coming" }));
+		const card = (await coming.findByText("Feuerlotus")).closest("li");
+		expect(card).toHaveTextContent("Die Götter #2");
+		expect(card).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }).format(new Date("2026-11-03T00:00:00Z")));
+		expect(card).not.toHaveTextContent("In your library");
+		const undated = coming.getByText("Ohne Tag").closest("li");
+		expect(undated).toHaveTextContent("Date not known");
+		expect(undated).toHaveTextContent("In your library");
+		expect(
+			within(screen.getByRole("region", { name: "Out in the last year" })).getByText(
+				"No book came out in the last year.",
+			),
+		).toBeInTheDocument();
+
+		const following = within(screen.getByRole("region", { name: "You follow" }));
+		expect(following.getByText("Liza Grimm")).toBeInTheDocument();
+		await person.selectOptions(following.getByRole("combobox", { name: "What" }), "series");
+		await person.type(following.getByRole("textbox", { name: "Name" }), "Die Götter");
+		await person.click(following.getByRole("button", { name: "Follow" }));
+		expect(await following.findByText("Die Götter")).toBeInTheDocument();
+		expect(server.trackers.at(-1)).toMatchObject({ kind: "series", name: "Die Götter" });
+
+		await person.click(following.getByRole("button", { name: "Stop following Liza Grimm" }));
+		await waitFor(() => expect(following.queryByText("Liza Grimm")).not.toBeInTheDocument());
+	});
+
+	it("words a new book by its title and date, and several by their count", async () => {
+		const person = userEvent.setup();
+		server
+			.notify({
+				kind: "release.announced",
+				data: { title: "Feuerlotus", authors: "Liza Grimm", subject: "Liza Grimm", date: "2026-11-01", precision: "month" },
+				link: "/releases",
+			})
+			.notify({ kind: "release.out", data: { count: 2 }, link: "/releases" });
+		renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+		const panel = within(screen.getByRole("region", { name: "Notifications" }));
+		const month = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" }).format(
+			new Date("2026-11-01T00:00:00Z"),
+		);
+		expect(panel.getByRole("button", { name: /^Unread: A new book is announced/ })).toHaveTextContent(
+			`Feuerlotus by Liza Grimm, ${month}.`,
+		);
+		expect(panel.getByRole("button", { name: /^Unread: A book is out/ })).toHaveTextContent(
+			"2 books of what you follow came out.",
+		);
+	});
+});

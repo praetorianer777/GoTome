@@ -270,6 +270,21 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 		{sql: `INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
 			SELECT b.id, 'openlibrary', 'OL' || b.n, 0.8, jsonb_build_object('title', bk.title), 'pending'
 			FROM scale_books b JOIN books bk ON bk.id = b.id WHERE b.n % 25 = 3`},
+		// Both follow an author with 200 books to come, half of them books
+		// the library has, which the list must tell.
+		{sql: `INSERT INTO release_subjects (kind, name, name_key, polled_at)
+			SELECT 'author', au.name, au.name_key, now() FROM scale_authors a JOIN authors au ON au.id = a.id WHERE a.n = 4242`},
+		{sql: `INSERT INTO trackers (user_id, subject_id) SELECT u, s.id FROM release_subjects s, unnest(ARRAY[$1, $2]::uuid[]) u`, args: []any{admin, member}},
+		{sql: `INSERT INTO releases (subject_id, dedupe_key, title, authors, author_keys, release_date, precision, provider, provider_id, backlog)
+			SELECT s.id, bk.title_key || CASE WHEN g % 2 = 0 THEN '' ELSE ' sequel' END, bk.title, ARRAY[au.name], ARRAY[au.name_key],
+			       current_date + 1 + g, 'day', 'hardcover', g::text, true
+			FROM release_subjects s
+			CROSS JOIN generate_series(0, 199) g
+			JOIN scale_books b ON b.n = g * 250
+			JOIN books bk ON bk.id = b.id
+			JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author' AND c.position = 0
+			JOIN authors au ON au.id = c.author_id
+			ON CONFLICT DO NOTHING`},
 		{sql: `ANALYZE`},
 	}
 }
@@ -332,6 +347,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "smart shelf", path: "/smart-shelves/" + shelf + "/books"},
 		{name: "collections", path: "/collections"},
 		{name: "reading statistics", path: "/me/stats?days=30"},
+		{name: "new books", path: "/releases"},
 		{name: "trash", path: "/trash"},
 		{name: "jobs", path: "/jobs"},
 		{name: "libraries", path: "/libraries"},

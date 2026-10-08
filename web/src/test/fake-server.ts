@@ -35,6 +35,7 @@ import type { Job } from "@/jobs/api";
 import type { DuplicatePair } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
+import type { Release, Tracker } from "@/releases/api";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -174,6 +175,10 @@ export class FakeServer {
 		{ kind: "books.added", app: true },
 		{ kind: "wish.fulfilled", app: true },
 	];
+	/** The authors and series the signed-in person follows. */
+	trackers: Tracker[] = [];
+	/** The new books of what they follow, as the server would list them. */
+	releases: { upcoming: Release[]; recent: Release[] } = { upcoming: [], recent: [] };
 	/** How one may sign in; a test gives `sso` to offer an identity provider. */
 	signInMethods: SignInMethods = { password: true };
 	/** The signed-in person's accounts at the identity provider. */
@@ -367,6 +372,14 @@ export class FakeServer {
 				return Response.json({
 					notifications: this.notifications,
 					unread: this.unread(),
+				});
+			}
+			if (path === "/trackers" || path.startsWith("/trackers/")) {
+				return this.answerTrackers(request.method, path, body as { kind: Tracker["kind"]; name: string });
+			}
+			if (path === "/releases") {
+				return Response.json({
+					releases: this.releases[url.searchParams.get("when") === "recent" ? "recent" : "upcoming"],
 				});
 			}
 			if (path === "/me/notification-settings") {
@@ -1195,6 +1208,34 @@ export class FakeServer {
 	 * A bulk edit sets the series and adds and removes tags, leaving locked
 	 * fields unless told otherwise; the other actions change nothing here.
 	 */
+	private answerTrackers(method: string, path: string, body: { kind: Tracker["kind"]; name: string }): Response {
+		if (method === "GET") {
+			return Response.json({ trackers: this.trackers });
+		}
+		if (method === "POST") {
+			if (body.name.trim() === "") {
+				return Response.json(
+					{ error: { code: "validation", message: "Invalid", fields: { name: "Name the author or the series to follow." } } },
+					{ status: 422 },
+				);
+			}
+			const tracker: Tracker = {
+				id: `tracker-${this.trackers.length + 1}`,
+				kind: body.kind,
+				name: body.name,
+				createdAt: "2026-01-03T00:00:00Z",
+			};
+			this.trackers.push(tracker);
+			return Response.json(tracker, { status: 201 });
+		}
+		const id = path.slice("/trackers/".length);
+		if (!this.trackers.some((tr) => tr.id === id)) {
+			return Response.json({ error: { code: "not_found", message: "You do not follow that." } }, { status: 404 });
+		}
+		this.trackers = this.trackers.filter((tr) => tr.id !== id);
+		return new Response(null, { status: 204 });
+	}
+
 	private answerBulk(path: string, req: BulkRequest): Response {
 		if (!this.session?.permissions.includes("metadata:edit")) {
 			return Response.json(

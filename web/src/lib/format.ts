@@ -35,6 +35,19 @@ export function formatDate(iso: string): string {
 	return dateFormat.format(new Date(iso));
 }
 
+// Release dates are days, not moments: read and written in UTC, so that no
+// time zone moves one to the day before.
+const releaseFormats = {
+	day: new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }),
+	month: new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" }),
+	year: new Intl.DateTimeFormat(undefined, { year: "numeric", timeZone: "UTC" }),
+};
+
+/** A release date as exactly as it is known: a day, a month or a year. */
+export function formatReleaseDate(date: string, precision: "day" | "month" | "year"): string {
+	return releaseFormats[precision].format(new Date(`${date}T00:00:00Z`));
+}
+
 /** A language tag as the name of the language, where the browser knows it. */
 export function formatLanguage(tag: string): string {
 	try {

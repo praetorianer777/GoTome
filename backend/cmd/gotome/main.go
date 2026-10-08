@@ -41,6 +41,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -66,6 +67,8 @@ const (
 	sessionSweepInterval = time.Hour
 	trashPurgeInterval   = 6 * time.Hour
 	embedInterval        = time.Hour
+	// A subject is asked about once a day; the hourly run picks up those due.
+	releasePollInterval = time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -224,6 +227,8 @@ func serve() error {
 	}
 	scans.OnFilesChanged = duplicates.EnqueueTx
 	changes := bulk.NewService(pool, scans, matches, log)
+	follows := releases.NewService(pool, meta, log)
+	follows.Events = events
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
 	river.AddWorker(workers, &bulk.Worker{Service: changes})
@@ -239,6 +244,7 @@ func serve() error {
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
+	river.AddWorker(workers, &releases.PollWorker{Service: follows})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
 		retention, err := settingStore.TrashRetention(ctx)
 		if err != nil {
@@ -252,6 +258,7 @@ func serve() error {
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 		similar.Periodic(embedInterval),
+		releases.Periodic(releasePollInterval),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is
@@ -269,6 +276,7 @@ func serve() error {
 	duplicates.Queue = runner
 	vectors.Queue = runner
 	events.Queue = runner
+	follows.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -320,6 +328,7 @@ func serve() error {
 		Search:     search.NewPGSearch(pool, books),
 		Duplicates: duplicates,
 		Similar:    vectors,
+		Releases:   follows,
 		Index:      searchIndex,
 
 		Notifications: notify.NewService(pool),

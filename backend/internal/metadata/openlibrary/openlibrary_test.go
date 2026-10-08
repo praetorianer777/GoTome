@@ -150,3 +150,31 @@ func TestLiveContract(t *testing.T) {
 		t.Errorf("cover: %v", err)
 	}
 }
+
+func TestTheWorksOfAnAuthor(t *testing.T) {
+	got, err := New().ByAuthor(context.Background(), web(), "Rothfuss, Patrick")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
+	}
+	for _, r := range got {
+		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Patrick Rothfuss") }) {
+			t.Errorf("%q does not credit the author: %+v", r.Title, r.Contributors)
+		}
+	}
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return r.Title == "The Name of the Wind" })
+	if i < 0 {
+		t.Fatalf("his first novel is not among %d works", len(got))
+	}
+	if got[i].Published != "2007" {
+		t.Errorf("published %q, want 2007", got[i].Published)
+	}
+	if got, err := New().BySeries(context.Background(), web(), "The Kingkiller Chronicle"); err != nil || got != nil {
+		t.Errorf("OpenLibrary lists a series: %+v, %v", got, err)
+	}
+}
+
+func TestTheWorksOfNobody(t *testing.T) {
+	if got, err := New().ByAuthor(context.Background(), web(), "Qwzx Vrbnkt"); err != nil || len(got) != 0 {
+		t.Errorf("an unknown author: %+v, %v", got, err)
+	}
+}
