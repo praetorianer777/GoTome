@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -67,11 +68,41 @@ type Opener func(ctx context.Context, spec embed.Spec) (embed.Embedder, error)
 // is ErrUnavailable.
 func OnnxOpener(opts embed.OnnxOptions) Opener {
 	return func(ctx context.Context, spec embed.Spec) (embed.Embedder, error) {
+		if spec.Server != "" {
+			return nil, fmt.Errorf("%w: %s runs only on an embedding server", ErrUnavailable, spec.Model.Name)
+		}
 		if _, err := embed.LoadRuntime(opts.Runtime); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		o, err := embed.OpenOnnx(ctx, spec, opts)
 		if errors.Is(err, embed.ErrModelMissing) {
+			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return o, nil
+	}
+}
+
+// ServerOpener opens a model of an embedding server (a spec with a Server)
+// on the server the address names, and any other one with local. No
+// server named, one that does not answer, or one with another model is
+// ErrUnavailable, with why.
+func ServerOpener(local Opener, address func(ctx context.Context) (string, error)) Opener {
+	return func(ctx context.Context, spec embed.Spec) (embed.Embedder, error) {
+		if spec.Server == "" {
+			return local(ctx, spec)
+		}
+		url, err := address(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if url == "" {
+			return nil, fmt.Errorf("%w: %s runs on an embedding server, and embedding.server names none", ErrUnavailable, spec.Model.Name)
+		}
+		o, err := embed.OpenOllama(ctx, url, spec)
+		if errors.Is(err, embed.ErrServer) || errors.Is(err, embed.ErrNotTheModel) {
 			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		if err != nil {
@@ -110,10 +141,13 @@ func NewService(pool *pgxpool.Pool, config Config, open Opener, log *slog.Logger
 // Version is how a model's revision and weights are stored.
 func Version(m embed.Model) string { return m.Revision + "/" + m.Weights }
 
-// Embed works through the books whose vectors are missing or stale, in ID
-// order, until none is left, the deadline has passed, at most max books
-// were embedded (0 is no limit), or embedding is switched off. It reports
-// whether it got through all of them; switched off counts as through.
+// Embed works through the books whose vectors of the chosen model are
+// missing or stale, in ID order, until none is left, the deadline has
+// passed, at most max books were embedded (0 is no limit), or embedding is
+// switched off. It reports whether it got through all of them; switched
+// off counts as through. A model on a server embeds as many books at once
+// as the server takes; one that stops answering ends the pass as
+// ErrUnavailable.
 func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (complete bool, err error) {
 	spec, enabled, err := s.config(ctx)
 	if err != nil || !enabled {
@@ -132,6 +166,26 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 	}()
 	done := 0
 	after := uuid.Nil
+	var group []sqlc.ListBooksToEmbedRow
+	// flush embeds the books gathered, at once where the model allows.
+	flush := func() error {
+		g, gctx := errgroup.WithContext(ctx)
+		for _, r := range group {
+			g.Go(func() error {
+				if err := s.embedBook(gctx, e, spec, r); err != nil {
+					return fmt.Errorf("embed book %s: %w", r.BookID, err)
+				}
+				return nil
+			})
+		}
+		err := g.Wait()
+		done += len(group)
+		group = group[:0]
+		if errors.Is(err, embed.ErrServer) {
+			return fmt.Errorf("%w: %v", ErrUnavailable, err)
+		}
+		return err
+	}
 	for {
 		rows, err := q.ListBooksToEmbed(ctx, sqlc.ListBooksToEmbedParams{
 			Model: model, ModelVersion: version, Recipe: recipe, After: after, Page: page,
@@ -140,7 +194,7 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 			return false, err
 		}
 		if len(rows) == 0 {
-			return true, nil
+			return true, flush()
 		}
 		for _, r := range rows {
 			after = r.BookID
@@ -152,34 +206,45 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 			if !r.MetadataStale && !r.ContentStale {
 				continue
 			}
-			if (max > 0 && done >= max) || time.Now().After(deadline) {
-				return false, nil
+			if (max > 0 && done+len(group) >= max) || time.Now().After(deadline) {
+				return false, flush()
 			}
 			// Asked for each book, so that switching it off stops a
 			// pass within a book's time, and another model starts the
 			// next one.
 			now, on, err := s.config(ctx)
 			if err != nil || !on {
-				return true, err
+				return true, errors.Join(err, flush())
 			}
 			if now.Model != spec.Model {
-				return false, nil
+				return false, flush()
 			}
 			if e == nil {
 				if e, err = s.open(ctx, spec); err != nil {
 					return false, err
 				}
 			}
-			if err := s.embedBook(ctx, e, model, version, r); err != nil {
-				return false, fmt.Errorf("embed book %s: %w", r.BookID, err)
+			group = append(group, r)
+			if len(group) >= parallel(e) {
+				if err := flush(); err != nil {
+					return false, err
+				}
 			}
-			done++
 		}
 	}
 }
 
+// parallel is how many books an embedder takes at once: one, unless it says
+// otherwise, as a server that runs several requests side by side does.
+func parallel(e embed.Embedder) int {
+	if p, ok := e.(interface{ Parallel() int }); ok {
+		return max(p.Parallel(), 1)
+	}
+	return 1
+}
+
 // embedBook makes the book's stale vectors and stores them together.
-func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, version string, r sqlc.ListBooksToEmbedRow) error {
+func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Spec, r sqlc.ListBooksToEmbedRow) error {
 	q := sqlc.New(s.pool)
 	type made struct {
 		kind string
@@ -192,7 +257,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 		if err != nil {
 			return err
 		}
-		vecs, err := e.Embed(ctx, []string{embed.Prefix + text})
+		vecs, err := e.Embed(ctx, []string{spec.Prefix + text})
 		if err != nil {
 			return err
 		}
@@ -202,7 +267,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 		out = append(out, made{KindMetadata, sum[:], vecs[0]})
 	}
 	if r.ContentStale && r.TextFileID != nil {
-		vec, err := s.contentVector(ctx, e, *r.TextFileID)
+		vec, err := s.contentVector(ctx, e, spec.Prefix, *r.TextFileID)
 		if err != nil {
 			return err
 		}
@@ -218,7 +283,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 		q := sqlc.New(tx)
 		for _, m := range out {
 			if err := q.PutBookVector(ctx, sqlc.PutBookVectorParams{
-				BookID: r.BookID, Kind: m.kind, Model: model, ModelVersion: version,
+				BookID: r.BookID, Kind: m.kind, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
 				SourceHash: m.hash, Embedding: literal(m.vec),
 			}); err != nil {
 				return err
@@ -231,7 +296,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 // contentVector embeds Samples passages spread evenly over the file's
 // chunks and takes their mean, each weighted by how much of it the model
 // read; nil for a file without chunks.
-func (s *Service) contentVector(ctx context.Context, e embed.Embedder, fileID uuid.UUID) ([]float32, error) {
+func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix string, fileID uuid.UUID) ([]float32, error) {
 	q := sqlc.New(s.pool)
 	positions, err := q.ListChunkPositions(ctx, fileID)
 	if err != nil || len(positions) == 0 {
@@ -247,7 +312,7 @@ func (s *Service) contentVector(ctx context.Context, e embed.Embedder, fileID uu
 	for start := 0; start < len(bodies); start += batch {
 		texts := make([]string, 0, batch)
 		for _, b := range bodies[start:min(start+batch, len(bodies))] {
-			texts = append(texts, embed.Prefix+b)
+			texts = append(texts, prefix+b)
 		}
 		got, err := e.Embed(ctx, texts)
 		if err != nil {

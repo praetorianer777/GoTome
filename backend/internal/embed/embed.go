@@ -37,13 +37,19 @@ type File struct {
 	SHA256 string
 }
 
-// Spec is a model and the files it runs from: the weights and tokenizer.json.
+// Spec is a model and the files it runs from: the weights and tokenizer.json,
+// or the name it has on an embedding server.
 type Spec struct {
 	Model Model
 	// Dir is the folder under the model directory its files are kept in.
 	Dir       string
 	Weights   File
 	Tokenizer File
+	// Server is the model's name on an embedding server (Ollama), for a
+	// model GOtome does not run itself.
+	Server string
+	// Prefix goes before every text the model embeds, as its authors ask.
+	Prefix string
 }
 
 // Files are the spec's files, the weights first.
@@ -69,6 +75,9 @@ var E5Small = Spec{
 		Size:   17082730,
 		SHA256: "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39",
 	},
+	// A book is compared with books, which the model's authors call a
+	// symmetric task and give the query prefix.
+	Prefix: "query: ",
 }
 
 // E5SmallFP32 is the same model with its full-precision weights: four times
@@ -89,6 +98,23 @@ var E5SmallFP32 = Spec{
 		SHA256: "ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665",
 	},
 	Tokenizer: E5Small.Tokenizer,
+	Prefix:    E5Small.Prefix,
+}
+
+// BGEM3 is BAAI's bge-m3 as an Ollama server runs it, on a GPU where there
+// is one (#173): multilingual, 1,024 dimensions, five times e5-small's
+// size. It reads 8,192 tokens, but is asked for as many as e5-small, the
+// first 512 of a passage, which a whole chunk would take four times as
+// long for. It takes no prefix.
+var BGEM3 = Spec{
+	Model: Model{
+		Name:      "BAAI/bge-m3",
+		Revision:  "ollama",
+		Weights:   "bge-m3",
+		Dim:       1024,
+		MaxTokens: 512,
+	},
+	Server: "bge-m3",
 }
 
 // Specs are the models an administrator chooses between, by the names the
@@ -96,15 +122,11 @@ var E5SmallFP32 = Spec{
 var Specs = map[string]Spec{
 	"multilingual-e5-small":      E5Small,
 	"multilingual-e5-small-fp32": E5SmallFP32,
+	"bge-m3":                     BGEM3,
 }
 
 // DefaultSpec is the name in Specs used unless another is chosen.
 const DefaultSpec = "multilingual-e5-small"
-
-// Prefix goes before every passage of a book. A book is compared with
-// books, which the model's authors call a symmetric task and give the query
-// prefix.
-const Prefix = "query: "
 
 // Mean is the weighted mean of the vectors, normalised to length 1.
 func Mean(vecs [][]float32, weights []float64) []float32 {

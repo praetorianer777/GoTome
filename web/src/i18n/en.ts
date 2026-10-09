@@ -533,7 +533,10 @@ export const en = {
 		"on or off. When on, every book is read in the background, a book at a time, so that similar books can be suggested. Off pauses it; on again goes on where it stopped.",
 	"settings.embeddingModel": "Language model",
 	"settings.embeddingModel.hint":
-		"multilingual-e5-small, or multilingual-e5-small-fp32: four times the download and more memory, faster on some processors, no better. Another model reads every book again.",
+		"multilingual-e5-small, or multilingual-e5-small-fp32: four times the download and more memory, faster on some processors, no better; or bge-m3, a larger model an embedding server runs, on a GPU where it has one. Another model reads every book again; the vectors of the one before stay, so going back to it is at once.",
+	"settings.embeddingServer": "Embedding server",
+	"settings.embeddingServer.hint":
+		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, bge-m3 cannot be used.",
 	"settings.passwords": "Sign in with a password",
 	"settings.passwords.hint":
 		"on or off. Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account at the identity provider. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true to sign in with a password again.",

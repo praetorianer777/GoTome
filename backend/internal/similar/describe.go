@@ -90,7 +90,7 @@ func (s *Service) embedQuery(ctx context.Context, spec embed.Spec, text string) 
 		}
 		s.queries.e, s.queries.model = e, spec.Model
 	}
-	vecs, err := s.queries.e.Embed(ctx, []string{embed.Prefix + text})
+	vecs, err := s.queries.e.Embed(ctx, []string{spec.Prefix + text})
 	if err != nil {
 		return nil, err
 	}

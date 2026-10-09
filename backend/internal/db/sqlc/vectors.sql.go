@@ -20,6 +20,7 @@ type DeleteBookVectorParams struct {
 	Kind   string
 }
 
+// Of every model: what it was made from is gone.
 func (q *Queries) DeleteBookVector(ctx context.Context, arg DeleteBookVectorParams) error {
 	_, err := q.db.Exec(ctx, deleteBookVector, arg.BookID, arg.Kind)
 	return err
@@ -204,12 +205,10 @@ const listBooksToEmbed = `-- name: ListBooksToEmbed :many
 SELECT b.id AS book_id,
        f.id AS text_file_id,
        h.content_hash::bytea AS content_hash,
-       (mv.book_id IS NULL OR mv.model <> $1::text
-        OR mv.model_version <> $2::text
+       (mv.book_id IS NULL OR mv.model_version <> $1::text
         OR mv.source_hash <> h.metadata_hash)::boolean AS metadata_stale,
        (h.content_hash IS NOT NULL
-        AND (cv.book_id IS NULL OR cv.model <> $1::text
-             OR cv.model_version <> $2::text
+        AND (cv.book_id IS NULL OR cv.model_version <> $1::text
              OR cv.source_hash <> h.content_hash))::boolean AS content_stale,
        (h.content_hash IS NULL AND cv.book_id IS NOT NULL)::boolean AS content_gone
 FROM books b
@@ -217,20 +216,20 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT 
 CROSS JOIN LATERAL (
     SELECT sha256(convert_to(book_metadata_text(b.id), 'UTF8')) AS metadata_hash,
            CASE WHEN f.id IS NOT NULL THEN
-               sha256(convert_to(f.id::text || ' ' || f.chunked_at::text || ' ' || $3::text, 'UTF8'))
+               sha256(convert_to(f.id::text || ' ' || f.chunked_at::text || ' ' || $2::text, 'UTF8'))
            END::bytea AS content_hash
 ) h
-LEFT JOIN book_vectors mv ON mv.book_id = b.id AND mv.kind = 'metadata'
-LEFT JOIN book_vectors cv ON cv.book_id = b.id AND cv.kind = 'content'
+LEFT JOIN book_vectors mv ON mv.book_id = b.id AND mv.kind = 'metadata' AND mv.model = $3::text
+LEFT JOIN book_vectors cv ON cv.book_id = b.id AND cv.kind = 'content' AND cv.model = $3::text
 WHERE b.deleted_at IS NULL AND NOT b.placeholder AND b.id > $4::uuid
 ORDER BY b.id
 LIMIT $5::int
 `
 
 type ListBooksToEmbedParams struct {
-	Model        string
 	ModelVersion string
 	Recipe       string
+	Model        string
 	After        uuid.UUID
 	Page         int32
 }
@@ -245,15 +244,15 @@ type ListBooksToEmbedRow struct {
 }
 
 // A page of books after the given one, in ID order, and whether each one's
-// vectors are missing, of another model or made from something that has
-// changed since. The content's source is the primary text file as it was
+// vectors of the model are missing, of another version of it or made from
+// something that has changed since. The content's source is the primary text file as it was
 // chunked (its ID, when, and how it is sampled); a book without one has no
 // content vector, and content_gone says one is still stored.
 func (q *Queries) ListBooksToEmbed(ctx context.Context, arg ListBooksToEmbedParams) ([]ListBooksToEmbedRow, error) {
 	rows, err := q.db.Query(ctx, listBooksToEmbed,
-		arg.Model,
 		arg.ModelVersion,
 		arg.Recipe,
+		arg.Model,
 		arg.After,
 		arg.Page,
 	)
@@ -486,8 +485,8 @@ INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embe
 SELECT b.id, $1::text, $2::text, $3::text,
        $4::bytea, CAST($5::text AS vector)
 FROM books b WHERE b.id = $6::uuid AND b.deleted_at IS NULL
-ON CONFLICT (book_id, kind) DO UPDATE
-SET model = excluded.model, model_version = excluded.model_version,
+ON CONFLICT (book_id, kind, model) DO UPDATE
+SET model_version = excluded.model_version,
     source_hash = excluded.source_hash, embedding = excluded.embedding, embedded_at = now()
 `
 

@@ -148,7 +148,7 @@ func TestEveryBookWithTextGetsBothVectorsAndTheRestTheMetadataOne(t *testing.T) 
 			t.Errorf("the metadata text %q lacks %q", metaText, want)
 		}
 	}
-	fake, _ := (&embed.Fake{}).Embed(context.Background(), []string{embed.Prefix + metaText})
+	fake, _ := (&embed.Fake{}).Embed(context.Background(), []string{embed.E5Small.Prefix + metaText})
 	var distance float64
 	if err := a.pool.QueryRow(context.Background(), `
 		SELECT embedding <=> $2::text::vector FROM book_vectors WHERE book_id = $1 AND kind = 'metadata'`,
