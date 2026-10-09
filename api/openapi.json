@@ -4207,6 +4207,77 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/search/similar": {
+      "get": {
+        "operationId": "searchDescribed",
+        "summary": "Books whose text and description are nearest a description of what they are to be about, best first",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "What the books are to be about, in a few words or sentences, in any language the model reads.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID: only its books. Left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "How many of the best books to pass over, as the page before's nextOffset says.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books a page holds, at most 100; 24 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescribedList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/search/status": {
       "get": {
         "operationId": "searchStatus",
@@ -6550,6 +6621,23 @@
           "username",
           "role",
           "permissions"
+        ]
+      },
+      "DescribedList": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookSummary"
+            }
+          },
+          "nextOffset": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "books"
         ]
       },
       "DuplicateCheckRequest": {

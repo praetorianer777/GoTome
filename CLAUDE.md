@@ -882,6 +882,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   title once a shop's additions are off, or one the other's with a
   subtitle, and an author in common). The book page shows them as a rail (`books/similar.tsx`),
   and nothing while there are none.
+- `GET /search/similar?q=` (`Service.Describe`, `ListBooksNearQuery`)
+  finds books by a description of what they are about: the text is
+  embedded with `embed.Prefix` by a model opened on the first search and
+  kept (`queries`), and compared with every visible book's vectors as
+  similar books are, blended; a copy of a book before it on the page is
+  left out, and pages go by offset, as ranked results do. No model that can
+  run is `ErrUnavailable`, a 503. The search page offers it as a mode
+  (`mode=description`). `similar-check -describe "…"` prints what it finds
+  on a library.
 - `gotome similar-check` (`Service.Check`, `make similar-check`) measures
   them on an installation's own library: a sample by a hash of the book
   ID, the shares by the book's own author and series, copies, and authors

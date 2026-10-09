@@ -151,6 +151,7 @@ const searchRoute = createRoute({
 		...picksFrom(search),
 		q: typeof search.q === "string" && search.q ? search.q : undefined,
 		library: typeof search.library === "string" ? search.library : undefined,
+		mode: search.mode === "description" ? "description" : undefined,
 	}),
 	component: function SearchRoute() {
 		const navigate = searchRoute.useNavigate();

@@ -49,3 +49,27 @@ at 8 times, 146 of the 3,000 places stayed empty, for books of authors
 with hundreds of books. Seen in the lists: a number in a title draws
 other titles with it ("CC-5 streng geheim" and "Schlachthof 5"), which is
 the metadata vector's (#184).
+
+## Searching by description
+
+`similar-check -describe "…" -k 8` prints the books nearest a description,
+as the search page finds them for someone who sees every library. Tried on
+the owner's library on 2026-10-09 (#183):
+
+- "Ein Kommissar ermittelt in Venedig": Nicolas Remin's Commissario Tron
+  novels, Venedigs Mörder, Venezianische Verwicklungen, Venedig sehen und
+  stehlen; one crime novel set in Bozen.
+- "Familiensaga über drei Generationen auf einem Gutshof in Ostpreußen":
+  East Prussian family stories, and memoirs of the flight from it.
+- "Kochbuch mit vegetarischen Rezepten": eight vegetarian and vegan
+  cookbooks.
+- "Biografie eines berühmten Komponisten": books about musicians, a
+  Mozart biography, Wagner's works; a dictionary of quotations.
+- "Liebesroman in Cornwall": Cornwall romances and Du Maurier, but first
+  two novels by Bernard Cornwell: the metadata vector holds names, which a
+  word of the description can meet (#184).
+- "a space opera with a war between galactic empires": some science
+  fiction among unrelated English books; the library is mostly German.
+
+Copies were listed twice ("Abschied und Wiedersehen"), so a page leaves out
+a copy of a book before it.

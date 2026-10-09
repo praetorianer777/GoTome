@@ -119,3 +119,28 @@ func share(n, of int) float64 {
 	}
 	return float64(n) / float64(of)
 }
+
+// DescribeTitles is Describe for someone who sees every library, as titles
+// with their first author: what a check of the search by description reads.
+func (s *Service) DescribeTitles(ctx context.Context, text string, k int) ([]string, error) {
+	ids, _, err := s.Describe(ctx, library.Scope{SeesAll: true}, nil, text, 0, k)
+	if err != nil || len(ids) == 0 {
+		return nil, err
+	}
+	rows, err := sqlc.New(s.pool).ListBookTitles(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[uuid.UUID]string, len(rows))
+	for _, r := range rows {
+		byID[r.ID] = r.Title
+		if r.Author != "" {
+			byID[r.ID] += " – " + r.Author
+		}
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = byID[id]
+	}
+	return out, nil
+}

@@ -125,6 +125,8 @@ export class FakeServer {
 			failures: { provider: string; message: string }[];
 		}
 	> = {};
+	/** Whether the embedding model runs, for the search by description. */
+	describable = true;
 	/** What the clean-up page suggests. */
 	cleanup: CleanupSuggestion[] = [];
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
@@ -280,6 +282,26 @@ export class FakeServer {
 			});
 			if (path === "/search") {
 				return this.searchText(url.searchParams);
+			}
+			if (path === "/search/similar") {
+				if (!this.describable) {
+					return Response.json(
+						{ error: { code: "unavailable", message: "Searching by description needs the embedding model, which cannot run here yet." } },
+						{ status: 503 },
+					);
+				}
+				const words = (url.searchParams.get("q") ?? "")
+					.toLowerCase()
+					.split(/\s+/)
+					.filter((w) => w.length > 2);
+				const nearness = (b: BookDetail) =>
+					words.filter((w) => `${b.title} ${b.description ?? ""}`.toLowerCase().includes(w)).length;
+				return Response.json({
+					books: this.books
+						.filter((b) => !b.placeholder && nearness(b) > 0)
+						.sort((a, b) => nearness(b) - nearness(a))
+						.map(summaryOf),
+				});
 			}
 			if (path === "/duplicates") {
 				const q = url.searchParams;

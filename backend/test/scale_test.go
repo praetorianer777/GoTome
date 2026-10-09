@@ -51,6 +51,8 @@ var wholeByDesign = map[string]string{
 	// The exact cosine scan of #66 compares the book with every other one;
 	// at 50,000 books an approximate index is not worth what it costs.
 	"similar books": "compares with every book",
+	// So does a description, with the vectors of every visible book.
+	"search by description": "compares with every book",
 	// Each library's files are counted and their sizes added up.
 	"libraries": "counts every file",
 	// Suggestions are about the whole catalogue: every author credit is
@@ -364,6 +366,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "collections", path: "/collections"},
 		{name: "reading statistics", path: "/me/stats?days=30"},
 		{name: "new books", path: "/releases"},
+		{name: "search by description", path: "/search/similar?q=" + url.QueryEscape("a detective story set in Venice")},
 		{name: "clean-up: authors", path: "/cleanup?kind=authors"},
 		{name: "clean-up: titles", path: "/cleanup?kind=titles"},
 		{name: "trash", path: "/trash"},

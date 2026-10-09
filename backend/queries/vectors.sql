@@ -137,3 +137,36 @@ LEFT JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author'
 LEFT JOIN authors a ON a.id = c.author_id
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[])
 GROUP BY b.id;
+
+-- name: ListBooksNearQuery :many
+-- The books whose vectors of the model are nearest a query's, among those
+-- the viewer sees, of one library when named, as ListSimilarBooks blends
+-- them: the best first, a page at a time.
+WITH near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> sqlc.arg(query)::text::vector)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> sqlc.arg(query)::text::vector)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    WHERE v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata)
+        END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
+ORDER BY score DESC, n.book_id
+LIMIT sqlc.arg(max)::int OFFSET sqlc.arg(skip)::int;
+
+-- name: ListBookTitles :many
+-- Books by their title and first author, for a check to print.
+SELECT b.id, b.title,
+       COALESCE((SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                 WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position LIMIT 1), '')::text AS author
+FROM books b
+WHERE b.id = ANY(sqlc.arg(ids)::uuid[]);

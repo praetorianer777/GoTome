@@ -21,6 +21,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Search by description: on the search page, describe what you want to
+  read ("Ein Kommissar ermittelt in Venedig", "a family saga over three
+  generations") and get the books whose text and description come
+  nearest, best first. It needs the embedding model and the books'
+  vectors; while they are not there, the page says so.
 - `gotome similar-check` measures how good the similar books are on your
   own library: how many are by the book's own author or from its series,
   and how many are copies of it (`docs/similarity.md`).
