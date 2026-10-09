@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
@@ -290,25 +293,125 @@ func literal(v []float32) string {
 // MaxSimilar is the most books Similar returns.
 const MaxSimilar = 50
 
+// A list of similar books takes at most perAuthor books by one author and
+// perSeries from one series, the nearest of each: the book page links to
+// an author's and a series' other books already, and without the caps
+// half the list is by the book's own author (docs/similarity.md). It looks
+// through candidates times as many of the nearest books as it shows.
+const (
+	perAuthor  = 2
+	perSeries  = 2
+	candidates = 20
+)
+
 // Similar returns the books nearest the given one among those the scope
-// sees, the nearest first, at most limit of them (MaxSimilar at most). A book
-// without vectors of the chosen model has none yet; whether the caller may
-// see the book itself is the caller's to check.
+// sees, the nearest first, at most limit of them (MaxSimilar at most):
+// none that is a copy of the book or of one taken before, and no more than
+// perAuthor by one author and perSeries from one series. A book without
+// vectors of the chosen model has none yet; whether the caller may see the
+// book itself is the caller's to check.
 func (s *Service) Similar(ctx context.Context, scope library.Scope, bookID uuid.UUID, limit int) ([]uuid.UUID, error) {
 	spec, _, err := s.config(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := sqlc.New(s.pool).ListSimilarBooks(ctx, sqlc.ListSimilarBooksParams{
+	limit = min(max(limit, 1), MaxSimilar)
+	q := sqlc.New(s.pool)
+	rows, err := q.ListSimilarBooks(ctx, sqlc.ListSimilarBooksParams{
 		BookID: bookID, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: int32(min(max(limit, 1), MaxSimilar)),
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: int32(limit * candidates),
 	})
-	if err != nil {
+	if err != nil || len(rows) == 0 {
 		return nil, err
 	}
 	ids := make([]uuid.UUID, len(rows))
 	for i, r := range rows {
 		ids[i] = r.BookID
 	}
-	return ids, nil
+	all, err := traitsOf(ctx, q, append([]uuid.UUID{bookID}, ids...))
+	if err != nil {
+		return nil, err
+	}
+	near := make([]traits, len(ids))
+	for i, id := range ids {
+		near[i] = all[id]
+	}
+	return pick(all[bookID], near, limit), nil
+}
+
+// traits are what a list of similar books is chosen by.
+type traits struct {
+	id     uuid.UUID
+	title  string
+	series *uuid.UUID
+	// people are the authors' person_keys, the first author first.
+	people []string
+}
+
+func traitsOf(ctx context.Context, q *sqlc.Queries, ids []uuid.UUID) (map[uuid.UUID]traits, error) {
+	rows, err := q.ListBookTraits(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]traits, len(rows))
+	for _, r := range rows {
+		out[r.ID] = traits{id: r.ID, title: r.Title, series: r.SeriesID, people: r.People}
+	}
+	return out, nil
+}
+
+// pick takes from the nearest books, in order, up to limit that are no copy
+// of the book or of one taken, within the caps per author and series.
+func pick(book traits, near []traits, limit int) []uuid.UUID {
+	var taken []traits
+	byAuthor := map[string]int{}
+	bySeries := map[uuid.UUID]int{}
+	for _, t := range near {
+		if len(taken) == limit {
+			break
+		}
+		if isCopy(book, t) || slices.ContainsFunc(taken, func(o traits) bool { return isCopy(o, t) }) {
+			continue
+		}
+		if len(t.people) > 0 && byAuthor[t.people[0]] >= perAuthor {
+			continue
+		}
+		if t.series != nil && bySeries[*t.series] >= perSeries {
+			continue
+		}
+		taken = append(taken, t)
+		if len(t.people) > 0 {
+			byAuthor[t.people[0]]++
+		}
+		if t.series != nil {
+			bySeries[*t.series]++
+		}
+	}
+	ids := make([]uuid.UUID, len(taken))
+	for i, t := range taken {
+		ids[i] = t.id
+	}
+	return ids
+}
+
+// isCopy reports whether two books are one with an author in common: the
+// same title once a shop's additions are off, or one the other's with a
+// subtitle after a colon ("Rauklands Sohn" and "Rauklands Sohn: Raukland
+// Trilogie"). Two titles that both have a subtitle of their own after the
+// same words are two books, as the volumes of a series often are.
+func isCopy(a, b traits) bool {
+	if !slices.ContainsFunc(a.people, func(p string) bool { return slices.Contains(b.people, p) }) {
+		return false
+	}
+	ka, kb := titleKey(a.title), titleKey(b.title)
+	return ka == kb || ka == mainTitleKey(b.title) || mainTitleKey(a.title) == kb
+}
+
+// titleKey is a title as copies of a book share it.
+func titleKey(title string) string { return catalog.Key(cleanup.CleanTitle(title)) }
+
+// mainTitleKey is titleKey of what comes before a subtitle.
+func mainTitleKey(title string) string {
+	main, _, _ := strings.Cut(cleanup.CleanTitle(title), ":")
+	return catalog.Key(main)
 }

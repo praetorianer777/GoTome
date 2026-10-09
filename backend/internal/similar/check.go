@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/praetorianer777/gotome/backend/internal/catalog"
-	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
@@ -71,43 +69,38 @@ func (s *Service) Check(ctx context.Context, n, k int) (Report, error) {
 		if err != nil {
 			return Report{}, err
 		}
-		rows, err := q.ListBookTraits(ctx, append([]uuid.UUID{id}, near...))
+		all, err := traitsOf(ctx, q, append([]uuid.UUID{id}, near...))
 		if err != nil {
 			return Report{}, err
 		}
-		traits := make(map[uuid.UUID]sqlc.ListBookTraitsRow, len(rows))
-		for _, t := range rows {
-			traits[t.ID] = t
-		}
-		book := traits[id]
+		book := all[id]
 		r.Books++
-		if book.SeriesID != nil {
+		if book.series != nil {
 			r.InSeries++
 		}
 		if len(near) == 0 {
 			r.Empty++
 		}
 		seen := map[string]bool{}
-		got := Sample{Title: book.Title}
+		got := Sample{Title: book.title}
 		for _, other := range near {
-			t := traits[other]
-			got.Neighbours = append(got.Neighbours, t.Title)
+			t := all[other]
+			got.Neighbours = append(got.Neighbours, t.title)
 			r.Neighbours++
-			shared := slices.ContainsFunc(t.People, func(p string) bool { return slices.Contains(book.People, p) })
-			if shared {
+			if slices.ContainsFunc(t.people, func(p string) bool { return slices.Contains(book.people, p) }) {
 				sameAuthor++
 			}
-			if shared && titleKey(t.Title) == titleKey(book.Title) {
+			if isCopy(book, t) {
 				copies++
 			}
-			if book.SeriesID != nil {
+			if book.series != nil {
 				seriesNeighbours++
-				if t.SeriesID != nil && *t.SeriesID == *book.SeriesID {
+				if t.series != nil && *t.series == *book.series {
 					sameSeries++
 				}
 			}
-			if len(t.People) > 0 {
-				seen[t.People[0]] = true
+			if len(t.people) > 0 {
+				seen[t.people[0]] = true
 			}
 		}
 		authors += len(seen)
@@ -119,9 +112,6 @@ func (s *Service) Check(ctx context.Context, n, k int) (Report, error) {
 	r.Authors = share(authors, r.Books-r.Empty)
 	return r, nil
 }
-
-// titleKey is a title as copies of a book share it.
-func titleKey(title string) string { return catalog.Key(cleanup.CleanTitle(title)) }
 
 func share(n, of int) float64 {
 	if of == 0 {

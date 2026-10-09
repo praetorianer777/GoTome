@@ -12,6 +12,13 @@ What changes for someone who runs or uses GOtome. The format follows
   the machine is busy enough for its health check to time out. Take the
   `init: true` of the `db` service into your compose file.
 
+### Changed
+
+- Similar books show at most two books by one author and two from one
+  series, and no copy of the book: on a library of 50,000 books, a book's
+  similar books now have eight authors on average instead of five, and
+  fewer than one in five is by its own author instead of more than half.
+
 ### Added
 
 - `gotome similar-check` measures how good the similar books are on your
