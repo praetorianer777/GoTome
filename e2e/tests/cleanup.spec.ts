@@ -44,8 +44,7 @@ test("an author's two spellings are made one, and a title's addition is left as 
 		books[title] = book;
 	}
 
-	await page.goto("/");
-	await page.getByRole("link", { name: "Clean up" }).click();
+	await page.goto("/cleanup");
 	const spellings = page
 		.getByRole("listitem")
 		.filter({ hasText: `Wanda ${stamp} Wortmann` });
