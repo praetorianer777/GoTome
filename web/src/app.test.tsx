@@ -4149,3 +4149,113 @@ describe("following authors and series", () => {
 		);
 	});
 });
+
+describe("cleaning up how books are described", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Rita", "a long password", "editor").signedInAs("Rita").withLibrary("Novels");
+		server.cleanup = [
+			{
+				kind: "authors",
+				subject: "barbara goldstein",
+				found: [
+					{ name: "Goldstein, Barbara", books: 2 },
+					{ name: "Barbara Goldstein", books: 1 },
+				],
+				fix: "merge",
+				suggested: "Goldstein, Barbara",
+				books: 3,
+			},
+			{
+				kind: "titles",
+				subject: "book-9",
+				found: [{ name: "Das letzte Evangelium: Historischer Roman (German Edition)", books: 1 }],
+				fix: "retitle",
+				suggested: "Das letzte Evangelium",
+				books: 1,
+				book: "book-9",
+			},
+			{
+				kind: "placeholders",
+				subject: "authors sort",
+				found: [{ name: "authors_sort", books: 177 }],
+				fix: "removeAuthor",
+				books: 177,
+			},
+			{
+				kind: "placeholders",
+				subject: "unknown",
+				found: [{ name: "Unknown", books: 3 }],
+				fix: "removeAuthor",
+				books: 3,
+			},
+		];
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("merges an author's spellings into the one chosen, and leaves a title as it is", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Clean up" }));
+		expect(await screen.findByRole("button", { name: "Author spellings: 1" })).toHaveAttribute("aria-pressed", "true");
+		expect(screen.getByRole("button", { name: "Placeholder authors: 2" })).toBeInTheDocument();
+		expect(screen.getByRole("radio", { name: /^Goldstein, Barbara Books: 2/ })).toBeChecked();
+
+		await person.click(screen.getByRole("radio", { name: /^Barbara Goldstein Books: 1/ }));
+		await person.click(screen.getByRole("button", { name: "Use this spelling" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Being applied to 3 books.");
+		expect(screen.getByRole("link", { name: "See how it goes" })).toHaveAttribute("href", "/bulk/bulk-1");
+		expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({
+			kind: "authors",
+			picks: [{ subject: "barbara goldstein", to: "Barbara Goldstein" }],
+		});
+		expect(await screen.findByText("Nothing to suggest here.")).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Title additions: 1" }));
+		expect(router.state.location.search).toEqual({ kind: "titles" });
+		expect(await screen.findByText("Das letzte Evangelium")).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", { name: "Das letzte Evangelium: Historischer Roman (German Edition)" }),
+		).toHaveAttribute("href", "/books/book-9");
+		await person.click(screen.getByRole("button", { name: "Leave it" }));
+		expect(await screen.findByText("Nothing to suggest here.")).toBeInTheDocument();
+		expect(server.requests.find((r) => r.path === "/cleanup/dismiss")?.body).toEqual({
+			kind: "titles",
+			subject: "book-9",
+		});
+	});
+
+	it("keeps a spelling typed in, of the same name", async () => {
+		const person = userEvent.setup();
+		renderApp("/cleanup");
+		await person.type(await screen.findByRole("textbox", { name: "Another spelling" }), "Barbara A. Goldstein");
+		expect(screen.getByRole("radio", { name: /^Another spelling:/ })).toBeChecked();
+		await person.click(screen.getByRole("button", { name: "Use this spelling" }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({
+				kind: "authors",
+				picks: [{ subject: "barbara goldstein", to: "Barbara A. Goldstein" }],
+			}),
+		);
+	});
+
+	it("applies every suggestion of a kind once asked twice, and shows how it goes", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/cleanup?kind=placeholders");
+		expect(await screen.findByText("“authors_sort” is not a name.")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Apply all 2" }));
+		expect(server.requests.some((r) => r.path === "/cleanup/apply")).toBe(false);
+		await person.click(screen.getByRole("button", { name: "Apply all" }));
+		expect(await screen.findByRole("heading", { name: "Editing many books" })).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/bulk/bulk-1");
+		expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({ kind: "placeholders" });
+	});
+
+	it("is not offered to a reader", async () => {
+		server.withAccount("Rob", "a long password", "reader").signedInAs("Rob");
+		const { router } = renderApp("/cleanup");
+		expect(await screen.findByRole("link", { name: "Library" })).toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: "Clean up" })).not.toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+	});
+});

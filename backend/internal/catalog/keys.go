@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 
@@ -126,4 +127,13 @@ func SortName(name string) string {
 		start--
 	}
 	return strings.Join(words[start:], " ") + ", " + strings.Join(words[:start], " ") + suffix
+}
+
+// PersonKey is the key of a name with its words in sorted order:
+// "Goldstein, Barbara" and "Barbara Goldstein" are one person to it. It is
+// the SQL function person_key, which authors.person_key holds.
+func PersonKey(name string) string {
+	words := strings.Fields(Key(name))
+	slices.Sort(words)
+	return strings.Join(words, " ")
 }

@@ -9,6 +9,7 @@ import {
 	useRouteContext,
 } from "@tanstack/react-router";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
+import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
 import { picksFrom } from "@/books/filters";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
@@ -26,6 +27,7 @@ import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
 import { Wishlist } from "@/routes/wishlist";
 import { BookEditPage } from "@/routes/book-edit";
 import { FindDetails } from "@/routes/book-find";
+import { Cleanup } from "@/routes/cleanup";
 import { Review } from "@/routes/review";
 import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
@@ -271,6 +273,28 @@ const reviewRoute = createRoute({
 	component: Review,
 });
 
+const cleanupRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/cleanup",
+	validateSearch: (search): { kind?: CleanupKind } => ({
+		kind: oneOf(CLEANUP_KINDS, search.kind),
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: function CleanupPage() {
+		const navigate = cleanupRoute.useNavigate();
+		return (
+			<Cleanup
+				kind={cleanupRoute.useSearch().kind ?? "authors"}
+				onKind={(kind) => navigate({ search: { kind } })}
+			/>
+		);
+	},
+});
+
 const readPdfRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId/read/$fileId",
@@ -420,7 +444,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

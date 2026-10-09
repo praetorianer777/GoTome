@@ -46,7 +46,7 @@ WHERE b.library_id = $1
     OR (b.title_key = $3
         AND EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                     WHERE c.book_id = b.id AND c.role = 'author'
-                      AND a.name_key = ANY($4::text[])))
+                      AND a.person_key IN (SELECT person_key(k) FROM unnest($4::text[]) AS k)))
   )
 ORDER BY (EXISTS (SELECT 1 FROM book_identifiers i
                   WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY($2::text[]))) DESC,
@@ -63,8 +63,9 @@ type FindPlaceholderParams struct {
 }
 
 // The placeholder in the library that is the book described: one that
-// shares an ISBN with it, or else has its title and one of its authors.
-// The one wished for first wins.
+// shares an ISBN with it, or else has its title and one of its authors,
+// whichever way round the author's name is written. The one wished for
+// first wins.
 func (q *Queries) FindPlaceholder(ctx context.Context, arg FindPlaceholderParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, findPlaceholder,
 		arg.LibraryID,

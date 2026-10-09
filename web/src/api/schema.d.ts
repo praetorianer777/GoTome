@@ -551,6 +551,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggested fixes for how the books the caller sees are described, of one kind, with how many there are of each */
+        get: operations["listCleanup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees */
+        post: operations["applyCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave a suggested fix: it stays away while what it was about stays as it is */
+        post: operations["dismissCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections": {
         parameters: {
             query?: never;
@@ -1699,6 +1750,52 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        CleanupApplied: {
+            /** Format: uuid */
+            id: string;
+            total: number;
+        };
+        CleanupApplyRequest: {
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles";
+            picks?: components["schemas"]["CleanupPick"][];
+        };
+        CleanupCounts: {
+            authors: number;
+            clashes: number;
+            placeholders: number;
+            titles: number;
+        };
+        CleanupDismissRequest: {
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles";
+            subject: string;
+        };
+        CleanupList: {
+            counts: components["schemas"]["CleanupCounts"];
+            nextCursor?: string;
+            suggestions: components["schemas"]["CleanupSuggestion"][];
+        };
+        CleanupName: {
+            books: number;
+            name: string;
+        };
+        CleanupPick: {
+            subject: string;
+            to?: string;
+        };
+        CleanupSuggestion: {
+            /** Format: uuid */
+            book?: string;
+            books: number;
+            /** @enum {string} */
+            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle";
+            found: components["schemas"]["CleanupName"][];
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles";
+            subject: string;
+            suggested?: string;
         };
         Collection: {
             books: number;
@@ -3543,6 +3640,106 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BulkStatus"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCleanup: {
+        parameters: {
+            query?: {
+                /** @description Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series) or titles (what a shop added to a title). */
+                kind?: "authors" | "placeholders" | "clashes" | "titles";
+                /** @description Where the page before ended, as its nextCursor says; suggestions about the most books come first. */
+                cursor?: string;
+                /** @description How many suggestions a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    applyCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CleanupApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupApplied"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CleanupDismissRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

@@ -41,7 +41,8 @@ var errWrittenMeanwhile = errors.New("the file was written by another job meanwh
 
 // Edit changes how a book is described, as catalog.EditTx does, and has the
 // change written into the book's EPUBs in libraries GOtome may change, so
-// that it travels with the files.
+// that it travels with the files, and the book's duplicates looked for
+// again.
 func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
@@ -50,21 +51,31 @@ func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e
 		if !e.ChangesValues() {
 			return nil
 		}
-		_, err := s.WriteBackTx(ctx, tx, id)
-		return err
+		return s.describedTx(ctx, tx, id)
 	})
 }
 
+// describedTx follows a change to how a book is described: its EPUBs are
+// written and its duplicates looked for again.
+func (s *Service) describedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	if _, err := s.WriteBackTx(ctx, tx, id); err != nil {
+		return err
+	}
+	if s.OnDescribed == nil {
+		return nil
+	}
+	return s.OnDescribed(ctx, tx, id)
+}
+
 // ChangeTx makes one book's part of a bulk change, as catalog.ChangeTx
-// does, inside a transaction the caller runs, and has what it changed
-// written into the book's EPUBs as Edit does.
+// does, inside a transaction the caller runs, and follows it up as Edit
+// does.
 func (s *Service) ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error) {
 	changed, err := catalog.ChangeTx(ctx, tx, scope, id, c)
 	if err != nil || !changed.Values {
 		return changed, err
 	}
-	_, err = s.WriteBackTx(ctx, tx, id)
-	return changed, err
+	return changed, s.describedTx(ctx, tx, id)
 }
 
 // WriteBackTx queues the writing of the book's metadata into each of its

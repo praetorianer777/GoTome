@@ -8,12 +8,19 @@ INSERT INTO bulk_change_books (bulk_change_id, position, book_id)
 SELECT sqlc.arg(bulk_change_id), b.ord::integer, b.id
 FROM unnest(sqlc.arg(book_ids)::uuid[]) WITH ORDINALITY AS b (id, ord);
 
+-- name: AddBulkChangeBookChanges :exec
+-- Books each changed their own way: changes[i] is book_ids[i]'s.
+INSERT INTO bulk_change_books (bulk_change_id, position, book_id, change)
+SELECT sqlc.arg(bulk_change_id), b.ord::integer, b.id, c.change
+FROM unnest(sqlc.arg(book_ids)::uuid[]) WITH ORDINALITY AS b (id, ord)
+JOIN unnest(sqlc.arg(changes)::jsonb[]) WITH ORDINALITY AS c (change, ord) ON c.ord = b.ord;
+
 -- name: GetBulkChange :one
 SELECT * FROM bulk_changes WHERE id = $1;
 
 -- name: NextBulkChangeBooks :many
 -- The books whose turn has not come yet, in the order they were chosen.
-SELECT book_id
+SELECT book_id, change
 FROM bulk_change_books
 WHERE bulk_change_id = $1 AND outcome IS NULL
 ORDER BY position

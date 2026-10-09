@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
@@ -164,6 +165,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.SSO = sso.NewService(a.pool, a.server.Auth, a.settings)
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
+	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)

@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/config"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
@@ -226,8 +227,10 @@ func serve() error {
 		}
 	}
 	scans.OnFilesChanged = duplicates.EnqueueTx
+	scans.OnDescribed = duplicates.EnqueueTx
 	changes := bulk.NewService(pool, scans, matches, log)
 	follows := releases.NewService(pool, meta, log)
+	fixes := cleanup.NewService(pool, changes)
 	follows.Events = events
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
@@ -329,6 +332,7 @@ func serve() error {
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Releases:   follows,
+		Cleanup:    fixes,
 		Index:      searchIndex,
 
 		Notifications: notify.NewService(pool),

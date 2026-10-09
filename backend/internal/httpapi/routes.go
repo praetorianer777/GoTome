@@ -359,6 +359,23 @@ func (s *Server) routes() []Route {
 			Permission: auth.MetadataEdit, Handler: s.replaceDuplicate,
 		},
 		{
+			Method: http.MethodGet, Path: "/cleanup", ID: "listCleanup",
+			Summary: "Suggested fixes for how the books the caller sees are described, of one kind, with how many there are of each", Tag: "books",
+			Query: cleanupQuery{}, Response: cleanupList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCleanup,
+		},
+		{
+			Method: http.MethodPost, Path: "/cleanup/apply", ID: "applyCleanup",
+			Summary: "Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees", Tag: "books",
+			Request: cleanupApplyRequest{}, Response: cleanupApplied{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.applyCleanup,
+		},
+		{
+			Method: http.MethodPost, Path: "/cleanup/dismiss", ID: "dismissCleanup",
+			Summary: "Leave a suggested fix: it stays away while what it was about stays as it is", Tag: "books",
+			Request: cleanupDismissRequest{}, Status: http.StatusNoContent,
+			Permission: auth.MetadataEdit, Handler: s.dismissCleanup,
+		},
+		{
 			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
 			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
 			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,

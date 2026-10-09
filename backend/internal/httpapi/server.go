@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -84,6 +85,8 @@ type Server struct {
 	Similar *similar.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
+	// Cleanup suggests fixes for how books are described.
+	Cleanup *cleanup.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

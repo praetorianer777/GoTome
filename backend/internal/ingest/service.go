@@ -121,6 +121,10 @@ type Service struct {
 	// restored or purged one of a book's files: its duplicates are looked
 	// for again.
 	OnFilesChanged func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// OnDescribed, when set, runs in the transaction of an edit that changed
+	// how a book is described: a new title or author may make it the
+	// duplicate of another.
+	OnDescribed func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.

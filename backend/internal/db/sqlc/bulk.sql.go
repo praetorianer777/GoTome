@@ -11,6 +11,25 @@ import (
 	"github.com/google/uuid"
 )
 
+const addBulkChangeBookChanges = `-- name: AddBulkChangeBookChanges :exec
+INSERT INTO bulk_change_books (bulk_change_id, position, book_id, change)
+SELECT $1, b.ord::integer, b.id, c.change
+FROM unnest($2::uuid[]) WITH ORDINALITY AS b (id, ord)
+JOIN unnest($3::jsonb[]) WITH ORDINALITY AS c (change, ord) ON c.ord = b.ord
+`
+
+type AddBulkChangeBookChangesParams struct {
+	BulkChangeID uuid.UUID
+	BookIds      []uuid.UUID
+	Changes      [][]byte
+}
+
+// Books each changed their own way: changes[i] is book_ids[i]'s.
+func (q *Queries) AddBulkChangeBookChanges(ctx context.Context, arg AddBulkChangeBookChangesParams) error {
+	_, err := q.db.Exec(ctx, addBulkChangeBookChanges, arg.BulkChangeID, arg.BookIds, arg.Changes)
+	return err
+}
+
 const addBulkChangeBooks = `-- name: AddBulkChangeBooks :exec
 INSERT INTO bulk_change_books (bulk_change_id, position, book_id)
 SELECT $1, b.ord::integer, b.id
@@ -167,7 +186,7 @@ func (q *Queries) ListBulkChangeBooks(ctx context.Context, arg ListBulkChangeBoo
 }
 
 const nextBulkChangeBooks = `-- name: NextBulkChangeBooks :many
-SELECT book_id
+SELECT book_id, change
 FROM bulk_change_books
 WHERE bulk_change_id = $1 AND outcome IS NULL
 ORDER BY position
@@ -179,20 +198,25 @@ type NextBulkChangeBooksParams struct {
 	Limit        int32
 }
 
+type NextBulkChangeBooksRow struct {
+	BookID uuid.UUID
+	Change []byte
+}
+
 // The books whose turn has not come yet, in the order they were chosen.
-func (q *Queries) NextBulkChangeBooks(ctx context.Context, arg NextBulkChangeBooksParams) ([]uuid.UUID, error) {
+func (q *Queries) NextBulkChangeBooks(ctx context.Context, arg NextBulkChangeBooksParams) ([]NextBulkChangeBooksRow, error) {
 	rows, err := q.db.Query(ctx, nextBulkChangeBooks, arg.BulkChangeID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []uuid.UUID{}
+	items := []NextBulkChangeBooksRow{}
 	for rows.Next() {
-		var book_id uuid.UUID
-		if err := rows.Scan(&book_id); err != nil {
+		var i NextBulkChangeBooksRow
+		if err := rows.Scan(&i.BookID, &i.Change); err != nil {
 			return nil, err
 		}
-		items = append(items, book_id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

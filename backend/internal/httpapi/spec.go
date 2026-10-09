@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -91,6 +92,11 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["FollowRequest.kind"] = follows
 	b.FieldOverrides["Following.kind"] = follows
 	b.FieldOverrides["Release.precision"] = &openapi.Schema{Type: "string", Enum: []string{"day", "month", "year"}}
+	cleanups := &openapi.Schema{Type: "string", Enum: cleanup.Kinds}
+	b.FieldOverrides["CleanupSuggestion.kind"] = cleanups
+	b.FieldOverrides["CleanupApplyRequest.kind"] = cleanups
+	b.FieldOverrides["CleanupDismissRequest.kind"] = cleanups
+	b.FieldOverrides["CleanupSuggestion.fix"] = &openapi.Schema{Type: "string", Enum: cleanup.Fixes}
 	b.FieldOverrides["StatsEvent.event"] = &openapi.Schema{Type: "string", Enum: []string{"started", "finished"}}
 	failure := &openapi.Response{
 		Description: "The request failed.",
