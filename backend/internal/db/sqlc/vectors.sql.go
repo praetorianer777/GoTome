@@ -50,6 +50,50 @@ func (q *Queries) GetBookMetadataText(ctx context.Context, bookID uuid.UUID) (st
 	return column_1, err
 }
 
+const listBookTraits = `-- name: ListBookTraits :many
+SELECT b.id, b.title, b.series_id,
+       COALESCE(array_agg(a.person_key ORDER BY c.position) FILTER (WHERE a.person_key IS NOT NULL), '{}')::text[] AS people
+FROM books b
+LEFT JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author'
+LEFT JOIN authors a ON a.id = c.author_id
+WHERE b.id = ANY($1::uuid[])
+GROUP BY b.id
+`
+
+type ListBookTraitsRow struct {
+	ID       uuid.UUID
+	Title    string
+	SeriesID *uuid.UUID
+	People   []string
+}
+
+// What a similar-check compares books by: the title, the series and the
+// authors, each by person_key.
+func (q *Queries) ListBookTraits(ctx context.Context, ids []uuid.UUID) ([]ListBookTraitsRow, error) {
+	rows, err := q.db.Query(ctx, listBookTraits, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookTraitsRow{}
+	for rows.Next() {
+		var i ListBookTraitsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.SeriesID,
+			&i.People,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBooksToEmbed = `-- name: ListBooksToEmbed :many
 SELECT b.id AS book_id,
        f.id AS text_file_id,
@@ -265,6 +309,65 @@ func (q *Queries) ListSimilarBooks(ctx context.Context, arg ListSimilarBooksPara
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSimilarCheckSample = `-- name: ListSimilarCheckSample :many
+WITH people AS (
+    SELECT a.person_key, count(DISTINCT c.book_id) AS books
+    FROM book_contributors c
+    JOIN authors a ON a.id = c.author_id
+    JOIN books b ON b.id = c.book_id
+    WHERE c.role = 'author' AND b.deleted_at IS NULL AND NOT b.placeholder
+    GROUP BY a.person_key
+)
+SELECT b.id
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_vectors v
+              WHERE v.book_id = b.id AND v.kind = 'content'
+                AND v.model = $1::text AND v.model_version = $2::text)
+  AND EXISTS (SELECT 1 FROM book_contributors c
+              JOIN authors a ON a.id = c.author_id
+              JOIN people p ON p.person_key = a.person_key
+              WHERE c.book_id = b.id AND c.role = 'author' AND p.books >= $3::int)
+ORDER BY md5(b.id::text)
+LIMIT $4::int
+`
+
+type ListSimilarCheckSampleParams struct {
+	Model        string
+	ModelVersion string
+	MinBooks     int32
+	Max          int32
+}
+
+// The books a similar-check asks about: with a content vector of the model,
+// by an author with at least min_books books in either order of the name,
+// in the order of a hash of their ID, so a library gives the same sample
+// each time.
+func (q *Queries) ListSimilarCheckSample(ctx context.Context, arg ListSimilarCheckSampleParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listSimilarCheckSample,
+		arg.Model,
+		arg.ModelVersion,
+		arg.MinBooks,
+		arg.Max,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

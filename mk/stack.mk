@@ -96,6 +96,10 @@ stack-logs: ## Print the stack's logs so far and return
 psql: ## Open psql in the running stack's database
 	docker compose exec db psql -U gotome -d gotome
 
+.PHONY: similar-check
+similar-check: ## Measure the similar books of the running stack's library: make similar-check ARGS="-n 300 -v"
+	docker compose exec -T app gotome similar-check $(ARGS)
+
 .PHONY: stack-up
 stack-up: stack-env ## The gate's stack: build and start it, and wait until both services are healthy
 	docker compose up -d --build --wait --quiet-pull
