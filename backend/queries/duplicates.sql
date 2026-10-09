@@ -1,9 +1,10 @@
 -- name: FindDuplicateEvidence :many
 -- Every other book that looks like this one, with why: a file of the same
 -- bytes, a file of the same content where the bytes differ, a shared ISBN,
--- or the same title and an author in common. Only books in the library,
--- neither deleted, merged nor wished for, count. Each branch starts from the
--- book's own rows and reaches the others through an index.
+-- or the same title and an author in common, whichever way round the
+-- author's name is written. Only books in the library, neither deleted,
+-- merged nor wished for, count. Each branch starts from the book's own rows
+-- and reaches the others through an index.
 WITH me AS (
     SELECT bk.id, bk.title_key FROM books bk
     WHERE bk.id = sqlc.arg(book_id) AND bk.deleted_at IS NULL AND NOT bk.placeholder
@@ -32,8 +33,9 @@ FROM me
 JOIN books ob ON ob.title_key = me.title_key AND ob.id <> me.id
                AND ob.deleted_at IS NULL AND NOT ob.placeholder
 JOIN book_contributors c ON c.book_id = me.id AND c.role = 'author'
-JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = c.author_id
 JOIN authors a ON a.id = c.author_id
+JOIN authors oa ON oa.person_key = a.person_key
+JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = oa.id
 WHERE me.title_key <> '';
 
 -- name: UpsertDuplicatePair :one

@@ -725,6 +725,31 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   leaves fields locked before as they are and reports them (`skipped`),
   unless `includeLocked`.
 
+## Clean-up
+
+- `internal/cleanup` suggests fixes for how books are described (#179), of
+  four kinds: one person under several spellings (`authors`, by
+  `authors.person_key`, the words of `name_key` sorted, the SQL function
+  `person_key` and `catalog.PersonKey`), a value a tool left in place of an
+  author (`placeholders`, the keys in `placeholderAuthors`), an author
+  whose books are in a series of the same name (`clashes`: the author goes
+  where every book is in it, the series where only some are), and what a
+  shop added to a title (`titles`, `cleanup.TitleAdditions`, which the SQL
+  function `title_has_addition` repeats into the stored column
+  `books.title_addition`; a test holds the two to one answer).
+- Nothing is stored about what is found: the SQL functions
+  `cleanup_<kind>` work it out from the books the viewer sees each time
+  (`GET /cleanup`, `metadata:edit`). A dismissal (`cleanup_dismissals`)
+  holds for the value it was dismissed at, so a suggestion comes back when
+  what it was about changes.
+- Applying (`POST /cleanup/apply`) is a bulk change of each book its own
+  way (`bulk.StartEach`, `bulk_change_books.change`): a person's edit that
+  leaves locked fields as they are. `catalog.Change` renames authors in
+  place (`RenameAuthors`) and sets a title for this.
+- Matching compares `person_key`: duplicates by title and author, and
+  placeholders a file fulfils. An edit that changes how a book is described
+  queues its duplicate check (`ingest.Service.OnDescribed`).
+
 ## Notifications
 
 - `internal/notify` keeps what people are told: a row in `notifications`

@@ -49,6 +49,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | collections | 4 ms | 5 ms |  |
 | reading statistics | 11 ms | 32 ms |  |
 | new books | 6 ms | 9 ms |  |
+| clean-up: authors | 237 ms | 219 ms | reads every credit and title |
+| clean-up: titles | 177 ms | 159 ms | reads every credit and title |
 | trash | 1 ms | 2 ms |  |
 | jobs | 0 ms | 1 ms |  |
 | libraries | 21 ms | 21 ms | counts every file |

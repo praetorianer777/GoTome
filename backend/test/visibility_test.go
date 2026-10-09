@@ -106,6 +106,7 @@ func readCases() map[string][]readCase {
 		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.
 		"listReleases":    {{path: "/releases", why: "the caller's own follows; proven in TestAReleaseIsInTheLibraryOnlyWhereItIsSeen"}},
 		"listReview":      {{path: "/matches", control: "insider"}},
+		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {
 			{path: "/collections/{sharedCollection}", control: "insider"},
@@ -226,6 +227,18 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	if _, err := a.pool.Exec(ctx, `WITH p AS (INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2) RETURNING id)
 		INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, 'isbn', '9780306406157' FROM p`, pairA, pairB); err != nil {
 		t.Fatal(err)
+	}
+	// Another book of the vault by the secret's author, with the name the
+	// other way round: one person under two spellings, for the clean-up to
+	// suggest making one.
+	status, other := a.upload(admin, vault, "other.pdf", []byte("%PDF-1.4 other "+mark))
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, other)
+	}
+	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+other["bookId"].(string), map[string]any{
+		"contributors": []map[string]string{{"name": mark + ", Abditus", "role": "author"}},
+	}); status != 200 {
+		t.Fatalf("edit: %d %v", status, out)
 	}
 	// A trashed file of the secret, for the trash to list.
 	if _, err := a.pool.Exec(ctx, `INSERT INTO book_files (book_id, library_id, kind, format, rel_path, size_bytes, modified_at, trashed_at)

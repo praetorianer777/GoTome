@@ -9,6 +9,7 @@ import { type MessageKey, t } from "@/i18n";
 /** The fields a book's result may name as skipped, by what the form calls them. */
 function fieldName(field: string): string {
 	const known: Record<string, MessageKey> = {
+		title: "bulk.field.title",
 		contributors: "bulk.field.authors",
 		series: "bulk.field.series",
 		publisher: "bulk.field.publisher",

@@ -24,6 +24,7 @@ type Author struct {
 	SortName  string
 	NameKey   string
 	CreatedAt time.Time
+	PersonKey *string
 }
 
 type Book struct {
@@ -52,6 +53,7 @@ type Book struct {
 	PrimaryTextFileID  *uuid.UUID
 	AuthorSort         string
 	Placeholder        bool
+	TitleAddition      bool
 }
 
 type BookChunk struct {
@@ -154,6 +156,15 @@ type BulkChangeBook struct {
 	Outcome      *string
 	Message      *string
 	Skipped      []string
+	Change       []byte
+}
+
+type CleanupDismissal struct {
+	Kind        string
+	Subject     string
+	Value       string
+	DismissedBy *uuid.UUID
+	DismissedAt time.Time
 }
 
 type Collection struct {

@@ -60,6 +60,8 @@ ORDER BY b.sort_title, b.id LIMIT ` + arg(MaxSelection+1)
 // locks it; unlike one, it leaves a field that was locked before as it is,
 // unless IncludeLocked.
 type Change struct {
+	// Title is set on one book at a time, as a clean-up does.
+	Title     *string `json:"title,omitempty"`
 	Language  *string `json:"language,omitempty"`
 	Published *string `json:"published,omitempty"`
 	Publisher *string `json:"publisher,omitempty"`
@@ -71,6 +73,9 @@ type Change struct {
 	Authors       *[]string `json:"authors,omitempty"`
 	AddAuthors    []string  `json:"addAuthors,omitempty"`
 	RemoveAuthors []string  `json:"removeAuthors,omitempty"`
+	// RenameAuthors puts each To in the place of the author of the same key
+	// as From, so the order of the authors stays.
+	RenameAuthors []Rename  `json:"renameAuthors,omitempty"`
 	Tags          *[]string `json:"tags,omitempty"`
 	AddTags       []string  `json:"addTags,omitempty"`
 	RemoveTags    []string  `json:"removeTags,omitempty"`
@@ -79,15 +84,22 @@ type Change struct {
 	IncludeLocked bool            `json:"includeLocked,omitempty"`
 }
 
+// Rename is one name in place of another.
+type Rename struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
 // fields are the fields the change sets values of.
 func (c Change) fields() []string {
 	var out []string
 	for field, set := range map[string]bool{
+		FieldTitle:        c.Title != nil,
 		FieldLanguage:     c.Language != nil,
 		FieldPublished:    c.Published != nil,
 		FieldPublisher:    c.Publisher != nil,
 		FieldSeries:       c.Series != nil,
-		FieldContributors: c.Authors != nil || len(c.AddAuthors) > 0 || len(c.RemoveAuthors) > 0,
+		FieldContributors: c.Authors != nil || len(c.AddAuthors) > 0 || len(c.RemoveAuthors) > 0 || len(c.RenameAuthors) > 0,
 		FieldTags:         c.Tags != nil || len(c.AddTags) > 0 || len(c.RemoveTags) > 0,
 	} {
 		if set {
@@ -104,11 +116,16 @@ func (c *Change) Check() error {
 	if len(c.fields()) == 0 && len(c.Locks) == 0 {
 		return EditError{"change": "Say what to change."}
 	}
-	probe := Edit{Language: c.Language, Published: c.Published, Locks: c.Locks}
+	probe := Edit{Title: c.Title, Language: c.Language, Published: c.Published, Locks: c.Locks}
 	if err := probe.check(); err != nil {
 		return err
 	}
 	c.Language = probe.Language
+	for _, r := range c.RenameAuthors {
+		if Key(r.From) == "" || Key(r.To) == "" {
+			return EditError{"renameAuthors": "Name the author and what to call them."}
+		}
+	}
 	return nil
 }
 
@@ -147,6 +164,9 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 	use := func(field string) bool { return !slices.Contains(out.Skipped, field) }
 
 	var e Edit
+	if c.Title != nil && use(FieldTitle) && clean(*c.Title) != book.Title {
+		e.Title = c.Title
+	}
 	if c.Language != nil && use(FieldLanguage) && *c.Language != book.Language {
 		e.Language = c.Language
 	}
@@ -173,10 +193,18 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 			}
 		}
 		names := make([]string, len(authors))
+		renamed := make([]string, len(authors))
 		for i, a := range authors {
 			names[i] = a.Name
+			renamed[i] = a.Name
+			for _, r := range c.RenameAuthors {
+				if Key(r.From) == Key(a.Name) {
+					renamed[i] = r.To
+					authors[i] = NewContributor{Name: r.To, Role: RoleAuthor}
+				}
+			}
 		}
-		if after := revise(names, c.Authors, c.AddAuthors, c.RemoveAuthors); !slices.Equal(keys(after), keys(names)) {
+		if after := revise(renamed, c.Authors, c.AddAuthors, c.RemoveAuthors); !slices.Equal(keys(after), keys(names)) {
 			var credits []NewContributor
 			for _, name := range after {
 				credit := NewContributor{Name: name, Role: RoleAuthor}

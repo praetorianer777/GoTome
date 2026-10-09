@@ -1770,6 +1770,162 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/cleanup": {
+      "get": {
+        "operationId": "listCleanup",
+        "summary": "Suggested fixes for how the books the caller sees are described, of one kind, with how many there are of each",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series) or titles (what a shop added to a title).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "authors",
+                "placeholders",
+                "clashes",
+                "titles"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Where the page before ended, as its nextCursor says; suggestions about the most books come first.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many suggestions a page holds, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/cleanup/apply": {
+      "post": {
+        "operationId": "applyCleanup",
+        "summary": "Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupApplied"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/cleanup/dismiss": {
+      "post": {
+        "operationId": "dismissCleanup",
+        "summary": "Leave a suggested fix: it stays away while what it was about stays as it is",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupDismissRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/collections": {
       "get": {
         "operationId": "listCollections",
@@ -5891,6 +6047,188 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "CleanupApplied": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "total"
+        ]
+      },
+      "CleanupApplyRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "authors",
+              "placeholders",
+              "clashes",
+              "titles"
+            ]
+          },
+          "picks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupPick"
+            }
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "CleanupCounts": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "integer"
+          },
+          "clashes": {
+            "type": "integer"
+          },
+          "placeholders": {
+            "type": "integer"
+          },
+          "titles": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "authors",
+          "placeholders",
+          "clashes",
+          "titles"
+        ]
+      },
+      "CleanupDismissRequest": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "authors",
+              "placeholders",
+              "clashes",
+              "titles"
+            ]
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "subject"
+        ]
+      },
+      "CleanupList": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/CleanupCounts"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupSuggestion"
+            }
+          }
+        },
+        "required": [
+          "suggestions",
+          "counts"
+        ]
+      },
+      "CleanupName": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "books"
+        ]
+      },
+      "CleanupPick": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject"
+        ]
+      },
+      "CleanupSuggestion": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "books": {
+            "type": "integer"
+          },
+          "fix": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "removeAuthor",
+              "clearSeries",
+              "retitle"
+            ]
+          },
+          "found": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupName"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "authors",
+              "placeholders",
+              "clashes",
+              "titles"
+            ]
+          },
+          "subject": {
+            "type": "string"
+          },
+          "suggested": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "found",
+          "fix",
+          "books"
         ]
       },
       "Collection": {

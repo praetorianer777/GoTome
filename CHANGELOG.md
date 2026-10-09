@@ -14,6 +14,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A "Clean up" page suggests fixes for how books are described, each to
+  apply or leave with one click, or all of a kind at once: one author under
+  several spellings ("Goldstein, Barbara" and "Barbara Goldstein") made
+  one, values such as "authors_sort" or "Unknown" taken off as authors, an
+  author who is the name of their books' series, and what shops add to
+  titles, such as "(German Edition)" or ": Roman". A fix is your edit:
+  fields you locked stay as they are.
+- Duplicates are found, and wishes fulfilled, whichever way round an
+  author's name is written; editing a book's title or authors looks for
+  its duplicates again.
 - Follow authors and series for their new books: from a book's page, or by
   name on the new "New books" page, which lists what is announced and what
   came out in the last year. GOtome asks Hardcover (with its token) and

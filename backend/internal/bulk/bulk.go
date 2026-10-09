@@ -134,6 +134,46 @@ func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.U
 	return id, err
 }
 
+// BookChange is one book's own part of a bulk change.
+type BookChange struct {
+	BookID uuid.UUID
+	Change catalog.Change
+}
+
+// StartEach records an edit that changes each book its own way, as a
+// clean-up does, and queues the job that makes it. Every change must have
+// passed catalog.Change.Check.
+func (s *Service) StartEach(ctx context.Context, scope library.Scope, changes []BookChange) (uuid.UUID, error) {
+	ids := make([]uuid.UUID, len(changes))
+	data := make([][]byte, len(changes))
+	for i, c := range changes {
+		ids[i] = c.BookID
+		var err error
+		if data[i], err = json.Marshal(c.Change); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	var id uuid.UUID
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		var err error
+		id, err = q.CreateBulkChange(ctx, sqlc.CreateBulkChangeParams{
+			CreatedBy: scope.Viewer, SeesAll: scope.SeesAll, Action: ActionEdit, Change: []byte("{}"),
+		})
+		if err != nil {
+			return err
+		}
+		if err := q.AddBulkChangeBookChanges(ctx, sqlc.AddBulkChangeBookChangesParams{BulkChangeID: id, BookIds: ids, Changes: data}); err != nil {
+			return err
+		}
+		_, err = s.Queue.InsertTx(ctx, tx, Args{BulkChangeID: id}, jobs.InsertOpts{
+			Queue: jobs.QueueMetadata, MaxAttempts: jobAttempts,
+		})
+		return err
+	})
+	return id, err
+}
+
 // Run works through the books of a bulk change whose turn has not come, for
 // a while, and reports whether it got to the end. A book's outcome is
 // recorded in the transaction that changes it, so a run cut off and run
@@ -162,7 +202,14 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 			return true, s.finish(ctx, row)
 		}
 		for _, book := range next {
-			if err := s.one(ctx, row.Action, scope, change, id, book); err != nil {
+			own := change
+			if book.Change != nil {
+				own = catalog.Change{}
+				if err := json.Unmarshal(book.Change, &own); err != nil {
+					return false, err
+				}
+			}
+			if err := s.one(ctx, row.Action, scope, own, id, book.BookID); err != nil {
 				return false, err
 			}
 		}

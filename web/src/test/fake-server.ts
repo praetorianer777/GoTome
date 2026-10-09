@@ -17,6 +17,7 @@ import type {
 } from "@/notifications/api";
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
+import type { CleanupKind, CleanupSuggestion } from "@/books/cleanup";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { WishRequest } from "@/books/wishes";
@@ -124,6 +125,8 @@ export class FakeServer {
 			failures: { provider: string; message: string }[];
 		}
 	> = {};
+	/** What the clean-up page suggests. */
+	cleanup: CleanupSuggestion[] = [];
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
@@ -364,6 +367,9 @@ export class FakeServer {
 						history: [],
 					},
 				);
+			}
+			if (path === "/cleanup" || path.startsWith("/cleanup/")) {
+				return this.answerCleanup(path, url.searchParams, body);
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
@@ -1314,6 +1320,49 @@ export class FakeServer {
 			books: results,
 		});
 		return Response.json({ id, total: results.length }, { status: 202 });
+	}
+
+	private answerCleanup(path: string, query: URLSearchParams, body: unknown): Response {
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+		}
+		const counts = { authors: 0, placeholders: 0, clashes: 0, titles: 0 };
+		for (const s of this.cleanup) counts[s.kind]++;
+		if (path === "/cleanup") {
+			const kind = query.get("kind") ?? "authors";
+			return Response.json({ suggestions: this.cleanup.filter((s) => s.kind === kind), counts });
+		}
+		const req = body as { kind: CleanupKind; subject?: string; picks?: { subject: string; to?: string }[] };
+		const chosen = this.cleanup.filter(
+			(s) =>
+				s.kind === req.kind &&
+				(path === "/cleanup/dismiss"
+					? s.subject === req.subject
+					: !req.picks || req.picks.some((p) => p.subject === s.subject)),
+		);
+		if (chosen.length === 0) {
+			return Response.json(
+				{ error: { code: "not_found", message: "There is no such suggestion; it may have been dealt with." } },
+				{ status: 404 },
+			);
+		}
+		this.cleanup = this.cleanup.filter((s) => !chosen.includes(s));
+		if (path === "/cleanup/dismiss") {
+			return new Response(null, { status: 204 });
+		}
+		const total = chosen.reduce((n, s) => n + s.books, 0);
+		const id = `bulk-${this.bulks.length + 1}`;
+		this.bulks.push({
+			id,
+			action: "edit",
+			createdAt: "2026-01-04T00:00:00Z",
+			finishedAt: "2026-01-04T00:00:01Z",
+			total,
+			done: total,
+			counts: { changed: total },
+			books: [],
+		});
+		return Response.json({ id, total }, { status: 202 });
 	}
 
 	private answerMatches(

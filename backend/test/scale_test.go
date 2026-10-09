@@ -53,6 +53,10 @@ var wholeByDesign = map[string]string{
 	"similar books": "compares with every book",
 	// Each library's files are counted and their sizes added up.
 	"libraries": "counts every file",
+	// Suggestions are about the whole catalogue: every author credit is
+	// grouped by person, every title matched, and each kind counted.
+	"clean-up: authors": "reads every credit and title",
+	"clean-up: titles":  "reads every credit and title",
 }
 
 // planCatcher keeps the plans Postgres reports while a view is asked.
@@ -196,6 +200,18 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			UNION ALL
 			SELECT b.id, a.id, 'author', 1 FROM scale_books b JOIN scale_authors a ON a.n = (b.n * 29 + 5) % 12000
 			WHERE b.n % 7 = 0 AND (b.n * 29 + 5) % 12000 <> b.n * 17 % 12000`},
+		// Some authors under their name the other way round too, and some
+		// titles with what a shop added, for the clean-up to find.
+		{sql: `INSERT INTO authors (name, sort_name, name_key)
+			SELECT split_part(name_key, ' ', 2) || ', ' || split_part(name_key, ' ', 1), sort_name,
+			       split_part(name_key, ' ', 2) || ' ' || split_part(name_key, ' ', 1)
+			FROM authors a JOIN scale_authors s ON s.id = a.id WHERE s.n < 3000
+			ON CONFLICT (name_key) DO NOTHING`},
+		{sql: `UPDATE book_contributors c SET author_id = r.id
+			FROM scale_books b, authors a, authors r
+			WHERE c.book_id = b.id AND b.n % 9 = 4 AND c.position = 0 AND a.id = c.author_id
+			  AND r.name_key = split_part(a.name_key, ' ', 2) || ' ' || split_part(a.name_key, ' ', 1) AND r.id <> a.id`},
+		{sql: `UPDATE books b SET title = b.title || ' (German Edition)' FROM scale_books s WHERE s.id = b.id AND s.n % 5 = 0`},
 		{sql: `UPDATE books b SET author_sort = a.sort_name
 			FROM book_contributors c JOIN authors a ON a.id = c.author_id
 			WHERE c.book_id = b.id AND c.position = 0`},
@@ -348,6 +364,8 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "collections", path: "/collections"},
 		{name: "reading statistics", path: "/me/stats?days=30"},
 		{name: "new books", path: "/releases"},
+		{name: "clean-up: authors", path: "/cleanup?kind=authors"},
+		{name: "clean-up: titles", path: "/cleanup?kind=titles"},
 		{name: "trash", path: "/trash"},
 		{name: "jobs", path: "/jobs"},
 		{name: "libraries", path: "/libraries"},
