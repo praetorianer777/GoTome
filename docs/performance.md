@@ -41,7 +41,7 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | author names | 21 ms | 20 ms |  |
 | full-text search | 185 ms | 185 ms |  |
 | book | 2 ms | 2 ms |  |
-| similar books | 229 ms | 229 ms | compares with every book |
+| similar books | 236 ms | 225 ms | compares with every book |
 | duplicates | 9 ms | 10 ms |  |
 | review | 32 ms | 31 ms |  |
 | collection | 64 ms | 74 ms |  |

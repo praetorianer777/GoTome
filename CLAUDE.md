@@ -876,7 +876,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   where both books have both, otherwise the kind they share decides.
   Visibility is `visible_library_ids` in the query; the book itself, books
   it shares a duplicate pair with in any state, and its `book_relations`
-  are left out. The book page shows them as a rail (`books/similar.tsx`),
+  are left out. Of the nearest `candidates` times as many as it shows,
+  `pick` takes at most `perAuthor` by one author and `perSeries` from one
+  series, and no copy of the book or of one taken (`isCopy`: the same
+  title once a shop's additions are off, or one the other's with a
+  subtitle, and an author in common). The book page shows them as a rail (`books/similar.tsx`),
   and nothing while there are none.
 - `gotome similar-check` (`Service.Check`, `make similar-check`) measures
   them on an installation's own library: a sample by a hash of the book

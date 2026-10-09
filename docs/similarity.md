@@ -36,3 +36,16 @@ The owner's library: 49,666 books, mostly German, multilingual-e5-small,
 | When | Change | Own author | Own series | Copies | Authors |
 |---|---|---:|---:|---:|---:|
 | 2026-10-09 | none, measured by hand in SQL (300 books) | 51% | 69% | seen | – |
+| 2026-10-09 | none, `similar-check` (300 books, 68 in a series) | 55.2% | 48.5% | 0.0% | 5.0 |
+| 2026-10-09 | #182: two books per author and series, copies left out | 18.7% | 14.3% | 0.0% | 8.3 |
+
+The first `similar-check` counted as copies only titles equal once a
+shop's additions were off; since #182 it also counts a title that is
+another's with a subtitle ("Rauklands Sohn" and "Rauklands Sohn: Raukland
+Trilogie"), which it found none of among the 300.
+
+The caps fill a list from the nearest 20 times as many books as it shows;
+at 8 times, 146 of the 3,000 places stayed empty, for books of authors
+with hundreds of books. Seen in the lists: a number in a title draws
+other titles with it ("CC-5 streng geheim" and "Schlachthof 5"), which is
+the metadata vector's (#184).
