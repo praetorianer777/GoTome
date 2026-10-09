@@ -14,6 +14,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- `gotome similar-check` measures how good the similar books are on your
+  own library: how many are by the book's own author or from its series,
+  and how many are copies of it (`docs/similarity.md`).
 - A "Clean up" page suggests fixes for how books are described, each to
   apply or leave with one click, or all of a kind at once: one author under
   several spellings ("Goldstein, Barbara" and "Barbara Goldstein") made

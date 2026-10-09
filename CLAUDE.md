@@ -878,6 +878,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   it shares a duplicate pair with in any state, and its `book_relations`
   are left out. The book page shows them as a rail (`books/similar.tsx`),
   and nothing while there are none.
+- `gotome similar-check` (`Service.Check`, `make similar-check`) measures
+  them on an installation's own library: a sample by a hash of the book
+  ID, the shares by the book's own author and series, copies, and authors
+  among them (`docs/similarity.md`, with the measurements). A change to how
+  similar books are found or embedded is measured with it before and
+  after.
 
 ## Background jobs
 

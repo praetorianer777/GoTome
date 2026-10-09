@@ -3,7 +3,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -75,13 +77,14 @@ const (
 const usage = `Usage: gotome <command>
 
 Commands:
-  serve        Bring the database schema up to date, then run the server
-  init         Write the database password for a new installation, once
-  healthcheck  Probe a running server; exits non-zero unless it is ready
-  embed-check  Load ONNX Runtime; with -reference, check the embedding model against it
-  migrate      Bring the database schema up to date and exit
-  openapi      Write the API's OpenAPI document to the given file, or to stdout
-  version      Print the version
+  serve          Bring the database schema up to date, then run the server
+  init           Write the database password for a new installation, once
+  healthcheck    Probe a running server; exits non-zero unless it is ready
+  embed-check    Load ONNX Runtime; with -reference, check the embedding model against it
+  migrate        Bring the database schema up to date and exit
+  similar-check  Measure the similar books of a sample of the library (-h for options)
+  openapi        Write the API's OpenAPI document to the given file, or to stdout
+  version        Print the version
 `
 
 func main() {
@@ -107,6 +110,8 @@ func run(args []string) error {
 		return embedCheck(args[1:])
 	case "migrate":
 		return migrate()
+	case "similar-check":
+		return similarCheck(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -429,6 +434,68 @@ func migrate() error {
 		return err
 	}
 	pool.Close()
+	return nil
+}
+
+// similarCheck measures the similar books of a sample of the library, as
+// they are shown now: how many are by the book's own author, from its
+// series, or a copy of it. It reads only.
+func similarCheck(args []string) error {
+	flags := flag.NewFlagSet("similar-check", flag.ContinueOnError)
+	n := flags.Int("n", 300, "how many books to ask about")
+	k := flags.Int("k", 10, "how many similar books to take of each")
+	asJSON := flags.Bool("json", false, "print the report as JSON")
+	verbose := flags.Bool("v", false, "list each book with its similar books")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := cfg.RequireSecretKey(); err != nil {
+		return err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	store, err := settings.Open(ctx, pool, box)
+	if err != nil {
+		return err
+	}
+	r, err := similar.NewService(pool, store.Embedding, nil, log).Check(ctx, *n, *k)
+	if err != nil {
+		return err
+	}
+	if !*verbose {
+		r.Samples = nil
+	}
+	if *asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	for _, s := range r.Samples {
+		fmt.Printf("%s\n", s.Title)
+		for _, t := range s.Neighbours {
+			fmt.Printf("    %s\n", t)
+		}
+	}
+	fmt.Printf("Books asked about           %d (%d in a series, %d without similar books)\n", r.Books, r.InSeries, r.Empty)
+	fmt.Printf("Similar books               %d, at most %d each\n", r.Neighbours, *k)
+	fmt.Printf("By the book's own author    %.1f%%\n", 100*r.SameAuthor)
+	fmt.Printf("From the book's series      %.1f%% (of those of books in a series)\n", 100*r.SameSeries)
+	fmt.Printf("Copies of the book          %.1f%%\n", 100*r.Copies)
+	fmt.Printf("Authors among them          %.1f on average\n", r.Authors)
 	return nil
 }
 

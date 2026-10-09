@@ -100,3 +100,40 @@ WHERE b.deleted_at IS NULL AND NOT b.placeholder
       WHERE (r.book_a, r.book_b) IN ((n.book_id, sqlc.arg(book_id)::uuid), (sqlc.arg(book_id)::uuid, n.book_id)))
 ORDER BY score DESC, n.book_id
 LIMIT sqlc.arg(max)::int;
+
+-- name: ListSimilarCheckSample :many
+-- The books a similar-check asks about: with a content vector of the model,
+-- by an author with at least min_books books in either order of the name,
+-- in the order of a hash of their ID, so a library gives the same sample
+-- each time.
+WITH people AS (
+    SELECT a.person_key, count(DISTINCT c.book_id) AS books
+    FROM book_contributors c
+    JOIN authors a ON a.id = c.author_id
+    JOIN books b ON b.id = c.book_id
+    WHERE c.role = 'author' AND b.deleted_at IS NULL AND NOT b.placeholder
+    GROUP BY a.person_key
+)
+SELECT b.id
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_vectors v
+              WHERE v.book_id = b.id AND v.kind = 'content'
+                AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text)
+  AND EXISTS (SELECT 1 FROM book_contributors c
+              JOIN authors a ON a.id = c.author_id
+              JOIN people p ON p.person_key = a.person_key
+              WHERE c.book_id = b.id AND c.role = 'author' AND p.books >= sqlc.arg(min_books)::int)
+ORDER BY md5(b.id::text)
+LIMIT sqlc.arg(max)::int;
+
+-- name: ListBookTraits :many
+-- What a similar-check compares books by: the title, the series and the
+-- authors, each by person_key.
+SELECT b.id, b.title, b.series_id,
+       COALESCE(array_agg(a.person_key ORDER BY c.position) FILTER (WHERE a.person_key IS NOT NULL), '{}')::text[] AS people
+FROM books b
+LEFT JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author'
+LEFT JOIN authors a ON a.id = c.author_id
+WHERE b.id = ANY(sqlc.arg(ids)::uuid[])
+GROUP BY b.id;
