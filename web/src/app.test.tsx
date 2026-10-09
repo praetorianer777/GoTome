@@ -4259,3 +4259,42 @@ describe("cleaning up how books are described", () => {
 		expect(router.state.location.pathname).toBe("/");
 	});
 });
+
+describe("searching by a description", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Death at La Fenice", { description: "Commissario Brunetti, a detective in Venice, investigates a death." })
+			.withBook("Brunetti's Cookbook", { description: "Recipes from the detective's Venice." })
+			.withBook("A Gardening Year", { description: "What to sow when." });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("lists the books nearest what is described, and keeps it in the address", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/search");
+		await person.click(await screen.findByRole("button", { name: "Description" }));
+		expect(screen.getByRole("button", { name: "Description" })).toHaveAttribute("aria-pressed", "true");
+		expect(screen.queryByRole("complementary", { name: "Filters" })).not.toBeInTheDocument();
+		await person.type(screen.getByRole("searchbox", { name: "What the books are about" }), "a detective in Venice");
+		await person.keyboard("{Enter}");
+
+		const found = within(await screen.findByRole("region", { name: "Books found" }));
+		const links = await found.findAllByRole("link", { name: /Fenice|Cookbook/ });
+		expect(links.map((l) => l.textContent)).toEqual(["Death at La Fenice", "Brunetti's Cookbook"]);
+		expect(found.queryByRole("link", { name: "A Gardening Year" })).not.toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ mode: "description", q: "a detective in Venice" });
+		expect(server.requests.some((r) => r.path.startsWith("/search/similar?"))).toBe(true);
+	});
+
+	it("says so while the model cannot run", async () => {
+		server.describable = false;
+		renderApp("/search?mode=description&q=Venice");
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"Searching by description needs the embedding model, which cannot run here yet.",
+		);
+	});
+});

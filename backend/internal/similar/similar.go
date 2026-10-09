@@ -98,6 +98,8 @@ type Service struct {
 	config Config
 	open   Opener
 	Queue  Queue
+	// queries embeds the descriptions Describe is asked about.
+	queries queries
 }
 
 // NewService returns the Service; Queue is set once the runner exists.

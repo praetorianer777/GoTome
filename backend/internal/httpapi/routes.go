@@ -433,6 +433,11 @@ func (s *Server) routes() []Route {
 			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAudio,
 		},
 		{
+			Method: http.MethodGet, Path: "/search/similar", ID: "searchDescribed",
+			Summary: "Books whose text and description are nearest a description of what they are to be about, best first", Tag: "books",
+			Query: describedQuery{}, Response: describedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchDescribed,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/similar", ID: "listSimilarBooks",
 			Summary: "The books most like one by what they are about, the nearest first; its copies and related books left out", Tag: "books",
 			Query: similarQuery{}, Response: similarList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listSimilar,

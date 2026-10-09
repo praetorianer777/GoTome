@@ -446,6 +446,7 @@ func similarCheck(args []string) error {
 	k := flags.Int("k", 10, "how many similar books to take of each")
 	asJSON := flags.Bool("json", false, "print the report as JSON")
 	verbose := flags.Bool("v", false, "list each book with its similar books")
+	describe := flags.String("describe", "", "list the books nearest this description instead, k of them")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -472,7 +473,21 @@ func similarCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	r, err := similar.NewService(pool, store.Embedding, nil, log).Check(ctx, *n, *k)
+	vectors := similar.NewService(pool, store.Embedding, similar.OnnxOpener(embed.OnnxOptions{
+		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
+		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
+	}), log)
+	if *describe != "" {
+		titles, err := vectors.DescribeTitles(ctx, *describe, *k)
+		if err != nil {
+			return err
+		}
+		for _, title := range titles {
+			fmt.Println(title)
+		}
+		return nil
+	}
+	r, err := vectors.Check(ctx, *n, *k)
 	if err != nil {
 		return err
 	}

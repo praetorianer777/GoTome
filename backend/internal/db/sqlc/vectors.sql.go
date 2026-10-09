@@ -50,6 +50,41 @@ func (q *Queries) GetBookMetadataText(ctx context.Context, bookID uuid.UUID) (st
 	return column_1, err
 }
 
+const listBookTitles = `-- name: ListBookTitles :many
+SELECT b.id, b.title,
+       COALESCE((SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                 WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position LIMIT 1), '')::text AS author
+FROM books b
+WHERE b.id = ANY($1::uuid[])
+`
+
+type ListBookTitlesRow struct {
+	ID     uuid.UUID
+	Title  string
+	Author string
+}
+
+// Books by their title and first author, for a check to print.
+func (q *Queries) ListBookTitles(ctx context.Context, ids []uuid.UUID) ([]ListBookTitlesRow, error) {
+	rows, err := q.db.Query(ctx, listBookTitles, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookTitlesRow{}
+	for rows.Next() {
+		var i ListBookTitlesRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Author); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBookTraits = `-- name: ListBookTraits :many
 SELECT b.id, b.title, b.series_id,
        COALESCE(array_agg(a.person_key ORDER BY c.position) FILTER (WHERE a.person_key IS NOT NULL), '{}')::text[] AS people
@@ -84,6 +119,77 @@ func (q *Queries) ListBookTraits(ctx context.Context, ids []uuid.UUID) ([]ListBo
 			&i.SeriesID,
 			&i.People,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBooksNearQuery = `-- name: ListBooksNearQuery :many
+WITH near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> $6::text::vector)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> $6::text::vector)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    WHERE v.model = $7::text AND v.model_version = $8::text
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata)
+        END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
+ORDER BY score DESC, n.book_id
+LIMIT $5::int OFFSET $4::int
+`
+
+type ListBooksNearQueryParams struct {
+	Viewer       uuid.UUID
+	SeesAll      bool
+	LibraryID    *uuid.UUID
+	Skip         int32
+	Max          int32
+	Query        string
+	Model        string
+	ModelVersion string
+}
+
+type ListBooksNearQueryRow struct {
+	BookID uuid.UUID
+	Score  float64
+}
+
+// The books whose vectors of the model are nearest a query's, among those
+// the viewer sees, of one library when named, as ListSimilarBooks blends
+// them: the best first, a page at a time.
+func (q *Queries) ListBooksNearQuery(ctx context.Context, arg ListBooksNearQueryParams) ([]ListBooksNearQueryRow, error) {
+	rows, err := q.db.Query(ctx, listBooksNearQuery,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.LibraryID,
+		arg.Skip,
+		arg.Max,
+		arg.Query,
+		arg.Model,
+		arg.ModelVersion,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBooksNearQueryRow{}
+	for rows.Next() {
+		var i ListBooksNearQueryRow
+		if err := rows.Scan(&i.BookID, &i.Score); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

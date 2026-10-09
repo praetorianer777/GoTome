@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -171,7 +172,10 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
 	a.server.Duplicates = dedupe.NewService(a.pool, a.server.Books, quiet)
 	a.server.Duplicates.Queue = queue
-	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding, nil, quiet)
+	// Descriptions are embedded as the books' passages were in the tests:
+	// by the fake model, under the name the settings give.
+	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
+		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
 	a.works = &fakeWorks{}

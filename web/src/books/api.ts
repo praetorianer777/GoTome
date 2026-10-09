@@ -91,6 +91,25 @@ const TEXT_PAGE_SIZE = 20;
  * The books whose text holds the words, best first, a page at a time. The
  * results are ranked, so pages are counted rather than keyed.
  */
+const DESCRIBED_PAGE_SIZE = 24;
+
+/** The books nearest a description of what they are to be about, a page at a time. */
+export function describedQuery(params: { q: string; library?: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["books", "described", params],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET("/search/similar", {
+					params: {
+						query: { ...params, limit: DESCRIBED_PAGE_SIZE, offset: pageParam || undefined },
+					},
+				})
+			).data ?? { books: [] },
+		initialPageParam: 0,
+		getNextPageParam: (last) => last.nextOffset,
+	});
+}
+
 export function textSearchQuery(params: {
 	q: string;
 	library?: string;

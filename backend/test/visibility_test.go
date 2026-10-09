@@ -104,8 +104,11 @@ func readCases() map[string][]readCase {
 		// The releases are of what the caller follows, which the sources
 		// list for anyone; that one is in a library only those who see it
 		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.
-		"listReleases":    {{path: "/releases", why: "the caller's own follows; proven in TestAReleaseIsInTheLibraryOnlyWhereItIsSeen"}},
-		"listReview":      {{path: "/matches", control: "insider"}},
+		"listReleases": {{path: "/releases", why: "the caller's own follows; proven in TestAReleaseIsInTheLibraryOnlyWhereItIsSeen"}},
+		"listReview":   {{path: "/matches", control: "insider"}},
+		// Every book with vectors is ranked, the secret too where it is
+		// seen: TestADescriptionFindsTheNearestBooksTheViewerSees.
+		"searchDescribed": {{path: "/search/similar", query: q("q", "{title}"), why: "ranks every visible book; proven in TestADescriptionFindsTheNearestBooksTheViewerSees"}},
 		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {

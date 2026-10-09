@@ -1256,6 +1256,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose text and description are nearest a description of what they are to be about, best first */
+        get: operations["searchDescribed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search/status": {
         parameters: {
             query?: never;
@@ -1881,6 +1898,10 @@ export interface components {
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             username: string;
+        };
+        DescribedList: {
+            books: components["schemas"]["BookSummary"][];
+            nextOffset?: number;
         };
         DuplicateCheckRequest: {
             /** Format: uuid */
@@ -5223,6 +5244,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TextRereadResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchDescribed: {
+        parameters: {
+            query?: {
+                /** @description What the books are to be about, in a few words or sentences, in any language the model reads. */
+                q?: string;
+                /** @description A library's ID: only its books. Left out, every library the caller may see. */
+                library?: string;
+                /** @description How many of the best books to pass over, as the page before's nextOffset says. */
+                offset?: number;
+                /** @description How many books a page holds, at most 100; 24 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescribedList"];
                 };
             };
             /** @description The request failed. */
