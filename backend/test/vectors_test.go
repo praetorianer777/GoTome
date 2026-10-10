@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,6 +29,7 @@ type vectorApp struct {
 	*app
 	vectors *similar.Service
 	opened  atomic.Int32
+	admin   *http.Client
 	adminID uuid.UUID
 	text    uuid.UUID
 	bare    uuid.UUID
@@ -37,7 +39,7 @@ type vectorApp struct {
 func newVectorApp(t *testing.T) *vectorApp {
 	a := &vectorApp{app: newApp(t)}
 	admin, adminID := a.signedIn("admin", "admin")
-	a.adminID = uuid.MustParse(adminID)
+	a.admin, a.adminID = admin, uuid.MustParse(adminID)
 	books := t.TempDir()
 	long := strings.Repeat("Emma Woodhouse, handsome, clever, and rich, with a comfortable home and a happy disposition. ", 400)
 	writeEPUB(t, filepath.Join(books, "Emma.epub"), emmaMetadata, nil, long, long, "The end.")

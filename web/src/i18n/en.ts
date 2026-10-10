@@ -573,6 +573,15 @@ export const en = {
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.duplicates": "Look for duplicates of {book}",
 	"jobs.kind.sign": "Compare the text of {file} with other books",
+	"embedding.title": "Working out what books are about",
+	"embedding.intro":
+		"Each book's description and text are turned into vectors, by which similar books are found and books are searched by a description.",
+	"embedding.progress":
+		"Described: {metadata} of {books} books. Read: {content} of {withText} books with text.",
+	"embedding.running": "Running, with {model}.",
+	"embedding.paused": "Paused. {model} goes on with the books not yet done once it is started again.",
+	"embedding.pause": "Pause",
+	"embedding.start": "Start",
 	"searchIndex.title": "Search index",
 	"searchIndex.intro":
 		"Read the text again once GOtome reads a format better; rebuild the index after the database was upgraded, which GOtome also does by itself when it starts. Search keeps working meanwhile, with what it has.",

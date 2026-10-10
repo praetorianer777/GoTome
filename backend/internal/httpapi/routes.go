@@ -6,6 +6,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/search"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -328,6 +329,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/search/status", ID: "searchStatus",
 			Summary: "How much of the books' text search knows, and whether its index is being rebuilt", Tag: "books",
 			Query: searchStatusQuery{}, Response: search.IndexStatus{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.searchStatus,
+		},
+		{
+			Method: http.MethodGet, Path: "/embedding/status", ID: "embeddingStatus",
+			Summary: "How far the books the caller sees are embedded with the chosen model, and whether embedding goes on", Tag: "books",
+			Response: similar.Status{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.embeddingStatus,
 		},
 		{
 			Method: http.MethodPost, Path: "/search/reread", ID: "rereadText",

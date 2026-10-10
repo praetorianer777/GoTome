@@ -4298,3 +4298,37 @@ describe("searching by a description", () => {
 		);
 	});
 });
+
+describe("pausing the embedding", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows how far the books are, and pauses and starts it again", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		const person = userEvent.setup();
+		renderApp("/jobs");
+		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
+		expect(await panel.findByText("Described: 80 of 120 books. Read: 60 of 100 books with text.")).toBeInTheDocument();
+		expect(panel.getByText("Running, with intfloat/multilingual-e5-small.")).toBeInTheDocument();
+
+		await person.click(panel.getByRole("button", { name: "Pause" }));
+		expect(await panel.findByRole("button", { name: "Start" })).toBeInTheDocument();
+		expect(panel.getByText(/^Paused\./)).toBeInTheDocument();
+		expect(server.requests.find((r) => r.method === "PATCH" && r.path === "/settings")?.body).toEqual({
+			values: { "embedding.enabled": "off" },
+		});
+
+		await person.click(panel.getByRole("button", { name: "Start" }));
+		expect(await panel.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		expect(server.embedding.enabled).toBe(true);
+	});
+
+	it("shows an editor the progress without the button", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		renderApp("/jobs");
+		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
+		expect(await panel.findByText(/^Described: 80 of 120 books/)).toBeInTheDocument();
+		expect(panel.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+	});
+});

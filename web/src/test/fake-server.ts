@@ -125,6 +125,15 @@ export class FakeServer {
 			failures: { provider: string; message: string }[];
 		}
 	> = {};
+	/** How far the books are embedded, as the jobs page shows it. */
+	embedding = {
+		model: "intfloat/multilingual-e5-small",
+		enabled: true,
+		books: 120,
+		withText: 100,
+		metadata: 80,
+		content: 60,
+	};
 	/** Whether the embedding model runs, for the search by description. */
 	describable = true;
 	/** What the clean-up page suggests. */
@@ -357,6 +366,9 @@ export class FakeServer {
 			}
 			if (path === "/search/status") {
 				return Response.json(this.searchStatus);
+			}
+			if (path === "/embedding/status") {
+				return Response.json(this.embedding);
 			}
 			if (path === "/search/reread") {
 				const target = body as { library?: string; book?: string };
@@ -1701,6 +1713,10 @@ export class FakeServer {
 		}
 		if (method === "PATCH") {
 			const values = body.values ?? {};
+			const embedding = values["embedding.enabled"];
+			if (embedding) {
+				this.embedding.enabled = embedding === "on";
+			}
 			const language = values["metadata.language"];
 			if (language && !/^[a-z]{2,3}$/i.test(language.trim())) {
 				return refuse(422, "validation_failed", "Some fields need attention.", {

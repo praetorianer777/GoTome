@@ -116,3 +116,12 @@ func (s *Server) searchDescribed(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
 }
+
+func (s *Server) embeddingStatus(w http.ResponseWriter, r *http.Request) error {
+	status, err := s.Similar.Status(r.Context(), library.ScopeOf(*UserFrom(r.Context())))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, status)
+	return nil
+}
