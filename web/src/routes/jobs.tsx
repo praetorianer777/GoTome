@@ -1,3 +1,4 @@
+import { EmbeddingPanel } from "@/jobs/embedding";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -87,6 +88,7 @@ export function Jobs() {
 				</p>
 			</div>
 			<SearchIndexPanel />
+			<EmbeddingPanel />
 			<fieldset className="flex flex-wrap items-center gap-2 text-sm">
 				<legend className="sr-only">{t("jobs.filter")}</legend>
 				{GROUPS.map((g) => (

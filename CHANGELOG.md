@@ -21,6 +21,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- The jobs page shows how far GOtome has got working out what books are
+  about, and lets an administrator pause it and start it again with one
+  button, for instance to have the GPU back for a while.
 - Books can be embedded on a GPU: with an Ollama server set as the
   embedding server, the larger multilingual model bge-m3 works out what
   books are about, about two and a half times as fast as the CPU did with

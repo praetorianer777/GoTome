@@ -2567,6 +2567,43 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/embedding/status": {
+      "get": {
+        "operationId": "embeddingStatus",
+        "summary": "How far the books the caller sees are embedded with the chosen model, and whether embedding goes on",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
     "/files/{fileId}": {
       "delete": {
         "operationId": "purgeFile",
@@ -8463,6 +8500,37 @@
           "year",
           "finishes",
           "books"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "withText": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "enabled",
+          "books",
+          "withText",
+          "metadata",
+          "content"
         ]
       },
       "Storage": {

@@ -169,3 +169,20 @@ SELECT b.id, b.title,
                  WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position LIMIT 1), '')::text AS author
 FROM books b
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: CountEmbedded :one
+-- How far the books the viewer sees are embedded with the model: all of
+-- them, those with text, and those with their metadata and their content
+-- vector of it.
+SELECT count(*)::int AS books,
+       count(f.id)::int AS with_text,
+       count(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata'
+             AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text))::int AS metadata,
+       count(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'
+             AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text))::int AS content
+FROM books b
+LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));

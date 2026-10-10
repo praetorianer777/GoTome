@@ -880,6 +880,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   offline) is `ErrUnavailable`: the pass ends without a retry and the next
   one tries again. `GOTOME_EMBED_THREADS` (half the CPUs) bounds a pass.
   Tests embed with `embed.Fake` under the model the settings name.
+- `GET /embedding/status` (`Service.Status`, `index:rebuild`) counts the
+  visible books and those with each vector of the chosen model, and says
+  whether embedding is on; the jobs page shows it (`jobs/embedding.tsx`)
+  with a Pause / Start button for `settings:manage`, which sets
+  `embedding.enabled` through the settings route.
 - `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under

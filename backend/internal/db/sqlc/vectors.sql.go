@@ -11,6 +11,55 @@ import (
 	"github.com/google/uuid"
 )
 
+const countEmbedded = `-- name: CountEmbedded :one
+SELECT count(*)::int AS books,
+       count(f.id)::int AS with_text,
+       count(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata'
+             AND v.model = $1::text AND v.model_version = $2::text))::int AS metadata,
+       count(*) FILTER (WHERE EXISTS (
+           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'
+             AND v.model = $1::text AND v.model_version = $2::text))::int AS content
+FROM books b
+LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+`
+
+type CountEmbeddedParams struct {
+	Model        string
+	ModelVersion string
+	Viewer       uuid.UUID
+	SeesAll      bool
+}
+
+type CountEmbeddedRow struct {
+	Books    int32
+	WithText int32
+	Metadata int32
+	Content  int32
+}
+
+// How far the books the viewer sees are embedded with the model: all of
+// them, those with text, and those with their metadata and their content
+// vector of it.
+func (q *Queries) CountEmbedded(ctx context.Context, arg CountEmbeddedParams) (CountEmbeddedRow, error) {
+	row := q.db.QueryRow(ctx, countEmbedded,
+		arg.Model,
+		arg.ModelVersion,
+		arg.Viewer,
+		arg.SeesAll,
+	)
+	var i CountEmbeddedRow
+	err := row.Scan(
+		&i.Books,
+		&i.WithText,
+		&i.Metadata,
+		&i.Content,
+	)
+	return i, err
+}
+
 const deleteBookVector = `-- name: DeleteBookVector :exec
 DELETE FROM book_vectors WHERE book_id = $1 AND kind = $2
 `

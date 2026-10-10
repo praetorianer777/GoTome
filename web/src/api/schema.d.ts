@@ -758,6 +758,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embedding/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the books the caller sees are embedded with the chosen model, and whether embedding goes on */
+        get: operations["embeddingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}": {
         parameters: {
             query?: never;
@@ -2400,6 +2417,14 @@ export interface components {
             books: number;
             finishes: number;
             year: number;
+        };
+        Status: {
+            books: number;
+            content: number;
+            enabled: boolean;
+            metadata: number;
+            model: string;
+            withText: number;
         };
         Storage: {
             quotaBytes?: number;
@@ -4162,6 +4187,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    embeddingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
             };
             /** @description The request failed. */
             default: {
