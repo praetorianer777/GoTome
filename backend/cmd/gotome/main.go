@@ -209,12 +209,12 @@ func serve() error {
 		}
 		return duplicates.EnqueueTx(ctx, tx, bookID)
 	}
-	vectors := similar.NewService(pool, settingStore.Embedding, similar.OnnxOpener(embed.OnnxOptions{
+	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
 		Runtime:  cfg.OnnxRuntime,
 		ModelDir: cfg.ModelDir,
 		Threads:  cfg.EmbedThreads,
 		Fetch:    embed.FetchOptions{Offline: cfg.Offline, Log: log},
-	}), log)
+	}), settingStore.EmbeddingServer), log)
 	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
 		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID); err != nil {
 			return err
@@ -473,10 +473,10 @@ func similarCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	vectors := similar.NewService(pool, store.Embedding, similar.OnnxOpener(embed.OnnxOptions{
+	vectors := similar.NewService(pool, store.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
 		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
 		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
-	}), log)
+	}), store.EmbeddingServer), log)
 	if *describe != "" {
 		titles, err := vectors.DescribeTitles(ctx, *describe, *k)
 		if err != nil {

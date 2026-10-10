@@ -21,6 +21,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Books can be embedded on a GPU: with an Ollama server set as the
+  embedding server, the larger multilingual model bge-m3 works out what
+  books are about, about two and a half times as fast as the CPU did with
+  the smaller one (`docs/embedding-server.md`). Switching models keeps the
+  vectors of the one before, so going back is at once.
 - Search by description: on the search page, describe what you want to
   read ("Ein Kommissar ermittelt in Venedig", "a family saga over three
   generations") and get the books whose text and description come

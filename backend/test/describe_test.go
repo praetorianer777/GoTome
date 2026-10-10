@@ -40,7 +40,7 @@ func TestADescriptionFindsTheNearestBooksTheViewerSees(t *testing.T) {
 
 	const wanted = "a detective story set in Venice"
 	fake := &embed.Fake{}
-	vecs, err := fake.Embed(context.Background(), []string{embed.Prefix + wanted})
+	vecs, err := fake.Embed(context.Background(), []string{embed.E5Small.Prefix + wanted})
 	if err != nil {
 		t.Fatal(err)
 	}

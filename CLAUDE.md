@@ -829,7 +829,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `internal/embed` is the `Embedder` (`docs/decisions/embedding-runtime.md`):
   `Onnx` runs `E5Small` (multilingual-e5-small, int8) on ONNX Runtime with
   the package's own Unigram tokenizer and mean pooling; `Fake` makes
-  vectors from a text's hash for tests. Passages are prefixed `Prefix`.
+  vectors from a text's hash for tests. Texts are prefixed with the spec's `Prefix`.
 - The binary is built with cgo and loads the library at run time
   (`LoadRuntime`, `GOTOME_ONNXRUNTIME`); the Dockerfile's `onnxruntime`
   stage takes it from ONNX Runtime's release for the image's architecture,
@@ -857,6 +857,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   holds the model, its revision and weights (`Version`), and the hash of
   its source: the metadata text, or the primary text file with when it was
   chunked and `recipe`. Placeholders and deleted or merged books have none.
+- A spec with a `Server` (`embed.BGEM3`) runs on an Ollama server, on a
+  GPU where there is one (#173, `docs/embedding-server.md`):
+  `similar.ServerOpener` opens it at the setting `embedding.server`
+  (`embed.OpenOllama`), which first checks the server's vectors (length,
+  and two sentences of one meaning nearer each other than a third);
+  otherwise the spec runs on ONNX Runtime. Ollama cuts each text at
+  `MaxTokens` (`num_ctx`), and the pass embeds `Parallel` books at once.
+  A server that stops answering (`embed.ErrServer`) ends the pass as
+  `ErrUnavailable`. Each model has its own vectors (`book_vectors` keyed by
+  book, kind and model, of any length), so the one before stays while
+  another is made, and answers again when chosen. The prefix is the spec's.
 - Nothing records which books are done but the vectors: `Service.Embed`
   walks the books in ID order and embeds those whose vectors are missing,
   of another model or of another source, so any pass may stop and the next

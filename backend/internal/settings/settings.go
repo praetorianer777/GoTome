@@ -59,6 +59,10 @@ const (
 	// EmbeddingModel is the name of one of embed.Specs. Another one has
 	// every book embedded again.
 	EmbeddingModel = "embedding.model"
+	// EmbeddingServer is the address of an Ollama server that runs the
+	// models GOtome does not run itself, such as bge-m3 on a GPU: the
+	// models of embed.Specs with a Server. Unset, they are not available.
+	EmbeddingServer = "embedding.server"
 	// Passwords is "on" or "off": whether people may sign in with a
 	// password. Off leaves it to administrators while none of them can sign
 	// in through the identity provider.
@@ -121,6 +125,7 @@ var Definitions = []Definition{
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
+	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
@@ -184,6 +189,16 @@ func issuer(v string) (string, error) {
 		return "", errors.New("Give the provider's issuer URL, such as https://auth.example.org/application/o/gotome/.")
 	}
 	return v, nil
+}
+
+// serverURL is the address of a server GOtome sends requests to, without a
+// path: http://host.docker.internal:11434.
+func serverURL(v string) (string, error) {
+	u, err := url.Parse(v)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.Fragment != "" {
+		return "", errors.New("Give the server's address, such as http://host.docker.internal:11434.")
+	}
+	return strings.TrimRight(v, "/"), nil
 }
 
 // scopes keeps the scopes space-separated, with openid among them.
@@ -495,4 +510,9 @@ func (s *Store) TrashRetention(ctx context.Context) (time.Duration, error) {
 		return 0, fmt.Errorf("%s: %w", TrashRetentionDays, err)
 	}
 	return time.Duration(days) * 24 * time.Hour, nil
+}
+
+// EmbeddingServer is the address of the embedding server, or "" for none.
+func (s *Store) EmbeddingServer(ctx context.Context) (string, error) {
+	return s.Text(ctx, EmbeddingServer)
 }
