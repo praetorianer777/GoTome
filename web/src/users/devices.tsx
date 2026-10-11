@@ -29,6 +29,16 @@ export function Devices({ username }: { username: string }) {
 				{t("devices.title")}
 			</h2>
 			<p className="text-slate-600 dark:text-slate-400">{t("devices.intro")}</p>
+			<p className="text-slate-600 dark:text-slate-400">
+				{t("devices.plugin")}{" "}
+				<a
+					href="/api/v1/koreader/plugin.zip"
+					download
+					className="text-brand-strong hover:underline dark:text-sky-400"
+				>
+					{t("devices.pluginDownload")}
+				</a>
+			</p>
 			<FormError error={devices.error ?? remove.error} />
 			{devices.data && devices.data.length > 0 && (
 				<ul className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">

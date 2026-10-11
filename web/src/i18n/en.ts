@@ -714,6 +714,9 @@ export const en = {
 	"devices.title": "E-readers",
 	"devices.intro":
 		"An e-reader with KOReader, or another app that reads OPDS catalogues, browses and downloads your books with a token of its own. It sees what you see, and nothing else of your account.",
+	"devices.plugin":
+		"With KOReader, the GOtome plugin fetches the books you send to the device by itself when Wi-Fi comes up: unpack it into KOReader's plugins folder, then enter your user name and the device's token under GOtome in its menu.",
+	"devices.pluginDownload": "Download the KOReader plugin",
 	"devices.lastUsed": "Last used {date}",
 	"devices.neverUsed": "Not used yet",
 	"devices.revoke": "Revoke",

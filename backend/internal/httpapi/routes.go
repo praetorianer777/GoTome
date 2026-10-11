@@ -230,6 +230,11 @@ func (s *Server) routes() []Route {
 			Permission: auth.SignedIn, Handler: s.createOwnDevice,
 		},
 		{
+			Method: http.MethodGet, Path: "/koreader/plugin.zip", ID: "getKOReaderPlugin",
+			Summary: "The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder", Tag: "auth",
+			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,
+		},
+		{
 			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
 			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,

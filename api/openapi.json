@@ -3246,6 +3246,44 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/koreader/plugin.zip": {
+      "get": {
+        "operationId": "getKOReaderPlugin",
+        "summary": "The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/kosync/syncs/progress": {
       "put": {
         "operationId": "kosyncPush",

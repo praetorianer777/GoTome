@@ -37,8 +37,30 @@ GOtome says since when the device has it. A book not yet downloaded can be
 taken back from its page. Sending a book the device has already queues it
 again.
 
-The KOReader plugin (#197) will fetch what was sent by itself when Wi-Fi
-comes up; until then, open **Sent to this device** in the catalogue.
+## The GOtome plugin for KOReader
+
+With the plugin, KOReader fetches what was sent by itself when Wi-Fi comes
+up, without opening the catalogue.
+
+1. On your GOtome profile, under **E-readers**, download the KOReader
+   plugin: `gotome.koplugin.zip`, which knows the address you downloaded
+   it from.
+2. Unpack it into KOReader's `plugins` folder (on most devices
+   `koreader/plugins/`, over USB), so that there is a folder
+   `gotome.koplugin` in it, and restart KOReader.
+3. In KOReader's menu, under **GOtome** (among the tools): enter your user
+   name and the device's token, and choose the folder books go into
+   (KOReader's home folder unless you choose another).
+
+**Fetch books sent here** fetches at once; **Fetch when Wi-Fi comes up**
+(on by default) does so every time the device connects. Each book is
+saved under its title, a number added where a file of that name exists,
+and leaves the queue once downloaded; one whose download broke off is
+tried again the next time. KOReader's file browser shows the new books at
+once.
+
+The token is kept in KOReader's settings on the device
+(`settings/gotome.lua`), as KOReader keeps its other accounts.
 
 ## What the catalogue offers
 

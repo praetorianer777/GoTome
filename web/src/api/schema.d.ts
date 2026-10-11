@@ -997,6 +997,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/koreader/plugin.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder */
+        get: operations["getKOReaderPlugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kosync/syncs/progress": {
         parameters: {
             query?: never;
@@ -5132,6 +5149,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getKOReaderPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
             /** @description The request failed. */

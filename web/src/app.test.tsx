@@ -1403,6 +1403,10 @@ describe("profile", () => {
 		const devices = within(
 			await screen.findByRole("region", { name: "E-readers" }),
 		);
+		expect(devices.getByRole("link", { name: "Download the KOReader plugin" })).toHaveAttribute(
+			"href",
+			"/api/v1/koreader/plugin.zip",
+		);
 		await person.type(devices.getByLabelText("Name of the device"), " ");
 		await person.click(devices.getByRole("button", { name: "Add a device" }));
 		expect(

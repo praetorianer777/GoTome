@@ -3,6 +3,8 @@
 package test
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"io"
 	"net/http"
@@ -207,5 +209,34 @@ func TestADisabledAccountsDevicesSignNobodyIn(t *testing.T) {
 	}
 	if status, _, _ := a.fetch(device, httpapi.APIPrefix+"/opds"); status != 401 {
 		t.Errorf("after: %d", status)
+	}
+}
+
+func TestTheKOReaderPluginIsToldWhereItCameFrom(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	reader, _ := a.signedIn("reader", "reader")
+	status, header, body := a.fetch(reader, httpapi.APIPrefix+"/koreader/plugin.zip")
+	if status != 200 || header.Get("Content-Type") != "application/zip" {
+		t.Fatalf("download: %d %s", status, header.Get("Content-Type"))
+	}
+	z, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var server string
+	for _, f := range z.File {
+		if f.Name == "gotome.koplugin/gotome_server.lua" {
+			rc, _ := f.Open()
+			data, _ := io.ReadAll(rc)
+			rc.Close()
+			server = string(data)
+		}
+	}
+	if !strings.Contains(server, `return "`+a.url+`"`) {
+		t.Errorf("the plugin's server: %q, want %s", server, a.url)
+	}
+	if status, _, _ := a.fetch(http.DefaultClient, httpapi.APIPrefix+"/koreader/plugin.zip"); status != 401 {
+		t.Errorf("signed out: %d", status)
 	}
 }
