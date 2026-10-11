@@ -199,6 +199,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   needs it calls `settings.Store.Secret` and must neither log nor send it.
 - `settings.Open` leaves a sealed check value on the first start and opens it on
   every later one: a start with another key fails with `ErrWrongKey`.
+- Code that holds a transaction reads settings, and everything else, on
+  that transaction (`Store.TextTx`), never through the pool: holding locks
+  while waiting for a second connection hangs every request once the pool
+  is taken by requests waiting for those locks (#189,
+  `TestQueueingALookupNeedsNoSecondConnection`). The pool holds at least
+  `db.minConns` connections, two of which the notification hub and River's
+  notifier keep.
 
 ## Libraries and visibility
 

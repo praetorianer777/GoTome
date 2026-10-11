@@ -445,11 +445,19 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 
 // Text returns a text setting, or its default while unset.
 func (s *Store) Text(ctx context.Context, key string) (string, error) {
+	return s.TextTx(ctx, s.pool, key)
+}
+
+// TextTx is Text inside a transaction, on its connection. Code that holds
+// a transaction must read a setting so: asking the pool for another
+// connection while holding locks waits forever once every connection is
+// taken by code waiting on those locks (#189).
+func (s *Store) TextTx(ctx context.Context, db sqlc.DBTX, key string) (string, error) {
 	d, ok := definition(key)
 	if !ok || d.Kind != KindText {
 		return "", fmt.Errorf("%w: %s", ErrUnknown, key)
 	}
-	row, err := sqlc.New(s.pool).GetSetting(ctx, key)
+	row, err := sqlc.New(db).GetSetting(ctx, key)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.Value == nil) {
 		return d.Default, nil
 	}
