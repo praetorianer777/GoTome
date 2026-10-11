@@ -31,7 +31,7 @@ func TestEmbeddingProgressCountsTheBooksTheCallerSees(t *testing.T) {
 		return out
 	}
 	// The book with text, the bare one and the vault's; the wish is none.
-	want := map[string]any{"model": embed.E5Small.Model.Name, "enabled": true, "books": 3.0, "withText": 1.0, "metadata": 1.0, "content": 0.0}
+	want := map[string]any{"model": embed.E5Small.Model.Name, "enabled": true, "books": 3.0, "withText": 1.0, "metadata": 1.0, "content": 0.0, "metadataLastHour": 1.0}
 	if got := status(admin); !sameMap(got, want) {
 		t.Errorf("before: %v, want %v", got, want)
 	}

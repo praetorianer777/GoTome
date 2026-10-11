@@ -914,6 +914,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   similar books are found or embedded is measured with it before and
   after.
 
+## Overview
+
+- `internal/stats` counts for the overview page (`routes/overview.tsx`,
+  #176), of the visible books and of one library when asked:
+  `GET /statistics` (`library:read`, `queries/stats.sql`) what they hold,
+  and `GET /statistics/work` (`index:rebuild`) how far the background
+  work is, each piece as done of all with the count of the last hour and
+  the minutes left at that pace (`stats.Step`). Files read go by
+  `extract_state` and `updated_at`, texts by `chunked_at`, vectors by
+  `similar.Service.Status`, and lookups and duplicate checks by their
+  River jobs (`jobsQuery`, by hand as sqlc does not know River's tables),
+  which the queue keeps for a while once finished. Both count every book
+  by design and are in the scale test.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

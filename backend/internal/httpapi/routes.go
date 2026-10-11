@@ -7,6 +7,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -324,6 +325,16 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/search", ID: "searchText",
 			Summary: "Books whose text holds the words, best first, with the passages that do", Tag: "books",
 			Query: fullTextQuery{}, Response: fullTextResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchText,
+		},
+		{
+			Method: http.MethodGet, Path: "/statistics", ID: "getLibraryFigures",
+			Summary: "What the libraries the caller sees hold: books, files, formats, languages, what is missing", Tag: "books",
+			Query: figuresQuery{}, Response: stats.Figures{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getLibraryFigures,
+		},
+		{
+			Method: http.MethodGet, Path: "/statistics/work", ID: "getWorkProgress",
+			Summary: "How far the background work on the caller's books is, with its pace and the time left", Tag: "books",
+			Query: figuresQuery{}, Response: stats.Work{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.getWorkProgress,
 		},
 		{
 			Method: http.MethodGet, Path: "/search/status", ID: "searchStatus",

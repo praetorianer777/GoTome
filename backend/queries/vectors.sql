@@ -171,18 +171,27 @@ FROM books b
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[]);
 
 -- name: CountEmbedded :one
--- How far the books the viewer sees are embedded with the model: all of
--- them, those with text, and those with their metadata and their content
--- vector of it.
+-- How far the books the viewer sees, of one library when named, are
+-- embedded with the model: all of them, those with text, those with their
+-- metadata and their content vector of it, and the metadata vectors made
+-- in the last hour. The vectors are grouped by book once and joined, which
+-- at 50,000 books is faster than looking each book's up.
 SELECT count(*)::int AS books,
        count(f.id)::int AS with_text,
-       count(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata'
-             AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text))::int AS metadata,
-       count(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'
-             AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text))::int AS content
+       count(*) FILTER (WHERE v.metadata)::int AS metadata,
+       count(*) FILTER (WHERE v.content)::int AS content,
+       count(*) FILTER (WHERE v.metadata_last_hour)::int AS metadata_last_hour
 FROM books b
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
+LEFT JOIN (
+    SELECT book_id,
+           bool_or(kind = 'metadata') AS metadata,
+           bool_or(kind = 'content') AS content,
+           bool_or(kind = 'metadata' AND embedded_at > now() - interval '1 hour') AS metadata_last_hour
+    FROM book_vectors
+    WHERE model = sqlc.arg(model)::text AND model_version = sqlc.arg(model_version)::text
+    GROUP BY book_id
+) v ON v.book_id = b.id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid);

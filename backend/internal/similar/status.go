@@ -3,6 +3,8 @@ package similar
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
@@ -19,17 +21,20 @@ type Status struct {
 	WithText int `json:"withText"`
 	Metadata int `json:"metadata"`
 	Content  int `json:"content"`
+	// MetadataLastHour is how many metadata vectors were made in the last
+	// hour, the pace of a pass.
+	MetadataLastHour int `json:"metadataLastHour"`
 }
 
-// Status counts the books the scope sees and their vectors of the chosen
-// model.
-func (s *Service) Status(ctx context.Context, scope library.Scope) (Status, error) {
+// Status counts the books the scope sees, of one library when given, and
+// their vectors of the chosen model.
+func (s *Service) Status(ctx context.Context, scope library.Scope, libraryID *uuid.UUID) (Status, error) {
 	spec, enabled, err := s.config(ctx)
 	if err != nil {
 		return Status{}, err
 	}
 	row, err := sqlc.New(s.pool).CountEmbedded(ctx, sqlc.CountEmbeddedParams{
-		Model: spec.Model.Name, ModelVersion: Version(spec.Model), Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+		Model: spec.Model.Name, ModelVersion: Version(spec.Model), Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID,
 	})
 	if err != nil {
 		return Status{}, err
@@ -37,5 +42,6 @@ func (s *Service) Status(ctx context.Context, scope library.Scope) (Status, erro
 	return Status{
 		Model: spec.Model.Name, Enabled: enabled,
 		Books: int(row.Books), WithText: int(row.WithText), Metadata: int(row.Metadata), Content: int(row.Content),
+		MetadataLastHour: int(row.MetadataLastHour),
 	}, nil
 }

@@ -70,6 +70,14 @@ func readCases() map[string][]readCase {
 		// Counts name no book; the call about the library proves it is
 		// kept to those who see it.
 		"searchStatus": {{path: "/search/status", query: q("library", "{library}"), control: "insider"}},
+		"getLibraryFigures": {
+			{path: "/statistics", query: q("library", "{library}"), control: "insider"},
+			{path: "/statistics", why: "counts only; TestTheStatisticsCountWhatTheCallerSees holds them to the caller's libraries"},
+		},
+		"getWorkProgress": {
+			{path: "/statistics/work", query: q("library", "{library}"), control: "insider"},
+			{path: "/statistics/work", why: "counts only; TestTheStatisticsCountWhatTheCallerSees holds them to the caller's libraries"},
+		},
 		"listDuplicates": {
 			{path: "/duplicates", control: "insider"},
 			{path: "/duplicates", query: q("library", "{library}"), control: "insider"},
