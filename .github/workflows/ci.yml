@@ -34,6 +34,13 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
+      - name: Cache the Gradle caches of the Tolino app
+        uses: actions/cache@v4
+        with:
+          path: .cache/android/gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('mk/android.mk', 'deploy/android.Dockerfile', 'clients/android/**/*.gradle.kts') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       # The embedding model the full gate checks the image with (make
       # embed-check), 135 MB from Hugging Face, kept until its pins change.
       - name: Cache the embedding model
