@@ -60,6 +60,9 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | e-reader catalogue: authors | 6 ms | 23 ms |  |
 | e-reader catalogue: an author | 11 ms | 18 ms |  |
 | e-reader catalogue: search | 50 ms | 98 ms |  |
+| overview | 695 ms | 602 ms | counts every book and file |
+| overview of a library | 154 ms | 130 ms | counts every book and file |
+| overview: work | 405 ms | 424 ms | counts every book and file |
 
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library, its timings at full

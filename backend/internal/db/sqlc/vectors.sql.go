@@ -14,16 +14,23 @@ import (
 const countEmbedded = `-- name: CountEmbedded :one
 SELECT count(*)::int AS books,
        count(f.id)::int AS with_text,
-       count(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata'
-             AND v.model = $1::text AND v.model_version = $2::text))::int AS metadata,
-       count(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'
-             AND v.model = $1::text AND v.model_version = $2::text))::int AS content
+       count(*) FILTER (WHERE v.metadata)::int AS metadata,
+       count(*) FILTER (WHERE v.content)::int AS content,
+       count(*) FILTER (WHERE v.metadata_last_hour)::int AS metadata_last_hour
 FROM books b
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
+LEFT JOIN (
+    SELECT book_id,
+           bool_or(kind = 'metadata') AS metadata,
+           bool_or(kind = 'content') AS content,
+           bool_or(kind = 'metadata' AND embedded_at > now() - interval '1 hour') AS metadata_last_hour
+    FROM book_vectors
+    WHERE model = $1::text AND model_version = $2::text
+    GROUP BY book_id
+) v ON v.book_id = b.id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
   AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND ($5::uuid IS NULL OR b.library_id = $5::uuid)
 `
 
 type CountEmbeddedParams struct {
@@ -31,24 +38,29 @@ type CountEmbeddedParams struct {
 	ModelVersion string
 	Viewer       uuid.UUID
 	SeesAll      bool
+	LibraryID    *uuid.UUID
 }
 
 type CountEmbeddedRow struct {
-	Books    int32
-	WithText int32
-	Metadata int32
-	Content  int32
+	Books            int32
+	WithText         int32
+	Metadata         int32
+	Content          int32
+	MetadataLastHour int32
 }
 
-// How far the books the viewer sees are embedded with the model: all of
-// them, those with text, and those with their metadata and their content
-// vector of it.
+// How far the books the viewer sees, of one library when named, are
+// embedded with the model: all of them, those with text, those with their
+// metadata and their content vector of it, and the metadata vectors made
+// in the last hour. The vectors are grouped by book once and joined, which
+// at 50,000 books is faster than looking each book's up.
 func (q *Queries) CountEmbedded(ctx context.Context, arg CountEmbeddedParams) (CountEmbeddedRow, error) {
 	row := q.db.QueryRow(ctx, countEmbedded,
 		arg.Model,
 		arg.ModelVersion,
 		arg.Viewer,
 		arg.SeesAll,
+		arg.LibraryID,
 	)
 	var i CountEmbeddedRow
 	err := row.Scan(
@@ -56,6 +68,7 @@ func (q *Queries) CountEmbedded(ctx context.Context, arg CountEmbeddedParams) (C
 		&i.WithText,
 		&i.Metadata,
 		&i.Content,
+		&i.MetadataLastHour,
 	)
 	return i, err
 }

@@ -35,7 +35,9 @@ done
 if has_target stack-up; then
   # One compose project and port per checkout, so gates running in parallel
   # worktrees never share a database or a port.
-  trap 'make stack-down >/dev/null 2>&1 || true' EXIT
+  # A failure keeps the stack's logs in .cache/stack-logs, which CI uploads:
+  # what the app and Postgres did while a test waited is gone with the stack.
+  trap 'if [[ $? -ne 0 ]]; then mkdir -p .cache/stack-logs; make -s stack-logs >.cache/stack-logs/stack.log 2>&1 || true; fi; make stack-down >/dev/null 2>&1 || true' EXIT
   echo "🐳 Stack"
   make stack-up
   layers="stack-check test-integration test-e2e"

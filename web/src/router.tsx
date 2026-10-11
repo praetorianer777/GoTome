@@ -19,6 +19,7 @@ import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
+import { Overview } from "@/routes/overview";
 import { Stats } from "@/routes/stats";
 import { ReaderRoute, readerSearch } from "@/routes/read";
 import { CollectionPage } from "@/routes/collection";
@@ -333,6 +334,17 @@ const releasesRoute = createRoute({
 	component: Releases,
 });
 
+const overviewRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/overview",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "library:read")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Overview,
+});
+
 const statsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/stats",
@@ -445,7 +457,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

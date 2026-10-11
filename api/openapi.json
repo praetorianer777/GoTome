@@ -5398,6 +5398,100 @@
         "x-permission": "library:read"
       }
     },
+    "/statistics": {
+      "get": {
+        "operationId": "getLibraryFigures",
+        "summary": "What the libraries the caller sees hold: books, files, formats, languages, what is missing",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Figures"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/statistics/work": {
+      "get": {
+        "operationId": "getWorkProgress",
+        "summary": "How far the background work on the caller's books is, with its pace and the time left",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "library",
+            "in": "query",
+            "description": "A library's ID; left out, every library the caller may see.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Work"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "index:rebuild"
+      }
+    },
     "/trackers": {
       "get": {
         "operationId": "listTrackers",
@@ -7123,6 +7217,24 @@
           "role"
         ]
       },
+      "Count": {
+        "type": "object",
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ]
+      },
       "CoverForm": {
         "type": "object",
         "properties": {
@@ -7572,6 +7684,86 @@
         },
         "required": [
           "locked"
+        ]
+      },
+      "Figures": {
+        "type": "object",
+        "properties": {
+          "audioHours": {
+            "type": "integer"
+          },
+          "audiobooks": {
+            "type": "integer"
+          },
+          "authors": {
+            "type": "integer"
+          },
+          "books": {
+            "type": "integer"
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "files": {
+            "type": "integer"
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            }
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            }
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "publishers": {
+            "type": "integer"
+          },
+          "series": {
+            "type": "integer"
+          },
+          "tags": {
+            "type": "integer"
+          },
+          "withoutAuthor": {
+            "type": "integer"
+          },
+          "withoutCover": {
+            "type": "integer"
+          },
+          "withoutText": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "books",
+          "files",
+          "bytes",
+          "audiobooks",
+          "audioHours",
+          "pages",
+          "authors",
+          "series",
+          "publishers",
+          "tags",
+          "withoutCover",
+          "withoutAuthor",
+          "withoutText",
+          "formats",
+          "languages",
+          "months"
         ]
       },
       "FollowRequest": {
@@ -8298,6 +8490,24 @@
         "required": [
           "provider",
           "message"
+        ]
+      },
+      "Queue": {
+        "type": "object",
+        "properties": {
+          "lastHour": {
+            "type": "integer"
+          },
+          "minutesLeft": {
+            "type": "integer"
+          },
+          "waiting": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "waiting",
+          "lastHour"
         ]
       },
       "ReadingBulkRequest": {
@@ -9158,6 +9368,9 @@
           "metadata": {
             "type": "integer"
           },
+          "metadataLastHour": {
+            "type": "integer"
+          },
           "model": {
             "type": "string"
           },
@@ -9171,7 +9384,30 @@
           "books",
           "withText",
           "metadata",
-          "content"
+          "content",
+          "metadataLastHour"
+        ]
+      },
+      "Step": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "integer"
+          },
+          "lastHour": {
+            "type": "integer"
+          },
+          "minutesLeft": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "done",
+          "total",
+          "lastHour"
         ]
       },
       "Storage": {
@@ -9591,6 +9827,53 @@
         "required": [
           "library",
           "provider"
+        ]
+      },
+      "Work": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/Queue"
+          },
+          "content": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "files": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "filesFailed": {
+            "type": "integer"
+          },
+          "lookups": {
+            "$ref": "#/components/schemas/Queue"
+          },
+          "matchesPending": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "pairsOpen": {
+            "type": "integer"
+          },
+          "texts": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "vectors": {
+            "$ref": "#/components/schemas/Step"
+          }
+        },
+        "required": [
+          "files",
+          "filesFailed",
+          "texts",
+          "model",
+          "vectors",
+          "content",
+          "lookups",
+          "matchesPending",
+          "checks",
+          "pairsOpen"
         ]
       }
     },

@@ -59,6 +59,11 @@ var wholeByDesign = map[string]string{
 	// grouped by person, every title matched, and each kind counted.
 	"clean-up: authors": "reads every credit and title",
 	"clean-up: titles":  "reads every credit and title",
+	// The overview counts what the books hold and how far the work on
+	// them is.
+	"overview":              "counts every book and file",
+	"overview: work":        "counts every book and file",
+	"overview of a library": "counts every book and file",
 }
 
 // planCatcher keeps the plans Postgres reports while a view is asked.
@@ -379,6 +384,9 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "e-reader catalogue: authors", path: "/opds/authors", feed: true},
 		{name: "e-reader catalogue: an author", path: "/opds/books?" + url.Values{"author": {author}}.Encode(), feed: true},
 		{name: "e-reader catalogue: search", path: "/opds/search?q=" + quick, feed: true},
+		{name: "overview", path: "/statistics"},
+		{name: "overview of a library", path: "/statistics?library=" + library},
+		{name: "overview: work", path: "/statistics/work"},
 	}
 }
 

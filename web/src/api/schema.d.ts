@@ -1585,6 +1585,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the libraries the caller sees hold: books, files, formats, languages, what is missing */
+        get: operations["getLibraryFigures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics/work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the background work on the caller's books is, with its pace and the time left */
+        get: operations["getWorkProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trackers": {
         parameters: {
             query?: never;
@@ -2077,6 +2111,11 @@ export interface components {
             /** @enum {string} */
             role: "author" | "narrator" | "translator" | "editor" | "illustrator";
         };
+        Count: {
+            bytes?: number;
+            count: number;
+            name: string;
+        };
         CoverForm: {
             /** Format: binary */
             file: string;
@@ -2193,6 +2232,24 @@ export interface components {
             locked: boolean;
             /** @enum {string} */
             source?: "file" | "filename" | "manual" | "provider";
+        };
+        Figures: {
+            audioHours: number;
+            audiobooks: number;
+            authors: number;
+            books: number;
+            bytes: number;
+            files: number;
+            formats: components["schemas"]["Count"][];
+            languages: components["schemas"]["Count"][];
+            months: components["schemas"]["Count"][];
+            pages: number;
+            publishers: number;
+            series: number;
+            tags: number;
+            withoutAuthor: number;
+            withoutCover: number;
+            withoutText: number;
         };
         FollowRequest: {
             /** @enum {string} */
@@ -2397,6 +2454,11 @@ export interface components {
         ProviderFailure: {
             message: string;
             provider: string;
+        };
+        Queue: {
+            lastHour: number;
+            minutesLeft?: number;
+            waiting: number;
         };
         ReadingBulkRequest: {
             books?: string[];
@@ -2631,8 +2693,15 @@ export interface components {
             content: number;
             enabled: boolean;
             metadata: number;
+            metadataLastHour: number;
             model: string;
             withText: number;
+        };
+        Step: {
+            done: number;
+            lastHour: number;
+            minutesLeft?: number;
+            total: number;
         };
         Storage: {
             quotaBytes?: number;
@@ -2760,6 +2829,18 @@ export interface components {
             subtitle?: string;
             tags?: string[];
             title?: string;
+        };
+        Work: {
+            checks: components["schemas"]["Queue"];
+            content: components["schemas"]["Step"];
+            files: components["schemas"]["Step"];
+            filesFailed: number;
+            lookups: components["schemas"]["Queue"];
+            matchesPending: number;
+            model: string;
+            pairsOpen: number;
+            texts: components["schemas"]["Step"];
+            vectors: components["schemas"]["Step"];
         };
     };
     responses: never;
@@ -6277,6 +6358,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getLibraryFigures: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Figures"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWorkProgress: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Work"];
                 };
             };
             /** @description The request failed. */

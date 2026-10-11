@@ -40,6 +40,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -176,6 +177,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	// by the fake model, under the name the settings give.
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
+	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
 	a.works = &fakeWorks{}

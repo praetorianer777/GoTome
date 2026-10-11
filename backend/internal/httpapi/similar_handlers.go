@@ -118,7 +118,7 @@ func (s *Server) searchDescribed(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) embeddingStatus(w http.ResponseWriter, r *http.Request) error {
-	status, err := s.Similar.Status(r.Context(), library.ScopeOf(*UserFrom(r.Context())))
+	status, err := s.Similar.Status(r.Context(), library.ScopeOf(*UserFrom(r.Context())), nil)
 	if err != nil {
 		return err
 	}
