@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -83,6 +84,8 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Stats counts what the libraries hold and how far the work on them is.
+	Stats *stats.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
 	// Cleanup suggests fixes for how books are described.

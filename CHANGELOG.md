@@ -21,6 +21,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- An overview page shows what the libraries hold (books, files by format,
+  size, pages, audiobook hours, authors, series, languages, books added per
+  month, and books without a cover, an author or text) and, for editors,
+  how far the background work is, with its pace and the time left: files
+  read, texts indexed, books worked out for similar books, lookups and
+  duplicate checks. One library or all of them.
 - The jobs page shows how far GOtome has got working out what books are
   about, and lets an administrator pause it and start it again with one
   button, for instance to have the GPU back for a while.

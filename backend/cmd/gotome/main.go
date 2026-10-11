@@ -51,6 +51,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -336,6 +337,7 @@ func serve() error {
 		Search:     search.NewPGSearch(pool, books),
 		Duplicates: duplicates,
 		Similar:    vectors,
+		Stats:      stats.NewService(pool, vectors),
 		Releases:   follows,
 		Cleanup:    fixes,
 		Index:      searchIndex,

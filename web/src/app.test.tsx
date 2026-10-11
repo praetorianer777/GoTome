@@ -4299,6 +4299,38 @@ describe("searching by a description", () => {
 	});
 });
 
+describe("the overview", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows an editor how far the work is and what the library holds", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		renderApp("/");
+		const person = userEvent.setup();
+		await person.click(await screen.findByRole("link", { name: "Overview" }));
+		const work = within(await screen.findByRole("region", { name: "Background work" }));
+		expect(await work.findByText("1,300 of 1,500")).toBeInTheDocument();
+		expect(work.getByText("400 in the last hour · about 30 min left")).toBeInTheDocument();
+		expect(work.getByRole("link", { name: "4 could not be read: see the jobs" })).toHaveAttribute("href", "/jobs");
+		expect(work.getByText("60 in the last hour · about 30 min left · 2 possible duplicates to decide")).toBeInTheDocument();
+
+		const library = within(screen.getByRole("region", { name: "What the library holds" }));
+		expect(library.getByText("Books").nextSibling).toHaveTextContent("1,200");
+		expect(library.getByText("Size").nextSibling).toHaveTextContent("3.4 GB");
+		const formats = within(library.getByRole("region", { name: "Files by format" }));
+		expect(formats.getByText("EPUB")).toBeInTheDocument();
+		const languages = within(library.getByRole("region", { name: "Books by language" }));
+		expect(languages.getByText("Not known")).toBeInTheDocument();
+	});
+
+	it("shows a reader what the library holds and not the work", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/overview");
+		expect(await screen.findByRole("region", { name: "What the library holds" })).toBeInTheDocument();
+		expect(screen.queryByRole("region", { name: "Background work" })).not.toBeInTheDocument();
+	});
+});
+
 describe("pausing the embedding", () => {
 	afterEach(() => vi.unstubAllGlobals());
 

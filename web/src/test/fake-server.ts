@@ -134,6 +134,44 @@ export class FakeServer {
 		metadata: 80,
 		content: 60,
 	};
+	/** What the overview page counts. */
+	figures = {
+		books: 1200,
+		files: 1500,
+		bytes: 3_400_000_000,
+		audiobooks: 12,
+		audioHours: 140,
+		pages: 350_000,
+		authors: 480,
+		series: 90,
+		publishers: 60,
+		tags: 30,
+		withoutCover: 7,
+		withoutAuthor: 3,
+		withoutText: 15,
+		formats: [
+			{ name: "epub", count: 1100, bytes: 2_000_000_000 },
+			{ name: "pdf", count: 400, bytes: 1_400_000_000 },
+		],
+		languages: [
+			{ name: "de", count: 900 },
+			{ name: "", count: 300 },
+		],
+		months: [{ name: "2026-10", count: 1200 }],
+	};
+	/** How far the background work is, as the overview page shows it. */
+	work = {
+		files: { done: 1300, total: 1500, lastHour: 400, minutesLeft: 30 },
+		filesFailed: 4,
+		texts: { done: 1000, total: 1000, lastHour: 0 },
+		model: "intfloat/multilingual-e5-small",
+		vectors: { done: 600, total: 1200, lastHour: 120, minutesLeft: 300 },
+		content: { done: 500, total: 1000, lastHour: 0 },
+		lookups: { waiting: 0, lastHour: 0 },
+		matchesPending: 5,
+		checks: { waiting: 30, lastHour: 60, minutesLeft: 30 },
+		pairsOpen: 2,
+	};
 	/** Whether the embedding model runs, for the search by description. */
 	describable = true;
 	/** What the clean-up page suggests. */
@@ -369,6 +407,18 @@ export class FakeServer {
 			}
 			if (path === "/embedding/status") {
 				return Response.json(this.embedding);
+			}
+			if (path === "/statistics") {
+				return Response.json(this.figures);
+			}
+			if (path === "/statistics/work") {
+				if (!this.session?.permissions.includes("index:rebuild")) {
+					return Response.json(
+						{ error: { code: "forbidden", message: "You do not have permission to do that." } },
+						{ status: 403 },
+					);
+				}
+				return Response.json(this.work);
 			}
 			if (path === "/search/reread") {
 				const target = body as { library?: string; book?: string };
