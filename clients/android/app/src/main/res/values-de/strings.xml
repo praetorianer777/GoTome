@@ -61,4 +61,7 @@
     <string name="jump_service_description">Wenn du in GOtome woanders weitergelesen hast, bietet es an, den Tolino-Reader dorthin zu bringen, und gibt auf deinen Tipp die Seite in „Seitenzahl eingeben“ des Readers ein. Handelt nur im Tolino-Reader.</string>
     <string name="jump_on">Springen zur woanders gelesenen Seite: an.</string>
     <string name="jump_off">Springen zur woanders gelesenen Seite ist aus. Einmal vom Rechner aus einschalten mit\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
+    <string name="remove">Vom Tolino entfernen</string>
+    <string name="remove_confirm">Wirklich entfernen? Nochmal tippen</string>
+    <string name="removed">Vom Tolino und aus deiner Sammlung entfernt.</string>
 </resources>
