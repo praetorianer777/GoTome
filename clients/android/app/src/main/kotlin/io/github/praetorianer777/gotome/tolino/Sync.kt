@@ -16,6 +16,8 @@ class Sync(private val context: Context) {
     /** Syncs, telling [progress] what it is doing in words for the person. */
     fun run(progress: (String) -> Unit = {}) = synchronized(LOCK) {
         if (!prefs.signedIn) return
+        // Deleted in the Tolino library, it would leave the store without its way in.
+        runCatching { LauncherBook.ensure(context) }
         try {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
