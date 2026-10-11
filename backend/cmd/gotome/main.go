@@ -36,6 +36,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/memlimit"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -73,6 +74,8 @@ const (
 	embedInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
+	// New and changed ebook files get the MD5 KOReader names them by.
+	koreaderHashInterval = 10 * time.Minute
 )
 
 const usage = `Usage: gotome <command>
@@ -238,6 +241,8 @@ func serve() error {
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
 	follows.Events = events
+	readingService := reading.NewService(pool)
+	progressSync := kosync.NewService(pool, readingService, log)
 	workers := jobs.NewWorkers()
 	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
 	river.AddWorker(workers, &bulk.Worker{Service: changes})
@@ -254,6 +259,7 @@ func serve() error {
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &releases.PollWorker{Service: follows})
+	river.AddWorker(workers, &kosync.HashWorker{Service: progressSync})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
 		retention, err := settingStore.TrashRetention(ctx)
 		if err != nil {
@@ -268,6 +274,7 @@ func serve() error {
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 		similar.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
+		kosync.Periodic(koreaderHashInterval),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is
@@ -332,12 +339,13 @@ func serve() error {
 		Metadata:   meta,
 		Matches:    matches,
 		Bulk:       changes,
-		Reading:    reading.NewService(pool),
+		Reading:    readingService,
 		Shelves:    shelves.NewService(pool, books),
 		Search:     search.NewPGSearch(pool, books),
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),
+		Sync:       progressSync,
 		Releases:   follows,
 		Cleanup:    fixes,
 		Index:      searchIndex,

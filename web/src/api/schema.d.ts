@@ -946,6 +946,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kosync/syncs/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** KOReader reports where the person is in a document, named by its partial MD5 */
+        put: operations["kosyncPush"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/syncs/progress/{document}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the person is in a document, as KOReader goes to it; empty where no place can be given */
+        get: operations["kosyncPull"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/users/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** KOReader's progress sync checks its sign-in: the user name in x-auth-user, the MD5 of a device token in x-auth-key */
+        get: operations["kosyncAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/users/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** KOReader's progress sync registers an account: refused, as accounts and devices are made in GOtome */
+        post: operations["kosyncRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/libraries": {
         parameters: {
             query?: never;
@@ -2305,6 +2373,28 @@ export interface components {
             /** Format: date-time */
             scheduledAt: string;
             state: string;
+        };
+        KosyncAuthorized: {
+            authorized: string;
+        };
+        KosyncPosition: {
+            device?: string;
+            device_id?: string;
+            document?: string;
+            percentage?: number;
+            progress?: string;
+            timestamp?: number;
+        };
+        KosyncProgress: {
+            device: string;
+            device_id: string;
+            document: string;
+            percentage: number;
+            progress: string;
+        };
+        KosyncSaved: {
+            document: string;
+            timestamp: number;
         };
         LibraryList: {
             libraries: components["schemas"]["LibraryResponse"][];
@@ -4841,6 +4931,126 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobView"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KosyncProgress"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncSaved"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncPull: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncPosition"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncAuthorized"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

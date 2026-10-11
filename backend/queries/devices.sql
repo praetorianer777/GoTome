@@ -24,3 +24,13 @@ WHERE d.token_hash = $1
 
 -- name: TouchDevice :exec
 UPDATE devices SET last_used_at = sqlc.arg(now)::timestamptz WHERE id = $1;
+
+-- name: GetSyncKeyUser :one
+-- The account KOReader's progress sync signs in with a device token's MD5,
+-- under its user name. A disabled account's devices sign nobody in.
+SELECT u.*, d.id AS device_id
+FROM devices d
+JOIN users u ON u.id = d.user_id
+WHERE d.sync_key_hash = $1
+  AND lower(u.username) = lower(sqlc.arg(username)::text)
+  AND u.disabled_at IS NULL;

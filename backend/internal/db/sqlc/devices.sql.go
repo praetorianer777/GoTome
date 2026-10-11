@@ -115,6 +115,53 @@ func (q *Queries) GetDeviceUser(ctx context.Context, arg GetDeviceUserParams) (G
 	return i, err
 }
 
+const getSyncKeyUser = `-- name: GetSyncKeyUser :one
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, d.id AS device_id
+FROM devices d
+JOIN users u ON u.id = d.user_id
+WHERE d.sync_key_hash = $1
+  AND lower(u.username) = lower($2::text)
+  AND u.disabled_at IS NULL
+`
+
+type GetSyncKeyUserParams struct {
+	SyncKeyHash []byte
+	Username    string
+}
+
+type GetSyncKeyUserRow struct {
+	ID           uuid.UUID
+	Username     string
+	Email        *string
+	PasswordHash *string
+	Role         string
+	QuotaBytes   *int64
+	DisabledAt   *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeviceID     uuid.UUID
+}
+
+// The account KOReader's progress sync signs in with a device token's MD5,
+// under its user name. A disabled account's devices sign nobody in.
+func (q *Queries) GetSyncKeyUser(ctx context.Context, arg GetSyncKeyUserParams) (GetSyncKeyUserRow, error) {
+	row := q.db.QueryRow(ctx, getSyncKeyUser, arg.SyncKeyHash, arg.Username)
+	var i GetSyncKeyUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.QuotaBytes,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeviceID,
+	)
+	return i, err
+}
+
 const listUserDevices = `-- name: ListUserDevices :many
 SELECT id, name, created_at, last_used_at
 FROM devices

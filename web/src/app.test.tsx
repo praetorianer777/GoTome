@@ -3106,6 +3106,24 @@ describe("the EPUB and MOBI reader", () => {
 		);
 	});
 
+	it("opens a place KOReader saved by how far into the book it is", async () => {
+		withBook("epub", "Persuasion.epub");
+		server.progress["book-1"] = {
+			ebook: {
+				fileId: "file-1",
+				locator: "koreader:/body/DocFragment[3]/body/p[2]/text().0",
+				fraction: 0.6,
+				clientId: "koreader:tolino",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1/read/file-1");
+		await waitFor(() =>
+			expect(ebook.opened).toEqual([{ name: "Persuasion.epub", start: "fraction:0.6" }]),
+		);
+	});
+
 	it("sets colours, text size and layout, and keeps them for the next book", async () => {
 		const person = userEvent.setup();
 		withBook("mobi", "Persuasion.mobi");

@@ -21,6 +21,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- KOReader's own progress sync works with GOtome as its server: a place
+  read in KOReader opens in the web reader, and one from the web reader is
+  offered in KOReader, at its chapter for an EPUB and its page for a PDF
+  (`docs/koreader.md`).
 - E-readers with KOReader, or any app that reads OPDS catalogues, browse
   the library by newest, author, series and shelf, search it and download
   books, signed in with a token made for the device on the profile page

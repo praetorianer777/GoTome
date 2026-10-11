@@ -64,12 +64,16 @@ function cfiIn(
 
 /**
  * Where to open: the saved CFI in this file, or how far into the book a
- * place saved in a file since replaced was ("fraction:0.42").
+ * place saved in a file since replaced was ("fraction:0.42"), or one
+ * KOReader saved ("koreader:" and its XPointer), which only it can read.
  */
 function startIn(
 	progress: Progress | null | undefined,
 	fileId: string,
 ): string | undefined {
+	if (progress?.locator.startsWith("koreader:")) {
+		return `fraction:${progress.fraction}`;
+	}
 	return progress?.locator.startsWith("fraction:")
 		? progress.locator
 		: cfiIn(progress, fileId);

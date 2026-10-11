@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
@@ -178,6 +179,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
+	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue
 	a.works = &fakeWorks{}

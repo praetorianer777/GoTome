@@ -148,6 +148,7 @@ func readCases() map[string][]readCase {
 			{path: "/opds/collections/{sharedCollection}", control: "insider"},
 			{path: "/opds/collections/{formerCollection}", control: "former"},
 		},
+		"kosyncPull": {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},
 			{path: "/opds/smart-shelves/{formerShelf}", control: "former"},
