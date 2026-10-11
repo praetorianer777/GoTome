@@ -21,6 +21,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A GOtome plugin for KOReader, downloaded from the profile page, fetches
+  the books sent to the device by itself whenever Wi-Fi comes up, into a
+  folder of your choosing (`docs/koreader.md`).
 - Books are sent to an e-reader from their page or a selection in the
   library: they wait in the catalogue's "Sent to this device" on the
   device until it downloads them, and the book's page says since when the

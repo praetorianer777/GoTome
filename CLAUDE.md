@@ -943,6 +943,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   waits, its downloads at `/opds/device/files/{id}`, where a whole file
   sent (200, not a range) marks the book delivered. A merge carries the
   deliveries over (`MergeDeliveries`).
+- The KOReader plugin (#197) is `backend/internal/koplugin/gotome.koplugin`
+  (Lua), embedded so that `GET /koreader/plugin.zip` hands it out with
+  `gotome_server.lua` naming the address the browser used. It reads the
+  device's feed with Basic auth and saves each book under its title.
+  What it does outside KOReader is `gotome_feed.lua`, tested in LuaJIT
+  (`make test-koplugin`, in the push gate; LuaJIT is in the toolchain
+  image), which also checks that the rest compiles.
 - KOReader's progress sync (`internal/kosync`, #198) is served under
   `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
   its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/koplugin"
 )
 
 type deviceView struct {
@@ -82,4 +84,23 @@ func (s *Server) deleteOwnDevice(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// getKOReaderPlugin sends the KOReader plugin as a zip, told the address
+// the browser used as its server.
+func (s *Server) getKOReaderPlugin(w http.ResponseWriter, r *http.Request) error {
+	scheme := "http"
+	if overTLS(r) {
+		scheme = "https"
+	}
+	var buf bytes.Buffer
+	if err := koplugin.Zip(&buf, scheme+"://"+r.Host); err != nil {
+		return err
+	}
+	h := w.Header()
+	h.Set("Content-Type", "application/zip")
+	h.Set("Content-Disposition", `attachment; filename="gotome.koplugin.zip"`)
+	h.Set("Cache-Control", "no-cache")
+	_, err := buf.WriteTo(w)
+	return err
 }

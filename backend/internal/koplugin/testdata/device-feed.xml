@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
+ <id>urn:gotome:opds:/device</id>
+ <title>Sent to this device</title>
+ <updated>2026-10-11T12:00:00Z</updated>
+ <author>
+  <name>GOtome</name>
+ </author>
+ <link rel="self" href="/api/v1/opds/device" type="application/atom+xml;profile=opds-catalog;kind=acquisition"></link>
+ <entry>
+  <id>urn:uuid:01a12b2a-1800-7548-b533-dd0bff7d11e5</id>
+  <title>Pride &amp; Prejudice: A Novel</title>
+  <updated>2026-10-11T11:00:00Z</updated>
+  <author>
+   <name>Jane Austen</name>
+  </author>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e6" type="application/epub+zip" title="EPUB" length="512000"></link>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e7" type="application/pdf" title="PDF" length="2048000"></link>
+  <link rel="http://opds-spec.org/image" href="/api/v1/books/01a12b2a-1800-7548-b533-dd0bff7d11e5/covers/large?v=abc" type="image/jpeg"></link>
+ </entry>
+ <entry>
+  <id>urn:uuid:01a12b2a-1800-7548-b533-dd0bff7d11e8</id>
+  <title>Der Schimmelreiter</title>
+  <updated>2026-10-11T11:00:00Z</updated>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e9" type="application/x-mobipocket-ebook" title="AZW3" length="300000"></link>
+ </entry>
+</feed>
