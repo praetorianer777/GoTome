@@ -78,6 +78,7 @@ class SetupActivity : Activity() {
         else getString(R.string.signed_out)
         lines += if (ReaderWatcher.canReadLog(this)) getString(R.string.log_granted)
         else getString(R.string.log_missing, packageName)
+        lines += if (JumpService.enabled(this)) getString(R.string.jump_on) else getString(R.string.jump_off, packageName)
         lines += if (prefs.readerSeenAt == 0L) getString(R.string.reader_never)
         else getString(R.string.reader_seen, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(prefs.readerSeenAt)))
         prefs.lastError?.let { lines += getString(R.string.sync_failed, it) }

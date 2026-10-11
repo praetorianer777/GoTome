@@ -13,10 +13,10 @@ GOtome:
 - **Reading progress**: how far you read on the Tolino shows up in GOtome, and
   the web reader opens the book there.
 
-What it cannot do: move the Tolino reader to a position read elsewhere. The
-Tolino keeps its positions to itself; the store's book page shows where GOtome
-says you are ("GOtome: 47 % read elsewhere"), and you turn there with the
-reader's "Go to page".
+- **Reading on from elsewhere**: when you open a book on the Tolino that you
+  read further in elsewhere, for instance in GOtome's web reader, a bar offers
+  to jump there; on "Jump" the app enters the page in the reader's own "Go to
+  page".
 
 ## How it works
 
@@ -25,7 +25,8 @@ reader's "Go to page".
 | Books arrive | The app saves them under `Books/GOtome/`. The Tolino reader imports whatever appears under `Books/` by itself within seconds. |
 | Progress | The Tolino reader writes every page turn to the system log. The app reads only those lines (the tags `HomeActivity$DeliverableClickListener`, `EpubViewerActivity`, `EpubView` and `BasicViewerActivity`) for the EPUBs it delivered. The reader logs its position in Adobe's pages, one for every 1024 bytes of each chapter as compressed in the EPUB; the app counts them in the file and sends the share of the book as `fraction:0.42`. PDFs report no progress. |
 | Store from the home screen | The app puts a book "GOtome" into the library. When the log shows it opened, the app brings the store up over it. Deleted, it comes back with the next sync or when the store is opened. |
-| Sync | Whenever the Tolino is online: once an hour, whenever a book is closed, and with "Sync" in the store. |
+| Jump | The reader takes no position from other apps, but its page numbers ("13 / 510") are Adobe's pages counted from 1. When a book opens, the app asks GOtome for its position (or, offline, goes by the last sync); further by more than a page, an accessibility service shows the offer and, on "Jump", opens the reader's menu, taps the page number and enters the page, by the reader's view IDs. It acts in the Tolino reader only, and only on your tap. |
+| Sync | Whenever the Tolino goes online (at most every five minutes), once an hour, and whenever a book is closed; "Sync" in the store does it at once. |
 
 The app cannot go online by itself: the Tolino turns Wi-Fi off when idle and
 disables its saved networks with it, and only the Tolino's own app may enable
@@ -58,14 +59,21 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
 
    This builds the app in a container, installs it, grants it the log
    (`pm grant … android.permission.READ_LOGS`, which only adb can grant) and
-   storage, and opens its settings. With an APK from elsewhere it is:
+   storage, and opens its settings.
+   It also turns the jump service on (an accessibility service, added to any
+   already on). With an APK from elsewhere it is:
 
    ```bash
    adb install -r gotome-tolino.apk
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.READ_LOGS
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.READ_EXTERNAL_STORAGE
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.WRITE_EXTERNAL_STORAGE
+   adb shell settings put secure enabled_accessibility_services io.github.praetorianer777.gotome.tolino/.JumpService
+   adb shell settings put secure accessibility_enabled 1
    ```
+
+   (The `settings put` replaces other accessibility services that are on;
+   `make android-install` adds to them.)
 
 4. On the Tolino, in the app's settings:
    - **GOtome address**: how the Tolino reaches GOtome, e.g.
@@ -104,6 +112,11 @@ make check-android   # unit tests and a debug build, in the container
 make android-apk     # the APK, path printed at the end
 make android-install # build, install over adb, grant the log
 ```
+
+Without a cable: with the cable in once, `adb tcpip 5555`, then
+`adb connect <tolino-ip>:5555` and `ANDROID_SERIAL=<tolino-ip>:5555 make
+android-install`. It lasts until the Tolino restarts, and works only while its
+Wi-Fi is on.
 
 `app/src/test/resources/tolino-16.2.1.log` holds the reader's lines recorded on
 a Shine 4 with firmware 16.2.1; a firmware that logs differently gets a

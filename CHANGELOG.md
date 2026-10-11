@@ -36,7 +36,8 @@ What changes for someone who runs or uses GOtome. The format follows
   over USB (`clients/android/README.md`). Books in your "Tolino" collection
   arrive on the reader by themselves, a store on the reader browses and
   searches your library and puts books on it, and how far you read in the
-  Tolino's own reader shows up in GOtome.
+  Tolino's own reader shows up in GOtome. Opening a book you read further
+  elsewhere, the Tolino offers to jump to that page.
 - E-readers with KOReader, or any app that reads OPDS catalogues, browse
   the library by newest, author, series and shelf, search it and download
   books, signed in with a token made for the device on the profile page

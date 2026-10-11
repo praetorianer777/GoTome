@@ -13,10 +13,11 @@ data class Unsent(val bookId: String, val fileId: String, val fraction: Double, 
 
 /**
  * What the app keeps on the device: the books it put on the Tolino, described
- * well enough to list them without network, and positions not yet sent to
- * GOtome. The library itself stays on the server; the store asks it page by page.
+ * well enough to list them without network, positions not yet sent to GOtome,
+ * and GOtome's positions in those books as of the last sync, so that a jump can
+ * be offered offline. The library itself stays on the server.
  */
-class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 2) {
+class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 3) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE delivered (book_id TEXT PRIMARY KEY, file_id TEXT NOT NULL,
@@ -28,9 +29,10 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 2) {
             """CREATE TABLE progress (book_id TEXT PRIMARY KEY, file_id TEXT NOT NULL,
                fraction REAL NOT NULL, at INTEGER NOT NULL, sent INTEGER NOT NULL DEFAULT 0)""",
         )
+        createRemote(db)
     }
 
-    /** Version 1 kept the whole catalogue on the device. */
+    /** Version 1 kept the whole catalogue on the device; version 2 had no positions from GOtome. */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("DROP TABLE IF EXISTS books")
@@ -39,7 +41,37 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 2) {
                 "series TEXT NOT NULL DEFAULT ''", "series_index REAL", "formats TEXT NOT NULL DEFAULT ''",
             )) db.execSQL("ALTER TABLE delivered ADD COLUMN $column")
         }
+        if (oldVersion < 3) createRemote(db)
     }
+
+    private fun createRemote(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE remote (book_id TEXT PRIMARY KEY, fraction REAL NOT NULL,
+               client_id TEXT NOT NULL, updated_at TEXT NOT NULL)""",
+        )
+        db.execSQL("CREATE TABLE asked (offer TEXT PRIMARY KEY)")
+    }
+
+    fun saveRemote(bookId: String, remote: Remote?) {
+        if (remote == null) {
+            writableDatabase.delete("remote", "book_id = ?", arrayOf(bookId))
+            return
+        }
+        writableDatabase.insertWithOnConflict("remote", null, ContentValues().apply {
+            put("book_id", bookId)
+            put("fraction", remote.fraction)
+            put("client_id", remote.clientId)
+            put("updated_at", remote.updatedAt)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun remote(bookId: String): Remote? =
+        readableDatabase.rawQuery("SELECT fraction, client_id, updated_at FROM remote WHERE book_id = ?", arrayOf(bookId))
+            .use { if (it.moveToFirst()) Remote(it.getDouble(0), it.getString(1), it.getString(2)) else null }
+
+    /** Notes an offer as made; false when it was made before, so each position is offered once. */
+    fun firstOffer(offer: String): Boolean =
+        writableDatabase.insertWithOnConflict("asked", null, ContentValues().apply { put("offer", offer) }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
 
     /** A book the app put on the Tolino that is still there. */
     fun delivered(bookId: String): Delivered? = deliveredWhere("book_id = ? AND removed = 0", bookId)

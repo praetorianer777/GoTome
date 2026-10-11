@@ -7,11 +7,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network as AndroidNetwork
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import java.io.File
+import kotlin.math.roundToInt
 
 /**
  * Follows the reader app through the log: keeps the position in every book the
@@ -27,6 +30,8 @@ class ReaderWatcher : Service() {
     @Volatile private var logcat: Process? = null
     private var sentAt = 0L
     private val pages = HashMap<String, Int>()
+    /** The book just opened, until its first position decides whether to offer a jump. */
+    private var opened: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,7 +45,20 @@ class ReaderWatcher : Service() {
             .setSmallIcon(R.drawable.ic_book)
             .setContentTitle(getString(R.string.watcher_title))
             .build())
+        connectivity.registerDefaultNetworkCallback(online)
     }
+
+    /** Syncs whenever the Tolino goes online, at most every few minutes. */
+    private val online = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: AndroidNetwork) {
+            val now = System.currentTimeMillis()
+            if (now - onlineAt < SYNC_ONLINE_EVERY) return
+            onlineAt = now
+            SyncJob.now(this@ReaderWatcher)
+        }
+    }
+    @Volatile private var onlineAt = 0L
+    private val connectivity by lazy { getSystemService(ConnectivityManager::class.java) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (reader?.isAlive != true) {
@@ -50,6 +68,7 @@ class ReaderWatcher : Service() {
     }
 
     override fun onDestroy() {
+        connectivity.unregisterNetworkCallback(online)
         reader?.interrupt()
         logcat?.destroy()
         super.onDestroy()
@@ -85,15 +104,35 @@ class ReaderWatcher : Service() {
             main.postDelayed({ StoreActivity.bringUp(this) }, 800)
         }
         when (val reading = tracker.on(event)) {
+            is Reading.Opened -> opened = reading.path
             is Reading.Moved -> db.deliveredAt(reading.path)?.let { book ->
                 val fraction = fraction(reading) ?: return
+                if (opened == reading.path) {
+                    opened = null
+                    // Off the log's thread: asking GOtome first may take a moment.
+                    Thread { offerJump(book, reading) }.start()
+                }
                 db.saveProgress(book, fraction, now)
                 // Long sessions reach GOtome now and then, not only at the end.
                 if (now - sentAt > SEND_EVERY) send(now)
             }
-            is Reading.Closed -> if (db.deliveredAt(reading.path) != null) send(now)
-            else -> Unit
+            is Reading.Closed -> {
+                JumpService.instance?.withdraw()
+                if (db.deliveredAt(reading.path) != null) send(now)
+            }
+            null -> Unit
         }
+    }
+
+    /** Asks GOtome for the book's position when online, else goes by the last sync. */
+    private fun offerJump(book: Delivered, reading: Reading.Moved) {
+        val service = JumpService.instance ?: return
+        val total = pages[reading.path] ?: return
+        if (prefs.signedIn && Network.online(this)) runCatching { Sync(this).fetchPosition(book.bookId) }
+        val remote = db.remote(book.bookId) ?: return
+        val page = Jump.offer(reading.position, total, remote, prefs.clientId) ?: return
+        if (!db.firstOffer("${book.bookId}@${remote.updatedAt}")) return
+        service.offer(page, total, (remote.fraction * 100).roundToInt())
     }
 
     /** Only EPUBs: the reader's positions in a PDF are not in Adobe's EPUB pages. */
@@ -112,6 +151,7 @@ class ReaderWatcher : Service() {
         private const val TAG = "GOtomeWatcher"
         private const val CHANNEL = "watcher"
         private const val SEND_EVERY = 10 * 60 * 1000L
+        private const val SYNC_ONLINE_EVERY = 5 * 60 * 1000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, ReaderWatcher::class.java))

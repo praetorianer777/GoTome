@@ -22,6 +22,7 @@ class Sync(private val context: Context) {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
             deliverCollection(progress)
+            fetchPositions()
             prefs.lastSync = System.currentTimeMillis()
             prefs.lastError = null
         } catch (e: Exception) {
@@ -80,6 +81,21 @@ class Sync(private val context: Context) {
                 Log.w(TAG, "cannot deliver ${book.id}: ${e.message}")
             }
         }
+    }
+
+    /** GOtome's position in one book on the Tolino, kept for offering a jump when it is opened. */
+    fun fetchPosition(bookId: String) {
+        val p = try {
+            ebookProgress(bookId)
+        } catch (e: ApiException) {
+            if (e.status != 404) throw e
+            null
+        }
+        db.saveRemote(bookId, p?.let { Remote(it.fraction, it.clientId, it.updatedAt) })
+    }
+
+    private fun fetchPositions() {
+        for (id in db.onDeviceIds()) fetchPosition(id)
     }
 
     private fun addToCollection(bookId: String) {

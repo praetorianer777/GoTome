@@ -49,7 +49,8 @@ android-apk: android-toolchain $(ANDROID_KEYSTORE) | $(ANDROID_CACHE) ## Build t
 # see the reader's page turns; it can only be granted over adb. Storage is
 # granted too, so the setup asks for nothing: reading as well as writing, as
 # without both Android 8.1 starts the app with a view of storage it cannot
-# write to.
+# write to. The jump to a page read elsewhere is an accessibility service,
+# added to those already on, not in their place.
 .PHONY: android-install
 android-install: android-apk ## Install the companion app on the Tolino over adb and grant it the log
 	adb install -r $(ANDROID_APK)
@@ -57,4 +58,7 @@ android-install: android-apk ## Install the companion app on the Tolino over adb
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_EXTERNAL_STORAGE
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.WRITE_EXTERNAL_STORAGE
 	adb shell am force-stop $(ANDROID_PACKAGE)
+	adb shell 'on=$$(settings get secure enabled_accessibility_services); \
+		case "$$on" in *$(ANDROID_PACKAGE)/*) ;; null|"") on=$(ANDROID_PACKAGE)/.JumpService ;; *) on="$$on:$(ANDROID_PACKAGE)/.JumpService" ;; esac; \
+		settings put secure enabled_accessibility_services "$$on"; settings put secure accessibility_enabled 1'
 	adb shell am start -n $(ANDROID_PACKAGE)/.StoreActivity

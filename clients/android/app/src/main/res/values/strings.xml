@@ -54,4 +54,12 @@
     <string name="load_failed">Could not load: %1$s</string>
     <string name="no_hits">Nothing found</string>
     <string name="none_on_device">No book from GOtome on this Tolino yet</string>
+    <string name="jump_offer">Elsewhere you read up to page %1$d of %2$d (%3$d %%). Jump there?</string>
+    <string name="jump_yes">Jump</string>
+    <string name="jump_no">No</string>
+    <string name="jump_failed">The jump did not work. Tap the page number at the bottom of the reader\'s menu and enter %1$d.</string>
+    <string name="jump_service_label">GOtome: jump to the page read elsewhere</string>
+    <string name="jump_service_description">When you read further in GOtome elsewhere, offers to take the Tolino reader there, and on your tap enters the page in the reader\'s own Go to page. Acts in the Tolino reader only.</string>
+    <string name="jump_on">Jumping to the page read elsewhere: on.</string>
+    <string name="jump_off">Jumping to the page read elsewhere is off. Turn it on once from a computer with\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
 </resources>
