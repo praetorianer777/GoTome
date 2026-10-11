@@ -15,6 +15,32 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
 
+  db:
+    # What a stall in the tests is made of, in the logs CI keeps when they
+    # fail: lock waits past deadlock_timeout (1 s), slow statements,
+    # checkpoints and autovacuum runs. The gate's stack, which is thrown
+    # away after each run, also waits for no disk (GOTOME_DB_DURABLE=off,
+    # make stack-up): commits that waited seconds on fsync stalled every
+    # test at once on CI (#189).
+    command:
+      - postgres
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - fsync=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - synchronous_commit=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - full_page_writes=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_checkpoints=on
+      - -c
+      - log_autovacuum_min_duration=1000
+
   # An identity provider for the single sign-on browser tests, started only
   # with the profile (make sso-up). Its realm, client and people are test
   # values from keycloak/gotome-realm.json and exist nowhere else.
