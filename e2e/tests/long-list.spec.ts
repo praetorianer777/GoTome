@@ -96,19 +96,24 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await page.evaluate(() =>
 		window.scrollTo(0, document.documentElement.scrollHeight / 2),
 	);
-	// The card at the middle of the window, once the rows for where it was
-	// scrolled to are in: a click does not scroll to it.
+	// The card nearest the middle of the window, once the rows for where it
+	// was scrolled to are in: a click does not scroll to it. Nearest, as the
+	// middle may fall in the gap between two rows (#178).
 	let name = "";
 	await expect
 		.poll(async () => {
 			name = await page.evaluate(() => {
 				const middle = window.innerHeight / 2;
-				const card = [...document.querySelectorAll("[role=listitem]")].find(
-					(c) => {
+				const distance = (c: Element) => {
+					const box = c.getBoundingClientRect();
+					return Math.abs((box.top + box.bottom) / 2 - middle);
+				};
+				const card = [...document.querySelectorAll("[role=listitem]")]
+					.filter((c) => {
 						const box = c.getBoundingClientRect();
-						return box.top <= middle && box.bottom >= middle;
-					},
-				);
+						return box.top >= 0 && box.bottom <= window.innerHeight;
+					})
+					.sort((a, b) => distance(a) - distance(b))[0];
 				return card?.querySelector(".line-clamp-2")?.textContent ?? "";
 			});
 			return name;
