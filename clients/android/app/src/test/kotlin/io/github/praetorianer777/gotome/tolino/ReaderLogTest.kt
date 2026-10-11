@@ -32,6 +32,14 @@ class ReaderLogTest {
     }
 
     @Test
+    fun aPositionIsInAdobePagesNotAShare() {
+        assertEquals(
+            ReaderEvent.Page(10.293189368770765),
+            ReaderLog.parse("D/EpubView( 6034): notifyPageChanged(): page position = 10.293189368770765"),
+        )
+    }
+
+    @Test
     fun aTitleWithAPathInItDoesNotConfuseThePath() {
         assertEquals(
             ReaderEvent.Opened(book),
@@ -50,7 +58,7 @@ class ReaderLogTest {
             "I/ShopWebViewActivity\$ShopWebViewClient( 1): cookie uuid=00000000; gcor=\"x\"",
             "D/LoginActivity( 1): LoginWebViewClient::onPageStarted url=epublishing://login?code=abc",
             "D/EpubViewerActivity( 1): openDocument: fontSettings:  ->fontType: publisher",
-            "D/EpubView( 1): notifyPageChanged(): page position = 1.5",
+            "D/EpubView( 1): notifyPageChanged(): page position = -0.5",
             "D/EpubView( 1): notifyPageChanged(): page position = NaN",
             "D/EpubViewerActivity( 1): openDocument: file:///storage/emulated/0/Books/notes.txt",
             "",

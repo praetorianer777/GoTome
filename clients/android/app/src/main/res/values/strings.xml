@@ -13,9 +13,9 @@
     <string name="sync">Sync</string>
     <string name="syncing">Syncing…</string>
     <string name="never_synced">Not synced yet</string>
-    <string name="synced_at">%1$d books · synced at %2$s</string>
+    <string name="synced_at">Synced at %1$s</string>
     <string name="sync_failed">Sync failed: %1$s</string>
-    <string name="offline">No network. Is Wi-Fi on?</string>
+    <string name="offline">No network. Turn Wi-Fi on in the quick settings at the top of the Tolino screen.</string>
     <string name="mark_on_tolino">On Tolino</string>
     <string name="series_part">%1$s, part %2$s</string>
     <string name="on_tolino">In your Tolino library</string>
@@ -45,4 +45,13 @@
     <string name="watcher_channel">Reading progress</string>
     <string name="watcher_title">Sending reading progress to GOtome</string>
     <string name="launcher_text">This book opens the GOtome store.\nIf you are reading this, the GOtome app is not running: open it once from the app launcher.</string>
+    <string name="sending_progress">Sending reading progress…</string>
+    <string name="checking_collection">Looking into the collection “%1$s”…</string>
+    <string name="loading_book">Loading book %1$d of %2$d: %3$s</string>
+    <string name="no_readable_file">No EPUB or PDF without DRM</string>
+    <string name="offline_store">No network. Under “On Tolino” you see the books on this device; turn Wi-Fi on for the rest.</string>
+    <string name="loading">Loading…</string>
+    <string name="load_failed">Could not load: %1$s</string>
+    <string name="no_hits">Nothing found</string>
+    <string name="none_on_device">No book from GOtome on this Tolino yet</string>
 </resources>

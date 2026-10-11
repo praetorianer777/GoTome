@@ -47,10 +47,14 @@ android-apk: android-toolchain $(ANDROID_KEYSTORE) | $(ANDROID_CACHE) ## Build t
 
 # adb runs on the host, where the Tolino is plugged in. READ_LOGS lets the app
 # see the reader's page turns; it can only be granted over adb. Storage is
-# granted too, so the setup asks for nothing.
+# granted too, so the setup asks for nothing: reading as well as writing, as
+# without both Android 8.1 starts the app with a view of storage it cannot
+# write to.
 .PHONY: android-install
 android-install: android-apk ## Install the companion app on the Tolino over adb and grant it the log
 	adb install -r $(ANDROID_APK)
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_LOGS
+	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_EXTERNAL_STORAGE
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.WRITE_EXTERNAL_STORAGE
+	adb shell am force-stop $(ANDROID_PACKAGE)
 	adb shell am start -n $(ANDROID_PACKAGE)/.StoreActivity

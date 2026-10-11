@@ -7,8 +7,9 @@ GOtome:
 - **Send to device**: books you put in your collection "Tolino" in GOtome's
   web UI land in the Tolino library the next time the reader is online.
 - **Store**: browse and search your GOtome library on the Tolino, nine books a
-  page, and put a book on the Tolino with one tap. The catalogue is kept on the
-  device, so browsing does not wait on Wi-Fi.
+  page, and put a book on the Tolino with one tap. Pages come from GOtome as
+  you turn them, so the store needs Wi-Fi; the books on the Tolino are listed
+  without it.
 - **Reading progress**: how far you read on the Tolino shows up in GOtome, and
   the web reader opens the book there.
 
@@ -22,9 +23,14 @@ reader's "Go to page".
 | Part | How |
 |---|---|
 | Books arrive | The app saves them under `Books/GOtome/`. The Tolino reader imports whatever appears under `Books/` by itself within seconds. |
-| Progress | The Tolino reader writes every page turn to the system log. The app reads only those lines (the tags `HomeActivity$DeliverableClickListener`, `EpubViewerActivity`, `EpubView` and `BasicViewerActivity`) for the books it delivered, and sends the position as `fraction:0.42`. |
+| Progress | The Tolino reader writes every page turn to the system log. The app reads only those lines (the tags `HomeActivity$DeliverableClickListener`, `EpubViewerActivity`, `EpubView` and `BasicViewerActivity`) for the EPUBs it delivered. The reader logs its position in Adobe's pages, one for every 1024 bytes of each chapter as compressed in the EPUB; the app counts them in the file and sends the share of the book as `fraction:0.42`. PDFs report no progress. |
 | Store from the home screen | The app puts a book "GOtome" into the library. When the log shows it opened, the app brings the store up over it. |
-| Sync | When Wi-Fi is on, once an hour and whenever a book is closed. The store's "Sync" button turns Wi-Fi on if it is off. |
+| Sync | Whenever the Tolino is online: once an hour, whenever a book is closed, and with "Sync" in the store. |
+
+The app cannot go online by itself: the Tolino turns Wi-Fi off when idle and
+disables its saved networks with it, and only the Tolino's own app may enable
+them again. Turn Wi-Fi on in the Tolino's quick settings to sync; books
+reach the device the next time it is online for any reason.
 
 The log lines are debug output of the Tolino reader, not an interface. If a
 firmware update changes them, books still arrive but progress stops; the
@@ -32,7 +38,7 @@ settings page then says it has seen no page turn.
 
 The system log also holds other apps' lines, among them the Thalia shop's
 sign-in while the shop is open. The app asks logcat for the four tags above
-only and keeps nothing but the book's path and the fraction.
+only and keeps nothing but the book's path and its position.
 
 ## Install
 
@@ -57,6 +63,7 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
    ```bash
    adb install -r gotome-tolino.apk
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.READ_LOGS
+   adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.READ_EXTERNAL_STORAGE
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.WRITE_EXTERNAL_STORAGE
    ```
 
@@ -67,7 +74,7 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
      kept, not the password; it lasts 30 days, then sign in again.
    - **Collection for this Tolino**: "Tolino" unless you want another. It is
      made in GOtome if you have none of that name.
-5. **Sign in**. The app loads the catalogue, puts the "GOtome" book into the
+5. **Sign in**. The app fetches your collection, puts the "GOtome" book into the
    library and starts following the reader. The settings page should say that
    it may read the log.
 

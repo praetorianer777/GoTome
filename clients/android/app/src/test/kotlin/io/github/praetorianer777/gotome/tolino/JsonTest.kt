@@ -18,6 +18,28 @@ class JsonTest {
     }
 
     @Test
+    fun readsSearchHitsAndTheCount() {
+        val hits = Json.searchHits(
+            """{"books":[{"id":"b2","libraryId":"l","title":"Der Schattenbote","authors":["Robin Hobb"],
+               "formats":["epub"],"addedAt":"2026-10-01T10:00:00Z","match":"title","placeholder":false}]}""",
+        )
+        assertEquals(listOf("b2"), hits.map { it.id })
+        assertNull(hits.single().seriesIndex)
+        assertEquals(49_731, Json.count("""{"count":49731}"""))
+    }
+
+    @Test
+    fun describesADetailedBookByItsFiles() {
+        val book = Json.bookDetail(
+            """{"id":"b1","title":"T","series":"S","seriesIndex":2.5,"contributors":[{"name":"A","role":"author"}],
+               "files":[{"id":"f1","format":"epub","drm":false,"missing":false,"size":1},
+                        {"id":"f2","format":"EPUB","drm":false,"missing":false,"size":1},
+                        {"id":"f3","format":"pdf","drm":false,"missing":false,"size":1}]}""",
+        )
+        assertEquals(BookSummary("b1", "T", listOf("A"), "S", 2.5, listOf("epub", "pdf"), ""), Json.summary(book))
+    }
+
+    @Test
     fun theLastPageHasNoCursor() {
         assertNull(Json.bookList("""{"books":[]}""").second)
     }
@@ -44,6 +66,15 @@ class JsonTest {
         assertEquals(0.25, update.getDouble("fraction"), 0.0)
         assertEquals("f1", update.getString("fileId"))
         assertEquals("tolino-ab12cd34", update.getString("clientId"))
+    }
+
+    @Test
+    fun readsWhetherGotomeKeptThePosition() {
+        assertEquals(Json.Saved(true, "tolino-1"), Json.progressSaved("""{"saved":true,"progress":{"clientId":"tolino-1","locator":"x","fraction":0.1,"updatedAt":"t"}}"""))
+        assertEquals(Json.Saved(false, "web"), Json.progressSaved("""{"saved":false,"progress":{"clientId":"web","locator":"x","fraction":0.9,"updatedAt":"t"}}"""))
+        assertEquals(Json.Saved(false, null), Json.progressSaved("""{"saved":false,"progress":null}"""))
+        assertEquals(true, JSONObject(Json.progressUpdate("f", 0.1, "c", force = true)).getBoolean("force"))
+        assertEquals(false, JSONObject(Json.progressUpdate("f", 0.1, "c")).has("force"))
     }
 
     @Test

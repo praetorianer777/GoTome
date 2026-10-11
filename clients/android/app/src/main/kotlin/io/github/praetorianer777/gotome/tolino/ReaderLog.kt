@@ -5,8 +5,8 @@ sealed interface ReaderEvent {
     /** A book was opened, from the home screen, the library or the reader itself. */
     data class Opened(val path: String) : ReaderEvent
 
-    /** A page was turned; how far into the book the new page is, from 0 to 1. */
-    data class Page(val fraction: Double) : ReaderEvent
+    /** A page was turned; where the new page begins, in Adobe's pages (see [AdobePages]). */
+    data class Page(val position: Double) : ReaderEvent
 
     /** The book was closed, at a location in Adobe's notation. */
     data class Closed(val location: String) : ReaderEvent
@@ -37,8 +37,8 @@ object ReaderLog {
         startReader.find(text)?.let { return ReaderEvent.Opened(Storage.canonical(it.groupValues[1])) }
         openDocument.find(text)?.let { return ReaderEvent.Opened(Storage.canonical(it.groupValues[1])) }
         page.find(text)?.let { match ->
-            val fraction = match.groupValues[1].toDoubleOrNull() ?: return null
-            return if (fraction in 0.0..1.0) ReaderEvent.Page(fraction) else null
+            val position = match.groupValues[1].toDoubleOrNull() ?: return null
+            return if (position.isFinite() && position >= 0) ReaderEvent.Page(position) else null
         }
         closed.find(text)?.let { return ReaderEvent.Closed(it.groupValues[1]) }
         return null
@@ -48,11 +48,11 @@ object ReaderLog {
 /** What a reader event means for the book being read. */
 sealed interface Reading {
     data class Opened(val path: String) : Reading
-    data class Moved(val path: String, val fraction: Double) : Reading
+    data class Moved(val path: String, val position: Double) : Reading
     data class Closed(val path: String) : Reading
 }
 
-/** Follows the reader's events to which book is open and how far into it the person is. */
+/** Follows the reader's events to which book is open and where in it the person is. */
 class ReadingTracker {
     var current: String? = null
         private set
@@ -63,7 +63,7 @@ class ReadingTracker {
             current = event.path
             Reading.Opened(event.path)
         }
-        is ReaderEvent.Page -> current?.let { Reading.Moved(it, event.fraction) }
+        is ReaderEvent.Page -> current?.let { Reading.Moved(it, event.position) }
         is ReaderEvent.Closed -> current?.let {
             current = null
             Reading.Closed(it)
