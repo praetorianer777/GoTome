@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,6 +22,9 @@ import (
 
 // The app container may start alongside Postgres rather than after it, so
 // Open waits this long for the database before giving up.
+// minConns is the least the pool holds unless the URL says otherwise.
+const minConns = 16
+
 const (
 	connectAttempts = 30
 	connectPause    = time.Second
@@ -33,6 +37,13 @@ func Open(ctx context.Context, url string, log *slog.Logger) (*pgxpool.Pool, err
 	if err != nil {
 		// pgx quotes the URL in its error, password included.
 		return nil, errors.New("GOTOME_DATABASE_URL is not a valid Postgres URL, such as postgres://gotome:secret@db:5432/gotome")
+	}
+	// pgx's default is four connections or one per CPU, and the
+	// notification hub and River's notifier each hold one for good: on a
+	// small machine the requests and jobs were left with two between them
+	// (#189). The URL's pool_max_conns still decides where it is given.
+	if !strings.Contains(url, "pool_max_conns") {
+		cfg.MaxConns = max(cfg.MaxConns, minConns)
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

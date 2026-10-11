@@ -53,6 +53,7 @@ const (
 // Settings is where the switches are: settings.Store.
 type Settings interface {
 	Text(ctx context.Context, key string) (string, error)
+	TextTx(ctx context.Context, db sqlc.DBTX, key string) (string, error)
 }
 
 // Editor changes a book as a person's edit does, with the write-back into
@@ -90,7 +91,7 @@ func NewService(pool *pgxpool.Pool, meta *metadata.Service, editor Editor, store
 // gave a reason to: a file of it was read. Asking again while the lookup
 // waits is the same lookup.
 func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error {
-	on, err := s.settings.Text(ctx, settings.AutoMatch)
+	on, err := s.settings.TextTx(ctx, tx, settings.AutoMatch)
 	if err != nil || on != "on" {
 		return err
 	}
