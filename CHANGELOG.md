@@ -21,6 +21,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- E-readers with KOReader, or any app that reads OPDS catalogues, browse
+  the library by newest, author, series and shelf, search it and download
+  books, signed in with a token made for the device on the profile page
+  (`docs/koreader.md`).
 - An overview page shows what the libraries hold (books, files by format,
   size, pages, audiobook hours, authors, series, languages, books added per
   month, and books without a cover, an author or text) and, for editors,

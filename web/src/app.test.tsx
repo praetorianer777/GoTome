@@ -1396,6 +1396,33 @@ describe("profile", () => {
 		);
 	});
 
+	it("adds an e-reader, shows its token once, and revokes it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		const devices = within(
+			await screen.findByRole("region", { name: "E-readers" }),
+		);
+		await person.type(devices.getByLabelText("Name of the device"), " ");
+		await person.click(devices.getByRole("button", { name: "Add a device" }));
+		expect(
+			await devices.findByText("Give the device a name."),
+		).toBeInTheDocument();
+
+		await person.clear(devices.getByLabelText("Name of the device"));
+		await person.type(devices.getByLabelText("Name of the device"), "Tolino");
+		await person.click(devices.getByRole("button", { name: "Add a device" }));
+		const created = await devices.findByRole("status");
+		expect(created).toHaveTextContent("Tolino is added.");
+		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);
+		expect(created).toHaveTextContent("Rita");
+		expect(created).toHaveTextContent("abcd-efgh-ijkm-npqr-stuv");
+		expect(await devices.findByText("Not used yet")).toBeInTheDocument();
+
+		await person.click(devices.getByRole("button", { name: "Revoke Tolino" }));
+		await waitFor(() => expect(server.devices).toHaveLength(0));
+	});
+
 	it("leaves single sign-on out of the profile where there is none", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		renderApp("/profile");

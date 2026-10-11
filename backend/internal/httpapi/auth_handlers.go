@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 )
 
@@ -205,13 +207,23 @@ func clientAddress(r *http.Request) string {
 	return host
 }
 
-// authenticate resolves the session cookie to a user for the handlers. A
-// missing or dead session is not an error here: public routes are served
-// either way, and requireUser refuses the rest.
+// authenticate resolves the session cookie, or a device's token sent as
+// HTTP Basic auth, to a user for the handlers. A missing or dead session is
+// not an error here: public routes are served either way, and require
+// refuses the rest. Wrong device credentials are, as a client that sent
+// them wants to be told.
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := sessionToken(r)
-		if token == "" || s.Auth == nil {
+		if s.Auth == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if token == "" {
+			if name, secret, ok := r.BasicAuth(); ok {
+				s.authenticateDevice(w, r, next, name, secret)
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -229,16 +241,60 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 	})
 }
 
+// authenticateDevice signs a device in by its token, limited as password
+// sign-ins are.
+func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string) {
+	address := clientAddress(r)
+	account := strings.ToLower(strings.TrimSpace(name)) + "|" + address
+	if wait := max(s.Logins.perAccount.RetryAfter(account), s.Logins.perAddress.RetryAfter(address)); wait > 0 {
+		writeError(w, r, ErrTooManyRequests("Too many failed sign-in attempts. Wait a little and try again.", wait))
+		return
+	}
+	user, device, err := s.Auth.AuthenticateDevice(r.Context(), name, secret)
+	if errors.Is(err, auth.ErrInvalidCredentials) {
+		s.Logins.perAccount.Fail(account)
+		s.Logins.perAddress.Fail(address)
+		askForDevice(w)
+		writeError(w, r, ErrUnauthorized("The user name or the device token is wrong."))
+		return
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s.Logins.perAccount.Reset(account)
+	ctx := context.WithValue(r.Context(), userKey, &user)
+	next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, device)))
+}
+
+// DeviceFrom is the device a request was signed in with, or uuid.Nil for a
+// browser's session.
+func DeviceFrom(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(deviceKey).(uuid.UUID)
+	return id
+}
+
+// askForDevice tells an OPDS client to send a user name and device token.
+func askForDevice(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="GOtome", charset="UTF-8"`)
+}
+
 // require lets a request through when its caller holds the permission: 401
 // when nobody is signed in, 403 when somebody is and their role does not
-// reach that far.
-func require(permission auth.Permission, next HandlerFunc) HandlerFunc {
+// reach that far. A device's token reaches only the routes for devices.
+func require(permission auth.Permission, devices bool, next HandlerFunc) HandlerFunc {
 	if permission == auth.Public {
 		return next
 	}
 	return func(w http.ResponseWriter, r *http.Request) error {
 		user := UserFrom(r.Context())
+		if user != nil && !devices && DeviceFrom(r.Context()) != uuid.Nil {
+			return ErrUnauthorized("A device token signs in only to the catalogue for devices.")
+		}
 		if user == nil {
+			if devices {
+				askForDevice(w)
+			}
 			return ErrUnauthorized("")
 		}
 		if permission != auth.SignedIn && !auth.Allows(user.Role, permission) {

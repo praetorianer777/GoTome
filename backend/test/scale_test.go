@@ -318,6 +318,8 @@ type scaleView struct {
 	path string
 	// adminOnly is a view the member may not use.
 	adminOnly bool
+	// feed is an OPDS feed for e-readers, which is XML, not JSON.
+	feed bool
 }
 
 // scaleViews are the views of the web app's pages, with what the seed
@@ -378,6 +380,10 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "jobs", path: "/jobs"},
 		{name: "libraries", path: "/libraries"},
 		{name: "users", path: "/users", adminOnly: true},
+		{name: "e-reader catalogue: newest", path: "/opds/books", feed: true},
+		{name: "e-reader catalogue: authors", path: "/opds/authors", feed: true},
+		{name: "e-reader catalogue: an author", path: "/opds/books?" + url.Values{"author": {author}}.Encode(), feed: true},
+		{name: "e-reader catalogue: search", path: "/opds/search?q=" + quick, feed: true},
 		{name: "overview", path: "/statistics"},
 		{name: "overview of a library", path: "/statistics?library=" + library},
 		{name: "overview: work", path: "/statistics/work"},
@@ -435,7 +441,15 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 			best := time.Hour
 			for range 3 {
 				began := time.Now()
-				status, body, _ := a.call(who.client, http.MethodGet, path, nil)
+				var status int
+				var body map[string]any
+				if v.feed {
+					var raw []byte
+					status, raw = a.get(who.client, path)
+					body = map[string]any{"body": string(raw)}
+				} else {
+					status, body, _ = a.call(who.client, http.MethodGet, path, nil)
+				}
 				took := time.Since(began)
 				if status != http.StatusOK {
 					logs := a.logs.String()

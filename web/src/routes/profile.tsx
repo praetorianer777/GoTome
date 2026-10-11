@@ -21,6 +21,7 @@ import {
 	useEndOwnSession,
 	useUnlinkIdentity,
 } from "@/users/api";
+import { Devices } from "@/users/devices";
 import { StorageUse } from "@/users/storage";
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -81,6 +82,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 			<SingleSignOn sso={sso} />
 			<ChangePassword />
 			<Sessions />
+			<Devices username={user.username} />
 		</div>
 	);
 }

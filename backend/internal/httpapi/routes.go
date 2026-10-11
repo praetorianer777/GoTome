@@ -52,7 +52,10 @@ type Route struct {
 	Permission auth.Permission
 	// Reads says what a GET route answers with; the router refuses to
 	// start with one that does not say.
-	Reads   Reads
+	Reads Reads
+	// Devices lets a device's token (HTTP Basic auth) sign in to the route,
+	// as well as a browser's session; no other route takes one.
+	Devices bool
 	Handler HandlerFunc
 }
 
@@ -87,7 +90,7 @@ func (s *Server) Table() []Route { return s.routes() }
 
 // routes is the table of every API endpoint.
 func (s *Server) routes() []Route {
-	return []Route{
+	return append([]Route{
 		{
 			Method: http.MethodGet, Path: "/version", ID: "getVersion",
 			Summary: "Which build of GOtome is running", Tag: "system",
@@ -214,6 +217,22 @@ func (s *Server) routes() []Route {
 			Method: http.MethodDelete, Path: "/auth/sessions/{sessionId}", ID: "endOwnSession",
 			Summary: "End one of the caller's own sessions", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.endOwnSession,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/devices", ID: "listOwnDevices",
+			Summary: "The caller's devices: e-readers that sign in with a token of their own", Tag: "auth",
+			Response: deviceList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnDevices,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/devices", ID: "createOwnDevice",
+			Summary: "Add a device, and get the token it signs in with, shown this once", Tag: "auth",
+			Request: createDeviceRequest{}, Response: createdDevice{}, Status: http.StatusCreated,
+			Permission: auth.SignedIn, Handler: s.createOwnDevice,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
+			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,
 		},
 		{
 			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
@@ -653,15 +672,15 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
 			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
 			Produces: "application/octet-stream", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.downloadFile,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.downloadFile,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
 			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",
 			Produces: "image/jpeg", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBookCover,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.getBookCover,
 		},
-	}
+	}, s.opdsRoutes()...)
 }
 
 // buildInfo is version.Info under the name clients see it by: "Info" alone

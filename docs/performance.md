@@ -56,6 +56,10 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | jobs | 0 ms | 1 ms |  |
 | libraries | 21 ms | 21 ms | counts every file |
 | users | 1 ms | – |  |
+| e-reader catalogue: newest | 17 ms | 23 ms |  |
+| e-reader catalogue: authors | 6 ms | 23 ms |  |
+| e-reader catalogue: an author | 11 ms | 18 ms |  |
+| e-reader catalogue: search | 50 ms | 98 ms |  |
 | overview | 695 ms | 602 ms | counts every book and file |
 | overview of a library | 154 ms | 130 ms | counts every book and file |
 | overview: work | 405 ms | 424 ms | counts every book and file |
