@@ -17,7 +17,7 @@ data class Unsent(val bookId: String, val fileId: String, val fraction: Double, 
  * and GOtome's positions in those books as of the last sync, so that a jump can
  * be offered offline. The library itself stays on the server.
  */
-class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 3) {
+class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE delivered (book_id TEXT PRIMARY KEY, file_id TEXT NOT NULL,
@@ -30,9 +30,10 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 3) {
                fraction REAL NOT NULL, at INTEGER NOT NULL, sent INTEGER NOT NULL DEFAULT 0)""",
         )
         createRemote(db)
+        createUncollect(db)
     }
 
-    /** Version 1 kept the whole catalogue on the device; version 2 had no positions from GOtome. */
+    /** Version 1 kept the whole catalogue on the device, version 2 no positions from GOtome. */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("DROP TABLE IF EXISTS books")
@@ -42,6 +43,28 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 3) {
             )) db.execSQL("ALTER TABLE delivered ADD COLUMN $column")
         }
         if (oldVersion < 3) createRemote(db)
+        if (oldVersion < 4) createUncollect(db)
+    }
+
+    /** Books taken off the Tolino in the app, to be taken out of the device's collection. */
+    private fun createUncollect(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE uncollect (book_id TEXT PRIMARY KEY)")
+    }
+
+    /**
+     * Forgets a book taken off the Tolino in the app, unlike one deleted in the Tolino
+     * library: as it leaves the collection too, adding it there again brings it back.
+     */
+    fun forget(bookId: String) {
+        writableDatabase.delete("delivered", "book_id = ?", arrayOf(bookId))
+        writableDatabase.delete("remote", "book_id = ?", arrayOf(bookId))
+        writableDatabase.insertWithOnConflict("uncollect", null, ContentValues().apply { put("book_id", bookId) }, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    fun toUncollect(): List<String> = ids("SELECT book_id FROM uncollect").toList()
+
+    fun uncollected(bookId: String) {
+        writableDatabase.delete("uncollect", "book_id = ?", arrayOf(bookId))
     }
 
     private fun createRemote(db: SQLiteDatabase) {

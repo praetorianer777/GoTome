@@ -34,6 +34,8 @@ class Api(private val prefs: Prefs) {
         return read(conn)
     }
 
+    fun delete(path: String): String = read(open("DELETE", prefs.server, path))
+
     /** Streams a file to [target] through a sibling that the reader app does not import. */
     fun download(path: String, target: File) {
         val conn = open("GET", prefs.server, path)

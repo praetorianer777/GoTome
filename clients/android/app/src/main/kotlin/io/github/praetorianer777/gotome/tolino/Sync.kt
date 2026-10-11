@@ -21,6 +21,8 @@ class Sync(private val context: Context) {
         try {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
+            // Before delivering, or a book just taken off would come straight back.
+            uncollect()
             deliverCollection(progress)
             fetchPositions()
             prefs.lastSync = System.currentTimeMillis()
@@ -46,6 +48,16 @@ class Sync(private val context: Context) {
             db.addDelivered(it, Json.summary(book))
             runCatching { addToCollection(bookId) }
         }
+    }
+
+    /**
+     * Takes a book off the Tolino: its file goes, which takes it out of the Tolino
+     * library, and it leaves the device's collection, now or with the next sync.
+     */
+    fun remove(bookId: String) = synchronized(LOCK) {
+        db.delivered(bookId)?.let { File(it.path).delete() }
+        db.forget(bookId)
+        if (prefs.signedIn && Network.online(context)) runCatching { uncollect() }
     }
 
     fun ebookProgress(bookId: String): EbookProgress? = Json.ebookProgress(api.get("/books/$bookId/progress"))
@@ -96,6 +108,17 @@ class Sync(private val context: Context) {
 
     private fun fetchPositions() {
         for (id in db.onDeviceIds()) fetchPosition(id)
+    }
+
+    private fun uncollect() {
+        for (id in db.toUncollect()) {
+            try {
+                api.delete("/collections/${collectionId()}/books/$id")
+            } catch (e: ApiException) {
+                if (e.status != 404) throw e
+            }
+            db.uncollected(id)
+        }
     }
 
     private fun addToCollection(bookId: String) {

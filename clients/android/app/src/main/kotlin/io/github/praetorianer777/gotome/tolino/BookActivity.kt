@@ -21,6 +21,7 @@ class BookActivity : Activity() {
     private lateinit var action: Button
     private lateinit var state: TextView
     private lateinit var progress: TextView
+    private var confirming = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +54,7 @@ class BookActivity : Activity() {
         }
         Covers(this).show(bookId, findViewById<ImageView>(R.id.cover), "large")
         findViewById<Button>(R.id.back).setOnClickListener { finish() }
-        action.setOnClickListener { deliver() }
+        action.setOnClickListener { if (db.delivered(bookId) == null) deliver() else remove() }
         showState()
         loadDetails()
     }
@@ -62,7 +63,27 @@ class BookActivity : Activity() {
         db.noteRemoved()
         val onDevice = db.delivered(bookId) != null
         state.text = getString(if (onDevice) R.string.on_tolino else R.string.not_on_tolino)
-        action.visibility = if (onDevice) View.GONE else View.VISIBLE
+        action.text = getString(if (onDevice) R.string.remove else R.string.download)
+        confirming = false
+    }
+
+    /** Asks once on the button itself; a dialog would cost two more refreshes. */
+    private fun remove() {
+        if (!confirming) {
+            confirming = true
+            action.text = getString(R.string.remove_confirm)
+            return
+        }
+        action.isEnabled = false
+        Thread {
+            sync.remove(bookId)
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                action.isEnabled = true
+                showState()
+                state.text = getString(R.string.removed)
+            }
+        }.start()
     }
 
     /** The description and GOtome's position need the network; the page shows without them. */

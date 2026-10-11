@@ -62,4 +62,7 @@
     <string name="jump_service_description">When you read further in GOtome elsewhere, offers to take the Tolino reader there, and on your tap enters the page in the reader\'s own Go to page. Acts in the Tolino reader only.</string>
     <string name="jump_on">Jumping to the page read elsewhere: on.</string>
     <string name="jump_off">Jumping to the page read elsewhere is off. Turn it on once from a computer with\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
+    <string name="remove">Remove from Tolino</string>
+    <string name="remove_confirm">Really remove? Tap again</string>
+    <string name="removed">Removed from the Tolino and from your collection.</string>
 </resources>
