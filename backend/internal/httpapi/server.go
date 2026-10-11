@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
@@ -85,6 +86,8 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Deliveries sends books to people's devices.
+	Deliveries *deliveries.Service
 	// Sync is the server KOReader's progress sync talks to.
 	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.

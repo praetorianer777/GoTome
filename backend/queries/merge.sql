@@ -102,6 +102,16 @@ INSERT INTO collection_items (collection_id, book_id, position, added_at)
 SELECT collection_id, sqlc.arg(into_book), position, added_at FROM moved
 ON CONFLICT DO NOTHING;
 
+-- name: MergeDeliveries :exec
+-- The book's deliveries to devices; where a device has both, the surviving
+-- book's.
+WITH moved AS (
+    DELETE FROM deliveries x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING device_id, queued_at, delivered_at)
+INSERT INTO deliveries (device_id, book_id, queued_at, delivered_at)
+SELECT device_id, sqlc.arg(into_book), queued_at, delivered_at FROM moved
+ON CONFLICT DO NOTHING;
+
 -- name: MergeRelations :exec
 -- The book's links to its other editions and translations; one to the
 -- surviving book itself goes.

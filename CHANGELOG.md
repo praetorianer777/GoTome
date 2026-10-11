@@ -21,6 +21,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Books are sent to an e-reader from their page or a selection in the
+  library: they wait in the catalogue's "Sent to this device" on the
+  device until it downloads them, and the book's page says since when the
+  device has it.
 - KOReader's own progress sync works with GOtome as its server: a place
   read in KOReader opens in the web reader, and one from the web reader is
   offered in KOReader, at its chapter for an EPUB and its page for a PDF

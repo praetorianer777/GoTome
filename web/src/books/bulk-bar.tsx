@@ -19,8 +19,10 @@ import {
 	useSetReadingBulk,
 } from "@/books/reading";
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
+import { useSendToDevice } from "@/books/deliveries";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
+import { ownDevicesQuery } from "@/users/api";
 
 const quietButton =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
@@ -55,6 +57,8 @@ export function BulkBar({
 	const collections = useQuery(collectionsQuery());
 	const mine = collections.data?.filter((c) => c.mine) ?? [];
 	const collect = useAddToCollection();
+	const devices = useQuery(ownDevicesQuery);
+	const send = useSendToDevice();
 	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"]) =>
 		start.mutate(
@@ -130,6 +134,24 @@ export function BulkBar({
 						))}
 					</select>
 				)}
+				{(devices.data?.length ?? 0) > 0 && (
+					<select
+						aria-label={t("bulk.send")}
+						value=""
+						disabled={none || send.isPending}
+						onChange={(e) => send.mutate({ ...selection, device: e.target.value })}
+						className={control}
+					>
+						<option value="" disabled>
+							{t("bulk.send")}
+						</option>
+						{devices.data?.map((d) => (
+							<option key={d.id} value={d.id}>
+								{d.name}
+							</option>
+						))}
+					</select>
+				)}
 				{canEdit && (
 					<>
 				<button
@@ -171,6 +193,15 @@ export function BulkBar({
 					})}
 				</p>
 			)}
+			{send.data && (
+				<p role="status">
+					{t("bulk.sendDone", {
+						count: send.data.queued,
+						name: devices.data?.find((d) => d.id === send.variables?.device)?.name ?? "",
+					})}
+				</p>
+			)}
+			<FormError error={send.error} />
 			<FormError error={collect.error} />
 			<FormError error={setStatus.error} />
 			{!editing && <FormError error={start.error} />}

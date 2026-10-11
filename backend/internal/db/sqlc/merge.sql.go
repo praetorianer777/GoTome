@@ -260,6 +260,27 @@ func (q *Queries) MergeCollectionItems(ctx context.Context, arg MergeCollectionI
 	return err
 }
 
+const mergeDeliveries = `-- name: MergeDeliveries :exec
+WITH moved AS (
+    DELETE FROM deliveries x WHERE x.book_id = $2
+    RETURNING device_id, queued_at, delivered_at)
+INSERT INTO deliveries (device_id, book_id, queued_at, delivered_at)
+SELECT device_id, $1, queued_at, delivered_at FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type MergeDeliveriesParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's deliveries to devices; where a device has both, the surviving
+// book's.
+func (q *Queries) MergeDeliveries(ctx context.Context, arg MergeDeliveriesParams) error {
+	_, err := q.db.Exec(ctx, mergeDeliveries, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const mergeReadingProgress = `-- name: MergeReadingProgress :exec
 WITH moved AS (
     DELETE FROM reading_progress x WHERE x.book_id = $2

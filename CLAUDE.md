@@ -935,6 +935,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   (`catalog.FeedBooks`), and never repeat what the query asked for, so a
   feed about nothing reads like one about a book the caller may not see.
 
+- Sending to a device (`internal/deliveries`, #196): `deliveries` holds
+  one row per device and book, queued until the device downloads it.
+  `POST /devices/{id}/books` takes IDs or a library and filter (books with
+  an ebook the sender sees; one delivered before is queued again);
+  `GET /opds/device`, for a device's token only (`DeviceFrom`), lists what
+  waits, its downloads at `/opds/device/files/{id}`, where a whole file
+  sent (200, not a range) marks the book delivered. A merge carries the
+  deliveries over (`MergeDeliveries`).
 - KOReader's progress sync (`internal/kosync`, #198) is served under
   `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
   its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched

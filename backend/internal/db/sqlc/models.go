@@ -185,6 +185,14 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type Delivery struct {
+	ID          uuid.UUID
+	DeviceID    uuid.UUID
+	BookID      uuid.UUID
+	QueuedAt    time.Time
+	DeliveredAt *time.Time
+}
+
 type Device struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
