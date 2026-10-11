@@ -101,6 +101,8 @@ similar-check: ## Measure the similar books of the running stack's library: make
 	docker compose exec -T app gotome similar-check $(ARGS)
 
 .PHONY: stack-up
+# Its database is thrown away after the run, so it need not survive a crash.
+stack-up: export GOTOME_DB_DURABLE := off
 stack-up: stack-env ## The gate's stack: build and start it, and wait until both services are healthy
 	docker compose up -d --build --wait --quiet-pull
 
