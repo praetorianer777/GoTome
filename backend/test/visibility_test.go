@@ -148,6 +148,9 @@ func readCases() map[string][]readCase {
 			{path: "/opds/collections/{sharedCollection}", control: "insider"},
 			{path: "/opds/collections/{formerCollection}", control: "former"},
 		},
+		"listBookDeliveries":     {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listOpdsDeviceBooks":    {{path: "/opds/device", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},
 			{path: "/opds/smart-shelves/{formerShelf}", control: "former"},

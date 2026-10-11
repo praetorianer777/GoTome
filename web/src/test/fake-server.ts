@@ -101,6 +101,15 @@ export class FakeServer {
 		createdAt: string;
 		lastUsedAt?: string;
 	}[] = [];
+	/** Books sent to the person's e-readers. */
+	deliveries: {
+		id: string;
+		bookId: string;
+		deviceId: string;
+		deviceName: string;
+		queuedAt: string;
+		deliveredAt?: string;
+	}[] = [];
 	/** The signed-in person's sessions, as the profile page lists them. */
 	sessions = [
 		{
@@ -516,6 +525,37 @@ export class FakeServer {
 			}
 			if (path.startsWith("/matches")) {
 				return this.answerMatches(request.method, path, body as CandidateApply);
+			}
+			const bookDeliveries = /^\/books\/([^/]+)\/deliveries$/.exec(path);
+			if (bookDeliveries) {
+				return Response.json({
+					deliveries: this.deliveries.filter((d) => d.bookId === bookDeliveries[1]),
+				});
+			}
+			const sending = /^\/devices\/([^/]+)\/books$/.exec(path);
+			if (sending && request.method === "POST") {
+				const device = this.devices.find((d) => d.id === sending[1]);
+				if (!device) {
+					return Response.json({ error: { code: "not_found", message: "There is no such device." } }, { status: 404 });
+				}
+				const books = (body as { books?: string[] }).books ?? this.books.map((b) => b.id);
+				let queued = 0;
+				for (const bookId of books) {
+					const had = this.deliveries.find((d) => d.bookId === bookId && d.deviceId === device.id);
+					if (had && !had.deliveredAt) continue;
+					this.deliveries = this.deliveries.filter((d) => d !== had);
+					this.deliveries.push({
+						id: `dl-${this.deliveries.length + 1}`, bookId, deviceId: device.id,
+						deviceName: device.name, queuedAt: "2026-01-05T08:00:00Z",
+					});
+					queued++;
+				}
+				return Response.json({ queued });
+			}
+			const takeBack = /^\/deliveries\/([^/]+)$/.exec(path);
+			if (takeBack && request.method === "DELETE") {
+				this.deliveries = this.deliveries.filter((d) => d.id !== takeBack[1]);
+				return new Response(null, { status: 204 });
 			}
 			if (path === "/books" || path.startsWith("/books/")) {
 				return this.answerBooks(request.method, path, url.searchParams, body);

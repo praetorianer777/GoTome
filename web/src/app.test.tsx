@@ -4326,6 +4326,47 @@ describe("searching by a description", () => {
 	});
 });
 
+describe("sending to an e-reader", () => {
+	const epub = {
+		id: "file-1",
+		kind: "ebook" as const,
+		format: "epub",
+		name: "Persuasion.epub",
+		size: 1_400_000,
+		missing: false,
+		drm: false,
+		extractState: "done" as const,
+	};
+
+	it("sends a book from its page, says it waits, and takes it back", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		server.devices = [{ id: "d-1", name: "Tolino", createdAt: "2026-01-04T08:00:00Z" }];
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "E-readers" }));
+		await person.selectOptions(await section.findByRole("combobox", { name: "Send to an e-reader" }), "Tolino");
+		expect(await section.findByText("Waiting for Tolino")).toBeInTheDocument();
+		expect(server.deliveries).toHaveLength(1);
+
+		await person.click(section.getByRole("button", { name: "Take back" }));
+		await waitFor(() => expect(section.queryByText("Waiting for Tolino")).not.toBeInTheDocument());
+		expect(server.deliveries).toHaveLength(0);
+	});
+
+	it("says where to add an e-reader when there is none", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "E-readers" }));
+		expect(await section.findByRole("link", { name: "Add one on your profile." })).toHaveAttribute("href", "/profile");
+	});
+});
+
 describe("the overview", () => {
 	afterEach(() => vi.unstubAllGlobals());
 

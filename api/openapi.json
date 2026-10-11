@@ -1567,6 +1567,53 @@
         "x-permission": "library:read"
       }
     },
+    "/books/{bookId}/deliveries": {
+      "get": {
+        "operationId": "listBookDeliveries",
+        "summary": "The book's deliveries to the caller's devices, waiting or done",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/merge": {
       "post": {
         "operationId": "mergeBooks",
@@ -2422,6 +2469,103 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CollectionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/deliveries/{deliveryId}": {
+      "delete": {
+        "operationId": "takeBackDelivery",
+        "summary": "Take a book back from a device's queue before the device has it",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deliveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/devices/{deviceId}/books": {
+      "post": {
+        "operationId": "sendToDevice",
+        "summary": "Send books to one of the caller's devices: by IDs, or a library and filter",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendResult"
                 }
               }
             }
@@ -4348,6 +4492,92 @@
             "description": "OK",
             "content": {
               "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/device": {
+      "get": {
+        "operationId": "listOpdsDeviceBooks",
+        "summary": "The books sent to the device that asks, until it downloads them",
+        "tags": [
+          "opds"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/device/files/{fileId}": {
+      "get": {
+        "operationId": "downloadOpdsDeviceFile",
+        "summary": "A file of a book sent to the device that asks; the whole of it marks the book delivered",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -7374,6 +7604,50 @@
           "permissions"
         ]
       },
+      "DeliveryList": {
+        "type": "object",
+        "properties": {
+          "deliveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryView"
+            }
+          }
+        },
+        "required": [
+          "deliveries"
+        ]
+      },
+      "DeliveryView": {
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "deviceId",
+          "deviceName",
+          "queuedAt"
+        ]
+      },
       "DescribedList": {
         "type": "object",
         "properties": {
@@ -8978,6 +9252,35 @@
         },
         "required": [
           "books"
+        ]
+      },
+      "SendRequest": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "filter": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          }
+        }
+      },
+      "SendResult": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued"
         ]
       },
       "SeriesPlace": {

@@ -65,6 +65,8 @@ func TestBooksAreMergedWithEveryonesReading(t *testing.T) {
 	}
 	ritaShelf := shelf(reader, "To keep", gone)
 	ottoShelf := shelf(other, "Both", keep, gone)
+	_, device, _ := a.call(reader, http.MethodPost, "/auth/devices", map[string]any{"name": "Tolino"})
+	a.call(reader, http.MethodPost, "/devices/"+device["device"].(map[string]any)["id"].(string)+"/books", map[string]any{"books": []string{gone}})
 	if _, err := a.pool.Exec(ctx, `INSERT INTO notifications (user_id, kind, data, link, book_id)
 		VALUES ($1, 'bulk.finished', '{}', '/books/' || $2, $2::uuid)`, readerID, gone); err != nil {
 		t.Fatal(err)
@@ -136,6 +138,9 @@ func TestBooksAreMergedWithEveryonesReading(t *testing.T) {
 	if status != 200 || merged["id"] != keep || merged["title"] != "Emma: A Novel" ||
 		merged["description"] != "A heroine whom no one but myself will much like." {
 		t.Fatalf("merge: %d %v", status, merged)
+	}
+	if _, sent, _ := a.call(reader, http.MethodGet, "/books/"+keep+"/deliveries", nil); len(sent["deliveries"].([]any)) != 1 {
+		t.Errorf("the merged book's delivery: %v", sent)
 	}
 	if files, _ := merged["files"].([]any); len(files) != 2 {
 		t.Errorf("files after the merge: %v", merged["files"])

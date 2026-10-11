@@ -106,7 +106,7 @@ func TestADeviceBrowsesTheCatalogueWithItsTokenAndNothingElse(t *testing.T) {
 	for _, e := range root.Entries {
 		links[e.Title] = e.Links[0].Href
 	}
-	if len(links) != 6 || links["Authors"] != httpapi.APIPrefix+"/opds/authors" {
+	if len(links) != 7 || links["Sent to this device"] != httpapi.APIPrefix+"/opds/device" || links["Authors"] != httpapi.APIPrefix+"/opds/authors" {
 		t.Errorf("root: %v", links)
 	}
 

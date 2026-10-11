@@ -484,6 +484,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The book's deliveries to the caller's devices, waiting or done */
+        get: operations["listBookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/merge": {
         parameters: {
             query?: never;
@@ -719,6 +736,40 @@ export interface paths {
         /** Put a collection's books in another order */
         put: operations["reorderCollection"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a book back from a device's queue before the device has it */
+        delete: operations["takeBackDelivery"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/devices/{deviceId}/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send books to one of the caller's devices: by IDs, or a library and filter */
+        post: operations["sendToDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1300,6 +1351,40 @@ export interface paths {
         };
         /** A collection's books, in its order */
         get: operations["listOpdsCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books sent to the device that asks, until it downloads them */
+        get: operations["listOpdsDeviceBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/device/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A file of a book sent to the device that asks; the whole of it marks the book delivered */
+        get: operations["downloadOpdsDeviceFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2151,6 +2236,20 @@ export interface components {
             role: "admin" | "editor" | "reader";
             username: string;
         };
+        DeliveryList: {
+            deliveries: components["schemas"]["DeliveryView"][];
+        };
+        DeliveryView: {
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            deviceId: string;
+            deviceName: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            queuedAt: string;
+        };
         DescribedList: {
             books: components["schemas"]["BookSummary"][];
             nextOffset?: number;
@@ -2584,6 +2683,14 @@ export interface components {
         };
         SearchResult: {
             books: components["schemas"]["SearchHit"][];
+        };
+        SendRequest: {
+            books?: string[];
+            filter?: string;
+            library?: string;
+        };
+        SendResult: {
+            queued: number;
         };
         SeriesPlace: {
             index?: number;
@@ -3876,6 +3983,37 @@ export interface operations {
             };
         };
     };
+    listBookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     mergeBooks: {
         parameters: {
             query?: never;
@@ -4425,6 +4563,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    takeBackDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sendToDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResult"];
                 };
             };
             /** @description The request failed. */
@@ -5677,6 +5879,66 @@ export interface operations {
                 };
                 content: {
                     "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsDeviceBooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    downloadOpdsDeviceFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
             /** @description The request failed. */
