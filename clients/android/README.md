@@ -24,7 +24,7 @@ reader's "Go to page".
 |---|---|
 | Books arrive | The app saves them under `Books/GOtome/`. The Tolino reader imports whatever appears under `Books/` by itself within seconds. |
 | Progress | The Tolino reader writes every page turn to the system log. The app reads only those lines (the tags `HomeActivity$DeliverableClickListener`, `EpubViewerActivity`, `EpubView` and `BasicViewerActivity`) for the EPUBs it delivered. The reader logs its position in Adobe's pages, one for every 1024 bytes of each chapter as compressed in the EPUB; the app counts them in the file and sends the share of the book as `fraction:0.42`. PDFs report no progress. |
-| Store from the home screen | The app puts a book "GOtome" into the library. When the log shows it opened, the app brings the store up over it. |
+| Store from the home screen | The app puts a book "GOtome" into the library. When the log shows it opened, the app brings the store up over it. Deleted, it comes back with the next sync or when the store is opened. |
 | Sync | Whenever the Tolino is online: once an hour, whenever a book is closed, and with "Sync" in the store. |
 
 The app cannot go online by itself: the Tolino turns Wi-Fi off when idle and
