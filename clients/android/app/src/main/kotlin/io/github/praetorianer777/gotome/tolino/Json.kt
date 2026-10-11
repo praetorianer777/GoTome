@@ -47,6 +47,12 @@ object Json {
         addedAt = o.optString("addedAt"),
     )
 
+    /** Search hits describe a book the way a page of books does. */
+    fun searchHits(body: String): List<BookSummary> =
+        JSONObject(body).getJSONArray("books").objects().map(::bookSummary)
+
+    fun count(body: String): Int = JSONObject(body).getInt("count")
+
     fun bookDetail(body: String): BookDetail {
         val o = JSONObject(body)
         return BookDetail(
@@ -70,6 +76,16 @@ object Json {
         )
     }
 
+    fun summary(book: BookDetail) = BookSummary(
+        id = book.id,
+        title = book.title,
+        authors = book.authors,
+        series = book.series,
+        seriesIndex = book.seriesIndex,
+        formats = book.files.map { it.format }.distinct(),
+        addedAt = "",
+    )
+
     /** The file to put on the Tolino: one it can open, without DRM, EPUB before PDF. */
     fun readableFile(book: BookDetail): BookFile? = Storage.READABLE.firstNotNullOfOrNull { format ->
         book.files.firstOrNull { it.format == format && !it.drm && !it.missing }
@@ -79,6 +95,8 @@ object Json {
         JSONObject(body).getJSONArray("collections").objects().map(::collection)
 
     fun collection(o: JSONObject) = CollectionInfo(o.getString("id"), o.getString("name"), o.optBoolean("mine"))
+
+    fun collectionId(body: String): String = JSONObject(body).getString("id")
 
     fun collectionBooks(body: String): List<BookSummary> =
         JSONObject(body).getJSONArray("bookList").objects().map(::bookSummary)
@@ -94,12 +112,21 @@ object Json {
     }
 
     /** The web reader opens a place given as "fraction:0.42" at that share of the book. */
-    fun progressUpdate(fileId: String, fraction: Double, clientId: String): String = JSONObject()
+    fun progressUpdate(fileId: String, fraction: Double, clientId: String, force: Boolean = false): String = JSONObject()
         .put("fileId", fileId)
         .put("locator", "fraction:$fraction")
         .put("fraction", fraction)
         .put("clientId", clientId)
+        .apply { if (force) put("force", true) }
         .toString()
+
+    data class Saved(val saved: Boolean, val clientId: String?)
+
+    /** Whether GOtome kept the position, and whose position it kept otherwise. */
+    fun progressSaved(body: String): Saved {
+        val o = JSONObject(body)
+        return Saved(o.getBoolean("saved"), o.optJSONObject("progress")?.optString("clientId"))
+    }
 
     fun login(username: String, password: String): String =
         JSONObject().put("username", username).put("password", password).toString()

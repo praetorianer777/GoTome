@@ -27,7 +27,15 @@ class BookActivity : Activity() {
         db = Db(this)
         sync = Sync(this)
         bookId = intent.getStringExtra(BOOK) ?: return finish()
-        val book = db.book(bookId) ?: return finish()
+        val book = BookSummary(
+            id = bookId,
+            title = intent.getStringExtra(TITLE).orEmpty(),
+            authors = intent.getStringArrayExtra(AUTHORS)?.toList().orEmpty(),
+            series = intent.getStringExtra(SERIES).orEmpty(),
+            seriesIndex = if (intent.hasExtra(SERIES_INDEX)) intent.getDoubleExtra(SERIES_INDEX, 0.0) else null,
+            formats = emptyList(),
+            addedAt = "",
+        )
         setContentView(R.layout.activity_book)
         action = findViewById(R.id.action)
         state = findViewById(R.id.state)
@@ -83,7 +91,7 @@ class BookActivity : Activity() {
         state.text = getString(R.string.downloading)
         Thread {
             val result = runCatching {
-                if (!Network.ensure(this)) throw ApiException(0, getString(R.string.offline))
+                if (!Network.online(this)) throw ApiException(0, getString(R.string.offline))
                 sync.deliver(bookId)
             }
             runOnUiThread {
@@ -104,7 +112,16 @@ class BookActivity : Activity() {
 
     companion object {
         private const val BOOK = "book"
+        private const val TITLE = "title"
+        private const val AUTHORS = "authors"
+        private const val SERIES = "series"
+        private const val SERIES_INDEX = "seriesIndex"
 
-        fun intent(context: Context, bookId: String) = Intent(context, BookActivity::class.java).putExtra(BOOK, bookId)
+        fun intent(context: Context, book: BookSummary) = Intent(context, BookActivity::class.java)
+            .putExtra(BOOK, book.id)
+            .putExtra(TITLE, book.title)
+            .putExtra(AUTHORS, book.authors.toTypedArray())
+            .putExtra(SERIES, book.series)
+            .apply { book.seriesIndex?.let { putExtra(SERIES_INDEX, it) } }
     }
 }

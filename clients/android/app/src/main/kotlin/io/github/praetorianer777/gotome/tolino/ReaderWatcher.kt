@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import java.io.File
 
 /**
  * Follows the reader app through the log: keeps the position in every book the
@@ -25,6 +26,7 @@ class ReaderWatcher : Service() {
     @Volatile private var reader: Thread? = null
     @Volatile private var logcat: Process? = null
     private var sentAt = 0L
+    private val pages = HashMap<String, Int>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -84,13 +86,21 @@ class ReaderWatcher : Service() {
         }
         when (val reading = tracker.on(event)) {
             is Reading.Moved -> db.deliveredAt(reading.path)?.let { book ->
-                db.saveProgress(book, reading.fraction, now)
+                val fraction = fraction(reading) ?: return
+                db.saveProgress(book, fraction, now)
                 // Long sessions reach GOtome now and then, not only at the end.
                 if (now - sentAt > SEND_EVERY) send(now)
             }
             is Reading.Closed -> if (db.deliveredAt(reading.path) != null) send(now)
             else -> Unit
         }
+    }
+
+    /** Only EPUBs: the reader's positions in a PDF are not in Adobe's EPUB pages. */
+    private fun fraction(reading: Reading.Moved): Double? {
+        if (!reading.path.endsWith(".epub", ignoreCase = true)) return null
+        val total = pages.getOrPut(reading.path) { runCatching { AdobePages.count(File(reading.path)) }.getOrDefault(0) }
+        return if (total > 0) (reading.position / total).coerceIn(0.0, 1.0) else null
     }
 
     private fun send(now: Long) {

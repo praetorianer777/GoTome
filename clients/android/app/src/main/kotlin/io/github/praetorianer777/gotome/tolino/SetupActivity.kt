@@ -38,9 +38,8 @@ class SetupActivity : Activity() {
             startActivity(Intent(this, StoreActivity::class.java))
             finish()
         }
-        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
-        }
+        val storage = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (storage.any { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }) requestPermissions(storage, 1)
     }
 
     override fun onResume() {
@@ -53,12 +52,12 @@ class SetupActivity : Activity() {
         status.text = getString(R.string.signing_in)
         Thread {
             val result = runCatching {
-                if (!Network.ensure(this)) throw ApiException(0, getString(R.string.offline))
+                if (!Network.online(this)) throw ApiException(0, getString(R.string.offline))
                 Api(prefs).login(server.text.toString(), username.text.toString().trim(), password.text.toString())
                 prefs.collectionName = name
                 prefs.collectionId = null
                 LauncherBook.ensure(this)
-                Sync(this).run(refreshCatalogue = true)
+                Sync(this).run { step -> runOnUiThread { status.text = step } }
             }
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
