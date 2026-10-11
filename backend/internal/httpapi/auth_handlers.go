@@ -221,7 +221,13 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		}
 		if token == "" {
 			if name, secret, ok := r.BasicAuth(); ok {
-				s.authenticateDevice(w, r, next, name, secret)
+				s.authenticateDevice(w, r, next, name, secret, s.Auth.AuthenticateDevice)
+				return
+			}
+			// KOReader's progress sync sends its own headers: the user name,
+			// and the MD5 of the device token.
+			if name, key := r.Header.Get("x-auth-user"), r.Header.Get("x-auth-key"); name != "" && key != "" {
+				s.authenticateDevice(w, r, next, name, key, s.Auth.AuthenticateSyncKey)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -241,16 +247,17 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 	})
 }
 
-// authenticateDevice signs a device in by its token, limited as password
-// sign-ins are.
-func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string) {
+// authenticateDevice signs a device in by its token, or what KOReader
+// sends for it, limited as password sign-ins are.
+func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string,
+	check func(context.Context, string, string) (auth.User, uuid.UUID, error)) {
 	address := clientAddress(r)
 	account := strings.ToLower(strings.TrimSpace(name)) + "|" + address
 	if wait := max(s.Logins.perAccount.RetryAfter(account), s.Logins.perAddress.RetryAfter(address)); wait > 0 {
 		writeError(w, r, ErrTooManyRequests("Too many failed sign-in attempts. Wait a little and try again.", wait))
 		return
 	}
-	user, device, err := s.Auth.AuthenticateDevice(r.Context(), name, secret)
+	user, device, err := check(r.Context(), name, secret)
 	if errors.Is(err, auth.ErrInvalidCredentials) {
 		s.Logins.perAccount.Fail(account)
 		s.Logins.perAddress.Fail(address)

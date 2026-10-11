@@ -943,6 +943,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   waits, its downloads at `/opds/device/files/{id}`, where a whole file
   sent (200, not a range) marks the book delivered. A merge carries the
   deliveries over (`MergeDeliveries`).
+- KOReader's progress sync (`internal/kosync`, #198) is served under
+  `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
+  its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched
+  by `devices.sync_key_hash`) as a device's sign-in. A document is a
+  file's `koreader_md5` (`PartialMD5`, KOReader's "binary" matching),
+  which the `kosync.hash_files` job works out every ten minutes for ebook
+  files without one and a trigger clears when `sha256` changes; empty is
+  a file it could not read. A place KOReader sends is kept as the ebook
+  progress, `koreader:<xpointer>` for an EPUB (the web reader opens it by
+  its fraction) and `page:<n>` for a PDF, under #44's rule; one asked for
+  is KOReader's own, a PDF's page, or the chapter of a CFI of the same
+  file as `/body/DocFragment[n]`, and empty where none can be given.
 
 ## Overview
 

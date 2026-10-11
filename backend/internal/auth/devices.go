@@ -142,3 +142,21 @@ func newDeviceToken() (string, error) {
 	}
 	return b.String(), nil
 }
+
+// AuthenticateSyncKey is AuthenticateDevice for KOReader's progress sync,
+// which sends the MD5 of the token in hex instead of the token.
+func (s *Service) AuthenticateSyncKey(ctx context.Context, username, key string) (User, uuid.UUID, error) {
+	if len(key) != md5.Size*2 {
+		return User{}, uuid.Nil, ErrInvalidCredentials
+	}
+	row, err := sqlc.New(s.pool).GetSyncKeyUser(ctx, sqlc.GetSyncKeyUserParams{
+		SyncKeyHash: hashToken(strings.ToLower(key)), Username: strings.TrimSpace(username),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, uuid.Nil, ErrInvalidCredentials
+	}
+	if err != nil {
+		return User{}, uuid.Nil, err
+	}
+	return User{ID: row.ID, Username: row.Username, Email: row.Email, Role: row.Role}, row.DeviceID, nil
+}

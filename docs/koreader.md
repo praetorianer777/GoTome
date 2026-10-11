@@ -53,3 +53,32 @@ comes up; until then, open **Sent to this device** in the catalogue.
 
 Only books with a file an e-reader reads are listed (EPUB, Kindle formats,
 PDF), each with a download per format, the best first, and its cover.
+
+## Progress sync
+
+KOReader's own **Progress sync** keeps where you are in a book in GOtome,
+so the web reader and other devices pick up there, and KOReader is offered
+a place you read to elsewhere.
+
+In KOReader, with a book open: the tools menu, **Progress sync**,
+**Custom sync server**, and enter the GOtome address followed by
+`/api/v1/kosync`, such as `https://books.example.org/api/v1/kosync`. Then
+**Login** with your user name and the device's token, typed exactly as
+GOtome showed it (in small letters, with the dashes): KOReader sends a
+checksum of what is typed. **Register** is refused: devices are added on
+your profile. Leave **Document matching method** at **Binary**.
+
+KOReader names a book by a checksum of samples of its file, which GOtome
+works out for every ebook file within ten minutes of it arriving or
+changing. A book of a library you do not see is a book GOtome does not
+know.
+
+What goes across:
+
+- A place KOReader saves in an EPUB opens in the web reader at the same
+  share of the book; KOReader gets its own place back exactly.
+- A place the web reader saves in the same EPUB is offered in KOReader at
+  the start of its chapter.
+- In a PDF, the page, both ways.
+- A place KOReader reports behind one another device saved since is not
+  written over it; KOReader offers the further one the next time it asks.

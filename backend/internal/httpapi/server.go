@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -87,6 +88,8 @@ type Server struct {
 	Similar *similar.Service
 	// Deliveries sends books to people's devices.
 	Deliveries *deliveries.Service
+	// Sync is the server KOReader's progress sync talks to.
+	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.
 	Stats *stats.Service
 	// Releases follows authors and series for their new books.

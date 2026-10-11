@@ -108,6 +108,7 @@ type BookFile struct {
 	DiscNumber     *int32
 	ChunkedAt      *time.Time
 	TrashedBy      *uuid.UUID
+	KoreaderMd5    *string
 }
 
 type BookIdentifier struct {

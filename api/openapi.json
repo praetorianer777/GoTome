@@ -27,6 +27,9 @@
       "name": "jobs"
     },
     {
+      "name": "kosync"
+    },
+    {
       "name": "libraries"
     },
     {
@@ -3241,6 +3244,162 @@
           }
         ],
         "x-permission": "index:rebuild"
+      }
+    },
+    "/kosync/syncs/progress": {
+      "put": {
+        "operationId": "kosyncPush",
+        "summary": "KOReader reports where the person is in a document, named by its partial MD5",
+        "tags": [
+          "kosync"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KosyncProgress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KosyncSaved"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/kosync/syncs/progress/{document}": {
+      "get": {
+        "operationId": "kosyncPull",
+        "summary": "Where the person is in a document, as KOReader goes to it; empty where no place can be given",
+        "tags": [
+          "kosync"
+        ],
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KosyncPosition"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/kosync/users/auth": {
+      "get": {
+        "operationId": "kosyncAuth",
+        "summary": "KOReader's progress sync checks its sign-in: the user name in x-auth-user, the MD5 of a device token in x-auth-key",
+        "tags": [
+          "kosync"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KosyncAuthorized"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/kosync/users/create": {
+      "post": {
+        "operationId": "kosyncRegister",
+        "summary": "KOReader's progress sync registers an account: refused, as accounts and devices are made in GOtome",
+        "tags": [
+          "kosync"
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
       }
     },
     "/libraries": {
@@ -8229,6 +8388,82 @@
           "maxAttempts",
           "createdAt",
           "scheduledAt"
+        ]
+      },
+      "KosyncAuthorized": {
+        "type": "object",
+        "properties": {
+          "authorized": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorized"
+        ]
+      },
+      "KosyncPosition": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "document": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "progress": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        }
+      },
+      "KosyncProgress": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "document": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "number"
+          },
+          "progress": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "progress",
+          "percentage",
+          "device",
+          "device_id"
+        ]
+      },
+      "KosyncSaved": {
+        "type": "object",
+        "properties": {
+          "document": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document",
+          "timestamp"
         ]
       },
       "LibraryList": {
