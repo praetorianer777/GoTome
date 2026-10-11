@@ -53,4 +53,12 @@
     <string name="load_failed">Laden fehlgeschlagen: %1$s</string>
     <string name="no_hits">Nichts gefunden</string>
     <string name="none_on_device">Noch kein Buch aus GOtome auf diesem Tolino</string>
+    <string name="jump_offer">Woanders hast du bis Seite %1$d von %2$d gelesen (%3$d %%). Dorthin springen?</string>
+    <string name="jump_yes">Springen</string>
+    <string name="jump_no">Nein</string>
+    <string name="jump_failed">Springen hat nicht geklappt. Tippe im Menü des Readers unten auf die Seitenzahl und gib %1$d ein.</string>
+    <string name="jump_service_label">GOtome: zur woanders gelesenen Seite springen</string>
+    <string name="jump_service_description">Wenn du in GOtome woanders weitergelesen hast, bietet es an, den Tolino-Reader dorthin zu bringen, und gibt auf deinen Tipp die Seite in „Seitenzahl eingeben“ des Readers ein. Handelt nur im Tolino-Reader.</string>
+    <string name="jump_on">Springen zur woanders gelesenen Seite: an.</string>
+    <string name="jump_off">Springen zur woanders gelesenen Seite ist aus. Einmal vom Rechner aus einschalten mit\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
 </resources>
