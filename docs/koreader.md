@@ -27,8 +27,22 @@ for a while after five tries, as wrong passwords are.
 Over the internet, put GOtome behind HTTPS: the token travels with every
 request as the password of HTTP Basic auth.
 
+## Sending books to a device
+
+On a book's page, **Send to an e-reader** puts the book in the device's
+queue; in the library, select books and send them all at once. The
+catalogue's first entry on the device, **Sent to this device**, lists the
+books waiting there: download one and it leaves the queue, and its page in
+GOtome says since when the device has it. A book not yet downloaded can be
+taken back from its page. Sending a book the device has already queues it
+again.
+
+The KOReader plugin (#197) will fetch what was sent by itself when Wi-Fi
+comes up; until then, open **Sent to this device** in the catalogue.
+
 ## What the catalogue offers
 
+- **Sent to this device**: the books sent here, until they are downloaded.
 - **Recently added**: the newest books first.
 - **Authors** and **Series**, alphabetically; a series's books in their
   order.

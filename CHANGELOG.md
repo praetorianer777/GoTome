@@ -21,6 +21,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Books are sent to an e-reader from their page or a selection in the
+  library: they wait in the catalogue's "Sent to this device" on the
+  device until it downloads them, and the book's page says since when the
+  device has it.
 - E-readers with KOReader, or any app that reads OPDS catalogues, browse
   the library by newest, author, series and shelf, search it and download
   books, signed in with a token made for the device on the profile page

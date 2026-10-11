@@ -235,6 +235,21 @@ func (s *Server) routes() []Route {
 			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,
 		},
 		{
+			Method: http.MethodPost, Path: "/devices/{deviceId}/books", ID: "sendToDevice",
+			Summary: "Send books to one of the caller's devices: by IDs, or a library and filter", Tag: "auth",
+			Request: sendRequest{}, Response: sendResult{}, Permission: auth.PersonalManage, Handler: s.sendToDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/deliveries", ID: "listBookDeliveries",
+			Summary: "The book's deliveries to the caller's devices, waiting or done", Tag: "books",
+			Response: deliveryList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookDeliveries,
+		},
+		{
+			Method: http.MethodDelete, Path: "/deliveries/{deliveryId}", ID: "takeBackDelivery",
+			Summary: "Take a book back from a device's queue before the device has it", Tag: "auth",
+			Permission: auth.PersonalManage, Handler: s.takeBackDelivery,
+		},
+		{
 			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
 			Summary: "What the caller's uploads take up, and how much they may", Tag: "auth",
 			Response: storage{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getOwnStorage,

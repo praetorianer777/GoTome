@@ -446,23 +446,30 @@ var mediaTypes = map[string]string{
 // seek. A file is not a request: it may take hours, and the server's write
 // deadline is lifted for it.
 func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
+	_, err := s.serveFile(w, r)
+	return err
+}
+
+// serveFile sends the file the path names, if the caller may see it, and
+// returns the book it belongs to.
+func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, error) {
 	id, err := pathID(r, "fileId", "file")
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	file, f, err := s.Books.OpenFile(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	switch {
 	case errors.Is(err, catalog.ErrNotFound):
-		return ErrNotFound("There is no such file.")
+		return uuid.Nil, ErrNotFound("There is no such file.")
 	case errors.Is(err, catalog.ErrFileGone):
-		return ErrNotFound("The file is no longer in the library's folder.")
+		return uuid.Nil, ErrNotFound("The file is no longer in the library's folder.")
 	case err != nil:
-		return err
+		return uuid.Nil, err
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
@@ -474,5 +481,5 @@ func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
 		h.Set("ETag", `"`+hex.EncodeToString(file.SHA256)+`"`)
 	}
 	http.ServeContent(w, r, "", info.ModTime(), f)
-	return nil
+	return file.BookID, nil
 }

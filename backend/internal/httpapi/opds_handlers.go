@@ -78,6 +78,13 @@ func (s *Server) opdsRoutes() []Route {
 		nav(http.MethodGet, "/opds/shelves", "listOpdsShelves", "The collections and smart shelves the caller may see", ReadsLibraries, nil, s.opdsShelves),
 		acq("/opds/collections/{collectionId}", "listOpdsCollection", "A collection's books, in its order", opdsPageQuery{}, s.opdsCollection),
 		acq("/opds/smart-shelves/{shelfId}", "listOpdsSmartShelf", "The books a smart shelf holds", opdsNamesQuery{}, s.opdsSmartShelf),
+		acq("/opds/device", "listOpdsDeviceBooks", "The books sent to the device that asks, until it downloads them", nil, s.opdsDevice),
+		{
+			Method: http.MethodGet, Path: "/opds/device/files/{fileId}", ID: "downloadOpdsDeviceFile",
+			Summary: "A file of a book sent to the device that asks; the whole of it marks the book delivered", Tag: "opds",
+			Produces: "application/octet-stream", Status: http.StatusOK, Reads: ReadsLibraries,
+			Permission: auth.LibraryRead, Devices: true, Handler: s.opdsDeviceFile,
+		},
 	}
 }
 
@@ -130,14 +137,18 @@ func navEntry(id, title, text, href, kind string) opds.Entry {
 func (s *Server) opdsRoot(w http.ResponseWriter, r *http.Request) error {
 	f := opdsFeed(r, "GOtome", opds.NavigationType, opdsStarted)
 	status := func(s string) string { return opdsHref("/books", url.Values{"status": {s}}) }
-	f.Entries = []opds.Entry{
+	if DeviceFrom(r.Context()) != uuid.Nil {
+		f.Entries = append(f.Entries, navEntry("device", "Sent to this device", "The books sent here from GOtome, until they are downloaded.",
+			opdsHref("/device", nil), opds.AcquisitionType))
+	}
+	f.Entries = append(f.Entries,
 		navEntry("books", "Recently added", "The latest books first.", opdsHref("/books", nil), opds.AcquisitionType),
 		navEntry("authors", "Authors", "Every author, alphabetically.", opdsHref("/authors", nil), opds.NavigationType),
 		navEntry("series", "Series", "Every series, alphabetically.", opdsHref("/series", nil), opds.NavigationType),
 		navEntry("shelves", "Shelves", "Collections and smart shelves.", opdsHref("/shelves", nil), opds.NavigationType),
 		navEntry("reading", "Reading", "The books you are reading.", status(catalog.StatusReading), opds.AcquisitionType),
 		navEntry("wishlist", "Want to read", "The books you want to read.", status(catalog.StatusWishlist), opds.AcquisitionType),
-	}
+	)
 	return writeFeed(w, opds.NavigationType, f)
 }
 

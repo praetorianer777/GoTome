@@ -10,6 +10,7 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
+import { SendToDevice } from "@/books/deliveries";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
 import { FollowButtons } from "@/releases/follow";
@@ -189,6 +190,10 @@ function BookPage({ book }: { book: BookDetail }) {
 
 					{can(user, "personal:manage") && <ReadingControls book={book} />}
 					{can(user, "personal:manage") && <CollectionPicker bookId={book.id} />}
+					{can(user, "personal:manage") &&
+						book.files.some((f) => f.kind === "ebook" && !f.missing) && (
+							<SendToDevice bookId={book.id} />
+						)}
 
 					{book.description && (
 						<section aria-label={t("book.description")}>

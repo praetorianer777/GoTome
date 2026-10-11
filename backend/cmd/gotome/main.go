@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
@@ -338,6 +339,7 @@ func serve() error {
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),
+		Deliveries: deliveries.NewService(pool),
 		Releases:   follows,
 		Cleanup:    fixes,
 		Index:      searchIndex,
