@@ -94,6 +94,13 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/** The signed-in person's e-readers, as the profile page lists them. */
+	devices: {
+		id: string;
+		name: string;
+		createdAt: string;
+		lastUsedAt?: string;
+	}[] = [];
 	/** The signed-in person's sessions, as the profile page lists them. */
 	sessions = [
 		{
@@ -677,6 +684,7 @@ export class FakeServer {
 			path === "/users" ||
 			path.startsWith("/users/") ||
 			path.startsWith("/auth/sessions") ||
+			path.startsWith("/auth/devices") ||
 			path === "/auth/password" ||
 			path === "/auth/storage"
 		) {
@@ -1596,6 +1604,33 @@ export class FakeServer {
 		}
 		if (path === "/auth/sessions") {
 			return Response.json({ sessions: this.sessions });
+		}
+		if (path === "/auth/devices" && method === "GET") {
+			return Response.json({ devices: this.devices });
+		}
+		if (path === "/auth/devices" && method === "POST") {
+			const name = String(body.name ?? "").trim();
+			if (!name) {
+				return refuse(422, "validation_failed", "Some fields are not valid.", {
+					name: "Give the device a name.",
+				});
+			}
+			const device = {
+				id: `d-${this.devices.length + 1}`,
+				name,
+				createdAt: "2026-01-04T08:00:00Z",
+			};
+			this.devices.push(device);
+			return Response.json(
+				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds" },
+				{ status: 201 },
+			);
+		}
+		if (path.startsWith("/auth/devices/") && method === "DELETE") {
+			this.devices = this.devices.filter(
+				(d) => `/auth/devices/${d.id}` !== path,
+			);
+			return new Response(null, { status: 204 });
 		}
 		if (path.startsWith("/auth/sessions/") && method === "DELETE") {
 			this.sessions = this.sessions.filter(

@@ -17,7 +17,7 @@ import (
 func as(t *testing.T, role string, permission auth.Permission) int {
 	t.Helper()
 	reached := false
-	h := handle(require(permission, func(w http.ResponseWriter, _ *http.Request) error {
+	h := handle(require(permission, false, func(w http.ResponseWriter, _ *http.Request) error {
 		reached = true
 		w.WriteHeader(http.StatusNoContent)
 		return nil

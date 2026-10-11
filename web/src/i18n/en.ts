@@ -663,6 +663,21 @@ export const en = {
 	"profile.sessions.lastSeen": "Last used {date}",
 	"profile.sessions.end": "Sign out",
 	"profile.sessions.endNamed": "Sign out {name}",
+	"devices.title": "E-readers",
+	"devices.intro":
+		"An e-reader with KOReader, or another app that reads OPDS catalogues, browses and downloads your books with a token of its own. It sees what you see, and nothing else of your account.",
+	"devices.lastUsed": "Last used {date}",
+	"devices.neverUsed": "Not used yet",
+	"devices.revoke": "Revoke",
+	"devices.revokeNamed": "Revoke {name}",
+	"devices.name": "Name of the device",
+	"devices.add": "Add a device",
+	"devices.created": "{name} is added. Enter these in its catalogue settings:",
+	"devices.catalog": "Catalogue address",
+	"devices.username": "User name",
+	"devices.token": "Password (token)",
+	"devices.once":
+		"The token is shown only now. If it is lost, revoke the device and add it again.",
 	"profile.agent": "{browser} on {system}",
 	"profile.agentUnknown": "An unknown browser",
 

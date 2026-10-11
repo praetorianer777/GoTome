@@ -90,6 +90,34 @@ export function useEndOwnSession() {
 	});
 }
 
+export type Device = components["schemas"]["DeviceView"];
+
+/** The signed-in person's e-readers, each with a token of its own. */
+export const ownDevicesQuery = queryOptions({
+	queryKey: ["auth", "devices"],
+	queryFn: async (): Promise<Device[]> =>
+		(await api.GET("/auth/devices")).data?.devices ?? [],
+});
+
+export function useCreateDevice() {
+	return useMutation({
+		mutationFn: async (name: string) =>
+			(await api.POST("/auth/devices", { body: { name } })).data,
+		onSuccess: useInvalidate(ownDevicesQuery.queryKey),
+	});
+}
+
+export function useDeleteDevice() {
+	return useMutation({
+		mutationFn: async (id: string) => {
+			await api.DELETE("/auth/devices/{deviceId}", {
+				params: { path: { deviceId: id } },
+			});
+		},
+		onSuccess: useInvalidate(ownDevicesQuery.queryKey),
+	});
+}
+
 export function useUnlinkIdentity() {
 	return useMutation({
 		mutationFn: async (id: string) => {

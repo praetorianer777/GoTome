@@ -20,6 +20,7 @@ const (
 	requestIDKey ctxKey = iota
 	loggerKey
 	userKey
+	deviceKey
 )
 
 // RequestIDFrom is the ID of the request a context belongs to, or "".

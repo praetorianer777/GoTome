@@ -21,6 +21,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- E-readers with KOReader, or any app that reads OPDS catalogues, browse
+  the library by newest, author, series and shelf, search it and download
+  books, signed in with a token made for the device on the profile page
+  (`docs/koreader.md`).
 - The jobs page shows how far GOtome has got working out what books are
   about, and lets an administrator pause it and start it again with one
   button, for instance to have the GPU back for a while.

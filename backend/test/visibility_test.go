@@ -128,6 +128,22 @@ func readCases() map[string][]readCase {
 			{path: "/bulk/{insiderBulk}", control: "insider"},
 			{path: "/bulk/{formerBulk}", control: "former"},
 		},
+		"searchOpds": {{path: "/opds/search", query: q("q", "{title}"), control: "insider"}},
+		"listOpdsBooks": {
+			{path: "/opds/books", control: "insider"},
+			{path: "/opds/books", query: q("author", "{author}"), control: "insider"},
+		},
+		"listOpdsAuthors": {{path: "/opds/authors", control: "insider"}},
+		"listOpdsSeries":  {{path: "/opds/series", control: "insider"}},
+		"listOpdsShelves": {{path: "/opds/shelves", why: "shelves list names and counts, which each shelf's own feed checks"}},
+		"listOpdsCollection": {
+			{path: "/opds/collections/{sharedCollection}", control: "insider"},
+			{path: "/opds/collections/{formerCollection}", control: "former"},
+		},
+		"listOpdsSmartShelf": {
+			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},
+			{path: "/opds/smart-shelves/{formerShelf}", control: "former"},
+		},
 	}
 }
 

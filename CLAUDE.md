@@ -914,6 +914,27 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   similar books are found or embedded is measured with it before and
   after.
 
+## Devices and the OPDS catalogue
+
+- A device (`devices`, `auth.Service.CreateDevice`, #195) is an e-reader
+  that signs in with a token of its own, made on the profile (`POST
+  /auth/devices`) and shown once: 20 letters of an alphabet without look-
+  alikes, in dashed groups, stored as SHA-256 (and the SHA-256 of its MD5,
+  which KOReader's progress sync sends). It is sent as HTTP Basic auth with
+  the user name; `authenticate` takes it where no session cookie is, under
+  the login limiters, and answers wrong ones 401 with `WWW-Authenticate`.
+  A device's token reaches only routes with `Route.Devices`: the OPDS
+  feeds, file downloads and covers; `require` refuses it everywhere else.
+- `internal/opds` writes OPDS 1.2 (Atom) and the OpenSearch description;
+  `httpapi/opds_handlers.go` serves them under `/api/v1/opds`
+  (`docs/koreader.md`): newest, authors and series (`catalog.NameList`,
+  which walks the names' index and counts each one's visible books, so a
+  page never reads the catalogue), shelves, Reading and Want to read, and
+  search (`catalog.Search`). Feeds list only books with an ebook
+  (`catalog.HasEbook`), with a download link per file and the cover
+  (`catalog.FeedBooks`), and never repeat what the query asked for, so a
+  feed about nothing reads like one about a book the caller may not see.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run

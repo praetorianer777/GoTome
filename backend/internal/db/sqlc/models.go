@@ -184,6 +184,16 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type Device struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Name        string
+	TokenHash   []byte
+	SyncKeyHash []byte
+	CreatedAt   time.Time
+	LastUsedAt  *time.Time
+}
+
 type DuplicateEvidence struct {
 	PairID uuid.UUID
 	Kind   string

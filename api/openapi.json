@@ -33,6 +33,9 @@
       "name": "notifications"
     },
     {
+      "name": "opds"
+    },
+    {
       "name": "releases"
     },
     {
@@ -46,6 +49,128 @@
     }
   ],
   "paths": {
+    "/auth/devices": {
+      "get": {
+        "operationId": "listOwnDevices",
+        "summary": "The caller's devices: e-readers that sign in with a token of their own",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      },
+      "post": {
+        "operationId": "createOwnDevice",
+        "summary": "Add a device, and get the token it signs in with, shown this once",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedDevice"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/auth/devices/{deviceId}": {
+      "delete": {
+        "operationId": "deleteOwnDevice",
+        "summary": "Revoke one of the caller's devices: its token signs nobody in from then on",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/auth/identities": {
       "get": {
         "operationId": "listOwnIdentities",
@@ -4030,6 +4155,453 @@
         "x-permission": "signed-in"
       }
     },
+    "/opds": {
+      "get": {
+        "operationId": "getOpdsRoot",
+        "summary": "The catalogue for e-readers: what it offers to browse",
+        "tags": [
+          "opds"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=navigation": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/authors": {
+      "get": {
+        "operationId": "listOpdsAuthors",
+        "summary": "Authors of books with an ebook, alphabetically",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The cursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=navigation": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/books": {
+      "get": {
+        "operationId": "listOpdsBooks",
+        "summary": "Books with an ebook, the latest first, or of an author, a series or a status",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "author",
+            "in": "query",
+            "description": "An author's name key; only their books.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "series",
+            "in": "query",
+            "description": "A series's name key; only its books, in their order.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only the books the caller has this status for.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "wishlist",
+                "completed"
+              ]
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The cursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/collections/{collectionId}": {
+      "get": {
+        "operationId": "listOpdsCollection",
+        "summary": "A collection's books, in its order",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "The page, from 1.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/opensearch.xml": {
+      "get": {
+        "operationId": "getOpdsSearchDescription",
+        "summary": "The OpenSearch description of the catalogue's search",
+        "tags": [
+          "opds"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/opensearchdescription+xml": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/search": {
+      "get": {
+        "operationId": "searchOpds",
+        "summary": "Books whose title, author or series looks like the words",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words of a title, an author or a series.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/series": {
+      "get": {
+        "operationId": "listOpdsSeries",
+        "summary": "Series of books with an ebook, alphabetically",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The cursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=navigation": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/shelves": {
+      "get": {
+        "operationId": "listOpdsShelves",
+        "summary": "The collections and smart shelves the caller may see",
+        "tags": [
+          "opds"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=navigation": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/opds/smart-shelves/{shelfId}": {
+      "get": {
+        "operationId": "listOpdsSmartShelf",
+        "summary": "The books a smart shelf holds",
+        "tags": [
+          "opds"
+        ],
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The cursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/atom+xml;profile=opds-catalog;kind=acquisition": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/releases": {
       "get": {
         "operationId": "listReleases",
@@ -6590,6 +7162,17 @@
           "role"
         ]
       },
+      "CreateDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "CreateLibraryRequest": {
         "type": "object",
         "properties": {
@@ -6613,6 +7196,25 @@
           "name",
           "mode",
           "visibility"
+        ]
+      },
+      "CreatedDevice": {
+        "type": "object",
+        "properties": {
+          "catalog": {
+            "type": "string"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceView"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device",
+          "token",
+          "catalog"
         ]
       },
       "CurrentUser": {
@@ -6675,6 +7277,45 @@
         },
         "required": [
           "books"
+        ]
+      },
+      "DeviceList": {
+        "type": "object",
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceView"
+            }
+          }
+        },
+        "required": [
+          "devices"
+        ]
+      },
+      "DeviceView": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt"
         ]
       },
       "DuplicateCheckRequest": {
