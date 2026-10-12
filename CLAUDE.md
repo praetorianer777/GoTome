@@ -931,7 +931,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the user name; `authenticate` takes it where no session cookie is, under
   the login limiters, and answers wrong ones 401 with `WWW-Authenticate`.
   A device's token reaches only routes with `Route.Devices`: the OPDS
-  feeds, file downloads and covers; `require` refuses it everywhere else.
+  feeds, file downloads and covers, the book lists, search and detail,
+  reading progress, and `/device` (the device itself and its queue, for
+  its own app); `require` refuses it everywhere else.
 - `internal/opds` writes OPDS 1.2 (Atom) and the OpenSearch description;
   `httpapi/opds_handlers.go` serves them under `/api/v1/opds`
   (`docs/koreader.md`): newest, authors and series (`catalog.NameList`,
@@ -969,6 +971,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   its fraction) and `page:<n>` for a PDF, under #44's rule; one asked for
   is KOReader's own, a PDF's page, or the chapter of a CFI of the same
   file as `/body/DocFragment[n]`, and empty where none can be given.
+
+- GOtome for Tolino (#209) is an Android app in `clients/android`
+  (Kotlin, Android 8.1, no libraries), built by `mk/android.mk` in its own
+  container; `make check-android` is in the full gate only, as its SDK and
+  Gradle are gigabytes. Gradle's dependencies are pinned by
+  `gradle/verification-metadata.xml`. It signs in as a device, fetches
+  `GET /device/books` into `Books/GOtome/`, which the Tolino reader
+  imports, and tells GOtome what it holds (`PUT`/`DELETE
+  /device/books/{id}`). Progress comes from the reader's log lines
+  (`READ_LOGS`, granted over adb), in Adobe's pages, sent as
+  `fraction:<f>`; nothing else of the log is read. What the device allows
+  and refuses is in #209.
 
 ## Overview
 

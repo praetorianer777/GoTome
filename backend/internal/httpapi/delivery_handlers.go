@@ -184,3 +184,92 @@ func (s *Server) opdsDeviceFile(w http.ResponseWriter, r *http.Request) error {
 	}
 	return nil
 }
+
+type thisDevice struct {
+	Device   deviceView `json:"device"`
+	Username string     `json:"username"`
+}
+
+// getThisDevice tells a device's app whom its token signs in.
+func (s *Server) getThisDevice(w http.ResponseWriter, r *http.Request) error {
+	device := DeviceFrom(r.Context())
+	if device == uuid.Nil {
+		return errNotADevice()
+	}
+	user := UserFrom(r.Context())
+	devices, err := s.Auth.Devices(r.Context(), user.ID)
+	if err != nil {
+		return err
+	}
+	for _, d := range devices {
+		if d.ID == device {
+			writeJSON(w, r, http.StatusOK, thisDevice{Device: viewOf(d), Username: user.Username})
+			return nil
+		}
+	}
+	return errNotADevice()
+}
+
+// listDeviceQueue lists the books sent to the device that asks, as the
+// OPDS feed does, for a device's own app.
+func (s *Server) listDeviceQueue(w http.ResponseWriter, r *http.Request) error {
+	device := DeviceFrom(r.Context())
+	if device == uuid.Nil {
+		return errNotADevice()
+	}
+	scope := library.ScopeOf(*UserFrom(r.Context()))
+	ids, err := s.Deliveries.Queued(r.Context(), scope, device)
+	if err != nil {
+		return err
+	}
+	books, err := s.Books.Summaries(r.Context(), scope, ids)
+	if err != nil {
+		return err
+	}
+	out := bookList{Books: make([]bookSummary, len(books))}
+	for i, b := range books {
+		out.Books[i] = summaryOf(b)
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+// putOnDevice records that the device that asks has the book, so that its
+// page says so.
+func (s *Server) putOnDevice(w http.ResponseWriter, r *http.Request) error {
+	device := DeviceFrom(r.Context())
+	if device == uuid.Nil {
+		return errNotADevice()
+	}
+	id, err := pathID(r, "bookId", "book")
+	if err != nil {
+		return err
+	}
+	err = s.Deliveries.OnDevice(r.Context(), library.ScopeOf(*UserFrom(r.Context())), device, id)
+	if errors.Is(err, deliveries.ErrNotFound) {
+		return ErrNotFound("There is no such book.")
+	}
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// takeOffDevice records that the device that asks no longer has the book,
+// nor waits for it.
+func (s *Server) takeOffDevice(w http.ResponseWriter, r *http.Request) error {
+	device := DeviceFrom(r.Context())
+	if device == uuid.Nil {
+		return errNotADevice()
+	}
+	id, err := pathID(r, "bookId", "book")
+	if err != nil {
+		return err
+	}
+	if err := s.Deliveries.OffDevice(r.Context(), device, id); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}

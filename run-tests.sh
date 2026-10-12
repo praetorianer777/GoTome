@@ -25,7 +25,9 @@ tests/test-release.sh
 # Makefile target of the same name, so this file only decides the order.
 has_target() { make -n "$1" >/dev/null 2>&1; }
 
-for layer in check-go test-koplugin fuzz-go check-web; do
+# The Tolino app builds with an Android SDK and Gradle of some gigabytes,
+# which a push does not wait for.
+for layer in check-go test-koplugin fuzz-go check-web ${FULL:+check-android}; do
   if has_target "$layer"; then
     echo "🔍 $layer"
     make "$layer"

@@ -41,3 +41,9 @@ node_modules/
 /web/vendor/foliate-js/vendor/*
 !/web/vendor/foliate-js/vendor/zip.js
 !/web/vendor/foliate-js/vendor/fflate.js
+
+/clients/android/.gradle/
+/clients/android/.kotlin/
+/clients/android/build/
+/clients/android/app/build/
+/clients/android/local.properties
