@@ -62,3 +62,9 @@ android-install: android-apk ## Install the companion app on the Tolino over adb
 		case "$$on" in *$(ANDROID_PACKAGE)/*) ;; null|"") on=$(ANDROID_PACKAGE)/.JumpService ;; *) on="$$on:$(ANDROID_PACKAGE)/.JumpService" ;; esac; \
 		settings put secure enabled_accessibility_services "$$on"; settings put secure accessibility_enabled 1'
 	adb shell am start -n $(ANDROID_PACKAGE)/.StoreActivity
+
+# Settings and the app's record of what it put on the Tolino go with it; the
+# books in Books/ stay until deleted in the Tolino library.
+.PHONY: android-uninstall
+android-uninstall: ## Remove the companion app from the Tolino over adb
+	adb uninstall $(ANDROID_PACKAGE)

@@ -104,7 +104,8 @@ permissions.
   swipe, tap a book, "Put on Tolino". GOtome's page of the book then says it is
   on the Tolino.
 - **Reading progress**: just read. Books you put on the Tolino through GOtome
-  report their position; books copied by other means do not.
+  report their position; books copied by other means or bought in the
+  Tolino's shop do not, and GOtome does not know they are on the device.
 
 Deleting a book in the Tolino library deletes its file, and GOtome is told.
 Sending it again, or "Put on Tolino" in the store, brings it back.
@@ -113,6 +114,18 @@ Coming from a version that signed in with a password and used the "Tolino"
 collection as the queue: sign in again with a device token. The books already
 on the Tolino stay and are told to GOtome; the collection is left as it is,
 and adding books to it no longer sends them.
+
+## Uninstall
+
+```bash
+make android-uninstall   # or: adb uninstall io.github.praetorianer777.gotome.tolino
+```
+
+This also removes the app's settings (address, user name, token) and its
+record of which books it put on the Tolino. The books under `Books/GOtome/`
+and the "GOtome" book stay in the Tolino library until you delete them there.
+Revoke the token on your profile in GOtome if the Tolino is not to sign in
+again.
 
 ## Development
 
