@@ -50,6 +50,18 @@ class Prefs(context: Context) {
         get() = p.getLong("readerSeenAt", 0)
         set(value) = p.edit().putLong("readerSeenAt", value).apply()
 
+    var updateCheckedAt: Long
+        get() = p.getLong("updateCheckedAt", 0)
+        set(value) = p.edit().putLong("updateCheckedAt", value).apply()
+
+    /** A newer release of the app, once found; null while there is none. */
+    var update: Release?
+        get() {
+            val version = p.getString("updateVersion", null) ?: return null
+            return Release(version, p.getString("updateApk", null) ?: return null)
+        }
+        set(value) = p.edit().putString("updateVersion", value?.version).putString("updateApk", value?.apk).apply()
+
     val signedIn: Boolean
         get() = server.isNotEmpty() && username.isNotEmpty() && token != null
 }

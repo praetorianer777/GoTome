@@ -25,6 +25,7 @@ class Sync(private val context: Context) {
             deliverQueue(progress)
             report()
             fetchPositions()
+            runCatching { Updates(context).check() }.onFailure { Log.w(TAG, "looking for an update failed", it) }
             prefs.lastSync = System.currentTimeMillis()
             prefs.lastError = null
         } catch (e: Exception) {

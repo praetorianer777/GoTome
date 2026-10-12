@@ -67,4 +67,11 @@
     <string name="server_scheme">The address starts with https:// (or http:// on your own network)</string>
     <string name="cleartext">The address is http://: your token travels unencrypted. Use https:// unless GOtome is only on your own network.</string>
     <string name="checking_queue">Looking for books sent to this Tolino…</string>
+    <string name="update_ready">GOtome for Tolino %1$s is out: update it in the settings ⚙</string>
+    <string name="update_to">Update to %1$s</string>
+    <string name="updating">Downloading %1$s…</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_not_app">The download is not GOtome for Tolino</string>
+    <string name="update_not_newer">The download is not newer than this app</string>
+    <string name="update_other_key">The download is signed with another key than this app. A build from make android-install is replaced by a release only after adb uninstall (see the README).</string>
 </resources>

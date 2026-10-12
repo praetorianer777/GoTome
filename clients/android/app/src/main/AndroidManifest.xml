@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Updates from GOtome's releases go to Android's installer (make android-install grants it). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Granted over adb (make android-install); the reader's page turns are only in its log. -->
     <uses-permission
         android:name="android.permission.READ_LOGS"
@@ -56,6 +58,10 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/jump_service" />
         </service>
+
+        <receiver
+            android:name=".Updates$InstallResult"
+            android:exported="false" />
 
         <receiver
             android:name=".BootReceiver"

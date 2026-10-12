@@ -267,6 +267,7 @@ class StoreActivity : Activity() {
 
     private fun statusLine(): String {
         prefs.lastError?.let { return getString(R.string.sync_failed, it) }
+        prefs.update?.let { return getString(R.string.update_ready, it.version) }
         if (prefs.lastSync == 0L) return getString(R.string.never_synced)
         val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(prefs.lastSync))
         return getString(R.string.synced_at, time)

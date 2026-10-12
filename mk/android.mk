@@ -45,18 +45,38 @@ android-apk: android-toolchain $(ANDROID_KEYSTORE) | $(ANDROID_CACHE) ## Build t
 	$(DOCKER_GRADLE) assembleDebug
 	@echo "$(ANDROID_APK)"
 
+# A release build, signed with the owner's release key: ANDROID_RELEASE_KEYSTORE
+# is its file, GOTOME_RELEASE_KEYSTORE_PASSWORD (in the environment, never on a
+# command line) its password. release.yml attaches the APK to the release.
+ANDROID_RELEASE_APK := $(ROOT)/clients/android/app/build/outputs/apk/release/gotome-tolino-$(VERSION).apk
+
+.PHONY: android-release
+android-release: android-toolchain | $(ANDROID_CACHE) ## Build the companion app's signed release APK
+	@test -n "$(ANDROID_RELEASE_KEYSTORE)" -a -f "$(ANDROID_RELEASE_KEYSTORE)" || { echo "ANDROID_RELEASE_KEYSTORE must name the release keystore" >&2; exit 1; }
+	@test -n "$$GOTOME_RELEASE_KEYSTORE_PASSWORD" || { echo "GOTOME_RELEASE_KEYSTORE_PASSWORD must be set" >&2; exit 1; }
+	docker run --rm -u $(UID_GID) -v $(ROOT):/work -v $(ANDROID_CACHE):/cache \
+		-v $(abspath $(ANDROID_RELEASE_KEYSTORE)):/release.keystore:ro \
+		-e HOME=/cache/home -e GRADLE_USER_HOME=/cache/gradle \
+		-e GOTOME_RELEASE_KEYSTORE=/release.keystore -e GOTOME_RELEASE_KEYSTORE_PASSWORD \
+		-w /work/clients/android $(ANDROID_IMAGE) \
+		gradle --no-daemon --console=plain --warning-mode=fail assembleRelease
+	cp $(dir $(ANDROID_RELEASE_APK))app-release.apk $(ANDROID_RELEASE_APK)
+	@echo "$(ANDROID_RELEASE_APK)"
+
 # adb runs on the host, where the Tolino is plugged in. READ_LOGS lets the app
 # see the reader's page turns; it can only be granted over adb. Storage is
 # granted too, so the setup asks for nothing: reading as well as writing, as
 # without both Android 8.1 starts the app with a view of storage it cannot
 # write to. The jump to a page read elsewhere is an accessibility service,
-# added to those already on, not in their place.
+# added to those already on, not in their place. Installing its own updates
+# needs "unknown sources" for the app, which appops grants.
 .PHONY: android-install
 android-install: android-apk ## Install the companion app on the Tolino over adb and grant it the log
 	adb install -r $(ANDROID_APK)
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_LOGS
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_EXTERNAL_STORAGE
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.WRITE_EXTERNAL_STORAGE
+	adb shell appops set $(ANDROID_PACKAGE) REQUEST_INSTALL_PACKAGES allow
 	adb shell am force-stop $(ANDROID_PACKAGE)
 	adb shell 'on=$$(settings get secure enabled_accessibility_services); \
 		case "$$on" in *$(ANDROID_PACKAGE)/*) ;; null|"") on=$(ANDROID_PACKAGE)/.JumpService ;; *) on="$$on:$(ANDROID_PACKAGE)/.JumpService" ;; esac; \

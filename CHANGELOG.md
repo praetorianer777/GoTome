@@ -22,6 +22,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- GOtome for Tolino comes with each release as a signed APK, and an
+  installed release offers the next one on the Tolino and installs it after
+  one confirmation (`clients/android/README.md`).
 - A GOtome plugin for KOReader, downloaded from the profile page, fetches
   the books sent to the device by itself whenever Wi-Fi comes up, into a
   folder of your choosing (`docs/koreader.md`).

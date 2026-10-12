@@ -982,7 +982,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   /device/books/{id}`). Progress comes from the reader's log lines
   (`READ_LOGS`, granted over adb), in Adobe's pages, sent as
   `fraction:<f>`; nothing else of the log is read. What the device allows
-  and refuses is in #209.
+  and refuses is in #209. Releases carry it signed with the owner's key
+  (`make android-release`, `release.yml` from the secrets `TOLINO_KEYSTORE`
+  and `TOLINO_KEYSTORE_PASSWORD`, alias `gotome-tolino`); `versionCode`
+  follows `VERSION`. The app updates itself from the latest release
+  (`Updates.kt`) only with an APK signed by its own key.
 
 ## Overview
 

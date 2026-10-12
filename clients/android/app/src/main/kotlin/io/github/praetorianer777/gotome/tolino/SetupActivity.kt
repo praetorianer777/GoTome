@@ -30,6 +30,7 @@ class SetupActivity : Activity() {
         server.setText(prefs.server)
         username.setText(prefs.username)
         findViewById<Button>(R.id.sign_in).setOnClickListener { signIn() }
+        findViewById<Button>(R.id.update).setOnClickListener { update() }
         findViewById<Button>(R.id.store).setOnClickListener {
             startActivity(Intent(this, StoreActivity::class.java))
             finish()
@@ -64,14 +65,38 @@ class SetupActivity : Activity() {
                     ReaderWatcher.start(this)
                     SyncJob.schedule(this)
                 }
-                showStatus(result.exceptionOrNull()?.message)
+                showStatus(result.exceptionOrNull()?.message?.let { getString(R.string.sign_in_failed, it) })
+            }
+        }.start()
+    }
+
+    /** Downloads the release and hands it to Android's installer, which asks once. */
+    private fun update() {
+        val release = prefs.update ?: return
+        val button = findViewById<Button>(R.id.update)
+        button.isEnabled = false
+        status.text = getString(R.string.updating, release.version)
+        Thread {
+            val result = runCatching {
+                if (!Network.online(this)) throw ApiException(0, getString(R.string.offline))
+                Updates(this).install(release)
+            }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                button.isEnabled = true
+                result.onFailure { showStatus(getString(R.string.update_failed, it.message ?: "")) }
             }
         }.start()
     }
 
     private fun showStatus(error: String? = null) {
+        findViewById<Button>(R.id.update).apply {
+            val release = prefs.update
+            visibility = if (release == null) android.view.View.GONE else android.view.View.VISIBLE
+            if (release != null) text = getString(R.string.update_to, release.version)
+        }
         val lines = mutableListOf<String>()
-        error?.let { lines += getString(R.string.sign_in_failed, it) }
+        error?.let { lines += it }
         lines += if (prefs.signedIn) getString(R.string.signed_in_as, prefs.username, prefs.server)
         else getString(R.string.signed_out)
         if (prefs.signedIn && prefs.server.startsWith("http://")) lines += getString(R.string.cleartext)
