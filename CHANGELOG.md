@@ -14,6 +14,7 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- GOtome is licensed under the Apache License 2.0 instead of the AGPL-3.0.
 - Similar books show at most two books by one author and two from one
   series, and no copy of the book: on a library of 50,000 books, a book's
   similar books now have eight authors on average instead of five, and

@@ -57,7 +57,7 @@ see [CLAUDE.md](CLAUDE.md). `./run-tests.sh` is the gate that must pass before a
 
 ## Licence
 
-[AGPL-3.0](LICENSE)
+[Apache 2.0](LICENSE)
 
 The artwork is based on the Go gopher, designed by
 [Renée French](https://go.dev/blog/gopher) and licensed under
