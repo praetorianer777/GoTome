@@ -3,6 +3,8 @@ package io.github.praetorianer777.gotome.tolino
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network as AndroidNetwork
 import android.os.Bundle
 import android.view.GestureDetector
 import android.view.KeyEvent
@@ -47,6 +49,17 @@ class StoreActivity : Activity() {
     private var shown: List<BookSummary> = emptyList()
     private var request = 0
     private var syncing = false
+    /** The page shown was kept from before the Tolino slept, or could not be fetched offline, and is fetched again once online. */
+    private var stale = false
+    private val online = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: AndroidNetwork) {
+            runOnUiThread {
+                if (!stale || isFinishing) return@runOnUiThread
+                stale = false
+                load()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,8 +111,24 @@ class StoreActivity : Activity() {
         ReaderWatcher.start(this)
         SyncJob.schedule(this)
         runCatching { LauncherBook.ensure(this) }.onFailure { prefs.lastError = it.message }
-        load()
+        getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(online)
+        // Waking, the Tolino needs a few seconds to get its Wi-Fi back; until
+        // then the page from before stays rather than an empty one.
+        if ((mode == Mode.NEWEST || mode == Mode.TITLE) && shown.isNotEmpty() && !Network.online(this)) {
+            stale = true
+            show(shown)
+            status.text = getString(R.string.offline_store)
+        } else {
+            load()
+        }
         if (Network.online(this) && System.currentTimeMillis() - prefs.lastSync > RESYNC) syncNow()
+    }
+
+    override fun onPause() {
+        if (prefs.signedIn) runCatching {
+            getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(online)
+        }
+        super.onPause()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean = when (keyCode) {
@@ -178,6 +207,7 @@ class StoreActivity : Activity() {
      */
     private fun <T> fetch(work: () -> T) {
         if (!Network.online(this)) {
+            stale = true
             show(emptyList())
             status.text = getString(R.string.offline_store)
             return
