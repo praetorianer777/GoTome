@@ -496,7 +496,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   estimates the Jaccard and the containment both ways from the signatures
   and their sizes; at least 0.5, or 0.8 contained, is evidence, with the
   numbers in its detail (`jaccard=… a_in_b=… b_in_a=…`, from the pair's
-  first book). Texts under 500 shingles get a row without a signature.
+  first book). A pair all of whose evidence is overlap under a
+  Jaccard of 0.5 is `contained` (`duplicate_contains`, kept with the score):
+  one book holds the other, as a story its collection; `GET /duplicates`
+  filters by it and the page lists such pairs as "Contained in". Texts under 500 shingles get a row without a signature.
   Raising `SignatureVersion` re-signs every file from its chunks at start
   (`EnqueueUnsigned`, `dedupe.sign_file`).
 - A pair's `score` is that of its strongest evidence, by the SQL function

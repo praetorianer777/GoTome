@@ -16,12 +16,13 @@ import (
 )
 
 type duplicatesQuery struct {
-	State   string `query:"state" enum:"open,kept_both,merged,replaced" doc:"Which pairs: open (the default) are those nobody has decided about."`
-	Library string `query:"library" doc:"A library's ID: the pairs with a book in it. Left out, every library the caller may see."`
-	Kind    string `query:"kind" enum:"sha256,content,isbn,title_author,overlap" doc:"Only pairs with evidence of this kind."`
-	Least   int    `query:"least" doc:"Only pairs whose score is at least this many percent."`
-	Cursor  string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; pairs come strongest first."`
-	Limit   int    `query:"limit" doc:"How many pairs a page holds, at most 100; 50 when left out."`
+	State     string `query:"state" enum:"open,kept_both,merged,replaced" doc:"Which pairs: open (the default) are those nobody has decided about."`
+	Library   string `query:"library" doc:"A library's ID: the pairs with a book in it. Left out, every library the caller may see."`
+	Kind      string `query:"kind" enum:"sha256,content,isbn,title_author,overlap" doc:"Only pairs with evidence of this kind."`
+	Contained string `query:"contained" enum:"true,false" doc:"true: only pairs of which one book holds the other's text, such as a story and its collection; false: only the others. Left out, both."`
+	Least     int    `query:"least" doc:"Only pairs whose score is at least this many percent."`
+	Cursor    string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; pairs come strongest first."`
+	Limit     int    `query:"limit" doc:"How many pairs a page holds, at most 100; 50 when left out."`
 }
 
 type duplicateEvidence struct {
@@ -41,10 +42,14 @@ type duplicatePair struct {
 	State string    `json:"state"`
 	// Score is how sure the strongest evidence makes it that the books are
 	// one, from 0 to 1.
-	Score    float32             `json:"score"`
-	FoundAt  time.Time           `json:"foundAt"`
-	Books    []bookSummary       `json:"books"`
-	Evidence []duplicateEvidence `json:"evidence"`
+	Score float32 `json:"score"`
+	// Contained says that one book holds the other's text, such as a
+	// story and its collection, without the two being one text: all its
+	// evidence is shared text of an overlap under 50%.
+	Contained bool                `json:"contained"`
+	FoundAt   time.Time           `json:"foundAt"`
+	Books     []bookSummary       `json:"books"`
+	Evidence  []duplicateEvidence `json:"evidence"`
 }
 
 type duplicateList struct {
@@ -102,6 +107,10 @@ func (s *Server) listDuplicates(w http.ResponseWriter, r *http.Request) error {
 	if q.Kind != "" {
 		lq.Kind = &q.Kind
 	}
+	if q.Contained != "" {
+		contained := q.Contained == "true"
+		lq.Contained = &contained
+	}
 	lq.Least = float32(q.Least) / 100
 	if q.Cursor != "" {
 		score, id, _ := strings.Cut(q.Cursor, "_")
@@ -122,7 +131,7 @@ func (s *Server) listDuplicates(w http.ResponseWriter, r *http.Request) error {
 		out.NextCursor = strconv.FormatFloat(float64(last.Score), 'g', -1, 32) + "_" + last.ID.String()
 	}
 	for i, p := range pairs {
-		dp := duplicatePair{ID: p.ID, State: p.State, Score: p.Score, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}}
+		dp := duplicatePair{ID: p.ID, State: p.State, Score: p.Score, Contained: p.Contained, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}}
 		for _, b := range p.Books {
 			dp.Books = append(dp.Books, summaryOf(b))
 		}

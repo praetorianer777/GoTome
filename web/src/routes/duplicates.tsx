@@ -26,15 +26,34 @@ import { librariesQuery } from "@/libraries/api";
 /** What the duplicates page shows, as the address carries it. */
 export interface DuplicatesSearch {
 	state?: PairState;
+	/** Open pairs of which one book holds the other's text. */
+	contained?: true;
 	kind?: EvidenceKind;
 	least?: number;
 	library?: string;
 }
 
-const STATES: { value: PairState; label: MessageKey }[] = [
-	{ value: "open", label: "duplicates.state.open" },
-	{ value: "kept_both", label: "duplicates.state.keptBoth" },
+type View = "open" | "contained" | "kept_both";
+
+const VIEWS: { value: View; label: MessageKey; none: MessageKey }[] = [
+	{ value: "open", label: "duplicates.state.open", none: "duplicates.none" },
+	{
+		value: "contained",
+		label: "duplicates.state.contained",
+		none: "duplicates.noneContained",
+	},
+	{
+		value: "kept_both",
+		label: "duplicates.state.keptBoth",
+		none: "duplicates.noneKept",
+	},
 ];
+
+const SEARCH_OF: Record<View, Partial<DuplicatesSearch>> = {
+	open: { state: undefined, contained: undefined },
+	contained: { state: undefined, contained: true },
+	kept_both: { state: "kept_both", contained: undefined },
+};
 
 const KIND_LABELS: Record<EvidenceKind, MessageKey> = {
 	sha256: "duplicates.kind.sha256",
@@ -65,8 +84,16 @@ export function Duplicates({
 }) {
 	const libraries = useQuery(librariesQuery);
 	const list = libraries.data ?? [];
+	const view: View =
+		search.state === "kept_both"
+			? "kept_both"
+			: search.contained
+				? "contained"
+				: "open";
 	const params: DuplicateParams = {
 		state: search.state ?? "open",
+		contained:
+			view === "kept_both" ? undefined : view === "contained" ? "true" : "false",
 		kind: search.kind,
 		least: search.least,
 		library: list.some((l) => l.id === search.library)
@@ -88,17 +115,15 @@ export function Duplicates({
 			<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
 				<fieldset className="flex items-center gap-2">
 					<legend className="sr-only">{t("duplicates.state")}</legend>
-					{STATES.map((s) => (
+					{VIEWS.map((v) => (
 						<button
-							key={s.value}
+							key={v.value}
 							type="button"
-							aria-pressed={params.state === s.value}
-							onClick={() =>
-								onSearch({ state: s.value === "open" ? undefined : s.value })
-							}
+							aria-pressed={view === v.value}
+							onClick={() => onSearch(SEARCH_OF[v.value])}
 							className={button}
 						>
-							{t(s.label)}
+							{t(v.label)}
 						</button>
 					))}
 				</fieldset>
@@ -168,11 +193,7 @@ export function Duplicates({
 				{pairs.isPending && <p className="text-slate-500">{t("loading")}</p>}
 				{pairs.isSuccess && shown.length === 0 && (
 					<p role="status" className="text-slate-600 dark:text-slate-400">
-						{t(
-							params.state === "open"
-								? "duplicates.none"
-								: "duplicates.noneKept",
-						)}
+						{t(VIEWS.find((v) => v.value === view)?.none ?? "duplicates.none")}
 					</p>
 				)}
 				{shown.length > 0 && (

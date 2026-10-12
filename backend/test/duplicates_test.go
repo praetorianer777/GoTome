@@ -17,10 +17,11 @@ import (
 )
 
 type pairView struct {
-	ID    string  `json:"id"`
-	State string  `json:"state"`
-	Score float64 `json:"score"`
-	Books []struct {
+	ID        string  `json:"id"`
+	State     string  `json:"state"`
+	Score     float64 `json:"score"`
+	Contained bool    `json:"contained"`
+	Books     []struct {
 		ID    string `json:"id"`
 		Title string `json:"title"`
 	} `json:"books"`

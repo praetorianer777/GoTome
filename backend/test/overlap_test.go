@@ -174,6 +174,29 @@ func TestSharedTextIsFoundAcrossFormatsAndInOmnibuses(t *testing.T) {
 		}
 	}
 
+	// A novel in its omnibus is listed apart from the copies.
+	pairTitles := func(pairs []pairView) []string {
+		var out []string
+		for _, p := range pairs {
+			names := []string{p.Books[0].Title, p.Books[1].Title}
+			slices.Sort(names)
+			out = append(out, strings.Join(names, "+"))
+		}
+		slices.Sort(out)
+		return out
+	}
+	if got := pairTitles(a.duplicates(admin, "?contained=true")); !slices.Equal(got, []string{"Middle+Trilogy"}) {
+		t.Errorf("contained pairs: %v", got)
+	}
+	if got := pairTitles(a.duplicates(admin, "?contained=false")); !slices.Equal(got, []string{"Flow+River"}) {
+		t.Errorf("pairs not contained: %v", got)
+	}
+	for _, p := range pairs {
+		if want := p.Books[0].Title == "Middle" || p.Books[0].Title == "Trilogy"; p.Contained != want {
+			t.Errorf("%s and %s: contained %v", p.Books[0].Title, p.Books[1].Title, p.Contained)
+		}
+	}
+
 	// Among 50,000 signed files, checking a book looks its buckets up in
 	// the index, which answers at once; reading every bucket would not.
 	if _, err := a.pool.Exec(ctx, `

@@ -200,10 +200,13 @@ type Pair struct {
 	State string
 	// Score is how sure its strongest evidence makes it, from 0 to 1
 	// (duplicate_score in the database).
-	Score    float32
-	FoundAt  time.Time
-	Books    []catalog.Summary
-	Evidence []Evidence
+	Score float32
+	// Contained is a pair of which one book holds the other's text without
+	// the two being one text (duplicate_contains in the database).
+	Contained bool
+	FoundAt   time.Time
+	Books     []catalog.Summary
+	Evidence  []Evidence
 }
 
 // MaxPage is the most pairs a page holds.
@@ -223,6 +226,9 @@ type ListQuery struct {
 	// score of at least it.
 	Kind  *string
 	Least float32
+	// Contained, when set, keeps the pairs that are contained or those
+	// that are not.
+	Contained *bool
 	// After is the cursor of the page before.
 	After *Cursor
 	Limit int
@@ -235,7 +241,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 	q := sqlc.New(s.pool)
 	params := sqlc.ListDuplicatePairsParams{
 		State: lq.State, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
-		LibraryID: lq.LibraryID, Kind: lq.Kind, Least: lq.Least, PageSize: int32(limit + 1),
+		LibraryID: lq.LibraryID, Kind: lq.Kind, Contained: lq.Contained, Least: lq.Least, PageSize: int32(limit + 1),
 	}
 	if lq.After != nil {
 		params.AfterID, params.AfterScore = &lq.After.ID, lq.After.Score
@@ -279,7 +285,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 			continue
 		}
 		out = append(out, Pair{
-			ID: r.ID, State: r.State, Score: r.Score, FoundAt: r.FoundAt,
+			ID: r.ID, State: r.State, Score: r.Score, Contained: r.Contained, FoundAt: r.FoundAt,
 			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID],
 		})
 	}

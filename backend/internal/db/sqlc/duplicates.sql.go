@@ -241,7 +241,7 @@ func (q *Queries) ListDuplicateEvidence(ctx context.Context, pairIds []uuid.UUID
 }
 
 const listDuplicatePairs = `-- name: ListDuplicatePairs :many
-SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score
+SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score, p.contained
 FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
@@ -252,11 +252,12 @@ WHERE p.state = $1
   AND ($4::uuid IS NULL OR $4::uuid IN (a.library_id, b.library_id))
   AND ($5::text IS NULL OR EXISTS (
       SELECT 1 FROM duplicate_evidence e WHERE e.pair_id = p.id AND e.kind = $5::text))
-  AND p.score >= $6::real
-  AND ($7::uuid IS NULL
-       OR (p.score, p.id) < ($8::real, $7::uuid))
+  AND ($6::boolean IS NULL OR p.contained = $6::boolean)
+  AND p.score >= $7::real
+  AND ($8::uuid IS NULL
+       OR (p.score, p.id) < ($9::real, $8::uuid))
 ORDER BY p.score DESC, p.id DESC
-LIMIT $9
+LIMIT $10
 `
 
 type ListDuplicatePairsParams struct {
@@ -265,6 +266,7 @@ type ListDuplicatePairsParams struct {
 	SeesAll    bool
 	LibraryID  *uuid.UUID
 	Kind       *string
+	Contained  *bool
 	Least      float32
 	AfterID    *uuid.UUID
 	AfterScore float32
@@ -272,17 +274,19 @@ type ListDuplicatePairsParams struct {
 }
 
 type ListDuplicatePairsRow struct {
-	ID      uuid.UUID
-	BookA   uuid.UUID
-	BookB   uuid.UUID
-	State   string
-	FoundAt time.Time
-	Score   float32
+	ID        uuid.UUID
+	BookA     uuid.UUID
+	BookB     uuid.UUID
+	State     string
+	FoundAt   time.Time
+	Score     float32
+	Contained bool
 }
 
 // The pairs in the state whose books the viewer both sees, of a library when
-// named (either book in it), with evidence of the kind and a score of at
-// least the least when named, the strongest first, after the cursor's.
+// named (either book in it), contained or not when asked, with evidence of
+// the kind and a score of at least the least when named, the strongest
+// first, after the cursor's.
 func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairsParams) ([]ListDuplicatePairsRow, error) {
 	rows, err := q.db.Query(ctx, listDuplicatePairs,
 		arg.State,
@@ -290,6 +294,7 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 		arg.SeesAll,
 		arg.LibraryID,
 		arg.Kind,
+		arg.Contained,
 		arg.Least,
 		arg.AfterID,
 		arg.AfterScore,
@@ -309,6 +314,7 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 			&i.State,
 			&i.FoundAt,
 			&i.Score,
+			&i.Contained,
 		); err != nil {
 			return nil, err
 		}
@@ -539,11 +545,14 @@ func (q *Queries) PutFileSignature(ctx context.Context, arg PutFileSignaturePara
 
 const refreshPairScores = `-- name: RefreshPairScores :exec
 UPDATE duplicate_pairs p SET score = coalesce(
-    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0)
+    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0),
+    contained = coalesce(
+    (SELECT bool_and(duplicate_contains(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), false)
 WHERE p.book_a = $1 OR p.book_b = $1
 `
 
-// The book's pairs' scores, from their evidence as it now is.
+// The book's pairs' scores, and whether one book only holds the other,
+// from their evidence as it now is.
 func (q *Queries) RefreshPairScores(ctx context.Context, bookID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, refreshPairScores, bookID)
 	return err

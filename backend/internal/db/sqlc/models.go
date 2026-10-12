@@ -217,6 +217,7 @@ type DuplicatePair struct {
 	FoundAt   time.Time
 	UpdatedAt time.Time
 	Score     float32
+	Contained bool
 }
 
 type FileLsh struct {

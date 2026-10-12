@@ -2422,6 +2422,7 @@ export interface components {
         };
         DuplicatePair: {
             books: components["schemas"]["BookSummary"][];
+            contained: boolean;
             evidence: components["schemas"]["DuplicateEvidence"][];
             /** Format: date-time */
             foundAt: string;
@@ -4928,6 +4929,8 @@ export interface operations {
                 library?: string;
                 /** @description Only pairs with evidence of this kind. */
                 kind?: "sha256" | "content" | "isbn" | "title_author" | "overlap";
+                /** @description true: only pairs of which one book holds the other's text, such as a story and its collection; false: only the others. Left out, both. */
+                contained?: "true" | "false";
                 /** @description Only pairs whose score is at least this many percent. */
                 least?: number;
                 /** @description Where the page before ended, as its nextCursor says; pairs come strongest first. */
