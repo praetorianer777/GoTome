@@ -50,3 +50,18 @@ LIMIT 200;
 -- The device has downloaded the book: it leaves the queue, once.
 UPDATE deliveries SET delivered_at = now()
 WHERE device_id = $1 AND book_id = $2 AND delivered_at IS NULL;
+
+-- name: RecordOnDevice :execrows
+-- The device has the book, whether it was sent there or the device took it
+-- itself; a book the viewer does not see is not recorded.
+INSERT INTO deliveries (device_id, book_id, delivered_at)
+SELECT sqlc.arg(device_id), b.id, now()
+FROM books b
+WHERE b.id = sqlc.arg(book_id) AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ON CONFLICT (device_id, book_id) DO UPDATE
+SET delivered_at = coalesce(deliveries.delivered_at, now());
+
+-- name: ForgetOnDevice :exec
+-- The book is no longer on the device, or no longer waits for it.
+DELETE FROM deliveries WHERE device_id = $1 AND book_id = $2;

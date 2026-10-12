@@ -17,7 +17,7 @@ data class Unsent(val bookId: String, val fileId: String, val fraction: Double, 
  * and GOtome's positions in those books as of the last sync, so that a jump can
  * be offered offline. The library itself stays on the server.
  */
-class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
+class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 5) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE delivered (book_id TEXT PRIMARY KEY, file_id TEXT NOT NULL,
@@ -30,10 +30,14 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
                fraction REAL NOT NULL, at INTEGER NOT NULL, sent INTEGER NOT NULL DEFAULT 0)""",
         )
         createRemote(db)
-        createUncollect(db)
+        createReport(db)
     }
 
-    /** Version 1 kept the whole catalogue on the device, version 2 no positions from GOtome. */
+    /**
+     * Version 1 kept the whole catalogue on the device, version 2 no positions from
+     * GOtome, and version 4 a collection as the device's queue instead of GOtome's
+     * deliveries: what is on the Tolino is told to GOtome once.
+     */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("DROP TABLE IF EXISTS books")
@@ -43,28 +47,43 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
             )) db.execSQL("ALTER TABLE delivered ADD COLUMN $column")
         }
         if (oldVersion < 3) createRemote(db)
-        if (oldVersion < 4) createUncollect(db)
-    }
-
-    /** Books taken off the Tolino in the app, to be taken out of the device's collection. */
-    private fun createUncollect(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE uncollect (book_id TEXT PRIMARY KEY)")
+        if (oldVersion < 5) {
+            db.execSQL("DROP TABLE IF EXISTS uncollect")
+            createReport(db)
+            db.execSQL("INSERT INTO report (book_id, present) SELECT book_id, 1 FROM delivered WHERE removed = 0")
+        }
     }
 
     /**
-     * Forgets a book taken off the Tolino in the app, unlike one deleted in the Tolino
-     * library: as it leaves the collection too, adding it there again brings it back.
+     * Whether a book is on the Tolino, as GOtome is still to be told: its page in
+     * the web says which books the device has.
      */
+    private fun createReport(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE report (book_id TEXT PRIMARY KEY, present INTEGER NOT NULL)")
+    }
+
+    fun report(bookId: String, present: Boolean) {
+        writableDatabase.insertWithOnConflict("report", null, ContentValues().apply {
+            put("book_id", bookId)
+            put("present", if (present) 1 else 0)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun reports(): List<Pair<String, Boolean>> =
+        readableDatabase.rawQuery("SELECT book_id, present FROM report", null).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(0) to (c.getInt(1) == 1) else null }.toList()
+        }
+
+    /** Marks a report sent, unless it changed since it was read. */
+    fun reported(bookId: String, present: Boolean) {
+        writableDatabase.delete("report", "book_id = ? AND present = ?", arrayOf(bookId, if (present) "1" else "0"))
+    }
+
+    /** Forgets a book taken off the Tolino in the app; sending it again brings it back. */
     fun forget(bookId: String) {
         writableDatabase.delete("delivered", "book_id = ?", arrayOf(bookId))
         writableDatabase.delete("remote", "book_id = ?", arrayOf(bookId))
-        writableDatabase.insertWithOnConflict("uncollect", null, ContentValues().apply { put("book_id", bookId) }, SQLiteDatabase.CONFLICT_IGNORE)
-    }
-
-    fun toUncollect(): List<String> = ids("SELECT book_id FROM uncollect").toList()
-
-    fun uncollected(bookId: String) {
-        writableDatabase.delete("uncollect", "book_id = ?", arrayOf(bookId))
+        report(bookId, false)
     }
 
     private fun createRemote(db: SQLiteDatabase) {
@@ -101,12 +120,6 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
 
     fun deliveredAt(path: String): Delivered? = deliveredWhere("path = ?", path)
 
-    /**
-     * Every book the app ever put on the Tolino, also those deleted there since:
-     * a book deleted on the device is not brought back by the next sync.
-     */
-    fun deliveredIds(): Set<String> = ids("SELECT book_id FROM delivered")
-
     fun onDeviceIds(): Set<String> = ids("SELECT book_id FROM delivered WHERE removed = 0")
 
     /** The books on the Tolino, the latest first. */
@@ -133,6 +146,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
             put("series_index", book.seriesIndex)
             put("formats", book.formats.joinToString(SEP))
         }, SQLiteDatabase.CONFLICT_REPLACE)
+        report(d.bookId, true)
     }
 
     /** Notes the books whose files were deleted on the Tolino, which deletes them from its library. */
@@ -143,7 +157,10 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 4) {
                 .map { it.first }
                 .toList()
         }
-        for (id in gone) writableDatabase.execSQL("UPDATE delivered SET removed = 1 WHERE book_id = ?", arrayOf(id))
+        for (id in gone) {
+            writableDatabase.execSQL("UPDATE delivered SET removed = 1 WHERE book_id = ?", arrayOf(id))
+            report(id, false)
+        }
     }
 
     fun saveProgress(d: Delivered, fraction: Double, at: Long) {

@@ -30,8 +30,6 @@
     <string name="back">Back</string>
     <string name="server">GOtome address</string>
     <string name="username">User name</string>
-    <string name="password">Password</string>
-    <string name="collection">Collection for this Tolino</string>
     <string name="sign_in">Sign in</string>
     <string name="to_store">To the store</string>
     <string name="signing_in">Signing in…</string>
@@ -46,7 +44,6 @@
     <string name="watcher_title">Sending reading progress to GOtome</string>
     <string name="launcher_text">This book opens the GOtome store.\nIf you are reading this, the GOtome app is not running: open it once from the app launcher.</string>
     <string name="sending_progress">Sending reading progress…</string>
-    <string name="checking_collection">Looking into the collection “%1$s”…</string>
     <string name="loading_book">Loading book %1$d of %2$d: %3$s</string>
     <string name="no_readable_file">No EPUB or PDF without DRM</string>
     <string name="offline_store">No network. Under “On Tolino” you see the books on this device; turn Wi-Fi on for the rest.</string>
@@ -64,5 +61,10 @@
     <string name="jump_off">Jumping to the page read elsewhere is off. Turn it on once from a computer with\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
     <string name="remove">Remove from Tolino</string>
     <string name="remove_confirm">Really remove? Tap again</string>
-    <string name="removed">Removed from the Tolino and from your collection.</string>
+    <string name="removed">Removed from the Tolino.</string>
+    <string name="token">Device token</string>
+    <string name="token_help">Make one for this Tolino in GOtome: on your profile under “E-readers”, “Add a device”. It lets the Tolino fetch books and send your reading progress, and nothing else; revoking it there signs the Tolino out.</string>
+    <string name="server_scheme">The address starts with https:// (or http:// on your own network)</string>
+    <string name="cleartext">The address is http://: your token travels unencrypted. Use https:// unless GOtome is only on your own network.</string>
+    <string name="checking_queue">Looking for books sent to this Tolino…</string>
 </resources>

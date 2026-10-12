@@ -33,10 +33,10 @@ What changes for someone who runs or uses GOtome. The format follows
   offered in KOReader, at its chapter for an EPUB and its page for a PDF
   (`docs/koreader.md`).
 - GOtome for Tolino, an app for Tolino e-readers on firmware 16, installed
-  over USB (`clients/android/README.md`). Books in your "Tolino" collection
-  arrive on the reader by themselves, a store on the reader browses and
-  searches your library and puts books on it, and how far you read in the
-  Tolino's own reader shows up in GOtome. Opening a book you read further
+  over USB (`clients/android/README.md`) and signed in with a device token.
+  Books sent to the Tolino arrive on the reader by themselves, a store on
+  the reader browses and searches your library and puts books on it, and
+  how far you read in the Tolino's own reader shows up in GOtome. Opening a book you read further
   elsewhere, the Tolino offers to jump to that page.
 - E-readers with KOReader, or any app that reads OPDS catalogues, browse
   the library by newest, author, series and shelf, search it and download

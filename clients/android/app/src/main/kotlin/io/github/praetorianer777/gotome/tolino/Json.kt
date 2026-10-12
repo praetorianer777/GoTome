@@ -25,20 +25,32 @@ data class BookDetail(
     val files: List<BookFile>,
 )
 
-data class CollectionInfo(val id: String, val name: String, val mine: Boolean)
+data class ThisDevice(val name: String, val username: String)
 
 data class EbookProgress(val fraction: Double, val chapter: String, val clientId: String, val updatedAt: String)
 
-/** Reads GOtome's answers (api/openapi.json) into what the app keeps of them. */
+/**
+ * Reads GOtome's answers (api/openapi.json) into what the app keeps of them. A
+ * book or file in a list that cannot be read, or whose ID is not one, is left
+ * out rather than failing the list: IDs go into addresses and file names.
+ */
 object Json {
+    private val ID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+    fun isId(s: String): Boolean = ID.matches(s)
+
+    private fun JSONObject.id(): String = getString("id").also {
+        if (!isId(it)) throw org.json.JSONException("not an ID: $it")
+    }
+
     fun bookList(body: String): Pair<List<BookSummary>, String?> {
         val root = JSONObject(body)
         val next = root.optString("nextCursor").ifEmpty { null }
-        return root.getJSONArray("books").objects().map(::bookSummary) to next
+        return root.getJSONArray("books").each(::bookSummary) to next
     }
 
     fun bookSummary(o: JSONObject) = BookSummary(
-        id = o.getString("id"),
+        id = o.id(),
         title = o.getString("title"),
         authors = o.optJSONArray("authors").strings(),
         series = o.optString("series"),
@@ -49,14 +61,14 @@ object Json {
 
     /** Search hits describe a book the way a page of books does. */
     fun searchHits(body: String): List<BookSummary> =
-        JSONObject(body).getJSONArray("books").objects().map(::bookSummary)
+        JSONObject(body).getJSONArray("books").each(::bookSummary)
 
     fun count(body: String): Int = JSONObject(body).getInt("count")
 
     fun bookDetail(body: String): BookDetail {
         val o = JSONObject(body)
         return BookDetail(
-            id = o.getString("id"),
+            id = o.id(),
             title = o.getString("title"),
             authors = o.optJSONArray("contributors").objects()
                 .filter { it.optString("role") == "author" }
@@ -64,9 +76,9 @@ object Json {
             series = o.optString("series"),
             seriesIndex = if (o.has("seriesIndex")) o.getDouble("seriesIndex") else null,
             description = o.optString("description"),
-            files = o.optJSONArray("files").objects().map {
+            files = o.optJSONArray("files").each {
                 BookFile(
-                    id = it.getString("id"),
+                    id = it.id(),
                     format = it.getString("format").lowercase(),
                     drm = it.optBoolean("drm"),
                     missing = it.optBoolean("missing"),
@@ -91,15 +103,10 @@ object Json {
         book.files.firstOrNull { it.format == format && !it.drm && !it.missing }
     }
 
-    fun collections(body: String): List<CollectionInfo> =
-        JSONObject(body).getJSONArray("collections").objects().map(::collection)
-
-    fun collection(o: JSONObject) = CollectionInfo(o.getString("id"), o.getString("name"), o.optBoolean("mine"))
-
-    fun collectionId(body: String): String = JSONObject(body).getString("id")
-
-    fun collectionBooks(body: String): List<BookSummary> =
-        JSONObject(body).getJSONArray("bookList").objects().map(::bookSummary)
+    fun thisDevice(body: String): ThisDevice {
+        val o = JSONObject(body)
+        return ThisDevice(o.getJSONObject("device").getString("name"), o.getString("username"))
+    }
 
     fun ebookProgress(body: String): EbookProgress? {
         val ebook = JSONObject(body).optJSONObject("ebook") ?: return null
@@ -128,17 +135,14 @@ object Json {
         return Saved(o.getBoolean("saved"), o.optJSONObject("progress")?.optString("clientId"))
     }
 
-    fun login(username: String, password: String): String =
-        JSONObject().put("username", username).put("password", password).toString()
-
-    fun newCollection(name: String): String =
-        JSONObject().put("name", name).put("visibility", "private").toString()
-
     fun errorMessage(body: String): String? =
         runCatching { JSONObject(body).getJSONObject("error").getString("message") }.getOrNull()
 
     private fun JSONArray?.objects(): List<JSONObject> =
-        if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
+        if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }
+
+    private fun <T> JSONArray?.each(read: (JSONObject) -> T): List<T> =
+        objects().mapNotNull { runCatching { read(it) }.getOrNull() }
 
     private fun JSONArray?.strings(): List<String> =
         if (this == null) emptyList() else (0 until length()).map { getString(it) }

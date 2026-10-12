@@ -5,8 +5,9 @@ import android.util.Log
 import java.io.File
 
 /**
- * Everything that talks to GOtome in the background: positions out and the
- * device's collection in. One sync runs at a time, whoever starts it.
+ * Everything that talks to GOtome in the background: positions out, the books
+ * sent to this device in, and which books are on it back to GOtome. One sync
+ * runs at a time, whoever starts it.
  */
 class Sync(private val context: Context) {
     private val prefs = Prefs(context)
@@ -21,9 +22,8 @@ class Sync(private val context: Context) {
         try {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
-            // Before delivering, or a book just taken off would come straight back.
-            uncollect()
-            deliverCollection(progress)
+            deliverQueue(progress)
+            report()
             fetchPositions()
             prefs.lastSync = System.currentTimeMillis()
             prefs.lastError = null
@@ -34,8 +34,8 @@ class Sync(private val context: Context) {
     }
 
     /**
-     * Puts one book on the Tolino and into the device's collection, so that the web
-     * shows what is on the device. The reader app imports it within seconds.
+     * Puts one book on the Tolino, which the reader app imports within seconds, and
+     * tells GOtome, whose page of the book then says it is on this device.
      */
     fun deliver(bookId: String): Delivered = synchronized(LOCK) {
         db.delivered(bookId)?.takeIf { File(it.path).exists() }?.let { return it }
@@ -46,18 +46,18 @@ class Sync(private val context: Context) {
         api.download("/files/${file.id}/download", target)
         return Delivered(book.id, file.id, target.path).also {
             db.addDelivered(it, Json.summary(book))
-            runCatching { addToCollection(bookId) }
+            runCatching { report() }
         }
     }
 
     /**
      * Takes a book off the Tolino: its file goes, which takes it out of the Tolino
-     * library, and it leaves the device's collection, now or with the next sync.
+     * library, and GOtome is told, now or with the next sync.
      */
     fun remove(bookId: String) = synchronized(LOCK) {
         db.delivered(bookId)?.let { File(it.path).delete() }
         db.forget(bookId)
-        if (prefs.signedIn && Network.online(context)) runCatching { uncollect() }
+        if (prefs.signedIn && Network.online(context)) runCatching { report() }
     }
 
     fun ebookProgress(bookId: String): EbookProgress? = Json.ebookProgress(api.get("/books/$bookId/progress"))
@@ -80,11 +80,18 @@ class Sync(private val context: Context) {
         }
     }
 
-    private fun deliverCollection(progress: (String) -> Unit) {
-        progress(context.getString(R.string.checking_collection, prefs.collectionName))
-        val have = db.deliveredIds()
-        val missing = Json.collectionBooks(api.get("/collections/${collectionId()}"))
-            .filter { it.id !in have && Storage.READABLE.any { format -> format in it.formats } }
+    /**
+     * Fetches what was sent to this device. A book that is here already, because
+     * GOtome was not told after its download, is only reported.
+     */
+    private fun deliverQueue(progress: (String) -> Unit) {
+        progress(context.getString(R.string.checking_queue))
+        val (queued, _) = Json.bookList(api.get("/device/books"))
+        val missing = queued.filter { book ->
+            val here = db.delivered(book.id)?.takeIf { File(it.path).exists() }
+            if (here != null) db.report(book.id, true)
+            here == null
+        }
         for ((i, book) in missing.withIndex()) {
             progress(context.getString(R.string.loading_book, i + 1, missing.size, book.title))
             try {
@@ -110,29 +117,17 @@ class Sync(private val context: Context) {
         for (id in db.onDeviceIds()) fetchPosition(id)
     }
 
-    private fun uncollect() {
-        for (id in db.toUncollect()) {
+    /** Tells GOtome which books came onto the Tolino and which left it. */
+    private fun report() {
+        for ((id, present) in db.reports()) {
             try {
-                api.delete("/collections/${collectionId()}/books/$id")
+                if (present) api.send("PUT", "/device/books/$id") else api.delete("/device/books/$id")
             } catch (e: ApiException) {
+                // A book deleted in GOtome, or no longer seen, has nothing to say.
                 if (e.status != 404) throw e
             }
-            db.uncollected(id)
+            db.reported(id, present)
         }
-    }
-
-    private fun addToCollection(bookId: String) {
-        api.send("POST", "/collections/${collectionId()}/books", """{"books":["$bookId"]}""")
-    }
-
-    /** The person's collection of the chosen name, made when there is none. */
-    private fun collectionId(): String {
-        prefs.collectionId?.let { return it }
-        val name = prefs.collectionName
-        val found = Json.collections(api.get("/collections")).firstOrNull { it.mine && it.name.equals(name, ignoreCase = true) }
-        val id = found?.id ?: Json.collectionId(api.send("POST", "/collections", Json.newCollection(name)))
-        prefs.collectionId = id
-        return id
     }
 
     companion object {

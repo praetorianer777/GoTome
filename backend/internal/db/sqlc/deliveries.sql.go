@@ -12,6 +12,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const forgetOnDevice = `-- name: ForgetOnDevice :exec
+DELETE FROM deliveries WHERE device_id = $1 AND book_id = $2
+`
+
+type ForgetOnDeviceParams struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+}
+
+// The book is no longer on the device, or no longer waits for it.
+func (q *Queries) ForgetOnDevice(ctx context.Context, arg ForgetOnDeviceParams) error {
+	_, err := q.db.Exec(ctx, forgetOnDevice, arg.DeviceID, arg.BookID)
+	return err
+}
+
 const listBookDeliveries = `-- name: ListBookDeliveries :many
 SELECT dl.id, dl.device_id, d.name AS device_name, dl.queued_at, dl.delivered_at
 FROM deliveries dl
@@ -164,6 +179,38 @@ func (q *Queries) QueueDeliveries(ctx context.Context, arg QueueDeliveriesParams
 	result, err := q.db.Exec(ctx, queueDeliveries,
 		arg.Ids,
 		arg.DeviceID,
+		arg.Viewer,
+		arg.SeesAll,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const recordOnDevice = `-- name: RecordOnDevice :execrows
+INSERT INTO deliveries (device_id, book_id, delivered_at)
+SELECT $1, b.id, now()
+FROM books b
+WHERE b.id = $2 AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+ON CONFLICT (device_id, book_id) DO UPDATE
+SET delivered_at = coalesce(deliveries.delivered_at, now())
+`
+
+type RecordOnDeviceParams struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+}
+
+// The device has the book, whether it was sent there or the device took it
+// itself; a book the viewer does not see is not recorded.
+func (q *Queries) RecordOnDevice(ctx context.Context, arg RecordOnDeviceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, recordOnDevice,
+		arg.DeviceID,
+		arg.BookID,
 		arg.Viewer,
 		arg.SeesAll,
 	)

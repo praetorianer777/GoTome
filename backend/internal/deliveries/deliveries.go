@@ -101,3 +101,24 @@ func (s *Service) Delivered(ctx context.Context, deviceID, bookID uuid.UUID) (bo
 	n, err := sqlc.New(s.pool).MarkDelivered(ctx, sqlc.MarkDeliveredParams{DeviceID: deviceID, BookID: bookID})
 	return n > 0, err
 }
+
+// OnDevice records that the device has the book, which it took itself or
+// was sent; ErrNotFound for a book the scope does not see.
+func (s *Service) OnDevice(ctx context.Context, scope library.Scope, deviceID, bookID uuid.UUID) error {
+	n, err := sqlc.New(s.pool).RecordOnDevice(ctx, sqlc.RecordOnDeviceParams{
+		DeviceID: deviceID, BookID: bookID, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// OffDevice forgets the book on the device: taken off it, or no longer to
+// be sent there.
+func (s *Service) OffDevice(ctx context.Context, deviceID, bookID uuid.UUID) error {
+	return sqlc.New(s.pool).ForgetOnDevice(ctx, sqlc.ForgetOnDeviceParams{DeviceID: deviceID, BookID: bookID})
+}

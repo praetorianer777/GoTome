@@ -59,6 +59,21 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 		t.Errorf("waiting: %v", d)
 	}
 
+	// A device's own app reads the same queue.
+	status, mine, _ := a.call(device, http.MethodGet, "/device", nil)
+	if status != 200 || mine["username"] != "reader" || mine["device"].(map[string]any)["id"] != deviceID {
+		t.Errorf("the device itself: %d %v", status, mine)
+	}
+	if status, out, _ := a.call(device, http.MethodGet, "/device/books", nil); status != 200 ||
+		len(out["books"].([]any)) != 1 || out["books"].([]any)[0].(map[string]any)["id"] != book {
+		t.Errorf("the device's queue: %d %v", status, out)
+	}
+	for _, path := range []string{"/device", "/device/books"} {
+		if status, _, _ := a.call(reader, http.MethodGet, path, nil); status != 404 {
+			t.Errorf("%s in a browser: %d", path, status)
+		}
+	}
+
 	// A browser has no feed of its own.
 	if status, _, _ := a.fetch(reader, httpapi.APIPrefix+"/opds/device"); status != 404 {
 		t.Errorf("the device feed in a browser: %d", status)
@@ -91,6 +106,9 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	if got := a.feed(device, httpapi.APIPrefix+"/opds/device"); len(got.Entries) != 0 {
 		t.Errorf("after the download: %+v", got)
 	}
+	if status, out, _ := a.call(device, http.MethodGet, "/device/books", nil); status != 200 || len(out["books"].([]any)) != 0 {
+		t.Errorf("the device's queue after the download: %d %v", status, out)
+	}
 	if d := deliveries(); len(d) != 1 || d[0].(map[string]any)["deliveredAt"] == nil {
 		t.Errorf("delivered: %v", d)
 	}
@@ -106,6 +124,26 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	}
 	send(reader, deviceID)
 
+
+	// What the device takes itself, and takes off again, its book's page says.
+	if status, _, _ := a.call(device, http.MethodDelete, "/device/books/"+book, nil); status != 204 {
+		t.Fatalf("taken off: %d", status)
+	}
+	if d := deliveries(); len(d) != 0 {
+		t.Errorf("after taking it off: %v", d)
+	}
+	if status, _, _ := a.call(device, http.MethodPut, "/device/books/"+book, nil); status != 204 {
+		t.Fatalf("put on: %d", status)
+	}
+	if d := deliveries(); len(d) != 1 || d[0].(map[string]any)["deliveredAt"] == nil {
+		t.Errorf("after putting it on: %v", d)
+	}
+	if status, _, _ := a.call(reader, http.MethodPut, "/device/books/"+book, nil); status != 404 {
+		t.Errorf("putting it on from a browser: %d", status)
+	}
+	a.call(device, http.MethodDelete, "/device/books/"+book, nil)
+	send(reader, deviceID)
+
 	// Out of the library, the book leaves the device's feed.
 	if status, _, _ := a.call(admin, http.MethodDelete, "/libraries/"+vault+"/members/"+readerID, nil); status != 204 {
 		t.Fatalf("removing the member: %d", status)
@@ -115,5 +153,11 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	}
 	if status, _, _ := a.fetch(device, download); status != 404 {
 		t.Errorf("its download: %d", status)
+	}
+	if status, out, _ := a.call(device, http.MethodGet, "/device/books", nil); status != 200 || len(out["books"].([]any)) != 0 {
+		t.Errorf("the device's queue of a book no longer seen: %d %v", status, out)
+	}
+	if status, _, _ := a.call(device, http.MethodPut, "/device/books/"+book, nil); status != 404 {
+		t.Errorf("putting a book no longer seen on the device: %d", status)
 	}
 }

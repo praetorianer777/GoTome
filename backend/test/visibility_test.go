@@ -151,6 +151,7 @@ func readCases() map[string][]readCase {
 		"listBookDeliveries":     {{path: "/books/{book}/deliveries", control: "insider"}},
 		"listOpdsDeviceBooks":    {{path: "/opds/device", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"listDeviceQueue":        {{path: "/device/books", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"kosyncPull":             {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},

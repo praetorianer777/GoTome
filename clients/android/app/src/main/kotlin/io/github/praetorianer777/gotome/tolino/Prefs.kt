@@ -3,9 +3,12 @@ package io.github.praetorianer777.gotome.tolino
 import android.content.Context
 import java.util.UUID
 
-/** What the app remembers between starts: where GOtome is, the session, and how syncing went. */
+/** What the app remembers between starts: where GOtome is, the device's token, and how syncing went. */
 class Prefs(context: Context) {
-    private val p = context.getSharedPreferences("gotome", Context.MODE_PRIVATE)
+    private val p = context.getSharedPreferences("gotome", Context.MODE_PRIVATE).apply {
+        // Versions before device tokens kept a whole session and the collection used as the queue.
+        if (contains("cookie")) edit().remove("cookie").remove("collectionName").remove("collectionId").apply()
+    }
 
     var server: String
         get() = p.getString("server", "")!!
@@ -15,18 +18,14 @@ class Prefs(context: Context) {
         get() = p.getString("username", "")!!
         set(value) = p.edit().putString("username", value).apply()
 
-    /** The session cookie as it goes into the Cookie header; null when signed out. */
-    var cookie: String?
-        get() = p.getString("cookie", null)
-        set(value) = p.edit().putString("cookie", value).apply()
-
-    var collectionName: String
-        get() = p.getString("collectionName", "Tolino")!!
-        set(value) = p.edit().putString("collectionName", value.trim()).apply()
-
-    var collectionId: String?
-        get() = p.getString("collectionId", null)
-        set(value) = p.edit().putString("collectionId", value).apply()
+    /**
+     * The device token made for this Tolino on the profile in GOtome; null when
+     * signed out. It reaches only what a device needs, and revoking it there
+     * signs the Tolino out.
+     */
+    var token: String?
+        get() = p.getString("token", null)
+        set(value) = p.edit().putString("token", value).apply()
 
     /** Names this device in GOtome's progress, so the web can tell its positions apart. */
     val clientId: String
@@ -52,5 +51,5 @@ class Prefs(context: Context) {
         set(value) = p.edit().putLong("readerSeenAt", value).apply()
 
     val signedIn: Boolean
-        get() = server.isNotEmpty() && cookie != null
+        get() = server.isNotEmpty() && username.isNotEmpty() && token != null
 }

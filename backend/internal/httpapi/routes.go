@@ -255,6 +255,26 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.takeBackDelivery,
 		},
 		{
+			Method: http.MethodGet, Path: "/device", ID: "getThisDevice",
+			Summary: "The device that asks, and whom its token signs in; only for a device's token", Tag: "auth",
+			Response: thisDevice{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Devices: true, Handler: s.getThisDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/device/books", ID: "listDeviceQueue",
+			Summary: "The books sent to the device that asks, until it has them; only for a device's token", Tag: "auth",
+			Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listDeviceQueue,
+		},
+		{
+			Method: http.MethodPut, Path: "/device/books/{bookId}", ID: "putOnDevice",
+			Summary: "Record that the device that asks has the book; only for a device's token", Tag: "auth",
+			Permission: auth.PersonalManage, Devices: true, Handler: s.putOnDevice,
+		},
+		{
+			Method: http.MethodDelete, Path: "/device/books/{bookId}", ID: "takeOffDevice",
+			Summary: "Record that the device that asks no longer has the book, nor waits for it; only for a device's token", Tag: "auth",
+			Permission: auth.PersonalManage, Devices: true, Handler: s.takeOffDevice,
+		},
+		{
 			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
 			Summary: "What the caller's uploads take up, and how much they may", Tag: "auth",
 			Response: storage{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getOwnStorage,
@@ -353,12 +373,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
-			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listBooks,
+			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
 			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
-			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchBooks,
+			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.searchBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/search", ID: "searchText",
@@ -450,7 +470,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}", ID: "getBook",
 			Summary: "One book with everything that describes it and its files", Tag: "books",
-			Response: bookDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBook,
+			Response: bookDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.getBook,
 		},
 		{
 			Method: http.MethodPatch, Path: "/books/{bookId}", ID: "editBook",
@@ -538,12 +558,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
-			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getProgress,
+			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Handler: s.getProgress,
 		},
 		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
 			Summary: "Record where the caller is in a book; medium is ebook or audio", Tag: "books",
-			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Handler: s.putProgress,
+			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Devices: true, Handler: s.putProgress,
 		},
 		{
 			Method: http.MethodGet, Path: "/collections", ID: "listCollections",
@@ -589,7 +609,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/count", ID: "countBooks",
 			Summary: "How many books the caller may see match a filter", Tag: "books",
-			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.countBooks,
+			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.countBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/notifications", ID: "listNotifications",

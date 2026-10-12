@@ -145,8 +145,17 @@ func TestADeviceBrowsesTheCatalogueWithItsTokenAndNothingElse(t *testing.T) {
 	}
 
 	// The token reaches only what is for devices.
-	if status, _, _ := a.fetch(device, httpapi.APIPrefix+"/books"); status != 401 {
-		t.Errorf("the library's list with a device token: %d", status)
+	// and to what a device's own app needs: the books, and where the person is in them.
+	if status, out, _ := a.call(device, http.MethodGet, "/books?limit=5", nil); status != 200 || len(out["books"].([]any)) != 1 {
+		t.Errorf("the library's list with a device token: %d %v", status, out)
+	}
+	if status, out, _ := a.call(device, http.MethodPut, "/books/"+book+"/progress/ebook", map[string]any{
+		"locator": "fraction:0.5", "fraction": 0.5, "clientId": "tolino-1",
+	}); status != 200 || out["saved"] != true {
+		t.Errorf("progress with a device token: %d %v", status, out)
+	}
+	if status, _, _ := a.fetch(device, httpapi.APIPrefix+"/collections"); status != 401 {
+		t.Errorf("the collections with a device token: %d", status)
 	}
 	if status, _, _ := a.fetch(device, httpapi.APIPrefix+"/auth/devices"); status != 401 {
 		t.Errorf("the devices with a device token: %d", status)

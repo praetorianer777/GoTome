@@ -29,8 +29,6 @@
     <string name="back">Zurück</string>
     <string name="server">GOtome-Adresse</string>
     <string name="username">Benutzername</string>
-    <string name="password">Passwort</string>
-    <string name="collection">Sammlung für diesen Tolino</string>
     <string name="sign_in">Anmelden</string>
     <string name="to_store">Zum Store</string>
     <string name="signing_in">Melde an…</string>
@@ -45,7 +43,6 @@
     <string name="watcher_title">Sendet den Lesefortschritt an GOtome</string>
     <string name="launcher_text">Dieses Buch öffnet den GOtome-Store.\nWenn du das hier liest, läuft die GOtome-App nicht: Öffne sie einmal über den App-Launcher.</string>
     <string name="sending_progress">Sende Lesefortschritt…</string>
-    <string name="checking_collection">Sehe in der Sammlung „%1$s“ nach…</string>
     <string name="loading_book">Lade Buch %1$d von %2$d: %3$s</string>
     <string name="no_readable_file">Kein EPUB oder PDF ohne DRM</string>
     <string name="offline_store">Kein Netz. Unter „Auf dem Tolino“ siehst du die Bücher auf diesem Gerät; für den Rest schalte das WLAN ein.</string>
@@ -63,5 +60,10 @@
     <string name="jump_off">Springen zur woanders gelesenen Seite ist aus. Einmal vom Rechner aus einschalten mit\nadb shell settings put secure enabled_accessibility_services %1$s/.JumpService</string>
     <string name="remove">Vom Tolino entfernen</string>
     <string name="remove_confirm">Wirklich entfernen? Nochmal tippen</string>
-    <string name="removed">Vom Tolino und aus deiner Sammlung entfernt.</string>
+    <string name="removed">Vom Tolino entfernt.</string>
+    <string name="token">Geräteschlüssel</string>
+    <string name="token_help">In GOtome für diesen Tolino anlegen: im Profil unter „E-readers“, „Add a device“. Damit holt der Tolino Bücher und sendet deinen Lesefortschritt, sonst nichts; dort widerrufen („Revoke“), ist der Tolino abgemeldet.</string>
+    <string name="server_scheme">Die Adresse beginnt mit https:// (oder http:// im eigenen Netz)</string>
+    <string name="cleartext">Die Adresse ist http://: dein Schlüssel geht unverschlüsselt durchs Netz. Nimm https://, außer GOtome ist nur im eigenen Netz.</string>
+    <string name="checking_queue">Sehe nach Büchern, die an diesen Tolino gesendet wurden…</string>
 </resources>
