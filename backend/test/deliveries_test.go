@@ -124,7 +124,6 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	}
 	send(reader, deviceID)
 
-
 	// What the device takes itself, and takes off again, its book's page says.
 	if status, _, _ := a.call(device, http.MethodDelete, "/device/books/"+book, nil); status != 204 {
 		t.Fatalf("taken off: %d", status)
