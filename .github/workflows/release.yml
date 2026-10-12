@@ -1,8 +1,9 @@
 name: Release
 
 # Pushing a version tag (made by ./release.sh) builds the image for amd64 and
-# arm64, publishes both under one name on GHCR, and creates the GitHub release
-# with the notes the tag carries.
+# arm64, publishes both under one name on GHCR, builds GOtome for Tolino signed
+# with the release key, and creates the GitHub release with the notes the tag
+# carries and the app's APK, which installed apps update themselves from.
 on:
   push:
     tags: ["v*"]
@@ -132,9 +133,40 @@ jobs:
             $(printf "${IMAGE}@sha256:%s " *)
           docker buildx imagetools inspect "${IMAGE}:${version}"
 
+  tolino:
+    name: GOtome for Tolino
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # An installed app takes an update only signed with its own key, so a
+      # release without the key fails rather than ship an APK nobody can
+      # update to. The key never leaves the runner's temporary folder.
+      - name: Build the signed APK
+        env:
+          TOLINO_KEYSTORE: ${{ secrets.TOLINO_KEYSTORE }}
+          GOTOME_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.TOLINO_KEYSTORE_PASSWORD }}
+        run: |
+          if [[ -z "$TOLINO_KEYSTORE" || -z "$GOTOME_RELEASE_KEYSTORE_PASSWORD" ]]; then
+            echo "::error::The repository secrets TOLINO_KEYSTORE (the release keystore, base64) and TOLINO_KEYSTORE_PASSWORD are not set."
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/release.jks"
+          (umask 077; base64 -d <<<"$TOLINO_KEYSTORE" > "$keystore")
+          trap 'rm -f "$keystore"' EXIT
+          make android-release ANDROID_RELEASE_KEYSTORE="$keystore"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tolino-apk
+          path: clients/android/app/build/outputs/apk/release/gotome-tolino-${{ needs.check.outputs.version }}.apk
+          if-no-files-found: error
+          retention-days: 1
+
   release:
     name: GitHub release
-    needs: [check, manifest]
+    needs: [check, manifest, tolino]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -145,6 +177,10 @@ jobs:
           # the annotated tag with a lightweight one.
           fetch-depth: 0
           fetch-tags: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tolino-apk
 
       - name: Create the release
         env:
@@ -160,5 +196,10 @@ jobs:
             echo '```'
             echo "docker pull ${IMAGE}:${{ needs.check.outputs.version }}"
             echo '```'
+            echo
+            echo "## GOtome for Tolino"
+            echo
+            echo "\`gotome-tolino-${{ needs.check.outputs.version }}.apk\`: installed releases offer it themselves; see clients/android/README.md to install it the first time."
           } >> notes.md
-          gh release create "${GITHUB_REF_NAME}" --title "GOtome ${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag
+          gh release create "${GITHUB_REF_NAME}" --title "GOtome ${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag \
+            "gotome-tolino-${{ needs.check.outputs.version }}.apk"

@@ -73,6 +73,7 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
    adb shell pm grant io.github.praetorianer777.gotome.tolino android.permission.WRITE_EXTERNAL_STORAGE
    adb shell settings put secure enabled_accessibility_services io.github.praetorianer777.gotome.tolino/.JumpService
    adb shell settings put secure accessibility_enabled 1
+   adb shell appops set io.github.praetorianer777.gotome.tolino REQUEST_INSTALL_PACKAGES allow
    ```
 
    (The `settings put` replaces other accessibility services that are on;
@@ -114,6 +115,32 @@ Coming from a version that signed in with a password and used the "Tolino"
 collection as the queue: sign in again with a device token. The books already
 on the Tolino stay and are told to GOtome; the collection is left as it is,
 and adding books to it no longer sends them.
+
+## Updates
+
+Each GOtome release carries the app as `gotome-tolino-<version>.apk`, signed
+with the release key. An installed release looks for a newer one with a sync,
+at most once a day; the store's status line then says so, and **Update to …**
+on the settings page (⚙) downloads it and hands it to Android's installer,
+which asks once. Sign-in, the books on the Tolino and the positions stay.
+
+The app installs an update only when it is signed with the same key as the
+app itself. A build from `make android-install` is signed with the debug key
+of your checkout, so it offers a release but cannot take it: switch with
+`make android-uninstall`, then install the release APK with `adb install` and
+the grants above, and sign in again. To install a release the first time:
+
+```bash
+adb install gotome-tolino-0.2.0.apk
+adb shell appops set io.github.praetorianer777.gotome.tolino REQUEST_INSTALL_PACKAGES allow
+```
+
+and the `pm grant` and `settings put` lines of the install steps.
+
+For the owner: release.yml builds the APK with `make android-release`, from
+the repository secrets `TOLINO_KEYSTORE` (the release keystore, base64) and
+`TOLINO_KEYSTORE_PASSWORD`; the key's alias is `gotome-tolino`. Without them a
+release fails rather than publish an APK signed otherwise.
 
 ## Uninstall
 
