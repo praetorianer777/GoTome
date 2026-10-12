@@ -33,7 +33,7 @@ import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
 import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
-import type { DuplicatePair } from "@/duplicates/api";
+import { type DuplicatePair, overlapOf } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
 import type { Release, Tracker } from "@/releases/api";
@@ -215,7 +215,10 @@ export class FakeServer {
 			return summaryOf(book);
 		});
 		const score = Math.max(...evidence.map((e) => e.score));
-		this.pairs.push({ id, state: "open", score, foundAt: "2026-01-02T00:00:00Z", books, evidence });
+		const contained = evidence.every(
+			(e) => e.kind === "overlap" && (overlapOf(e.detail)?.jaccard ?? 1) < 0.5,
+		);
+		this.pairs.push({ id, state: "open", score, contained, foundAt: "2026-01-02T00:00:00Z", books, evidence });
 		return this;
 	}
 
@@ -373,6 +376,7 @@ export class FakeServer {
 					(p) =>
 						p.state === (q.get("state") ?? "open") &&
 						p.score >= least &&
+						(!q.get("contained") || p.contained === (q.get("contained") === "true")) &&
 						(!q.get("kind") || p.evidence.some((e) => e.kind === q.get("kind"))),
 				);
 				return Response.json({ pairs });

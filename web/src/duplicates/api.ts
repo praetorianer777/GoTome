@@ -13,6 +13,7 @@ type ListQuery = NonNullable<
 	paths["/duplicates"]["get"]["parameters"]["query"]
 >;
 export type PairState = NonNullable<ListQuery["state"]>;
+type Contained = ListQuery["contained"];
 
 export const EVIDENCE_KINDS: EvidenceKind[] = [
 	"sha256",
@@ -28,6 +29,8 @@ export interface DuplicateParams {
 	/** The least score, in percent. */
 	least?: number;
 	library?: string;
+	/** Only the pairs of which one book holds the other, or only the others. */
+	contained?: Contained;
 }
 
 const PAGE_SIZE = 30;

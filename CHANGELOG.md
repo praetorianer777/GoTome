@@ -14,6 +14,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The duplicates page lists a book whose text another one holds, such as a
+  story and its collection or an episode and its omnibus, under its own
+  heading, "Contained in", instead of among the copies to decide about.
+
 - GOtome is licensed under the Apache License 2.0 instead of the AGPL-3.0.
 - Similar books show at most two books by one author and two from one
   series, and no copy of the book: on a library of 50,000 books, a book's

@@ -3647,17 +3647,14 @@ describe("the duplicates page", () => {
 		const { router } = renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "Duplicates" }));
 		const list = within(await screen.findByRole("region", { name: "Pairs" }));
-		const omnibus = within(
-			await list.findByRole("listitem", {
-				name: "Persuasion is 97% contained in The Complete Austen.",
-			}),
-		);
 		const emma = within(
-			list.getByRole("listitem", {
+			await list.findByRole("listitem", {
 				name: "92% text overlap between Emma and Emma (print).",
 			}),
 		);
-		expect(omnibus.getByText("Score 97%")).toBeInTheDocument();
+		expect(
+			list.queryByRole("listitem", { name: /^Persuasion/ }),
+		).not.toBeInTheDocument();
 		const evidence = within(emma.getByRole("list", { name: "Evidence" }));
 		expect(evidence.getByText("The ISBN 9780141439587")).toBeInTheDocument();
 		expect(
@@ -3677,14 +3674,29 @@ describe("the duplicates page", () => {
 
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Evidence" }),
+			"overlap",
+		);
+		expect(router.state.location.search).toMatchObject({ kind: "overlap" });
+
+		await person.click(screen.getByRole("button", { name: "Contained in" }));
+		const omnibus = within(
+			await list.findByRole("listitem", {
+				name: "Persuasion is 97% contained in The Complete Austen.",
+			}),
+		);
+		expect(
+			list.queryByRole("listitem", { name: /^92% text overlap/ }),
+		).not.toBeInTheDocument();
+		expect(omnibus.getByText("Score 97%")).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ contained: true });
+
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Evidence" }),
 			"isbn",
 		);
-		await waitFor(() =>
-			expect(
-				list.queryByRole("listitem", { name: /Persuasion/ }),
-			).not.toBeInTheDocument(),
-		);
-		expect(router.state.location.search).toMatchObject({ kind: "isbn" });
+		expect(
+			await list.findByText("No book holds another's text."),
+		).toBeInTheDocument();
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Evidence" }),
 			"",
@@ -3708,6 +3720,7 @@ describe("the duplicates page", () => {
 			await list.findByRole("listitem", { name: /^Persuasion/ }),
 		).toBeInTheDocument();
 		expect(router.state.location.search).toMatchObject({ state: "kept_both" });
+		expect(router.state.location.search).not.toHaveProperty("contained");
 	});
 
 	it("shows a reader the pairs but no way to decide", async () => {
@@ -3716,7 +3729,7 @@ describe("the duplicates page", () => {
 		const list = within(await screen.findByRole("region", { name: "Pairs" }));
 		expect(
 			await list.findAllByRole("button", { name: "Compare" }),
-		).toHaveLength(2);
+		).toHaveLength(1);
 		expect(
 			list.queryByRole("button", { name: "Keep both" }),
 		).not.toBeInTheDocument();

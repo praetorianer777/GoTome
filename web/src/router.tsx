@@ -176,6 +176,7 @@ const duplicatesRoute = createRoute({
 		const least = Number(search.least);
 		return {
 			state: search.state === "kept_both" ? "kept_both" : undefined,
+			contained: search.contained === true || search.contained === "true" ? true : undefined,
 			kind: oneOf(KINDS, search.kind),
 			least: Number.isInteger(least) && least > 0 && least <= 100 ? least : undefined,
 			library: typeof search.library === "string" ? search.library : undefined,
