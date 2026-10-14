@@ -27,6 +27,10 @@ import kotlin.math.abs
  * the Tolino are listed without network.
  */
 class StoreActivity : Activity() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     private enum class Mode { NEWEST, TITLE, SEARCH, DEVICE }
 
     private lateinit var prefs: Prefs

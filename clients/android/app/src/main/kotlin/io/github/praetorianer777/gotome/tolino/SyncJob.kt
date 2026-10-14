@@ -12,6 +12,10 @@ import android.content.Context
  * besides. The Tolino turns Wi-Fi off when idle, so a job waits for it to return.
  */
 class SyncJob : JobService() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     override fun onStartJob(params: JobParameters): Boolean {
         Thread({
             Sync(this).run()

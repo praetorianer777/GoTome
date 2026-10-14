@@ -104,7 +104,8 @@ class Updates(private val context: Context) {
 
     /** Hears how the installer did: asks the person once, and keeps a failure to show. */
     class InstallResult : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
+        override fun onReceive(base: Context, intent: Intent) {
+            val context = Lang.wrap(base)
             when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                     @Suppress("DEPRECATION")

@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome for Tolino shows its version on its settings page, and speaks
+  English or German as chosen there, English unless changed, whatever
+  language the Tolino is set to.
+
 ## [0.1.1] - 2026-10-14
 
 ### Added

@@ -28,6 +28,10 @@ import java.util.concurrent.TimeUnit
  * it to the reader app. Enabled over adb (make android-install).
  */
 class JumpService : AccessibilityService() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private var bar: View? = null
 
