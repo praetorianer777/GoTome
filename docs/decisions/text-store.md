@@ -1,7 +1,9 @@
 # Where the chunks' text is kept
 
 Measured in #244, 2026-10-14. Decided by the owner in #265, the same day:
-option 5, the index without the text.
+option 5, the index without the text. Before the engine is built, Manticore
+Search (in a third container) is being measured against Tantivy in the app
+as the engine for it; the engine work of #265 waits for that comparison.
 
 ## Question
 
