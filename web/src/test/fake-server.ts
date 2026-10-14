@@ -121,6 +121,8 @@ export class FakeServer {
 		deviceName: string;
 		queuedAt: string;
 		deliveredAt?: string;
+		/** When a Kobo reader's sync told it of the book. */
+		syncedAt?: string;
 	}[] = [];
 	/** The signed-in person's sessions, as the profile page lists them. */
 	sessions = [
@@ -549,6 +551,27 @@ export class FakeServer {
 				});
 			}
 			const sending = /^\/devices\/([^/]+)\/books$/.exec(path);
+			if (sending && request.method === "GET") {
+				const device = this.devices.find((d) => d.id === sending[1]);
+				if (!device) {
+					return Response.json({ error: { code: "not_found", message: "There is no such device." } }, { status: 404 });
+				}
+				const books = this.deliveries
+					.filter((d) => d.deviceId === device.id)
+					.slice()
+					.reverse()
+					.flatMap((d) => {
+						const book = this.books.find((b) => b.id === d.bookId);
+						if (!book) return [];
+						const state = d.deliveredAt ? "delivered" : d.syncedAt ? "synced" : "waiting";
+						return [{
+							book: summaryOf(book), deliveryId: d.id, state, queuedAt: d.queuedAt,
+							deliveredAt: d.deliveredAt, syncedAt: d.syncedAt,
+							removable: !d.deliveredAt || !!d.syncedAt,
+						}];
+					});
+				return Response.json({ device, books });
+			}
 			if (sending && request.method === "POST") {
 				const device = this.devices.find((d) => d.id === sending[1]);
 				if (!device) {

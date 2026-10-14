@@ -19,9 +19,12 @@ var (
 	// ErrNoDevice is returned for a device that is not the person's.
 	ErrNoDevice = errors.New("no such device")
 	// ErrNotFound is returned for a delivery that is not the person's, or
-	// that the device has already.
+	// that the device has already and cannot be told to remove.
 	ErrNotFound = errors.New("no such delivery")
 )
+
+// MaxPage is the most books a page of a device's books holds.
+const MaxPage = 100
 
 // Service keeps the deliveries.
 type Service struct {
@@ -74,8 +77,9 @@ func (s *Service) ForBook(ctx context.Context, userID, bookID uuid.UUID) ([]Deli
 	return out, nil
 }
 
-// TakeBack takes a book out of the queue of one of the user's devices
-// before the device has it.
+// TakeBack takes a book off one of the user's devices: out of its queue
+// before the device has it, or off a Kobo reader, whose next sync removes
+// it. Other devices keep what they downloaded whatever GOtome says.
 func (s *Service) TakeBack(ctx context.Context, userID, id uuid.UUID) error {
 	n, err := sqlc.New(s.pool).TakeBackDelivery(ctx, sqlc.TakeBackDeliveryParams{ID: id, UserID: userID})
 	if err != nil {
@@ -121,4 +125,85 @@ func (s *Service) OnDevice(ctx context.Context, scope library.Scope, deviceID, b
 // be sent there.
 func (s *Service) OffDevice(ctx context.Context, deviceID, bookID uuid.UUID) error {
 	return sqlc.New(s.pool).ForgetOnDevice(ctx, sqlc.ForgetOnDeviceParams{DeviceID: deviceID, BookID: bookID})
+}
+
+// DeviceBook is a book on one of the person's devices, or on its way there.
+type DeviceBook struct {
+	// ID is the delivery's, by which TakeBack takes the book off.
+	ID          uuid.UUID
+	BookID      uuid.UUID
+	QueuedAt    time.Time
+	DeliveredAt *time.Time
+	// SyncedAt is when a Kobo reader's library sync last told it of the
+	// book; nil for other devices, and before the first sync.
+	SyncedAt *time.Time
+}
+
+// How far a book got to a device.
+const (
+	// StateWaiting is a book the device has yet to be told of or download.
+	StateWaiting = "waiting"
+	// StateSynced is a book a Kobo reader was told of but has not
+	// downloaded yet.
+	StateSynced = "synced"
+	// StateDelivered is a book the device downloaded, or says it has.
+	StateDelivered = "delivered"
+)
+
+// States are the values of State.
+var States = []string{StateWaiting, StateSynced, StateDelivered}
+
+// State is how far the book got to the device.
+func (b DeviceBook) State() string {
+	switch {
+	case b.DeliveredAt != nil:
+		return StateDelivered
+	case b.SyncedAt != nil:
+		return StateSynced
+	default:
+		return StateWaiting
+	}
+}
+
+// Removable is whether TakeBack takes the book off the device.
+func (b DeviceBook) Removable() bool { return b.DeliveredAt == nil || b.SyncedAt != nil }
+
+// Cursor is where a page of a device's books ended.
+type Cursor struct {
+	At time.Time
+	ID uuid.UUID
+}
+
+// OfDevice lists the books of one of the scope's user's devices that the
+// scope still sees, the last sent first, after the cursor when one is
+// given, and the cursor of the next page if there is one; ErrNoDevice for
+// a device that is not the user's.
+func (s *Service) OfDevice(ctx context.Context, scope library.Scope, deviceID uuid.UUID, after *Cursor, limit int) ([]DeviceBook, *Cursor, error) {
+	q := sqlc.New(s.pool)
+	owns, err := q.OwnsDevice(ctx, sqlc.OwnsDeviceParams{ID: deviceID, UserID: scope.Viewer})
+	if err != nil {
+		return nil, nil, err
+	}
+	if !owns {
+		return nil, nil, ErrNoDevice
+	}
+	limit = min(max(limit, 1), MaxPage)
+	p := sqlc.ListDeviceBooksParams{DeviceID: deviceID, Viewer: scope.Viewer, SeesAll: scope.SeesAll, MaxRows: int32(limit + 1)}
+	if after != nil {
+		p.BeforeAt, p.BeforeID = &after.At, &after.ID
+	}
+	rows, err := q.ListDeviceBooks(ctx, p)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]DeviceBook, len(rows))
+	for i, r := range rows {
+		out[i] = DeviceBook{ID: r.ID, BookID: r.BookID, QueuedAt: r.QueuedAt, DeliveredAt: r.DeliveredAt, SyncedAt: r.SyncedAt}
+	}
+	if len(out) <= limit {
+		return out, nil, nil
+	}
+	out = out[:limit]
+	last := out[limit-1]
+	return out, &Cursor{At: last.QueuedAt, ID: last.ID}, nil
 }

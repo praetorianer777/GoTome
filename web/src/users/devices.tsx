@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { t } from "@/i18n";
@@ -121,7 +122,14 @@ export function Devices({ username }: { username: string }) {
 							key={d.id}
 							className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
 						>
-							<span className="font-medium">{d.name}</span>
+							<Link
+								to="/devices/$deviceId"
+								params={{ deviceId: d.id }}
+								aria-label={t("devices.books", { name: d.name })}
+								className="font-medium text-brand-strong hover:underline dark:text-sky-400"
+							>
+								{d.name}
+							</Link>
 							<span className="text-sm text-slate-600 dark:text-slate-400">
 								{d.lastUsedAt
 									? t("devices.lastUsed", { date: formatDate(d.lastUsedAt) })

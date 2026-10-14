@@ -1,4 +1,5 @@
 import {
+	infiniteQueryOptions,
 	queryOptions,
 	useMutation,
 	useQueryClient,
@@ -115,6 +116,44 @@ export function useDeleteDevice() {
 			});
 		},
 		onSuccess: useInvalidate(ownDevicesQuery.queryKey),
+	});
+}
+
+export type DeviceBook = components["schemas"]["DeviceBook"];
+
+/**
+ * The books of one of the person's devices, the last sent first, a page at
+ * a time. Its key starts with deliveries, so sending a book or taking one
+ * back anywhere refreshes it.
+ */
+export function deviceBooksQuery(deviceId: string) {
+	return infiniteQueryOptions({
+		queryKey: ["deliveries", "device", deviceId],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET("/devices/{deviceId}/books", {
+					params: {
+						path: { deviceId },
+						query: { limit: 50, cursor: pageParam || undefined },
+					},
+				})
+			).data,
+		initialPageParam: "",
+		getNextPageParam: (last) => last?.nextCursor || undefined,
+	});
+}
+
+/** Takes a book off a device: out of its queue, or off a Kobo reader. */
+export function useTakeOffDevice() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (deliveryId: string) => {
+			await api.DELETE("/deliveries/{deliveryId}", {
+				params: { path: { deliveryId } },
+			});
+		},
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: ["deliveries"] }),
 	});
 }
 

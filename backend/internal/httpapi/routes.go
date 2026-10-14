@@ -271,13 +271,18 @@ func (s *Server) routes() []Route {
 			Request: sendRequest{}, Response: sendResult{}, Permission: auth.PersonalManage, Handler: s.sendToDevice,
 		},
 		{
+			Method: http.MethodGet, Path: "/devices/{deviceId}/books", ID: "listDeviceBooks",
+			Summary: "The books of one of the caller's devices, waiting, synced or delivered, the last sent first", Tag: "auth",
+			Query: deviceBooksQuery{}, Response: deviceBookList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listDeviceBooks,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/deliveries", ID: "listBookDeliveries",
 			Summary: "The book's deliveries to the caller's devices, waiting or done", Tag: "books",
 			Response: deliveryList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookDeliveries,
 		},
 		{
 			Method: http.MethodDelete, Path: "/deliveries/{deliveryId}", ID: "takeBackDelivery",
-			Summary: "Take a book back from a device's queue before the device has it", Tag: "auth",
+			Summary: "Take a book off a device: out of its queue before the device has it, or off a Kobo reader at its next sync", Tag: "auth",
 			Permission: auth.PersonalManage, Handler: s.takeBackDelivery,
 		},
 		{
