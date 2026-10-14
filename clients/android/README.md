@@ -57,10 +57,12 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
 3. In a checkout of GOtome:
 
    ```bash
-   make android-install
+   make android-install FROM=release   # the latest release; TAG=v0.2.0 for another
+   make android-install                # or a debug build of the checkout
    ```
 
-   This builds the app in a container, installs it, grants it the log
+   This downloads the release's APK with `gh` (or builds the app in a
+   container), installs it, grants it the log
    (`pm grant … android.permission.READ_LOGS`, which only adb can grant) and
    storage, and opens its settings.
    It also turns the jump service on (an accessibility service, added to any
@@ -127,8 +129,8 @@ which asks once. Sign-in, the books on the Tolino and the positions stay.
 The app installs an update only when it is signed with the same key as the
 app itself. A build from `make android-install` is signed with the debug key
 of your checkout, so it offers a release but cannot take it: switch with
-`make android-uninstall`, then install the release APK with `adb install` and
-the grants above, and sign in again. To install a release the first time:
+`make android-uninstall`, then `make android-install FROM=release`, and sign
+in again. Without a checkout, to install a release the first time:
 
 ```bash
 adb install gotome-tolino-0.2.0.apk
@@ -160,6 +162,7 @@ again.
 make check-android   # unit tests and a debug build, in the container
 make android-apk     # the APK, path printed at the end
 make android-install # build, install over adb, grant the log
+make android-download # only download the latest release's APK (or TAG's)
 ```
 
 Without a cable: with the cable in once, `adb tcpip 5555`, then

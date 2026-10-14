@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `make android-install FROM=release` puts the latest release of GOtome for
+  Tolino on a connected Tolino (`TAG=vX.Y.Z` for another), with the same
+  grants as a build from the checkout; that release then updates itself.
+
 ## [0.1.0] - 2026-10-14
 
 ### Fixed
