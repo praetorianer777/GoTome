@@ -45,6 +45,9 @@ var errWrittenMeanwhile = errors.New("the file was written by another job meanwh
 // again.
 func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+			return err
+		}
 		if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
 			return err
 		}
@@ -69,8 +72,12 @@ func (s *Service) describedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) erro
 
 // ChangeTx makes one book's part of a bulk change, as catalog.ChangeTx
 // does, inside a transaction the caller runs, and follows it up as Edit
-// does.
+// does. It must come first in that transaction, as it holds the book's
+// library (HoldLibrary).
 func (s *Service) ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error) {
+	if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+		return catalog.Changed{}, err
+	}
 	changed, err := catalog.ChangeTx(ctx, tx, scope, id, c)
 	if err != nil || !changed.Values {
 		return changed, err
@@ -194,6 +201,9 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		current, err := q.LockFileHash(ctx, fileID)
 		if err != nil {
 			return err

@@ -223,6 +223,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   its book, and one about the book must equal the answer about an ID or name
   that does not exist. A new such route needs its calls in `readCases`, with
   someone who does see the book as the control, or the test fails.
+- Deleting a library cascades through its books, files and chunks. A
+  transaction that locks more than one of those holds the library first
+  (`HoldLibrary`, `HoldLibrariesOfFiles`, `HoldLibrariesOfBooks`, before
+  any other lock), or it deadlocks with the delete (#199).
 - Managed libraries live under `GOTOME_DATA_DIR` (`/data` in the image, a volume);
   external ones are folders mounted into the container.
 

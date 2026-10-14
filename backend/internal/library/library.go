@@ -254,10 +254,24 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 	return fromRow(row), nil
 }
 
+// deleteAttempts is how often Delete tries when it deadlocks.
+const deleteAttempts = 3
+
 // Delete removes the library from GOtome. The folder and every file in it
 // stay where they are: forgetting a library must never cost anybody a book.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	n, err := sqlc.New(s.pool).DeleteLibrary(ctx, id)
+	var n int64
+	var err error
+	// The writers of a library's books hold the library first, which keeps
+	// them from deadlocking with this (HoldLibrary). One that does not, and
+	// locks more than one of its rows, may still: the delete is tried again.
+	for range deleteAttempts {
+		n, err = sqlc.New(s.pool).DeleteLibrary(ctx, id)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "40P01" {
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}

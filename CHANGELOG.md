@@ -13,6 +13,11 @@ What changes for someone who runs or uses GOtome. The format follows
   dates. A book still waiting, or on a Kobo reader, can be taken off from
   there; a Kobo reader removes it at its next sync.
 
+### Fixed
+
+- Deleting a library while its books are being read, moved to the trash or
+  merged no longer fails now and then with an error.
+
 ## [0.3.1] - 2026-10-14
 
 ### Fixed

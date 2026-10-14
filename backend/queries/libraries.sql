@@ -31,6 +31,31 @@ RETURNING *;
 -- name: DeleteLibrary :execrows
 DELETE FROM libraries WHERE id = $1;
 
+-- name: HoldLibrary :exec
+-- Deleting a library cascades through its books, files and chunks and locks
+-- them in an order of its own, while extraction, chunking, merges, the
+-- trash, uploads, scans and edits lock a book and its files in theirs: the
+-- two deadlocked (#199). Such a writer holds the library's row first, as
+-- the first lock of its transaction. FOR KEY SHARE keeps writers from
+-- waiting for each other, as every insert of a book takes it already; the
+-- delete, whose first lock is this row's, waits until they are done, or
+-- they until it is, and then find nothing.
+SELECT 1 FROM libraries WHERE id = $1 FOR KEY SHARE;
+
+-- name: HoldLibrariesOfFiles :exec
+-- HoldLibrary for the libraries of the files, in one order.
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM book_files WHERE id = ANY(sqlc.arg(ids)::uuid[]))
+ORDER BY id
+FOR KEY SHARE;
+
+-- name: HoldLibrariesOfBooks :exec
+-- HoldLibrary for the libraries of the books, in one order.
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM books WHERE id = ANY(sqlc.arg(ids)::uuid[]))
+ORDER BY id
+FOR KEY SHARE;
+
 -- name: ListLibraryMembers :many
 SELECT u.id, u.username, u.role, m.added_at
 FROM library_members m

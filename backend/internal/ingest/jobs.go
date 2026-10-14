@@ -150,6 +150,9 @@ func (s *Service) Reread(ctx context.Context, files []uuid.UUID) (int, error) {
 	}
 	var ids []uuid.UUID
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := sqlc.New(tx).HoldLibrariesOfFiles(ctx, files); err != nil {
+			return err
+		}
 		var err error
 		ids, err = sqlc.New(tx).ResetExtraction(ctx, sqlc.ResetExtractionParams{Ids: files, Formats: readableFormats()})
 		if err != nil {
