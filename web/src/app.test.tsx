@@ -1421,6 +1421,9 @@ describe("profile", () => {
 		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);
 		expect(created).toHaveTextContent("Rita");
 		expect(created).toHaveTextContent("abcd-efgh-ijkm-npqr-stuv");
+		expect(created).toHaveTextContent(
+			`api_endpoint=${window.location.origin}/api/v1/kobo/abcd-efgh-ijkm-npqr-stuv`,
+		);
 		expect(await devices.findByText("Not used yet")).toBeInTheDocument();
 
 		await person.click(devices.getByRole("button", { name: "Revoke Tolino" }));

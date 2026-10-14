@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -89,6 +90,8 @@ type Server struct {
 	Similar *similar.Service
 	// Pairing adds an e-reader whose app asked to be added and was accepted.
 	Pairing *pairing.Service
+	// Kobo keeps what each Kobo reader's library sync told it.
+	Kobo *kobo.Service
 	// Deliveries sends books to people's devices.
 	Deliveries *deliveries.Service
 	// Sync is the server KOReader's progress sync talks to.

@@ -157,6 +157,10 @@ export function Devices({ username }: { username: string }) {
 						<dd className="break-all font-mono">{username}</dd>
 						<dt>{t("devices.token")}</dt>
 						<dd className="break-all font-mono">{created.token}</dd>
+						<dt>{t("devices.kobo")}</dt>
+						<dd className="break-all font-mono">
+							api_endpoint={window.location.origin}/api/v1/kobo/{created.token}
+						</dd>
 					</dl>
 					<p className="text-sm text-slate-600 dark:text-slate-400">
 						{t("devices.once")}

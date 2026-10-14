@@ -739,6 +739,7 @@ export const en = {
 	"devices.catalog": "Catalogue address",
 	"devices.username": "User name",
 	"devices.token": "Password (token)",
+	"devices.kobo": "For a Kobo reader, the line in its config",
 	"devices.once":
 		"The token is shown only now. If it is lost, revoke the device and add it again.",
 	"profile.agent": "{browser} on {system}",

@@ -4,6 +4,12 @@ GOtome is an OPDS catalogue: an e-reader app that reads OPDS, such as
 KOReader, browses the library and downloads books from it, signed in with
 a token of the device's own.
 
+A Kobo reader, or a Tolino on the Kobo-based firmware in Kobo mode, needs
+no app: it syncs with GOtome over its own sync, with the line the profile
+shows for it ([tolino-kobo-mode.md](tolino-kobo-mode.md)). A Tolino on
+Android firmware takes the companion app
+([clients/android](../clients/android/README.md)).
+
 ## Adding a device
 
 1. In GOtome, open your profile and, under **E-readers**, add a device by

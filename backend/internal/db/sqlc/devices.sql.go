@@ -202,6 +202,49 @@ func (q *Queries) GetDeviceUser(ctx context.Context, arg GetDeviceUserParams) (G
 	return i, err
 }
 
+const getDeviceUserByToken = `-- name: GetDeviceUserByToken :one
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, d.id AS device_id, d.last_used_at AS device_last_used_at
+FROM devices d
+JOIN users u ON u.id = d.user_id
+WHERE d.token_hash = $1 AND u.disabled_at IS NULL
+`
+
+type GetDeviceUserByTokenRow struct {
+	ID               uuid.UUID
+	Username         string
+	Email            *string
+	PasswordHash     *string
+	Role             string
+	QuotaBytes       *int64
+	DisabledAt       *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeviceID         uuid.UUID
+	DeviceLastUsedAt *time.Time
+}
+
+// The account a device token signs in alone, as a Kobo reader sends it in
+// its address without a user name. A disabled account's devices sign
+// nobody in.
+func (q *Queries) GetDeviceUserByToken(ctx context.Context, tokenHash []byte) (GetDeviceUserByTokenRow, error) {
+	row := q.db.QueryRow(ctx, getDeviceUserByToken, tokenHash)
+	var i GetDeviceUserByTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.QuotaBytes,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeviceID,
+		&i.DeviceLastUsedAt,
+	)
+	return i, err
+}
+
 const getSyncKeyUser = `-- name: GetSyncKeyUser :one
 SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, d.id AS device_id
 FROM devices d

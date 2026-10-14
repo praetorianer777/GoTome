@@ -152,6 +152,12 @@ func readCases() map[string][]readCase {
 		"listOpdsDeviceBooks":    {{path: "/opds/device", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"listDeviceQueue":        {{path: "/device/books", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"koboSync":               {{path: "/kobo/not-a-token/v1/library/sync", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboMetadata":           {{path: "/kobo/not-a-token/v1/library/{book}/metadata", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboReadingState":       {{path: "/kobo/not-a-token/v1/library/{book}/state", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboCover":              {{path: "/kobo/not-a-token/{book}/300/400/false/image.jpg", why: "only a device's token in the address reaches it"}},
+		"koboCoverQuality":       {{path: "/kobo/not-a-token/{book}/300/400/80/false/image.jpg", why: "only a device's token in the address reaches it"}},
+		"koboDownload":           {{path: "/kobo/not-a-token/download/{file}", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
 		"kosyncPull":             {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},

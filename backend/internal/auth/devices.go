@@ -128,11 +128,54 @@ func (s *Service) AuthenticateDevice(ctx context.Context, username, token string
 	return User{ID: row.ID, Username: row.Username, Email: row.Email, Role: row.Role}, row.DeviceID, nil
 }
 
+// AuthenticateDeviceToken is AuthenticateDevice by the token alone, which
+// a Kobo reader carries in the address it syncs with (#230): tokens are
+// unique, and the reader sends no user name.
+func (s *Service) AuthenticateDeviceToken(ctx context.Context, _, token string) (User, uuid.UUID, error) {
+	if token == "" || len(token) > MaxPasswordLen {
+		return User{}, uuid.Nil, ErrInvalidCredentials
+	}
+	q := sqlc.New(s.pool)
+	row, err := q.GetDeviceUserByToken(ctx, hashToken(NormalizeDeviceToken(token)))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, uuid.Nil, ErrInvalidCredentials
+	}
+	if err != nil {
+		return User{}, uuid.Nil, err
+	}
+	now := s.now()
+	if row.DeviceLastUsedAt == nil || now.Sub(*row.DeviceLastUsedAt) >= touchInterval {
+		if err := q.TouchDevice(ctx, sqlc.TouchDeviceParams{ID: row.DeviceID, Now: now}); err != nil {
+			return User{}, uuid.Nil, err
+		}
+	}
+	return User{ID: row.ID, Username: row.Username, Email: row.Email, Role: row.Role}, row.DeviceID, nil
+}
+
 // SyncKey is what KOReader's progress sync sends for a password: its MD5 in
 // hex.
 func SyncKey(token string) string {
 	sum := md5.Sum([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// LooksLikeDeviceToken says whether the string has a device token's shape:
+// what does not cannot be one, and is no guess worth counting.
+func LooksLikeDeviceToken(token string) bool {
+	token = NormalizeDeviceToken(token)
+	if len(token) != tokenGroups*(tokenGroupLen+1)-1 {
+		return false
+	}
+	for i, c := range token {
+		if (i+1)%(tokenGroupLen+1) == 0 {
+			if c != '-' {
+				return false
+			}
+		} else if !strings.ContainsRune(tokenAlphabet, c) {
+			return false
+		}
+	}
+	return true
 }
 
 // NormalizeDeviceToken takes a token as typed: in capitals, or with spaces

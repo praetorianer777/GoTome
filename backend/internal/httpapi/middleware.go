@@ -94,7 +94,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 			}
 			log.Log(r.Context(), level, "request",
 				"method", r.Method,
-				"path", r.URL.Path,
+				"path", loggedPath(r.URL.Path),
 				"status", rec.status,
 				"bytes", rec.bytes,
 				"duration", time.Since(started),

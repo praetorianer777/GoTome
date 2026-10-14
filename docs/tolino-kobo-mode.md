@@ -133,7 +133,30 @@ change the line under `[OneStoreServices]`:
 api_endpoint=https://storeapi.kobo.com
 ```
 
-to the address GOtome shows for the device (#230). Eject and tap **Sync**.
+to the line GOtome shows for the device. In GOtome, on your profile under
+**E-readers**, **Add a device** named after the reader; with its token it
+shows the line for a Kobo reader:
+
+```ini
+api_endpoint=https://gotome.example.org/api/v1/kobo/abcd-efgh-jkmn-pqrs-tuvw
+```
+
+The token is in the address, as the reader sends no credentials of its own
+to the store it is given; treat the line like a password. The address must
+be one the reader reaches: on your own network, the server's IP and port,
+not `localhost`. Eject and tap **Sync**.
+
+From then on a sync brings the books sent to the device in GOtome (**Send
+to an e-reader** on a book, or from a list), with their covers and details,
+and the reading place both ways: reading on the reader moves the book's
+place in GOtome, and reading further elsewhere moves it on the reader at
+its next sync. A book taken back before the reader has it leaves the
+reader; one archived on the reader leaves the device in GOtome. Revoking
+the device on the profile cuts the reader off.
+
+The store's pages, its search and purchases stay Kobo's, as the reader's
+Kobo account has them. Collections, notes and highlights are not synced
+yet.
 
 Watch the requests before GOtome answers them: a plain HTTP server that
 logs, such as `python3 -m http.server <port>` run in an empty directory,
