@@ -3,7 +3,6 @@
 package test
 
 import (
-	"bytes"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func TestQuotas(t *testing.T) {
 		t.Fatalf("set the quota: %d %v", status, body)
 	}
 
-	if status, body := a.upload(editor, lib, "Sixty.pdf", bytes.Repeat([]byte("6"), 60)); status != 200 {
+	if status, body := a.upload(editor, lib, "Sixty.pdf", fakePDF(60, '6')); status != 200 {
 		t.Fatalf("an upload that fits: %d %v", status, body)
 	}
 	if st := a.storage(editor); st["usedBytes"] != 60.0 || st["quotaBytes"] != 100.0 {
@@ -47,12 +46,12 @@ func TestQuotas(t *testing.T) {
 	}
 
 	// Too large for what is left, found while it arrives.
-	status, body = a.upload(editor, lib, "Fifty.pdf", bytes.Repeat([]byte("5"), 50))
+	status, body = a.upload(editor, lib, "Fifty.pdf", fakePDF(50, '5'))
 	if status != 413 || errorCode(body) != "over_quota" || !strings.Contains(body["error"].(map[string]any)["message"].(string), "60 bytes of the 100 bytes") {
 		t.Errorf("over the quota: %d %v", status, body)
 	}
 	// Too large by what the request says it holds, refused before the file.
-	status, body = a.upload(editor, lib, "Large.pdf", bytes.Repeat([]byte("L"), 5000))
+	status, body = a.upload(editor, lib, "Large.pdf", fakePDF(5000, 'L'))
 	if status != 413 || errorCode(body) != "over_quota" {
 		t.Errorf("announced over the quota: %d %v", status, body)
 	}
@@ -76,13 +75,13 @@ func TestQuotas(t *testing.T) {
 	if st := a.storage(editor); st["usedBytes"] != 0.0 {
 		t.Errorf("after the file went: %v", st)
 	}
-	if status, body := a.upload(editor, lib, "Fifty.pdf", bytes.Repeat([]byte("5"), 50)); status != 200 {
+	if status, body := a.upload(editor, lib, "Fifty.pdf", fakePDF(50, '5')); status != 200 {
 		t.Errorf("there is room again: %d %v", status, body)
 	}
 
 	// No quota is no limit.
 	a.call(admin, http.MethodPut, "/users/"+editorID+"/quota", map[string]any{"quotaBytes": nil})
-	if status, body := a.upload(editor, lib, "Big.pdf", bytes.Repeat([]byte("B"), 5000)); status != 200 {
+	if status, body := a.upload(editor, lib, "Big.pdf", fakePDF(5000, 'B')); status != 200 {
 		t.Errorf("without a quota: %d %v", status, body)
 	}
 	if status, body, _ := a.call(admin, http.MethodPut, "/users/"+editorID+"/quota", map[string]any{"quotaBytes": -1}); status != 422 || fieldError(body, "quotaBytes") == "" {
@@ -104,7 +103,7 @@ func TestTwoUploadsAtOnceDoNotBothFitIntoOneRoom(t *testing.T) {
 	statuses := make([]int, 2)
 	for i := range statuses {
 		wg.Go(func() {
-			statuses[i], _ = a.upload(editor, libs[i], "Part "+string(rune('A'+i))+".pdf", bytes.Repeat([]byte{byte('a' + i)}, 60))
+			statuses[i], _ = a.upload(editor, libs[i], "Part "+string(rune('A'+i))+".pdf", fakePDF(60, byte('a'+i)))
 		})
 	}
 	wg.Wait()
