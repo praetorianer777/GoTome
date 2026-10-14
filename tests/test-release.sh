@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for release.sh. Each case runs the real script in a throwaway
 # repository with a throwaway remote, so nothing is committed, tagged or pushed
-# for real. Offline; needs only git.
+# for real. Offline; needs only git: gh is a stand-in.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,6 +11,19 @@ trap 'rm -rf "$WORK"' EXIT
 export GIT_AUTHOR_NAME=Tester GIT_AUTHOR_EMAIL=tester@example.com
 export GIT_COMMITTER_NAME=Tester GIT_COMMITTER_EMAIL=tester@example.com
 export RELEASE_DATE=2026-02-03
+
+# The stand-in for gh answers a pull request's branch from FAKE_BRANCHES
+# ("12=feat/12-x 13=fix/13-y"), and fails for any it does not know.
+mkdir -p "$WORK/bin"
+cat > "$WORK/bin/gh" <<'EOF2'
+#!/usr/bin/env bash
+for pair in $FAKE_BRANCHES; do
+  [[ "${pair%%=*}" == "$3" ]] && { echo "${pair#*=}"; exit 0; }
+done
+exit 1
+EOF2
+chmod +x "$WORK/bin/gh"
+export RELEASE_GH="$WORK/bin/gh" FAKE_BRANCHES=""
 
 FAILED=0
 pass() { echo "   ✅ $1"; }
@@ -90,8 +103,8 @@ check "changes nothing" "$(cat VERSION)$(git tag | tr '\n' ' ')$(git status --po
 
 echo "== refusals"
 sandbox refusals
-refused "no version"
 refused "not a version" "next"
+refused "an unknown part" "micro"
 refused "two parts" "0.2"
 refused "the current version again" "0.1.0"
 refused "a lower version" "0.0.9"
@@ -116,6 +129,52 @@ git reset -q --hard origin/main
 awk '/^## \[Unreleased\]/{print; print ""; skip=1; next} /^## \[/{skip=0} !skip' CHANGELOG.md > c && mv c CHANGELOG.md
 git commit -q -am "empty unreleased" && git push -q origin main
 refused "nothing unreleased" "0.2.0"
+
+# merged <subject> <section> <line>: a pull request's squash commit with its
+# changelog entry, pushed. The sandbox's own entries are taken out first.
+merged() {
+  awk -v section="$2" -v line="$3" '
+    /^## \[Unreleased\]/ { print; print ""; print "### " section; print ""; print "- " line; print ""; skip = 1; next }
+    /^## \[/             { skip = 0 }
+    !skip
+  ' CHANGELOG.md > c && mv c CHANGELOG.md
+  git commit -q -am "$1" && git push -q origin main
+}
+
+echo "== the version worked out"
+sandbox auto-fix
+merged "Fix the scanner (#12)" Fixed "The scanner works."
+FAKE_BRANCHES="12=fix/12-scanner" out="$(./release.sh 2>&1)"
+check "fixes only are a patch" "$(cat VERSION)" "0.1.1"
+check "it says why" "$(grep -c '1 fix.*Fixed' <<< "$out")" "1"
+
+sandbox auto-feat
+merged "Add uploads (#13)" Fixed "Uploads."
+FAKE_BRANCHES="13=feat/13-uploads" ./release.sh >/dev/null 2>&1
+check "a feature branch is a minor release" "$(cat VERSION)" "0.2.0"
+
+sandbox auto-added
+merged "Add uploads (#14)" Added "Uploads."
+FAKE_BRANCHES="" out="$(./release.sh auto 2>&1)"
+check "without gh the changelog decides" "$(cat VERSION)" "0.2.0"
+check "and it says so" "$(grep -c 'changelog decides' <<< "$out")" "1"
+
+sandbox auto-break
+merged "Drop the old API (#15)" Removed "The old API."
+FAKE_BRANCHES="15=feat/15-drop" ./release.sh >/dev/null 2>&1
+check "a break before 1.0 is a minor release" "$(cat VERSION)" "0.2.0"
+
+sandbox auto-break-1
+echo "1.4.2" > VERSION && git commit -q -am "1.4.2" && git tag -a v1.4.2 -m v1.4.2 && git push -q origin main v1.4.2
+merged "Change the API (#16)" Fixed "The API." && git commit -q --allow-empty -m "Follow-up" -m "BREAKING CHANGE: the API moved" && git push -q origin main
+FAKE_BRANCHES="16=fix/16-api" ./release.sh >/dev/null 2>&1
+check "a break from 1.0 on is a major release" "$(cat VERSION)" "2.0.0"
+
+sandbox parts
+./release.sh minor --dry-run >/dev/null 2>&1
+check "a dry run with a part changes nothing" "$(cat VERSION)" "0.1.0"
+./release.sh patch >/dev/null 2>&1
+check "a part names the bump" "$(cat VERSION)" "0.1.1"
 
 echo "== the first release of a repository"
 dir="$WORK/first"
