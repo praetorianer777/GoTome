@@ -1,9 +1,10 @@
 # Where the chunks' text is kept
 
 Measured in #244, 2026-10-14. Decided by the owner in #265, the same day:
-option 5, the index without the text. Before the engine is built, Manticore
-Search (in a third container) is being measured against Tantivy in the app
-as the engine for it; the engine work of #265 waits for that comparison.
+option 5, the index without the text. Which engine holds that index,
+Tantivy in the app or Manticore Search in a third container, was measured
+in #268 ([below](#manticore-search-as-a-third-container-268)); the choice
+is the owner's, and the section recommends one.
 
 ## Question
 
@@ -317,3 +318,131 @@ small server higher than the work.)
   applies it; search on Tantivy behind `search.Searcher`; the readers of
   chunk text through the store; the rebuild beside the old index; dropping
   the text columns and `book_chunks_bm25` once the new index is complete.
+
+## Manticore Search as a third container (#268)
+
+Before #265 builds option 5's engine, the alternative to Tantivy: Manticore Search
+29.9.0 (the image pinned by digest, 934 MB) as a third container, talked to
+over its HTTP API with Go's standard library, with no Rust in the project.
+Measured on the same sample, extracted again with the app's current reader
+(1,981 books, 131,845 chunks; one book fewer than in #244, which the archive
+limits of #255 now refuse), with Tantivy 0.22.1 without a store run again
+beside it on the same host, back to back.
+
+The text is indexed and not stored (`body text indexed`), with positions,
+and `book_id` and `library_id` as attributes. Manticore sets morphology per
+table, not per field, so each language is a real-time table of its own
+(`libstemmer_en`, `libstemmer_de`, none), with a distributed table over the
+three that a search asks, as the app asks its three columns. The stemmers
+are Snowball's, as pg_search's and Tantivy's: `CALL KEYWORDS` makes "Nächte"
+`nacht` and "running" `run`, and phrases match on stemmed text ("zum ersten
+Male" finds exactly what "zum ersten Mal" finds, 12,216 chunks). The hit
+counts are Tantivy's for every query. The sample is almost all German
+(131,641 chunks German, 198 English), as the library is. The image also has
+lemmatizer dictionaries for German and English (`lemmatize_de_all`), which
+were not measured. Each table has `rt_mem_limit = 128M`; the container gets
+#14's 2 GB and four CPUs, with Buddy (its PHP helper) off.
+
+### Numbers
+
+| | Tantivy, no store | Manticore 29.9 |
+|---|---:|---:|
+| Index on disk, sample | 314 MB | 516 MB |
+| … of it doclists / positions / dictionary and rest | 92 / 210 / 12 MB | 317 / 177 / 22 MB |
+| **Index at 3.19 M chunks** | **7.6 GB** | **12.5 GB** |
+| Build, sample (load, merge to one segment / disk chunk) | 32 s | 49 s + 31 s |
+| Build at 3.19 M chunks | 13 min | 33 min |
+| Memory while indexing | 834 MB peak (writer budget 800 MB) | 357 MB median, 412 MB peak |
+| Memory idle after indexing | 315 MB (the allocator keeps the writer's) | 313 MB, until restarted |
+| Memory idle after a (re)start | — | 12 MB |
+| Memory while searching | +16 MB of mapped index | 60 MB |
+| Start until it answers | in the app | 1.4 s |
+
+Manticore's memory is `docker stats` of its container (which leaves out the
+page cache); Tantivy's is the process's resident memory, in one process that
+built the index and then searched it, so its idle figure is the writer's
+heap, not what a reader needs; a smaller writer budget, as books arriving one
+at a time need, was not measured. The index of either is read through the
+kernel's page cache, which neither figure counts.
+
+Searches, p50 / p95 in milliseconds over 20 runs after a warm-up, both
+libraries unless "one library", hits in brackets; Manticore's times are the
+harness's over HTTP on a Docker network, and its own (`took`) is the last
+column. With snippets, they are made for the best 20 hits (10 for the top
+10) from the text handed in, by `SnippetGenerator::snippet` and by
+`CALL SNIPPETS`:
+
+| The best 1,000 | Tantivy | Manticore | Manticore's own |
+|---|---:|---:|---:|
+| words "nacht stadt" (1,000) | 2.1 / 2.2 | 7.4 / 8.7 | 4 |
+| words "liebe krieg" (1,000) | 2.0 / 2.1 | 5.8 / 8.1 | 3 |
+| words "magie drache schwert" (127) | 0.5 / 0.5 | 1.7 / 1.8 | 0 |
+| words "detective murder" (8) | 0.1 / 0.1 | 0.7 / 0.9 | 0 |
+| phrase "in der nacht" (1,000) | 9.6 / 9.9 | 20.4 / 107.3 | 17 |
+| phrase "zum ersten mal" (1,000) | 10.7 / 10.9 | 11.1 / 14.3 | 8 |
+| phrase "the old man" (16) | 0.2 / 0.2 | 1.0 / 1.2 | 0 |
+| one library, "nacht stadt" (1,000) | 1.3 / 1.3 | 5.9 / 7.4 | 3 |
+| one library, phrase "in der nacht" (1,000) | 8.6 / 8.9 | 19.6 / 104.6 | 17 |
+| snippets, "nacht stadt" | 12.0 / 12.3 | 17.0 / 17.7 | 3 |
+| snippets, "detective murder" | 4.1 / 4.2 | 5.0 / 5.4 | 0 |
+| snippets, phrase "in der nacht" | 19.5 / 23.8 | 31.8 / 40.4 | 22 |
+
+| The best 10 | Tantivy | Manticore | Manticore's own |
+|---|---:|---:|---:|
+| words "nacht stadt" | 2.2 / 2.7 | 4.3 / 4.9 | 3 |
+| words "liebe krieg" | 1.9 / 1.9 | 4.2 / 4.8 | 3 |
+| phrase "in der nacht" | 9.5 / 10.1 | 24.5 / 37.6 | 24 |
+| phrase "zum ersten mal" | 11.0 / 13.4 | 12.0 / 13.3 | 11 |
+| one library, "nacht stadt" | 1.1 / 1.2 | 3.6 / 4.4 | 3 |
+| snippets, "nacht stadt" | 7.1 / 9.3 | 7.4 / 8.3 | 2 |
+| snippets, phrase "in der nacht" | 14.3 / 14.5 | 22.7 / 35.5 | 18 |
+
+A first Manticore run gave the same figures within a millisecond or two,
+including the slow tail of "in der nacht" (p95 about 110 ms in both). All
+of it is under what a person notices; Tantivy in the process is two to
+five milliseconds sooner, about the HTTP round trip and JSON.
+
+Changes, for 20 books (1,351 chunks), p50 / p95 per book: moving a book to
+another library is an attribute update in place (`UPDATE … SET library_id`,
+0.7 / 0.8 ms), where Tantivy deletes and adds every chunk again; deleting by
+book (`DELETE … WHERE book_id`) 0.7 / 0.8 ms, by chunk IDs 0.6 / 0.7 ms;
+writing a book's chunks again through `/bulk` 66 / 154 ms, visible at once
+(a real-time table has no commit). A count after each step found what was
+expected every time.
+
+Reading a book's text back from its EPUB with the app's reader and cutting
+it, as snippets from the files would (#265), takes 42 / 92 ms per book
+(`results/readtime.json`, a hundred books); a page of 20 hits from 20 books
+is about a second of reading if whole books are read; option 5 reads only
+the hit's entry, about a millisecond. This is the same for both engines:
+neither holds the text.
+
+### What each costs
+
+| | Tantivy in the app (#265) | Manticore as a third container |
+|---|---|---|
+| Disk | 7.6 GB | 12.5 GB (+4.9 GB, more than a quarter of the 17.6 GB option 5 saves) |
+| Containers | two, as now | three: the deployment's "app and Postgres" becomes three, with a 934 MB image |
+| Memory | in the app's container and `memlimit`; the writer's budget is the app's to choose | its own container: 12 to 60 MB idle and searching, about 400 MB while indexing with 128 MB of RAM chunk |
+| Build | a Rust crate with a C interface over cgo, a Rust stage in the Dockerfile and the toolchain image, crates fetched once by the owner, arm64 built too | none: HTTP and JSON from Go's standard library, nothing to compile or fetch but the image |
+| Updates | the crate's version, built with the app | the image's digest; an image update may change the index format, and the owner pulls it |
+| Start order and health | none: the index opens with the app | the app starts before or without it: `depends_on` with a health check (the image has the `mysql` client), and search answering 503 while it is down, as the similar-books search does without a model |
+| Writes | outbox in the transaction and a job that applies it, then commits the index | the same outbox and job, over HTTP; inserts are visible at once, a library move is an attribute update |
+| Rebuild | a new index beside the old, from the files, then switch | the same, as new tables behind the distributed one |
+| Backup | derived: not backed up, rebuilt from the files | the same; its volume stays out of `backup.sh` |
+| Tests | the toolchain image needs the library; tests run in-process | integration tests need a Manticore beside the stack (`make up` gains a container) and CI pulls it |
+
+The hard part of #265, the outbox, the rebuild from the files and snippets
+from the files, is the same for both: Manticore is outside Postgres's
+transaction too. What Manticore saves is the Rust build; what it costs is
+a third container to run and update, 4.9 GB more index, and a few
+milliseconds a search.
+
+### Recommendation
+
+**Tantivy in the app (#265).** Its index is 40 % smaller than Manticore's
+(7.6 against 12.5 GB), which is the point of #265, it keeps the deployment
+at two containers, and it answers a little sooner. Manticore is the better
+choice only if the owner would rather run a third container than carry a
+Rust build in the project: it needs nothing compiled or fetched, idles in
+12 MB, updates attributes in place, and its search is as good for a person.

@@ -1,0 +1,501 @@
+{
+  "load": {
+    "books": 1981,
+    "chunks": 131845,
+    "textBytes": 1044355385,
+    "rtMemLimit": "128M",
+    "writers": 4,
+    "insertSeconds": 48.750773199,
+    "flushSeconds": 0.949541779,
+    "optimizeSeconds": 31.45166453
+  },
+  "restartSeconds": 1.4,
+  "version": "29.9.0 58e88d5ab@26091108 (columnar 14.2.1 cb282a2@26090615) (secondary 14.2.1 cb282a2@26090615) (knn 14.2.1 cb282a2@26090615) (embeddings 1.1.1 cb282a2@26090615)",
+  "tables": {
+    "c_de": {
+      "disk_bytes": "515142789",
+      "disk_chunks": "1",
+      "indexed_bytes": "1042771410",
+      "indexed_documents": "131641",
+      "killed_documents": "0",
+      "mem_limit": "134217728",
+      "ram_bytes": "20315176",
+      "ram_chunk": "0"
+    },
+    "c_en": {
+      "disk_bytes": "1063268",
+      "disk_chunks": "1",
+      "indexed_bytes": "1540337",
+      "indexed_documents": "198",
+      "killed_documents": "0",
+      "mem_limit": "134217728",
+      "ram_bytes": "232488",
+      "ram_chunk": "0"
+    },
+    "c_xx": {
+      "disk_bytes": "57551",
+      "disk_chunks": "1",
+      "indexed_bytes": "43638",
+      "indexed_documents": "6",
+      "killed_documents": "0",
+      "mem_limit": "134217728",
+      "ram_bytes": "48168",
+      "ram_chunk": "0"
+    }
+  },
+  "filesByKind": {
+    "0005": 0,
+    "0006": 0,
+    "0007": 0,
+    "json": 265,
+    "lock": 0,
+    "meta": 2020,
+    "settings": 90,
+    "spa": 3213960,
+    "spd": 316961031,
+    "spe": 7564362,
+    "sph": 2059,
+    "sphi": 37185,
+    "spi": 9744749,
+    "spidx": 1377625,
+    "spm": 16488,
+    "spp": 176653818,
+    "spt": 690264,
+    "sql": 0,
+    "total": 516263916
+  },
+  "memoryMiB": {
+    "changes": {
+      "median": 60.3,
+      "peak": 68.13,
+      "samples": 7
+    },
+    "flush-optimize": {
+      "median": 329.3,
+      "peak": 359.9,
+      "samples": 16
+    },
+    "idle-empty": {
+      "median": 6.008,
+      "peak": 59.17,
+      "samples": 7
+    },
+    "idle-loaded": {
+      "median": 313,
+      "peak": 313,
+      "samples": 7
+    },
+    "idle-restarted": {
+      "median": 11.93,
+      "peak": 55.97,
+      "samples": 8
+    },
+    "indexing": {
+      "median": 356.9,
+      "peak": 412.4,
+      "samples": 25
+    },
+    "loaded": {
+      "median": 11.8,
+      "peak": 11.8,
+      "samples": 1
+    },
+    "restart": {
+      "median": 12.1,
+      "peak": 12.1,
+      "samples": 1
+    },
+    "searching": {
+      "median": 60.29,
+      "peak": 61.07,
+      "samples": 53
+    },
+    "starting": {
+      "median": 5.98,
+      "peak": 5.98,
+      "samples": 2
+    }
+  },
+  "stemming": [
+    {
+      "table": "c_en",
+      "a": "running",
+      "b": "runs",
+      "hitsA": 66,
+      "hitsB": 66,
+      "forms": "running→run runs→run"
+    },
+    {
+      "table": "c_en",
+      "a": "\"he was running\"",
+      "b": "\"he was runs\"",
+      "hitsA": 0,
+      "hitsB": 0,
+      "forms": "he→he was→was running→run he→he was→was runs→run"
+    },
+    {
+      "table": "c_de",
+      "a": "nächte",
+      "b": "nacht",
+      "hitsA": 43794,
+      "hitsB": 43794,
+      "forms": "nachte→nacht nacht→nacht"
+    },
+    {
+      "table": "c_de",
+      "a": "\"zum ersten male\"",
+      "b": "\"zum ersten mal\"",
+      "hitsA": 12216,
+      "hitsB": 12216,
+      "forms": "zum→zum ersten→erst male→mal zum→zum ersten→erst mal→mal"
+    }
+  ],
+  "latencyMs": [
+    {
+      "kind": "words",
+      "query": "nacht stadt",
+      "top": 1000,
+      "hits": 1000,
+      "total": 10654,
+      "p50": 7.351,
+      "p95": 8.679,
+      "max": 9.305,
+      "tookMs": 4
+    },
+    {
+      "kind": "words",
+      "query": "liebe krieg",
+      "top": 1000,
+      "hits": 1000,
+      "total": 9776,
+      "p50": 5.79,
+      "p95": 8.142,
+      "max": 8.389,
+      "tookMs": 3
+    },
+    {
+      "kind": "words",
+      "query": "magie drache schwert",
+      "top": 1000,
+      "hits": 127,
+      "total": 127,
+      "p50": 1.708,
+      "p95": 1.839,
+      "max": 1.856
+    },
+    {
+      "kind": "words",
+      "query": "detective murder",
+      "top": 1000,
+      "hits": 8,
+      "total": 8,
+      "p50": 0.724,
+      "p95": 0.9,
+      "max": 1.09
+    },
+    {
+      "kind": "words",
+      "query": "ship captain storm",
+      "top": 1000,
+      "hits": 0,
+      "p50": 0.678,
+      "p95": 0.78,
+      "max": 0.801
+    },
+    {
+      "kind": "phrase",
+      "query": "in der nacht",
+      "top": 1000,
+      "hits": 1000,
+      "total": 6844,
+      "p50": 20.417,
+      "p95": 107.329,
+      "max": 112.863,
+      "tookMs": 17
+    },
+    {
+      "kind": "phrase",
+      "query": "zum ersten mal",
+      "top": 1000,
+      "hits": 1000,
+      "total": 12218,
+      "p50": 11.05,
+      "p95": 14.27,
+      "max": 17.123,
+      "tookMs": 8
+    },
+    {
+      "kind": "phrase",
+      "query": "the old man",
+      "top": 1000,
+      "hits": 16,
+      "total": 16,
+      "p50": 0.994,
+      "p95": 1.228,
+      "max": 1.407
+    },
+    {
+      "kind": "library",
+      "query": "nacht stadt",
+      "top": 1000,
+      "hits": 1000,
+      "total": 5205,
+      "p50": 5.881,
+      "p95": 7.405,
+      "max": 7.51,
+      "tookMs": 3
+    },
+    {
+      "kind": "library",
+      "query": "detective murder",
+      "top": 1000,
+      "hits": 3,
+      "total": 3,
+      "p50": 0.762,
+      "p95": 0.847,
+      "max": 1.145
+    },
+    {
+      "kind": "library",
+      "query": "in der nacht",
+      "top": 1000,
+      "hits": 1000,
+      "total": 3352,
+      "p50": 19.561,
+      "p95": 104.625,
+      "max": 115.163,
+      "tookMs": 17
+    },
+    {
+      "kind": "snippets",
+      "query": "nacht stadt",
+      "top": 1000,
+      "hits": 1000,
+      "total": 10654,
+      "snippets": 20,
+      "p50": 16.973,
+      "p95": 17.707,
+      "max": 18.019,
+      "tookMs": 3
+    },
+    {
+      "kind": "snippets",
+      "query": "detective murder",
+      "top": 1000,
+      "hits": 8,
+      "total": 8,
+      "snippets": 8,
+      "p50": 4.99,
+      "p95": 5.449,
+      "max": 7.292
+    },
+    {
+      "kind": "snippets",
+      "query": "in der nacht",
+      "top": 1000,
+      "hits": 1000,
+      "total": 6844,
+      "snippets": 20,
+      "p50": 31.752,
+      "p95": 40.364,
+      "max": 54.916,
+      "tookMs": 22
+    },
+    {
+      "kind": "words",
+      "query": "nacht stadt",
+      "top": 10,
+      "hits": 10,
+      "total": 10654,
+      "p50": 4.299,
+      "p95": 4.885,
+      "max": 5.15,
+      "tookMs": 3
+    },
+    {
+      "kind": "words",
+      "query": "liebe krieg",
+      "top": 10,
+      "hits": 10,
+      "total": 9776,
+      "p50": 4.214,
+      "p95": 4.847,
+      "max": 5.734,
+      "tookMs": 3
+    },
+    {
+      "kind": "words",
+      "query": "magie drache schwert",
+      "top": 10,
+      "hits": 10,
+      "total": 127,
+      "p50": 1.396,
+      "p95": 2.16,
+      "max": 2.409,
+      "tookMs": 1
+    },
+    {
+      "kind": "words",
+      "query": "detective murder",
+      "top": 10,
+      "hits": 8,
+      "total": 8,
+      "p50": 1.022,
+      "p95": 1.325,
+      "max": 1.349
+    },
+    {
+      "kind": "words",
+      "query": "ship captain storm",
+      "top": 10,
+      "hits": 0,
+      "p50": 1.052,
+      "p95": 1.619,
+      "max": 1.645
+    },
+    {
+      "kind": "phrase",
+      "query": "in der nacht",
+      "top": 10,
+      "hits": 10,
+      "total": 6844,
+      "p50": 24.541,
+      "p95": 37.647,
+      "max": 39.375,
+      "tookMs": 24
+    },
+    {
+      "kind": "phrase",
+      "query": "zum ersten mal",
+      "top": 10,
+      "hits": 10,
+      "total": 12218,
+      "p50": 12.018,
+      "p95": 13.348,
+      "max": 13.354,
+      "tookMs": 11
+    },
+    {
+      "kind": "phrase",
+      "query": "the old man",
+      "top": 10,
+      "hits": 10,
+      "total": 16,
+      "p50": 1.317,
+      "p95": 1.935,
+      "max": 2.3
+    },
+    {
+      "kind": "library",
+      "query": "nacht stadt",
+      "top": 10,
+      "hits": 10,
+      "total": 5205,
+      "p50": 3.586,
+      "p95": 4.385,
+      "max": 4.469,
+      "tookMs": 3
+    },
+    {
+      "kind": "library",
+      "query": "detective murder",
+      "top": 10,
+      "hits": 3,
+      "total": 3,
+      "p50": 0.958,
+      "p95": 1.2,
+      "max": 1.206
+    },
+    {
+      "kind": "library",
+      "query": "in der nacht",
+      "top": 10,
+      "hits": 10,
+      "total": 3352,
+      "p50": 23.099,
+      "p95": 42.364,
+      "max": 50.302,
+      "tookMs": 22
+    },
+    {
+      "kind": "snippets",
+      "query": "nacht stadt",
+      "top": 10,
+      "hits": 10,
+      "total": 10654,
+      "snippets": 10,
+      "p50": 7.361,
+      "p95": 8.329,
+      "max": 8.666,
+      "tookMs": 2
+    },
+    {
+      "kind": "snippets",
+      "query": "detective murder",
+      "top": 10,
+      "hits": 8,
+      "total": 8,
+      "snippets": 8,
+      "p50": 5.686,
+      "p95": 7.024,
+      "max": 7.193
+    },
+    {
+      "kind": "snippets",
+      "query": "in der nacht",
+      "top": 10,
+      "hits": 10,
+      "total": 6844,
+      "snippets": 10,
+      "p50": 22.654,
+      "p95": 35.514,
+      "max": 115.736,
+      "tookMs": 18
+    }
+  ],
+  "changesMs": [
+    {
+      "kind": "change",
+      "query": "move library (UPDATE library_id)",
+      "hits": 1351,
+      "p50": 0.712,
+      "p95": 0.785,
+      "max": 1.359
+    },
+    {
+      "kind": "change",
+      "query": "delete by book (DELETE WHERE book_id)",
+      "hits": 1351,
+      "p50": 0.691,
+      "p95": 0.804,
+      "max": 0.831
+    },
+    {
+      "kind": "change",
+      "query": "insert a book's chunks (/bulk)",
+      "hits": 1351,
+      "p50": 65.85,
+      "p95": 153.89,
+      "max": 167.071
+    },
+    {
+      "kind": "change",
+      "query": "delete by chunk ID (DELETE WHERE id IN)",
+      "hits": 1351,
+      "p50": 0.552,
+      "p95": 0.71,
+      "max": 1.177
+    },
+    {
+      "kind": "change",
+      "query": "insert again (/bulk)",
+      "hits": 1351,
+      "p50": 68.773,
+      "p95": 142.36,
+      "max": 167.217
+    }
+  ],
+  "checks": [
+    "after the changes 0 chunks remain in the moved library (0 expected: the books were written again in their own)"
+  ]
+}

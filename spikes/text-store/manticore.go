@@ -275,16 +275,16 @@ func bulk(ctx context.Context, m *Manticore, body []byte) error {
 // ManticoreResult is the whole measurement: the load, the sizes on disk,
 // the container's memory by phase, stemming, searches and changes.
 type ManticoreResult struct {
-	Load           ManticoreLoad `json:"load"`
-	RestartSeconds float64       `json:"restartSeconds"`
-	Version  string                        `json:"version"`
-	Tables   map[string]map[string]any     `json:"tables"`
-	Files    map[string]int64              `json:"filesByKind"`
-	Memory   map[string]map[string]float64 `json:"memoryMiB"`
-	Stemming []StemCheck                   `json:"stemming"`
-	Latency  []Latency                     `json:"latencyMs"`
-	Changes  []Latency                     `json:"changesMs"`
-	Checks   []string                      `json:"checks"`
+	Load           ManticoreLoad                 `json:"load"`
+	RestartSeconds float64                       `json:"restartSeconds"`
+	Version        string                        `json:"version"`
+	Tables         map[string]map[string]any     `json:"tables"`
+	Files          map[string]int64              `json:"filesByKind"`
+	Memory         map[string]map[string]float64 `json:"memoryMiB"`
+	Stemming       []StemCheck                   `json:"stemming"`
+	Latency        []Latency                     `json:"latencyMs"`
+	Changes        []Latency                     `json:"changesMs"`
+	Checks         []string                      `json:"checks"`
 }
 
 // StemCheck is the hits of two forms of a query that stemming makes one.

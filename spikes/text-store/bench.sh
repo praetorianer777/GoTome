@@ -8,7 +8,7 @@
 #   spikes/text-store/bench.sh <library> [step...]
 #
 # Steps: extract, pglz, lz4, zstd, tantivy (all, in that order, by default),
-# and tantivy-none and manticore, which run only when named.
+# and readtime, tantivy-none and manticore, which run only when named.
 set -euo pipefail
 
 library=${1:?the library folder to sample}
@@ -75,6 +75,10 @@ for step in "${steps[@]}"; do
 				"$spike/queries.json" "$spike/results/tantivy-$store.json"
 		done
 		;;
+	readtime)
+		"${go[@]}" -v "$library:/library:ro" "$go_image" \
+			/work/.cache/text-store/text-store readtime -out results/readtime.json
+		;;
 	tantivy-none)
 		# Beside manticore, with as many runs, both windows, and snippets
 		# from the text handed in, as Manticore makes them.
@@ -90,9 +94,10 @@ for step in "${steps[@]}"; do
 		docker network create "$name" >/dev/null
 		docker volume create "$name-manticore" >/dev/null
 		# The limits #14 gave Postgres: 2 GB and four CPUs.
-		docker run -d --name "$name-manticore" --network "$name" --memory 2g --memory-swap 2g --cpus 4 \
-			-v "$name-manticore:/var/lib/manticore" -v "$spike/manticore.conf:/etc/manticoresearch/manticore.conf:ro" \
-			"$manticore_image" >/dev/null
+		# Not under /etc/manticoresearch, which the entrypoint chowns.
+		docker run -d --pull never --name "$name-manticore" --network "$name" --memory 2g --memory-swap 2g --cpus 4 \
+			-v "$name-manticore:/var/lib/manticore" -v "$spike/manticore.conf:/spike/manticore.conf:ro" \
+			"$manticore_image" searchd -c /spike/manticore.conf --nodetach >/dev/null
 		phase=$work/manticore-phase samples=$work/manticore-samples
 		echo starting >"$phase"
 		: >"$samples"

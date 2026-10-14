@@ -1,0 +1,8 @@
+{
+  "kind": "read",
+  "query": "a book's chunks from its EPUB",
+  "hits": 100,
+  "p50": 41.519,
+  "p95": 92.099,
+  "max": 116.041
+}

@@ -21,6 +21,7 @@ const usage = `Usage: text-store <command> [flags]
 Commands:
   extract  Read a sample of a library's EPUBs into chunks
   pg       Load the chunks into Postgres, index them and measure
+  readtime Time reading a book's chunks back from its EPUB
   manticore-load    Load the chunks into Manticore and index them
   manticore-search  Measure Manticore's index, searches and changes
 `
@@ -49,6 +50,16 @@ func run(ctx context.Context, args []string) error {
 			return err
 		}
 		return extract(*dir, *every, *out)
+	case "readtime":
+		fs := flag.NewFlagSet("readtime", flag.ContinueOnError)
+		dir := fs.String("dir", "/library", "the library to sample")
+		every := fs.Int("every", 24, "take every nth EPUB in name order")
+		books := fs.Int("books", 100, "how many of the sample to time")
+		out := fs.String("out", "", "where the result goes")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		return readTime(*dir, *every, *books, *out)
 	case "pg":
 		fs := flag.NewFlagSet("pg", flag.ContinueOnError)
 		dsn := fs.String("dsn", "", "the database")
