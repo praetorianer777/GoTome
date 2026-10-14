@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-14
+
 ### Fixed
 
 - A Kobo reader, or a Tolino in Kobo mode, now shows the books it is sent:
