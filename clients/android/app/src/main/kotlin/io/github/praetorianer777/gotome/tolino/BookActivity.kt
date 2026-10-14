@@ -15,6 +15,10 @@ import kotlin.math.roundToInt
 
 /** One book: what it is, where GOtome says the person is in it, and the button that puts it on the Tolino. */
 class BookActivity : Activity() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     private lateinit var db: Db
     private lateinit var sync: Sync
     private lateinit var bookId: String

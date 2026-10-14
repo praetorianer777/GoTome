@@ -1,5 +1,6 @@
 package io.github.praetorianer777.gotome.tolino
 
+import android.content.Context
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -7,12 +8,17 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.RadioGroup
 import android.widget.TextView
 import java.text.DateFormat
 import java.util.Date
 
 /** Where GOtome is, the device token this Tolino signs in with, and whether the app can see the reader. */
 class SetupActivity : Activity() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     private lateinit var prefs: Prefs
     private lateinit var server: EditText
     private lateinit var username: EditText
@@ -27,6 +33,17 @@ class SetupActivity : Activity() {
         username = findViewById(R.id.username)
         token = findViewById(R.id.token)
         status = findViewById(R.id.status)
+        findViewById<TextView>(R.id.version).text = getString(R.string.version, BuildConfig.VERSION_NAME)
+        findViewById<RadioGroup>(R.id.language).apply {
+            check(if (prefs.language == Lang.GERMAN) R.id.german else R.id.english)
+            setOnCheckedChangeListener { _, id ->
+                val chosen = if (id == R.id.german) Lang.GERMAN else Lang.ENGLISH
+                if (chosen != prefs.language) {
+                    prefs.language = chosen
+                    recreate()
+                }
+            }
+        }
         server.setText(prefs.server)
         username.setText(prefs.username)
         findViewById<Button>(R.id.sign_in).setOnClickListener { signIn() }

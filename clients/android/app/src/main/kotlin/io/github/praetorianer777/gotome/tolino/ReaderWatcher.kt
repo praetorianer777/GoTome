@@ -22,6 +22,10 @@ import kotlin.math.roundToInt
  * the "GOtome" book is opened. Runs in the foreground so Android keeps it alive.
  */
 class ReaderWatcher : Service() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(Lang.wrap(base))
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private val tracker = ReadingTracker()
     private lateinit var prefs: Prefs

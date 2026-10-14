@@ -14,6 +14,11 @@ class Prefs(context: Context) {
         get() = p.getString("server", "")!!
         set(value) = p.edit().putString("server", value.trim().trimEnd('/')).apply()
 
+    /** Lang.ENGLISH or Lang.GERMAN. */
+    var language: String
+        get() = p.getString("language", Lang.ENGLISH)!!
+        set(value) = p.edit().putString("language", value).apply()
+
     var username: String
         get() = p.getString("username", "")!!
         set(value) = p.edit().putString("username", value).apply()

@@ -16,6 +16,12 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="15sp" />
+
         <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/server" />
         <EditText
             android:id="@+id/server"
@@ -66,6 +72,27 @@
                 android:layout_weight="1"
                 android:text="@string/to_store" />
         </LinearLayout>
+
+        <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/language" />
+        <RadioGroup
+            android:id="@+id/language"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/english"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="English" />
+
+            <RadioButton
+                android:id="@+id/german"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:text="Deutsch" />
+        </RadioGroup>
 
         <Button
             android:id="@+id/update"
