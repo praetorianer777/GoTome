@@ -937,6 +937,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   feeds, file downloads and covers, the book lists, search and detail,
   reading progress, and `/device` (the device itself and its queue, for
   its own app); `require` refuses it everywhere else.
+- An e-reader's app may ask to be added instead (`internal/pairing`,
+  #218): `POST /device/requests` (public, limited per address) with a user
+  name answers a secret and a four-digit code alike whether the account
+  exists; the person sees it on the profile (`GET
+  /auth/device-requests`, a `device.requested` notification) and accepts or
+  declines it; the app polls `POST /device/requests/{id}/token` with its
+  secret and, once accepted, gets the token of a new device, once
+  (`auth.CreateDeviceTx`). A name that is nobody's, or an account with
+  `MaxWaiting` requests, makes a row nobody sees; requests end after
+  `Lifetime`.
 - `internal/opds` writes OPDS 1.2 (Atom) and the OpenSearch description;
   `httpapi/opds_handlers.go` serves them under `/api/v1/opds`
   (`docs/koreader.md`): newest, authors and series (`catalog.NameList`,

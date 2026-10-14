@@ -51,11 +51,25 @@ func (s *Service) CreateDevice(ctx context.Context, userID uuid.UUID, name strin
 	case utf8.RuneCountInString(name) > MaxDeviceNameLen:
 		return Device{}, "", &ValidationError{Fields: map[string]string{"name": "A device's name has at most 80 characters."}}
 	}
+	return createDevice(ctx, sqlc.New(s.pool), userID, name)
+}
+
+// CreateDeviceTx is CreateDevice in the transaction, for a device made as
+// part of another change: a request accepted and collected.
+func CreateDeviceTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, name string) (Device, string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > MaxDeviceNameLen {
+		return Device{}, "", &ValidationError{Fields: map[string]string{"name": "A device's name has 1 to 80 characters."}}
+	}
+	return createDevice(ctx, sqlc.New(tx), userID, name)
+}
+
+func createDevice(ctx context.Context, q *sqlc.Queries, userID uuid.UUID, name string) (Device, string, error) {
 	token, err := newDeviceToken()
 	if err != nil {
 		return Device{}, "", err
 	}
-	row, err := sqlc.New(s.pool).CreateDevice(ctx, sqlc.CreateDeviceParams{
+	row, err := q.CreateDevice(ctx, sqlc.CreateDeviceParams{
 		UserID: userID, Name: name, TokenHash: hashToken(token), SyncKeyHash: hashToken(SyncKey(token)),
 	})
 	if err != nil {

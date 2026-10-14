@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- GOtome for Tolino signs in without a token typed on the e-reader: give it
+  the address and your user name, tap **Request access**, and accept the
+  Tolino on your profile under E-readers when it shows the same code. The
+  device token stays as the other way.
 - GOtome for Tolino shows its version on its settings page, and speaks
   English or German as chosen there, English unless changed, whatever
   language the Tolino is set to.

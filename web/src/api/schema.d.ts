@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/auth/device-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** E-readers asking to be added to the caller's account, waiting for a decision */
+        get: operations["listDeviceRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/device-requests/{requestId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a device's request: its app then collects the token of a new device */
+        post: operations["acceptDeviceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/device-requests/{requestId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a device's request */
+        post: operations["declineDeviceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/devices": {
         parameters: {
             query?: never;
@@ -806,6 +857,40 @@ export interface paths {
         post?: never;
         /** Record that the device that asks no longer has the book, nor waits for it; only for a device's token */
         delete: operations["takeOffDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask, as an e-reader's app, to be added to an account; answered alike whether the account exists */
+        post: operations["requestDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/requests/{requestId}/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once */
+        post: operations["collectDeviceToken"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2391,8 +2476,43 @@ export interface components {
             books: components["schemas"]["BookSummary"][];
             nextOffset?: number;
         };
+        DeviceAnswer: {
+            /** @enum {string} */
+            state: "pending" | "accepted" | "declined" | "expired";
+            token?: string;
+            username?: string;
+        };
+        DeviceCollect: {
+            secret: string;
+        };
         DeviceList: {
             devices: components["schemas"]["DeviceView"][];
+        };
+        DeviceRequestCreate: {
+            deviceName: string;
+            username: string;
+        };
+        DeviceRequestList: {
+            requests: components["schemas"]["DeviceRequestView"][];
+        };
+        DeviceRequestView: {
+            address: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            deviceName: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+        };
+        DeviceTicket: {
+            code: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            secret: string;
         };
         DeviceView: {
             /** Format: date-time */
@@ -2648,7 +2768,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3122,6 +3242,93 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listDeviceRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRequestList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    acceptDeviceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    declineDeviceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listOwnDevices: {
         parameters: {
             query?: never;
@@ -4873,6 +5080,74 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requestDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceTicket"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    collectDeviceToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceCollect"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceAnswer"];
+                };
             };
             /** @description The request failed. */
             default: {

@@ -27,6 +27,12 @@ data class BookDetail(
 
 data class ThisDevice(val name: String, val username: String)
 
+/** A request to be added to an account: what the app polls with and the code it shows. */
+data class Pairing(val server: String, val id: String, val secret: String, val code: String)
+
+/** How GOtome answered about a request; once accepted, what the app signs in with. */
+data class PairingAnswer(val state: String, val username: String, val token: String)
+
 data class EbookProgress(val fraction: Double, val chapter: String, val clientId: String, val updatedAt: String)
 
 /**
@@ -106,6 +112,21 @@ object Json {
     fun thisDevice(body: String): ThisDevice {
         val o = JSONObject(body)
         return ThisDevice(o.getJSONObject("device").getString("name"), o.getString("username"))
+    }
+
+    fun deviceRequest(username: String, deviceName: String): String =
+        JSONObject().put("username", username).put("deviceName", deviceName).toString()
+
+    fun pairing(server: String, body: String): Pairing {
+        val o = JSONObject(body)
+        return Pairing(server, o.getString("id").also { require(isId(it)) }, o.getString("secret"), o.getString("code"))
+    }
+
+    fun secret(secret: String): String = JSONObject().put("secret", secret).toString()
+
+    fun pairingAnswer(body: String): PairingAnswer {
+        val o = JSONObject(body)
+        return PairingAnswer(o.getString("state"), o.optString("username"), o.optString("token"))
     }
 
     fun ebookProgress(body: String): EbookProgress? {

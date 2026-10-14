@@ -203,6 +203,18 @@ type Device struct {
 	LastUsedAt  *time.Time
 }
 
+type DeviceRequest struct {
+	ID         uuid.UUID
+	UserID     *uuid.UUID
+	DeviceName string
+	Code       string
+	SecretHash []byte
+	Address    string
+	State      string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+}
+
 type DuplicateEvidence struct {
 	PairID uuid.UUID
 	Kind   string

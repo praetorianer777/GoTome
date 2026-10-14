@@ -3,6 +3,7 @@ package io.github.praetorianer777.gotome.tolino
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class JsonTest {
@@ -61,6 +62,21 @@ class JsonTest {
         assertEquals(
             ThisDevice("Tolino", "steve"),
             Json.thisDevice("""{"device":{"id":"0192f0a0-0000-7000-8000-0000000000d1","name":"Tolino","createdAt":"t"},"username":"steve"}"""),
+        )
+    }
+
+    @Test
+    fun readsARequestToBeAddedAndWhatBecameOfIt() {
+        val id = "0199c3a1-7f2e-7b1a-9c4d-2e5f6a7b8c9d"
+        val pairing = Json.pairing("https://gotome.example.org", """{"id":"$id","secret":"s3cret","code":"0042","expiresAt":"2026-10-14T10:00:00Z"}""")
+        assertEquals(Pairing("https://gotome.example.org", id, "s3cret", "0042"), pairing)
+        assertThrows(IllegalArgumentException::class.java) {
+            Json.pairing("https://gotome.example.org", """{"id":"../books","secret":"s","code":"1"}""")
+        }
+        assertEquals(PairingAnswer("pending", "", ""), Json.pairingAnswer("""{"state":"pending"}"""))
+        assertEquals(
+            PairingAnswer("accepted", "rita", "abcd-efgh-ijkm-npqr-stuv"),
+            Json.pairingAnswer("""{"state":"accepted","username":"rita","token":"abcd-efgh-ijkm-npqr-stuv"}"""),
         )
     }
 

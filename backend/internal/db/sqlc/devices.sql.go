@@ -12,6 +12,18 @@ import (
 	"github.com/google/uuid"
 )
 
+const countWaitingDeviceRequests = `-- name: CountWaitingDeviceRequests :one
+SELECT count(*)::int FROM device_requests
+WHERE user_id = $1 AND state = 'pending' AND expires_at > now()
+`
+
+func (q *Queries) CountWaitingDeviceRequests(ctx context.Context, userID *uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countWaitingDeviceRequests, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createDevice = `-- name: CreateDevice :one
 INSERT INTO devices (user_id, name, token_hash, sync_key_hash)
 VALUES ($1, $2, $3, $4)
@@ -49,6 +61,60 @@ func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Cre
 	return i, err
 }
 
+const createDeviceRequest = `-- name: CreateDeviceRequest :one
+INSERT INTO device_requests (user_id, device_name, code, secret_hash, address, expires_at)
+VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6::int))
+RETURNING id, expires_at
+`
+
+type CreateDeviceRequestParams struct {
+	UserID     *uuid.UUID
+	DeviceName string
+	Code       string
+	SecretHash []byte
+	Address    string
+	Seconds    int32
+}
+
+type CreateDeviceRequestRow struct {
+	ID        uuid.UUID
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreateDeviceRequest(ctx context.Context, arg CreateDeviceRequestParams) (CreateDeviceRequestRow, error) {
+	row := q.db.QueryRow(ctx, createDeviceRequest,
+		arg.UserID,
+		arg.DeviceName,
+		arg.Code,
+		arg.SecretHash,
+		arg.Address,
+		arg.Seconds,
+	)
+	var i CreateDeviceRequestRow
+	err := row.Scan(&i.ID, &i.ExpiresAt)
+	return i, err
+}
+
+const decideDeviceRequest = `-- name: DecideDeviceRequest :execrows
+UPDATE device_requests SET state = $3
+WHERE id = $1 AND user_id = $2 AND state = 'pending' AND expires_at > now()
+`
+
+type DecideDeviceRequestParams struct {
+	ID     uuid.UUID
+	UserID *uuid.UUID
+	State  string
+}
+
+// Accepts or declines a request of the user's that still waits.
+func (q *Queries) DecideDeviceRequest(ctx context.Context, arg DecideDeviceRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, decideDeviceRequest, arg.ID, arg.UserID, arg.State)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteUserDevice = `-- name: DeleteUserDevice :execrows
 DELETE FROM devices WHERE id = $1 AND user_id = $2
 `
@@ -64,6 +130,27 @@ func (q *Queries) DeleteUserDevice(ctx context.Context, arg DeleteUserDevicePara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const dropOldDeviceRequests = `-- name: DropOldDeviceRequests :exec
+DELETE FROM device_requests WHERE expires_at < now() - interval '1 day'
+`
+
+// Requests a day past their end, which nobody can use any more.
+func (q *Queries) DropOldDeviceRequests(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, dropOldDeviceRequests)
+	return err
+}
+
+const getActiveUserIDByName = `-- name: GetActiveUserIDByName :one
+SELECT id FROM users WHERE lower(username) = lower($1::text) AND disabled_at IS NULL
+`
+
+func (q *Queries) GetActiveUserIDByName(ctx context.Context, username string) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getActiveUserIDByName, username)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getDeviceUser = `-- name: GetDeviceUser :one
@@ -199,6 +286,96 @@ func (q *Queries) ListUserDevices(ctx context.Context, userID uuid.UUID) ([]List
 		return nil, err
 	}
 	return items, nil
+}
+
+const listWaitingDeviceRequests = `-- name: ListWaitingDeviceRequests :many
+SELECT id, device_name, code, address, created_at, expires_at FROM device_requests
+WHERE user_id = $1 AND state = 'pending' AND expires_at > now()
+ORDER BY created_at
+`
+
+type ListWaitingDeviceRequestsRow struct {
+	ID         uuid.UUID
+	DeviceName string
+	Code       string
+	Address    string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+}
+
+func (q *Queries) ListWaitingDeviceRequests(ctx context.Context, userID *uuid.UUID) ([]ListWaitingDeviceRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listWaitingDeviceRequests, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWaitingDeviceRequestsRow{}
+	for rows.Next() {
+		var i ListWaitingDeviceRequestsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceName,
+			&i.Code,
+			&i.Address,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setDeviceRequestState = `-- name: SetDeviceRequestState :exec
+UPDATE device_requests SET state = $2 WHERE id = $1
+`
+
+type SetDeviceRequestStateParams struct {
+	ID    uuid.UUID
+	State string
+}
+
+func (q *Queries) SetDeviceRequestState(ctx context.Context, arg SetDeviceRequestStateParams) error {
+	_, err := q.db.Exec(ctx, setDeviceRequestState, arg.ID, arg.State)
+	return err
+}
+
+const takeDeviceRequest = `-- name: TakeDeviceRequest :one
+SELECT id, user_id, device_name, state, (expires_at <= now())::boolean AS expired
+FROM device_requests WHERE id = $1 AND secret_hash = $2
+FOR UPDATE
+`
+
+type TakeDeviceRequestParams struct {
+	ID         uuid.UUID
+	SecretHash []byte
+}
+
+type TakeDeviceRequestRow struct {
+	ID         uuid.UUID
+	UserID     *uuid.UUID
+	DeviceName string
+	State      string
+	Expired    bool
+}
+
+// The request the app asks about with its secret, locked while it is
+// answered, and whether its time is up.
+func (q *Queries) TakeDeviceRequest(ctx context.Context, arg TakeDeviceRequestParams) (TakeDeviceRequestRow, error) {
+	row := q.db.QueryRow(ctx, takeDeviceRequest, arg.ID, arg.SecretHash)
+	var i TakeDeviceRequestRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DeviceName,
+		&i.State,
+		&i.Expired,
+	)
+	return i, err
 }
 
 const touchDevice = `-- name: TouchDevice :exec

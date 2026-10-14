@@ -29,6 +29,9 @@ const (
 	// KindBulkFinished is a bulk change that has gone through all its
 	// books. Its data are the action and the count of each outcome.
 	KindBulkFinished = "bulk.finished"
+	// KindDeviceRequested is an e-reader asking to be added to the
+	// account. Its data are the device's name and the code it shows.
+	KindDeviceRequested = "device.requested"
 )
 
 // MaxPage is the most notifications one page holds.

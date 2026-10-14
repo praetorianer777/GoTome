@@ -52,6 +52,123 @@
     }
   ],
   "paths": {
+    "/auth/device-requests": {
+      "get": {
+        "operationId": "listDeviceRequests",
+        "summary": "E-readers asking to be added to the caller's account, waiting for a decision",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRequestList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/auth/device-requests/{requestId}/accept": {
+      "post": {
+        "operationId": "acceptDeviceRequest",
+        "summary": "Accept a device's request: its app then collects the token of a new device",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/auth/device-requests/{requestId}/decline": {
+      "post": {
+        "operationId": "declineDeviceRequest",
+        "summary": "Decline a device's request",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/auth/devices": {
       "get": {
         "operationId": "listOwnDevices",
@@ -2685,6 +2802,100 @@
           }
         ],
         "x-permission": "personal:manage"
+      }
+    },
+    "/device/requests": {
+      "post": {
+        "operationId": "requestDevice",
+        "summary": "Ask, as an e-reader's app, to be added to an account; answered alike whether the account exists",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTicket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
+      }
+    },
+    "/device/requests/{requestId}/token": {
+      "post": {
+        "operationId": "collectDeviceToken",
+        "summary": "Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceCollect"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAnswer"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "public"
       }
     },
     "/devices/{deviceId}/books": {
@@ -8026,6 +8237,40 @@
           "books"
         ]
       },
+      "DeviceAnswer": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined",
+              "expired"
+            ]
+          },
+          "token": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "DeviceCollect": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      },
       "DeviceList": {
         "type": "object",
         "properties": {
@@ -8038,6 +8283,94 @@
         },
         "required": [
           "devices"
+        ]
+      },
+      "DeviceRequestCreate": {
+        "type": "object",
+        "properties": {
+          "deviceName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "deviceName"
+        ]
+      },
+      "DeviceRequestList": {
+        "type": "object",
+        "properties": {
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceRequestView"
+            }
+          }
+        },
+        "required": [
+          "requests"
+        ]
+      },
+      "DeviceRequestView": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "deviceName",
+          "code",
+          "address",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
+      "DeviceTicket": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "secret",
+          "code",
+          "expiresAt"
         ]
       },
       "DeviceView": {
@@ -8954,6 +9287,7 @@
             "type": "string",
             "enum": [
               "bulk.finished",
+              "device.requested",
               "books.added",
               "wish.fulfilled",
               "release.announced",

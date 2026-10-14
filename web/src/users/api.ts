@@ -118,6 +118,37 @@ export function useDeleteDevice() {
 	});
 }
 
+export type DeviceRequest = components["schemas"]["DeviceRequestView"];
+
+/**
+ * E-readers asking to be added, which wait for the person to accept them.
+ * Looked at again every few seconds, as one is asked for while the person
+ * watches the device beside them.
+ */
+export const deviceRequestsQuery = queryOptions({
+	queryKey: ["auth", "device-requests"],
+	queryFn: async (): Promise<DeviceRequest[]> =>
+		(await api.GET("/auth/device-requests")).data?.requests ?? [],
+	refetchInterval: 5000,
+});
+
+export function useDecideDeviceRequest() {
+	const requests = useInvalidate(deviceRequestsQuery.queryKey);
+	const devices = useInvalidate(ownDevicesQuery.queryKey);
+	return useMutation({
+		mutationFn: async ({ id, accept }: { id: string; accept: boolean }) => {
+			const path = { params: { path: { requestId: id } } };
+			await (accept
+				? api.POST("/auth/device-requests/{requestId}/accept", path)
+				: api.POST("/auth/device-requests/{requestId}/decline", path));
+		},
+		onSuccess: () => {
+			requests();
+			devices();
+		},
+	});
+}
+
 export function useUnlinkIdentity() {
 	return useMutation({
 		mutationFn: async (id: string) => {

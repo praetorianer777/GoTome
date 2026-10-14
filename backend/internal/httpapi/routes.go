@@ -230,6 +230,32 @@ func (s *Server) routes() []Route {
 			Permission: auth.SignedIn, Handler: s.createOwnDevice,
 		},
 		{
+			Method: http.MethodGet, Path: "/auth/device-requests", ID: "listDeviceRequests",
+			Summary: "E-readers asking to be added to the caller's account, waiting for a decision", Tag: "auth",
+			Response: deviceRequestList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listDeviceRequests,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/accept", ID: "acceptDeviceRequest",
+			Summary: "Accept a device's request: its app then collects the token of a new device", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.acceptDeviceRequest,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/decline", ID: "declineDeviceRequest",
+			Summary: "Decline a device's request", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.declineDeviceRequest,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/requests", ID: "requestDevice",
+			Summary: "Ask, as an e-reader's app, to be added to an account; answered alike whether the account exists", Tag: "auth",
+			Request: deviceRequestCreate{}, Response: deviceTicket{}, Status: http.StatusCreated,
+			Permission: auth.Public, Handler: s.requestDevice,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/requests/{requestId}/token", ID: "collectDeviceToken",
+			Summary: "Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once", Tag: "auth",
+			Request: deviceCollect{}, Response: deviceAnswer{}, Permission: auth.Public, Handler: s.collectDeviceToken,
+		},
+		{
 			Method: http.MethodGet, Path: "/koreader/plugin.zip", ID: "getKOReaderPlugin",
 			Summary: "The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder", Tag: "auth",
 			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,

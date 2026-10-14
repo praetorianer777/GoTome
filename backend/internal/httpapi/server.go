@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
@@ -86,6 +87,8 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Pairing adds an e-reader whose app asked to be added and was accepted.
+	Pairing *pairing.Service
 	// Deliveries sends books to people's devices.
 	Deliveries *deliveries.Service
 	// Sync is the server KOReader's progress sync talks to.

@@ -14,6 +14,24 @@ class Prefs(context: Context) {
         get() = p.getString("server", "")!!
         set(value) = p.edit().putString("server", value.trim().trimEnd('/')).apply()
 
+    /** The request to be added that waits for its person, kept while the app is closed. */
+    var pairing: Pairing?
+        get() {
+            val id = p.getString("pairingId", null) ?: return null
+            return Pairing(
+                p.getString("pairingServer", "")!!, id,
+                p.getString("pairingSecret", "")!!, p.getString("pairingCode", "")!!,
+            )
+        }
+        set(value) = p.edit().apply {
+            if (value == null) {
+                remove("pairingServer").remove("pairingId").remove("pairingSecret").remove("pairingCode")
+            } else {
+                putString("pairingServer", value.server).putString("pairingId", value.id)
+                    .putString("pairingSecret", value.secret).putString("pairingCode", value.code)
+            }
+        }.apply()
+
     /** Lang.ENGLISH or Lang.GERMAN. */
     var language: String
         get() = p.getString("language", Lang.ENGLISH)!!

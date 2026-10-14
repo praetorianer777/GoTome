@@ -45,6 +45,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
@@ -347,6 +348,7 @@ func serve() error {
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),
 		Deliveries: deliveries.NewService(pool),
+		Pairing:    pairing.NewService(pool),
 		Sync:       progressSync,
 		Releases:   follows,
 		Cleanup:    fixes,

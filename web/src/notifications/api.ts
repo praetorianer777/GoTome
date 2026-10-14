@@ -166,6 +166,14 @@ export function notificationText(n: Notification): {
 					? t("notification.reviewNeeded.one", { title: text(d.title) })
 					: t("notification.reviewNeeded.many", { count: count(d.count) }),
 			};
+		case "device.requested":
+			return {
+				title: t("notification.deviceRequested"),
+				detail: t("notification.deviceRequested.detail", {
+					device: text(d.device),
+					code: text(d.code),
+				}),
+			};
 		case "wish.fulfilled":
 			return {
 				title: t("notification.wishFulfilled"),
