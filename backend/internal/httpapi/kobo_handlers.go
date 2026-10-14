@@ -30,6 +30,11 @@ const koboPage = 100
 // koboTime is how Kobo's store writes a moment.
 const koboTime = "2006-01-02T15:04:05Z"
 
+// koboSyncToken is what a reader keeps between syncs ("gotome:2"). A reader
+// that brings another, or none, is sent its whole library again: raise the
+// number when readers may have dropped what they were told (#236).
+const koboSyncToken = "Z290b21lOjI="
+
 // koboToken is the device token in a Kobo reader's request path.
 func koboToken(path string) (string, bool) {
 	rest, ok := strings.CutPrefix(path, koboPrefix)
@@ -313,8 +318,7 @@ func (s *Server) koboSync(w http.ResponseWriter, r *http.Request) error {
 		return errNotADevice()
 	}
 	scope := library.ScopeOf(*UserFrom(r.Context()))
-	// A reader without the token GOtome gave it starts from nothing.
-	fresh := r.Header.Get("x-kobo-synctoken") == ""
+	fresh := r.Header.Get("x-kobo-synctoken") != koboSyncToken
 	changes, more, err := s.Kobo.Sync(r.Context(), scope, device, koboClient(device), fresh, koboPage)
 	if err != nil {
 		return err
@@ -360,7 +364,7 @@ func (s *Server) koboSync(w http.ResponseWriter, r *http.Request) error {
 			out = append(out, koboSyncItem{ChangedReadingState: &koboStateChange{ReadingState: *state}})
 		}
 	}
-	w.Header().Set("x-kobo-synctoken", "Z290b21l")
+	w.Header().Set("x-kobo-synctoken", koboSyncToken)
 	if more {
 		w.Header().Set("x-kobo-sync", "continue")
 	}
@@ -413,7 +417,7 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 			CrossRevisionID:        b.ID,
 			CurrentDisplayPrice:    koboPrice{CurrencyCode: "EUR"},
 			Description:            f.Description,
-			DownloadUrls:           []koboDownload{{Format: "EPUB", Size: epub.Size, URL: base + "/download/" + epub.ID.String(), Platform: "Generic"}},
+			DownloadUrls:           koboDownloads(base+"/download/"+epub.ID.String(), epub.Size),
 			EntitlementID:          b.ID,
 			ExternalIDs:            []string{},
 			Genre:                  "00000000-0000-0000-0000-000000000001",
@@ -447,6 +451,15 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 		out[b.ID] = koboBook{entitlement: entitlement(b.ID, added, changed, false), metadata: m}
 	}
 	return out, nil
+}
+
+// koboDownloads offers an EPUB under both names Kobo's firmware knows it
+// by: newer firmware drops a book it is offered only as "EPUB" (#236).
+func koboDownloads(url string, size int64) []koboDownload {
+	return []koboDownload{
+		{Format: "EPUB3", Size: size, URL: url, Platform: "Generic"},
+		{Format: "EPUB", Size: size, URL: url, Platform: "Generic"},
+	}
 }
 
 func entitlement(id uuid.UUID, created, changed string, removed bool) koboEntitlement {
@@ -671,6 +684,7 @@ func (s *Server) koboRoutes() []Route {
 		read("/v1/user/profile", "koboProfile", "The store profile a Kobo reader asks for: nothing", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/loyalty/benefits", "koboBenefits", "The store's loyalty benefits: none", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/wishlist", "koboWishlist", "The store's wishlist: empty", ReadsNoLibrary, s.koboEmptyList),
+		read("/v1/user/recommendations", "koboRecommendations", "The store's recommendations: empty", ReadsNoLibrary, s.koboEmptyList),
 		read("/v1/deals", "koboDeals", "The store's deals: none", ReadsNoLibrary, s.koboNothing),
 		read("/{bookId}/{width}/{height}/false/image.jpg", "koboCover", "A book's cover for a Kobo reader", ReadsLibraries, s.koboCover),
 		read("/{bookId}/{width}/{height}/{quality}/{greyscale}/image.jpg", "koboCoverQuality", "A book's cover for a Kobo reader, at a quality it names", ReadsLibraries, s.koboCover),
