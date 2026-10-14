@@ -374,6 +374,11 @@ func (s *Server) routes() []Route {
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.trashFile,
 		},
 		{
+			Method: http.MethodPost, Path: "/files/{fileId}/fix", ID: "fixFile",
+			Summary: "Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash", Tag: "files",
+			Request: fixRequest{}, Response: fixResult{}, Permission: auth.MetadataEdit, Handler: s.fixFile,
+		},
+		{
 			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
 			Summary: "Bring a trashed file back to where it was and to its book", Tag: "files",
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.restoreFile,

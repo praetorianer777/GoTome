@@ -74,7 +74,10 @@ func Spec() *openapi.Document {
 		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
 	}}
 	b.FieldOverrides["Readiness.state"] = &openapi.Schema{Type: "string", Enum: similar.ReadinessStates}
-	b.FieldOverrides["EreaderCheck.findings"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Findings}}
+	findings := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Findings}}
+	for _, field := range []string{"EreaderCheck.findings", "FixRequest.findings", "BulkRequest.findings"} {
+		b.FieldOverrides[field] = findings
+	}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {

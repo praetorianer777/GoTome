@@ -7,9 +7,124 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const addTrashedOriginal = `-- name: AddTrashedOriginal :one
+INSERT INTO book_files (
+    book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256,
+    content_sha256, page_count, pages_estimated, has_text, drm, extract_state, uploaded_by,
+    epub_measures, ereader_findings, trashed_at, trashed_by)
+SELECT s.book_id, s.library_id, s.kind, s.format, $1, s.size_bytes, s.modified_at, s.sha256, s.original_sha256,
+       s.content_sha256, s.page_count, s.pages_estimated, s.has_text, s.drm, s.extract_state, s.uploaded_by,
+       s.epub_measures, s.ereader_findings, now(), $2::uuid
+FROM book_files s
+WHERE s.id = $3
+RETURNING book_files.id
+`
+
+type AddTrashedOriginalParams struct {
+	RelPath string
+	By      uuid.UUID
+	ID      uuid.UUID
+}
+
+// The file as it was before a fix, as a file of its own in the trash under
+// another path, from which it can be restored beside the fixed one.
+func (q *Queries) AddTrashedOriginal(ctx context.Context, arg AddTrashedOriginalParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, addTrashedOriginal, arg.RelPath, arg.By, arg.ID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getFileToFix = `-- name: GetFileToFix :one
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.sha256, f.drm,
+       f.missing_at, f.trashed_at, f.ereader_findings, l.root_path, l.writable
+FROM book_files f
+JOIN libraries l ON l.id = f.library_id
+WHERE f.id = $1
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+`
+
+type GetFileToFixParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type GetFileToFixRow struct {
+	ID              uuid.UUID
+	BookID          uuid.UUID
+	LibraryID       uuid.UUID
+	Format          string
+	RelPath         string
+	Sha256          []byte
+	Drm             bool
+	MissingAt       *time.Time
+	TrashedAt       *time.Time
+	EreaderFindings []string
+	RootPath        string
+	Writable        bool
+}
+
+// A file of a library the viewer sees, with what fixing it needs.
+func (q *Queries) GetFileToFix(ctx context.Context, arg GetFileToFixParams) (GetFileToFixRow, error) {
+	row := q.db.QueryRow(ctx, getFileToFix, arg.ID, arg.Viewer, arg.SeesAll)
+	var i GetFileToFixRow
+	err := row.Scan(
+		&i.ID,
+		&i.BookID,
+		&i.LibraryID,
+		&i.Format,
+		&i.RelPath,
+		&i.Sha256,
+		&i.Drm,
+		&i.MissingAt,
+		&i.TrashedAt,
+		&i.EreaderFindings,
+		&i.RootPath,
+		&i.Writable,
+	)
+	return i, err
+}
+
+const listFilesToFix = `-- name: ListFilesToFix :many
+SELECT f.id
+FROM book_files f
+WHERE f.book_id = $1 AND f.format = 'epub'
+  AND f.trashed_at IS NULL AND f.missing_at IS NULL
+  AND f.ereader_findings && $2::text[]
+ORDER BY f.id
+`
+
+type ListFilesToFixParams struct {
+	BookID   uuid.UUID
+	Findings []string
+}
+
+// The book's EPUBs on disk with a finding among those given.
+func (q *Queries) ListFilesToFix(ctx context.Context, arg ListFilesToFixParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listFilesToFix, arg.BookID, arg.Findings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const listFilesToMeasure = `-- name: ListFilesToMeasure :many
 SELECT f.id, f.rel_path, f.sha256, l.root_path
@@ -52,6 +167,73 @@ func (q *Queries) ListFilesToMeasure(ctx context.Context, limit int32) ([]ListFi
 		return nil, err
 	}
 	return items, nil
+}
+
+const progressOfFileByFraction = `-- name: ProgressOfFileByFraction :exec
+UPDATE reading_progress
+SET locator = 'fraction:' || fraction::text
+WHERE file_id = $1 AND locator NOT LIKE 'fraction:%'
+`
+
+// Places read in a file whose documents a fix changed say only how far.
+func (q *Queries) ProgressOfFileByFraction(ctx context.Context, fileID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, progressOfFileByFraction, fileID)
+	return err
+}
+
+const relPathTaken = `-- name: RelPathTaken :one
+SELECT EXISTS (SELECT 1 FROM book_files WHERE library_id = $1 AND rel_path = $2)
+`
+
+type RelPathTakenParams struct {
+	LibraryID uuid.UUID
+	RelPath   string
+}
+
+func (q *Queries) RelPathTaken(ctx context.Context, arg RelPathTakenParams) (bool, error) {
+	row := q.db.QueryRow(ctx, relPathTaken, arg.LibraryID, arg.RelPath)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const sendBookAgain = `-- name: SendBookAgain :exec
+UPDATE deliveries SET queued_at = now(), delivered_at = NULL
+WHERE book_id = $1 AND delivered_at IS NOT NULL
+`
+
+// The devices that had the book get it again.
+func (q *Queries) SendBookAgain(ctx context.Context, bookID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, sendBookAgain, bookID)
+	return err
+}
+
+const setFileFixed = `-- name: SetFileFixed :exec
+UPDATE book_files
+SET sha256      = $1,
+    size_bytes  = $2,
+    modified_at = $3,
+    updated_at  = now()
+WHERE id = $4
+`
+
+type SetFileFixedParams struct {
+	Sha256     []byte
+	SizeBytes  int64
+	ModifiedAt time.Time
+	ID         uuid.UUID
+}
+
+// The file as a fix wrote it. original_sha256 stays what arrived; the
+// content is read again.
+func (q *Queries) SetFileFixed(ctx context.Context, arg SetFileFixedParams) error {
+	_, err := q.db.Exec(ctx, setFileFixed,
+		arg.Sha256,
+		arg.SizeBytes,
+		arg.ModifiedAt,
+		arg.ID,
+	)
+	return err
 }
 
 const setFileMeasures = `-- name: SetFileMeasures :exec

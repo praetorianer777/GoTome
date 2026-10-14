@@ -1,5 +1,6 @@
 // Package bulk makes one change to many books: an edit, a lookup with the
-// metadata providers, or the writing of their metadata into their files. It
+// metadata providers, the writing of their metadata into their files, or a
+// fix of their EPUBs for e-readers. It
 // runs as a job, a book at a time, and keeps what it came to for each.
 package bulk
 
@@ -32,10 +33,13 @@ const (
 	ActionEdit      = "edit"
 	ActionFetch     = "fetch"
 	ActionWriteBack = "writeBack"
+	// ActionFix fixes what makes the books' EPUBs slow or troublesome on
+	// an e-reader, the findings named.
+	ActionFix = "fix"
 )
 
 // Actions lists every action.
-var Actions = []string{ActionEdit, ActionFetch, ActionWriteBack}
+var Actions = []string{ActionEdit, ActionFetch, ActionWriteBack, ActionFix}
 
 // What a bulk change came to for one book.
 const (
@@ -73,6 +77,12 @@ var ErrNotFound = errors.New("no such bulk change")
 type Ingest interface {
 	ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error)
 	WriteBackTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) (int, error)
+	FixBook(ctx context.Context, scope library.Scope, bookID uuid.UUID, findings []string) (int, error)
+}
+
+// fixChange is what a fix keeps as its change: the findings to fix.
+type fixChange struct {
+	Findings []string `json:"findings"`
 }
 
 // Fetcher looks a book up with the providers: enrich.Service.
@@ -104,17 +114,21 @@ func NewService(pool *pgxpool.Pool, ingest Ingest, fetcher Fetcher, log *slog.Lo
 
 // Start records a bulk change of the books, which the scope's user chose
 // among those they may see, and queues the job that makes it. An edit must
-// have passed catalog.Change.Check.
-func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.UUID, action string, change catalog.Change) (uuid.UUID, error) {
+// have passed catalog.Change.Check; a fix names the findings to fix.
+func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.UUID, action string, change catalog.Change, findings []string) (uuid.UUID, error) {
 	data := []byte("{}")
-	if action == ActionEdit {
-		var err error
-		if data, err = json.Marshal(change); err != nil {
-			return uuid.Nil, err
-		}
+	var err error
+	switch action {
+	case ActionEdit:
+		data, err = json.Marshal(change)
+	case ActionFix:
+		data, err = json.Marshal(fixChange{Findings: findings})
+	}
+	if err != nil {
+		return uuid.Nil, err
 	}
 	var id uuid.UUID
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		var err error
 		id, err = q.CreateBulkChange(ctx, sqlc.CreateBulkChangeParams{
@@ -192,6 +206,10 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 	if err := json.Unmarshal(row.Change, &change); err != nil {
 		return false, err
 	}
+	var fix fixChange
+	if err := json.Unmarshal(row.Change, &fix); err != nil {
+		return false, err
+	}
 	started := time.Now()
 	for time.Since(started) < budget {
 		next, err := q.NextBulkChangeBooks(ctx, sqlc.NextBulkChangeBooksParams{BulkChangeID: id, Limit: batch})
@@ -209,7 +227,7 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 					return false, err
 				}
 			}
-			if err := s.one(ctx, row.Action, scope, own, id, book.BookID); err != nil {
+			if err := s.one(ctx, row.Action, scope, own, fix.Findings, id, book.BookID); err != nil {
 				return false, err
 			}
 		}
@@ -246,7 +264,7 @@ func (s *Service) finish(ctx context.Context, row sqlc.BulkChange) error {
 // one makes the change to one book and records what it came to. It returns
 // an error only for what stops the whole run: the job being cut off, the
 // database gone, or providers that ask to be left alone.
-func (s *Service) one(ctx context.Context, action string, scope library.Scope, change catalog.Change, id, book uuid.UUID) error {
+func (s *Service) one(ctx context.Context, action string, scope library.Scope, change catalog.Change, findings []string, id, book uuid.UUID) error {
 	record := func(q *sqlc.Queries, outcome, message string, skipped []string) error {
 		return q.SetBulkChangeOutcome(ctx, sqlc.SetBulkChangeOutcomeParams{
 			BulkChangeID: id, BookID: book, Outcome: &outcome, Message: optional(message), Skipped: append([]string{}, skipped...),
@@ -301,6 +319,21 @@ func (s *Service) one(ctx context.Context, action string, scope library.Scope, c
 			}
 			return record(sqlc.New(tx), outcome, "", nil)
 		})
+	case ActionFix:
+		// Each file is fixed in a transaction of its own, which renames it;
+		// a run repeated after a fix finds nothing left to fix.
+		if _, err = s.books.Get(ctx, scope, book); err != nil {
+			break
+		}
+		var fixed int
+		if fixed, err = s.ingest.FixBook(ctx, scope, book, findings); err != nil {
+			break
+		}
+		outcome := OutcomeChanged
+		if fixed == 0 {
+			outcome = OutcomeUnchanged
+		}
+		err = record(sqlc.New(s.pool), outcome, "", nil)
 	}
 	if err == nil || ctx.Err() != nil || errors.Is(err, enrich.ErrBusy) {
 		return err

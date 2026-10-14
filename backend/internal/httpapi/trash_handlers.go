@@ -2,12 +2,16 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"path"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
@@ -125,5 +129,56 @@ func (s *Server) listTrash(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+// fixRequest names what to fix in a file, of the findings its ereader
+// check names.
+type fixRequest struct {
+	Findings []string `json:"findings"`
+}
+
+// fixResult says what a fix changed. The original is in the trash, from
+// which it can be restored beside the fixed file.
+type fixResult struct {
+	DocumentsSplit int `json:"documentsSplit"`
+	PartsAdded     int `json:"partsAdded"`
+	ImagesScaled   int `json:"imagesScaled"`
+	FontsRemoved   int `json:"fontsRemoved"`
+	ItemsRemoved   int `json:"itemsRemoved"`
+}
+
+func (s *Server) fixFile(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "fileId", "file")
+	if err != nil {
+		return err
+	}
+	var req fixRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	if len(req.Findings) == 0 {
+		return ErrValidation(map[string]string{"findings": "Say what to fix."})
+	}
+	for _, f := range req.Findings {
+		if !slices.Contains(epub.Findings, f) {
+			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a finding; one is %s.", f, strings.Join(epub.Findings, ", "))})
+		}
+	}
+	fixed, err := s.Scans.Fix(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id, req.Findings)
+	switch {
+	case errors.Is(err, ingest.ErrNoFile):
+		return ErrNotFound("There is no such file.")
+	case errors.Is(err, ingest.ErrNotFixable):
+		return ErrConflict("GOtome cannot change this file: it is no EPUB it can read, or it is protected by DRM.")
+	case errors.Is(err, ingest.ErrNothingToFix):
+		return ErrConflict("There was nothing to fix in this file.")
+	case errors.Is(err, ingest.ErrFileChanged):
+		return ErrConflict("The file changed since it was read. It is read again at the next scan.")
+	}
+	if err := trashError(err); err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, fixResult(fixed))
 	return nil
 }
