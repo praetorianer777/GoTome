@@ -37,6 +37,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/memlimit"
@@ -349,6 +350,7 @@ func serve() error {
 		Stats:      stats.NewService(pool, vectors),
 		Deliveries: deliveries.NewService(pool),
 		Pairing:    pairing.NewService(pool),
+		Kobo:       kobo.NewService(pool),
 		Sync:       progressSync,
 		Releases:   follows,
 		Cleanup:    fixes,

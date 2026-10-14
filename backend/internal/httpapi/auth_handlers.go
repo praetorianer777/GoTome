@@ -224,6 +224,16 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// A Kobo reader carries its device token in the address it syncs
+		// with, and sends Kobo's own token, never GOtome's, in its headers.
+		if device, ok := koboToken(r.URL.Path); ok {
+			if !auth.LooksLikeDeviceToken(device) {
+				writeError(w, r, ErrUnauthorized("The address holds no device token."))
+				return
+			}
+			s.authenticateDevice(w, r, next, "kobo", device, s.Auth.AuthenticateDeviceToken)
+			return
+		}
 		if token == "" {
 			if name, secret, ok := r.BasicAuth(); ok {
 				s.authenticateDevice(w, r, next, name, secret, s.Auth.AuthenticateDevice)

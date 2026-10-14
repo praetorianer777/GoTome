@@ -252,6 +252,13 @@ type IndexVersion struct {
 	UpdatedAt time.Time
 }
 
+type KoboBook struct {
+	DeviceID   uuid.UUID
+	BookID     uuid.UUID
+	SyncedAt   time.Time
+	ProgressAt *time.Time
+}
+
 type Library struct {
 	ID         uuid.UUID
 	Name       string

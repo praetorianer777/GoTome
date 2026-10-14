@@ -31,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -183,6 +184,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Deliveries = deliveries.NewService(a.pool)
 	a.server.Pairing = pairing.NewService(a.pool)
+	a.server.Kobo = kobo.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue

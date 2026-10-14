@@ -70,3 +70,12 @@ FOR UPDATE;
 
 -- name: SetDeviceRequestState :exec
 UPDATE device_requests SET state = $2 WHERE id = $1;
+
+-- name: GetDeviceUserByToken :one
+-- The account a device token signs in alone, as a Kobo reader sends it in
+-- its address without a user name. A disabled account's devices sign
+-- nobody in.
+SELECT u.*, d.id AS device_id, d.last_used_at AS device_last_used_at
+FROM devices d
+JOIN users u ON u.id = d.user_id
+WHERE d.token_hash = $1 AND u.disabled_at IS NULL;

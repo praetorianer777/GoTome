@@ -34,6 +34,12 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return ErrNotFound(gone)
 	}
+	return s.serveCover(w, r, id, size)
+}
+
+// serveCover sends the book's cover in the size, if the caller sees the book.
+func (s *Server) serveCover(w http.ResponseWriter, r *http.Request, id uuid.UUID, size covers.Size) error {
+	const gone = "There is no such cover."
 	key, err := s.Books.CoverKey(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	if errors.Is(err, catalog.ErrNotFound) {
 		return ErrNotFound(gone)
