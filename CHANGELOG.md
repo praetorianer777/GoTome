@@ -6,6 +6,23 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The EPUB and PDF readers and the audiobook player can be used from the
+  keyboard alone: pages turn with the arrows, Page Up and Page Down and the
+  space bar; C opens the contents, F a search in the book, D the display
+  settings; the player plays and pauses with the space bar or K, seeks with
+  the arrows and changes chapter with Shift and the arrows. The "Keys" button,
+  or ?, lists them all.
+- The EPUB and PDF readers search the book they show.
+
+### Changed
+
+- Screen readers are told of new notifications, of each finished upload and
+  of the page a PDF turns to; panels and dialogs take the focus when they
+  open and give it back when they close. The focus ring, grey text on the
+  dark colours and the empty rating stars are easier to see.
+
 ### Security
 
 - An upload whose content is not the format its name says, such as a web

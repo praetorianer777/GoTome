@@ -21,17 +21,24 @@ export function Bell() {
 	const notifications = useQuery(notificationsQuery);
 	const [open, setOpen] = useState(false);
 	const box = useRef<HTMLDivElement>(null);
+	const toggle = useRef<HTMLButtonElement>(null);
 	const unread = notifications.data?.unread ?? 0;
+	// A screen reader is told when more come in, not of those there on arrival.
+	const [counted, setCounted] = useState<number>();
+	const [news, setNews] = useState("");
+	if (notifications.data && unread !== counted) {
+		if (counted !== undefined && unread > counted) {
+			setNews(t("notifications.bell", { count: unread }));
+		}
+		setCounted(unread);
+	}
 
 	useEffect(() => {
 		if (!open) return;
 		const close = (e: Event) => {
-			if (
-				e instanceof KeyboardEvent
-					? e.key === "Escape"
-					: !box.current?.contains(e.target as Node)
-			) {
+			if (e instanceof KeyboardEvent ? e.key === "Escape" : !box.current?.contains(e.target as Node)) {
 				setOpen(false);
+				if (e instanceof KeyboardEvent) toggle.current?.focus();
 			}
 		};
 		document.addEventListener("keydown", close);
@@ -44,7 +51,11 @@ export function Bell() {
 
 	return (
 		<div ref={box} className="relative">
+			<span aria-live="polite" className="sr-only">
+				{news}
+			</span>
 			<button
+				ref={toggle}
 				type="button"
 				aria-expanded={open}
 				aria-controls="notifications"

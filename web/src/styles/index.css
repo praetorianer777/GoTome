@@ -39,7 +39,16 @@ body {
 	@apply bg-slate-50 text-slate-900 antialiased dark:bg-ink dark:text-slate-100;
 }
 
-/* One focus ring everywhere, visible on both grounds. */
+/* One focus ring everywhere, visible on both grounds: the light blue is too
+   faint on white to show where focus is, the dark one too dark on ink. */
 :focus-visible {
-	@apply outline-2 outline-offset-2 outline-brand;
+	@apply outline-2 outline-offset-2 outline-brand-strong dark:outline-brand;
+}
+
+/* Grey text for what is said in passing reads well enough on white, but not
+   on the dark grounds, where it is lightened a step. */
+.text-slate-500 {
+	@variant dark {
+		color: var(--color-slate-400);
+	}
 }

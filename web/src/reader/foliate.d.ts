@@ -53,6 +53,7 @@ declare module "foliate-js/view.js" {
 			| { label: string; subitems: FoliateSearchResult[] }
 		>;
 		goToFraction(fraction: number): Promise<void>;
+		clearSearch(): void;
 		goLeft(): Promise<void>;
 		goRight(): Promise<void>;
 		prev(): Promise<void>;

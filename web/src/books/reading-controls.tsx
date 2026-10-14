@@ -64,11 +64,11 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 							onClick={() => set.mutate({ rating: rating === n ? 0 : n })}
 							className={`text-xl leading-none ${
 								rating && n <= rating
-									? "text-amber-500"
-									: "text-slate-300 dark:text-slate-600"
+									? "text-amber-600 dark:text-amber-400"
+									: "text-slate-500 dark:text-slate-400"
 							}`}
 						>
-							★
+							{rating && n <= rating ? "★" : "☆"}
 						</button>
 					))}
 				</fieldset>

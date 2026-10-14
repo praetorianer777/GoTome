@@ -11,7 +11,8 @@ import {
 } from "@/books/edit";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
-import { Compare, typing } from "@/routes/book-find";
+import { typing } from "@/lib/keys";
+import { Compare } from "@/routes/book-find";
 
 const quietButton =
 	"rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";

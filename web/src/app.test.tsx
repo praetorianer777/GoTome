@@ -90,6 +90,19 @@ vi.mock("@/reader/ebook", () => ({
 					: ["one.xhtml", "two.xhtml", "three.xhtml"].indexOf(target) * 4;
 				place();
 			},
+			// "whale" stands once in each chapter.
+			search: async (query: string) =>
+				query === "whale"
+					? [
+							{ cfi: "epubcfi(/6/1)", excerpt: { pre: "a ", match: "whale", post: " in One" } },
+							{ cfi: "epubcfi(/6/7)", excerpt: { pre: "a ", match: "whale", post: " in Two" } },
+						]
+					: [],
+			clearSearch: () => {},
+			goToFraction: async (fraction: number) => {
+				at = Math.round(fraction * 10);
+				place();
+			},
 			goLeft: () => turn(-1),
 			goRight: () => turn(1),
 			prev: () => turn(-1),
@@ -2601,6 +2614,61 @@ describe("the PDF reader", () => {
 			basedOn: "2026-01-02T10:00:00Z",
 		});
 	});
+	it("is read from the keyboard: pages, zoom, page number, contents and search", async () => {
+		const person = userEvent.setup();
+		withPdf();
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByRole("figure", { name: "Page 1 of Emma" })).toBeInTheDocument();
+
+		await person.keyboard(" ");
+		expect(page()).toHaveValue("2");
+		await person.keyboard("{PageDown}{ArrowRight}");
+		expect(page()).toHaveValue("4");
+		await person.keyboard("{Shift>} {/Shift}{ArrowLeft}");
+		expect(page()).toHaveValue("2");
+		await person.keyboard("+");
+		expect(screen.getByRole("button", { name: "125%" })).toBeInTheDocument();
+		await person.keyboard("0");
+		expect(screen.getByRole("button", { name: "Fit width" })).toBeInTheDocument();
+
+		await person.keyboard("g");
+		expect(page()).toHaveFocus();
+		await person.keyboard("7{Enter}");
+		expect(screen.getByRole("figure", { name: "Page 7 of Emma" })).toBeInTheDocument();
+		page().blur();
+
+		await person.keyboard("c");
+		const contents = screen.getByRole("button", { name: "Contents" });
+		expect(contents).toHaveAttribute("aria-expanded", "true");
+		expect(await screen.findByRole("button", { name: "Chapter One" })).toHaveFocus();
+		await person.keyboard("{Escape}");
+		expect(contents).toHaveAttribute("aria-expanded", "false");
+		expect(contents).toHaveFocus();
+
+		await person.keyboard("f");
+		const words = screen.getByRole("searchbox", { name: "Words to look for in the book" });
+		expect(words).toHaveFocus();
+		await person.type(words, "whale{Enter}");
+		expect(await screen.findByText("Places found: 1")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: /^Page 8:\s*a white ledger and a whale$/ }));
+		expect(screen.getByRole("figure", { name: "Page 8 of Emma" })).toBeInTheDocument();
+		await person.click(words);
+		await person.keyboard("{Escape}");
+		expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
+
+		await person.click(screen.getByRole("button", { name: "Keys" }));
+		const help = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+		expect(help).toHaveFocus();
+		await person.keyboard("{ArrowRight}");
+		expect(page()).toHaveValue("8");
+		await person.tab();
+		expect(within(help).getByRole("button", { name: "Close" })).toHaveFocus();
+		await person.tab();
+		expect(within(help).getByRole("button", { name: "Close" })).toHaveFocus();
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Keys" })).toHaveFocus();
+	});
 });
 
 describe("the audiobook player", () => {
@@ -2749,6 +2817,50 @@ describe("the audiobook player", () => {
 		expect(
 			screen.queryByRole("region", { name: "Now playing" }),
 		).not.toBeInTheDocument();
+	});
+
+	it("is played, sought and sped up from the keyboard", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		expect(await screen.findByTestId("position")).toHaveTextContent("0:00");
+
+		await person.keyboard("k");
+		expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		await person.keyboard("{ArrowRight}");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:30");
+		await person.keyboard("{Shift>}{ArrowRight}{/Shift}");
+		expect(screen.getByTestId("position")).toHaveTextContent("1:00");
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+		await person.keyboard("p");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:30");
+		await person.keyboard("5");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:55");
+		await person.keyboard("{ArrowLeft}");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:25");
+		await person.keyboard("+");
+		expect(audio().playbackRate).toBe(1.25);
+		await person.keyboard("-");
+		expect(audio().playbackRate).toBe(1);
+
+		// Space on a focused button presses only the button.
+		screen.getByRole("button", { name: "Next chapter" }).focus();
+		await person.keyboard(" ");
+		expect(screen.getByTestId("position")).toHaveTextContent("0:30");
+		expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+		(document.activeElement as HTMLElement).blur();
+		await person.keyboard(" ");
+		expect(await screen.findByRole("button", { name: "Play" })).toBeInTheDocument();
+
+		await person.keyboard("?");
+		const help = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+		expect(within(help).getByText("Play or pause")).toBeInTheDocument();
+		await person.keyboard("k");
+		expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
 	it("says which formats this browser cannot play, and offers the files", async () => {
@@ -3403,6 +3515,58 @@ describe("the EPUB and MOBI reader", () => {
 		).toEqual({ flow: "scrolled", theme: "sepia", fontSize: 110 });
 	});
 
+	it("is read from the keyboard: pages, contents, search, text size and the list of keys", async () => {
+		const person = userEvent.setup();
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		await screen.findByRole("button", { name: "Keys" });
+		await waitFor(() => expect(screen.getByRole("button", { name: "Keys" })).toBeEnabled());
+
+		await person.keyboard(" ");
+		expect(await screen.findByText("10%")).toBeInTheDocument();
+		await person.keyboard("{PageDown}");
+		expect(await screen.findByText("20%")).toBeInTheDocument();
+		await person.keyboard("{Shift>} {/Shift}");
+		expect(await screen.findByText("10%")).toBeInTheDocument();
+		await person.keyboard("{End}");
+		expect(await screen.findByText("100%")).toBeInTheDocument();
+		await person.keyboard("{Home}");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+
+		await person.keyboard("+");
+		expect(ebook.looks.at(-1)).toMatchObject({ fontSize: 110 });
+		await person.keyboard("-");
+		expect(ebook.looks.at(-1)).toMatchObject({ fontSize: 100 });
+
+		await person.keyboard("c");
+		const contents = within(screen.getByRole("navigation", { name: "Contents" }));
+		expect(contents.getByRole("button", { name: "One" })).toHaveFocus();
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("navigation", { name: "Contents" })).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Contents" })).toHaveFocus();
+
+		await person.keyboard("f");
+		const words = screen.getByRole("searchbox", { name: "Words to look for in the book" });
+		expect(words).toHaveFocus();
+		await person.type(words, "whale{Enter}");
+		expect(await screen.findByText("Places found: 2")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "a whale in Two" }));
+		expect(await screen.findByText("70%")).toBeInTheDocument();
+		await person.click(words);
+		await person.keyboard("{Escape}");
+		expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
+
+		await person.keyboard("?");
+		const help = within(screen.getByRole("dialog", { name: "Keyboard shortcuts" }));
+		expect(help.getByText("Show or hide the contents")).toBeInTheDocument();
+		expect(help.getAllByText("Space")).toHaveLength(2);
+		await person.keyboard("{ArrowRight}");
+		expect(screen.getByText("70%")).toBeInTheDocument();
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+	});
+
 	it("reaching the end saves the whole book as read", async () => {
 		const person = userEvent.setup();
 		withBook("epub", "Persuasion.epub");
@@ -3483,6 +3647,15 @@ describe("notifications", () => {
 		const bell = await screen.findByRole("button", {
 			name: "Notifications, 1 unread",
 		});
+		// A screen reader hears of new ones; the count on arrival is not news.
+		server.notify({ id: "note-later", data: { action: "fetch", outcomes: { changed: 1 } } });
+		stream?.emit("unread", '{"unread":2}');
+		await screen.findByRole("button", { name: "Notifications, 2 unread" });
+		expect(bell.previousElementSibling).toHaveTextContent("Notifications, 2 unread");
+		await person.click(bell);
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
+		expect(bell).toHaveFocus();
 		await person.click(bell);
 		const panel = within(screen.getByRole("region", { name: "Notifications" }));
 		expect(

@@ -39,6 +39,14 @@ export interface Ebook {
 	 * nowhere in the book.
 	 */
 	find(word: string, passage: string): Promise<boolean>;
+	/**
+	 * The places that hold the words, at most limit of them, outlined in the
+	 * book until clearSearch.
+	 */
+	search(query: string, limit: number): Promise<Found[]>;
+	clearSearch(): void;
+	/** Goes as far into the book as the fraction, 0 its start and 1 its end. */
+	goToFraction(fraction: number): Promise<void>;
 	/** Turns the page towards the left or the right, whichever way the book reads. */
 	goLeft(): Promise<void>;
 	goRight(): Promise<void>;
@@ -157,6 +165,16 @@ export async function openEbook(
 			moving = next.catch(() => {});
 			return next;
 		};
+	const search = async (query: string, limit: number) => {
+		const found: Found[] = [];
+		for await (const result of view.search({ query })) {
+			if (typeof result === "object" && "subitems" in result) {
+				found.push(...result.subitems);
+				if (found.length >= limit) break;
+			}
+		}
+		return found.slice(0, limit);
+	};
 	const find = async (word: string, passage: string) => {
 		const found: Found[] = [];
 		for await (const result of view.search({ query: word })) {
@@ -172,6 +190,9 @@ export async function openEbook(
 		toc: flatten(view.book.toc),
 		goTo: inTurn((target: string) => view.goTo(target)),
 		find: inTurn(find),
+		search: inTurn(search),
+		clearSearch: () => view.clearSearch(),
+		goToFraction: inTurn((fraction: number) => view.goToFraction(fraction)),
 		goLeft: inTurn(() => view.goLeft()),
 		goRight: inTurn(() => view.goRight()),
 		next: inTurn(() => view.next()),

@@ -168,21 +168,23 @@ export function Upload({ user }: { user: CurrentUser }) {
 						</p>
 						<label
 							htmlFor={inputId}
-							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2"
+							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-strong dark:has-focus-visible:outline-brand"
 						>
 							{t("upload.choose")}
+							{/* Inside its label, so that the label shows the ring when the
+							    hidden input has the keyboard's focus. */}
+							<input
+								id={inputId}
+								type="file"
+								multiple
+								accept={UPLOAD_FORMATS.join(",")}
+								className="sr-only"
+								onChange={(e) => {
+									add(e.target.files);
+									e.target.value = "";
+								}}
+							/>
 						</label>
-						<input
-							id={inputId}
-							type="file"
-							multiple
-							accept={UPLOAD_FORMATS.join(",")}
-							className="sr-only"
-							onChange={(e) => {
-								add(e.target.files);
-								e.target.value = "";
-							}}
-						/>
 						<p className="text-sm text-slate-600 dark:text-slate-400">
 							{t("upload.formats")}
 						</p>
@@ -247,12 +249,15 @@ function UploadRow({ item }: { item: Item }) {
 					</span>
 				</div>
 			)}
-			{item.result && <Outcome result={item.result} />}
-			{item.state === "failed" && (
-				<p className="text-sm text-red-700 dark:text-red-300">
-					{fieldErrors(item.error).file ?? errorMessage(item.error)}
-				</p>
-			)}
+			{/* Each file's outcome is announced as it comes; its percentages are not. */}
+			<div role="status">
+				{item.result && <Outcome result={item.result} />}
+				{item.state === "failed" && (
+					<p className="text-sm text-red-700 dark:text-red-300">
+						{fieldErrors(item.error).file ?? errorMessage(item.error)}
+					</p>
+				)}
+			</div>
 		</li>
 	);
 }

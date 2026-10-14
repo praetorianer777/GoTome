@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { useEffect, useId, useRef } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { Dialog } from "@/components/dialog";
 import { type MessageKey, t } from "@/i18n";
 import { formatSize } from "@/lib/format";
 
@@ -159,50 +160,39 @@ export function SwitchModelDialog({
 	// The safe answer is the one a stray Enter gives.
 	useEffect(() => cancel.current?.focus(), []);
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-			<div
-				role="alertdialog"
-				aria-modal="true"
-				aria-labelledby={`${id}-title`}
-				aria-describedby={`${id}-body`}
-				onKeyDown={(e) => {
-					if (e.key === "Escape") {
-						onCancel();
-					}
-				}}
-				className="flex w-full max-w-md flex-col gap-4 rounded-lg bg-white p-5 shadow-xl dark:bg-slate-900"
+		<Dialog
+			alert
+			title={t("embeddingModel.confirm.title", { model })}
+			describedBy={`${id}-body`}
+			onClose={onCancel}
+		>
+			<p
+				id={`${id}-body`}
+				className="text-sm text-slate-700 dark:text-slate-300"
 			>
-				<h2 id={`${id}-title`} className="text-lg font-semibold">
-					{t("embeddingModel.confirm.title", { model })}
-				</h2>
-				<p
-					id={`${id}-body`}
-					className="text-sm text-slate-700 dark:text-slate-300"
+				{t("embeddingModel.confirm.body", {
+					model,
+					metadata: done,
+					books: list.books,
+				})}
+			</p>
+			<div className="flex flex-wrap justify-end gap-2">
+				<button
+					ref={cancel}
+					type="button"
+					onClick={onCancel}
+					className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
 				>
-					{t("embeddingModel.confirm.body", {
-						model,
-						metadata: done,
-						books: list.books,
-					})}
-				</p>
-				<div className="flex flex-wrap justify-end gap-2">
-					<button
-						ref={cancel}
-						type="button"
-						onClick={onCancel}
-						className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
-					>
-						{t("embeddingModel.confirm.cancel")}
-					</button>
-					<button
-						type="button"
-						onClick={onConfirm}
-						className="rounded-md bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800"
-					>
-						{t("embeddingModel.confirm.switch")}
-					</button>
-				</div>
+					{t("embeddingModel.confirm.cancel")}
+				</button>
+				<button
+					type="button"
+					onClick={onConfirm}
+					className="rounded-md bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800"
+				>
+					{t("embeddingModel.confirm.switch")}
+				</button>
 			</div>
-		</div>
+		</Dialog>
 	);
 }

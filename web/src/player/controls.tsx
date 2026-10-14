@@ -1,8 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useState } from "react";
 import { downloadUrl } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { KeyHelp } from "@/components/dialog";
 import { t } from "@/i18n";
 import { formatTime } from "@/lib/format";
+import { type KeyBinding, useKeys } from "@/lib/keys";
 import { chapterStep, type Sleep, usePlayer } from "@/player/player";
 import { chapterAt, formatClock } from "@/player/timeline";
 
@@ -91,6 +94,40 @@ export function Listen({ bookId }: { bookId: string }) {
 	const timeline = mine ? state.timeline : undefined;
 	const at = timeline ? chapterAt(timeline, state.positionMs) : -1;
 	const stopped = !timeline || state.unsupported.length > 0;
+	const [help, setHelp] = useState(false);
+	const rate = (step: number) => {
+		const next = RATES[RATES.indexOf(state.rate) + step];
+		if (next) player.setRate(next);
+	};
+	const bindings: KeyBinding[] =
+		timeline && !stopped
+			? [
+					{ keys: [" ", "k"], label: "keys.playPause", run: () => player.toggle() },
+					{ keys: ["ArrowLeft", "j"], label: "keys.back30", run: () => player.skip(-SKIP_MS) },
+					{ keys: ["ArrowRight", "l"], label: "keys.forward30", run: () => player.skip(SKIP_MS) },
+					{
+						keys: ["Shift+ArrowLeft", "p"],
+						label: "keys.previousChapter",
+						run: () => chapterStep(state, player, -1),
+					},
+					{
+						keys: ["Shift+ArrowRight", "n"],
+						label: "keys.nextChapter",
+						run: () => chapterStep(state, player, 1),
+					},
+					{ keys: ["Home"], label: "keys.first", run: () => player.seek(0) },
+					{
+						keys: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+						display: ["0–9"],
+						label: "keys.tenth",
+						run: (e) => player.seek((timeline.durationMs * Number(e.key)) / 10),
+					},
+					{ keys: ["+", "="], label: "keys.faster", run: () => rate(1) },
+					{ keys: ["-"], label: "keys.slower", run: () => rate(-1) },
+					{ keys: ["?"], label: "keys.help", run: () => setHelp(true) },
+				]
+			: [];
+	useKeys(bindings);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -119,7 +156,7 @@ export function Listen({ bookId }: { bookId: string }) {
 			{mine && state.book && (
 				<div className="grid gap-6 sm:grid-cols-[minmax(0,12rem)_1fr]">
 					<div className="mx-auto w-40 sm:w-full">
-						<Cover book={state.book} size="large" />
+						<Cover book={state.book} size="large" named />
 					</div>
 					<div className="flex flex-col gap-4">
 						<h1 className="text-2xl font-semibold">{state.book.title}</h1>
@@ -182,7 +219,7 @@ export function Listen({ bookId }: { bookId: string }) {
 									</span>
 								</label>
 								<div className="flex flex-wrap items-center gap-2">
-									<button type="button" className={button} disabled={stopped} onClick={() => chapterStep(state, player, -1)}>
+									<button type="button" className={button} disabled={stopped} aria-keyshortcuts="P" onClick={() => chapterStep(state, player, -1)}>
 										{t("player.previousChapter")}
 									</button>
 									<button type="button" className={button} aria-label={t("player.back30")} disabled={stopped} onClick={() => player.skip(-SKIP_MS)}>
@@ -199,10 +236,14 @@ export function Listen({ bookId }: { bookId: string }) {
 									<button type="button" className={button} aria-label={t("player.forward30")} disabled={stopped} onClick={() => player.skip(SKIP_MS)}>
 										+30
 									</button>
-									<button type="button" className={button} disabled={stopped} onClick={() => chapterStep(state, player, 1)}>
+									<button type="button" className={button} disabled={stopped} aria-keyshortcuts="N" onClick={() => chapterStep(state, player, 1)}>
 										{t("player.nextChapter")}
 									</button>
+									<button type="button" className={button} disabled={stopped} aria-keyshortcuts="Shift+?" onClick={() => setHelp(true)}>
+										{t("keys.button")}
+									</button>
 								</div>
+								{help && <KeyHelp bindings={bindings} onClose={() => setHelp(false)} />}
 								<div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
 									<label className="flex items-center gap-2">
 										<span>{t("player.speed")}</span>
