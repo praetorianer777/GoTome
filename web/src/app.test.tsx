@@ -1427,6 +1427,50 @@ describe("profile", () => {
 		await waitFor(() => expect(server.devices).toHaveLength(0));
 	});
 
+	it("shows a device asking to be added with its code, and accepts or declines it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		const asked = {
+			code: "4711",
+			address: "192.0.2.7",
+			createdAt: "2026-01-04T08:00:00Z",
+			expiresAt: "2026-01-04T08:10:00Z",
+		};
+		server.deviceRequests = [
+			{ id: "r-1", deviceName: "Tolino Shine 4", ...asked },
+			{ id: "r-2", deviceName: "Unknown Kobo", ...asked, code: "0042" },
+		];
+		renderApp("/profile");
+		const waiting = within(
+			await screen.findByRole("list", { name: "Devices asking to be added" }),
+		);
+		const tolino = within(
+			waiting.getByRole("listitem", {
+				name: "Tolino Shine 4 asks to be added to your account.",
+			}),
+		);
+		expect(tolino.getByText("4711")).toBeInTheDocument();
+		expect(tolino.getByText(/From 192\.0\.2\.7/)).toBeInTheDocument();
+
+		await person.click(
+			within(
+				waiting.getByRole("listitem", { name: /^Unknown Kobo/ }),
+			).getByRole("button", { name: "Decline" }),
+		);
+		await waitFor(() =>
+			expect(
+				waiting.queryByRole("listitem", { name: /^Unknown Kobo/ }),
+			).not.toBeInTheDocument(),
+		);
+		await person.click(tolino.getByRole("button", { name: "Accept" }));
+		const devices = within(screen.getByRole("region", { name: "E-readers" }));
+		expect(await devices.findByText("Tolino Shine 4")).toBeInTheDocument();
+		expect(
+			devices.queryByRole("list", { name: "Devices asking to be added" }),
+		).not.toBeInTheDocument();
+		expect(server.devices.map((d) => d.name)).toEqual(["Tolino Shine 4"]);
+	});
+
 	it("leaves single sign-on out of the profile where there is none", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		renderApp("/profile");

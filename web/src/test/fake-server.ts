@@ -94,6 +94,18 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/**
+	 * E-readers asking to be added. Accepting one adds it to the devices at
+	 * once, as its app would come for the token.
+	 */
+	deviceRequests: {
+		id: string;
+		deviceName: string;
+		code: string;
+		address: string;
+		createdAt: string;
+		expiresAt: string;
+	}[] = [];
 	/** The signed-in person's e-readers, as the profile page lists them. */
 	devices: {
 		id: string;
@@ -779,6 +791,7 @@ export class FakeServer {
 			path.startsWith("/users/") ||
 			path.startsWith("/auth/sessions") ||
 			path.startsWith("/auth/devices") ||
+			path.startsWith("/auth/device-requests") ||
 			path === "/auth/password" ||
 			path === "/auth/storage"
 		) {
@@ -1698,6 +1711,23 @@ export class FakeServer {
 		}
 		if (path === "/auth/sessions") {
 			return Response.json({ sessions: this.sessions });
+		}
+		if (path === "/auth/device-requests" && method === "GET") {
+			return Response.json({ requests: this.deviceRequests });
+		}
+		const decided = /^\/auth\/device-requests\/([^/]+)\/(accept|decline)$/.exec(path);
+		if (decided && method === "POST") {
+			const request = this.deviceRequests.find((r) => r.id === decided[1]);
+			if (!request) return refuse(404, "not_found", "There is no such request waiting.");
+			this.deviceRequests = this.deviceRequests.filter((r) => r !== request);
+			if (decided[2] === "accept") {
+				this.devices.push({
+					id: `d-${this.devices.length + 1}`,
+					name: request.deviceName,
+					createdAt: "2026-01-04T08:00:00Z",
+				});
+			}
+			return new Response(null, { status: 204 });
 		}
 		if (path === "/auth/devices" && method === "GET") {
 			return Response.json({ devices: this.devices });

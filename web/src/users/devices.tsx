@@ -3,7 +3,13 @@ import { type FormEvent, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { t } from "@/i18n";
 import { formatDate } from "@/lib/format";
-import { ownDevicesQuery, useCreateDevice, useDeleteDevice } from "@/users/api";
+import {
+	deviceRequestsQuery,
+	ownDevicesQuery,
+	useCreateDevice,
+	useDecideDeviceRequest,
+	useDeleteDevice,
+} from "@/users/api";
 
 /**
  * E-readers such as KOReader browse the library as an OPDS catalogue,
@@ -11,7 +17,16 @@ import { ownDevicesQuery, useCreateDevice, useDeleteDevice } from "@/users/api";
  * shown once.
  */
 export function Devices({ username }: { username: string }) {
-	const devices = useQuery(ownDevicesQuery);
+	const requests = useQuery(deviceRequestsQuery);
+	const decide = useDecideDeviceRequest();
+	// An accepted device is made when its app comes for the token, a few
+	// seconds later: the list is looked at until it has.
+	const [accepted, setAccepted] = useState(0);
+	const devices = useQuery({
+		...ownDevicesQuery,
+		refetchInterval: (query) =>
+			(query.state.data?.length ?? 0) < accepted ? 3000 : false,
+	});
 	const create = useCreateDevice();
 	const remove = useDeleteDevice();
 	const [name, setName] = useState("");
@@ -39,7 +54,66 @@ export function Devices({ username }: { username: string }) {
 					{t("devices.pluginDownload")}
 				</a>
 			</p>
-			<FormError error={devices.error ?? remove.error} />
+			<FormError error={devices.error ?? remove.error ?? decide.error} />
+			{requests.data && requests.data.length > 0 && (
+				<ul
+					aria-label={t("devices.requests")}
+					className="flex flex-col gap-3"
+				>
+					{requests.data.map((r) => (
+						<li
+							key={r.id}
+							aria-label={t("devices.request", { name: r.deviceName })}
+							className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950"
+						>
+							<p>
+								{t("devices.request", { name: r.deviceName })}{" "}
+								<span className="text-sm text-slate-600 dark:text-slate-400">
+									{t("devices.requestFrom", {
+										address: r.address,
+										date: formatDate(r.createdAt),
+									})}
+								</span>
+							</p>
+							<p className="flex items-baseline gap-3">
+								<span>{t("devices.requestCode")}</span>
+								<span className="font-mono text-2xl tracking-widest">
+									{r.code}
+								</span>
+							</p>
+							<p className="text-sm text-slate-600 dark:text-slate-400">
+								{t("devices.requestHint")}
+							</p>
+							<div className="flex gap-3">
+								<button
+									type="button"
+									disabled={decide.isPending}
+									onClick={() =>
+										decide.mutate(
+											{ id: r.id, accept: true },
+											{
+												onSuccess: () =>
+													setAccepted((devices.data?.length ?? 0) + 1),
+											},
+										)
+									}
+									className="rounded-md bg-brand-strong px-3 py-1 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+								>
+									{t("devices.accept")}
+								</button>
+								<button
+									type="button"
+									disabled={decide.isPending}
+									onClick={() => decide.mutate({ id: r.id, accept: false })}
+									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+								>
+									{t("devices.decline")}
+								</button>
+							</div>
+						</li>
+					))}
+				</ul>
+			)}
 			{devices.data && devices.data.length > 0 && (
 				<ul className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
 					{devices.data.map((d) => (

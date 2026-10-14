@@ -379,6 +379,8 @@ export const en = {
 	"notification.reviewNeeded": "Details to review",
 	"notification.reviewNeeded.one": "Some were found for {title} and wait for you.",
 	"notification.reviewNeeded.many": "For {count} books.",
+	"notification.deviceRequested": "A device asks to be added",
+	"notification.deviceRequested.detail": "{device}, code {code}: accept or decline it on your profile.",
 	"notification.wishFulfilled": "A wish came in",
 	"notification.wishFulfilled.one": "{title} is in the library now.",
 	"notification.wishFulfilled.many": "{count} books you wished for are in the library now.",
@@ -719,6 +721,14 @@ export const en = {
 	"devices.plugin":
 		"With KOReader, the GOtome plugin fetches the books you send to the device by itself when Wi-Fi comes up: unpack it into KOReader's plugins folder, then enter your user name and the device's token under GOtome in its menu.",
 	"devices.pluginDownload": "Download the KOReader plugin",
+	"devices.requests": "Devices asking to be added",
+	"devices.request": "{name} asks to be added to your account.",
+	"devices.requestFrom": "From {address}, {date}.",
+	"devices.requestCode": "Its code:",
+	"devices.requestHint":
+		"Accept it only if the device shows the same code. It then signs in by itself; nobody types a token.",
+	"devices.accept": "Accept",
+	"devices.decline": "Decline",
 	"devices.lastUsed": "Last used {date}",
 	"devices.neverUsed": "Not used yet",
 	"devices.revoke": "Revoke",
