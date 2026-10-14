@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- GOtome runs bge-m3 itself on the CPU when no embedding server is set: a
+  library embedded on a machine with a GPU keeps its vectors on a machine
+  without one, and new books and searches by description go on with the
+  same model. The first use downloads 2.3 GB. `gotome embed-check -model
+  bge-m3 -against-stored 50` checks the CPU's vectors against the stored
+  ones; see `docs/embedding-server.md`.
 - GOtome for Tolino signs in without a token typed on the e-reader: give it
   the address and your user name, tap **Request access**, and accept the
   Tolino on your profile under E-readers when it shows the same code. The

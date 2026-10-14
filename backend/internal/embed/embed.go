@@ -30,11 +30,14 @@ type Model struct {
 	MaxTokens int
 }
 
-// File is one file of a model, at the pinned revision.
+// File is one file of a model, at the pinned revision, checked by its
+// SHA-256 or, for a small file Hugging Face publishes none for, by its git
+// blob ID.
 type File struct {
-	Name   string
-	Size   int64
-	SHA256 string
+	Name    string
+	Size    int64
+	SHA256  string
+	GitBlob string
 }
 
 // Spec is a model and the files it runs from: the weights and tokenizer.json,
@@ -42,9 +45,18 @@ type File struct {
 type Spec struct {
 	Model Model
 	// Dir is the folder under the model directory its files are kept in.
-	Dir       string
-	Weights   File
+	Dir     string
+	Weights File
+	// Data are files the weights load beside them: an export over 2 GB keeps
+	// its tensors outside the model file.
+	Data      []File
 	Tokenizer File
+	// Download is the revision the files are downloaded at, where Model's
+	// Revision names something else.
+	Download string
+	// Pooling makes one vector of a text's token vectors where the model
+	// gives those: PoolMean, the default, or PoolCLS.
+	Pooling string
 	// Server is the model's name on an embedding server (Ollama), for a
 	// model GOtome does not run itself.
 	Server string
@@ -52,8 +64,26 @@ type Spec struct {
 	Prefix string
 }
 
+// How a text's token vectors become one.
+const (
+	PoolMean = ""
+	PoolCLS  = "cls"
+)
+
 // Files are the spec's files, the weights first.
-func (s Spec) Files() []File { return []File{s.Weights, s.Tokenizer} }
+func (s Spec) Files() []File {
+	return append(append([]File{s.Weights}, s.Data...), s.Tokenizer)
+}
+
+// Runs says whether GOtome runs the model itself: it has its files.
+func (s Spec) Runs() bool { return s.Weights.Name != "" }
+
+func (s Spec) revision() string {
+	if s.Download != "" {
+		return s.Download
+	}
+	return s.Model.Revision
+}
 
 // E5Small is multilingual-e5-small with its int8 weights.
 var E5Small = Spec{
@@ -101,11 +131,15 @@ var E5SmallFP32 = Spec{
 	Prefix:    E5Small.Prefix,
 }
 
-// BGEM3 is BAAI's bge-m3 as an Ollama server runs it, on a GPU where there
-// is one (#173): multilingual, 1,024 dimensions, five times e5-small's
-// size. It reads 8,192 tokens, but is asked for as many as e5-small, the
-// first 512 of a passage, which a whole chunk would take four times as
-// long for. It takes no prefix.
+// BGEM3 is BAAI's bge-m3: multilingual, 1,024 dimensions, five times
+// e5-small's size. It reads 8,192 tokens, but is asked for as many as
+// e5-small, the first 512 of a passage, which a whole chunk would take four
+// times as long for. It takes no prefix. It runs on an Ollama server, on a
+// GPU where there is one (#173), and otherwise in GOtome on the CPU from
+// BAAI's own ONNX export in full precision (#228), whose dense vector is
+// the first token's. Both are the same weights, so their vectors are one
+// model's: Model keeps the name the server's vectors were stored under,
+// and switching between the two embeds nothing again.
 var BGEM3 = Spec{
 	Model: Model{
 		Name:      "BAAI/bge-m3",
@@ -114,7 +148,32 @@ var BGEM3 = Spec{
 		Dim:       1024,
 		MaxTokens: 512,
 	},
-	Server: "bge-m3",
+	Server:   "bge-m3",
+	Dir:      "bge-m3",
+	Download: "5617a9f61b028005a4858fdac845db406aefb181",
+	Weights: File{
+		Name:   "model.onnx",
+		Size:   724923,
+		SHA256: "f84251230831afb359ab26d9fd37d5936d4d9bb5d1d5410e66442f630f24435b",
+	},
+	Data: []File{
+		{
+			Name:   "model.onnx_data",
+			Size:   2266820608,
+			SHA256: "1eebfb28493f67bba03ce0ef64bfdc7fc5a3bd9d7493f818bb1d78cd798416b4",
+		},
+		{
+			Name:    "Constant_7_attr__value",
+			Size:    65552,
+			GitBlob: "3cdc05e5f550d8bd136f28efcea0ad5e6b4169c8",
+		},
+	},
+	Tokenizer: File{
+		Name:   "tokenizer.json",
+		Size:   17082821,
+		SHA256: "6710678b12670bc442b99edc952c4d996ae309a7020c1fa0096dd245c2faf790",
+	},
+	Pooling: PoolCLS,
 }
 
 // Specs are the models an administrator chooses between, by the names the

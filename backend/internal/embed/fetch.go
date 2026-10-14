@@ -2,10 +2,12 @@ package embed
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -70,7 +72,7 @@ func Fetch(ctx context.Context, root string, spec Spec, opts FetchOptions) (stri
 		if opts.Offline {
 			return "", fmt.Errorf("%w: %s is missing or not the pinned file, and GOTOME_OFFLINE forbids downloading it", ErrModelMissing, path)
 		}
-		url := fmt.Sprintf("%s/%s/resolve/%s/onnx/%s", source, spec.Model.Name, spec.Model.Revision, f.Name)
+		url := fmt.Sprintf("%s/%s/resolve/%s/onnx/%s", source, spec.Model.Name, spec.revision(), f.Name)
 		log.Info("downloading the embedding model", "file", f.Name, "bytes", f.Size, "from", url)
 		if err := download(ctx, client, url, path, f); err != nil {
 			return "", fmt.Errorf("download %s: %w", f.Name, err)
@@ -105,11 +107,22 @@ func matches(path string, f File) (bool, error) {
 	if info.Size() != f.Size {
 		return false, nil
 	}
-	h := sha256.New()
+	h, want, _ := digest(f)
 	if _, err := io.Copy(h, file); err != nil {
 		return false, err
 	}
-	return hex.EncodeToString(h.Sum(nil)) == f.SHA256, nil
+	return hex.EncodeToString(h.Sum(nil)) == want, nil
+}
+
+// digest is the hash a file is checked by and the value it must have: its
+// SHA-256, or the SHA-1 git names a blob by, of a header and the content.
+func digest(f File) (h hash.Hash, want, name string) {
+	if f.SHA256 != "" {
+		return sha256.New(), f.SHA256, "SHA-256"
+	}
+	h = sha1.New()
+	fmt.Fprintf(h, "blob %d\x00", f.Size)
+	return h, f.GitBlob, "git blob ID"
 }
 
 func download(ctx context.Context, client *http.Client, url, path string, f File) (err error) {
@@ -135,7 +148,7 @@ func download(ctx context.Context, client *http.Client, url, path string, f File
 			os.Remove(part.Name())
 		}
 	}()
-	h := sha256.New()
+	h, want, name := digest(f)
 	n, err := io.Copy(io.MultiWriter(part, h), io.LimitReader(resp.Body, f.Size+1))
 	if err != nil {
 		return err
@@ -143,8 +156,8 @@ func download(ctx context.Context, client *http.Client, url, path string, f File
 	if n != f.Size {
 		return fmt.Errorf("got %d bytes, want %d", n, f.Size)
 	}
-	if sum := hex.EncodeToString(h.Sum(nil)); sum != f.SHA256 {
-		return fmt.Errorf("SHA-256 is %s, want %s; nothing kept", sum, f.SHA256)
+	if sum := hex.EncodeToString(h.Sum(nil)); sum != want {
+		return fmt.Errorf("%s is %s, want %s; nothing kept", name, sum, want)
 	}
 	if err := part.Close(); err != nil {
 		return err

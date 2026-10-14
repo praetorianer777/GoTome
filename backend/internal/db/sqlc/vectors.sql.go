@@ -542,6 +542,48 @@ func (q *Queries) ListSimilarCheckSample(ctx context.Context, arg ListSimilarChe
 	return items, nil
 }
 
+const listStoredMetadataVectors = `-- name: ListStoredMetadataVectors :many
+SELECT v.book_id, coalesce(book_metadata_text(v.book_id), '')::text AS text, v.embedding
+FROM book_vectors v
+WHERE v.kind = 'metadata' AND v.model = $1::text AND v.model_version = $2::text
+ORDER BY md5(v.book_id::text)
+LIMIT $3::int
+`
+
+type ListStoredMetadataVectorsParams struct {
+	Model        string
+	ModelVersion string
+	Max          int32
+}
+
+type ListStoredMetadataVectorsRow struct {
+	BookID    uuid.UUID
+	Text      string
+	Embedding string
+}
+
+// A sample of the books with a metadata vector of the model, with the text
+// it was made from, in the order of a hash of their ID.
+func (q *Queries) ListStoredMetadataVectors(ctx context.Context, arg ListStoredMetadataVectorsParams) ([]ListStoredMetadataVectorsRow, error) {
+	rows, err := q.db.Query(ctx, listStoredMetadataVectors, arg.Model, arg.ModelVersion, arg.Max)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStoredMetadataVectorsRow{}
+	for rows.Next() {
+		var i ListStoredMetadataVectorsRow
+		if err := rows.Scan(&i.BookID, &i.Text, &i.Embedding); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const putBookVector = `-- name: PutBookVector :exec
 INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
 SELECT b.id, $1::text, $2::text, $3::text,
