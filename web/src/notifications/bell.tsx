@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
 	type Notification,
 	notificationText,
@@ -138,7 +139,7 @@ function NotificationList({
 									</span>
 								)}
 								<time dateTime={n.createdAt} className="text-xs text-slate-500">
-									{new Date(n.createdAt).toLocaleString()}
+									{formatDateTime(n.createdAt)}
 								</time>
 							</button>
 						</li>

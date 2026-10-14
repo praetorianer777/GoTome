@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
 	type Job,
 	type JobGroup,
@@ -32,11 +33,6 @@ const STATES: Record<string, MessageKey> = {
 	cancelled: "jobs.state.cancelled",
 	discarded: "jobs.state.failed",
 };
-
-const when = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "short",
-	timeStyle: "medium",
-});
 
 /** What a job does, in words. */
 function describe(job: Job): string {
@@ -149,10 +145,9 @@ export function Jobs() {
 									})}
 								</span>
 								<span className="text-slate-500 tabular-nums">
-									{when.format(
-										new Date(
-											job.finalizedAt ?? job.attemptedAt ?? job.createdAt,
-										),
+									{formatDateTime(
+										job.finalizedAt ?? job.attemptedAt ?? job.createdAt,
+										"short",
 									)}
 								</span>
 								{jobIsActive(job) ? (

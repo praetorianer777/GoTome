@@ -1,4 +1,5 @@
 import { FormError } from "@/components/form";
+import { formatDateTime } from "@/lib/format";
 import { type MessageKey, t } from "@/i18n";
 import {
 	type Library,
@@ -9,11 +10,6 @@ import {
 import { Link } from "@tanstack/react-router";
 import { RereadText } from "@/jobs/search-controls";
 import { useRereadLibrary } from "@/jobs/api";
-
-const when = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
 
 const CHANGES: [keyof Scan, MessageKey][] = [
 	["filesAdded", "scan.added"],
@@ -34,7 +30,7 @@ function describe(scan: Scan | undefined): string {
 	if (scan.state === "running") {
 		return t("scan.running");
 	}
-	const at = when.format(new Date(scan.finishedAt ?? scan.requestedAt));
+	const at = formatDateTime(scan.finishedAt ?? scan.requestedAt);
 	if (scan.state === "failed") {
 		return t("scan.failed", { when: at, error: scan.error ?? "" });
 	}

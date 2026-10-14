@@ -6,7 +6,7 @@ import type { components } from "@/api/schema";
 import { can, currentUserQuery } from "@/auth/session";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
-import { formatLanguage, formatSize } from "@/lib/format";
+import { formatCount, formatLanguage, formatMonth, formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
 
 type Step = components["schemas"]["Step"];
@@ -15,8 +15,6 @@ type Count = components["schemas"]["Count"];
 
 /** How often the work's progress is asked for again while any is left. */
 const POLL_MS = 15_000;
-
-const number = new Intl.NumberFormat();
 
 function figuresQuery(library: string) {
 	return queryOptions({
@@ -68,7 +66,7 @@ function timeLeft(minutes: number): string {
 }
 
 function pace(lastHour: number, minutesLeft?: number) {
-	const parts = [t("overview.lastHour", { count: number.format(lastHour) })];
+	const parts = [t("overview.lastHour", { count: formatCount(lastHour) })];
 	if (minutesLeft !== undefined) parts.push(timeLeft(minutesLeft));
 	return parts.join(" · ");
 }
@@ -81,8 +79,8 @@ function StepRow({ label, step }: { label: MessageKey; step: Step }) {
 				<span>{t(label)}</span>
 				<span className="tabular-nums">
 					{t("overview.doneOf", {
-						done: number.format(step.done),
-						total: number.format(step.total),
+						done: formatCount(step.done),
+						total: formatCount(step.total),
 					})}
 				</span>
 			</div>
@@ -117,7 +115,7 @@ function QueueRow({
 			<div className="flex flex-wrap justify-between gap-x-4">
 				<span>{t(label)}</span>
 				<span className="tabular-nums">
-					{t("overview.waiting", { count: number.format(queue.waiting) })}
+					{t("overview.waiting", { count: formatCount(queue.waiting) })}
 				</span>
 			</div>
 			<span className="text-sm text-slate-600 dark:text-slate-400">
@@ -153,7 +151,7 @@ function Work({ library }: { library: string }) {
 						<li className="-mt-3 text-sm">
 							<Link to="/jobs" className="underline">
 								{t("overview.filesFailed", {
-									count: number.format(w.filesFailed),
+									count: formatCount(w.filesFailed),
 								})}
 							</Link>
 						</li>
@@ -165,14 +163,14 @@ function Work({ library }: { library: string }) {
 						label="overview.lookups"
 						queue={w.lookups}
 						then={t("overview.matchesPending", {
-							count: number.format(w.matchesPending),
+							count: formatCount(w.matchesPending),
 						})}
 					/>
 					<QueueRow
 						label="overview.checks"
 						queue={w.checks}
 						then={t("overview.pairsOpen", {
-							count: number.format(w.pairsOpen),
+							count: formatCount(w.pairsOpen),
 						})}
 					/>
 				</ul>
@@ -220,19 +218,13 @@ function CountList({
 							className="h-2 rounded bg-sky-600 dark:bg-sky-500"
 							style={{ width: `${Math.max(2, (c.count / most) * 100)}%` }}
 						/>
-						<span className="tabular-nums">{number.format(c.count)}</span>
+						<span className="tabular-nums">{formatCount(c.count)}</span>
 					</li>
 				))}
 			</ul>
 		</section>
 	);
 }
-
-const months = new Intl.DateTimeFormat(undefined, {
-	month: "short",
-	year: "numeric",
-	timeZone: "UTC",
-});
 
 function Figures({ library }: { library: string }) {
 	const figures = useQuery(figuresQuery(library));
@@ -246,41 +238,41 @@ function Figures({ library }: { library: string }) {
 			{f && (
 				<>
 					<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-						<Figure label="overview.books" value={number.format(f.books)} />
+						<Figure label="overview.books" value={formatCount(f.books)} />
 						<Figure
 							label="overview.filesCount"
-							value={number.format(f.files)}
+							value={formatCount(f.files)}
 						/>
 						<Figure label="overview.size" value={formatSize(f.bytes)} />
-						<Figure label="overview.pages" value={number.format(f.pages)} />
+						<Figure label="overview.pages" value={formatCount(f.pages)} />
 						<Figure
 							label="overview.audiobooks"
-							value={number.format(f.audiobooks)}
+							value={formatCount(f.audiobooks)}
 						/>
 						<Figure
 							label="overview.audioHours"
-							value={number.format(f.audioHours)}
+							value={formatCount(f.audioHours)}
 						/>
-						<Figure label="overview.authors" value={number.format(f.authors)} />
-						<Figure label="overview.series" value={number.format(f.series)} />
+						<Figure label="overview.authors" value={formatCount(f.authors)} />
+						<Figure label="overview.series" value={formatCount(f.series)} />
 						<Figure
 							label="overview.publishers"
-							value={number.format(f.publishers)}
+							value={formatCount(f.publishers)}
 						/>
-						<Figure label="overview.tags" value={number.format(f.tags)} />
+						<Figure label="overview.tags" value={formatCount(f.tags)} />
 					</dl>
 					<dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 						<Figure
 							label="overview.withoutCover"
-							value={number.format(f.withoutCover)}
+							value={formatCount(f.withoutCover)}
 						/>
 						<Figure
 							label="overview.withoutAuthor"
-							value={number.format(f.withoutAuthor)}
+							value={formatCount(f.withoutAuthor)}
 						/>
 						<Figure
 							label="overview.withoutText"
-							value={number.format(f.withoutText)}
+							value={formatCount(f.withoutText)}
 						/>
 					</dl>
 					{f.withMissingFiles > 0 && (
@@ -291,7 +283,7 @@ function Figures({ library }: { library: string }) {
 								className="underline"
 							>
 								{t("overview.withMissingFiles", {
-									count: number.format(f.withMissingFiles),
+									count: formatCount(f.withMissingFiles),
 								})}
 							</Link>
 						</p>
@@ -316,7 +308,7 @@ function Figures({ library }: { library: string }) {
 						id="overview-months"
 						title="overview.months"
 						counts={f.months}
-						name={(c) => months.format(new Date(`${c.name}-01T00:00:00Z`))}
+						name={(c) => formatMonth(`${c.name}-01T00:00:00Z`)}
 					/>
 				</>
 			)}

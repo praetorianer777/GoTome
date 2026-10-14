@@ -1,6 +1,6 @@
 import { type InputHTMLAttributes, type ReactNode, useId } from "react";
 import { ApiError } from "@/api/client";
-import { t } from "@/i18n";
+import { locale, type MessageKey, t } from "@/i18n";
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 	label: string;
@@ -81,9 +81,31 @@ export function FormError({ error }: { error: unknown }) {
 			className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
 		>
 			{errorMessage(error)}
+			{error instanceof ApiError && error.status >= 500 && error.requestId && (
+				<span className="mt-1 block font-mono text-xs">
+					{t("error.requestId", { id: error.requestId })}
+				</span>
+			)}
 		</p>
 	);
 }
+
+// The server writes its messages in English, most of them about the case
+// at hand. Those that are always the same sentence are known here by their
+// code or their text, so that another language can say them; the rest are
+// shown as the server wrote them.
+const MESSAGE_BY_CODE: Partial<Record<string, MessageKey>> = {
+	validation_failed: "error.validation",
+	internal: "error.internal",
+	method_not_allowed: "error.generic",
+};
+const MESSAGE_BY_TEXT: Partial<Record<string, MessageKey>> = {
+	"Sign in to continue.": "error.signIn",
+	"You do not have permission to do that.": "error.forbidden",
+	"There is nothing at this address.": "error.notFound",
+	"The user name or the password is wrong.": "error.wrongPassword",
+	"Too many failed sign-in attempts. Wait a little and try again.": "error.tooManySignIns",
+};
 
 /**
  * What to tell a person about a failed request: the server's own sentence when
@@ -91,7 +113,12 @@ export function FormError({ error }: { error: unknown }) {
  */
 export function errorMessage(error: unknown): string {
 	if (error instanceof ApiError) {
-		return error.message;
+		if (locale() === "en") return error.message;
+		if (error.code === "unexpected_response") {
+			return t("error.unexpected", { status: error.status });
+		}
+		const key = MESSAGE_BY_CODE[error.code] ?? MESSAGE_BY_TEXT[error.message];
+		return key ? t(key) : error.message;
 	}
 	if (error instanceof TypeError) {
 		// fetch rejects with a TypeError when the request never got an answer.

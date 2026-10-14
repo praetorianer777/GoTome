@@ -7,7 +7,15 @@ import {
 } from "@/auth/session";
 import { ssoMessage } from "@/auth/sso";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
-import { type MessageKey, t } from "@/i18n";
+import {
+	LOCALES,
+	type Locale,
+	localeChosen,
+	type MessageKey,
+	setLocale,
+	t,
+	useLocale,
+} from "@/i18n";
 import { formatDate } from "@/lib/format";
 import {
 	EVENT_LABELS,
@@ -78,12 +86,49 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 				</h2>
 				<StorageUse />
 			</section>
+			<LanguageChoice />
 			<NotificationSettings />
 			<SingleSignOn sso={sso} />
 			<ChangePassword />
 			<Sessions />
 			<Devices username={user.username} />
 		</div>
+	);
+}
+
+// Each language is named in itself, so that someone who cannot read the
+// one shown finds their own.
+const LANGUAGE_NAMES: Record<Locale, string> = { en: "English", de: "Deutsch" };
+
+/** The language of the app, which is each browser's own, like its colours. */
+function LanguageChoice() {
+	const current = useLocale();
+	const chosen = localeChosen() ? current : "browser";
+	return (
+		<section aria-labelledby="language" className="flex flex-col gap-2">
+			<h2 id="language" className="text-lg font-medium">
+				{t("profile.language")}
+			</h2>
+			<label className="flex flex-col gap-1">
+				<span className="text-sm text-slate-600 dark:text-slate-400">
+					{t("profile.language.hint")}
+				</span>
+				<select
+					value={chosen}
+					onChange={(e) =>
+						setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
+					}
+					className="w-fit rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+				>
+					<option value="browser">{t("profile.language.browser")}</option>
+					{LOCALES.map((l) => (
+						<option key={l} value={l} lang={l}>
+							{LANGUAGE_NAMES[l]}
+						</option>
+					))}
+				</select>
+			</label>
+		</section>
 	);
 }
 
