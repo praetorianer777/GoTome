@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Kobo readers, and Tolinos switched to Kobo mode, sync with GOtome over
+  their own sync: books sent to the device arrive with covers and details,
+  and the reading place goes both ways. Add the reader as a device on your
+  profile and paste the line it shows into the reader's config; see
+  `docs/tolino-kobo-mode.md`.
 - `docs/tolino-kobo-mode.md` explains how a Tolino on the Kobo-based firmware
   (Shine 5, Shine Color, Vision Color) is switched to Kobo mode, where it
   syncs with a server named in its config, and what was found on a Shine 5

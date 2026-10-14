@@ -978,6 +978,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   What it does outside KOReader is `gotome_feed.lua`, tested in LuaJIT
   (`make test-koplugin`, in the push gate; LuaJIT is in the toolchain
   image), which also checks that the rest compiles.
+- A Kobo reader, and a Tolino in Kobo mode, syncs over Kobo's own sync
+  (`internal/kobo`, `httpapi/kobo_handlers.go`, #230): its
+  `api_endpoint` is `/api/v1/kobo/<device token>`, as the reader sends no
+  credentials to a store it is given; `authenticate` takes the token from
+  the path (`AuthenticateDeviceToken`, by its hash alone; a string without
+  a token's shape is refused uncounted) and `loggedPath` keeps it out of
+  the log. `/v1/initialization` gives the reader's resource map with the
+  library, details, reading places and covers at GOtome and the store's
+  pages at Kobo. `kobo_books` records what each reader was told:
+  `/v1/library/sync` sends the device's deliveries with an EPUB as new
+  entitlements, again when the book's details or another client's ebook
+  progress changed, and as removed once they leave the deliveries, 100 at a
+  time with `x-kobo-sync: continue`; a sync without `x-kobo-synctoken`
+  starts over. A reading state it sends is saved as `fraction:<f>` under
+  #44's rule with `basedOn` the place it was last told of; archiving takes
+  the book off the device.
 - KOReader's progress sync (`internal/kosync`, #198) is served under
   `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
   its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched
