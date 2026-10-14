@@ -54,7 +54,8 @@ LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
 
 # bump_of_changes: major, minor or patch for what was merged since the last
 # tag, with the reason on stderr. A feature is minor and anything else patch;
-# a break is major, but minor before 1.0, as semver leaves 0.x to change.
+# a break is major, but minor before 1.0, as semver leaves 0.x to change. A
+# break is a footer line, as Conventional Commits writes it, not a mention.
 bump_of_changes() {
   local sections types="" counts="" kind=patch why reason="" n
   sections="$(grep -oE '^### [A-Za-z]+' <<< "$NOTES" | cut -c5- | sort -u | tr '\n' ' ')"
@@ -66,7 +67,7 @@ bump_of_changes() {
     done
     [[ -n "$types" ]] && counts="$(sort <<< "${types%$'\n'}" | uniq -c | awk '{printf "%s%d %s", (NR>1 ? ", " : ""), $1, $2}')"
   fi
-  if git log --format=%B "${LAST_TAG:+$LAST_TAG..}HEAD" | grep -q 'BREAKING CHANGE' || [[ " $sections" == *" Removed "* ]]; then
+  if git log --format=%B "${LAST_TAG:+$LAST_TAG..}HEAD" | grep -qE '^BREAKING[ -]CHANGE:' || [[ " $sections" == *" Removed "* ]]; then
     kind=major; why="a breaking change"
   elif grep -qx feat <<< "$types" || [[ " $sections" =~ \ (Added|Changed|Deprecated)\  ]]; then
     kind=minor; why="new or changed features"

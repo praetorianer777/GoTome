@@ -170,6 +170,11 @@ merged "Change the API (#16)" Fixed "The API." && git commit -q --allow-empty -m
 FAKE_BRANCHES="16=fix/16-api" ./release.sh >/dev/null 2>&1
 check "a break from 1.0 on is a major release" "$(cat VERSION)" "2.0.0"
 
+sandbox auto-mention
+merged "Explain breaks (#17)" Fixed "Docs." && git commit -q --allow-empty -m "Note" -m "A BREAKING CHANGE footer makes a major release." && git push -q origin main
+FAKE_BRANCHES="17=fix/17-docs" ./release.sh >/dev/null 2>&1
+check "a mention of a break is no break" "$(cat VERSION)" "0.1.1"
+
 sandbox parts
 ./release.sh minor --dry-run >/dev/null 2>&1
 check "a dry run with a part changes nothing" "$(cat VERSION)" "0.1.0"
