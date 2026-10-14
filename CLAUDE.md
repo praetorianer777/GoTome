@@ -130,7 +130,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   names elsewhere inside are refused. A new kind of outbound request
   (webhooks, feeds) uses this client and trusts nothing a user typed.
 - `securityHeaders` (`httpapi/middleware.go`) gives every answer
-  `nosniff`, `X-Frame-Options`, `Referrer-Policy: same-origin`, COOP and a
+  `nosniff`, `X-Frame-Options`, `Referrer-Policy: same-origin` and a
   `Permissions-Policy`, and a sandboxing CSP that the web app replaces with
   its own (`webui.ContentSecurityPolicy`). Files are sent as attachments.
 

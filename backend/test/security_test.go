@@ -45,10 +45,9 @@ func TestEveryAnswerCarriesTheSecurityHeaders(t *testing.T) {
 	common := func(what string, h http.Header) {
 		t.Helper()
 		for name, want := range map[string]string{
-			"X-Content-Type-Options":     "nosniff",
-			"X-Frame-Options":            "SAMEORIGIN",
-			"Referrer-Policy":            "same-origin",
-			"Cross-Origin-Opener-Policy": "same-origin",
+			"X-Content-Type-Options": "nosniff",
+			"X-Frame-Options":        "SAMEORIGIN",
+			"Referrer-Policy":        "same-origin",
 		} {
 			if got := h.Get(name); got != want {
 				t.Errorf("%s: %s is %q, want %q", what, name, got, want)
