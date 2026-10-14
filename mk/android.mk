@@ -63,6 +63,24 @@ android-release: android-toolchain | $(ANDROID_CACHE) ## Build the companion app
 	cp $(dir $(ANDROID_RELEASE_APK))app-release.apk $(ANDROID_RELEASE_APK)
 	@echo "$(ANDROID_RELEASE_APK)"
 
+# Where android-install takes the APK from: build, the debug build of this
+# checkout, or release, the signed APK of the latest GitHub release, or of
+# TAG when named. Installed releases update themselves from the releases;
+# a debug build cannot take them, being signed with another key.
+FROM ?= build
+TAG ?=
+ANDROID_RELEASE_REPO ?= praetorianer777/GoTome
+ANDROID_DOWNLOAD := $(ANDROID_CACHE)/release
+ifneq ($(filter-out build release,$(FROM)),)
+$(error FROM is build or release, not '$(FROM)')
+endif
+
+# gh runs on the host, signed in as the owner already is.
+.PHONY: android-download
+android-download: | $(ANDROID_CACHE) ## Download the companion app's APK from the latest release (or TAG)
+	rm -rf $(ANDROID_DOWNLOAD) && mkdir -p $(ANDROID_DOWNLOAD)
+	gh release download $(TAG) --repo $(ANDROID_RELEASE_REPO) --pattern 'gotome-tolino-*.apk' --dir $(ANDROID_DOWNLOAD)
+
 # adb runs on the host, where the Tolino is plugged in. READ_LOGS lets the app
 # see the reader's page turns; it can only be granted over adb. Storage is
 # granted too, so the setup asks for nothing: reading as well as writing, as
@@ -71,8 +89,12 @@ android-release: android-toolchain | $(ANDROID_CACHE) ## Build the companion app
 # added to those already on, not in their place. Installing its own updates
 # needs "unknown sources" for the app, which appops grants.
 .PHONY: android-install
-android-install: android-apk ## Install the companion app on the Tolino over adb and grant it the log
-	adb install -r $(ANDROID_APK)
+android-install: $(if $(filter release,$(FROM)),android-download,android-apk) ## Install the companion app on the Tolino over adb (FROM=release for the latest release) and grant it the log
+	@apk=$(if $(filter release,$(FROM)),$(ANDROID_DOWNLOAD)/gotome-tolino-*.apk,$(ANDROID_APK)); \
+	echo "adb install -r $$apk"; out=$$(adb install -r $$apk 2>&1); status=$$?; echo "$$out"; \
+	case "$$out" in *INSTALL_FAILED_UPDATE_INCOMPATIBLE*) \
+		echo "The app on the Tolino is signed with another key (a debug build or a release): make android-uninstall first." >&2 ;; esac; \
+	exit $$status
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_LOGS
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_EXTERNAL_STORAGE
 	adb shell pm grant $(ANDROID_PACKAGE) android.permission.WRITE_EXTERNAL_STORAGE
