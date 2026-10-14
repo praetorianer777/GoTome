@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-14
+
 ### Fixed
 
 - The database no longer restarts itself, dropping every connection, when
