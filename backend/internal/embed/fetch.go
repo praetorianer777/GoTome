@@ -11,11 +11,12 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 )
 
 // DefaultSource is where model files come from: Hugging Face, which serves
@@ -97,13 +98,10 @@ func Present(root string, spec Spec) bool {
 	return true
 }
 
+// defaultClient is guarded like every other outbound request: the address
+// is GOtome's own, but a redirect from it could point anywhere.
 func defaultClient() *http.Client {
-	return &http.Client{Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
-		TLSHandshakeTimeout:   15 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
-	}}
+	return outbound.NewClient(outbound.Options{HeaderTimeout: 30 * time.Second})
 }
 
 // matches reports whether the file at path has f's size and hash.

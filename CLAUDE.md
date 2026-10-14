@@ -116,6 +116,24 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   loads while the end of a list is near, not only as it comes near.
   `e2e/tests/long-list.spec.ts` answers `GET /books` itself with 500 books.
 
+## Outbound requests and headers
+
+- Every request the server makes to another server goes through
+  `outbound.NewClient` (`internal/outbound`): it dials only public
+  addresses, checked on the address a name resolved to as it is dialled,
+  so a name or a redirect pointing inside is refused
+  (`ErrForbiddenAddress`); no proxy, http(s) redirects only. The one
+  exception is `Options.Trusted`, the host and port of an address an
+  administrator named: the identity provider's issuer and
+  `embedding.server`, which are often on the local network. Nothing else
+  of theirs is trusted, so endpoints a discovery document or a redirect
+  names elsewhere inside are refused. A new kind of outbound request
+  (webhooks, feeds) uses this client and trusts nothing a user typed.
+- `securityHeaders` (`httpapi/middleware.go`) gives every answer
+  `nosniff`, `X-Frame-Options`, `Referrer-Policy: same-origin`, COOP and a
+  `Permissions-Policy`, and a sandboxing CSP that the web app replaces with
+  its own (`webui.ContentSecurityPolicy`). Files are sent as attachments.
+
 ## Authentication
 
 - `internal/auth` owns accounts and sessions: argon2id hashes, opaque session tokens
@@ -560,8 +578,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `metadata.Record`s. It reaches the network only through the `metadata.Web`
   it is handed: requests spaced by the provider's `Limits.Interval` across the
   whole process, answers (200 and 404) kept for 30 days in `provider_records`,
-  a user agent, timeouts and size caps, and a dialler that refuses loopback,
-  private, link-local and other non-public addresses (also after redirects).
+  a user agent, timeouts and size caps, and the `internal/outbound` client.
 - API keys and tokens go in `Request.SecretQuery` or `Request.Header`, which
   are never stored, never part of the cache key and never in an error.
 - `metadata.Service.Candidates` looks a book up by its ISBNs and its DOI,

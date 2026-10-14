@@ -32,3 +32,17 @@ export async function chooseLibrary(page: Page, name: string): Promise<void> {
 		await choice.selectOption({ label: name });
 	}
 }
+
+/**
+ * Opens a page of the app and checks that it came with the server's
+ * Content Security Policy, so that whatever the test then does in a reader
+ * or the player is done under it.
+ */
+export async function gotoUnderPolicy(page: Page, path: string): Promise<void> {
+	const response = await page.goto(path);
+	const policy = response?.headers()["content-security-policy"] ?? "";
+	expect(policy).toContain("script-src 'self' 'wasm-unsafe-eval';");
+	expect(policy).toContain("connect-src 'self';");
+	expect(policy).toContain("object-src 'none';");
+	expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+}

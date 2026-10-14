@@ -1,5 +1,5 @@
 import { type Frame, type Page, expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 import { makeEpub, makeMobi } from "../fixtures/ebooks";
 
 // Laying a book out keeps a loaded WebKit busy enough in CI that its
@@ -83,7 +83,7 @@ test("an EPUB opens, turns its pages, keeps its place over a reload, and runs no
 		stamp,
 	);
 
-	await page.goto(`/books/${bookId}`);
+	await gotoUnderPolicy(page, `/books/${bookId}`);
 	await page.getByRole("link", { name: `Read Hostile ${stamp}.epub` }).click();
 	const book = await bookFrame(page, "Chapter 1, paragraph 1.");
 	await expect(percent(page)).toBeVisible();
@@ -145,7 +145,7 @@ test("a MOBI opens, turns its pages and reopens where it was left", async ({
 		stamp,
 	);
 
-	await page.goto(`/books/${bookId}`);
+	await gotoUnderPolicy(page, `/books/${bookId}`);
 	await page.getByRole("link", { name: `Read Kindle ${stamp}.mobi` }).click();
 	await bookFrame(page, "Chapter 1, paragraph 1.");
 	const start = await percent(page).textContent();

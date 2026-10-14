@@ -27,6 +27,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
@@ -56,22 +57,26 @@ type Service struct {
 	pool     *pgxpool.Pool
 	auth     *auth.Service
 	settings *settings.Store
-	// Client reaches the identity provider; tests may replace it.
-	Client *http.Client
-	now    func() time.Time
+	now      func() time.Time
 
 	mu sync.Mutex
 	// providers are the discovered providers by issuer, each with the keys
 	// it signs with, fetched again when a token names one not yet seen.
-	providers map[string]*oidc.Provider
+	providers map[string]*discovered
+}
+
+// discovered is an identity provider and the client that reaches it.
+type discovered struct {
+	*oidc.Provider
+	client *http.Client
 }
 
 // NewService returns a Service.
 func NewService(pool *pgxpool.Pool, accounts *auth.Service, store *settings.Store) *Service {
 	return &Service{
 		pool: pool, auth: accounts, settings: store,
-		Client: &http.Client{Timeout: requestTimeout}, now: time.Now,
-		providers: map[string]*oidc.Provider{},
+		now:       time.Now,
+		providers: map[string]*discovered{},
 	}
 }
 
@@ -118,26 +123,32 @@ func (s *Service) Name(ctx context.Context) (string, bool, error) {
 	return name, err == nil, err
 }
 
-func (s *Service) provider(ctx context.Context, issuer string) (*oidc.Provider, error) {
+func (s *Service) provider(ctx context.Context, issuer string) (*discovered, error) {
 	s.mu.Lock()
-	p, ok := s.providers[issuer]
+	d, ok := s.providers[issuer]
 	s.mu.Unlock()
 	if ok {
-		return p, nil
+		return d, nil
 	}
+	// The issuer is the one an administrator set up, and may well be on the
+	// local network, as a Keycloak beside GOtome is: its address is
+	// trusted. Endpoints its discovery document names elsewhere are not,
+	// and are refused inside the network.
+	client := outbound.NewClient(outbound.Options{Timeout: requestTimeout, Trusted: []string{issuer}})
 	// The provider keeps the context for fetching its keys later, long
 	// after this request is gone.
-	p, err := oidc.NewProvider(oidc.ClientContext(context.WithoutCancel(ctx), s.Client), issuer)
+	p, err := oidc.NewProvider(oidc.ClientContext(context.WithoutCancel(ctx), client), issuer)
 	if err != nil {
 		return nil, fmt.Errorf("discovering %s: %w", issuer, err)
 	}
+	d = &discovered{Provider: p, client: client}
 	s.mu.Lock()
-	s.providers[issuer] = p
+	s.providers[issuer] = d
 	s.mu.Unlock()
-	return p, nil
+	return d, nil
 }
 
-func (s *Service) oauth(p *oidc.Provider, c config, redirectURI string) *oauth2.Config {
+func (s *Service) oauth(p *discovered, c config, redirectURI string) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID: c.clientID, ClientSecret: c.clientSecret, Endpoint: p.Endpoint(),
 		RedirectURL: redirectURI, Scopes: c.scopes,
@@ -234,7 +245,7 @@ func (s *Service) Finish(ctx context.Context, cb Callback) (Outcome, error) {
 	if err != nil {
 		return out, err
 	}
-	token, err := s.oauth(p, c, cb.RedirectURI).Exchange(oidc.ClientContext(ctx, s.Client), cb.Code, oauth2.VerifierOption(row.Verifier))
+	token, err := s.oauth(p, c, cb.RedirectURI).Exchange(oidc.ClientContext(ctx, p.client), cb.Code, oauth2.VerifierOption(row.Verifier))
 	if err != nil {
 		return out, fmt.Errorf("exchanging the code: %w", err)
 	}

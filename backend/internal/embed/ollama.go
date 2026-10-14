@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 )
 
 // ErrServer is an embedding server that did not answer, or not as asked:
@@ -51,8 +53,11 @@ func OpenOllama(ctx context.Context, url string, spec Spec) (*Ollama, error) {
 	o := &Ollama{
 		url:  strings.TrimRight(url, "/") + "/api/embed",
 		spec: spec,
-		// The first request loads the model into the GPU's memory.
-		client: &http.Client{Timeout: 5 * time.Minute},
+		// The first request loads the model into the GPU's memory. The
+		// server is the one an administrator named in embedding.server,
+		// usually a machine with a GPU on the local network, so its address
+		// is trusted where any other inside the network is refused.
+		client: outbound.NewClient(outbound.Options{Timeout: 5 * time.Minute, Trusted: []string{url}}),
 	}
 	vecs, err := o.Embed(ctx, probes)
 	if err != nil {
