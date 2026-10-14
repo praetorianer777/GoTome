@@ -1308,6 +1308,59 @@ describe("settings", () => {
 		).toBeInTheDocument();
 	});
 
+	it("offers the embedding models with what each takes, and asks before one that embeds every book again", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		const choice = await screen.findByRole("combobox", { name: "Language model" });
+		expect(choice).toHaveValue("multilingual-e5-small");
+		expect(within(choice).getAllByRole("option").map((o) => o.textContent)).toEqual([
+			"multilingual-e5-small (in use)",
+			"multilingual-e5-small-fp32",
+			"bge-m3",
+		]);
+		const models = within(screen.getByRole("list", { name: "The models to choose from" }));
+		const bge = within(models.getByRole("listitem", { name: "bge-m3" }));
+		expect(bge.getByText("1024 dimensions")).toBeInTheDocument();
+		expect(bge.getByText("2.3 GB to download, about 3.2 GB of memory on the CPU (an estimate).")).toBeInTheDocument();
+		expect(bge.getByText(/^Cannot run here: not downloaded/)).toBeInTheDocument();
+		expect(bge.getByText("Has vectors for 110 of 120 books' descriptions and 95 of 100 books' text.")).toBeInTheDocument();
+		expect(
+			within(models.getByRole("listitem", { name: "multilingual-e5-small" })).getByText("Runs here: its files are downloaded."),
+		).toBeInTheDocument();
+
+		await person.selectOptions(choice, "multilingual-e5-small-fp32");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		let dialog = within(await screen.findByRole("alertdialog", { name: "Switch to multilingual-e5-small-fp32?" }));
+		expect(dialog.getByText(/has vectors for 0 of 120 books\. Every other book is embedded again/)).toBeInTheDocument();
+		expect(dialog.getByRole("button", { name: "Keep the model in use" })).toHaveFocus();
+		await person.click(dialog.getByRole("button", { name: "Keep the model in use" }));
+		expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+		expect(server.requests.some((r) => r.method === "PATCH")).toBe(false);
+
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		dialog = within(await screen.findByRole("alertdialog"));
+		await person.click(dialog.getByRole("button", { name: "Switch and embed again" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({
+			values: { "embedding.model": "multilingual-e5-small-fp32" },
+		});
+		expect(await screen.findByRole("option", { name: "multilingual-e5-small-fp32 (in use)" })).toBeInTheDocument();
+	});
+
+	it("switches to a model that has most books' vectors without asking", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		await person.selectOptions(await screen.findByRole("combobox", { name: "Language model" }), "bge-m3");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+		expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({ values: { "embedding.model": "bge-m3" } });
+	});
+
 	it("keeps an editor out", async () => {
 		server
 			.withAccount("Edith", "a long password", "editor")
@@ -4593,6 +4646,7 @@ describe("pausing the embedding", () => {
 		await person.click(panel.getByRole("button", { name: "Start" }));
 		expect(await panel.findByRole("button", { name: "Pause" })).toBeInTheDocument();
 		expect(server.embedding.enabled).toBe(true);
+		expect(panel.getByRole("link", { name: "Choose the model" })).toHaveAttribute("href", "/admin/settings#embedding-model");
 	});
 
 	it("shows an editor the progress without the button", async () => {
@@ -4602,5 +4656,6 @@ describe("pausing the embedding", () => {
 		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
 		expect(await panel.findByText(/^Described: 80 of 120 books/)).toBeInTheDocument();
 		expect(panel.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+		expect(panel.queryByRole("link", { name: "Choose the model" })).not.toBeInTheDocument();
 	});
 });

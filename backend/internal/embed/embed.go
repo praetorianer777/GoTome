@@ -62,6 +62,10 @@ type Spec struct {
 	Server string
 	// Prefix goes before every text the model embeds, as its authors ask.
 	Prefix string
+	// Memory is roughly what running the model on the CPU adds to the
+	// process, in bytes: an estimate from the weights and the measurements
+	// of #15 and #228, not measured per installation.
+	Memory int64
 }
 
 // How a text's token vectors become one.
@@ -73,6 +77,18 @@ const (
 // Files are the spec's files, the weights first.
 func (s Spec) Files() []File {
 	return append(append([]File{s.Weights}, s.Data...), s.Tokenizer)
+}
+
+// DiskBytes is the size of the spec's files, 0 for a model only a server runs.
+func (s Spec) DiskBytes() int64 {
+	if !s.Runs() {
+		return 0
+	}
+	var n int64
+	for _, f := range s.Files() {
+		n += f.Size
+	}
+	return n
 }
 
 // Runs says whether GOtome runs the model itself: it has its files.
@@ -108,6 +124,8 @@ var E5Small = Spec{
 	// A book is compared with books, which the model's authors call a
 	// symmetric task and give the query prefix.
 	Prefix: "query: ",
+	// #15 measured 0.70–0.72 GB at peak for the whole process.
+	Memory: 700 << 20,
 }
 
 // E5SmallFP32 is the same model with its full-precision weights: four times
@@ -129,6 +147,8 @@ var E5SmallFP32 = Spec{
 	},
 	Tokenizer: E5Small.Tokenizer,
 	Prefix:    E5Small.Prefix,
+	// #15 measured 1.07 GB at peak for the whole process.
+	Memory: 1100 << 20,
 }
 
 // BGEM3 is BAAI's bge-m3: multilingual, 1,024 dimensions, five times
@@ -174,6 +194,8 @@ var BGEM3 = Spec{
 		SHA256: "6710678b12670bc442b99edc952c4d996ae309a7020c1fa0096dd245c2faf790",
 	},
 	Pooling: PoolCLS,
+	// 2.3 GB of weights in full precision, and a batch's activations.
+	Memory: 3 << 30,
 }
 
 // Specs are the models an administrator chooses between, by the names the

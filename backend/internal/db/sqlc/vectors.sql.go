@@ -73,6 +73,56 @@ func (q *Queries) CountEmbedded(ctx context.Context, arg CountEmbeddedParams) (C
 	return i, err
 }
 
+const countVectorsByModel = `-- name: CountVectorsByModel :many
+SELECT v.model, v.model_version,
+       count(*) FILTER (WHERE v.kind = 'metadata')::int AS metadata,
+       count(*) FILTER (WHERE v.kind = 'content')::int AS content
+FROM book_vectors v
+JOIN books b ON b.id = v.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+GROUP BY v.model, v.model_version
+`
+
+type CountVectorsByModelParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type CountVectorsByModelRow struct {
+	Model        string
+	ModelVersion string
+	Metadata     int32
+	Content      int32
+}
+
+// How many of the books the viewer sees have a metadata and a content
+// vector of each model and version that made any.
+func (q *Queries) CountVectorsByModel(ctx context.Context, arg CountVectorsByModelParams) ([]CountVectorsByModelRow, error) {
+	rows, err := q.db.Query(ctx, countVectorsByModel, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountVectorsByModelRow{}
+	for rows.Next() {
+		var i CountVectorsByModelRow
+		if err := rows.Scan(
+			&i.Model,
+			&i.ModelVersion,
+			&i.Metadata,
+			&i.Content,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteBookVector = `-- name: DeleteBookVector :exec
 DELETE FROM book_vectors WHERE book_id = $1 AND kind = $2
 `

@@ -3278,6 +3278,43 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/embedding/models": {
+      "get": {
+        "operationId": "listEmbeddingModels",
+        "summary": "The models embedding.model may name, with their size, whether each runs here and how many of the caller's books have its vectors",
+        "tags": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/embedding/status": {
       "get": {
         "operationId": "embeddingStatus",
@@ -10422,6 +10459,75 @@
           "take"
         ]
       },
+      "ModelChoice": {
+        "type": "object",
+        "properties": {
+          "chosen": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "integer"
+          },
+          "dimensions": {
+            "type": "integer"
+          },
+          "diskBytes": {
+            "type": "integer"
+          },
+          "memoryBytes": {
+            "type": "integer"
+          },
+          "metadata": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/Readiness"
+          },
+          "weights": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "model",
+          "weights",
+          "dimensions",
+          "diskBytes",
+          "memoryBytes",
+          "readiness",
+          "chosen",
+          "metadata",
+          "content"
+        ]
+      },
+      "ModelList": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelChoice"
+            }
+          },
+          "withText": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "books",
+          "withText",
+          "models"
+        ]
+      },
       "NameList": {
         "type": "object",
         "properties": {
@@ -10731,6 +10837,29 @@
         "required": [
           "waiting",
           "lastHour"
+        ]
+      },
+      "Readiness": {
+        "type": "object",
+        "properties": {
+          "onServer": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "download",
+              "noRuntime",
+              "notDownloaded",
+              "noServer",
+              "serverDown"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "onServer"
         ]
       },
       "ReadingBulkRequest": {

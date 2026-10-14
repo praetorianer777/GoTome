@@ -164,6 +164,49 @@ export class FakeServer {
 		metadata: 80,
 		content: 60,
 	};
+	/** The models embedding.model may name, as the settings page shows them. */
+	embeddingModels = {
+		books: 120,
+		withText: 100,
+		models: [
+			{
+				name: "multilingual-e5-small",
+				model: "intfloat/multilingual-e5-small",
+				weights: "int8",
+				dimensions: 384,
+				diskBytes: 135_429_554,
+				memoryBytes: 734_003_200,
+				readiness: { state: "ready" as const, onServer: false },
+				chosen: true,
+				metadata: 80,
+				content: 60,
+			},
+			{
+				name: "multilingual-e5-small-fp32",
+				model: "intfloat/multilingual-e5-small",
+				weights: "fp32",
+				dimensions: 384,
+				diskBytes: 487_351_240,
+				memoryBytes: 1_153_433_600,
+				readiness: { state: "download" as const, onServer: false },
+				chosen: false,
+				metadata: 0,
+				content: 0,
+			},
+			{
+				name: "bge-m3",
+				model: "BAAI/bge-m3",
+				weights: "bge-m3",
+				dimensions: 1024,
+				diskBytes: 2_284_693_904,
+				memoryBytes: 3_221_225_472,
+				readiness: { state: "notDownloaded" as const, onServer: false },
+				chosen: false,
+				metadata: 110,
+				content: 95,
+			},
+		],
+	};
 	/** What the overview page counts. */
 	figures = {
 		books: 1200,
@@ -277,6 +320,7 @@ export class FakeServer {
 		{ key: "metadata.language", kind: "text", value: "en", isSet: false },
 		{ key: "metadata.googleBooksKey", kind: "secret", isSet: false },
 		{ key: "metadata.hardcoverToken", kind: "secret", isSet: false },
+		{ key: "embedding.model", kind: "text", value: "multilingual-e5-small", isSet: false },
 	];
 	/** What was uploaded, by content, to find a file sent twice. */
 	private uploaded = new Map<string, Uploaded>();
@@ -442,6 +486,15 @@ export class FakeServer {
 			}
 			if (path === "/embedding/status") {
 				return Response.json(this.embedding);
+			}
+			if (path === "/embedding/models") {
+				if (!this.session?.permissions.includes("settings:manage")) {
+					return Response.json(
+						{ error: { code: "forbidden", message: "You do not have permission to do that." } },
+						{ status: 403 },
+					);
+				}
+				return Response.json(this.embeddingModels);
 			}
 			if (path === "/statistics") {
 				return Response.json(this.figures);
@@ -1899,6 +1952,12 @@ export class FakeServer {
 			const embedding = values["embedding.enabled"];
 			if (embedding) {
 				this.embedding.enabled = embedding === "on";
+			}
+			const model = values["embedding.model"];
+			if (model) {
+				for (const m of this.embeddingModels.models) {
+					m.chosen = m.name === model;
+				}
 			}
 			const language = values["metadata.language"];
 			if (language && !/^[a-z]{2,3}$/i.test(language.trim())) {

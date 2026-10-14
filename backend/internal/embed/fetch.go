@@ -81,6 +81,22 @@ func Fetch(ctx context.Context, root string, spec Spec, opts FetchOptions) (stri
 	return dir, nil
 }
 
+// Present reports whether the spec's files lie in root/spec.Dir with their
+// pinned sizes. It reads no file, so it is cheap enough to ask on every
+// look at the settings; opening the model checks the hashes.
+func Present(root string, spec Spec) bool {
+	if !spec.Runs() {
+		return false
+	}
+	for _, f := range spec.Files() {
+		info, err := os.Stat(filepath.Join(root, spec.Dir, f.Name))
+		if err != nil || info.Size() != f.Size {
+			return false
+		}
+	}
+	return true
+}
+
 func defaultClient() *http.Client {
 	return &http.Client{Transport: &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,

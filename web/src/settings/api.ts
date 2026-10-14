@@ -21,6 +21,11 @@ export function useUpdateSettings() {
 	return useMutation({
 		mutationFn: async (values: Record<string, string | null>) =>
 			(await api.PATCH("/settings", { body: { values } })).data?.settings ?? [],
-		onSuccess: (settings) => queryClient.setQueryData(settingsQuery.queryKey, settings),
+		onSuccess: (settings, values) => {
+			queryClient.setQueryData(settingsQuery.queryKey, settings);
+			if (Object.keys(values).some((key) => key.startsWith("embedding."))) {
+				queryClient.invalidateQueries({ queryKey: ["embedding"] });
+			}
+		},
 	});
 }

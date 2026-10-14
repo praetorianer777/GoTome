@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
 // specVersion is the version of the API, not of the build: the document is
@@ -71,6 +72,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["DeviceAnswer.state"] = &openapi.Schema{Type: "string", Enum: []string{
 		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
 	}}
+	b.FieldOverrides["Readiness.state"] = &openapi.Schema{Type: "string", Enum: similar.ReadinessStates}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {

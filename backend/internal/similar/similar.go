@@ -68,7 +68,7 @@ type Opener func(ctx context.Context, spec embed.Spec) (embed.Embedder, error)
 // is ErrUnavailable.
 func OnnxOpener(opts embed.OnnxOptions) Opener {
 	return func(ctx context.Context, spec embed.Spec) (embed.Embedder, error) {
-		if spec.Server != "" {
+		if !spec.Runs() {
 			return nil, fmt.Errorf("%w: %s runs only on an embedding server", ErrUnavailable, spec.Model.Name)
 		}
 		if _, err := embed.LoadRuntime(opts.Runtime); err != nil {
@@ -132,6 +132,8 @@ type Service struct {
 	config Config
 	open   Opener
 	Queue  Queue
+	// Probe tells Models whether each model runs here.
+	Probe Probe
 	// queries embeds the descriptions Describe is asked about.
 	queries queries
 }
