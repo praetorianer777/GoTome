@@ -60,9 +60,6 @@ What changes for someone who runs or uses GOtome. The format follows
 - Every answer carries headers that keep browsers from guessing a file's
   type, from sending GOtome's addresses to other sites and from framing
   its pages, and everything outside the web app is sandboxed.
-
-### Security
-
 - An upload whose content is not the format its name says, such as a web
   page saved as a PDF, is refused with the reason, and a file like it in a
   library folder is marked as unreadable without being read.
