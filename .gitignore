@@ -50,3 +50,7 @@ node_modules/
 
 # An installation's own settings for docker compose (deploy/.env.example).
 /deploy/.env
+
+# The engine's crates, vendored by make engine-fetch, and its build.
+/engine/vendor/
+/engine/target/
