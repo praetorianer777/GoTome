@@ -83,13 +83,20 @@ type Query struct {
 	Snippets bool   `json:"snippets,omitempty"`
 }
 
-// Latency is one query's time over runs after a warm-up.
+// Latency is one query's time over runs after a warm-up. Top, Total,
+// Snippets, P95 and Took are Manticore's (#268): the hits asked for, all it
+// found, the snippets it marked a match in, and its own time.
 type Latency struct {
-	Kind  string  `json:"kind"`
-	Query string  `json:"query"`
-	Hits  int     `json:"hits"`
-	P50   float64 `json:"p50"`
-	Max   float64 `json:"max"`
+	Kind     string  `json:"kind"`
+	Query    string  `json:"query"`
+	Top      int     `json:"top,omitempty"`
+	Hits     int     `json:"hits"`
+	Total    int     `json:"total,omitempty"`
+	Snippets int     `json:"snippets,omitempty"`
+	P50      float64 `json:"p50"`
+	P95      float64 `json:"p95,omitempty"`
+	Max      float64 `json:"max"`
+	Took     float64 `json:"tookMs,omitempty"`
 }
 
 const runs = 5
