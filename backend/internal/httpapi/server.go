@@ -114,7 +114,7 @@ type Server struct {
 // Routes is the handler for every path the server answers.
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(requestID, logging(s.Log), recovery)
+	r.Use(requestID, securityHeaders, logging(s.Log), recovery)
 	r.NotFound(s.notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 

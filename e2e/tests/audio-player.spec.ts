@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 
 function part(n: 1 | 2, stamp: string): Buffer {
 	const audio = readFileSync(fileURLToPath(new URL(`../fixtures/audio/part${n}.mp3`, import.meta.url)));
@@ -64,7 +64,7 @@ test("an audiobook in two parts plays as one, seeks across the parts, and resume
 		})
 		.toBe("read");
 
-	await page.goto(`/books/${bookId}`);
+	await gotoUnderPolicy(page, `/books/${bookId}`);
 	await page.getByRole("link", { name: "Listen" }).click();
 	await expect(page.getByRole("button", { name: /^Arrival/ })).toBeVisible();
 	await expect(page.getByRole("button", { name: /^The Keeper/ })).toBeVisible();

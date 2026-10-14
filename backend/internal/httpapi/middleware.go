@@ -49,6 +49,28 @@ func requestID(next http.Handler) http.Handler {
 	})
 }
 
+// apiContentSecurityPolicy goes with every answer that is not the web app's,
+// which sets its own. Nothing the API sends is a page: a file opened in the
+// browser by its address, or an error, runs no script, loads nothing and is
+// framed by nobody.
+const apiContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox"
+
+// securityHeaders sets the headers every answer carries. The browser is
+// to take a file's type as sent, never guessed from what a book holds; to
+// send no address of GOtome's, which may name a book or what was searched
+// for, to another site; and to offer the app nothing it does not use.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", apiContentSecurityPolicy)
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "SAMEORIGIN")
+		h.Set("Referrer-Policy", "same-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // statusRecorder remembers what a handler answered, for the log line.
 type statusRecorder struct {
 	http.ResponseWriter

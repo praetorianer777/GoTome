@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 import { makePdf } from "../fixtures/pdf";
 
 // Drawing pages keeps a loaded WebKit busy enough in CI that its controls
@@ -32,7 +32,7 @@ test("a large PDF opens at its first page from a part of the file, and reopens w
 			ranges.push(Number(response.headers()["content-length"]));
 		}
 	});
-	await page.goto(`/books/${bookId}`);
+	await gotoUnderPolicy(page, `/books/${bookId}`);
 	await page.getByRole("link", { name: `Read Long ${stamp}.pdf` }).click();
 	const shown = page.getByRole("figure", { name: /^Page \d+ of / });
 	await expect(shown).toHaveAttribute("data-page", "1", { timeout: 15_000 });

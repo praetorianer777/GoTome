@@ -8,18 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -28,7 +26,7 @@ var (
 	ErrNotFound = errors.New("the provider knows no such book")
 	// ErrForbiddenAddress is a request to an address inside the server's own
 	// network, which no provider has any business with.
-	ErrForbiddenAddress = errors.New("the address is not on the public internet")
+	ErrForbiddenAddress = outbound.ErrForbiddenAddress
 	// ErrBusy is a provider asking to be asked later.
 	ErrBusy = errors.New("the provider asks to be asked later")
 )
@@ -113,19 +111,7 @@ func newWeb(p Provider, client *http.Client, pool *pgxpool.Pool) *web {
 }
 
 func newClient(allowPrivate bool) *http.Client {
-	return &http.Client{
-		Transport: guardedTransport(allowPrivate),
-		Timeout:   requestTimeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return errors.New("too many redirects")
-			}
-			if req.URL.Scheme != "https" && req.URL.Scheme != "http" {
-				return fmt.Errorf("redirect to %s", req.URL.Scheme)
-			}
-			return nil
-		},
-	}
+	return outbound.NewClient(outbound.Options{Timeout: requestTimeout, AllowPrivate: allowPrivate})
 }
 
 // web is the Web of one provider.
@@ -251,59 +237,4 @@ func (s *spacer) wait(ctx context.Context) error {
 	case <-t.C:
 		return nil
 	}
-}
-
-// guardedTransport dials only public addresses. The check is on the address
-// a name resolved to, as it is dialled, so neither a name pointing inside
-// nor a redirect to one gets through. No proxy is used: it would be what is
-// dialled.
-func guardedTransport(allowPrivate bool) *http.Transport {
-	dialer := &net.Dialer{
-		Timeout: 10 * time.Second,
-		Control: func(network, address string, _ syscall.RawConn) error {
-			if allowPrivate {
-				return nil
-			}
-			ap, err := netip.ParseAddrPort(address)
-			if err != nil {
-				return fmt.Errorf("%w: %s", ErrForbiddenAddress, address)
-			}
-			if !public(ap.Addr()) {
-				return fmt.Errorf("%w: %s", ErrForbiddenAddress, ap.Addr())
-			}
-			return nil
-		},
-	}
-	return &http.Transport{
-		Proxy:                 nil,
-		DialContext:           dialer.DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          20,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: requestTimeout,
-	}
-}
-
-// nonPublic are the ranges no provider lives in beside those netip names.
-var nonPublic = []netip.Prefix{
-	netip.MustParsePrefix("100.64.0.0/10"), // shared address space, carrier NAT
-	netip.MustParsePrefix("192.0.0.0/24"),
-	netip.MustParsePrefix("198.18.0.0/15"),
-	netip.MustParsePrefix("240.0.0.0/4"),
-	netip.MustParsePrefix("64:ff9b:1::/48"),
-}
-
-func public(a netip.Addr) bool {
-	a = a.Unmap()
-	if !a.IsValid() || a.IsLoopback() || a.IsPrivate() || a.IsUnspecified() || a.IsLinkLocalUnicast() ||
-		a.IsLinkLocalMulticast() || a.IsInterfaceLocalMulticast() || a.IsMulticast() {
-		return false
-	}
-	for _, p := range nonPublic {
-		if p.Contains(a) {
-			return false
-		}
-	}
-	return true
 }

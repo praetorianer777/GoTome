@@ -22,6 +22,10 @@ dimensions, five times e5-small's size.
 3. In GOtome's settings, set **Embedding server** to
    `http://host.docker.internal:11434` and **Language model** to `bge-m3`.
 
+GOtome refuses to reach addresses inside your network, but trusts the host
+and port named here: only that one, so the server cannot send it anywhere
+else inside by a redirect.
+
 Every book is then embedded again, four at a time. The vectors of the model
 before stay: choosing it again is at once, and `gotome similar-check`
 compares the two on the same library.

@@ -47,6 +47,18 @@ What changes for someone who runs or uses GOtome. The format follows
   archive lists its folders as entries of their own, as many tools write
   them; before, writing failed with "zip: write to directory".
 
+### Security
+
+- Every request GOtome makes to another server refuses addresses inside
+  your network, also after a redirect or when a name resolves to one,
+  except the identity provider and the embedding server you set up. An
+  identity provider whose discovery names an endpoint on another address
+  inside the network is refused. The embedding model's download no longer
+  goes through a proxy from `HTTPS_PROXY`.
+- Every answer carries headers that keep browsers from guessing a file's
+  type, from sending GOtome's addresses to other sites and from framing
+  its pages, and everything outside the web app is sandboxed.
+
 ## [0.3.1] - 2026-10-14
 
 ### Fixed

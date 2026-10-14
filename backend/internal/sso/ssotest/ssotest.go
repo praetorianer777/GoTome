@@ -4,6 +4,7 @@
 package ssotest
 
 import (
+	"cmp"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -37,6 +38,9 @@ type Provider struct {
 	tamper func(map[string]any)
 	// otherKey signs with a key the provider does not publish.
 	otherKey bool
+	// tokensAt is where the discovery document says tokens are to be had,
+	// when not here.
+	tokensAt string
 	key      *rsa.PrivateKey
 	stranger *rsa.PrivateKey
 	grants   map[string]grant
@@ -91,11 +95,22 @@ func (p *Provider) SignWithUnknownKey(on bool) {
 	p.otherKey = on
 }
 
+// SendTokensTo makes the discovery document name another token endpoint,
+// as a provider pointing GOtome at an address inside its network would.
+func (p *Provider) SendTokensTo(url string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.tokensAt = url
+}
+
 func (p *Provider) discovery(w http.ResponseWriter, _ *http.Request) {
+	p.mu.Lock()
+	tokens := cmp.Or(p.tokensAt, p.URL+"/token")
+	p.mu.Unlock()
 	writeJSON(w, map[string]any{
 		"issuer":                                p.URL,
 		"authorization_endpoint":                p.URL + "/authorize",
-		"token_endpoint":                        p.URL + "/token",
+		"token_endpoint":                        tokens,
 		"jwks_uri":                              p.URL + "/keys",
 		"response_types_supported":              []string{"code"},
 		"subject_types_supported":               []string{"public"},
