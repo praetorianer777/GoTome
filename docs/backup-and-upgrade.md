@@ -67,7 +67,8 @@ that made the backup: GOtome brings the database up to date when it starts.
 
 ## Upgrading
 
-Back up first. Then pull the new image and start it:
+Back up first. If `.env` pins `GOTOME_IMAGE` to a version, change it to the
+new one. Then pull the new image and start it:
 
 ```bash
 cd deploy

@@ -47,3 +47,6 @@ node_modules/
 /clients/android/build/
 /clients/android/app/build/
 /clients/android/local.properties
+
+# An installation's own settings for docker compose (deploy/.env.example).
+/deploy/.env

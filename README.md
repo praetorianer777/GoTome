@@ -33,11 +33,14 @@ containers: the app and the database.
 
 ## Running it
 
-There is no release yet, so the image is built from the checkout:
+Each release publishes the image for amd64 and arm64 as
+`ghcr.io/praetorianer777/gotome`. Everything a deployment needs is the folder
+`deploy`:
 
 ```bash
-git clone https://github.com/praetorianer777/GoTome.git && cd GoTome
-docker compose -f deploy/docker-compose.yml up -d --build
+git clone https://github.com/praetorianer777/GoTome.git && cd GoTome/deploy
+cp .env.example .env   # optional: pin the version, change the port
+docker compose up -d
 ```
 
 Then open <http://localhost:8080> and create the first account. A short-lived
@@ -46,7 +49,11 @@ encryption key on the first start and keeps them in the `secrets` volume; nobody
 has to choose or type them. The key encrypts what is stored for other services,
 such as API tokens: back up the `secrets` volume together with the database, or
 those have to be entered again.
-Once a release is published, the same file pulls the image instead of building it.
+
+`deploy/.env.example` lists what can be changed, each with its default. With
+`GOTOME_IMAGE` pinned to a version you choose when to upgrade; left out, the
+image is `latest`. `docker compose up -d --build` builds the image from the
+checkout instead.
 
 Backing up, restoring and upgrading: [docs/backup-and-upgrade.md](docs/backup-and-upgrade.md).
 

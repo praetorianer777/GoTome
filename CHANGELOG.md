@@ -11,6 +11,8 @@ What changes for someone who runs or uses GOtome. The format follows
 - GOtome for Tolino shows its version on its settings page, and speaks
   English or German as chosen there, English unless changed, whatever
   language the Tolino is set to.
+- `deploy/.env.example` lists every setting of the compose deployment with
+  its default; copied to `.env`, it pins the image to a version you choose.
 
 ## [0.1.1] - 2026-10-14
 
