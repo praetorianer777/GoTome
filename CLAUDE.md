@@ -184,9 +184,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `CHANGELOG.md` is written for someone who runs or uses GOtome. A change they would
   notice gets a line under `## [Unreleased]` in the same pull request; internal work
   does not.
-- A release is cut by the owner with `./release.sh <version>` on `main`. It moves the
-  Unreleased entries under the version, writes `VERSION`, commits and tags, and pushes
-  nothing. Pushing the tag runs `.github/workflows/release.yml`.
+- A release is cut by the owner with `./release.sh` on `main`. Without a version it
+  works one out from what was merged since the last tag: a `feat/` pull request or an
+  Added, Changed or Deprecated section is minor, a `BREAKING CHANGE` or a Removed
+  section major (minor before 1.0), anything else patch; `major`, `minor`, `patch` or
+  an explicit version override it. It moves the Unreleased entries under the version,
+  writes `VERSION`, commits and tags, and pushes nothing. Pushing the tag runs
+  `.github/workflows/release.yml`.
 
 ## Settings and secrets
 

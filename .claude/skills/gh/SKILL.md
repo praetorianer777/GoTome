@@ -113,8 +113,8 @@ gh run view <run-id> --log-failed
 
 ## Releases
 
-Cutting a release is the user's job, not part of issue work. `./release.sh <version>`
-moves the changelog's Unreleased entries under the version, commits and tags on `main`
+Cutting a release is the user's job, not part of issue work. `./release.sh` (which
+works the version out, or takes one) moves the changelog's Unreleased entries under the version, commits and tags on `main`
 and prints the push command; pushing the `v*` tag makes `release.yml` build the amd64
 and arm64 images, publish them on GHCR and create the GitHub release. Read-only:
 
