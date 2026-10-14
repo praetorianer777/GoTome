@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
@@ -181,6 +182,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Deliveries = deliveries.NewService(a.pool)
+	a.server.Pairing = pairing.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet)
 	a.server.Index.Queue = queue

@@ -32,6 +32,9 @@ const (
 	// ssoStartsPerIP bounds the sign-ins through the identity provider one
 	// address may start in the window: each leaves a row until it expires.
 	ssoStartsPerIP = 30
+	// deviceRequestsPerIP bounds the devices one address may ask to add in
+	// the window: each may tell a person of it.
+	deviceRequestsPerIP = 10
 )
 
 // LoginLimits is the pair of limiters the login route consults.
@@ -39,6 +42,7 @@ type LoginLimits struct {
 	perAccount *auth.Limiter
 	perAddress *auth.Limiter
 	ssoStarts  *auth.Limiter
+	devices    *auth.Limiter
 }
 
 // NewLoginLimits returns limiters on the given clock.
@@ -47,6 +51,7 @@ func NewLoginLimits(now func() time.Time) *LoginLimits {
 		perAccount: auth.NewLimiter(loginFailuresPerKey, loginWindow, now),
 		perAddress: auth.NewLimiter(loginFailuresPerIP, loginWindow, now),
 		ssoStarts:  auth.NewLimiter(ssoStartsPerIP, loginWindow, now),
+		devices:    auth.NewLimiter(deviceRequestsPerIP, loginWindow, now),
 	}
 }
 
