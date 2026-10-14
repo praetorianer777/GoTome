@@ -1067,6 +1067,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}/fix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash */
+        post: operations["fixFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/restore": {
         parameters: {
             query?: never;
@@ -2579,10 +2596,11 @@ export interface components {
         };
         BulkRequest: {
             /** @enum {string} */
-            action: "edit" | "fetch" | "writeBack";
+            action: "edit" | "fetch" | "writeBack" | "fix";
             books?: string[];
             change?: components["schemas"]["BulkChange"];
             filter?: string;
+            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
             library?: string;
         };
         BulkResult: {
@@ -2601,7 +2619,7 @@ export interface components {
         };
         BulkStatus: {
             /** @enum {string} */
-            action: "edit" | "fetch" | "writeBack";
+            action: "edit" | "fetch" | "writeBack" | "fix";
             books: components["schemas"]["BulkResult"][];
             counts: {
                 [key: string]: number;
@@ -2965,6 +2983,16 @@ export interface components {
             withoutAuthor: number;
             withoutCover: number;
             withoutText: number;
+        };
+        FixRequest: {
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
+        };
+        FixResult: {
+            documentsSplit: number;
+            fontsRemoved: number;
+            imagesScaled: number;
+            itemsRemoved: number;
+            partsAdded: number;
         };
         FollowRequest: {
             /** @enum {string} */
@@ -5923,6 +5951,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RereadResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    fixFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixResult"];
                 };
             };
             /** @description The request failed. */

@@ -3487,6 +3487,63 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/files/{fileId}/fix": {
+      "post": {
+        "operationId": "fixFile",
+        "summary": "Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/files/{fileId}/restore": {
       "post": {
         "operationId": "restoreFile",
@@ -8398,7 +8455,8 @@
             "enum": [
               "edit",
               "fetch",
-              "writeBack"
+              "writeBack",
+              "fix"
             ]
           },
           "books": {
@@ -8413,6 +8471,18 @@
           },
           "filter": {
             "type": "string"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "large-document",
+                "large-fonts",
+                "large-image",
+                "missing-resources"
+              ]
+            }
           },
           "library": {
             "type": "string"
@@ -8483,7 +8553,8 @@
             "enum": [
               "edit",
               "fetch",
-              "writeBack"
+              "writeBack",
+              "fix"
             ]
           },
           "books": {
@@ -9869,6 +9940,53 @@
           "formats",
           "languages",
           "months"
+        ]
+      },
+      "FixRequest": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "large-document",
+                "large-fonts",
+                "large-image",
+                "missing-resources"
+              ]
+            }
+          }
+        },
+        "required": [
+          "findings"
+        ]
+      },
+      "FixResult": {
+        "type": "object",
+        "properties": {
+          "documentsSplit": {
+            "type": "integer"
+          },
+          "fontsRemoved": {
+            "type": "integer"
+          },
+          "imagesScaled": {
+            "type": "integer"
+          },
+          "itemsRemoved": {
+            "type": "integer"
+          },
+          "partsAdded": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documentsSplit",
+          "partsAdded",
+          "imagesScaled",
+          "fontsRemoved",
+          "itemsRemoved"
         ]
       },
       "FollowRequest": {

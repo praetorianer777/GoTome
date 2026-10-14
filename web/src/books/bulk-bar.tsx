@@ -20,6 +20,7 @@ import {
 } from "@/books/reading";
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
 import { useSendToDevice } from "@/books/deliveries";
+import { EREADER_FINDINGS } from "@/books/rules";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { ownDevicesQuery } from "@/users/api";
@@ -60,9 +61,9 @@ export function BulkBar({
 	const devices = useQuery(ownDevicesQuery);
 	const send = useSendToDevice();
 	const none = !all && count === 0;
-	const run = (action: BulkAction, change?: BulkRequest["change"]) =>
+	const run = (action: BulkAction, change?: BulkRequest["change"], findings?: BulkRequest["findings"]) =>
 		start.mutate(
-			{ ...selection, action, change },
+			{ ...selection, action, change, findings },
 			{
 				onSuccess: (started) => {
 					if (started) {
@@ -179,6 +180,31 @@ export function BulkBar({
 				>
 					{t("bulk.writeBack")}
 				</button>
+				<select
+					aria-label={t("bulk.fix")}
+					value=""
+					disabled={none || start.isPending}
+					onChange={(e) =>
+						run(
+							"fix",
+							undefined,
+							e.target.value === "all"
+								? [...EREADER_FINDINGS]
+								: [e.target.value as (typeof EREADER_FINDINGS)[number]],
+						)
+					}
+					className={control}
+				>
+					<option value="" disabled>
+						{t("bulk.fix")}
+					</option>
+					<option value="all">{t("bulk.fix.all")}</option>
+					{EREADER_FINDINGS.map((f) => (
+						<option key={f} value={f}>
+							{t(`fix.${f}`)}
+						</option>
+					))}
+				</select>
 					</>
 				)}
 			</div>

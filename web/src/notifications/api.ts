@@ -65,6 +65,7 @@ const BULK_ACTIONS: Record<string, MessageKey> = {
 	edit: "notification.bulk.edit",
 	fetch: "notification.bulk.fetch",
 	writeBack: "notification.bulk.writeBack",
+	fix: "notification.bulk.fix",
 };
 
 export type NotificationSetting =

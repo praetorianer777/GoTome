@@ -305,7 +305,7 @@ function Files({
 									{fileNotes(file).join(" · ")}
 								</span>
 							)}
-							<EReaderFindings file={file} />
+							<EReaderFindings file={file} canFix={canTrash} />
 							{file.extractState === "failed" && (
 								<span className="block text-red-700 dark:text-red-400">
 									{file.extractError

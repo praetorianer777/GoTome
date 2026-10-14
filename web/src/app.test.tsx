@@ -4250,6 +4250,100 @@ describe("the trash", () => {
 	});
 });
 
+describe("fixing EPUBs for e-readers", () => {
+	const heavy = () => ({
+		id: "tower",
+		kind: "ebook" as const,
+		format: "epub",
+		name: "Schwalbenturm.epub",
+		size: 5_000_000,
+		missing: false,
+		drm: false,
+		extractState: "done" as const,
+		ereader: {
+			findings: ["large-document" as const, "large-fonts" as const],
+			largestDocument: 1_280_000,
+			fonts: 8,
+			fontBytes: 3_500_000,
+			largestImage: 0,
+			imageWidth: 0,
+			imageHeight: 0,
+			missingResources: [],
+		},
+	});
+
+	it("fixes one finding of a file from the book's page", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [heavy()] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(
+			await files.findByRole("button", { name: "Split into chapters in Schwalbenturm.epub" }),
+		).toBeInTheDocument();
+		await person.click(
+			files.getByRole("button", { name: "Remove the fonts in Schwalbenturm.epub" }),
+		);
+		expect(
+			await files.findByText(
+				"Fixed. The file as it was is in the trash, from where it can be restored beside this one.",
+			),
+		).toBeInTheDocument();
+		expect(server.fixes).toEqual([{ file: "tower", findings: ["large-fonts"] }]);
+		await waitFor(() =>
+			expect(files.queryByText("8 embedded fonts take 3.5 MB")).not.toBeInTheDocument(),
+		);
+		expect(
+			files.getByText("One chapter file holds 1.3 MB, which an e-reader lays out at once"),
+		).toBeInTheDocument();
+	});
+
+	it("offers no fix where the file cannot be changed", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Shelf", { mode: "external", writable: false })
+			.withBook("Der Schwalbenturm", { files: [heavy()] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(files.getByText("May be slow on e-readers:")).toBeInTheDocument();
+		expect(
+			files.queryByRole("button", { name: /in Schwalbenturm\.epub$/ }),
+		).not.toBeInTheDocument();
+	});
+
+	it("fixes every book of a list as a bulk change", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [heavy()] })
+			.withBook("Emma");
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Select books" }));
+		await person.click(screen.getByRole("button", { name: "Select every book that matches" }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Fix for e-readers" }),
+			"Everything found",
+		);
+		await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/bulk\//));
+		expect(
+			server.requests.find((r) => r.method === "POST" && r.path === "/books/bulk")?.body,
+		).toMatchObject({
+			action: "fix",
+			findings: ["large-document", "large-fonts", "large-image", "missing-resources"],
+		});
+		expect(
+			await screen.findByRole("heading", { name: "Fixing EPUBs for e-readers" }),
+		).toBeInTheDocument();
+		expect(server.books[0]?.files[0]?.ereader?.findings).toEqual([]);
+	});
+});
+
 describe("merging books", () => {
 	it("keeps one book with the values picked, and leads the other's address to it", async () => {
 		const person = userEvent.setup();
