@@ -196,6 +196,18 @@ WHERE b.deleted_at IS NULL AND NOT b.placeholder
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid);
 
+-- name: CountVectorsByModel :many
+-- How many of the books the viewer sees have a metadata and a content
+-- vector of each model and version that made any.
+SELECT v.model, v.model_version,
+       count(*) FILTER (WHERE v.kind = 'metadata')::int AS metadata,
+       count(*) FILTER (WHERE v.kind = 'content')::int AS content
+FROM book_vectors v
+JOIN books b ON b.id = v.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY v.model, v.model_version;
+
 -- name: ListStoredMetadataVectors :many
 -- A sample of the books with a metadata vector of the model, with the text
 -- it was made from, in the order of a hash of their ID.

@@ -4,6 +4,12 @@ import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import { type Setting, settingsQuery, useUpdateSettings } from "@/settings/api";
+import {
+	EmbeddingModelField,
+	embeddingModelsQuery,
+	lacksMostVectors,
+	SwitchModelDialog,
+} from "@/settings/embedding-model";
 
 /** What a setting is called and what it is for, by its key. */
 const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
@@ -128,9 +134,12 @@ export function AdminSettings() {
 function SettingsForm({ settings }: { settings: Setting[] }) {
 	const update = useUpdateSettings();
 	const remove = useUpdateSettings();
+	const models = useQuery(embeddingModelsQuery);
 	// Only what was typed: a secret's field starts empty, a text's with its value.
 	const [typed, setTyped] = useState<Record<string, string>>({});
 	const [saved, setSaved] = useState(false);
+	// Values held back while the switch of model is confirmed.
+	const [asking, setAsking] = useState<Record<string, string | null> | null>(null);
 	const errors = { ...fieldErrors(remove.error), ...fieldErrors(update.error) };
 
 	function submit(event: FormEvent) {
@@ -151,6 +160,16 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 			}
 			values[s.key] = v;
 		}
+		const model = values["embedding.model"];
+		if (model && models.data && lacksMostVectors(models.data, model)) {
+			setAsking(values);
+			return;
+		}
+		save(values);
+	}
+
+	function save(values: Record<string, string | null>) {
+		setAsking(null);
 		setSaved(false);
 		update.mutate(values, {
 			onSuccess: () => {
@@ -165,6 +184,19 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 			{settings.map((s) => {
 				const texts = TEXTS[s.key];
 				const label = texts ? t(texts.label) : s.key;
+				if (s.key === "embedding.model" && models.data) {
+					return (
+						<EmbeddingModelField
+							key={s.key}
+							label={label}
+							hint={texts && t(texts.hint)}
+							value={typed[s.key] ?? s.value ?? ""}
+							list={models.data}
+							onChange={(name) => setTyped({ ...typed, [s.key]: name })}
+							error={errors[s.key]}
+						/>
+					);
+				}
 				if (s.kind === "text") {
 					return (
 						<Field
@@ -232,6 +264,14 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 					</p>
 				)}
 			</div>
+			{asking && models.data && (
+				<SwitchModelDialog
+					model={asking["embedding.model"] ?? ""}
+					list={models.data}
+					onConfirm={() => save(asking)}
+					onCancel={() => setAsking(null)}
+				/>
+			)}
 		</form>
 	);
 }

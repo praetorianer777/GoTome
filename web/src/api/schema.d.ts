@@ -982,6 +982,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embedding/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The models embedding.model may name, with their size, whether each runs here and how many of the caller's books have its vectors */
+        get: operations["listEmbeddingModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/embedding/status": {
         parameters: {
             query?: never;
@@ -3115,6 +3132,23 @@ export interface components {
             from: string;
             take: string[];
         };
+        ModelChoice: {
+            chosen: boolean;
+            content: number;
+            dimensions: number;
+            diskBytes: number;
+            memoryBytes: number;
+            metadata: number;
+            model: string;
+            name: string;
+            readiness: components["schemas"]["Readiness"];
+            weights: string;
+        };
+        ModelList: {
+            books: number;
+            models: components["schemas"]["ModelChoice"][];
+            withText: number;
+        };
         NameList: {
             names: string[];
         };
@@ -3199,6 +3233,11 @@ export interface components {
             lastHour: number;
             minutesLeft?: number;
             waiting: number;
+        };
+        Readiness: {
+            onServer: boolean;
+            /** @enum {string} */
+            state: "ready" | "download" | "noRuntime" | "notDownloaded" | "noServer" | "serverDown";
         };
         ReadingBulkRequest: {
             books?: string[];
@@ -5724,6 +5763,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listEmbeddingModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelList"];
+                };
             };
             /** @description The request failed. */
             default: {

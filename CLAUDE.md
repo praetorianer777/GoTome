@@ -909,6 +909,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   whether embedding is on; the jobs page shows it (`jobs/embedding.tsx`)
   with a Pause / Start button for `settings:manage`, which sets
   `embedding.enabled` through the settings route.
+- `GET /embedding/models` (`Service.Models`, `settings:manage`) lists
+  `embed.Specs` for the settings page, which offers `embedding.model` as
+  a choice from it: size on disk, `Spec.Memory` (an estimate on the CPU),
+  whether it runs here (`Service.Probe`: `ServerProbe` over `OnnxProbe`,
+  what the openers would find, downloading nothing and comparing file
+  sizes only) and the visible books with its vectors. Choosing one that
+  lacks most of them asks first; the setting's check stays the rule.
 - `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under

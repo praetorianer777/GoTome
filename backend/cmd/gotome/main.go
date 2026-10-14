@@ -216,12 +216,14 @@ func serve() error {
 		}
 		return duplicates.EnqueueTx(ctx, tx, bookID)
 	}
-	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
+	onnx := embed.OnnxOptions{
 		Runtime:  cfg.OnnxRuntime,
 		ModelDir: cfg.ModelDir,
 		Threads:  cfg.EmbedThreads,
 		Fetch:    embed.FetchOptions{Offline: cfg.Offline, Log: log},
-	}), settingStore.EmbeddingServer), log)
+	}
+	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
+	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
 	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
 		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID); err != nil {
 			return err

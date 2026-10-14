@@ -125,3 +125,12 @@ func (s *Server) embeddingStatus(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, status)
 	return nil
 }
+
+func (s *Server) listEmbeddingModels(w http.ResponseWriter, r *http.Request) error {
+	models, err := s.Similar.Models(r.Context(), library.ScopeOf(*UserFrom(r.Context())))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, models)
+	return nil
+}

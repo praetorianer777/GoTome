@@ -437,6 +437,11 @@ func (s *Server) routes() []Route {
 			Response: similar.Status{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.embeddingStatus,
 		},
 		{
+			Method: http.MethodGet, Path: "/embedding/models", ID: "listEmbeddingModels",
+			Summary: "The models embedding.model may name, with their size, whether each runs here and how many of the caller's books have its vectors", Tag: "settings",
+			Response: similar.ModelList{}, Reads: ReadsLibraries, Permission: auth.SettingsManage, Handler: s.listEmbeddingModels,
+		},
+		{
 			Method: http.MethodPost, Path: "/search/reread", ID: "rereadText",
 			Summary: "Read the text of a book, a library or every visible book again; search keeps the old text until then", Tag: "books",
 			Request: textRereadRequest{}, Response: textRereadResult{}, Status: http.StatusAccepted,

@@ -1,4 +1,5 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { api } from "@/api/client";
 import { can, currentUserQuery } from "@/auth/session";
 import { FormError } from "@/components/form";
@@ -67,14 +68,19 @@ export function EmbeddingPanel() {
 			)}
 			<FormError error={status.error ?? toggle.error} />
 			{s && can(user.data ?? null, "settings:manage") && (
-				<button
-					type="button"
-					className={`${button} self-start`}
-					disabled={toggle.isPending}
-					onClick={() => toggle.mutate(!s.enabled)}
-				>
-					{t(s.enabled ? "embedding.pause" : "embedding.start")}
-				</button>
+				<div className="flex flex-wrap items-center gap-3">
+					<button
+						type="button"
+						className={button}
+						disabled={toggle.isPending}
+						onClick={() => toggle.mutate(!s.enabled)}
+					>
+						{t(s.enabled ? "embedding.pause" : "embedding.start")}
+					</button>
+					<Link to="/admin/settings" hash="embedding-model" className="text-sm underline">
+						{t("embedding.chooseModel")}
+					</Link>
+				</div>
 			)}
 		</section>
 	);

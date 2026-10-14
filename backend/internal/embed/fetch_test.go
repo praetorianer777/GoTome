@@ -174,3 +174,40 @@ func gitBlob(content string) string {
 	fmt.Fprintf(h, "blob %d\x00%s", len(content), content)
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+func TestPresentLooksAtTheFilesSizesOnly(t *testing.T) {
+	files := map[string]string{"model.onnx": "weights", "tokenizer.json": "tok"}
+	spec := testSpec(files)
+	srv := newModelServer(t, files)
+	root := t.TempDir()
+	if Present(root, spec) {
+		t.Error("present before the download")
+	}
+	dir, err := Fetch(context.Background(), root, spec, FetchOptions{Source: srv.URL, Client: srv.Client(), Log: quiet})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !Present(root, spec) {
+		t.Error("not present after the download")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tokenizer.json"), []byte("to"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if Present(root, spec) {
+		t.Error("present with a file cut short")
+	}
+	if Present(root, Spec{Server: "bge-m3"}) {
+		t.Error("a model only a server runs is present")
+	}
+}
+
+func TestEverySpecSaysWhatItTakes(t *testing.T) {
+	for name, spec := range Specs {
+		if spec.Runs() && (spec.Memory <= 0 || spec.DiskBytes() <= 0) {
+			t.Errorf("%s: memory %d, disk %d", name, spec.Memory, spec.DiskBytes())
+		}
+	}
+	if BGEM3.DiskBytes() < 2<<30 || E5Small.DiskBytes() > 200<<20 {
+		t.Errorf("bge-m3 %d bytes, e5-small %d", BGEM3.DiskBytes(), E5Small.DiskBytes())
+	}
+}

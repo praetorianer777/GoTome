@@ -17,6 +17,11 @@ What changes for someone who runs or uses GOtome. The format follows
   and books that have none left; the grid and the table mark a book none
   of whose files is left; and the overview counts them, with a link to the
   list, after a move or a mount that went wrong.
+- The settings page offers the embedding model as a choice from a list,
+  with each model's download size, roughly how much memory it needs on the
+  CPU, whether it can run here and how many books already have its
+  vectors. Switching to one that lacks most of them asks first, as every
+  book is then embedded again. The jobs page links to it.
 
 ### Fixed
 
@@ -24,6 +29,8 @@ What changes for someone who runs or uses GOtome. The format follows
   merged no longer fails now and then with an error.
 - The GOtome book on a Tolino opens GOtome for Tolino again while it is
   signed out, after a restart or an update: it then shows the setup screen.
+- bge-m3 runs in GOtome on the CPU when no embedding server is set, as
+  0.2.0 said it would; until now it waited for a server.
 
 ## [0.3.1] - 2026-10-14
 
