@@ -31,6 +31,9 @@ What changes for someone who runs or uses GOtome. The format follows
   signed out, after a restart or an update: it then shows the setup screen.
 - bge-m3 runs in GOtome on the CPU when no embedding server is set, as
   0.2.0 said it would; until now it waited for a server.
+- Changes to a book are written into its EPUB file again when the file's
+  archive lists its folders as entries of their own, as many tools write
+  them; before, writing failed with "zip: write to directory".
 
 ## [0.3.1] - 2026-10-14
 

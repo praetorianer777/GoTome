@@ -286,6 +286,65 @@ func TestRewriteRemovesTheCover(t *testing.T) {
 	}
 }
 
+// withDirectories adds directory entries to an EPUB, deflated as some tools
+// write them, so that each holds the two bytes of an empty deflate stream.
+// Go's writer keeps a directory empty, so each is written under a name
+// ending in '#' and renamed in the bytes.
+func withDirectories(t *testing.T, data []byte, dirs ...string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, f := range mustZip(t, data).File {
+		if err := zw.Copy(f); err != nil {
+			t.Fatal(err)
+		}
+		if f.Name != "mimetype" {
+			continue
+		}
+		for _, dir := range dirs {
+			w, err := zw.CreateRaw(&zip.FileHeader{Name: strings.TrimSuffix(dir, "/") + "#", Method: zip.Deflate, CompressedSize64: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := w.Write([]byte{0x03, 0x00}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.Bytes()
+	for _, dir := range dirs {
+		out = bytes.ReplaceAll(out, []byte(strings.TrimSuffix(dir, "/")+"#"), []byte(dir))
+	}
+	return out
+}
+
+func TestRewriteLeavesOutDirectoryEntries(t *testing.T) {
+	original := withDirectories(t, epub3(t), "META-INF/", "OEBPS/", "OEBPS/text/")
+	var dirs int
+	for _, f := range mustZip(t, original).File {
+		if strings.HasSuffix(f.Name, "/") {
+			dirs++
+		}
+	}
+	if dirs != 3 {
+		t.Fatalf("the test EPUB has %d directory entries", dirs)
+	}
+	before := parse(t, original)
+	written := rewrite(t, original, Update{Metadata: described})
+	after := parse(t, written)
+	if !bytes.Equal(after.ContentHash, before.ContentHash) || after.Metadata.Title != described.Title {
+		t.Errorf("content the same: %v, title %q", bytes.Equal(after.ContentHash, before.ContentHash), after.Metadata.Title)
+	}
+	for _, f := range mustZip(t, written).File {
+		if strings.HasSuffix(f.Name, "/") {
+			t.Errorf("directory entry %q was copied", f.Name)
+		}
+	}
+}
+
 func TestRewriteRefuses(t *testing.T) {
 	encrypted := build(t,
 		container("p.opf"),
