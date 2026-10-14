@@ -1,0 +1,119 @@
+{
+  "compression": "lz4",
+  "books": 1982,
+  "chunks": 131887,
+  "textBytes": 1044686840,
+  "storedBytes": 744303278,
+  "sizes": {
+    "bm25": 320004096,
+    "fileIndex": 974848,
+    "heap": 20914176,
+    "pkey": 2973696,
+    "tableTotal": 825368576,
+    "toast": 804421632,
+    "total": 1154686976,
+    "unique": 5365760
+  },
+  "loadSeconds": 44.279083645,
+  "indexSeconds": 65.647170672,
+  "latencyMs": [
+    {
+      "kind": "words",
+      "query": "nacht stadt",
+      "hits": 1000,
+      "p50": 6.439,
+      "max": 7.033
+    },
+    {
+      "kind": "words",
+      "query": "liebe krieg",
+      "hits": 1000,
+      "p50": 6.101,
+      "max": 6.471
+    },
+    {
+      "kind": "words",
+      "query": "magie drache schwert",
+      "hits": 127,
+      "p50": 3.317,
+      "max": 3.513
+    },
+    {
+      "kind": "words",
+      "query": "detective murder",
+      "hits": 8,
+      "p50": 2.512,
+      "max": 2.544
+    },
+    {
+      "kind": "words",
+      "query": "ship captain storm",
+      "hits": 0,
+      "p50": 3.002,
+      "max": 3.024
+    },
+    {
+      "kind": "phrase",
+      "query": "in der nacht",
+      "hits": 1000,
+      "p50": 14.857,
+      "max": 18.226
+    },
+    {
+      "kind": "phrase",
+      "query": "zum ersten mal",
+      "hits": 1000,
+      "p50": 14.507,
+      "max": 14.881
+    },
+    {
+      "kind": "phrase",
+      "query": "the old man",
+      "hits": 16,
+      "p50": 3.339,
+      "max": 3.529
+    },
+    {
+      "kind": "library",
+      "query": "nacht stadt",
+      "hits": 1000,
+      "p50": 4.503,
+      "max": 4.574
+    },
+    {
+      "kind": "library",
+      "query": "detective murder",
+      "hits": 8,
+      "p50": 2.271,
+      "max": 2.328
+    },
+    {
+      "kind": "library",
+      "query": "in der nacht",
+      "hits": 1000,
+      "p50": 10.319,
+      "max": 10.999
+    },
+    {
+      "kind": "snippets",
+      "query": "nacht stadt",
+      "hits": 1000,
+      "p50": 22.197,
+      "max": 24.544
+    },
+    {
+      "kind": "snippets",
+      "query": "detective murder",
+      "hits": 8,
+      "p50": 8.913,
+      "max": 9.605
+    },
+    {
+      "kind": "snippets",
+      "query": "in der nacht",
+      "hits": 1000,
+      "p50": 31.871,
+      "max": 32.788
+    }
+  ]
+}

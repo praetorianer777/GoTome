@@ -1,0 +1,99 @@
+{
+  "books": 1982,
+  "chunks": 131887,
+  "indexSeconds": 23.366281264,
+  "latencyMs": [
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 2.2741100000000003,
+      "p50": 2.239103,
+      "query": "nacht stadt"
+    },
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 3.643745,
+      "p50": 2.365042,
+      "query": "liebe krieg"
+    },
+    {
+      "hits": 127,
+      "kind": "words",
+      "max": 0.519995,
+      "p50": 0.510668,
+      "query": "magie drache schwert"
+    },
+    {
+      "hits": 8,
+      "kind": "words",
+      "max": 0.137881,
+      "p50": 0.134465,
+      "query": "detective murder"
+    },
+    {
+      "hits": 0,
+      "kind": "words",
+      "max": 0.046418,
+      "p50": 0.045005,
+      "query": "ship captain storm"
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 9.612846,
+      "p50": 9.496907,
+      "query": "in der nacht"
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 10.990246,
+      "p50": 10.867614,
+      "query": "zum ersten mal"
+    },
+    {
+      "hits": 16,
+      "kind": "phrase",
+      "max": 0.220578,
+      "p50": 0.21559899999999999,
+      "query": "the old man"
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 1.338416,
+      "p50": 1.334158,
+      "query": "nacht stadt"
+    },
+    {
+      "hits": 8,
+      "kind": "library",
+      "max": 0.021351,
+      "p50": 0.020199,
+      "query": "detective murder"
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 8.676181,
+      "p50": 8.634953000000001,
+      "query": "in der nacht"
+    }
+  ],
+  "mergedSeconds": 29.937844387,
+  "segmentsBeforeMerge": 4,
+  "sizes": {
+    "fast": 176980,
+    "fieldnorm": 791466,
+    "idx": 92137467,
+    "json": 1996,
+    "lock": 0,
+    "pos": 209592626,
+    "store": 530879,
+    "term": 11314037,
+    "total": 314545451
+  },
+  "store": "none",
+  "textBytes": 1044686840
+}
