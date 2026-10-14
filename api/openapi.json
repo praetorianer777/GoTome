@@ -4301,6 +4301,46 @@
         "x-permission": "library:read"
       }
     },
+    "/kobo/{token}/v1/user/recommendations": {
+      "get": {
+        "operationId": "koboRecommendations",
+        "summary": "The store's recommendations: empty",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/kobo/{token}/v1/user/wishlist": {
       "get": {
         "operationId": "koboWishlist",

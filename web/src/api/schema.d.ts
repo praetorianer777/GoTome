@@ -1373,6 +1373,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kobo/{token}/v1/user/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's recommendations: empty */
+        get: operations["koboRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/v1/user/wishlist": {
         parameters: {
             query?: never;
@@ -6358,6 +6375,35 @@ export interface operations {
         };
     };
     koboProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRecommendations: {
         parameters: {
             query?: never;
             header?: never;

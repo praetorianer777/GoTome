@@ -149,7 +149,7 @@ func TestAKoboReaderSyncsItsBooksAndReadingPlaces(t *testing.T) {
 		t.Fatal("no sync token")
 	}
 	urls := items[0].NewEntitlement.BookMetadata.DownloadUrls
-	if len(urls) != 1 || urls[0].Format != "EPUB" || !strings.Contains(urls[0].Url, "/kobo/"+token+"/download/") {
+	if len(urls) != 2 || urls[0].Format != "EPUB3" || urls[1].Format != "EPUB" || !strings.Contains(urls[0].Url, "/kobo/"+token+"/download/") {
 		t.Fatalf("downloads: %+v", urls)
 	}
 	resp, err := http.Get(urls[0].Url)
@@ -217,10 +217,17 @@ func TestAKoboReaderSyncsItsBooksAndReadingPlaces(t *testing.T) {
 		t.Errorf("after archiving: %s", mustJSON(items))
 	}
 
-	// A reader that syncs from the start is told everything again.
+	// A reader that syncs from the start, or with a token of an older
+	// GOtome, is told everything again.
 	send(emma)
 	if items, _ := sync(""); len(items) != 1 || items[0].NewEntitlement == nil {
 		t.Errorf("from the start: %s", mustJSON(items))
+	}
+	if items, _ := sync(synctoken); len(items) != 0 {
+		t.Errorf("after the start: %s", mustJSON(items))
+	}
+	if items, _ := sync("Z290b21l"); len(items) != 1 || items[0].NewEntitlement == nil {
+		t.Errorf("with an older token: %s", mustJSON(items))
 	}
 
 	// A wrong or revoked token reaches nothing, and the log keeps no token.

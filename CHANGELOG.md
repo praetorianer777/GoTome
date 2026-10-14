@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A Kobo reader, or a Tolino in Kobo mode, now shows the books it is sent:
+  newer firmware dropped them without a word. Readers synced before are
+  sent their books again.
+
 ## [0.3.0] - 2026-10-14
 
 ### Added
