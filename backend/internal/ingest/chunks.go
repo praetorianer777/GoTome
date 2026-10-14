@@ -183,6 +183,9 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, file.LibraryID); err != nil {
+			return err
+		}
 		primary, err := q.GetPrimaryTextFile(ctx, file.BookID)
 		if err != nil || primary == nil || *primary != fileID {
 			return err

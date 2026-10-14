@@ -68,6 +68,9 @@ func (s *Service) Merge(ctx context.Context, scope library.Scope, into, from uui
 		return err
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{into, from}); err != nil {
+			return err
+		}
 		return s.mergeTx(ctx, tx, scope, into, from, fields)
 	})
 }

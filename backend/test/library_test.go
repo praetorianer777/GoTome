@@ -3,13 +3,20 @@
 package test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // names lists the libraries a browser is shown, sorted.
@@ -297,5 +304,139 @@ func TestLibraryMembers(t *testing.T) {
 	_, body, _ = a.call(admin, http.MethodGet, members, nil)
 	if got := len(body["members"].([]any)); got != 1 {
 		t.Errorf("%d members after one was deleted, want 1", got)
+	}
+}
+
+// Deleting a library cascades through its books and files while their
+// extraction locks them in its own order; the two deadlocked and the delete
+// answered 500 (#199).
+func TestALibraryIsDeletedWhileItsFilesAreRead(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	for round := range 3 {
+		books := t.TempDir()
+		for i := range 8 {
+			writeEPUB(t, filepath.Join(books, fmt.Sprintf("Book %d.epub", i)),
+				fmt.Sprintf(`<dc:title>Book %d</dc:title><dc:language>en</dc:language>`, i), nil,
+				strings.Repeat("A sentence of the first chapter. ", 300), "The end.")
+		}
+		id := a.externalLibrary(admin, fmt.Sprintf("Shelf %d", round), "shared", books)
+		a.scanNow(id)
+		var files []uuid.UUID
+		rows, err := a.pool.Query(t.Context(), "SELECT id FROM book_files WHERE library_id = $1", id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var f uuid.UUID
+			if err := rows.Scan(&f); err != nil {
+				t.Fatal(err)
+			}
+			files = append(files, f)
+		}
+		if err := rows.Err(); err != nil || len(files) != 8 {
+			t.Fatalf("files of the library: %v, %v", files, err)
+		}
+
+		errs := make(chan error, len(files))
+		var wg sync.WaitGroup
+		for _, f := range files {
+			wg.Go(func() { errs <- a.scans.Extract(t.Context(), f) })
+		}
+		status, body, _ := a.call(admin, http.MethodDelete, "/libraries/"+id, nil)
+		wg.Wait()
+		close(errs)
+		if status != http.StatusNoContent {
+			t.Fatalf("round %d: deleting the library: %d %v", round, status, body)
+		}
+		for err := range errs {
+			if err != nil {
+				t.Errorf("round %d: extraction beside the delete: %v", round, err)
+			}
+		}
+	}
+}
+
+// waitForLockWaits waits until n sessions of the test's database wait for a
+// lock. It asks on a connection of its own, as those sessions may hold
+// every one of the pool's.
+func (a *app) waitForLockWaits(n int) {
+	a.t.Helper()
+	conn, err := pgx.ConnectConfig(a.t.Context(), a.pool.Config().ConnConfig.Copy())
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		var waiting int
+		err := conn.QueryRow(a.t.Context(), `
+			SELECT count(*) FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock'`).Scan(&waiting)
+		if err != nil {
+			a.t.Fatal(err)
+		}
+		if waiting >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			a.t.Fatalf("%d sessions wait for a lock, want %d", waiting, n)
+		}
+	}
+}
+
+// The trash locks a file, its chunks, then its book; the delete of the
+// library locks the book, then its files and chunks. Held between the two,
+// the trash deadlocked with the delete every time, until both first lock
+// the library.
+func TestALibraryIsDeletedWhileOneOfItsFilesGoesToTheTrash(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Shelf", "shared")
+	path := filepath.Join(t.TempDir(), "Emma.epub")
+	writeEPUB(t, path, emmaMetadata, nil, strings.Repeat("Emma Woodhouse, handsome, clever, and rich. ", 100))
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, up := a.upload(admin, lib, "Emma.epub", content)
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, up)
+	}
+	fileID := uuid.MustParse(up["fileId"].(string))
+	a.extract(fileID)
+
+	// The trash waits for the file's chunks with the file locked, until the
+	// delete waits as well.
+	tx, err := a.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(t.Context())
+	tag, err := tx.Exec(t.Context(), "SELECT 1 FROM book_chunks WHERE file_id = $1 FOR UPDATE", fileID)
+	if err != nil || tag.RowsAffected() == 0 {
+		t.Fatalf("locking the file's chunks: %v, %v", tag, err)
+	}
+	trashed := make(chan int, 1)
+	go func() {
+		status, _, _ := a.call(admin, http.MethodPost, "/files/"+fileID.String()+"/trash", nil)
+		trashed <- status
+	}()
+	a.waitForLockWaits(1)
+	deleted := make(chan int, 1)
+	go func() {
+		status, _, _ := a.call(admin, http.MethodDelete, "/libraries/"+lib, nil)
+		deleted <- status
+	}()
+	a.waitForLockWaits(2)
+	if err := tx.Rollback(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if status := <-trashed; status != http.StatusNoContent {
+		t.Errorf("trashing the file: %d", status)
+	}
+	if status := <-deleted; status != http.StatusNoContent {
+		t.Errorf("deleting the library: %d", status)
 	}
 }

@@ -111,6 +111,49 @@ func (q *Queries) GetVisibleLibrary(ctx context.Context, arg GetVisibleLibraryPa
 	return i, err
 }
 
+const holdLibrariesOfBooks = `-- name: HoldLibrariesOfBooks :exec
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM books WHERE id = ANY($1::uuid[]))
+ORDER BY id
+FOR KEY SHARE
+`
+
+// HoldLibrary for the libraries of the books, in one order.
+func (q *Queries) HoldLibrariesOfBooks(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrariesOfBooks, ids)
+	return err
+}
+
+const holdLibrariesOfFiles = `-- name: HoldLibrariesOfFiles :exec
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM book_files WHERE id = ANY($1::uuid[]))
+ORDER BY id
+FOR KEY SHARE
+`
+
+// HoldLibrary for the libraries of the files, in one order.
+func (q *Queries) HoldLibrariesOfFiles(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrariesOfFiles, ids)
+	return err
+}
+
+const holdLibrary = `-- name: HoldLibrary :exec
+SELECT 1 FROM libraries WHERE id = $1 FOR KEY SHARE
+`
+
+// Deleting a library cascades through its books, files and chunks and locks
+// them in an order of its own, while extraction, chunking, merges, the
+// trash, uploads, scans and edits lock a book and its files in theirs: the
+// two deadlocked (#199). Such a writer holds the library's row first, as
+// the first lock of its transaction. FOR KEY SHARE keeps writers from
+// waiting for each other, as every insert of a book takes it already; the
+// delete, whose first lock is this row's, waits until they are done, or
+// they until it is, and then find nothing.
+func (q *Queries) HoldLibrary(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrary, id)
+	return err
+}
+
 const listLibraryMembers = `-- name: ListLibraryMembers :many
 SELECT u.id, u.username, u.role, m.added_at
 FROM library_members m

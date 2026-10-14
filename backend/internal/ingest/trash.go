@@ -50,6 +50,9 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 	var from, to string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: fileID, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -95,6 +98,9 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 	var from, to string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: fileID, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -189,6 +195,9 @@ func (s *Service) filesChangedTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUI
 func (s *Service) Purge(ctx context.Context, fileID uuid.UUID) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetTrashedFile(ctx, fileID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoFile

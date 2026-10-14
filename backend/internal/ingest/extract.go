@@ -143,6 +143,9 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		}
 		return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 			qtx := sqlc.New(tx)
+			if err := qtx.HoldLibrary(ctx, file.LibraryID); err != nil {
+				return err
+			}
 			if err := qtx.SetFileExtractFailed(ctx, sqlc.SetFileExtractFailedParams{ID: fileID, Sha256: file.Sha256, Error: &message}); err != nil {
 				return err
 			}
@@ -175,6 +178,9 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, file.LibraryID); err != nil {
+			return err
+		}
 		n, err := q.SetFileExtracted(ctx, sqlc.SetFileExtractedParams{
 			ID: fileID, Sha256: file.Sha256, ContentSha256: got.ContentSHA256, Drm: got.DRM,
 			HasText: &got.HasText, PageCount: got.Pages, PagesEstimated: got.PagesEstimated,

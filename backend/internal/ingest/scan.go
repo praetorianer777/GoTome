@@ -313,6 +313,9 @@ func (s *Scanner) importUnit(
 	books := 0
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, libraryID); err != nil {
+			return err
+		}
 		if err := q.LockLibraryFiles(ctx, libraryID); err != nil {
 			return err
 		}

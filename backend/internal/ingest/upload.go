@@ -184,6 +184,9 @@ func (s *Service) Upload(ctx context.Context, lib library.Library, scope library
 	var placed string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, lib.ID); err != nil {
+			return err
+		}
 		if err := q.LockLibraryFiles(ctx, lib.ID); err != nil {
 			return err
 		}

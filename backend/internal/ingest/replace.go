@@ -27,6 +27,9 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 	var moved []move
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{keep, gone}); err != nil {
+			return err
+		}
 		files, err := q.ListLiveBookFiles(ctx, gone)
 		if err != nil {
 			return err
