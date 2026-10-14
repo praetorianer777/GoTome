@@ -284,9 +284,9 @@ export function Library({
 									<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
 										{filtered > 0 ? (
 											<>
-												<h3 className="font-medium">
+												<h2 className="font-medium">
 													{t("library.filtered.title")}
-												</h3>
+												</h2>
 												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
 													{t("library.filtered.body")}
 												</p>
@@ -304,9 +304,9 @@ export function Library({
 											</p>
 										) : (
 											<>
-												<h3 className="font-medium">
+												<h2 className="font-medium">
 													{t("library.empty.title")}
-												</h3>
+												</h2>
 												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
 													{t("library.empty.body")}
 												</p>

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { downloadUrl } from "@/books/api";
 import {
 	knowProgress,
@@ -8,8 +8,10 @@ import {
 	progressQuery,
 	useSaveProgress,
 } from "@/books/progress";
+import { KeyHelp } from "@/components/dialog";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { type KeyBinding, useKeys, usePanelFocus } from "@/lib/keys";
 import {
 	type Ebook,
 	type Flow,
@@ -19,7 +21,7 @@ import {
 	type TocEntry,
 	openEbook,
 } from "@/reader/ebook";
-import { typing } from "@/routes/book-find";
+import type { Found } from "@/reader/passage";
 
 /** How long a place must stay before it is saved. */
 const SAVE_AFTER_MS = 600;
@@ -103,16 +105,48 @@ export function EbookReader({
 	const [failed, setFailed] = useState<Error | null>(null);
 	const [place, setPlace] = useState<Place>();
 	const [look, setLook] = useState<Look>(storedLook);
-	const [panel, setPanel] = useState<"contents" | "look">();
+	const [panel, setPanel] = useState<Panel>();
+	const [help, setHelp] = useState(false);
+	const toggles = useRef<Partial<Record<Panel, HTMLButtonElement | null>>>({});
+	const panelBox = usePanelFocus(panel);
 	const [further, setFurther] = useState<Progress>();
 	// The place last saved or found saved, which needs no saving again.
 	const kept = useRef<string | undefined>(undefined);
 	const lookNow = useRef(look);
 	lookNow.current = look;
-	const keys = useRef<(e: KeyboardEvent) => void>(() => {});
 	const finding = useRef(Boolean(find));
 	const latest = useRef<Place | undefined>(undefined);
 	const findNow = useRef(find);
+
+	const show = (which: Panel | undefined) => {
+		// Closing gives focus back to the button that opened the panel.
+		if (!which && panel) toggles.current[panel]?.focus();
+		setPanel(which);
+	};
+	const toggle = (which: Panel) => show(panel === which ? undefined : which);
+	const resize = (step: number) => {
+		const at = FONT_SIZES.indexOf(look.fontSize);
+		const next = FONT_SIZES[Math.min(Math.max(at + step, 0), FONT_SIZES.length - 1)];
+		if (next) setLook({ ...look, fontSize: next });
+	};
+	const bindings: KeyBinding[] = ebook
+		? [
+				{ keys: ["ArrowLeft"], label: "keys.pageLeft", run: () => void ebook.goLeft() },
+				{ keys: ["ArrowRight"], label: "keys.pageRight", run: () => void ebook.goRight() },
+				{ keys: ["PageDown", " "], label: "keys.pageNext", run: () => void ebook.next() },
+				{ keys: ["PageUp", "Shift+ "], label: "keys.pagePrevious", run: () => void ebook.prev() },
+				{ keys: ["Home"], label: "keys.first", run: () => void ebook.goToFraction(0) },
+				{ keys: ["End"], label: "keys.last", run: () => void ebook.goToFraction(1) },
+				{ keys: ["c"], label: "keys.contents", run: () => toggle("contents") },
+				{ keys: ["f"], label: "keys.search", run: () => toggle("search") },
+				{ keys: ["d"], label: "keys.look", run: () => toggle("look") },
+				{ keys: ["+", "="], label: "keys.larger", run: () => resize(1) },
+				{ keys: ["-"], label: "keys.smaller", run: () => resize(-1) },
+				{ keys: ["Escape"], label: "keys.closePanel", run: () => show(undefined) },
+				{ keys: ["?"], label: "keys.help", run: () => setHelp(true) },
+			]
+		: [];
+	const keys = useKeys(bindings);
 
 	const ready = !progress.isPending;
 	// The saved place is read once, when the book opens: later saves must
@@ -138,7 +172,7 @@ export function EbookReader({
 					latest.current = p;
 					if (open) setPlace(p);
 				},
-				onKey: (e) => keys.current(e),
+				onKey: keys,
 			});
 			if (open) {
 				opened = book;
@@ -153,7 +187,7 @@ export function EbookReader({
 			open = false;
 			opened?.close();
 		};
-	}, [ready, fileId, fileName]);
+	}, [ready, fileId, fileName, keys]);
 
 	useEffect(() => {
 		ebook?.setLook(look);
@@ -195,25 +229,6 @@ export function EbookReader({
 		return () => clearTimeout(timer);
 	}, [place, fileId, savePlace]);
 
-	keys.current = (e: KeyboardEvent) => {
-		if (!ebook || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
-		const turn: Record<string, () => Promise<void>> = {
-			ArrowLeft: ebook.goLeft,
-			ArrowRight: ebook.goRight,
-			PageUp: ebook.prev,
-			PageDown: ebook.next,
-		};
-		const go = turn[e.key];
-		if (go) {
-			e.preventDefault();
-			void go();
-		}
-	};
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => keys.current(e);
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, []);
 
 	const furtherCfi = cfiIn(further, fileId);
 	return (
@@ -228,29 +243,59 @@ export function EbookReader({
 				</Link>
 				<h1 className="mr-auto min-w-0 truncate font-medium">{title}</h1>
 				<button
+					ref={(el) => {
+						toggles.current.contents = el;
+					}}
 					type="button"
 					className={button}
 					aria-expanded={panel === "contents"}
 					aria-controls="reader-panel"
+					aria-keyshortcuts="C"
 					disabled={!ebook}
-					onClick={() =>
-						setPanel(panel === "contents" ? undefined : "contents")
-					}
+					onClick={() => toggle("contents")}
 				>
 					{t("reader.outline")}
 				</button>
 				<button
+					ref={(el) => {
+						toggles.current.search = el;
+					}}
+					type="button"
+					className={button}
+					aria-expanded={panel === "search"}
+					aria-controls="reader-panel"
+					aria-keyshortcuts="F"
+					disabled={!ebook}
+					onClick={() => toggle("search")}
+				>
+					{t("reader.search")}
+				</button>
+				<button
+					ref={(el) => {
+						toggles.current.look = el;
+					}}
 					type="button"
 					className={button}
 					aria-expanded={panel === "look"}
 					aria-controls="reader-panel"
-					onClick={() => setPanel(panel === "look" ? undefined : "look")}
+					aria-keyshortcuts="D"
+					onClick={() => toggle("look")}
 				>
 					{t("reader.look")}
 				</button>
 				<button
 					type="button"
 					className={button}
+					aria-keyshortcuts="Shift+?"
+					disabled={!ebook}
+					onClick={() => setHelp(true)}
+				>
+					{t("keys.button")}
+				</button>
+				<button
+					type="button"
+					className={button}
+					aria-keyshortcuts="ArrowLeft"
 					disabled={!ebook}
 					onClick={() => ebook?.goLeft()}
 				>
@@ -264,12 +309,14 @@ export function EbookReader({
 				<button
 					type="button"
 					className={button}
+					aria-keyshortcuts="ArrowRight"
 					disabled={!ebook}
 					onClick={() => ebook?.goRight()}
 				>
 					{t("reader.right")}
 				</button>
 			</div>
+			{help && <KeyHelp bindings={bindings} onClose={() => setHelp(false)} />}
 			{further && (
 				<div
 					role="status"
@@ -326,20 +373,23 @@ export function EbookReader({
 				{panel && (
 					<div
 						id="reader-panel"
+						ref={panelBox}
 						className="absolute inset-y-0 left-0 z-10 w-72 max-w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
 					>
-						{panel === "contents" ? (
+						{panel === "contents" && (
 							<Contents
 								toc={ebook?.toc ?? []}
 								current={place?.chapter}
 								onGo={(href) => {
-									setPanel(undefined);
+									show(undefined);
 									void ebook?.goTo(href);
 								}}
 							/>
-						) : (
-							<LookControls look={look} onLook={setLook} />
 						)}
+						{panel === "search" && ebook && (
+							<BookSearch ebook={ebook} onGo={(cfi) => void ebook.goTo(cfi)} />
+						)}
+						{panel === "look" && <LookControls look={look} onLook={setLook} />}
 					</div>
 				)}
 				<section
@@ -354,6 +404,81 @@ export function EbookReader({
 				<p className="text-center text-sm text-slate-600 dark:text-slate-400">
 					{place.chapter}
 				</p>
+			)}
+		</div>
+	);
+}
+
+type Panel = "contents" | "look" | "search";
+
+/** How many places a search in the book lists. */
+const SEARCH_LIMIT = 100;
+
+/** Looks for words in the book and lists where they stand. */
+function BookSearch({ ebook, onGo }: { ebook: Ebook; onGo: (cfi: string) => void }) {
+	const [query, setQuery] = useState("");
+	const [found, setFound] = useState<Found[]>();
+	const [searching, setSearching] = useState(false);
+	useEffect(() => () => ebook.clearSearch(), [ebook]);
+	const submit = (e: FormEvent) => {
+		e.preventDefault();
+		const words = query.trim();
+		if (!words) return;
+		setSearching(true);
+		ebook.clearSearch();
+		ebook.search(words, SEARCH_LIMIT).then(
+			(places) => {
+				setFound(places);
+				setSearching(false);
+			},
+			() => {
+				setFound([]);
+				setSearching(false);
+			},
+		);
+	};
+	return (
+		<div className="flex flex-col gap-2 text-sm">
+			<form role="search" className="flex gap-2" onSubmit={submit}>
+				<label className="sr-only" htmlFor="book-search">
+					{t("reader.searchLabel")}
+				</label>
+				<input
+					id="book-search"
+					type="search"
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
+					className={`${control} min-w-0 flex-1`}
+				/>
+				<button type="submit" className={button}>
+					{t("reader.searchSubmit")}
+				</button>
+			</form>
+			<p role="status" className="text-slate-600 dark:text-slate-400">
+				{searching
+					? t("reader.searching")
+					: found === undefined
+						? ""
+						: found.length === 0
+							? t("reader.searchNone")
+							: t("reader.searchFound", { count: found.length })}
+			</p>
+			{found && found.length > 0 && (
+				<ol className="flex flex-col gap-1">
+					{found.map((f) => (
+						<li key={f.cfi}>
+							<button
+								type="button"
+								className="text-left hover:underline"
+								onClick={() => onGo(f.cfi)}
+							>
+								{f.excerpt.pre}
+								<mark>{f.excerpt.match}</mark>
+								{f.excerpt.post}
+							</button>
+						</li>
+					))}
+				</ol>
 			)}
 		</div>
 	);

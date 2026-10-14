@@ -129,7 +129,7 @@ function BookPage({ book }: { book: BookDetail }) {
 			{back}
 			<div className="grid gap-6 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-8">
 				<div className="mx-auto w-40 sm:w-full">
-					<Cover book={book} size="large" />
+					<Cover book={book} size="large" named />
 				</div>
 				<div className="flex min-w-0 flex-col gap-4">
 					<header className="flex flex-col gap-1">

@@ -15,6 +15,7 @@ import {
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
+import { typing } from "@/lib/keys";
 
 export function FindDetails({ id }: { id: string }) {
 	const book = useQuery(bookQuery(id));
@@ -418,14 +419,6 @@ export function Compare({
 			</div>
 		</div>
 	);
-}
-
-/** Whether a key goes into a field that takes text, where it is no command. */
-export function typing(e: KeyboardEvent): boolean {
-	const el = e.target as HTMLElement | null;
-	if (!el) return false;
-	if (el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
-	return el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes((el as HTMLInputElement).type);
 }
 
 function TakeFromCandidate({ book, candidate }: { book: BookDetail; candidate: Candidate }) {
