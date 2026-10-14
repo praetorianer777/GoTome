@@ -17,6 +17,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 - Deleting a library while its books are being read, moved to the trash or
   merged no longer fails now and then with an error.
+- The GOtome book on a Tolino opens GOtome for Tolino again while it is
+  signed out, after a restart or an update: it then shows the setup screen.
 
 ## [0.3.1] - 2026-10-14
 

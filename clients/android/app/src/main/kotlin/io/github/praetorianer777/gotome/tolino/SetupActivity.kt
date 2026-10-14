@@ -39,6 +39,7 @@ class SetupActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        ReaderWatcher.start(this)
         setContentView(R.layout.activity_setup)
         server = findViewById(R.id.server)
         username = findViewById(R.id.username)
