@@ -12,6 +12,10 @@ What changes for someone who runs or uses GOtome. The format follows
   Tolino on a connected Tolino (`TAG=vX.Y.Z` for another), with the same
   grants as a build from the checkout; that release then updates itself.
 
+- GOtome for Tolino's settings page has a **Check for updates** button,
+  which looks for a new release at once instead of waiting for the daily
+  check, and says when the app is up to date.
+
 ## [0.1.0] - 2026-10-14
 
 ### Fixed

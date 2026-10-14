@@ -70,10 +70,10 @@ class SetupActivity : Activity() {
         }.start()
     }
 
-    /** Downloads the release and hands it to Android's installer, which asks once. */
+    /** Looks for a release now, then offers it; with one found, downloads it and hands it to Android's installer, which asks once. */
     private fun update() {
-        val release = prefs.update ?: return
         val button = findViewById<Button>(R.id.update)
+        val release = prefs.update ?: return check(button)
         button.isEnabled = false
         status.text = getString(R.string.updating, release.version)
         Thread {
@@ -89,12 +89,28 @@ class SetupActivity : Activity() {
         }.start()
     }
 
+    private fun check(button: Button) {
+        button.isEnabled = false
+        status.text = getString(R.string.update_checking)
+        Thread {
+            val result = runCatching {
+                if (!Network.online(this)) throw ApiException(0, getString(R.string.offline))
+                Updates(this).check(force = true)
+            }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                button.isEnabled = true
+                showStatus(
+                    result.exceptionOrNull()?.let { getString(R.string.update_check_failed, it.message ?: "") }
+                        ?: getString(R.string.up_to_date, BuildConfig.VERSION_NAME).takeIf { prefs.update == null },
+                )
+            }
+        }.start()
+    }
+
     private fun showStatus(error: String? = null) {
-        findViewById<Button>(R.id.update).apply {
-            val release = prefs.update
-            visibility = if (release == null) android.view.View.GONE else android.view.View.VISIBLE
-            if (release != null) text = getString(R.string.update_to, release.version)
-        }
+        findViewById<Button>(R.id.update).text =
+            prefs.update?.let { getString(R.string.update_to, it.version) } ?: getString(R.string.update_check)
         val lines = mutableListOf<String>()
         error?.let { lines += it }
         lines += if (prefs.signedIn) getString(R.string.signed_in_as, prefs.username, prefs.server)

@@ -67,6 +67,10 @@
     <string name="cleartext">Die Adresse ist http://: dein Schlüssel geht unverschlüsselt durchs Netz. Nimm https://, außer GOtome ist nur im eigenen Netz.</string>
     <string name="checking_queue">Sehe nach Büchern, die an diesen Tolino gesendet wurden…</string>
     <string name="update_ready">GOtome für Tolino %1$s ist erschienen: in den Einstellungen ⚙ aktualisieren</string>
+    <string name="update_check">Nach Updates suchen</string>
+    <string name="update_checking">Suche nach einer neuen Version…</string>
+    <string name="update_check_failed">Suche nach Updates fehlgeschlagen: %1$s</string>
+    <string name="up_to_date">GOtome für Tolino %1$s ist die neueste Version.</string>
     <string name="update_to">Auf %1$s aktualisieren</string>
     <string name="updating">Lade %1$s herunter…</string>
     <string name="update_failed">Aktualisieren fehlgeschlagen: %1$s</string>

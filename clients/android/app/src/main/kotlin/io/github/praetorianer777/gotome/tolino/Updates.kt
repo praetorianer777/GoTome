@@ -25,9 +25,9 @@ data class Release(val version: String, val apk: String)
 class Updates(private val context: Context) {
     private val prefs = Prefs(context)
 
-    /** Looks for a newer release unless it looked in the last day. */
-    fun check(now: Long = System.currentTimeMillis()) {
-        if (now - prefs.updateCheckedAt < DAY) return
+    /** Looks for a newer release unless it looked in the last day, or now when asked to. */
+    fun check(now: Long = System.currentTimeMillis(), force: Boolean = false) {
+        if (!force && now - prefs.updateCheckedAt < DAY) return
         val release = latest(get(BuildConfig.RELEASES))
         prefs.updateCheckedAt = now
         prefs.update = release?.takeIf { newer(it.version, BuildConfig.VERSION_NAME) }

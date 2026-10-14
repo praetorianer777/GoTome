@@ -122,8 +122,9 @@ and adding books to it no longer sends them.
 
 Each GOtome release carries the app as `gotome-tolino-<version>.apk`, signed
 with the release key. An installed release looks for a newer one with a sync,
-at most once a day; the store's status line then says so, and **Update to …**
-on the settings page (⚙) downloads it and hands it to Android's installer,
+at most once a day, or at once with **Check for updates** on the settings
+page (⚙); the store's status line then says so, and **Update to …** there
+downloads it and hands it to Android's installer,
 which asks once. Sign-in, the books on the Tolino and the positions stay.
 
 The app installs an update only when it is signed with the same key as the
