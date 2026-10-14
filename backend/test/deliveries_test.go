@@ -160,3 +160,91 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 		t.Errorf("putting a book no longer seen on the device: %d", status)
 	}
 }
+
+func TestADevicesPageListsItsBooksTheLastSentFirst(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, readerID := a.signedIn("reader", "reader")
+	stranger, _ := a.signedIn("stranger", "reader")
+	vault := a.library(admin, "Vault", "private")
+	if status, _, _ := a.call(admin, http.MethodPut, "/libraries/"+vault+"/members/"+readerID, nil); status != 204 {
+		t.Fatalf("membership: %d", status)
+	}
+	var books []string
+	for _, name := range []string{"One", "Two", "Three"} {
+		status, up := a.upload(admin, vault, name+".pdf", []byte("%PDF-1.4 "+name))
+		if status != 200 {
+			t.Fatalf("upload: %d %v", status, up)
+		}
+		books = append(books, up["bookId"].(string))
+	}
+	_, made, _ := a.call(reader, http.MethodPost, "/auth/devices", map[string]any{"name": "Tolino"})
+	deviceID := made["device"].(map[string]any)["id"].(string)
+	device := deviceClient("reader", made["token"].(string))
+	for _, b := range books {
+		if status, out, _ := a.call(reader, http.MethodPost, "/devices/"+deviceID+"/books", map[string]any{"books": []string{b}}); status != 200 || out["queued"] != 1.0 {
+			t.Fatalf("send: %d %v", status, out)
+		}
+	}
+	if status, _, _ := a.call(device, http.MethodPut, "/device/books/"+books[0], nil); status != 204 {
+		t.Fatalf("put on: %d", status)
+	}
+
+	var listed []map[string]any
+	cursor := ""
+	for range 4 {
+		path := "/devices/" + deviceID + "/books?limit=2"
+		if cursor != "" {
+			path += "&cursor=" + cursor
+		}
+		status, out, _ := a.call(reader, http.MethodGet, path, nil)
+		if status != 200 || out["device"].(map[string]any)["name"] != "Tolino" {
+			t.Fatalf("the device's books: %d %v", status, out)
+		}
+		for _, b := range out["books"].([]any) {
+			listed = append(listed, b.(map[string]any))
+		}
+		next, _ := out["nextCursor"].(string)
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	if len(listed) != 3 {
+		t.Fatalf("listed: %v", listed)
+	}
+	for i, want := range []string{books[2], books[1], books[0]} {
+		if got := listed[i]["book"].(map[string]any)["id"]; got != want {
+			t.Errorf("book %d is %v, not %s", i, got, want)
+		}
+	}
+	if b := listed[0]; b["state"] != "waiting" || b["removable"] != true || b["deliveredAt"] != nil {
+		t.Errorf("a book waiting: %v", b)
+	}
+	// The device keeps what it downloaded, so GOtome does not offer to
+	// take it off.
+	held := listed[2]
+	if held["state"] != "delivered" || held["removable"] != false || held["deliveredAt"] == nil {
+		t.Errorf("a book on the device: %v", held)
+	}
+	if status, _, _ := a.call(reader, http.MethodDelete, "/deliveries/"+held["deliveryId"].(string), nil); status != 404 {
+		t.Errorf("taking a downloaded book off: %d", status)
+	}
+	if status, _, _ := a.call(reader, http.MethodDelete, "/deliveries/"+listed[0]["deliveryId"].(string), nil); status != 204 {
+		t.Errorf("taking a waiting book back: %d", status)
+	}
+
+	if status, out, _ := a.call(stranger, http.MethodGet, "/devices/"+deviceID+"/books", nil); status != 404 {
+		t.Errorf("someone else's device: %d %v", status, out)
+	}
+	if status, _, _ := a.call(reader, http.MethodGet, "/devices/"+deviceID+"/books?cursor=nonsense", nil); status != 422 {
+		t.Errorf("a cursor made up: %d", status)
+	}
+	if status, _, _ := a.call(admin, http.MethodDelete, "/libraries/"+vault+"/members/"+readerID, nil); status != 204 {
+		t.Fatalf("removing the member: %d", status)
+	}
+	if status, out, _ := a.call(reader, http.MethodGet, "/devices/"+deviceID+"/books", nil); status != 200 || len(out["books"].([]any)) != 0 {
+		t.Errorf("books no longer seen: %d %v", status, out)
+	}
+}

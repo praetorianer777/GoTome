@@ -75,6 +75,73 @@ func (q *Queries) ListBookDeliveries(ctx context.Context, arg ListBookDeliveries
 	return items, nil
 }
 
+const listDeviceBooks = `-- name: ListDeviceBooks :many
+SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at
+FROM deliveries dl
+JOIN devices d ON d.id = dl.device_id
+JOIN books b ON b.id = dl.book_id
+LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
+WHERE dl.device_id = $1 AND d.user_id = $2::uuid
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND ($4::timestamptz IS NULL OR (dl.queued_at, dl.id) < ($4::timestamptz, $5::uuid))
+ORDER BY dl.queued_at DESC, dl.id DESC
+LIMIT $6
+`
+
+type ListDeviceBooksParams struct {
+	DeviceID uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+	BeforeAt *time.Time
+	BeforeID *uuid.UUID
+	MaxRows  int32
+}
+
+type ListDeviceBooksRow struct {
+	ID          uuid.UUID
+	BookID      uuid.UUID
+	QueuedAt    time.Time
+	DeliveredAt *time.Time
+	SyncedAt    *time.Time
+}
+
+// The books of one of the user's devices that the user still sees, waiting
+// or delivered, with when a Kobo reader was told of each; the last sent
+// first, after the cursor.
+func (q *Queries) ListDeviceBooks(ctx context.Context, arg ListDeviceBooksParams) ([]ListDeviceBooksRow, error) {
+	rows, err := q.db.Query(ctx, listDeviceBooks,
+		arg.DeviceID,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeviceBooksRow{}
+	for rows.Next() {
+		var i ListDeviceBooksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BookID,
+			&i.QueuedAt,
+			&i.DeliveredAt,
+			&i.SyncedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQueuedBooks = `-- name: ListQueuedBooks :many
 SELECT dl.book_id
 FROM deliveries dl
@@ -223,7 +290,9 @@ func (q *Queries) RecordOnDevice(ctx context.Context, arg RecordOnDeviceParams) 
 const takeBackDelivery = `-- name: TakeBackDelivery :execrows
 DELETE FROM deliveries dl
 USING devices d
-WHERE dl.id = $1 AND d.id = dl.device_id AND d.user_id = $2 AND dl.delivered_at IS NULL
+WHERE dl.id = $1 AND d.id = dl.device_id AND d.user_id = $2
+  AND (dl.delivered_at IS NULL
+       OR EXISTS (SELECT 1 FROM kobo_books k WHERE k.device_id = dl.device_id AND k.book_id = dl.book_id))
 `
 
 type TakeBackDeliveryParams struct {
@@ -231,8 +300,8 @@ type TakeBackDeliveryParams struct {
 	UserID uuid.UUID
 }
 
-// Takes a book out of the queue of one of the user's devices before the
-// device has it.
+// Takes a book off one of the user's devices: out of its queue before the
+// device has it, or off a Kobo reader, whose next sync removes it.
 func (q *Queries) TakeBackDelivery(ctx context.Context, arg TakeBackDeliveryParams) (int64, error) {
 	result, err := q.db.Exec(ctx, takeBackDelivery, arg.ID, arg.UserID)
 	if err != nil {

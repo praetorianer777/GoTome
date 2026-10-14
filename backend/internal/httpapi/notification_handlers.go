@@ -47,28 +47,30 @@ type notificationsQuery struct {
 	Limit  int    `query:"limit" doc:"How many notifications a page holds, at most 100; 20 when left out."`
 }
 
-func encodeNotificationCursor(c *notify.Cursor) string {
-	if c == nil {
-		return ""
-	}
-	return base64.RawURLEncoding.EncodeToString([]byte(c.At.Format(time.RFC3339Nano) + "|" + c.ID.String()))
+func errForeignCursor() error {
+	return ErrValidation(map[string]string{"cursor": "This cursor was not handed out here; start again from the first page."})
 }
 
-func decodeNotificationCursor(s string) (*notify.Cursor, error) {
+// encodeTimeCursor is a cursor of a list paged by a time and an ID.
+func encodeTimeCursor(at time.Time, id uuid.UUID) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(at.Format(time.RFC3339Nano) + "|" + id.String()))
+}
+
+func decodeTimeCursor(s string) (time.Time, uuid.UUID, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
-		return nil, err
+		return time.Time{}, uuid.Nil, err
 	}
 	at, id, _ := strings.Cut(string(raw), "|")
 	t, err := time.Parse(time.RFC3339Nano, at)
 	if err != nil {
-		return nil, err
+		return time.Time{}, uuid.Nil, err
 	}
 	u, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return time.Time{}, uuid.Nil, err
 	}
-	return &notify.Cursor{At: t, ID: u}, nil
+	return t, u, nil
 }
 
 func (s *Server) listNotifications(w http.ResponseWriter, r *http.Request) error {
@@ -78,10 +80,11 @@ func (s *Server) listNotifications(w http.ResponseWriter, r *http.Request) error
 	}
 	var after *notify.Cursor
 	if q.Cursor != "" {
-		var err error
-		if after, err = decodeNotificationCursor(q.Cursor); err != nil {
-			return ErrValidation(map[string]string{"cursor": "This cursor was not handed out here; start again from the first page."})
+		at, id, err := decodeTimeCursor(q.Cursor)
+		if err != nil {
+			return errForeignCursor()
 		}
+		after = &notify.Cursor{At: at, ID: id}
 	}
 	scope := library.ScopeOf(*UserFrom(r.Context()))
 	list, next, err := s.Notifications.List(r.Context(), scope, after, cmp.Or(q.Limit, 20))
@@ -92,7 +95,10 @@ func (s *Server) listNotifications(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	out := notificationList{Notifications: make([]notification, len(list)), Unread: unread, NextCursor: encodeNotificationCursor(next)}
+	out := notificationList{Notifications: make([]notification, len(list)), Unread: unread}
+	if next != nil {
+		out.NextCursor = encodeTimeCursor(next.At, next.ID)
+	}
 	for i, n := range list {
 		data := map[string]any{}
 		_ = json.Unmarshal(n.Data, &data)

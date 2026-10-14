@@ -148,7 +148,11 @@ func readCases() map[string][]readCase {
 			{path: "/opds/collections/{sharedCollection}", control: "insider"},
 			{path: "/opds/collections/{formerCollection}", control: "former"},
 		},
-		"listBookDeliveries":     {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listBookDeliveries": {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listDeviceBooks": {
+			{path: "/devices/{insiderDevice}/books", control: "insider"},
+			{path: "/devices/{formerDevice}/books", control: "former"},
+		},
 		"listOpdsDeviceBooks":    {{path: "/opds/device", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"listDeviceQueue":        {{path: "/device/books", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
@@ -315,6 +319,12 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		_, col, _ := a.call(c, http.MethodPost, "/collections", map[string]any{"name": "Shelf of " + name, "visibility": visibility})
 		a.call(c, http.MethodPost, "/collections/"+col["id"].(string)+"/books", map[string]any{"books": []string{book}})
 		_, shelf, _ := a.call(c, http.MethodPost, "/smart-shelves", map[string]any{"name": "By the author", "filter": rated, "visibility": visibility})
+		_, made, _ := a.call(c, http.MethodPost, "/auth/devices", map[string]any{"name": "Reader of " + name})
+		device := made["device"].(map[string]any)["id"].(string)
+		if status, out, _ := a.call(c, http.MethodPost, "/devices/"+device+"/books", map[string]any{"books": []string{book}}); status != 200 || out["queued"] != 1.0 {
+			t.Fatalf("send to a device: %d %v", status, out)
+		}
+		owned[name+"Device"] = device
 		bulk := a.runBulk(c, map[string]any{"books": []string{book}, "action": "writeBack"})
 		owned[map[string]string{"insider": "sharedCollection", "former": "formerCollection"}[name]] = col["id"].(string)
 		owned[map[string]string{"insider": "sharedShelf", "former": "formerShelf"}[name]] = shelf["id"].(string)

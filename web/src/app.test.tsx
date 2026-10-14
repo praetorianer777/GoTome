@@ -4438,6 +4438,41 @@ describe("sending to an e-reader", () => {
 		expect(server.deliveries).toHaveLength(0);
 	});
 
+	it("lists a device's books from the profile, and takes a waiting one off", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] })
+			.withBook("Emma", { files: [{ ...epub, id: "file-2", name: "Emma.epub" }] })
+			.withBook("Sanditon", { files: [{ ...epub, id: "file-3", name: "Sanditon.epub" }] });
+		server.devices = [{ id: "d-1", name: "Kobo", createdAt: "2026-01-04T08:00:00Z" }];
+		server.deliveries = [
+			{ id: "dl-1", bookId: "book-1", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-05T08:00:00Z", deliveredAt: "2026-01-06T08:00:00Z" },
+			{ id: "dl-2", bookId: "book-2", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-07T08:00:00Z", syncedAt: "2026-01-07T09:00:00Z" },
+			{ id: "dl-3", bookId: "book-3", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-08T08:00:00Z" },
+		];
+		renderApp("/profile");
+		await person.click(await screen.findByRole("link", { name: "Books on Kobo" }));
+		expect(await screen.findByRole("heading", { name: "Kobo" })).toBeInTheDocument();
+		const list = within(await screen.findByRole("list", { name: "Books on this e-reader" }));
+		expect(list.getAllByRole("listitem").map((li) => li.getAttribute("aria-label"))).toEqual(["Sanditon", "Emma", "Persuasion"]);
+		const persuasion = within(list.getByRole("listitem", { name: "Persuasion" }));
+		expect(persuasion.getByText(/^On the e-reader since/)).toBeInTheDocument();
+		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
+		expect(within(list.getByRole("listitem", { name: "Emma" })).getByText(/^Announced to the reader/)).toBeInTheDocument();
+
+		await person.click(list.getByRole("button", { name: "Take Sanditon off this device" }));
+		await waitFor(() => expect(list.queryByRole("listitem", { name: "Sanditon" })).not.toBeInTheDocument());
+		expect(server.deliveries.map((d) => d.id)).toEqual(["dl-1", "dl-2"]);
+	});
+
+	it("says a device that is not one's own is not there", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/devices/d-9");
+		expect(await screen.findByText("There is no such e-reader among yours.")).toBeInTheDocument();
+	});
+
 	it("says where to add an e-reader when there is none", async () => {
 		server
 			.withAccount("Rita", "a long password", "reader")

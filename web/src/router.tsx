@@ -23,6 +23,7 @@ import { Overview } from "@/routes/overview";
 import { Stats } from "@/routes/stats";
 import { ReaderRoute, readerSearch } from "@/routes/read";
 import { CollectionPage } from "@/routes/collection";
+import { DevicePage } from "@/routes/device";
 import { Collections } from "@/routes/collections";
 import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
 import { Wishlist } from "@/routes/wishlist";
@@ -440,6 +441,14 @@ const adminUsersRoute = createRoute({
 	},
 });
 
+const deviceRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/devices/$deviceId",
+	component: function DeviceRoute() {
+		return <DevicePage deviceId={deviceRoute.useParams().deviceId} />;
+	},
+});
+
 const profileRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/profile",
@@ -458,7 +467,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

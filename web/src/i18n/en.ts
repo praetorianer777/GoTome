@@ -742,6 +742,17 @@ export const en = {
 	"devices.kobo": "For a Kobo reader, the line in its config",
 	"devices.once":
 		"The token is shown only now. If it is lost, revoke the device and add it again.",
+	"devices.books": "Books on {name}",
+	"deviceBooks.back": "Back to your profile",
+	"deviceBooks.notFound": "There is no such e-reader among yours.",
+	"deviceBooks.list": "Books on this e-reader",
+	"deviceBooks.none": "Nothing was sent to this e-reader yet. Send books from a book's page or a selection in the library.",
+	"deviceBooks.waiting": "Waiting since {date}",
+	"deviceBooks.synced": "Announced to the reader {date}, not downloaded yet",
+	"deviceBooks.delivered": "On the e-reader since {date}",
+	"deviceBooks.takeOff": "Take off this device",
+	"deviceBooks.takeOffNamed": "Take {title} off this device",
+	"deviceBooks.more": "Show more",
 	"profile.agent": "{browser} on {system}",
 	"profile.agentUnknown": "An unknown browser",
 

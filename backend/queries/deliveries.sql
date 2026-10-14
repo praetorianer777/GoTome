@@ -28,11 +28,29 @@ WHERE dl.book_id = $1 AND d.user_id = $2
 ORDER BY dl.queued_at DESC;
 
 -- name: TakeBackDelivery :execrows
--- Takes a book out of the queue of one of the user's devices before the
--- device has it.
+-- Takes a book off one of the user's devices: out of its queue before the
+-- device has it, or off a Kobo reader, whose next sync removes it.
 DELETE FROM deliveries dl
 USING devices d
-WHERE dl.id = $1 AND d.id = dl.device_id AND d.user_id = $2 AND dl.delivered_at IS NULL;
+WHERE dl.id = $1 AND d.id = dl.device_id AND d.user_id = $2
+  AND (dl.delivered_at IS NULL
+       OR EXISTS (SELECT 1 FROM kobo_books k WHERE k.device_id = dl.device_id AND k.book_id = dl.book_id));
+
+-- name: ListDeviceBooks :many
+-- The books of one of the user's devices that the user still sees, waiting
+-- or delivered, with when a Kobo reader was told of each; the last sent
+-- first, after the cursor.
+SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at
+FROM deliveries dl
+JOIN devices d ON d.id = dl.device_id
+JOIN books b ON b.id = dl.book_id
+LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
+WHERE dl.device_id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (sqlc.narg(before_at)::timestamptz IS NULL OR (dl.queued_at, dl.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
+ORDER BY dl.queued_at DESC, dl.id DESC
+LIMIT sqlc.arg(max_rows);
 
 -- name: ListQueuedBooks :many
 -- The books queued for the device that its user still sees, the first sent

@@ -970,7 +970,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `GET /opds/device`, for a device's token only (`DeviceFrom`), lists what
   waits, its downloads at `/opds/device/files/{id}`, where a whole file
   sent (200, not a range) marks the book delivered. A merge carries the
-  deliveries over (`MergeDeliveries`).
+  deliveries over (`MergeDeliveries`). `GET /devices/{id}/books` (#237,
+  `routes/device.tsx`) lists a device's books, the last sent first, as
+  waiting, synced (a Kobo reader was told of it) or delivered;
+  `DELETE /deliveries/{id}` takes one off while it waits, or off a Kobo
+  reader, whose next sync removes it. Other devices keep what they
+  downloaded, so it is not offered there.
 - The KOReader plugin (#197) is `backend/internal/koplugin/gotome.koplugin`
   (Lua), embedded so that `GET /koreader/plugin.zip` hands it out with
   `gotome_server.lua` naming the address the browser used. It reads the

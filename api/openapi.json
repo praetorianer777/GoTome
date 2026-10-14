@@ -2618,7 +2618,7 @@
     "/deliveries/{deliveryId}": {
       "delete": {
         "operationId": "takeBackDelivery",
-        "summary": "Take a book back from a device's queue before the device has it",
+        "summary": "Take a book off a device: out of its queue before the device has it, or off a Kobo reader at its next sync",
         "tags": [
           "auth"
         ],
@@ -2902,6 +2902,67 @@
       }
     },
     "/devices/{deviceId}/books": {
+      "get": {
+        "operationId": "listDeviceBooks",
+        "summary": "The books of one of the caller's devices, waiting, synced or delivered, the last sent first",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The nextCursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books a page holds, at most 100; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceBookList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
       "post": {
         "operationId": "sendToDevice",
         "summary": "Send books to one of the caller's devices: by IDs, or a library and filter",
@@ -9162,6 +9223,69 @@
         },
         "required": [
           "state"
+        ]
+      },
+      "DeviceBook": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookSummary"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removable": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "synced",
+              "delivered"
+            ]
+          },
+          "syncedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "book",
+          "deliveryId",
+          "state",
+          "queuedAt",
+          "removable"
+        ]
+      },
+      "DeviceBookList": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceBook"
+            }
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceView"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "device",
+          "books"
         ]
       },
       "DeviceCollect": {

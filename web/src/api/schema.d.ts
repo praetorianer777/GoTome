@@ -803,7 +803,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Take a book back from a device's queue before the device has it */
+        /** Take a book off a device: out of its queue before the device has it, or off a Kobo reader at its next sync */
         delete: operations["takeBackDelivery"];
         options?: never;
         head?: never;
@@ -903,7 +903,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** The books of one of the caller's devices, waiting, synced or delivered, the last sent first */
+        get: operations["listDeviceBooks"];
         put?: never;
         /** Send books to one of the caller's devices: by IDs, or a library and filter */
         post: operations["sendToDevice"];
@@ -2788,6 +2789,25 @@ export interface components {
             state: "pending" | "accepted" | "declined" | "expired";
             token?: string;
             username?: string;
+        };
+        DeviceBook: {
+            book: components["schemas"]["BookSummary"];
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            deliveryId: string;
+            /** Format: date-time */
+            queuedAt: string;
+            removable: boolean;
+            /** @enum {string} */
+            state: "waiting" | "synced" | "delivered";
+            /** Format: date-time */
+            syncedAt?: string;
+        };
+        DeviceBookList: {
+            books: components["schemas"]["DeviceBook"][];
+            device: components["schemas"]["DeviceView"];
+            nextCursor?: string;
         };
         DeviceCollect: {
             secret: string;
@@ -5486,6 +5506,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeviceAnswer"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDeviceBooks: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                cursor?: string;
+                /** @description How many books a page holds, at most 100; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceBookList"];
                 };
             };
             /** @description The request failed. */

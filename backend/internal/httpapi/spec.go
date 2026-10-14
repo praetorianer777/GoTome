@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
@@ -66,6 +67,7 @@ func Spec() *openapi.Document {
 	kinds := append([]string{notify.KindBulkFinished, notify.KindDeviceRequested}, events...)
 	b.FieldOverrides["Notification.kind"] = &openapi.Schema{Type: "string", Enum: kinds}
 	b.FieldOverrides["NotificationSetting.kind"] = &openapi.Schema{Type: "string", Enum: events}
+	b.FieldOverrides["DeviceBook.state"] = &openapi.Schema{Type: "string", Enum: deliveries.States}
 	b.FieldOverrides["DeviceAnswer.state"] = &openapi.Schema{Type: "string", Enum: []string{
 		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
 	}}

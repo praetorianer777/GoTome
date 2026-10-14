@@ -198,6 +198,26 @@ func TestAKoboReaderSyncsItsBooksAndReadingPlaces(t *testing.T) {
 	if len(items) != 1 || items[0].NewEntitlement == nil || items[0].NewEntitlement.BookEntitlement.ID != persuasion {
 		t.Fatalf("the second book: %s", mustJSON(items))
 	}
+	onDevice := func() map[string]map[string]any {
+		t.Helper()
+		status, out, _ := a.call(reader, http.MethodGet, "/devices/"+device+"/books", nil)
+		if status != 200 {
+			t.Fatalf("the device's books: %d %v", status, out)
+		}
+		books := map[string]map[string]any{}
+		for _, b := range out["books"].([]any) {
+			b := b.(map[string]any)
+			books[b["book"].(map[string]any)["id"].(string)] = b
+		}
+		return books
+	}
+	books := onDevice()
+	if b := books[emma]; b["state"] != "delivered" || b["syncedAt"] == nil || b["removable"] != true {
+		t.Errorf("a book downloaded: %v", b)
+	}
+	if b := books[persuasion]; b["state"] != "synced" || b["deliveredAt"] != nil || b["removable"] != true {
+		t.Errorf("a book the reader was told of: %v", b)
+	}
 	_, deliveries, _ := a.call(reader, http.MethodGet, "/books/"+persuasion+"/deliveries", nil)
 	waiting := deliveries["deliveries"].([]any)[0].(map[string]any)["id"].(string)
 	if status, _, _ := a.call(reader, http.MethodDelete, "/deliveries/"+waiting, nil); status != 204 {
@@ -228,6 +248,31 @@ func TestAKoboReaderSyncsItsBooksAndReadingPlaces(t *testing.T) {
 	}
 	if items, _ := sync("Z290b21l"); len(items) != 1 || items[0].NewEntitlement == nil {
 		t.Errorf("with an older token: %s", mustJSON(items))
+	}
+
+	// A book the reader has is taken off it by its next sync.
+	items, h = sync("")
+	if len(items) != 1 || items[0].NewEntitlement == nil {
+		t.Fatalf("emma again: %s", mustJSON(items))
+	}
+	synctoken = h.Get("x-kobo-synctoken")
+	resp, err = http.Get(items[0].NewEntitlement.BookMetadata.DownloadUrls[0].Url)
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatalf("download: %v %v", resp, err)
+	}
+	resp.Body.Close()
+	b := onDevice()[emma]
+	if b["state"] != "delivered" || b["removable"] != true {
+		t.Fatalf("downloaded again: %v", b)
+	}
+	if status, _, _ := a.call(reader, http.MethodDelete, "/deliveries/"+b["deliveryId"].(string), nil); status != 204 {
+		t.Fatalf("taking it off: %d", status)
+	}
+	if items, _ := sync(synctoken); len(items) != 1 || items[0].ChangedEntitlement == nil || !items[0].ChangedEntitlement.BookEntitlement.IsRemoved {
+		t.Errorf("taken off: %s", mustJSON(items))
+	}
+	if len(onDevice()) != 0 {
+		t.Errorf("taken off, still listed: %v", onDevice())
 	}
 
 	// A wrong or revoked token reaches nothing, and the log keeps no token.

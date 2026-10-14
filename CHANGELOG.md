@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Each e-reader on your profile has a page of its own with the books sent
+  to it: waiting, announced to a Kobo reader, or on the device, with their
+  dates. A book still waiting, or on a Kobo reader, can be taken off from
+  there; a Kobo reader removes it at its next sync.
+
 ## [0.3.1] - 2026-10-14
 
 ### Fixed
