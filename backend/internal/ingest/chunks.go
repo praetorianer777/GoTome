@@ -169,7 +169,7 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 	if !ok || file.PrimaryTextFileID == nil || *file.PrimaryTextFileID != fileID {
 		return nil
 	}
-	got, err := safely(ctx, extract, filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath)))
+	got, err := safely(ctx, file.Format, extract, filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath)))
 	switch {
 	case errors.Is(err, fs.ErrNotExist), errors.Is(err, ErrUnreadable):
 		// Gone or broken since it was read; the scan and extraction say so.

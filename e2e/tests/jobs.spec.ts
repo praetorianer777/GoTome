@@ -8,9 +8,10 @@ test("a file that cannot be read shows on the jobs page and its book, and is rea
 		data: { name: `Jobs ${stamp}`, mode: "managed", visibility: "shared" },
 	});
 	const { id } = await created.json();
-	// Not a zip, so not an EPUB: reading it fails for good.
+	// A zip's first bytes and nothing of one after them: the upload takes
+	// it, and reading it fails for good.
 	const uploaded = await page.request.post(`/api/v1/libraries/${id}/uploads`, {
-		multipart: { file: { name: `Broken ${stamp}.epub`, mimeType: "application/epub+zip", buffer: Buffer.from(`not a zip ${stamp}`) } },
+		multipart: { file: { name: `Broken ${stamp}.epub`, mimeType: "application/epub+zip", buffer: Buffer.from(`PK\x03\x04 not a zip ${stamp}`, "latin1") } },
 	});
 	expect(uploaded.status()).toBe(200);
 	const { bookId } = await uploaded.json();

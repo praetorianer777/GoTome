@@ -54,11 +54,11 @@ func TestKOReaderSyncsTheProgressOfBooksThePersonSees(t *testing.T) {
 	stranger, _ := a.signedIn("stranger", "reader")
 	shared := a.library(admin, "Shared", "shared")
 	vault := a.library(admin, "Vault", "private")
-	epubBytes := []byte("PK an epub of sorts")
+	epubBytes := []byte("PK\x03\x04 an epub of sorts")
 	_, epub := a.upload(admin, shared, "Emma.epub", epubBytes)
 	pdfBytes := []byte("%PDF-1.4 a pdf of sorts")
 	_, pdf := a.upload(admin, shared, "Pride.pdf", pdfBytes)
-	secretBytes := []byte("PK a secret")
+	secretBytes := []byte("PK\x03\x04 a secret")
 	_, secret := a.upload(admin, vault, "Secret.epub", secretBytes)
 	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET page_count = 100 WHERE id = $1`, pdf["fileId"]); err != nil {
 		t.Fatal(err)

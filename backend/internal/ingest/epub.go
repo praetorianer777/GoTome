@@ -32,7 +32,7 @@ func extractEPUB(_ context.Context, path string) (Extracted, error) {
 	}
 	defer f.Close()
 	book, err := epub.Parse(f, size)
-	if errors.Is(err, epub.ErrNotEPUB) || errors.Is(err, epub.ErrTooLarge) {
+	if errors.Is(err, epub.ErrNotEPUB) || errors.Is(err, epub.ErrTooLarge) || errors.Is(err, epub.ErrUnsafe) {
 		return Extracted{}, fmt.Errorf("%w: %v", ErrUnreadable, err)
 	}
 	if err != nil {

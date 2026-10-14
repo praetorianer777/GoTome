@@ -124,7 +124,8 @@ type Uploaded struct {
 // suggests, with the other formats and parts of that book. A file whose
 // exact bytes the uploader can already see in any library is not stored
 // again. A file that would take the uploader past their quota is refused
-// with a *QuotaError.
+// with a *QuotaError, one whose content is not the format its name says
+// with ErrWrongContent.
 //
 // The file is written to the library's staging folder first and moved into
 // place in the same transaction that records it, so an upload that fails or
@@ -176,6 +177,9 @@ func (s *Service) Upload(ctx context.Context, lib library.Library, scope library
 	}
 	info, err := os.Stat(staged)
 	if err != nil {
+		return Uploaded{}, err
+	}
+	if err := checkContent(staged, format); err != nil {
 		return Uploaded{}, err
 	}
 	sum := h.Sum(nil)

@@ -21,7 +21,7 @@ test("an edited book keeps what was typed, and says where each field came from",
 			file: {
 				name: `Draft ${stamp}.pdf`,
 				mimeType: "application/pdf",
-				buffer: Buffer.from(`not a pdf ${stamp}`),
+				buffer: Buffer.from(`%PDF-1.4\n% not a pdf ${stamp}\n`),
 			},
 		},
 	});

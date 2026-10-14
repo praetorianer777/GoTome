@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/praetorianer777/gotome/backend/internal/format/markup"
+	"github.com/praetorianer777/gotome/backend/internal/format/zipsafe"
 )
 
 var (
@@ -25,6 +26,9 @@ var (
 	// ErrTooLarge is returned when a file exceeds a limit. It is how a zip
 	// bomb ends.
 	ErrTooLarge = errors.New("EPUB exceeds a size limit")
+	// ErrUnsafe is an archive with entries whose names leave it or stand
+	// twice, or that are links.
+	ErrUnsafe = zipsafe.ErrUnsafe
 )
 
 // Limits bound what reading one file may cost.
@@ -104,12 +108,9 @@ func Parse(r io.ReaderAt, size int64) (*Book, error) {
 
 // ParseWithLimits reads an EPUB.
 func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
-	zr, err := zip.NewReader(r, size)
+	zr, err := openZip(r, size, limits)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrNotEPUB, err)
-	}
-	if len(zr.File) > limits.MaxEntries {
-		return nil, fmt.Errorf("%w: %d entries", ErrTooLarge, len(zr.File))
+		return nil, err
 	}
 	a := newArchive(zr, limits)
 
@@ -180,6 +181,23 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 		book.ContentHash = content.Sum(nil)
 	}
 	return book, nil
+}
+
+// openZip opens the archive under zipsafe's limits, with as many entries
+// as the limits allow.
+func openZip(r io.ReaderAt, size int64, limits Limits) (*zip.Reader, error) {
+	zl := zipsafe.DefaultLimits
+	zl.MaxEntries = limits.MaxEntries
+	zr, err := zipsafe.Open(r, size, zl)
+	switch {
+	case errors.Is(err, zipsafe.ErrNotZip):
+		return nil, fmt.Errorf("%w: %v", ErrNotEPUB, err)
+	case errors.Is(err, zipsafe.ErrTooLarge):
+		return nil, fmt.Errorf("%w: %v", ErrTooLarge, err)
+	case err != nil:
+		return nil, err
+	}
+	return zr, nil
 }
 
 // resolve turns a reference inside the document at base into an archive path.

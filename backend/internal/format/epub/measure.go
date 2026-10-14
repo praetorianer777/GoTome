@@ -117,12 +117,9 @@ func isFont(mediaType, name string) bool {
 // nothing else; sizes are those the archive declares.
 func Measure(r io.ReaderAt, size int64) (Measures, error) {
 	var m Measures
-	zr, err := zip.NewReader(r, size)
+	zr, err := openZip(r, size, DefaultLimits)
 	if err != nil {
-		return m, fmt.Errorf("%w: %v", ErrNotEPUB, err)
-	}
-	if len(zr.File) > DefaultLimits.MaxEntries {
-		return m, fmt.Errorf("%w: %d entries", ErrTooLarge, len(zr.File))
+		return m, err
 	}
 	a := newArchive(zr, DefaultLimits)
 	opfPath, err := a.packagePath()

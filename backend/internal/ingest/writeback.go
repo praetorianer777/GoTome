@@ -184,7 +184,7 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 	written := &countingWriter{w: io.MultiWriter(out, sum)}
 	err = epub.Rewrite(src, info.Size(), written, update)
 	switch {
-	case errors.Is(err, epub.ErrNotWritable), errors.Is(err, epub.ErrNotEPUB), errors.Is(err, epub.ErrTooLarge):
+	case errors.Is(err, epub.ErrNotWritable), errors.Is(err, epub.ErrNotEPUB), errors.Is(err, epub.ErrTooLarge), errors.Is(err, epub.ErrUnsafe):
 		return fmt.Errorf("%w: %v", ErrNotWritten, err)
 	case err != nil:
 		return fmt.Errorf("write %s: %w", file.RelPath, err)

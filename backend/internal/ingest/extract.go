@@ -131,7 +131,7 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 	}
 	path := filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath))
 
-	got, err := safely(ctx, extract, path)
+	got, err := safely(ctx, file.Format, extract, path)
 	got.Metadata.Format = file.Format
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -279,8 +279,14 @@ func orderParts(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID) error {
 
 // safely runs the extractor and turns a panic into a failure of that one
 // file. The parsers read files from anywhere; one that trips a parser must
-// not be tried again and again by the queue.
-func safely(ctx context.Context, extract Extractor, path string) (got Extracted, err error) {
+// not be tried again and again by the queue. A file whose content is not of its format never reaches the reader: a
+// parser handed the wrong bytes is a parser fed what nobody tested it on.
+func safely(ctx context.Context, format string, extract Extractor, path string) (got Extracted, err error) {
+	if err := checkContent(path, format); errors.Is(err, ErrWrongContent) {
+		return Extracted{}, fmt.Errorf("%w: %w", ErrUnreadable, err)
+	} else if err != nil {
+		return Extracted{}, err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%w: the reader crashed: %v", ErrUnreadable, r)

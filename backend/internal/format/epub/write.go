@@ -59,12 +59,9 @@ func Rewrite(r io.ReaderAt, size int64, w io.Writer, u Update) error {
 	if strings.TrimSpace(u.Metadata.Title) == "" {
 		return errors.New("a book needs a title")
 	}
-	zr, err := zip.NewReader(r, size)
+	zr, err := openZip(r, size, DefaultLimits)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrNotEPUB, err)
-	}
-	if len(zr.File) > DefaultLimits.MaxEntries {
-		return fmt.Errorf("%w: %d entries", ErrTooLarge, len(zr.File))
+		return err
 	}
 	a := newArchive(zr, DefaultLimits)
 	opfPath, err := a.packagePath()

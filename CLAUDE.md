@@ -349,6 +349,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   transaction that records it; a failed commit takes the file back out. An
   interrupted upload leaves only a staged part, removed at once or, after a
   crash, by the first upload once the part is a day old.
+- A file is checked by its first bytes against the format its name claims
+  (`ingest/sniff.go`): an upload that is not is refused (422
+  `wrong_content`), and a scanned one is recorded as unreadable before any
+  reader sees it (`safely`). A new format gets its signature there.
 - Uploads and scans both choose new paths in a library under the advisory lock
   `LockLibraryFiles`. A scan that finds a path it took as new already has a row
   leaves that folder to the next scan (`errTaken`).
@@ -405,6 +409,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   was guessed from a file name, or was last set by the same file. Locked fields and
   values from other sources stay. New sources of metadata follow the same rule
   through `field_sources`.
+- Every zip is opened through `format/zipsafe`, which refuses before
+  anything is inflated an archive of too many entries, too many bytes
+  inflated, an entry over 1 MiB that inflates past 200 times its size (a
+  zip bomb), or an entry whose name leaves the archive, stands twice or is
+  a link. A new reader of zips, such as CBZ, uses it.
 - Programs that read untrusted files (poppler, ffprobe, ffmpeg) run through
   `internal/procexec`: timeout, memory and CPU limits, output cap, own process
   group. A failure, crash or timeout of such a program is the file's fault and
