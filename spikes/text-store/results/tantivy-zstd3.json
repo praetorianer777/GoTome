@@ -1,0 +1,120 @@
+{
+  "books": 1982,
+  "chunks": 131887,
+  "indexSeconds": 61.560978285,
+  "latencyMs": [
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 3.3127180000000003,
+      "p50": 3.284755,
+      "query": "nacht stadt"
+    },
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 3.0706179999999996,
+      "p50": 3.0344399999999996,
+      "query": "liebe krieg"
+    },
+    {
+      "hits": 127,
+      "kind": "words",
+      "max": 0.779296,
+      "p50": 0.761883,
+      "query": "magie drache schwert"
+    },
+    {
+      "hits": 8,
+      "kind": "words",
+      "max": 0.161436,
+      "p50": 0.156427,
+      "query": "detective murder"
+    },
+    {
+      "hits": 0,
+      "kind": "words",
+      "max": 0.06922099999999999,
+      "p50": 0.067077,
+      "query": "ship captain storm"
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 9.679241999999999,
+      "p50": 9.589812,
+      "query": "in der nacht"
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 11.17166,
+      "p50": 10.575169,
+      "query": "zum ersten mal"
+    },
+    {
+      "hits": 16,
+      "kind": "phrase",
+      "max": 0.220598,
+      "p50": 0.214356,
+      "query": "the old man"
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 1.362963,
+      "p50": 1.3290089999999999,
+      "query": "nacht stadt"
+    },
+    {
+      "hits": 8,
+      "kind": "library",
+      "max": 0.02121,
+      "p50": 0.019778,
+      "query": "detective murder"
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 8.83385,
+      "p50": 8.710225,
+      "query": "in der nacht"
+    },
+    {
+      "hits": 1000,
+      "kind": "snippets",
+      "max": 12.304497,
+      "p50": 12.018775,
+      "query": "nacht stadt"
+    },
+    {
+      "hits": 8,
+      "kind": "snippets",
+      "max": 4.254993000000001,
+      "p50": 4.154332999999999,
+      "query": "detective murder"
+    },
+    {
+      "hits": 1000,
+      "kind": "snippets",
+      "max": 19.822792999999997,
+      "p50": 19.409319,
+      "query": "in der nacht"
+    }
+  ],
+  "mergedSeconds": 86.418957488,
+  "segmentsBeforeMerge": 4,
+  "sizes": {
+    "fast": 191623,
+    "fieldnorm": 791467,
+    "idx": 92134696,
+    "json": 2015,
+    "lock": 0,
+    "pos": 209568839,
+    "store": 465802627,
+    "term": 11314165,
+    "total": 779805432
+  },
+  "store": "zstd3",
+  "textBytes": 1044686840
+}

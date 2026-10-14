@@ -1,0 +1,16 @@
+[
+  {"kind": "words", "words": "nacht stadt"},
+  {"kind": "words", "words": "liebe krieg"},
+  {"kind": "words", "words": "magie drache schwert"},
+  {"kind": "words", "words": "detective murder"},
+  {"kind": "words", "words": "ship captain storm"},
+  {"kind": "phrase", "phrase": "in der nacht"},
+  {"kind": "phrase", "phrase": "zum ersten mal"},
+  {"kind": "phrase", "phrase": "the old man"},
+  {"kind": "library", "words": "nacht stadt", "library": true},
+  {"kind": "library", "words": "detective murder", "library": true},
+  {"kind": "library", "phrase": "in der nacht", "library": true},
+  {"kind": "snippets", "words": "nacht stadt", "snippets": true},
+  {"kind": "snippets", "words": "detective murder", "snippets": true},
+  {"kind": "snippets", "phrase": "in der nacht", "snippets": true}
+]

@@ -1,0 +1,16 @@
+[package]
+name = "tantivy-spike"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# pg_search 0.25.11 builds on a git fork of Tantivy (commit 549273e), newer
+# than 0.22.1, which is the one in the local crate cache: the spike builds
+# without a download.
+[dependencies]
+tantivy = { version = "=0.22.1", features = ["zstd-compression"] }
+flate2 = "1"
+serde_json = "1"
+
+[profile.release]
+debug = false
