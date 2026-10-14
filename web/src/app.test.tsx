@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { leave } from "@/auth/sso";
 import type { BookDetail } from "@/books/api";
+import { setLocale } from "@/i18n";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
 
@@ -104,6 +105,7 @@ let server: FakeServer;
 beforeEach(() => {
 	vi.restoreAllMocks();
 	localStorage.clear();
+	setLocale(null);
 	ebook.opened.length = 0;
 	ebook.looks.length = 0;
 	ebook.finds.length = 0;
@@ -1449,6 +1451,42 @@ describe("users", () => {
 });
 
 describe("profile", () => {
+	it("switches the app to German and back, for this browser", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		const first = renderApp("/profile");
+
+		await person.selectOptions(await screen.findByLabelText(/The language GOtome speaks/), "de");
+		expect(await screen.findByRole("heading", { name: "Ihr Konto" })).toBeInTheDocument();
+		expect(document.documentElement.lang).toBe("de");
+		expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toContainElement(
+			screen.getByRole("link", { name: "Bibliothek" }),
+		);
+
+		first.unmount();
+		renderApp("/profile");
+		const choice = await screen.findByLabelText(/Die Sprache, in der GOtome/);
+		expect(choice).toHaveValue("de");
+
+		await person.selectOptions(choice, "browser");
+		expect(await screen.findByRole("heading", { name: "Your account" })).toBeInTheDocument();
+		expect(document.documentElement.lang).toBe("en");
+	});
+
+	it("says the server's fixed sentences in German, and the others as they came", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password");
+		setLocale("de");
+		renderApp("/login");
+
+		await person.type(await screen.findByLabelText("Benutzername"), "Steve");
+		await person.type(screen.getByLabelText("Passwort"), "wrong");
+		await person.click(screen.getByRole("button", { name: "Anmelden" }));
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"Benutzername oder Passwort ist falsch.",
+		);
+	});
+
 	it("links and unlinks an account at the identity provider", async () => {
 		const person = userEvent.setup();
 		const leaving = vi.spyOn(leave, "to").mockImplementation(() => {});

@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { downloadUrl } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { t } from "@/i18n";
+import { formatTime } from "@/lib/format";
 import { chapterStep, type Sleep, usePlayer } from "@/player/player";
 import { chapterAt, formatClock } from "@/player/timeline";
 
@@ -231,7 +232,7 @@ export function Listen({ bookId }: { bookId: string }) {
 												</option>
 											))}
 											<option value="chapter">{t("player.sleep.chapter")}</option>
-											{state.sleep.kind === "until" && <option value="until">{t("player.sleep.at", { at: new Date(state.sleep.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</option>}
+											{state.sleep.kind === "until" && <option value="until">{t("player.sleep.at", { at: formatTime(state.sleep.at) })}</option>}
 										</select>
 									</label>
 								</div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { statsQuery } from "@/books/stats";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
+import { formatCount } from "@/lib/format";
 
 const WINDOWS: { days: number; label: MessageKey }[] = [
 	{ days: 7, label: "stats.window.week" },
@@ -11,8 +12,6 @@ const WINDOWS: { days: number; label: MessageKey }[] = [
 	{ days: 90, label: "stats.window.quarter" },
 	{ days: 365, label: "stats.window.year" },
 ];
-
-const number = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 /** What the signed-in person read and listened to. Only ever their own. */
 export function Stats() {
@@ -45,10 +44,10 @@ export function Stats() {
 			{data && (
 				<>
 					<dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-						<Figure label={t("stats.pagesPerDay")} value={`${data.pagesEstimated ? "≈ " : ""}${number(data.pagesPerDay)}`} />
-						<Figure label={t("stats.readingPerDay")} value={t("stats.minutes", { minutes: number(data.readingMinutesPerDay) })} />
-						<Figure label={t("stats.listeningPerDay")} value={t("stats.minutes", { minutes: number(data.listeningMinutesPerDay) })} />
-						<Figure label={t("stats.totalPages")} value={`${data.pagesEstimated ? "≈ " : ""}${number(data.totalPages)}`} />
+						<Figure label={t("stats.pagesPerDay")} value={`${data.pagesEstimated ? "≈ " : ""}${formatCount(data.pagesPerDay)}`} />
+						<Figure label={t("stats.readingPerDay")} value={t("stats.minutes", { minutes: formatCount(data.readingMinutesPerDay) })} />
+						<Figure label={t("stats.listeningPerDay")} value={t("stats.minutes", { minutes: formatCount(data.listeningMinutesPerDay) })} />
+						<Figure label={t("stats.totalPages")} value={`${data.pagesEstimated ? "≈ " : ""}${formatCount(data.totalPages)}`} />
 						<Figure label={t("stats.totalReading")} value={hours(data.totalReadingMinutes)} />
 						<Figure label={t("stats.totalListening")} value={hours(data.totalListeningMinutes)} />
 					</dl>
@@ -64,7 +63,7 @@ export function Stats() {
 							{data.days.map((d) => (
 								<div
 									key={d.date}
-									title={`${d.date}: ${t("stats.minutes", { minutes: number(d.readingMinutes) })} · ${t("stats.minutesListened", { minutes: number(d.listeningMinutes) })}`}
+									title={`${d.date}: ${t("stats.minutes", { minutes: formatCount(d.readingMinutes) })} · ${t("stats.minutesListened", { minutes: formatCount(d.listeningMinutes) })}`}
 									className="flex h-full min-w-0 flex-1 flex-col justify-end"
 								>
 									<div className="bg-sky-400 dark:bg-sky-600" style={{ height: `${(d.listeningMinutes / most) * 100}%` }} />
@@ -98,9 +97,9 @@ export function Stats() {
 									.map((d) => (
 										<tr key={d.date}>
 											<td>{d.date}</td>
-											<td>{number(d.pages)}</td>
-											<td>{number(d.readingMinutes)}</td>
-											<td>{number(d.listeningMinutes)}</td>
+											<td>{formatCount(d.pages)}</td>
+											<td>{formatCount(d.readingMinutes)}</td>
+											<td>{formatCount(d.listeningMinutes)}</td>
 										</tr>
 									))}
 							</tbody>

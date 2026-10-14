@@ -22,6 +22,12 @@ What changes for someone who runs or uses GOtome. The format follows
   CPU, whether it can run here and how many books already have its
   vectors. Switching to one that lacks most of them asks first, as every
   book is then embedded again. The jobs page links to it.
+- GOtome speaks German. It follows the browser's language, and each
+  browser can choose another on the profile. Dates and numbers are written
+  the way the language writes them. Messages the server words about a
+  particular case, such as why a field was refused, stay in English.
+- A failure on the server shows its request ID, by which an administrator
+  finds it in the log.
 
 ### Fixed
 

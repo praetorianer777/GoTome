@@ -716,6 +716,9 @@ export const en = {
 	"profile.title": "Your account",
 	"profile.who": "Signed in as {name}, {role}.",
 	"profile.storage": "Storage",
+	"profile.language": "Language",
+	"profile.language.hint": "The language GOtome speaks in this browser.",
+	"profile.language.browser": "As the browser",
 	"profile.password": "Password",
 	"profile.password.current": "Current password",
 	"profile.password.new": "New password",
@@ -1086,6 +1089,16 @@ export const en = {
 		"The server does not answer. Check the connection and try again.",
 	"error.loading": "This page could not be loaded.",
 	"error.retry": "Try again",
+	"error.unexpected": "The server answered {status} without saying why.",
+	"error.validation": "Some fields need attention.",
+	"error.internal":
+		"Something went wrong on the server. The request ID below identifies it in the logs.",
+	"error.requestId": "Request ID: {id}",
+	"error.signIn": "Sign in to continue.",
+	"error.forbidden": "You do not have permission to do that.",
+	"error.notFound": "There is nothing at this address.",
+	"error.wrongPassword": "The user name or the password is wrong.",
+	"error.tooManySignIns": "Too many failed sign-in attempts. Wait a little and try again.",
 	loading: "Loading…",
 } as const;
 
