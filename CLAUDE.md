@@ -446,6 +446,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   measures EPUBs read before, every ten minutes in batches, and a trigger
   clears both when `sha256` changes. A file that cannot be measured has no
   findings. The filter field is `ereader`, with its facet.
+- `epub.Fix` fixes findings on the zip entries, a step each: splitting
+  content documents at chapters, else between blocks, into parts of at
+  most `SplitBytes` (manifest, spine, NCX, nav, guide and links pointed at
+  the parts), scaling JPEG and PNG down to `MaxImageSide`, removing fonts
+  (entries, items, `@font-face`, their encryption.xml entries), and taking
+  manifest items without a file out. Fonts are not subset: there is no
+  font writer to do it with. `ingest.Service.Fix` is the one writer:
+  written beside the file and read back, then in one transaction the
+  original goes into the trash as a file of its own (`<name>
+  (original).epub`, `AddTrashedOriginal`) and the fixed file takes its
+  place and record, `original_sha256` kept; it queues the file's
+  extraction, turns places read in it into fractions and queues the book
+  again for devices that had it. `POST /files/{id}/fix` and the bulk
+  action `fix` (`FixBook`) call it.
 
 ## Chunks
 
