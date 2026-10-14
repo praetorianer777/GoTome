@@ -61,6 +61,14 @@ What changes for someone who runs or uses GOtome. The format follows
   type, from sending GOtome's addresses to other sites and from framing
   its pages, and everything outside the web app is sandboxed.
 
+### Security
+
+- An upload whose content is not the format its name says, such as a web
+  page saved as a PDF, is refused with the reason, and a file like it in a
+  library folder is marked as unreadable without being read.
+- EPUBs built to hurt their reader, such as zip bombs or archives whose
+  entries point outside them or stand twice, are marked as unreadable.
+
 ## [0.3.1] - 2026-10-14
 
 ### Fixed
