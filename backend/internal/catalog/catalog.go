@@ -21,6 +21,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -143,6 +144,11 @@ type File struct {
 	PageCount  *int32
 	HasText    *bool
 	DRM        bool
+	// Measures are an EPUB's, nil until it is measured.
+	Measures *epub.Measures
+	// EReaderFindings name what makes the file slow or troublesome on an
+	// e-reader (epub.Findings); nil until it is measured.
+	EReaderFindings []string
 }
 
 // BookIdentifier is an identifier and, when it belongs to one format only,
@@ -449,11 +455,19 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		return Book{}, err
 	}
 	for _, f := range files {
-		book.Files = append(book.Files, File{
+		file := File{
 			ID: f.ID, Kind: f.Kind, Format: f.Format, RelPath: f.RelPath, Size: f.SizeBytes,
 			ModifiedAt: f.ModifiedAt, SHA256: f.Sha256, PartIndex: f.PartIndex, ExtractState: f.ExtractState, ExtractError: deref(f.ExtractError),
 			Missing: f.MissingAt != nil, DurationMS: f.DurationMs, PageCount: f.PageCount, HasText: f.HasText, DRM: f.Drm,
-		})
+			EReaderFindings: f.EreaderFindings,
+		}
+		if f.EpubMeasures != nil {
+			var m epub.Measures
+			if json.Unmarshal(f.EpubMeasures, &m) == nil {
+				file.Measures = &m
+			}
+		}
+		book.Files = append(book.Files, file)
 	}
 	return book, nil
 }

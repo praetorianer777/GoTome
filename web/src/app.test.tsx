@@ -1160,6 +1160,72 @@ describe("filters", () => {
 			"Files missing",
 		);
 	});
+
+	it("finds the books slow on e-readers and says why on the book's page", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		server.books[1]!.files = [
+			{
+				id: "tower",
+				kind: "ebook",
+				format: "epub",
+				name: "Schwalbenturm.epub",
+				size: 5_000_000,
+				missing: false,
+				drm: false,
+				extractState: "done",
+				ereader: {
+					findings: ["large-document", "large-fonts", "large-image", "missing-resources"],
+					largestDocument: 1_280_000,
+					fonts: 8,
+					fontBytes: 3_500_000,
+					largestImage: 1_500_000,
+					imageWidth: 3000,
+					imageHeight: 2000,
+					missingResources: ["OEBPS/gone.jpg"],
+				},
+			},
+		];
+		server.books[0]!.files = [
+			{
+				id: "emma",
+				kind: "ebook",
+				format: "epub",
+				name: "Emma.epub",
+				size: 1000,
+				missing: false,
+				drm: false,
+				extractState: "done",
+				ereader: {
+					findings: [],
+					largestDocument: 40_000,
+					fonts: 0,
+					fontBytes: 0,
+					largestImage: 0,
+					imageWidth: 0,
+					imageHeight: 0,
+					missingResources: [],
+				},
+			},
+		];
+		const slow = server.books[1]!.title;
+		renderApp("/");
+		const filters = within(
+			await screen.findByRole("complementary", { name: "Filters" }),
+		);
+		await person.click(
+			await filters.findByRole("checkbox", { name: "Large embedded fonts (1)" }),
+		);
+		await waitFor(() => expect(titles()).toEqual([slow]));
+
+		await person.click(screen.getByRole("link", { name: new RegExp(`^${slow}`) }));
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(files.getByText("May be slow on e-readers:")).toBeInTheDocument();
+		expect(files.getByText("One chapter file holds 1.3 MB, which an e-reader lays out at once")).toBeInTheDocument();
+		expect(files.getByText("8 embedded fonts take 3.5 MB")).toBeInTheDocument();
+		expect(files.getByText("Images up to 3000 × 2000 pixels and 1.5 MB")).toBeInTheDocument();
+		expect(files.getByText("Files the EPUB lists but lacks: 1")).toBeInTheDocument();
+	});
 });
 
 describe("quick search", () => {
@@ -4652,6 +4718,22 @@ describe("the overview", () => {
 		);
 		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
 		expect(router.state.location.search).toMatchObject({ files: ["missing"] });
+	});
+
+	it("counts the books slow on e-readers and leads to them", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.figures.withEreaderFindings = 41;
+		const { router } = renderApp("/overview");
+		await person.click(
+			await screen.findByRole("link", {
+				name: "41 books have EPUBs that may be slow or troublesome on e-readers",
+			}),
+		);
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(router.state.location.search).toMatchObject({
+			ereader: ["large-document", "large-fonts", "large-image", "missing-resources"],
+		});
 	});
 
 	it("shows a reader what the library holds and not the work", async () => {

@@ -223,6 +223,7 @@ export class FakeServer {
 		withoutAuthor: 3,
 		withoutText: 15,
 		withMissingFiles: 0,
+		withEreaderFindings: 0,
 		formats: [
 			{ name: "epub", count: 1100, bytes: 2_000_000_000 },
 			{ name: "pdf", count: 400, bytes: 1_400_000_000 },
@@ -2244,7 +2245,8 @@ type Field =
 	| "status"
 	| "rating"
 	| "format"
-	| "files";
+	| "files"
+	| "ereader";
 const FIELDS: Field[] = [
 	"author",
 	"series",
@@ -2255,6 +2257,7 @@ const FIELDS: Field[] = [
 	"rating",
 	"format",
 	"files",
+	"ereader",
 ];
 
 interface Rule {
@@ -2352,6 +2355,10 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 					]
 				: [["missing", "missing"]];
 		}
+		case "ereader": {
+			const found = new Set(b.files.flatMap((f) => f.ereader?.findings ?? []));
+			return [...found].map((v) => [v, v]);
+		}
 	}
 }
 
@@ -2402,7 +2409,9 @@ function matches(b: BookDetail, r: Rule): boolean {
 		);
 	}
 	return (r.values ?? []).some((v) =>
-		have.includes(r.field === "format" || r.field === "files" ? v : nameKey(v)),
+		have.includes(
+			r.field === "format" || r.field === "files" || r.field === "ereader" ? v : nameKey(v),
+		),
 	);
 }
 

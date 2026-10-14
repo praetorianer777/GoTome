@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
@@ -61,6 +62,9 @@ type Extracted struct {
 	DurationMS  *int64
 	Track, Disc *int32
 	Chapters    []Chapter
+	// Measures are an EPUB's, nil for other formats and an EPUB that could
+	// not be measured.
+	Measures *epub.Measures
 }
 
 // ErrUnreadable is what an Extractor wraps when the file is not what its
@@ -188,6 +192,11 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		})
 		if err != nil || n == 0 {
 			return err
+		}
+		if file.Format == "epub" {
+			if err := setMeasures(ctx, q, fileID, file.Sha256, got.Measures); err != nil {
+				return err
+			}
 		}
 		// A file a placeholder waited for joins it first, so that what the
 		// file says describes the placeholder.

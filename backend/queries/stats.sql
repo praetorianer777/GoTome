@@ -9,7 +9,7 @@ WITH vb AS (
       AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
 ),
 vf AS (
-    SELECT f.book_id, f.kind, f.size_bytes, f.duration_ms, f.missing_at
+    SELECT f.book_id, f.kind, f.size_bytes, f.duration_ms, f.missing_at, f.ereader_findings
     FROM book_files f
     JOIN vb ON vb.id = f.book_id
     WHERE f.trashed_at IS NULL
@@ -30,7 +30,8 @@ SELECT (SELECT count(*) FROM vb)::int AS books,
        (SELECT count(*) FROM vb
         WHERE EXISTS (SELECT 1 FROM vf WHERE vf.book_id = vb.id AND vf.kind = 'ebook')
           AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.id = vb.primary_text_file_id AND f.chunked_at IS NOT NULL))::int AS without_text,
-       (SELECT count(DISTINCT book_id) FROM vf WHERE missing_at IS NOT NULL)::int AS with_missing_files;
+       (SELECT count(DISTINCT book_id) FROM vf WHERE missing_at IS NOT NULL)::int AS with_missing_files,
+       (SELECT count(DISTINCT book_id) FROM vf WHERE cardinality(ereader_findings) > 0)::int AS with_ereader_findings;
 
 -- name: FilesByFormat :many
 -- The viewer's files by format, the most first.

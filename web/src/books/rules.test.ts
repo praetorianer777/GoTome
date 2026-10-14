@@ -36,6 +36,15 @@ describe("the rule builder's tree", () => {
 		});
 	});
 
+	it("picks what makes a book slow on e-readers, as a smart shelf keeps it", () => {
+		const slow = { ...newRule("ereader"), picked: ["large-fonts", "large-image"] };
+		const tree = treeOf(newGroup("all", [slow]));
+		expect(JSON.parse(tree)).toEqual({
+			all: [{ field: "ereader", op: "in", values: ["large-fonts", "large-image"] }],
+		});
+		expect(treeOf(groupOf(tree))).toBe(tree);
+	});
+
 	it("reads a tree back as it was written", () => {
 		const tree = JSON.stringify({
 			all: [

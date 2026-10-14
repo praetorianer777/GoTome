@@ -1,6 +1,7 @@
 import type { FacetField } from "@/books/filters";
 import { STATUS_LABELS, STATUSES } from "@/books/reading";
 import {
+	EREADER_FINDINGS,
 	FILE_STATES,
 	picksValues,
 	RULE_FIELDS,
@@ -27,9 +28,17 @@ const OP_LABELS: Record<RuleOp, MessageKey> = {
 
 /** The values a rule on a field that picks offers, as people read them. */
 function choices(field: FacetField): { value: string; label: string }[] {
-	return field === "files"
-		? FILE_STATES.map((value) => ({ value, label: t(`filter.files.${value}`) }))
-		: STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
+	switch (field) {
+		case "files":
+			return FILE_STATES.map((value) => ({ value, label: t(`filter.files.${value}`) }));
+		case "ereader":
+			return EREADER_FINDINGS.map((value) => ({
+				value,
+				label: t(`filter.ereader.${value}`),
+			}));
+		default:
+			return STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
+	}
 }
 
 /**

@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
@@ -46,7 +47,7 @@ func Spec() *openapi.Document {
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
 	b.FieldOverrides["Facet.field"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
-		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat, catalog.FieldFiles,
+		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat, catalog.FieldFiles, catalog.FieldEReader,
 	}}
 	statuses := &openapi.Schema{Type: "string", Enum: catalog.Statuses}
 	for _, field := range []string{"ReadingState.status", "ReadingChange.status", "ReadingBulkRequest.status", "BookSummary.status", "SearchHit.status"} {
@@ -73,6 +74,7 @@ func Spec() *openapi.Document {
 		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
 	}}
 	b.FieldOverrides["Readiness.state"] = &openapi.Schema{Type: "string", Enum: similar.ReadinessStates}
+	b.FieldOverrides["EreaderCheck.findings"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Findings}}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {

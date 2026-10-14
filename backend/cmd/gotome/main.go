@@ -79,6 +79,8 @@ const (
 	releasePollInterval = time.Hour
 	// New and changed ebook files get the MD5 KOReader names them by.
 	koreaderHashInterval = 10 * time.Minute
+	// EPUBs read before measuring was, or changed since, are measured.
+	measureInterval = 10 * time.Minute
 )
 
 const usage = `Usage: gotome <command>
@@ -265,6 +267,7 @@ func serve() error {
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &releases.PollWorker{Service: follows})
 	river.AddWorker(workers, &kosync.HashWorker{Service: progressSync})
+	river.AddWorker(workers, &ingest.MeasureWorker{Service: scans})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
 		retention, err := settingStore.TrashRetention(ctx)
 		if err != nil {
@@ -280,6 +283,7 @@ func serve() error {
 		similar.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		kosync.Periodic(koreaderHashInterval),
+		ingest.MeasurePeriodic(measureInterval),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is
