@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { can, currentUserQuery } from "@/auth/session";
+import { EREADER_FINDINGS } from "@/books/rules";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatCount, formatLanguage, formatMonth, formatSize } from "@/lib/format";
@@ -284,6 +285,19 @@ function Figures({ library }: { library: string }) {
 							>
 								{t("overview.withMissingFiles", {
 									count: formatCount(f.withMissingFiles),
+								})}
+							</Link>
+						</p>
+					)}
+					{f.withEreaderFindings > 0 && (
+						<p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+							<Link
+								to="/"
+								search={{ library: library || undefined, ereader: [...EREADER_FINDINGS] }}
+								className="underline"
+							>
+								{t("overview.withEreaderFindings", {
+									count: formatCount(f.withEreaderFindings),
 								})}
 							</Link>
 						</p>

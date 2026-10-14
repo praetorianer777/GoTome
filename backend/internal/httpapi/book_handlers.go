@@ -75,7 +75,7 @@ func (s *Server) serveCover(w http.ResponseWriter, r *http.Request, id uuid.UUID
 
 type listBooksQuery struct {
 	Library      string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
+	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
 	Sort         string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
 	Order        string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor       string `query:"cursor" doc:"The nextCursor of the page before."`
@@ -158,6 +158,27 @@ type bookFile struct {
 	// ExtractError is why it could not be read, for those who may have it
 	// read again; it may name places on the server.
 	ExtractError string `json:"extractError,omitempty"`
+	// EReader is what may make an EPUB slow or troublesome on an e-reader,
+	// once it is measured.
+	EReader *ereaderCheck `json:"ereader,omitempty"`
+}
+
+// ereaderCheck is an EPUB's measures and what is found past the limits.
+type ereaderCheck struct {
+	// Findings name what is past the limits; empty for a file that is
+	// fine or could not be measured.
+	Findings []string `json:"findings"`
+	// LargestDocument is the size of the largest content document in
+	// bytes; the others likewise.
+	LargestDocument int64 `json:"largestDocument"`
+	Fonts           int   `json:"fonts"`
+	FontBytes       int64 `json:"fontBytes"`
+	LargestImage    int64 `json:"largestImage"`
+	// ImageWidth and ImageHeight are those of the image of the most pixels.
+	ImageWidth  int `json:"imageWidth"`
+	ImageHeight int `json:"imageHeight"`
+	// MissingResources are files the package lists and the archive lacks.
+	MissingResources []string `json:"missingResources"`
 }
 
 type bookDetail struct {
@@ -424,6 +445,14 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		}
 		if rereads {
 			file.ExtractError = f.ExtractError
+		}
+		if f.EReaderFindings != nil {
+			file.EReader = &ereaderCheck{Findings: f.EReaderFindings, MissingResources: []string{}}
+			if m := f.Measures; m != nil {
+				file.EReader.LargestDocument, file.EReader.Fonts, file.EReader.FontBytes = m.LargestDocument, m.Fonts, m.FontBytes
+				file.EReader.LargestImage, file.EReader.ImageWidth, file.EReader.ImageHeight = m.LargestImage, m.ImageWidth, m.ImageHeight
+				file.EReader.MissingResources = append(file.EReader.MissingResources, m.MissingResources...)
+			}
 		}
 		if f.DurationMS != nil {
 			total := derefInt64(out.DurationMS) + *f.DurationMS

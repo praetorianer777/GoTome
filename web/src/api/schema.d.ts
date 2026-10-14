@@ -2512,6 +2512,7 @@ export interface components {
         BookFile: {
             drm: boolean;
             durationMs?: number;
+            ereader?: components["schemas"]["EreaderCheck"];
             extractError?: string;
             extractState: string;
             format: string;
@@ -2913,12 +2914,22 @@ export interface components {
             tags?: string[];
             title?: string;
         };
+        EreaderCheck: {
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
+            fontBytes: number;
+            fonts: number;
+            imageHeight: number;
+            imageWidth: number;
+            largestDocument: number;
+            largestImage: number;
+            missingResources: string[];
+        };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files";
+            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -2949,6 +2960,7 @@ export interface components {
             publishers: number;
             series: number;
             tags: number;
+            withEreaderFindings: number;
             withMissingFiles: number;
             withoutAuthor: number;
             withoutCover: number;
@@ -4218,7 +4230,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. */
                 sort?: "title" | "author" | "added";

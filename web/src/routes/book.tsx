@@ -10,6 +10,7 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
+import { EReaderFindings } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
@@ -304,6 +305,7 @@ function Files({
 									{fileNotes(file).join(" · ")}
 								</span>
 							)}
+							<EReaderFindings file={file} />
 							{file.extractState === "failed" && (
 								<span className="block text-red-700 dark:text-red-400">
 									{file.extractError

@@ -80,35 +80,37 @@ type BookContributor struct {
 }
 
 type BookFile struct {
-	ID             uuid.UUID
-	BookID         uuid.UUID
-	LibraryID      uuid.UUID
-	Kind           string
-	Format         string
-	RelPath        string
-	SizeBytes      int64
-	ModifiedAt     time.Time
-	Sha256         []byte
-	OriginalSha256 []byte
-	ContentSha256  []byte
-	PartIndex      *int32
-	DurationMs     *int64
-	PageCount      *int32
-	PagesEstimated bool
-	HasText        *bool
-	Drm            bool
-	ExtractState   string
-	ExtractError   *string
-	UploadedBy     *uuid.UUID
-	MissingAt      *time.Time
-	TrashedAt      *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	TrackNumber    *int32
-	DiscNumber     *int32
-	ChunkedAt      *time.Time
-	TrashedBy      *uuid.UUID
-	KoreaderMd5    *string
+	ID              uuid.UUID
+	BookID          uuid.UUID
+	LibraryID       uuid.UUID
+	Kind            string
+	Format          string
+	RelPath         string
+	SizeBytes       int64
+	ModifiedAt      time.Time
+	Sha256          []byte
+	OriginalSha256  []byte
+	ContentSha256   []byte
+	PartIndex       *int32
+	DurationMs      *int64
+	PageCount       *int32
+	PagesEstimated  bool
+	HasText         *bool
+	Drm             bool
+	ExtractState    string
+	ExtractError    *string
+	UploadedBy      *uuid.UUID
+	MissingAt       *time.Time
+	TrashedAt       *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	TrackNumber     *int32
+	DiscNumber      *int32
+	ChunkedAt       *time.Time
+	TrashedBy       *uuid.UUID
+	KoreaderMd5     *string
+	EpubMeasures    []byte
+	EreaderFindings []string
 }
 
 type BookIdentifier struct {

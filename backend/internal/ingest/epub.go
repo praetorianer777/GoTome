@@ -66,6 +66,9 @@ func extractEPUB(_ context.Context, path string) (Extracted, error) {
 	if book.Cover != nil {
 		out.Cover = book.Cover.Data
 	}
+	if m, err := epub.Measure(f, size); err == nil {
+		out.Measures = &m
+	}
 
 	chars := 0
 	for _, ch := range book.Chapters {

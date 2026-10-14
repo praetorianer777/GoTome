@@ -242,6 +242,10 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 		// only the PDF.
 		{sql: `UPDATE book_files f SET missing_at = now() FROM scale_books b
 			WHERE b.id = f.book_id AND (b.n % 1000 = 1 OR (b.n % 500 = 2 AND f.format = 'pdf'))`},
+		// Every EPUB measured, a few of them slow on an e-reader.
+		{sql: `UPDATE book_files f SET ereader_findings = CASE
+				WHEN b.n % 50 = 3 THEN ARRAY['large-fonts'] WHEN b.n % 200 = 4 THEN ARRAY['large-document', 'large-image'] ELSE '{}' END
+			FROM scale_books b WHERE b.id = f.book_id AND f.format = 'epub'`},
 		// One chunk a book, where a real one has about 75: the plans are
 		// the ones a full library gets, the timings of the full-text search
 		// are those of docs/decisions/search-engine.md.
@@ -364,6 +368,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "filter by year", path: "/books?limit=50&" + filter(`{"field": "published", "op": "between", "values": ["1900", "1950"]}`)},
 		{name: "filter by missing files", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["missing"]}`)},
 		{name: "filter by no file on disk", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["none-on-disk"]}`)},
+		{name: "filter by e-reader findings", path: "/books?limit=50&" + filter(`{"field": "ereader", "op": "in", "values": ["large-fonts", "large-image"]}`)},
 		{name: "facets", path: "/books/facets"},
 		{name: "facets of a filter", path: "/books/facets?" + filter(tagAndLanguage)},
 		{name: "count of a filter", path: "/books/count?" + filter(tagAndLanguage)},

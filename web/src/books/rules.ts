@@ -13,21 +13,30 @@ export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	status: ["in"],
 	rating: ["in", "between", "empty"],
 	files: ["in"],
+	ereader: ["in"],
 };
 
 /** Where a book's files are, as the files field compares it. */
 export const FILE_STATES = ["missing", "none-on-disk"] as const;
 
+/** What makes a book's EPUB slow or troublesome on an e-reader, as the ereader field compares it. */
+export const EREADER_FINDINGS = [
+	"large-document",
+	"large-fonts",
+	"large-image",
+	"missing-resources",
+] as const;
+
 /** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
 export function picksValues(field: FacetField): boolean {
-	return field === "status" || field === "files";
+	return field === "status" || field === "files" || field === "ereader";
 }
 
 export const RULE_FIELDS = FACET_FIELDS;
 
 /**
  * One rule as the builder edits it. Values of in are typed as one text,
- * split at commas when the tree is made, except for status and files, which are
+ * split at commas when the tree is made, except for status, files and ereader, which are
  * picked; between keeps its lower and upper bound.
  */
 export interface RuleItem {

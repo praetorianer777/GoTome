@@ -28,6 +28,12 @@ What changes for someone who runs or uses GOtome. The format follows
   particular case, such as why a field was refused, stay in English.
 - A failure on the server shows its request ID, by which an administrator
   finds it in the log.
+- EPUBs that may turn pages slowly on an e-reader are found: a chapter file
+  over about 300 KB, embedded fonts over 1 MB, an image over 4 megapixels
+  or 1 MB, or files the EPUB lists but lacks. The book's page says which
+  of these a file has, the library's filters offer "On e-readers" (also
+  as a rule of a smart shelf), and the overview counts such books.
+  Files read before are measured in the background.
 
 ### Fixed
 

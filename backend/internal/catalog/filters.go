@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/praetorianer777/gotome/backend/internal/filter"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -28,6 +29,9 @@ const (
 	// FieldFiles is where a book's files are: FilesMissing and
 	// FilesNoneOnDisk.
 	FieldFiles = "files"
+	// FieldEReader is what makes a book's EPUB slow or troublesome on an
+	// e-reader: one of epub.Findings.
+	FieldEReader = "ereader"
 	// FieldStatus and FieldRating are where the viewer stands with a book:
 	// each person filters by their own.
 	FieldStatus = "status"
@@ -66,6 +70,14 @@ const (
 	hasFileOnDisk = `EXISTS (SELECT 1 FROM book_files f
 		WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL)`
 )
+
+// hasEReaderFinding is a book with a file that has a finding among the
+// values, in the form the partial index book_files_ereader_findings covers.
+func hasEReaderFinding(values string) string {
+	return `EXISTS (SELECT 1 FROM book_files f
+		WHERE f.book_id = b.id AND cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
+		  AND f.ereader_findings && ` + values + `::text[])`
+}
 
 // languageOf is a book's language as filters and facets compare it: the
 // language without its region, so that en-GB and en-US are both English.
@@ -128,6 +140,11 @@ var Filters = filter.Registry{
 				return hasMissingFile
 			}
 			return hasMissingFile + " AND NOT " + hasFileOnDisk
+		}},
+	},
+	FieldEReader: {
+		OpIn: {Arity: -1, Value: ereaderFinding, SQL: func(v []string, arg func(any) string) string {
+			return hasEReaderFinding(arg(v))
 		}},
 	},
 }
@@ -221,6 +238,13 @@ func year(v string) (string, error) {
 func fileState(v string) (string, error) {
 	if !slices.Contains(FileStates, v) {
 		return "", fmt.Errorf("%q is not a state of files; one is %s", v, strings.Join(FileStates, ", "))
+	}
+	return v, nil
+}
+
+func ereaderFinding(v string) (string, error) {
+	if !slices.Contains(epub.Findings, v) {
+		return "", fmt.Errorf("%q is not a finding; one is %s", v, strings.Join(epub.Findings, ", "))
 	}
 	return v, nil
 }
@@ -367,6 +391,17 @@ FROM (SELECT b.id, NOT ` + hasFileOnDisk + ` AS none_left
      unnest(CASE WHEN m.none_left THEN ARRAY['` + FilesMissing + `', '` + FilesNoneOnDisk + `'] ELSE ARRAY['` + FilesMissing + `'] END) st
 GROUP BY st
 ORDER BY array_position(ARRAY['` + strings.Join(FileStates, "','") + `'], st)
+LIMIT {limit}`},
+	// Starts from the files with findings, which are few.
+	{FieldEReader, `
+SELECT finding, finding, count(DISTINCT m.id)
+FROM (SELECT b.id, f.ereader_findings
+      FROM books b
+      JOIN book_files f ON f.book_id = b.id AND cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
+      WHERE {where}) m,
+     unnest(m.ereader_findings) finding
+GROUP BY finding
+ORDER BY array_position(ARRAY['` + strings.Join(epub.Findings, "','") + `'], finding)
 LIMIT {limit}`},
 }
 

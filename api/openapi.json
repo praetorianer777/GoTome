@@ -816,7 +816,7 @@
           {
             "name": "filter",
             "in": "query",
-            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
             "schema": {
               "type": "string"
             }
@@ -8149,6 +8149,9 @@
           "durationMs": {
             "type": "integer"
           },
+          "ereader": {
+            "$ref": "#/components/schemas/EreaderCheck"
+          },
           "extractError": {
             "type": "string"
           },
@@ -9632,6 +9635,57 @@
           }
         }
       },
+      "EreaderCheck": {
+        "type": "object",
+        "properties": {
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "large-document",
+                "large-fonts",
+                "large-image",
+                "missing-resources"
+              ]
+            }
+          },
+          "fontBytes": {
+            "type": "integer"
+          },
+          "fonts": {
+            "type": "integer"
+          },
+          "imageHeight": {
+            "type": "integer"
+          },
+          "imageWidth": {
+            "type": "integer"
+          },
+          "largestDocument": {
+            "type": "integer"
+          },
+          "largestImage": {
+            "type": "integer"
+          },
+          "missingResources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "findings",
+          "largestDocument",
+          "fonts",
+          "fontBytes",
+          "largestImage",
+          "imageWidth",
+          "imageHeight",
+          "missingResources"
+        ]
+      },
       "ErrorEnvelope": {
         "type": "object",
         "properties": {
@@ -9657,7 +9711,8 @@
               "status",
               "rating",
               "format",
-              "files"
+              "files",
+              "ereader"
             ]
           },
           "values": {
@@ -9779,6 +9834,9 @@
           "tags": {
             "type": "integer"
           },
+          "withEreaderFindings": {
+            "type": "integer"
+          },
           "withMissingFiles": {
             "type": "integer"
           },
@@ -9807,6 +9865,7 @@
           "withoutAuthor",
           "withoutText",
           "withMissingFiles",
+          "withEreaderFindings",
           "formats",
           "languages",
           "months"

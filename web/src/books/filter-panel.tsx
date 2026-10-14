@@ -7,6 +7,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { type ReadingStatus, STATUS_LABELS } from "@/books/reading";
+import { EREADER_FINDINGS } from "@/books/rules";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
 
@@ -23,6 +24,7 @@ const FIELD_LABELS: Record<FacetField, MessageKey> = {
 	rating: "filter.field.rating",
 	format: "filter.field.format",
 	files: "filter.field.files",
+	ereader: "filter.field.ereader",
 };
 
 /** A value as people read it; the server labels names, the rest is ours. */
@@ -41,6 +43,10 @@ function valueLabel(field: FacetField, value: string, label?: string): string {
 		case "files":
 			return value === "missing" || value === "none-on-disk"
 				? t(`filter.files.${value}`)
+				: value;
+		case "ereader":
+			return (EREADER_FINDINGS as readonly string[]).includes(value)
+				? t(`filter.ereader.${value as (typeof EREADER_FINDINGS)[number]}`)
 				: value;
 		default:
 			return label ?? value;

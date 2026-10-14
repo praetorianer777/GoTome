@@ -400,6 +400,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
   is that hash. A route that sends something other than JSON declares `Produces`.
 
+## E-reader checks
+
+- What makes an EPUB slow or troublesome on an e-reader (#233) is measured
+  by `epub.Measure` from the archive's directory, the package document and
+  the images' headers: the largest content document, the embedded fonts,
+  the largest image in bytes and pixels, and manifest items the archive
+  lacks. `Measures.Findings` names those past the limits (`epub.Findings`,
+  constants to be tuned). Extraction stores both on the file
+  (`epub_measures`, `ereader_findings`); the `ingest.measure_files` job
+  measures EPUBs read before, every ten minutes in batches, and a trigger
+  clears both when `sha256` changes. A file that cannot be measured has no
+  findings. The filter field is `ereader`, with its facet.
+
 ## Chunks
 
 - A book's text is kept as `book_chunks`, read from its primary text file
