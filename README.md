@@ -57,6 +57,11 @@ checkout instead.
 
 Backing up, restoring and upgrading: [docs/backup-and-upgrade.md](docs/backup-and-upgrade.md).
 
+E-readers: KOReader and OPDS in [docs/koreader.md](docs/koreader.md); the
+companion app for Tolinos on Android firmware in
+[clients/android/README.md](clients/android/README.md); Tolinos on the
+Kobo-based firmware in [docs/tolino-kobo-mode.md](docs/tolino-kobo-mode.md).
+
 ## Development
 
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;
