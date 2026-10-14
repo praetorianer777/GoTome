@@ -68,6 +68,10 @@
     <string name="cleartext">The address is http://: your token travels unencrypted. Use https:// unless GOtome is only on your own network.</string>
     <string name="checking_queue">Looking for books sent to this Tolino…</string>
     <string name="update_ready">GOtome for Tolino %1$s is out: update it in the settings ⚙</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Looking for a new version…</string>
+    <string name="update_check_failed">Could not look for updates: %1$s</string>
+    <string name="up_to_date">GOtome for Tolino %1$s is the latest version.</string>
     <string name="update_to">Update to %1$s</string>
     <string name="updating">Downloading %1$s…</string>
     <string name="update_failed">Update failed: %1$s</string>
