@@ -27,7 +27,7 @@ GOtome:
 | Progress | The Tolino reader writes every page turn to the system log. The app reads only those lines (the tags `HomeActivity$DeliverableClickListener`, `EpubViewerActivity`, `EpubView` and `BasicViewerActivity`) for the EPUBs it delivered. The reader logs its position in Adobe's pages, one for every 1024 bytes of each chapter as compressed in the EPUB; the app counts them in the file and sends the share of the book as `fraction:0.42`. PDFs report no progress. |
 | Store from the home screen | The app puts a book "GOtome" into the library. When the log shows it opened, the app brings the store up over it. Deleted, it comes back with the next sync or when the store is opened. |
 | Jump | The reader takes no position from other apps, but its page numbers ("13 / 510") are Adobe's pages counted from 1. When a book opens, the app asks GOtome for its position (or, offline, goes by the last sync); further by more than a page, an accessibility service shows the offer and, on "Jump", opens the reader's menu, taps the page number and enters the page, by the reader's view IDs. It acts in the Tolino reader only, and only on your tap. |
-| Signing in | As a device: your user name and a token made for the Tolino on your profile. The token reaches only what a device needs (the books, their files and covers, your reading progress, and the books sent to it); revoking it signs the Tolino out. |
+| Signing in | As a device: it asks to be added to your account and you accept it on your profile, or you type a token made there. The token reaches only what a device needs (the books, their files and covers, your reading progress, and the books sent to it); revoking it signs the Tolino out. |
 | On the device | GOtome is told which books the app put on the Tolino and which left it, so a book's page in the web says "On Tolino since …". |
 | Sync | Whenever the Tolino goes online (at most every five minutes), once an hour, and whenever a book is closed; "Sync" in the store does it at once. |
 
@@ -81,17 +81,22 @@ You need a computer with `adb` (Android platform tools) and a USB cable.
    (The `settings put` replaces other accessibility services that are on;
    `make android-install` adds to them.)
 
-4. In GOtome, on your profile under **E-readers**, **Add a device** named
-   after the Tolino. Keep the token it shows open; it is shown once.
-5. On the Tolino, in the app's settings:
+4. On the Tolino, in the app's settings:
    - **GOtome address**: how the Tolino reaches GOtome, e.g.
      `https://gotome.example.org` or, on your own network,
      `http://192.168.1.10:8080` (not `localhost`). Over `http://` the token
      travels unencrypted, which the settings page points out.
-   - **User name** of your GOtome account and the **device token**.
-6. **Sign in**. The app fetches what was sent to the Tolino, puts the "GOtome"
-   book into the library and starts following the reader. The settings page
-   should say that it may read the log.
+   - **User name** of your GOtome account.
+5. **Request access**. The Tolino shows a four-digit code. In GOtome, on your
+   profile under **E-readers**, the Tolino asks to be added (a notification
+   says so too): **Accept** it if it shows the same code. Within a few
+   seconds the Tolino signs in by itself, fetches what was sent to it, puts
+   the "GOtome" book into the library and starts following the reader. The
+   settings page should say that it may read the log. A request nobody
+   accepts ends after ten minutes.
+
+   Instead of asking, **Use a device token instead** takes a token made on
+   the profile with **Add a device**, typed in with the user name.
 
 USB debugging can be turned off again afterwards; the app keeps its
 permissions.

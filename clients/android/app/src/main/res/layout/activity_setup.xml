@@ -37,20 +37,6 @@
             android:layout_height="wrap_content"
             android:inputType="text" />
 
-        <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/token" />
-        <EditText
-            android:id="@+id/token"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="ABCD-EFGH-JKMN-PQRS-TUVW"
-            android:inputType="textCapCharacters|textNoSuggestions|textVisiblePassword" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/token_help"
-            android:textSize="15sp" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -58,11 +44,11 @@
             android:orientation="horizontal">
 
             <Button
-                android:id="@+id/sign_in"
+                android:id="@+id/request"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/sign_in" />
+                android:text="@string/request_access" />
 
             <Button
                 android:id="@+id/store"
@@ -71,6 +57,68 @@
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:text="@string/to_store" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/pairing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/code"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.3"
+                android:textSize="56sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/pairing_hint"
+                android:textSize="17sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/use_token"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/use_token" />
+
+        <LinearLayout
+            android:id="@+id/token_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/token" />
+            <EditText
+                android:id="@+id/token"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="ABCD-EFGH-JKMN-PQRS-TUVW"
+                android:inputType="textCapCharacters|textNoSuggestions|textVisiblePassword" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/token_help"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/sign_in"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/sign_in" />
         </LinearLayout>
 
         <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/language" />

@@ -61,6 +61,13 @@
     <string name="remove">Vom Tolino entfernen</string>
     <string name="remove_confirm">Wirklich entfernen? Nochmal tippen</string>
     <string name="removed">Vom Tolino entfernt.</string>
+    <string name="request_access">Zugang anfragen</string>
+    <string name="requesting">Frage bei GOtome an…</string>
+    <string name="request_failed">Anfrage fehlgeschlagen: %1$s</string>
+    <string name="pairing_hint">Öffne dein Profil in GOtome: Unter „E-readers“ bittet dieser Tolino um Zugang. Nimm ihn dort an, wenn er diesen Code zeigt; der Tolino meldet sich dann von selbst an.</string>
+    <string name="pairing_declined">GOtome hat diesen Tolino abgelehnt.</string>
+    <string name="pairing_expired">Niemand hat die Anfrage rechtzeitig angenommen. Frag erneut an.</string>
+    <string name="use_token">Stattdessen einen Geräteschlüssel verwenden</string>
     <string name="token">Geräteschlüssel</string>
     <string name="token_help">In GOtome für diesen Tolino anlegen: im Profil unter „E-readers“, „Add a device“. Damit holt der Tolino Bücher und sendet deinen Lesefortschritt, sonst nichts; dort widerrufen („Revoke“), ist der Tolino abgemeldet.</string>
     <string name="server_scheme">Die Adresse beginnt mit https:// (oder http:// im eigenen Netz)</string>

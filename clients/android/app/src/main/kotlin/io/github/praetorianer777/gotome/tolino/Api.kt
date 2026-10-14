@@ -25,6 +25,25 @@ class Api(private val prefs: Prefs) {
         return device.name
     }
 
+    /**
+     * Asks GOtome for this Tolino to be added to the user name's account; the
+     * person accepts it on their profile. GOtome answers alike whether the
+     * account exists.
+     */
+    fun requestDevice(server: String, username: String, deviceName: String): Pairing {
+        val base = server.trim().trimEnd('/')
+        val conn = open("POST", base, "/device/requests", null)
+        write(conn, Json.deviceRequest(username.trim(), deviceName))
+        return Json.pairing(base, read(conn, signOutOn401 = false))
+    }
+
+    /** What became of the request; once accepted, the token, which GOtome hands out this once. */
+    fun collect(pairing: Pairing): PairingAnswer {
+        val conn = open("POST", pairing.server, "/device/requests/${pairing.id}/token", null)
+        write(conn, Json.secret(pairing.secret))
+        return Json.pairingAnswer(read(conn, signOutOn401 = false))
+    }
+
     fun get(path: String): String = read(open("GET", path))
 
     fun send(method: String, path: String, json: String? = null): String {
@@ -58,7 +77,7 @@ class Api(private val prefs: Prefs) {
         return open(method, prefs.server, path, basic(prefs.username, token))
     }
 
-    private fun open(method: String, server: String, path: String, authorization: String): HttpURLConnection {
+    private fun open(method: String, server: String, path: String, authorization: String?): HttpURLConnection {
         if (server.isEmpty()) throw ApiException(0, "No GOtome server set")
         val conn = URL("$server/api/v1$path").openConnection() as HttpURLConnection
         conn.requestMethod = method
@@ -68,7 +87,7 @@ class Api(private val prefs: Prefs) {
         conn.instanceFollowRedirects = false
         conn.setRequestProperty("Accept", "application/json")
         conn.setRequestProperty("User-Agent", "GOtome-Tolino/${BuildConfig.VERSION_NAME}")
-        conn.setRequestProperty("Authorization", authorization)
+        authorization?.let { conn.setRequestProperty("Authorization", it) }
         return conn
     }
 
