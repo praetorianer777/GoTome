@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
 ### Added
 
 - Kobo readers, and Tolinos switched to Kobo mode, sync with GOtome over
