@@ -297,7 +297,7 @@ function Figures({ library }: { library: string }) {
 								className="underline"
 							>
 								{t("overview.withEreaderFindings", {
-									count: number.format(f.withEreaderFindings),
+									count: formatCount(f.withEreaderFindings),
 								})}
 							</Link>
 						</p>
