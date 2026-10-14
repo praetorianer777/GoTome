@@ -6,11 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -73,8 +75,15 @@ func (a *vectorApp) vectorsOf(model string) map[string]int {
 func TestBooksAreEmbeddedOnAServerBesideTheVectorsOfTheModelBefore(t *testing.T) {
 	t.Parallel()
 	a := newVectorApp(t)
+	var localBGE atomic.Bool
 	a.vectors = similar.NewService(a.pool, a.settings.Embedding, similar.ServerOpener(
-		func(context.Context, embed.Spec) (embed.Embedder, error) {
+		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			if spec.Model.Name == embed.BGEM3.Model.Name {
+				// Run on the CPU, as with no server it is; its files are
+				// not downloaded here.
+				localBGE.Store(true)
+				return nil, fmt.Errorf("%w: bge-m3 is not downloaded", similar.ErrUnavailable)
+			}
 			a.opened.Add(1)
 			return &embed.Fake{}, nil
 		}, a.settings.EmbeddingServer), slog.New(slog.DiscardHandler))
@@ -86,8 +95,8 @@ func TestBooksAreEmbeddedOnAServerBesideTheVectorsOfTheModelBefore(t *testing.T)
 
 	a.set(settings.EmbeddingModel, "bge-m3")
 	_, err := a.vectors.Embed(context.Background(), time.Now().Add(time.Minute), 0)
-	if !errors.Is(err, similar.ErrUnavailable) || !strings.Contains(err.Error(), "embedding.server") {
-		t.Errorf("bge-m3 without a server: %v", err)
+	if !errors.Is(err, similar.ErrUnavailable) || !localBGE.Load() {
+		t.Errorf("bge-m3 without a server is not run on the CPU: %v", err)
 	}
 	if err := a.settings.Update(context.Background(), a.adminID, map[string]*string{settings.EmbeddingServer: ptr("ollama:11434")}); err == nil {
 		t.Error("an address without its scheme is taken")

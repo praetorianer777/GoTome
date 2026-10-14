@@ -31,6 +31,30 @@ length, and that two sentences of one meaning in two languages lie nearer
 each other than a third of another. A server that fails it, or does not
 answer, is not used, and the log says why; the next pass tries again.
 
+## Without a server
+
+With **Embedding server** empty, GOtome runs bge-m3 itself on the CPU, on
+ONNX Runtime as it runs e5-small, from BAAI's own export in full precision.
+The first time, it downloads the model's files, 2.3 GB, into the data
+volume (`models/bge-m3`), checked against fixed checksums;
+`GOTOME_OFFLINE=true` forbids that. Running it takes about 2.5 GB of memory
+more.
+
+These are the same weights the server runs, so the vectors are one
+model's: books embedded on a GPU are not embedded again on the CPU, and
+the other way round. A library embedded on a machine with a GPU can move
+to one without: only new books and the text of a description search are
+then embedded, on the CPU. Before relying on it, check that the vectors
+made on the CPU are the stored ones:
+
+```bash
+docker compose exec app gotome embed-check -model bge-m3 -against-stored 50
+```
+
+It embeds the details of 50 books on the CPU, compares each vector with the
+one stored for the book, says how long it took, and fails below a cosine of
+0.99.
+
 ## Measured
 
 On the owner's machine (AMD Radeon RX 9070, Ollama 0.30.7), with passages

@@ -195,3 +195,12 @@ LEFT JOIN (
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid);
+
+-- name: ListStoredMetadataVectors :many
+-- A sample of the books with a metadata vector of the model, with the text
+-- it was made from, in the order of a hash of their ID.
+SELECT v.book_id, coalesce(book_metadata_text(v.book_id), '')::text AS text, v.embedding
+FROM book_vectors v
+WHERE v.kind = 'metadata' AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
+ORDER BY md5(v.book_id::text)
+LIMIT sqlc.arg(max)::int;

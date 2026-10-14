@@ -99,6 +99,9 @@ func ServerOpener(local Opener, address func(ctx context.Context) (string, error
 			return nil, err
 		}
 		if url == "" {
+			if spec.Runs() {
+				return local(ctx, spec)
+			}
 			return nil, fmt.Errorf("%w: %s runs on an embedding server, and embedding.server names none", ErrUnavailable, spec.Model.Name)
 		}
 		o, err := embed.OpenOllama(ctx, url, spec)

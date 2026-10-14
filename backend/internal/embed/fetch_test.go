@@ -2,9 +2,11 @@ package embed
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -133,4 +135,42 @@ func TestFetchKeepsNothingOfAWrongDownload(t *testing.T) {
 	if len(entries) != 0 {
 		t.Errorf("left behind: %v", entries)
 	}
+}
+
+func TestFetchChecksAFileByItsGitBlobID(t *testing.T) {
+	files := map[string]string{"model.onnx": "weights", "tokenizer.json": `{"model":{}}`, "constant": "tensor"}
+	spec := testSpec(files)
+	// A blob ID that is not the content's.
+	spec.Data = []File{{Name: "constant", Size: 6, GitBlob: "3d79e4b0a9e3c3b4b7c37c6f1f6c0f8ad4e1b0c2"}}
+	srv := newModelServer(t, files)
+	opts := FetchOptions{Source: srv.URL, Client: srv.Client(), Log: quiet}
+	if _, err := Fetch(context.Background(), t.TempDir(), spec, opts); err == nil || !strings.Contains(err.Error(), "constant") {
+		t.Errorf("a wrong blob ID is taken: %v", err)
+	}
+	spec.Data[0].GitBlob = gitBlob("tensor")
+	dir, err := Fetch(context.Background(), t.TempDir(), spec, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "constant")); string(b) != "tensor" {
+		t.Errorf("constant holds %q", b)
+	}
+}
+
+func TestFetchDownloadsAtTheSpecsDownloadRevision(t *testing.T) {
+	files := map[string]string{"model.onnx": "weights", "tokenizer.json": `{"model":{}}`}
+	spec := testSpec(files)
+	spec.Model.Revision = "the vectors' name"
+	spec.Download = "abc"
+	srv := newModelServer(t, files)
+	if _, err := Fetch(context.Background(), t.TempDir(), spec, FetchOptions{Source: srv.URL, Client: srv.Client(), Log: quiet}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// gitBlob is the ID git gives a file of the content.
+func gitBlob(content string) string {
+	h := sha1.New()
+	fmt.Fprintf(h, "blob %d\x00%s", len(content), content)
+	return hex.EncodeToString(h.Sum(nil))
 }

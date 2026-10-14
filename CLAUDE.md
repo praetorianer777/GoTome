@@ -875,7 +875,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   otherwise the spec runs on ONNX Runtime. Ollama cuts each text at
   `MaxTokens` (`num_ctx`), and the pass embeds `Parallel` books at once.
   A server that stops answering (`embed.ErrServer`) ends the pass as
-  `ErrUnavailable`. Each model has its own vectors (`book_vectors` keyed by
+  `ErrUnavailable`. Without `embedding.server`, a spec that has its files
+  (`Spec.Runs`) runs on ONNX Runtime instead (#228): bge-m3 from BAAI's
+  ONNX export (weights in `Spec.Data` beside the model file, downloaded at
+  `Spec.Download`, the dense output or the first token, `PoolCLS`), under
+  the same `Model` as the server's, so its vectors stay. `gotome
+  embed-check -model bge-m3 -against-stored N` (`similar.CompareStored`)
+  checks that against the stored vectors. Each model has its own vectors (`book_vectors` keyed by
   book, kind and model, of any length), so the one before stays while
   another is made, and answers again when chosen. The prefix is the spec's.
 - Nothing records which books are done but the vectors: `Service.Embed`
