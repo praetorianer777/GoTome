@@ -12,13 +12,22 @@ export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	format: ["in"],
 	status: ["in"],
 	rating: ["in", "between", "empty"],
+	files: ["in"],
 };
+
+/** Where a book's files are, as the files field compares it. */
+export const FILE_STATES = ["missing", "none-on-disk"] as const;
+
+/** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
+export function picksValues(field: FacetField): boolean {
+	return field === "status" || field === "files";
+}
 
 export const RULE_FIELDS = FACET_FIELDS;
 
 /**
  * One rule as the builder edits it. Values of in are typed as one text,
- * split at commas when the tree is made, except for status, which is
+ * split at commas when the tree is made, except for status and files, which are
  * picked; between keeps its lower and upper bound.
  */
 export interface RuleItem {
@@ -83,7 +92,7 @@ function valuesOf(rule: RuleItem): string[] {
 		case "between":
 			return [rule.from.trim(), rule.to.trim()];
 		default:
-			return rule.field === "status"
+			return picksValues(rule.field)
 				? rule.picked
 				: rule.text
 						.split(",")
@@ -125,8 +134,8 @@ function fromNode(node: Node, negate: boolean): RuleItem | RuleGroup {
 			...newRule(field),
 			negate,
 			op,
-			text: op === "in" && field !== "status" ? values.join(", ") : "",
-			picked: field === "status" ? values : [],
+			text: op === "in" && !picksValues(field) ? values.join(", ") : "",
+			picked: picksValues(field) ? values : [],
 			from: op === "between" ? (values[0] ?? "") : "",
 			to: op === "between" ? (values[1] ?? "") : "",
 		};

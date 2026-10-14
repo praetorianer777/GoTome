@@ -230,3 +230,84 @@ func mapsEqualInt(a, b map[string]int) bool {
 	}
 	return true
 }
+
+func TestBooksWithFilesMissingFromTheFolder(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	lib := a.filterShelf(admin)
+	private := a.library(admin, "Private", "private")
+	books := catalog.NewService(a.pool)
+	secret, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: uuid.MustParse(private), Title: "Secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := books.AddFile(ctx, secret, uuid.MustParse(private), catalog.NewFile{
+		RelPath: "Secret.epub", Format: "epub", ModifiedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Emma keeps her EPUB; Jane Eyre has nothing left; a file in the
+	// trash is not missing, even when the scan no longer finds it there.
+	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET missing_at = now()
+		WHERE rel_path IN ('Emma.pdf', 'Jane Eyre.mobi', 'Dune.m4b', 'Secret.epub')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET trashed_at = now()
+		WHERE rel_path IN ('Der Process.pdf', 'Dune.m4b')`); err != nil {
+		t.Fatal(err)
+	}
+
+	for filter, want := range map[string][]string{
+		`{"field": "files", "op": "in", "values": ["missing"]}`:                 {"Emma", "Jane Eyre"},
+		`{"field": "files", "op": "in", "values": ["none-on-disk"]}`:            {"Jane Eyre"},
+		`{"field": "files", "op": "in", "values": ["missing", "none-on-disk"]}`: {"Emma", "Jane Eyre"},
+		`{"not": {"field": "files", "op": "in", "values": ["missing"]}}`:        {"Der Process", "Dune", "Persuasion", "Untitled"},
+	} {
+		got, _ := a.listAll(reader, url.Values{"filter": {filter}})
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
+			t.Errorf("%s\n got %v\nwant %v", filter, got, want)
+		}
+	}
+	got, _ := a.listAll(admin, url.Values{"filter": {`{"field": "files", "op": "in", "values": ["none-on-disk"]}`}})
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"Jane Eyre", "Secret"}) {
+		t.Errorf("the administrator's books with nothing on disk: %v", got)
+	}
+	status, body, _ := a.call(admin, http.MethodGet, "/books?"+url.Values{"filter": {`{"field": "files", "op": "in", "values": ["lost"]}`}}.Encode(), nil)
+	if status != 422 || !strings.Contains(fieldError(body, "filter"), "not a state of files") {
+		t.Errorf("an unknown state: %d %v", status, body)
+	}
+
+	_, body, _ = a.call(reader, http.MethodGet, "/books?library="+lib, nil)
+	for _, b := range body["books"].([]any) {
+		book := b.(map[string]any)
+		if want := book["title"] == "Jane Eyre"; book["filesMissing"] != want {
+			t.Errorf("%s: filesMissing %v", book["title"], book["filesMissing"])
+		}
+	}
+
+	_, body, _ = a.call(reader, http.MethodGet, "/books/facets", nil)
+	counts, _ := facetCounts(t, body)
+	if want := map[string]int{"missing": 2, "none-on-disk": 1}; !mapsEqualInt(counts["files"], want) {
+		t.Errorf("the reader's facet: %v, want %v", counts["files"], want)
+	}
+	_, body, _ = a.call(reader, http.MethodGet, "/books/facets?"+url.Values{"filter": {`{"field": "format", "op": "in", "values": ["epub"]}`}}.Encode(), nil)
+	if counts, _ := facetCounts(t, body); !mapsEqualInt(counts["files"], map[string]int{"missing": 1}) {
+		t.Errorf("the facet of the EPUBs: %v", counts["files"])
+	}
+
+	for _, c := range []struct {
+		who   *http.Client
+		query string
+		want  float64
+	}{{reader, "", 2}, {admin, "", 3}, {admin, "?library=" + private, 1}} {
+		status, body, _ := a.call(c.who, http.MethodGet, "/statistics"+c.query, nil)
+		if status != 200 || body["withMissingFiles"] != c.want {
+			t.Errorf("statistics%s: %d %v, want %v", c.query, status, body["withMissingFiles"], c.want)
+		}
+	}
+}

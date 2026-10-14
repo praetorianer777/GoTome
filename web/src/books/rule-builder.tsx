@@ -1,6 +1,8 @@
 import type { FacetField } from "@/books/filters";
 import { STATUS_LABELS, STATUSES } from "@/books/reading";
 import {
+	FILE_STATES,
+	picksValues,
 	RULE_FIELDS,
 	RULE_OPS,
 	type RuleGroup,
@@ -22,6 +24,13 @@ const OP_LABELS: Record<RuleOp, MessageKey> = {
 	between: "rules.op.between",
 	empty: "rules.op.empty",
 };
+
+/** The values a rule on a field that picks offers, as people read them. */
+function choices(field: FacetField): { value: string; label: string }[] {
+	return field === "files"
+		? FILE_STATES.map((value) => ({ value, label: t(`filter.files.${value}`) }))
+		: STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
+}
 
 /**
  * Edits a rule tree: groups that need every rule or any, nested as deep as
@@ -195,28 +204,28 @@ function Rule({
 					</option>
 				))}
 			</select>
-			{rule.op === "in" && rule.field === "status" && (
+			{rule.op === "in" && picksValues(rule.field) && (
 				<span className="flex flex-wrap gap-x-3">
-					{STATUSES.map((s) => (
-						<label key={s} className="flex items-center gap-1">
+					{choices(rule.field).map(({ value, label }) => (
+						<label key={value} className="flex items-center gap-1">
 							<input
 								type="checkbox"
-								checked={rule.picked.includes(s)}
+								checked={rule.picked.includes(value)}
 								onChange={(e) =>
 									onChange({
 										...rule,
 										picked: e.target.checked
-											? [...rule.picked, s]
-											: rule.picked.filter((p) => p !== s),
+											? [...rule.picked, value]
+											: rule.picked.filter((p) => p !== value),
 									})
 								}
 							/>
-							{t(STATUS_LABELS[s])}
+							{label}
 						</label>
 					))}
 				</span>
 			)}
-			{rule.op === "in" && rule.field !== "status" && (
+			{rule.op === "in" && !picksValues(rule.field) && (
 				<input
 					aria-label={t("rules.values")}
 					placeholder={t(

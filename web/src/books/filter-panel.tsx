@@ -22,6 +22,7 @@ const FIELD_LABELS: Record<FacetField, MessageKey> = {
 	status: "filter.field.status",
 	rating: "filter.field.rating",
 	format: "filter.field.format",
+	files: "filter.field.files",
 };
 
 /** A value as people read it; the server labels names, the rest is ours. */
@@ -37,6 +38,10 @@ function valueLabel(field: FacetField, value: string, label?: string): string {
 			return t(STATUS_LABELS[value as ReadingStatus] ?? "status.unread");
 		case "rating":
 			return t("reading.stars", { count: value });
+		case "files":
+			return value === "missing" || value === "none-on-disk"
+				? t(`filter.files.${value}`)
+				: value;
 		default:
 			return label ?? value;
 	}

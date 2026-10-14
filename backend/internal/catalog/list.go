@@ -76,6 +76,9 @@ type Summary struct {
 	Rating *int16
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool
+	// FilesMissing is a book that has files, all of which a scan no longer
+	// found in the folder.
+	FilesMissing bool
 }
 
 // summaryColumns are what a Summary is read from, in the order of dest. The
@@ -87,7 +90,9 @@ const summaryColumns = `b.id, b.library_id, b.title, COALESCE(b.subtitle, ''), b
                  WHERE c.book_id = b.id AND c.role = 'author'), '{}'),
        COALESCE((SELECT array_agg(DISTINCT f.format ORDER BY f.format)
                  FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), '{}'),
-       COALESCE(ub.status, 'unread'), ub.rating, b.placeholder`
+       COALESCE(ub.status, 'unread'), ub.rating, b.placeholder,
+       COALESCE((SELECT bool_and(f.missing_at IS NOT NULL)
+                 FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), false)`
 
 // summaryJoin brings in where the viewer, a placeholder, stands with each
 // book.
@@ -99,7 +104,7 @@ func summaryJoin(viewer string) string {
 // series, which may be NULL.
 func (b *Summary) dest(series **string) []any {
 	return []any{&b.ID, &b.LibraryID, &b.Title, &b.Subtitle, &b.AddedAt,
-		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating, &b.Placeholder}
+		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating, &b.Placeholder, &b.FilesMissing}
 }
 
 // Page is one page of a list, and the cursor of the next; Next is empty on

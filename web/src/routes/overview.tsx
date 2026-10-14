@@ -283,6 +283,19 @@ function Figures({ library }: { library: string }) {
 							value={number.format(f.withoutText)}
 						/>
 					</dl>
+					{f.withMissingFiles > 0 && (
+						<p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+							<Link
+								to="/"
+								search={{ library: library || undefined, files: ["missing"] }}
+								className="underline"
+							>
+								{t("overview.withMissingFiles", {
+									count: number.format(f.withMissingFiles),
+								})}
+							</Link>
+						</p>
+					)}
 					<div className="grid gap-6 md:grid-cols-2">
 						<CountList
 							id="overview-formats"

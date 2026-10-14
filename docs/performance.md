@@ -34,6 +34,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | filter by tag and language | 6 ms | 3 ms |  |
 | filter by status | 9 ms | 5 ms |  |
 | filter by year | 3 ms | 3 ms |  |
+| filter by missing files | 6 ms | 5 ms |  |
+| filter by no file on disk | 8 ms | 7 ms |  |
 | facets | 108 ms | 101 ms | counts every book |
 | facets of a filter | 44 ms | 40 ms |  |
 | count of a filter | 2 ms | 2 ms |  |

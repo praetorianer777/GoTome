@@ -12,6 +12,11 @@ What changes for someone who runs or uses GOtome. The format follows
   to it: waiting, announced to a Kobo reader, or on the device, with their
   dates. A book still waiting, or on a Kobo reader, can be taken off from
   there; a Kobo reader removes it at its next sync.
+- Books whose files a scan no longer found in the library folder can be
+  found: the library's filters offer "Files", with books that miss some
+  and books that have none left; the grid and the table mark a book none
+  of whose files is left; and the overview counts them, with a link to the
+  list, after a move or a mount that went wrong.
 
 ### Fixed
 

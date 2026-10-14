@@ -179,6 +179,7 @@ export class FakeServer {
 		withoutCover: 7,
 		withoutAuthor: 3,
 		withoutText: 15,
+		withMissingFiles: 0,
 		formats: [
 			{ name: "epub", count: 1100, bytes: 2_000_000_000 },
 			{ name: "pdf", count: 400, bytes: 1_400_000_000 },
@@ -2183,7 +2184,8 @@ type Field =
 	| "published"
 	| "status"
 	| "rating"
-	| "format";
+	| "format"
+	| "files";
 const FIELDS: Field[] = [
 	"author",
 	"series",
@@ -2193,6 +2195,7 @@ const FIELDS: Field[] = [
 	"status",
 	"rating",
 	"format",
+	"files",
 ];
 
 interface Rule {
@@ -2223,6 +2226,7 @@ function summaryOf(b: BookDetail): BookSummary {
 		status: b.reading.status,
 		rating: b.reading.rating,
 		placeholder: b.placeholder,
+		filesMissing: b.files.length > 0 && b.files.every((f) => f.missing),
 	};
 }
 
@@ -2280,6 +2284,15 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 			return b.reading.rating
 				? [[String(b.reading.rating), String(b.reading.rating)]]
 				: [];
+		case "files": {
+			if (!b.files.some((f) => f.missing)) return [];
+			return b.files.every((f) => f.missing)
+				? [
+						["missing", "missing"],
+						["none-on-disk", "none-on-disk"],
+					]
+				: [["missing", "missing"]];
+		}
 	}
 }
 
@@ -2330,7 +2343,7 @@ function matches(b: BookDetail, r: Rule): boolean {
 		);
 	}
 	return (r.values ?? []).some((v) =>
-		have.includes(r.field === "format" ? v : nameKey(v)),
+		have.includes(r.field === "format" || r.field === "files" ? v : nameKey(v)),
 	);
 }
 
