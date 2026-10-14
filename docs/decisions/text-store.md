@@ -1,7 +1,7 @@
 # Where the chunks' text is kept
 
-Measured in #244, 2026-10-14. The choice is the owner's; this record
-recommends one.
+Measured in #244, 2026-10-14. Decided by the owner in #265, the same day:
+option 5, the index without the text.
 
 ## Question
 
@@ -24,8 +24,33 @@ stays in the table. The options:
 4. **Tantivy embedded in the app** (cgo, as ONNX Runtime is; two containers
    stay): the engine under pg_search, with the text in its own zstd document
    store, on the data volume.
+5. **Tantivy embedded in the app, without the text**: the index alone, on
+   the data volume, and the text nowhere but in the books' files. Snippets
+   and "Read from here" read the passage from the file when asked for.
 
-## Recommendation
+## Decision
+
+**Option 5.** Full-text search moves to Tantivy in the app's process, and
+GOtome keeps no copy of a book's text: not in Postgres, not in a store of
+its own. A chunk row keeps what locates its text in the file (the EPUB
+entry and the range in its text, or a PDF's pages), and a snippet is read
+from there on demand, one zip entry at a time. On the owner's installation
+that is 7.6 GB of index on the data volume and about 3.5 GB of database
+for everything else: **about 11 GB in place of 28 GB**, with full-text
+search, phrases, stemming, typo repair and visibility as they are. The work
+is #265, in the order its design lists: the engine and its binding, the
+index written beside pg_search through an outbox, search on Tantivy behind
+a setting and compared with pg_search, then the text and the BM25 index
+dropped.
+
+What this costs over option 4: a snippet opens the file (a zip entry of an
+EPUB, pages of a PDF) instead of a store, which is a few milliseconds per
+book shown and nothing when the file is gone (the hit is shown without
+one); and everything that read the text from the table (embeddings,
+re-signing for duplicates, the rebuild) reads the file again. Reading files
+again is what a restore does already.
+
+## Recommendation (before the decision)
 
 **Keep pg_search with pglz (option 1), and do not switch to lz4.** If the
 owner decides that 9 GB of disk are worth it, the way to them is option 4
@@ -82,6 +107,7 @@ Text and index together:
 | 3. own store, per book, zstd 19 + Tantivy index | 7.7 GB | 7.6 GB | 0.7 GB | 16.0 GB |
 | 4. Tantivy, zstd 3 in 16 KB blocks | 11.3 GB | 7.6 GB | 0.7 GB | 19.6 GB |
 | 4. Tantivy, zstd 19 in 128 KB blocks | 8.9 GB | 7.6 GB | 0.7 GB | **17.2 GB** |
+| 5. Tantivy, no text | 0 | 7.6 GB | 0.7 GB | **8.3 GB** |
 
 "Other" is the table without its text (0.5 GB) and its B-tree indexes
 (0.2 GB), which stay in Postgres in every option. Tantivy's index without a
@@ -96,7 +122,7 @@ Building, on the sample and scaled (minutes at 3.19 M chunks):
 |---|---:|---:|
 | pg_search, pglz: load, index | 40 s + 60 s | 40 min |
 | pg_search, lz4: load, index | 44 s + 66 s | 44 min |
-| Tantivy, no store | 30 s | 12 min |
+| Tantivy, no store (option 5) | 30 s | 12 min |
 | Tantivy, lz4 store | 42 s | 17 min |
 | Tantivy, zstd 3 in 16 KB blocks | 86 s | 35 min |
 | Tantivy, zstd 19 in 128 KB blocks | 102 s | 41 min |
@@ -229,7 +255,32 @@ for a third of the space it takes. Each of the steps above is a known
 pattern, but together they are a milestone's work, and they move a
 transactional guarantee out of the database into the app.
 
+**5. Tantivy without the text.** Everything option 4 takes, without the
+store: 8.3 GB in place of 25.9 GB (−17.6 GB, two thirds). The index is
+the same 7.6 GB (`tantivy-none.json`: 315 MB on the sample, of which
+210 MB positions). What it takes beyond option 4:
+
+- *Snippets from the files.* Tantivy's `SnippetGenerator` needs the text,
+  so the app reads the chunk's text from the file and marks the query's
+  words in it itself. For that a chunk row records where its text is: the
+  EPUB entry and the range of the chunk in that entry's text, a PDF's
+  pages. An EPUB entry is a few dozen KB; reading one and normalising it
+  as extraction did is about a millisecond, a PDF page a few through
+  poppler. Bounded in time and size; a file that is gone or changed shows
+  the hit without a snippet.
+- *Readers of the text read the file.* Embeddings (a book's passages),
+  re-signing on a new `SignatureVersion`, and the index rebuild read the
+  primary text file again instead of the table, as a restore does now.
+- *Rebuild from the files.* A new index format or a new chunk version
+  reads every primary text file again: 12 minutes of indexing at 3.19 M
+  chunks, plus reading 48,000 EPUBs, which extraction does at a few books
+  a second. It runs as a job that snoozes, beside the old index.
+
 ## Reasons for the recommendation
+
+(Written before the owner's decision, which weighed 17 GB of disk on a
+small server higher than the work.)
+
 
 - **Nothing inside Postgres makes the text smaller.** pglz is the better of
   the two compressions Postgres 18 offers for TOAST; lz4 is 12 % larger.
