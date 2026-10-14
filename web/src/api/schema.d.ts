@@ -2523,6 +2523,7 @@ export interface components {
             addedAt: string;
             authors: string[];
             coverKey?: string;
+            filesMissing: boolean;
             formats: string[];
             /** Format: uuid */
             id: string;
@@ -2900,7 +2901,7 @@ export interface components {
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format";
+            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -2931,6 +2932,7 @@ export interface components {
             publishers: number;
             series: number;
             tags: number;
+            withMissingFiles: number;
             withoutAuthor: number;
             withoutCover: number;
             withoutText: number;
@@ -3303,6 +3305,7 @@ export interface components {
             addedAt: string;
             authors: string[];
             coverKey?: string;
+            filesMissing: boolean;
             formats: string[];
             /** Format: uuid */
             id: string;

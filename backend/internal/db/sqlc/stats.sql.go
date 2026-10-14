@@ -151,7 +151,7 @@ WITH vb AS (
       AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 ),
 vf AS (
-    SELECT f.book_id, f.kind, f.size_bytes, f.duration_ms
+    SELECT f.book_id, f.kind, f.size_bytes, f.duration_ms, f.missing_at
     FROM book_files f
     JOIN vb ON vb.id = f.book_id
     WHERE f.trashed_at IS NULL
@@ -171,7 +171,8 @@ SELECT (SELECT count(*) FROM vb)::int AS books,
             SELECT 1 FROM book_contributors c WHERE c.book_id = vb.id AND c.role = 'author'))::int AS without_author,
        (SELECT count(*) FROM vb
         WHERE EXISTS (SELECT 1 FROM vf WHERE vf.book_id = vb.id AND vf.kind = 'ebook')
-          AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.id = vb.primary_text_file_id AND f.chunked_at IS NOT NULL))::int AS without_text
+          AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.id = vb.primary_text_file_id AND f.chunked_at IS NOT NULL))::int AS without_text,
+       (SELECT count(DISTINCT book_id) FROM vf WHERE missing_at IS NOT NULL)::int AS with_missing_files
 `
 
 type LibraryFiguresParams struct {
@@ -181,19 +182,20 @@ type LibraryFiguresParams struct {
 }
 
 type LibraryFiguresRow struct {
-	Books         int32
-	Files         int32
-	Bytes         int64
-	Audiobooks    int32
-	AudioMs       int64
-	Pages         int64
-	Authors       int32
-	Series        int32
-	Publishers    int32
-	Tags          int32
-	WithoutCover  int32
-	WithoutAuthor int32
-	WithoutText   int32
+	Books            int32
+	Files            int32
+	Bytes            int64
+	Audiobooks       int32
+	AudioMs          int64
+	Pages            int64
+	Authors          int32
+	Series           int32
+	Publishers       int32
+	Tags             int32
+	WithoutCover     int32
+	WithoutAuthor    int32
+	WithoutText      int32
+	WithMissingFiles int32
 }
 
 // What the books the viewer sees hold, of one library when named: the
@@ -215,6 +217,7 @@ func (q *Queries) LibraryFigures(ctx context.Context, arg LibraryFiguresParams) 
 		&i.WithoutCover,
 		&i.WithoutAuthor,
 		&i.WithoutText,
+		&i.WithMissingFiles,
 	)
 	return i, err
 }

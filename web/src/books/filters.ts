@@ -20,6 +20,7 @@ export const FACET_FIELDS: FacetField[] = [
 	"status",
 	"rating",
 	"format",
+	"files",
 ];
 
 interface Rule {

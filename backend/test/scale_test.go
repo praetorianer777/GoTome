@@ -238,6 +238,10 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			CROSS JOIN (VALUES ('ebook', 'epub', 0), ('ebook', 'pdf', 1), ('audio', 'm4b', 2)) f(kind, format, k)
 			WHERE f.k = 0 OR (f.k = 1 AND b.n % 10 < 3) OR (f.k = 2 AND b.n % 20 = 0)`},
 		{sql: `UPDATE books b SET primary_text_file_id = f.id FROM book_files f WHERE f.book_id = b.id AND f.format = 'epub'`},
+		// A few books whose files a scan no longer found: all of them, or
+		// only the PDF.
+		{sql: `UPDATE book_files f SET missing_at = now() FROM scale_books b
+			WHERE b.id = f.book_id AND (b.n % 1000 = 1 OR (b.n % 500 = 2 AND f.format = 'pdf'))`},
 		// One chunk a book, where a real one has about 75: the plans are
 		// the ones a full library gets, the timings of the full-text search
 		// are those of docs/decisions/search-engine.md.
@@ -358,6 +362,8 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "filter by tag and language", path: "/books?limit=50&" + filter(tagAndLanguage)},
 		{name: "filter by status", path: "/books?limit=50&" + filter(`{"field": "status", "op": "in", "values": ["reading"]}`)},
 		{name: "filter by year", path: "/books?limit=50&" + filter(`{"field": "published", "op": "between", "values": ["1900", "1950"]}`)},
+		{name: "filter by missing files", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["missing"]}`)},
+		{name: "filter by no file on disk", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["none-on-disk"]}`)},
 		{name: "facets", path: "/books/facets"},
 		{name: "facets of a filter", path: "/books/facets?" + filter(tagAndLanguage)},
 		{name: "count of a filter", path: "/books/count?" + filter(tagAndLanguage)},

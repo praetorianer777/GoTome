@@ -52,6 +52,9 @@ type Figures struct {
 	WithoutCover  int `json:"withoutCover"`
 	WithoutAuthor int `json:"withoutAuthor"`
 	WithoutText   int `json:"withoutText"`
+	// WithMissingFiles are the books with a file a scan no longer found
+	// in the library's folder; files in the trash are not missing.
+	WithMissingFiles int `json:"withMissingFiles"`
 	// Formats are the files by format, Languages the books by language
 	// ("" for none known), Months the books added in each of the last
 	// twelve months that had any, as YYYY-MM.
@@ -76,6 +79,7 @@ func (s *Service) Figures(ctx context.Context, scope library.Scope, libraryID *u
 		f.Pages, f.Authors, f.Series = row.Pages, int(row.Authors), int(row.Series)
 		f.Publishers, f.Tags = int(row.Publishers), int(row.Tags)
 		f.WithoutCover, f.WithoutAuthor, f.WithoutText = int(row.WithoutCover), int(row.WithoutAuthor), int(row.WithoutText)
+		f.WithMissingFiles = int(row.WithMissingFiles)
 		return nil
 	})
 	g.Go(func() error {

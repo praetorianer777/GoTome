@@ -1118,6 +1118,46 @@ describe("filters", () => {
 		);
 		await waitFor(() => expect(titles()).toHaveLength(4));
 	});
+
+	it("finds the books with files missing from the folder, and marks those with none left", async () => {
+		const person = userEvent.setup();
+		const file = (id: string, format: string, missing: boolean) => ({
+			id,
+			kind: "ebook" as const,
+			format,
+			name: `${id}.${format}`,
+			size: 1000,
+			missing,
+			drm: false,
+			extractState: "done" as const,
+		});
+		withShelf();
+		server.books[0]!.files = [file("emma", "epub", false), file("emma-pdf", "pdf", true)];
+		server.books[2]!.files = [file("eyre", "mobi", true)];
+		server.books[3]!.files = [file("process", "pdf", false)];
+		renderApp("/");
+		const filters = within(
+			await screen.findByRole("complementary", { name: "Filters" }),
+		);
+		expect(
+			await filters.findByRole("checkbox", { name: "None left in the folder (1)" }),
+		).toBeInTheDocument();
+		await person.click(
+			filters.getByRole("checkbox", { name: "Some missing from the folder (2)" }),
+		);
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Jane Eyre"]));
+
+		const books = within(screen.getByRole("region", { name: "Books" }));
+		const marks = books.getAllByText("Files missing");
+		expect(marks).toHaveLength(1);
+		expect(marks[0]?.closest("a")).toHaveTextContent("Jane Eyre");
+		await person.click(screen.getByRole("button", { name: "List" }));
+		const row = (await books.findByRole("link", { name: "Jane Eyre" })).closest("tr");
+		expect(row).toHaveTextContent("Files missing");
+		expect(books.getByRole("link", { name: "Emma" }).closest("tr")).not.toHaveTextContent(
+			"Files missing",
+		);
+	});
 });
 
 describe("quick search", () => {
@@ -4506,6 +4546,21 @@ describe("the overview", () => {
 		expect(formats.getByText("EPUB")).toBeInTheDocument();
 		const languages = within(library.getByRole("region", { name: "Books by language" }));
 		expect(languages.getByText("Not known")).toBeInTheDocument();
+		expect(library.queryByText(/files missing/)).not.toBeInTheDocument();
+	});
+
+	it("counts the books with files missing and leads to them", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.figures.withMissingFiles = 1234;
+		const { router } = renderApp("/overview");
+		await person.click(
+			await screen.findByRole("link", {
+				name: "1,234 books have files missing from the library folder",
+			}),
+		);
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(router.state.location.search).toMatchObject({ files: ["missing"] });
 	});
 
 	it("shows a reader what the library holds and not the work", async () => {

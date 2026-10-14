@@ -104,6 +104,9 @@ type bookSummary struct {
 	Rating *int16 `json:"rating,omitempty"`
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool `json:"placeholder"`
+	// FilesMissing is a book all of whose files a scan no longer found in
+	// the library's folder: it cannot be opened, downloaded or sent.
+	FilesMissing bool `json:"filesMissing"`
 }
 
 type bookList struct {
@@ -238,7 +241,7 @@ func summaryOf(b catalog.Summary) bookSummary {
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
 		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
 		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
-		Placeholder: b.Placeholder,
+		Placeholder: b.Placeholder, FilesMissing: b.FilesMissing,
 	}
 }
 

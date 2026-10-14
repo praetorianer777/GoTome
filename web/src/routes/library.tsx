@@ -364,6 +364,21 @@ function Standing({ book }: { book: BookSummary }) {
 	);
 }
 
+/** Marks a book none of whose files is in the folder any more. */
+function FilesMissing({ book }: { book: BookSummary }) {
+	if (!book.filesMissing) {
+		return null;
+	}
+	return (
+		<span
+			title={t("library.filesMissing.hint")}
+			className="self-start rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+		>
+			{t("library.filesMissing")}
+		</span>
+	);
+}
+
 /** Which books are ticked, while books are being selected. */
 interface Selection {
 	isSelected: (id: string) => boolean;
@@ -471,6 +486,7 @@ function GridCard({ book, selection }: { book: BookSummary; selection?: Selectio
 						</span>
 					)}
 					<Standing book={book} />
+					<FilesMissing book={book} />
 				</span>
 			</Link>
 		</>
@@ -604,6 +620,11 @@ function BookRow({
 				>
 					{book.title}
 				</Link>
+				{book.filesMissing && (
+					<span className="ml-2 inline-flex align-middle">
+						<FilesMissing book={book} />
+					</span>
+				)}
 			</td>
 			<td className="px-3 py-2">{book.authors.join(", ")}</td>
 			<td className="hidden px-3 py-2 uppercase sm:table-cell">

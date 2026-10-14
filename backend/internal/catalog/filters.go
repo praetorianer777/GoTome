@@ -25,6 +25,9 @@ const (
 	FieldLanguage  = "language"
 	FieldPublished = "published"
 	FieldFormat    = "format"
+	// FieldFiles is where a book's files are: FilesMissing and
+	// FilesNoneOnDisk.
+	FieldFiles = "files"
 	// FieldStatus and FieldRating are where the viewer stands with a book:
 	// each person filters by their own.
 	FieldStatus = "status"
@@ -40,6 +43,28 @@ const (
 	// OpBetween takes two years, either of which may be empty for no limit,
 	// and matches the books published from the first to the second.
 	OpBetween = "between"
+)
+
+// Values of FieldFiles. A file in the trash is neither missing nor on
+// disk: it was put away on purpose.
+const (
+	// FilesMissing is a book with a file a scan no longer found in the
+	// library's folder.
+	FilesMissing = "missing"
+	// FilesNoneOnDisk is a book with a missing file and none still found:
+	// it cannot be opened, downloaded or sent. A book that never had a
+	// file, such as a placeholder, is not among them.
+	FilesNoneOnDisk = "none-on-disk"
+)
+
+// FileStates are the values of FieldFiles.
+var FileStates = []string{FilesMissing, FilesNoneOnDisk}
+
+const (
+	hasMissingFile = `EXISTS (SELECT 1 FROM book_files f
+		WHERE f.book_id = b.id AND f.missing_at IS NOT NULL AND f.trashed_at IS NULL)`
+	hasFileOnDisk = `EXISTS (SELECT 1 FROM book_files f
+		WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL)`
 )
 
 // languageOf is a book's language as filters and facets compare it: the
@@ -95,6 +120,14 @@ var Filters = filter.Registry{
 		OpIn: {Arity: -1, Value: format, SQL: func(v []string, arg func(any) string) string {
 			return `EXISTS (SELECT 1 FROM book_files f
 				WHERE f.book_id = b.id AND f.trashed_at IS NULL AND f.format = ANY(` + arg(v) + `::text[]))`
+		}},
+	},
+	FieldFiles: {
+		OpIn: {Arity: -1, Value: fileState, SQL: func(v []string, _ func(any) string) string {
+			if slices.Contains(v, FilesMissing) {
+				return hasMissingFile
+			}
+			return hasMissingFile + " AND NOT " + hasFileOnDisk
 		}},
 	},
 }
@@ -181,6 +214,13 @@ func year(v string) (string, error) {
 	}
 	if n, err := strconv.Atoi(v); err != nil || n < 1 || n > 9999 {
 		return "", fmt.Errorf("%q is not a year", v)
+	}
+	return v, nil
+}
+
+func fileState(v string) (string, error) {
+	if !slices.Contains(FileStates, v) {
+		return "", fmt.Errorf("%q is not a state of files; one is %s", v, strings.Join(FileStates, ", "))
 	}
 	return v, nil
 }
@@ -316,6 +356,17 @@ JOIN book_files f ON f.book_id = b.id AND f.trashed_at IS NULL
 WHERE {where}
 GROUP BY f.format
 ORDER BY 3 DESC, 1
+LIMIT {limit}`},
+	// Starts from the missing files rather than from every book: there
+	// are none in a library that is whole.
+	{FieldFiles, `
+SELECT st, st, count(*)
+FROM (SELECT b.id, NOT ` + hasFileOnDisk + ` AS none_left
+      FROM books b
+      WHERE {where} AND b.id IN (SELECT f.book_id FROM book_files f WHERE f.missing_at IS NOT NULL AND f.trashed_at IS NULL)) m,
+     unnest(CASE WHEN m.none_left THEN ARRAY['` + FilesMissing + `', '` + FilesNoneOnDisk + `'] ELSE ARRAY['` + FilesMissing + `'] END) st
+GROUP BY st
+ORDER BY array_position(ARRAY['` + strings.Join(FileStates, "','") + `'], st)
 LIMIT {limit}`},
 }
 

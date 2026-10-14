@@ -8213,6 +8213,9 @@
           "coverKey": {
             "type": "string"
           },
+          "filesMissing": {
+            "type": "boolean"
+          },
           "formats": {
             "type": "array",
             "items": {
@@ -8267,7 +8270,8 @@
           "formats",
           "addedAt",
           "status",
-          "placeholder"
+          "placeholder",
+          "filesMissing"
         ]
       },
       "BuildInfo": {
@@ -9615,7 +9619,8 @@
               "published",
               "status",
               "rating",
-              "format"
+              "format",
+              "files"
             ]
           },
           "values": {
@@ -9737,6 +9742,9 @@
           "tags": {
             "type": "integer"
           },
+          "withMissingFiles": {
+            "type": "integer"
+          },
           "withoutAuthor": {
             "type": "integer"
           },
@@ -9761,6 +9769,7 @@
           "withoutCover",
           "withoutAuthor",
           "withoutText",
+          "withMissingFiles",
           "formats",
           "languages",
           "months"
@@ -11114,6 +11123,9 @@
           "coverKey": {
             "type": "string"
           },
+          "filesMissing": {
+            "type": "boolean"
+          },
           "formats": {
             "type": "array",
             "items": {
@@ -11177,6 +11189,7 @@
           "addedAt",
           "status",
           "placeholder",
+          "filesMissing",
           "match"
         ]
       },
