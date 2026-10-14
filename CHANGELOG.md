@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `docs/tolino-kobo-mode.md` explains how a Tolino on the Kobo-based firmware
+  (Shine 5, Shine Color, Vision Color) is switched to Kobo mode, where it
+  syncs with a server named in its config, and what was found on a Shine 5
+  doing it: what wipes the reader, the Kobo account it needs, and the
+  firmware updates offered afterwards.
+
 ## [0.2.0] - 2026-10-14
 
 ### Added
