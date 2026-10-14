@@ -18,6 +18,20 @@ func pngOf(t *testing.T, w, h int) string {
 	return buf.String()
 }
 
+// noise is bytes that do not pack, as an image's do not: zeros would make
+// the entry a zip bomb, which the archive is refused for.
+func noise(n int) string {
+	b := make([]byte, n)
+	x := uint32(2463534242)
+	for i := range b {
+		x ^= x << 13
+		x ^= x >> 17
+		x ^= x << 5
+		b[i] = byte(x)
+	}
+	return string(b)
+}
+
 func measure(t *testing.T, data []byte) Measures {
 	t.Helper()
 	m, err := Measure(bytes.NewReader(data), int64(len(data)))
@@ -59,7 +73,7 @@ func TestMeasureFindsWhatIsSlow(t *testing.T) {
 		entry{"OEBPS/fonts/DejaVuSans.otf", strings.Repeat("a", 500_000)},
 		entry{"OEBPS/fonts/unlisted.woff2", strings.Repeat("u", 1000)},
 		entry{"OEBPS/images/map.png", pngOf(t, 2500, 1700)},
-		entry{"OEBPS/images/small.png", pngOf(t, 10, 10) + strings.Repeat("\x00", 1_200_000)},
+		entry{"OEBPS/images/small.png", pngOf(t, 10, 10) + noise(1_200_000)},
 		entry{"OEBPS/images/drawing.svg", `<svg xmlns="http://www.w3.org/2000/svg" width="90000" height="90000"/>`},
 	)
 	m := measure(t, data)
