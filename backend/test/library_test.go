@@ -3,6 +3,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // names lists the libraries a browser is shown, sorted.
@@ -357,12 +359,18 @@ func TestALibraryIsDeletedWhileItsFilesAreRead(t *testing.T) {
 }
 
 // waitForLockWaits waits until n sessions of the test's database wait for a
-// lock.
+// lock. It asks on a connection of its own, as those sessions may hold
+// every one of the pool's.
 func (a *app) waitForLockWaits(n int) {
 	a.t.Helper()
+	conn, err := pgx.ConnectConfig(a.t.Context(), a.pool.Config().ConnConfig.Copy())
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	defer conn.Close(context.Background())
 	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
 		var waiting int
-		err := a.pool.QueryRow(a.t.Context(), `
+		err := conn.QueryRow(a.t.Context(), `
 			SELECT count(*) FROM pg_stat_activity
 			WHERE datname = current_database() AND wait_event_type = 'Lock'`).Scan(&waiting)
 		if err != nil {
