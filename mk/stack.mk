@@ -155,7 +155,9 @@ stack-check: ## Check the running stack: two services, web app and API answering
 	done
 	@docker compose exec -T app gotome embed-check >/dev/null \
 		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, db behind an init, poppler, ffmpeg and ONNX Runtime installed"
+	@docker compose exec -T app gotome fulltext-check >/dev/null \
+		|| { echo "the app image cannot load the full-text engine"; exit 1; }
+	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, db behind an init, poppler, ffmpeg, ONNX Runtime and the full-text engine installed"
 
 # The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
 # there already, so this reaches Hugging Face once per cache; the gate leaves

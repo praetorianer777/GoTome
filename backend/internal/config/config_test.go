@@ -20,7 +20,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, EmbedThreads: max(1, runtime.NumCPU()/2), ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
+	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, Fulltext: DefaultFulltext, EmbedThreads: max(1, runtime.NumCPU()/2), ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -36,17 +36,18 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_LOG_LEVEL": "DEBUG",
 		"GOTOME_DATA_DIR":  "/srv/gotome",
 		// Zero switches scheduled scans off.
-		"GOTOME_SCAN_INTERVAL":   "0",
-		"GOTOME_UPLOAD_LIMIT_MB": "100",
-		"GOTOME_OFFLINE":         "true",
-		"GOTOME_MODEL_DIR":       "/models",
-		"GOTOME_ONNXRUNTIME":     "/opt/libonnxruntime.so",
-		"GOTOME_EMBED_THREADS":   "3",
+		"GOTOME_SCAN_INTERVAL":    "0",
+		"GOTOME_UPLOAD_LIMIT_MB":  "100",
+		"GOTOME_OFFLINE":          "true",
+		"GOTOME_MODEL_DIR":        "/models",
+		"GOTOME_ONNXRUNTIME":      "/opt/libonnxruntime.so",
+		"GOTOME_FULLTEXT_LIBRARY": "/opt/libgotome_fulltext.so",
+		"GOTOME_EMBED_THREADS":    "3",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", Fulltext: "/opt/libgotome_fulltext.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}

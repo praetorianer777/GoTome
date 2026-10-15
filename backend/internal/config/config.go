@@ -40,6 +40,8 @@ const (
 	DefaultUploadLimitMB = 4096
 	// DefaultOnnxRuntime is where the image puts the ONNX Runtime library.
 	DefaultOnnxRuntime = "/usr/local/lib/libonnxruntime.so.1.30.0"
+	// DefaultFulltext is where the image puts the full-text engine.
+	DefaultFulltext = "/usr/local/lib/libgotome_fulltext.so"
 )
 
 // Config is the fully resolved configuration of the process.
@@ -68,6 +70,8 @@ type Config struct {
 	ModelDir string
 	// OnnxRuntime is the path of the ONNX Runtime library.
 	OnnxRuntime string
+	// Fulltext is the path of the full-text engine's library.
+	Fulltext string
 	// EmbedThreads is how many threads embedding a book uses.
 	EmbedThreads int
 	// SecretKey encrypts the secrets kept in the database. Commands that
@@ -113,6 +117,7 @@ func load(getenv func(string) string) (Config, error) {
 		DatabaseURL: get("GOTOME_DATABASE_URL", ""),
 		DataDir:     get("GOTOME_DATA_DIR", DefaultDataDir),
 		OnnxRuntime: get("GOTOME_ONNXRUNTIME", DefaultOnnxRuntime),
+		Fulltext:    get("GOTOME_FULLTEXT_LIBRARY", DefaultFulltext),
 	}
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
 		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)

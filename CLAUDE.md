@@ -40,6 +40,13 @@ ever in the compose file or an environment variable. init only adds what is miss
   with a five-second test, plain and with `-race`, on the host and in the container,
   and did not reproduce. If it shows up, `make check-go GO_BASE=golang:1.26-bookworm`
   is the way to tell the toolchain apart from the code.
+- `engine/` is the full-text engine (#265): a Rust crate on Tantivy with a C
+  interface, which `internal/fulltext` loads at run time (`GOTOME_FULLTEXT_LIBRARY`),
+  as embed loads ONNX Runtime. It builds in the Rust image the Dockerfile pins
+  (`RUST_IMAGE`), offline from the crates in the git-ignored `engine/vendor`,
+  which `make engine-fetch` fills once (the owner runs it; a worktree takes the
+  main checkout's as hard links; CI fetches them). `make check-engine` tests it
+  and builds the library the Go tests load (`GOTOME_TEST_FULLTEXT`).
 - `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
   `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit

@@ -27,7 +27,7 @@ has_target() { make -n "$1" >/dev/null 2>&1; }
 
 # The Tolino app builds with an Android SDK and Gradle of some gigabytes,
 # which a push does not wait for.
-for layer in check-go test-koplugin fuzz-go check-web ${FULL:+check-android}; do
+for layer in check-engine check-go test-koplugin fuzz-go check-web ${FULL:+check-android}; do
   if has_target "$layer"; then
     echo "🔍 $layer"
     make "$layer"

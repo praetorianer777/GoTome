@@ -23,6 +23,7 @@ go_run = docker run --rm \
 	-e GOMODCACHE=/cache/mod \
 	-e GOFLAGS=-buildvcs=false \
 	-e GOTOOLCHAIN=local \
+	$(if $(wildcard $(ENGINE_LIB)),-e GOTOME_TEST_FULLTEXT=/work/.cache/engine/libgotome_fulltext.so) \
 	$(1) \
 	-w /work/backend $(GO_IMAGE)
 DOCKER_GO = $(call go_run,)
