@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -108,32 +109,31 @@ func chunkSections(format string, sections []Section) []textproc.Section {
 // writeChunksTx replaces the book's chunks with those of the file's text,
 // hands their text to the full-text index and their words to the
 // vocabulary, and records the file as chunked. The text itself is kept
-// nowhere: what reads it later reads the file (#265).
+// nowhere: what reads it later reads the file (#265). Chunks the text cuts
+// into as before keep their IDs, so the index finds them throughout; new
+// ones are found once the outbox is applied.
 func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, format, langHint string, sections []Section) error {
 	q := sqlc.New(tx)
-	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
+	if err := q.DeleteOtherChunks(ctx, sqlc.DeleteOtherChunksParams{BookID: bookID, FileID: fileID}); err != nil {
 		return err
 	}
 	chunks := textproc.Split(chunkSections(format, sections), textproc.Options{CharsPerPage: charsPerPage, LangHint: langHint})
-	rows := make([]sqlc.InsertBookChunksParams, len(chunks))
 	texts := make([]string, len(chunks))
 	for i, c := range chunks {
-		r := sqlc.InsertBookChunksParams{
-			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
-			Chapter: c.Chapter, CharOffset: int32(c.Offset), Lang: c.Lang,
-			Sources: chunkSources(sections, c), SourceFrom: int32(c.From), SourceTo: int32(c.To),
-		}
-		if c.PageFrom > 0 {
-			from, to := int32(c.PageFrom), int32(c.PageTo)
-			r.PageFrom, r.PageTo = &from, &to
-		}
-		rows[i] = r
 		texts[i] = c.Text
 	}
-	if len(rows) > 0 {
-		if _, err := q.InsertBookChunks(ctx, rows); err != nil {
+	stored, err := q.ListFileChunks(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if len(chunks) > 0 && sameChunks(stored, chunks) {
+		if err := placeChunksTx(ctx, q, stored, chunks, sections); err != nil {
 			return err
 		}
+	} else if err := insertChunksTx(ctx, q, bookID, libraryID, fileID, chunks, sections); err != nil {
+		return err
+	}
+	if len(chunks) > 0 {
 		if err := q.AddSearchWords(ctx, texts); err != nil {
 			return err
 		}
@@ -148,6 +148,45 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 		return s.OnChunked(ctx, tx, bookID, fileID, texts)
 	}
 	return nil
+}
+
+// insertChunksTx replaces the book's chunks and the file's with the ones
+// cut.
+func insertChunksTx(ctx context.Context, q *sqlc.Queries, bookID, libraryID, fileID uuid.UUID, chunks []textproc.Chunk, sections []Section) error {
+	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
+		return err
+	}
+	rows := make([]sqlc.InsertBookChunksParams, len(chunks))
+	for i, c := range chunks {
+		r := sqlc.InsertBookChunksParams{
+			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
+			Chapter: c.Chapter, CharOffset: int32(c.Offset), Lang: c.Lang,
+			Sources: chunkSources(sections, c), SourceFrom: int32(c.From), SourceTo: int32(c.To),
+		}
+		if c.PageFrom > 0 {
+			from, to := int32(c.PageFrom), int32(c.PageTo)
+			r.PageFrom, r.PageTo = &from, &to
+		}
+		rows[i] = r
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	_, err := q.InsertBookChunks(ctx, rows)
+	return err
+}
+
+// placeChunksTx records where in the file chunks stored before are, which
+// cut the same again.
+func placeChunksTx(ctx context.Context, q *sqlc.Queries, stored []sqlc.ListFileChunksRow, chunks []textproc.Chunk, sections []Section) error {
+	set := sqlc.SetChunkSourcesParams{}
+	for i, c := range chunks {
+		set.Ids = append(set.Ids, stored[i].ID)
+		set.Froms = append(set.Froms, int32(c.From))
+		set.Tos = append(set.Tos, int32(c.To))
+		set.Sources = append(set.Sources, strings.Join(chunkSources(sections, c), "\x1f"))
+	}
+	return q.SetChunkSources(ctx, set)
 }
 
 // chunkSources names the sections a chunk spans by their sources, or none

@@ -55,6 +55,22 @@ func (q *Queries) DeleteFileChunks(ctx context.Context, fileID uuid.UUID) error 
 	return err
 }
 
+const deleteOtherChunks = `-- name: DeleteOtherChunks :exec
+DELETE FROM book_chunks
+WHERE (book_id = $1 AND file_id <> $2) OR (file_id = $2 AND book_id <> $1)
+`
+
+type DeleteOtherChunksParams struct {
+	BookID uuid.UUID
+	FileID uuid.UUID
+}
+
+// The book's chunks of its other files, and the file's of another book.
+func (q *Queries) DeleteOtherChunks(ctx context.Context, arg DeleteOtherChunksParams) error {
+	_, err := q.db.Exec(ctx, deleteOtherChunks, arg.BookID, arg.FileID)
+	return err
+}
+
 const getFileForChunking = `-- name: GetFileForChunking :one
 SELECT f.id, f.book_id, f.library_id, f.format, f.sha256, f.rel_path,
        l.root_path, b.language, b.primary_text_file_id

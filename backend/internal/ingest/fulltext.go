@@ -69,15 +69,8 @@ func (s *Service) Reindex(ctx context.Context, fileID uuid.UUID) error {
 		if !sameChunks(stored, chunks) {
 			return s.writeChunksTx(ctx, tx, file.BookID, file.LibraryID, fileID, file.Format, lang, got.Sections)
 		}
-		set := sqlc.SetChunkSourcesParams{}
-		for i, c := range chunks {
-			set.Ids = append(set.Ids, stored[i].ID)
-			set.Froms = append(set.Froms, int32(c.From))
-			set.Tos = append(set.Tos, int32(c.To))
-			set.Sources = append(set.Sources, strings.Join(chunkSources(got.Sections, c), "\x1f"))
-		}
-		if len(set.Ids) > 0 {
-			if err := q.SetChunkSources(ctx, set); err != nil {
+		if len(chunks) > 0 {
+			if err := placeChunksTx(ctx, q, stored, chunks, got.Sections); err != nil {
 				return err
 			}
 		}

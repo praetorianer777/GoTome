@@ -492,8 +492,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `library_id` follows the book's through the foreign key on
   `(book_id, library_id)`.
 - Extraction writes the chunks in the transaction that records the file, and
-  replaces what was there: the book's chunks and the file's; the texts go to
-  the full-text index, the vocabulary and `OnChunked` (signing) from memory.
+  replaces what was there: the book's chunks and the file's, keeping the IDs
+  of chunks the text cuts into as before (`sameChunks`), so the index finds
+  them throughout; the texts go to the full-text index, the vocabulary and
+  `OnChunked` (signing) from memory.
   When another file becomes the primary one, it is queued as
   `ingest.chunk_file` (`Service.Chunk`), which reads the file again for its
   text only. The app queues every primary text file whose `chunked_at` is

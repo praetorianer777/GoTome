@@ -152,9 +152,13 @@ func TestChunksReachTheFullTextIndexThroughTheOutbox(t *testing.T) {
 		t.Errorf("after applying twice the index holds %+v, %v; want %d chunks", info, err, len(ids))
 	}
 
-	// Read again, the old chunks go and the new ones come.
+	// Read again, the text cuts the same: the chunks keep their IDs, so
+	// the index finds them throughout.
 	a.extract(file.ID)
 	again := a.chunkIDs(file.ID)
+	if !slices.Equal(again, ids) {
+		t.Errorf("read again, the chunks are %v, were %v", again, ids)
+	}
 	a.drain(s)
 	if got := indexFinds(t, s, lib, "harpoon whales"); len(got) != 1 || got[0] != again[len(again)-1] {
 		t.Errorf("after reading again the whale is in %v, want the last of %v", got, again)

@@ -15,6 +15,11 @@ UPDATE books SET primary_text_file_id = $2 WHERE id = $1;
 -- another book takes its text along.
 DELETE FROM book_chunks WHERE book_id = $1 OR file_id = sqlc.arg(file_id);
 
+-- name: DeleteOtherChunks :exec
+-- The book's chunks of its other files, and the file's of another book.
+DELETE FROM book_chunks
+WHERE (book_id = $1 AND file_id <> sqlc.arg(file_id)) OR (file_id = sqlc.arg(file_id) AND book_id <> $1);
+
 -- name: DeleteFileChunks :exec
 DELETE FROM book_chunks WHERE file_id = $1;
 
