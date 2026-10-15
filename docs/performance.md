@@ -70,8 +70,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library; it runs on the index
 in the app (#265), whose timings at full size are those of
-[text-store.md](decisions/text-store.md) (under 20 ms for the best 1,000
-chunks of 3.19 million, with snippets). Its files are not there, so its hits
+[text-store.md](decisions/text-store.md) (under 11 ms for the best 1,000
+chunks of 3.19 million, snippets aside). Its files are not there, so its hits
 come without snippets, which a real search reads from the files.
 
 ## What made the difference
