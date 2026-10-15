@@ -217,7 +217,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 					<Navigation user={user} />
 				</aside>
 				<div className="flex min-w-0 flex-1 flex-col">
-					<header className="z-30 border-b lg:sticky lg:top-0 border-slate-200 bg-slate-50/90 backdrop-blur dark:border-slate-800 dark:bg-ink/90">
+					<header className="z-30 border-b lg:sticky lg:top-0 border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-ink">
 						<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
 							<button
 								type="button"

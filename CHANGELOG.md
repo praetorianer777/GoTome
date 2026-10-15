@@ -17,6 +17,10 @@ What changes for someone who runs or uses GOtome. The format follows
   the colours and Sign out; Profile is also in the navigation, so it is
   easy to find. Someone single sign-on does not know yet is taken to their
   profile once they sign in with their password.
+- The library shows its covers larger, like books on a shelf, with the
+  book being read marked in candlelight; the filters stay in view while
+  the list scrolls, and the first page loads behind placeholders of the
+  covers to come.
 
 ### Added
 

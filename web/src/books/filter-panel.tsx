@@ -8,6 +8,7 @@ import {
 } from "@/books/filters";
 import { type ReadingStatus, STATUS_LABELS } from "@/books/reading";
 import { EREADER_FINDINGS } from "@/books/rules";
+import { button } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
 
@@ -79,7 +80,7 @@ export function FilterPanel({
 				<button
 					type="button"
 					onClick={() => onChange({})}
-					className="self-start rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+					className={`${button()} self-start`}
 				>
 					{t("filter.clear")}
 				</button>
@@ -124,10 +125,15 @@ function FacetGroup({
 		: listed.filter((v, i) => i < SHOWN || picked.includes(v.value));
 
 	return (
-		<fieldset className="flex flex-col gap-1">
-			<legend className="mb-1 font-medium">{t(FIELD_LABELS[field])}</legend>
+		<fieldset className="flex flex-col gap-0.5">
+			<legend className="mb-1.5 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+				{t(FIELD_LABELS[field])}
+			</legend>
 			{shown.map((v) => (
-				<label key={v.value} className="flex items-baseline gap-2">
+				<label
+					key={v.value}
+					className="-mx-1.5 flex items-baseline gap-2 rounded px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-900"
+				>
 					<input
 						type="checkbox"
 						checked={picked.includes(v.value)}
@@ -136,12 +142,12 @@ function FacetGroup({
 							label: valueLabel(field, v.value, v.label),
 							count: v.count,
 						})}
-						className="accent-sky-700"
+						className="accent-brand-strong dark:accent-brand"
 					/>
 					<span aria-hidden="true" className="min-w-0 flex-1 truncate">
 						{valueLabel(field, v.value, v.label)}
 					</span>
-					<span aria-hidden="true" className="text-slate-500 tabular-nums">
+					<span aria-hidden="true" className="text-xs text-slate-500 tabular-nums">
 						{v.count}
 					</span>
 				</label>
@@ -150,7 +156,7 @@ function FacetGroup({
 				<button
 					type="button"
 					onClick={() => setAll(!all)}
-					className="self-start text-sky-800 hover:underline dark:text-sky-300"
+					className="self-start text-brand-strong hover:underline dark:text-brand"
 				>
 					{all ? t("filter.fewer") : t("filter.all", { count: listed.length })}
 				</button>

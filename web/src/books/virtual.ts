@@ -18,7 +18,9 @@ export const VIRTUAL_FROM = 300;
 
 /** The grid's columns at each width, as its Tailwind classes lay it out. */
 const COLUMNS: [query: string, columns: number][] = [
-	["(min-width: 1024px)", 6],
+	["(min-width: 1280px)", 5],
+	// The sidebar and the filters take their room from here on.
+	["(min-width: 1024px)", 3],
 	["(min-width: 768px)", 4],
 	["(min-width: 640px)", 3],
 ];
