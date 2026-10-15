@@ -146,7 +146,9 @@ describe("a fresh installation", () => {
 			await screen.findByRole("heading", { name: "No library yet" }),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/");
-		expect(screen.getByText("Signed in as Steve")).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Account: Steve" }),
+		).toBeInTheDocument();
 		expect(server.requests).toContainEqual({
 			method: "POST",
 			path: "/setup",
@@ -295,10 +297,80 @@ describe("signed in", () => {
 		expect(screen.getByRole("navigation", { name: "Main" })).toContainElement(
 			screen.getByRole("link", { name: "Library" }),
 		);
-		expect(screen.getByText("Signed in as Steve")).toBeInTheDocument();
 		expect(
 			screen.getByRole("link", { name: "Skip to the content" }),
 		).toHaveAttribute("href", "#content");
+	});
+
+	it("leads to the profile from the navigation and the account menu", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		const { router } = renderApp("/");
+
+		const nav = within(await screen.findByRole("navigation", { name: "Main" }));
+		expect(nav.getByRole("link", { name: "Profile" })).toHaveAttribute(
+			"href",
+			"/profile",
+		);
+		expect(nav.queryByRole("button", { name: "Administration" })).toBeNull();
+
+		const account = screen.getByRole("button", { name: "Account: Rita" });
+		expect(account).toHaveAttribute("aria-expanded", "false");
+		await person.click(account);
+		const menu = within(screen.getByRole("group", { name: "Account" }));
+		expect(menu.getByText("Signed in as Rita")).toBeInTheDocument();
+		expect(menu.getByText("Reader")).toBeInTheDocument();
+		expect(menu.getByRole("link", { name: "E-readers" })).toHaveAttribute(
+			"href",
+			"/profile#devices",
+		);
+		await person.keyboard("{Escape}");
+		expect(screen.queryByRole("group", { name: "Account" })).toBeNull();
+		expect(account).toHaveFocus();
+
+		await person.click(account);
+		await person.click(
+			within(screen.getByRole("group", { name: "Account" })).getByRole("link", {
+				name: "Profile",
+			}),
+		);
+		expect(
+			await screen.findByRole("heading", { name: "Your account", level: 1 }),
+		).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/profile");
+		expect(screen.queryByRole("group", { name: "Account" })).toBeNull();
+	});
+
+	it("folds a group of the navigation, and keeps it folded", async () => {
+		const person = userEvent.setup();
+		const first = renderApp("/");
+
+		const fold = await screen.findByRole("button", { name: "Administration" });
+		expect(fold).toHaveAttribute("aria-expanded", "true");
+		expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
+		await person.click(fold);
+		expect(fold).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByRole("link", { name: "Users" })).toBeNull();
+
+		first.unmount();
+		renderApp("/");
+		expect(
+			await screen.findByRole("button", { name: "Administration" }),
+		).toHaveAttribute("aria-expanded", "false");
+	});
+
+	it("opens the navigation as a drawer from the menu button", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/");
+
+		await person.click(await screen.findByRole("button", { name: "Menu" }));
+		const drawer = within(screen.getByRole("dialog", { name: "Menu" }));
+		await person.click(drawer.getByRole("link", { name: "Collections" }));
+
+		expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull();
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/collections"),
+		);
 	});
 
 	it("skips the sign-in page", async () => {
@@ -313,7 +385,10 @@ describe("signed in", () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/");
 
-		await person.click(await screen.findByRole("button", { name: "Sign out" }));
+		await person.click(
+			await screen.findByRole("button", { name: "Account: Steve" }),
+		);
+		await person.click(screen.getByRole("button", { name: "Sign out" }));
 
 		expect(
 			await screen.findByRole("heading", { name: "Sign in" }),
@@ -326,13 +401,19 @@ describe("signed in", () => {
 		const person = userEvent.setup();
 		const first = renderApp("/");
 
-		await person.selectOptions(await screen.findByLabelText("Colours"), "Dark");
+		await person.click(
+			await screen.findByRole("button", { name: "Account: Steve" }),
+		);
+		await person.selectOptions(screen.getByLabelText("Colours"), "Dark");
 		expect(document.documentElement.dataset.theme).toBe("dark");
 
 		first.unmount();
 		delete document.documentElement.dataset.theme;
 		renderApp("/");
-		expect(await screen.findByLabelText("Colours")).toHaveValue("dark");
+		await person.click(
+			await screen.findByRole("button", { name: "Account: Steve" }),
+		);
+		expect(screen.getByLabelText("Colours")).toHaveValue("dark");
 		expect(document.documentElement.dataset.theme).toBe("dark");
 
 		await person.selectOptions(
@@ -1743,7 +1824,10 @@ describe("profile", () => {
 		renderApp("/");
 
 		await person.click(
-			await screen.findByRole("link", { name: "Signed in as Rita" }),
+			within(await screen.findByRole("navigation", { name: "Main" })).getByRole(
+				"link",
+				{ name: "Profile" },
+			),
 		);
 		expect(
 			await screen.findByRole("heading", { name: "Your account", level: 1 }),
@@ -2371,7 +2455,7 @@ describe("changing many books", () => {
 		expect(server.books[2]?.tags).toEqual([]);
 
 		await person.click(screen.getByRole("button", { name: "Changed: 2" }));
-		expect(screen.getAllByRole("listitem")).toHaveLength(2);
+		expect(within(screen.getByRole("main")).getAllByRole("listitem")).toHaveLength(2);
 	});
 
 	it("looks up the books ticked", async () => {

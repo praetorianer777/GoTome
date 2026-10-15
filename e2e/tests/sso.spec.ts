@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { accountMenu, openSignedIn } from "../fixtures/app";
 import { KEYCLOAK_URL } from "../fixtures/stack";
 
 // The realm, its client and its people are deploy/keycloak/gotome-realm.json.
@@ -59,7 +59,7 @@ test("a person signs in through Keycloak with the role their groups give", async
 	await expect(
 		them.getByRole("heading", { name: "Collections", level: 1 }),
 	).toBeVisible();
-	await them.getByRole("link", { name: "Signed in as kc-editor" }).click();
+	await (await accountMenu(them, "kc-editor")).getByRole("link", { name: "Profile" }).click();
 	await expect(them.getByText("Signed in as kc-editor, Editor.")).toBeVisible();
 	await expect(
 		them

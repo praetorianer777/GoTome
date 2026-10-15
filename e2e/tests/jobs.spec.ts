@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a file that cannot be read shows on the jobs page and its book, and is read again", async ({ page }, testInfo) => {
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
@@ -21,7 +21,7 @@ test("a file that cannot be read shows on the jobs page and its book, and is rea
 	await page.getByRole("button", { name: `Read Broken ${stamp}.epub again` }).click();
 	await expect(page.getByText(/^Could not be read: /)).toBeVisible({ timeout: 15_000 });
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Jobs" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Jobs" }).click();
 	await expect(page.getByRole("heading", { name: "Background jobs", level: 1 })).toBeVisible();
 	await expect(page.getByRole("link", { name: new RegExp(`^Read .*Broken ${stamp}\\.epub$`) }).first()).toBeVisible();
 

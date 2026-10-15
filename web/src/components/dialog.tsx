@@ -6,7 +6,8 @@ import { FOCUSABLE, type KeyBinding, useModal } from "@/lib/keys";
 /**
  * A modal dialog: focus moves into it and stays there, Escape or the close
  * button closes it, and focus goes back to where it was. An alert dialog
- * asks a question its own buttons answer, and has no close button.
+ * asks a question its own buttons answer, and has no close button. A drawer
+ * is the same, along the left edge at full height, for the phone's menu.
  */
 export function Dialog({
 	title,
@@ -14,12 +15,14 @@ export function Dialog({
 	children,
 	alert = false,
 	describedBy,
+	drawer = false,
 }: {
 	title: string;
 	onClose: () => void;
 	children: ReactNode;
 	alert?: boolean;
 	describedBy?: string;
+	drawer?: boolean;
 }) {
 	useModal();
 	const id = useId();
@@ -64,7 +67,12 @@ export function Dialog({
 	}, [opener]);
 
 	return createPortal(
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+		<div
+			className={`fixed inset-0 z-50 flex bg-slate-950/50 ${drawer ? "" : "items-center justify-center p-4"}`}
+			onPointerDown={(e) => {
+				if (drawer && e.target === e.currentTarget) close.current();
+			}}
+		>
 			<div
 				ref={box}
 				role={alert ? "alertdialog" : "dialog"}
@@ -72,7 +80,7 @@ export function Dialog({
 				aria-labelledby={id}
 				aria-describedby={describedBy}
 				tabIndex={-1}
-				className="flex max-h-full w-full max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r dark:bg-slate-950" : "max-w-lg rounded-lg border"}`}
 			>
 				<div className="flex items-center gap-2">
 					<h2 id={id} className="mr-auto text-lg font-medium">

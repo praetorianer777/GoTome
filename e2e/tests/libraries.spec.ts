@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { chooseLibrary, openSignedIn } from "../fixtures/app";
+import { chooseLibrary, mainNav, openSignedIn } from "../fixtures/app";
 
 test("an administrator adds a library, sees it, and removes it again", async ({ page }, testInfo) => {
 	// Every browser project runs against the same stack, so each needs a name
@@ -7,7 +7,7 @@ test("an administrator adds a library, sees it, and removes it again", async ({ 
 	const name = `Novels ${testInfo.project.name} ${Date.now()}`;
 	await openSignedIn(page);
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Libraries" }).click();
 	await expect(page.getByRole("heading", { name: "Libraries", level: 1 })).toBeVisible();
 
 	const form = page.getByRole("region", { name: "Add a library" });
@@ -25,11 +25,11 @@ test("an administrator adds a library, sees it, and removes it again", async ({ 
 	await form.getByRole("button", { name: "Add the library" }).click();
 	await expect(form.getByText("Another library already has this name.")).toBeVisible();
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Library", exact: true }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Library", exact: true }).click();
 	await chooseLibrary(page, name);
 	await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Libraries" }).click();
 	await row.getByRole("button", { name: "Remove" }).click();
 	await expect(row.getByText("Remove it from GOtome? The folder and its files stay.")).toBeVisible();
 	await row.getByRole("button", { name: "Remove" }).click();
@@ -40,7 +40,7 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	const folder = `/fixtures/books-${testInfo.project.name}`;
 	const name = `Shelf ${testInfo.project.name} ${Date.now()}`;
 	await openSignedIn(page);
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Libraries" }).click();
 	await expect(page.getByRole("heading", { name: "Libraries", level: 1 })).toBeVisible();
 
 	// An earlier attempt that failed half-way may have left its library on
@@ -67,7 +67,7 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	await expect(row.getByRole("status")).toHaveText(/^Scanned .+: 3 files, nothing new\.$/, { timeout: 15_000 });
 
 	// The books, with what their files say about them once they are read.
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Library", exact: true }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Library", exact: true }).click();
 	await chooseLibrary(page, name);
 	const books = page.getByRole("region", { name: "Books" });
 	await expect(books.getByRole("link", { name: /^Emma/ })).toBeVisible();
@@ -87,7 +87,7 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	expect(part.status()).toBe(206);
 	expect(await part.text()).toBe("%PDF-1.4");
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Libraries" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Libraries" }).click();
 	await row.getByRole("button", { name: "Remove" }).click();
 	await row.getByRole("button", { name: "Remove" }).click();
 	await expect(row).toHaveCount(0);

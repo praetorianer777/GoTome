@@ -19,7 +19,11 @@ export function Login({ redirect, sso }: { redirect?: string; sso?: string }) {
 	const router = useRouter();
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
-	const returnTo = safeRedirect(redirect);
+	// Someone the provider knows but GOtome does not links the two on their
+	// profile, once they have signed in with a password.
+	const returnTo = safeRedirect(
+		redirect ?? (sso === "no-account" ? "/profile" : undefined),
+	);
 
 	function submit(event: FormEvent) {
 		event.preventDefault();

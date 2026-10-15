@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a token is saved encrypted and never shown again", async ({
 	page,
@@ -13,10 +13,7 @@ test("a token is saved encrypted and never shown again", async ({
 	const token = `hc-${Date.now()}`;
 	await openSignedIn(page);
 
-	await page
-		.getByRole("navigation", { name: "Main" })
-		.getByRole("link", { name: "Settings" })
-		.click();
+	await (await mainNav(page)).getByRole("link", { name: "Settings" }).click();
 	await expect(
 		page.getByRole("heading", { name: "Settings", level: 1 }),
 	).toBeVisible();

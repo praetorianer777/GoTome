@@ -12,12 +12,41 @@
 	}
 }
 
+/* docs/design.md says where each colour comes from and which pairs are
+   checked for contrast. */
 @theme {
-	/* The logo's two colours: its night-blue ground and the gopher's blue. */
+	/* The logo's night-blue ground and the gopher's cyan. */
 	--color-ink: #020c16;
-	--color-brand: #2fa8d5;
-	/* The same blue, dark enough to read as text on white. */
+	--color-brand: #37b5db;
+	/* The same cyan, dark enough to read as text on parchment and white. */
 	--color-brand-strong: #0b6f96;
+	/* Candlelight, for what is being read and for ratings. */
+	--color-candle: #e69a46;
+	--color-candle-strong: #8a4f0f;
+	/* The wordmark's "tome", and the leather of the books. */
+	--color-cream: #e5d2ab;
+	--color-leather: #52271b;
+
+	/* The neutrals run from parchment to ink navy, so every page that uses
+	   slate takes the theme. */
+	--color-slate-50: #faf6ec;
+	--color-slate-100: #f1e9d8;
+	--color-slate-200: #e3d8c2;
+	--color-slate-300: #c8bca6;
+	--color-slate-400: #94a3b8;
+	--color-slate-500: #5b6a80;
+	--color-slate-600: #4a5870;
+	--color-slate-700: #33425a;
+	--color-slate-800: #1b2d47;
+	--color-slate-900: #0e2038;
+	--color-slate-950: #071526;
+
+	/* Only what the system has: the policy allows no font from elsewhere. */
+	--font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, ui-serif, serif;
+
+	--shadow-glow: 0 0 0 1px color-mix(in srgb, var(--color-brand) 45%, transparent), 0 0 12px -2px color-mix(in srgb, var(--color-brand) 55%, transparent);
+	--shadow-candle: 0 0 0 2px color-mix(in srgb, var(--color-candle) 70%, transparent), 0 0 14px -2px color-mix(in srgb, var(--color-candle) 60%, transparent);
+	--shadow-book: 0 1px 2px rgb(2 12 22 / 0.25), 0 6px 14px -6px rgb(2 12 22 / 0.45);
 }
 
 :root {
@@ -39,10 +68,18 @@ body {
 	@apply bg-slate-50 text-slate-900 antialiased dark:bg-ink dark:text-slate-100;
 }
 
+h1,
+h2 {
+	font-family: var(--font-serif);
+}
+
 /* One focus ring everywhere, visible on both grounds: the light blue is too
    faint on white to show where focus is, the dark one too dark on ink. */
 :focus-visible {
 	@apply outline-2 outline-offset-2 outline-brand-strong dark:outline-brand;
+	@variant dark {
+		box-shadow: 0 0 14px 1px color-mix(in srgb, var(--color-brand) 45%, transparent);
+	}
 }
 
 /* Grey text for what is said in passing reads well enough on white, but not

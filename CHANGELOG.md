@@ -6,6 +6,18 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The web app has a new look taken from GOtome's artwork: a midnight-blue
+  dark theme with the gopher's cyan, a parchment light theme, and serif
+  headings. The navigation is a sidebar in groups (the catalogue's and the
+  administration's fold away) and, on phones and tablets, a menu that opens
+  from the left.
+- An account menu at the top right holds Profile, E-readers, the language,
+  the colours and Sign out; Profile is also in the navigation, so it is
+  easy to find. Someone single sign-on does not know yet is taken to their
+  profile once they sign in with their password.
+
 ### Added
 
 - The web app's pages end in a footer that says which version of GOtome runs,

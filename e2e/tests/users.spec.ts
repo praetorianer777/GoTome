@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn, signIn } from "../fixtures/app";
+import { accountMenu, mainNav, openSignedIn, signIn } from "../fixtures/app";
 
 test("an account is added, used, and disabled again", async ({
 	page,
@@ -10,10 +10,7 @@ test("an account is added, used, and disabled again", async ({
 	const second = `second-${Date.now()}`;
 	await openSignedIn(page);
 
-	await page
-		.getByRole("navigation", { name: "Main" })
-		.getByRole("link", { name: "Users" })
-		.click();
+	await (await mainNav(page)).getByRole("link", { name: "Users" }).click();
 	const form = page.getByRole("region", { name: "Add a user" });
 	await form.getByLabel("User name").fill(username);
 	await form.getByLabel("Password").fill(first);
@@ -33,7 +30,7 @@ test("an account is added, used, and disabled again", async ({
 	await expect(
 		them.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
-	await them.getByRole("link", { name: `Signed in as ${username}` }).click();
+	await (await accountMenu(them, username)).getByRole("link", { name: "Profile" }).click();
 	const password = them.getByRole("region", { name: "Password" });
 	await password.getByLabel("Current password").fill(first);
 	await password.getByLabel("New password").fill(second);

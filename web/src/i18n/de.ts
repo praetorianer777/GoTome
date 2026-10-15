@@ -11,6 +11,11 @@ export const de: Record<MessageKey, string> = {
 	"nav.upload": "Bücher hinzufügen",
 	"nav.main": "Hauptnavigation",
 	"nav.skip": "Zum Inhalt springen",
+	"nav.profile": "Profil",
+	"nav.menu": "Menü",
+	"nav.group.catalogue": "Katalog",
+	"nav.group.admin": "Verwaltung",
+	"user.menuFor": "Konto: {name}",
 
 	"storage.unlimited": "Ihre Uploads belegen {used}. Es gibt keine Begrenzung.",
 	"storage.limited": "Ihre Uploads belegen {used} von {quota}, die Ihnen zustehen.",
@@ -157,7 +162,7 @@ export const de: Record<MessageKey, string> = {
 		"Diese Anmeldung wurde nicht hier begonnen oder hat zu lange gedauert. Bitte erneut versuchen.",
 	"sso.cancelled": "Die Anmeldung wurde beim Identitätsanbieter abgebrochen.",
 	"sso.noAccount":
-		"Für Sie gibt es hier kein Konto. Ein Administrator kann eines anlegen; danach lässt es sich im Profil verknüpfen.",
+		"Für Sie gibt es hier kein Konto. Ein Administrator kann eines anlegen; danach melden Sie sich mit Ihrem Passwort an: Diese Seite führt Sie dann zu Ihrem Profil, wo Sie beide verknüpfen.",
 	"sso.noRole": "Ihre Gruppen beim Identitätsanbieter geben Ihnen hier keinen Zugang.",
 	"sso.disabled": "Ihr Konto ist deaktiviert.",
 	"sso.taken": "Dieses Konto beim Identitätsanbieter ist mit einem anderen Konto hier verknüpft.",

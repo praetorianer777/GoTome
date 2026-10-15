@@ -32,16 +32,22 @@ describe("permissions", () => {
 
 	it("decide which navigation entries are offered", () => {
 		const items: NavItem[] = [
-			{ to: "/", label: "nav.library", permission: "library:read" },
-			{ to: "/", label: "nav.main", permission: "books:upload" },
-			{ to: "/", label: "nav.skip", permission: "users:manage" },
+			{ to: "/", label: "nav.library", permission: "library:read", group: "library", icon: "library" },
+			{ to: "/", label: "nav.main", permission: "books:upload", group: "catalogue", icon: "upload" },
+			{ to: "/", label: "nav.skip", permission: "users:manage", group: "admin", icon: "people" },
+			{ to: "/profile", label: "nav.profile", group: "library", icon: "person" },
 		];
 		const labels = (role: "reader" | "editor" | "admin") =>
 			visibleNavItems(items, user("x", role)).map((item) => item.label);
 
-		expect(labels("reader")).toEqual(["nav.library"]);
-		expect(labels("editor")).toEqual(["nav.library", "nav.main"]);
-		expect(labels("admin")).toEqual(["nav.library", "nav.main", "nav.skip"]);
+		expect(labels("reader")).toEqual(["nav.library", "nav.profile"]);
+		expect(labels("editor")).toEqual(["nav.library", "nav.main", "nav.profile"]);
+		expect(labels("admin")).toEqual([
+			"nav.library",
+			"nav.main",
+			"nav.skip",
+			"nav.profile",
+		]);
 		expect(visibleNavItems(items, null)).toEqual([]);
 	});
 });
