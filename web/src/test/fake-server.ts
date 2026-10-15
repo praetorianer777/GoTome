@@ -315,6 +315,8 @@ export class FakeServer {
 	identities: LinkedIdentity[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
+	/** The fixes asked for, by file. */
+	fixes: { file: string; findings: string[] }[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
 	secrets = new Map<string, string>();
 	private settings: Setting[] = [
@@ -477,6 +479,23 @@ export class FakeServer {
 			}
 			if (path === "/trash") {
 				return Response.json({ files: this.trashed.map((t) => t.view) });
+			}
+			const fix = /^\/files\/([^/]+)\/fix$/.exec(path);
+			if (fix && request.method === "POST") {
+				const findings = (body as { findings: string[] }).findings;
+				const file = this.books.flatMap((b) => b.files).find((f) => f.id === fix[1]);
+				if (!file?.ereader) {
+					return Response.json({ error: { code: "not_found", message: "There is no such file." } }, { status: 404 });
+				}
+				this.fixes.push({ file: file.id, findings });
+				file.ereader.findings = file.ereader.findings.filter((f) => !findings.includes(f));
+				return Response.json({
+					documentsSplit: findings.includes("large-document") ? 1 : 0,
+					partsAdded: findings.includes("large-document") ? 4 : 0,
+					imagesScaled: findings.includes("large-image") ? 1 : 0,
+					fontsRemoved: findings.includes("large-fonts") ? 8 : 0,
+					itemsRemoved: findings.includes("missing-resources") ? 1 : 0,
+				});
 			}
 			const fileAction = /^\/files\/([^/]+)(?:\/(trash|restore))?$/.exec(path);
 			if (fileAction && (fileAction[2] || request.method === "DELETE")) {
@@ -1523,6 +1542,14 @@ export class FakeServer {
 				changed ||= tags.join() !== book.tags.join();
 				book.tags = [...new Set(tags)];
 				book.fields.tags = { source: "manual", locked: true };
+			}
+			if (req.action === "fix") {
+				for (const f of book.files) {
+					if (f.ereader?.findings.some((x) => req.findings?.includes(x))) {
+						f.ereader.findings = f.ereader.findings.filter((x) => !req.findings?.includes(x));
+						changed = true;
+					}
+				}
 			}
 			const outcome = changed
 				? "changed"

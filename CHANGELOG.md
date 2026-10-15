@@ -15,6 +15,14 @@ What changes for someone who runs or uses GOtome. The format follows
   the arrows and changes chapter with Shift and the arrows. The "Keys" button,
   or ?, lists them all.
 - The EPUB and PDF readers search the book they show.
+- What makes an EPUB slow on an e-reader can be fixed, in libraries
+  GOtome writes to: each finding on the book's page has its button, and
+  "Fix for e-readers" does it for every selected book. A long chapter file
+  is split at its chapters, images are scaled down to 1600 pixels, the
+  embedded fonts are removed, and files the EPUB lists but lacks are taken
+  off its list. The file as it was goes into the trash, from where it can
+  be restored beside the fixed one; where you were reading is kept, and
+  e-readers that had the book are sent it again.
 
 ### Changed
 

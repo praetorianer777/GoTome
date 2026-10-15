@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -23,11 +25,15 @@ type bulkRequest struct {
 	Library string `json:"library,omitempty"`
 	Filter  string `json:"filter,omitempty"`
 	// Action is edit (make the change), fetch (look each book up with the
-	// metadata providers, as happens after an import) or writeBack (write
-	// each book's metadata into its EPUBs).
+	// metadata providers, as happens after an import), writeBack (write
+	// each book's metadata into its EPUBs) or fix (fix what makes each
+	// book's EPUBs slow or troublesome on an e-reader).
 	Action string `json:"action"`
 	// Change is what an edit does; the other actions take none.
 	Change *bulkChange `json:"change,omitempty"`
+	// Findings are what a fix fixes, of those an EPUB's ereader check
+	// names; only a fix takes them.
+	Findings []string `json:"findings,omitempty"`
 }
 
 // bulkChange is an edit of many books. Every field it changes is locked, as
@@ -66,7 +72,18 @@ func (s *Server) startBulk(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if !slices.Contains(bulk.Actions, req.Action) {
-		return ErrValidation(map[string]string{"action": "The action is edit, fetch or writeBack."})
+		return ErrValidation(map[string]string{"action": "The action is edit, fetch, writeBack or fix."})
+	}
+	switch {
+	case req.Action == bulk.ActionFix && len(req.Findings) == 0:
+		return ErrValidation(map[string]string{"findings": "Say what to fix."})
+	case req.Action != bulk.ActionFix && len(req.Findings) > 0:
+		return ErrValidation(map[string]string{"findings": "Only a fix takes findings."})
+	}
+	for _, f := range req.Findings {
+		if !slices.Contains(epub.Findings, f) {
+			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a finding; one is %s.", f, strings.Join(epub.Findings, ", "))})
+		}
 	}
 	var change catalog.Change
 	switch {
@@ -109,7 +126,7 @@ func (s *Server) startBulk(w http.ResponseWriter, r *http.Request) error {
 	case len(books) == 0:
 		return ErrValidation(map[string]string{"books": "None of these books is one you may change."})
 	}
-	id, err := s.Bulk.Start(r.Context(), scope, books, req.Action, change)
+	id, err := s.Bulk.Start(r.Context(), scope, books, req.Action, change, req.Findings)
 	if err != nil {
 		return err
 	}
