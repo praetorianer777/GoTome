@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { mainNav, openSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
 test("an author is followed from a book's page, listed on the new books page, and let go again", async ({
@@ -37,7 +37,7 @@ test("an author is followed from a book's page, listed on the new books page, an
 		page.getByRole("button", { name: `✓ ${author}` }),
 	).toHaveAttribute("aria-pressed", "true");
 
-	await page.getByRole("link", { name: "New books" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "New books" }).click();
 	const following = page.getByRole("region", { name: "You follow" });
 	await expect(following.getByText(author, { exact: true })).toBeVisible();
 	await following

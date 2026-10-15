@@ -37,7 +37,9 @@ test("the first account is created through the setup page", {
 	await expect(
 		page.getByRole("heading", { name: "No library yet" }),
 	).toBeVisible();
-	await expect(page.getByText(`Signed in as ${ADMIN.username}`)).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: `Account: ${ADMIN.username}` }),
+	).toBeVisible();
 
 	// And it is closed from then on.
 	await page.goto("/setup");

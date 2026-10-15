@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { ADMIN } from "./stack";
 
 /** Fills the sign-in form. The page must already be the sign-in page. */
@@ -45,4 +45,23 @@ export async function gotoUnderPolicy(page: Page, path: string): Promise<void> {
 	expect(policy).toContain("connect-src 'self';");
 	expect(policy).toContain("object-src 'none';");
 	expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+}
+
+/**
+ * The main navigation. On a narrow screen it is in the drawer the menu
+ * button opens, which this opens first.
+ */
+export async function mainNav(page: Page): Promise<Locator> {
+	await expect(page.getByRole("banner")).toBeVisible();
+	const menu = page.getByRole("button", { name: "Menu" });
+	if (await menu.isVisible()) {
+		await menu.click();
+	}
+	return page.getByRole("navigation", { name: "Main" });
+}
+
+/** Opens the account menu at the top right of the signed-in person. */
+export async function accountMenu(page: Page, username: string = ADMIN.username): Promise<Locator> {
+	await page.getByRole("button", { name: `Account: ${username}` }).click();
+	return page.getByRole("group", { name: "Account" });
 }

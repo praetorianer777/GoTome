@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn, signIn } from "../fixtures/app";
+import { accountMenu, openSignedIn, signIn } from "../fixtures/app";
 import { ADMIN } from "../fixtures/stack";
 
 test("signing in leads to the empty library, signing out back to sign-in", {
@@ -14,7 +14,9 @@ test("signing in leads to the empty library, signing out back to sign-in", {
 	await expect(
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
-	await expect(page.getByText(`Signed in as ${ADMIN.username}`)).toBeVisible();
+	await expect(
+		(await accountMenu(page)).getByText(`Signed in as ${ADMIN.username}`),
+	).toBeVisible();
 
 	// The session survives a reload: it lives in a cookie, not in the page.
 	await page.reload();
@@ -22,7 +24,7 @@ test("signing in leads to the empty library, signing out back to sign-in", {
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
 
-	await page.getByRole("button", { name: "Sign out" }).click();
+	await (await accountMenu(page)).getByRole("button", { name: "Sign out" }).click();
 	await expect(page).toHaveURL(/\/login$/);
 	await page.goto("/");
 	await expect(page).toHaveURL(/\/login$/);
@@ -67,11 +69,11 @@ test("an unknown address says so and offers the way back", async ({ page }) => {
 
 test("the chosen colours survive a reload", async ({ page }) => {
 	await openSignedIn(page);
-	await page.getByLabel("Colours").selectOption({ label: "Dark" });
+	await (await accountMenu(page)).getByLabel("Colours").selectOption({ label: "Dark" });
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 	await page.reload();
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-	await expect(page.getByLabel("Colours")).toHaveValue("dark");
+	await expect((await accountMenu(page)).getByLabel("Colours")).toHaveValue("dark");
 });
 
 // Wider than the screen means a horizontal scrollbar, which on a phone is a
