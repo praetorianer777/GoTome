@@ -124,11 +124,6 @@ SELECT pair_id, kind, detail, duplicate_score(kind, detail) AS score FROM duplic
 WHERE pair_id = ANY(sqlc.arg(pair_ids)::uuid[])
 ORDER BY pair_id, score DESC, kind, detail;
 
--- name: ListFileChunkTexts :many
--- The file's text as its chunks hold it, in order.
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks WHERE file_id = $1 ORDER BY position;
-
 -- name: DropBookSignatures :exec
 -- The signatures of the book's files other than the one its text is read
 -- from, which stand for it no more.

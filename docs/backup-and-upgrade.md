@@ -30,12 +30,14 @@ cd deploy
 
 GOtome keeps running. The folder then holds:
 
-- `database.dump`: the database in `pg_dump`'s custom format. The text of the
-  books (`book_chunks`, `search_words`), the duplicate signatures
-  (`file_signatures`, `file_lsh`), the vectors (`book_vectors`) and the
-  cache of what metadata sources answered (`provider_records`) are left out:
-  GOtome makes them again from the files, and they are most of the database.
-- `data.tar`: covers and managed libraries.
+- `database.dump`: the database in `pg_dump`'s custom format. Where the
+  books' text is (`book_chunks`, `search_words`, `fulltext_outbox`), the
+  duplicate signatures (`file_signatures`, `file_lsh`), the vectors
+  (`book_vectors`) and the cache of what metadata sources answered
+  (`provider_records`) are left out: GOtome makes them again from the
+  files, and they are most of the database.
+- `data.tar`: covers and managed libraries, without the full-text index
+  (`search/`), which GOtome makes again from the files.
 - `secret-key`, readable by its owner alone.
 - `VERSION`: the version that made the backup.
 
@@ -76,8 +78,8 @@ docker compose pull
 docker compose up -d
 ```
 
-At start GOtome applies its database migrations, and updates and rebuilds the
-search index if the database image brings a new `pg_search` or text is cut
+At start GOtome applies its database migrations, and builds the search
+index again if the new version stores it differently or cuts text
 differently, as [search-index.md](search-index.md) describes. Search answers
 throughout, from what it has.
 

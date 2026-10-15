@@ -454,7 +454,7 @@ func (s *Server) routes() []Route {
 		},
 		{
 			Method: http.MethodPost, Path: "/search/rebuild", ID: "rebuildSearchIndex",
-			Summary: "Build the search index again from the text already read; searches use the old one until then", Tag: "books",
+			Summary: "Build the search index again from the books' files; searches find what it has of a book until the book is read again", Tag: "books",
 			Response: rebuildResult{}, Status: http.StatusAccepted,
 			Permission: auth.IndexRebuild, Handler: s.rebuildSearchIndex,
 		},

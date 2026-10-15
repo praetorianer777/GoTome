@@ -6596,7 +6596,7 @@
     "/search/rebuild": {
       "post": {
         "operationId": "rebuildSearchIndex",
-        "summary": "Build the search index again from the text already read; searches use the old one until then",
+        "summary": "Build the search index again from the books' files; searches find what it has of a book until the book is read again",
         "tags": [
           "books"
         ],
@@ -10083,9 +10083,6 @@
           "files": {
             "type": "integer"
           },
-          "inApp": {
-            "type": "integer"
-          },
           "indexed": {
             "type": "integer"
           },
@@ -10096,7 +10093,6 @@
         "required": [
           "files",
           "indexed",
-          "inApp",
           "rebuilding",
           "engine"
         ]

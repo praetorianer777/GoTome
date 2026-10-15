@@ -57,10 +57,6 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",
 	},
-	"search.engine": {
-		label: "settings.searchEngine",
-		hint: "settings.searchEngine.hint",
-	},
 	"auth.passwords": {
 		label: "settings.passwords",
 		hint: "settings.passwords.hint",

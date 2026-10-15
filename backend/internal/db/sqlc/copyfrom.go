@@ -38,9 +38,6 @@ func (r iteratorForInsertBookChunks) Values() ([]interface{}, error) {
 		r.rows[0].PageTo,
 		r.rows[0].CharOffset,
 		r.rows[0].Lang,
-		r.rows[0].BodyEn,
-		r.rows[0].BodyDe,
-		r.rows[0].BodyXx,
 		r.rows[0].Sources,
 		r.rows[0].SourceFrom,
 		r.rows[0].SourceTo,
@@ -52,5 +49,5 @@ func (r iteratorForInsertBookChunks) Err() error {
 }
 
 func (q *Queries) InsertBookChunks(ctx context.Context, arg []InsertBookChunksParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"book_chunks"}, []string{"book_id", "library_id", "file_id", "position", "chapter", "page_from", "page_to", "char_offset", "lang", "body_en", "body_de", "body_xx", "sources", "source_from", "source_to"}, &iteratorForInsertBookChunks{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"book_chunks"}, []string{"book_id", "library_id", "file_id", "position", "chapter", "page_from", "page_to", "char_offset", "lang", "sources", "source_from", "source_to"}, &iteratorForInsertBookChunks{rows: arg})
 }

@@ -67,9 +67,6 @@ type BookChunk struct {
 	PageTo     *int32
 	CharOffset int32
 	Lang       string
-	BodyEn     *string
-	BodyDe     *string
-	BodyXx     *string
 	Sources    []string
 	SourceFrom int32
 	SourceTo   int32

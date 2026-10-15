@@ -265,3 +265,63 @@ func readSources(ctx context.Context, r PassageRef) ([]string, error) {
 	}
 	return nil, errors.New("the format is read whole")
 }
+
+// FileTexts is the text of a primary text file cut into its chunks again,
+// read from the file, for what needs all of it, such as signing it for
+// overlap again. Nil for a file that is gone, unreadable, or no longer its
+// book's text.
+func (s *Service) FileTexts(ctx context.Context, fileID uuid.UUID) ([]string, error) {
+	file, err := sqlc.New(s.pool).GetFileForChunking(ctx, fileID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	extract, ok := extractors[file.Format]
+	if !ok || file.PrimaryTextFileID == nil || *file.PrimaryTextFileID != fileID {
+		return nil, nil
+	}
+	got, err := safely(ctx, file.Format, extract, filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath)))
+	switch {
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, ErrUnreadable):
+		return nil, nil
+	case err != nil:
+		return nil, err
+	}
+	lang := got.Metadata.Language
+	if file.Language != nil {
+		lang = *file.Language
+	}
+	chunks := textproc.Split(chunkSections(file.Format, got.Sections), textproc.Options{CharsPerPage: charsPerPage, LangHint: lang})
+	texts := make([]string, len(chunks))
+	for i, c := range chunks {
+		texts[i] = c.Text
+	}
+	return texts, nil
+}
+
+// Passages reads the file's chunks at the positions again from the file, in
+// the order of their positions; those that cannot be read are left out.
+func (s *Service) Passages(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error) {
+	places, err := sqlc.New(s.pool).ListChunkPlaces(ctx, sqlc.ListChunkPlacesParams{FileID: fileID, Positions: positions})
+	if err != nil || len(places) == 0 {
+		return nil, err
+	}
+	refs := make([]PassageRef, len(places))
+	for i, p := range places {
+		refs[i] = PassageRef{
+			ChunkID: p.ID, FileID: fileID, Format: p.Format,
+			Path:     filepath.Join(p.RootPath, filepath.FromSlash(p.RelPath)),
+			Position: int(p.Position), Sources: p.Sources, From: int(p.SourceFrom), To: int(p.SourceTo),
+		}
+	}
+	texts := ReadPassages(ctx, refs)
+	var out []string
+	for _, r := range refs {
+		if t, ok := texts[r.ChunkID]; ok {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}

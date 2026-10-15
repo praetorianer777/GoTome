@@ -247,19 +247,21 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 				WHEN b.n % 50 = 3 THEN ARRAY['large-fonts'] WHEN b.n % 200 = 4 THEN ARRAY['large-document', 'large-image'] ELSE '{}' END
 			FROM scale_books b WHERE b.id = f.book_id AND f.format = 'epub'`},
 		// One chunk a book, where a real one has about 75: the plans are
-		// the ones a full library gets, the timings of the full-text search
-		// are those of docs/decisions/search-engine.md.
-		{sql: `INSERT INTO book_chunks (book_id, library_id, file_id, position, page_from, page_to, char_offset, lang,
-			                        body_en, body_de, body_xx)
-			SELECT b.id, b.library_id, f.id, 0, 1, 3, 0, bk.language,
-			       CASE WHEN bk.language = 'en' THEN x.body END,
-			       CASE WHEN bk.language = 'de' THEN x.body END,
-			       CASE WHEN bk.language NOT IN ('en', 'de') THEN x.body END
+		// the ones a full library gets. Its text goes to the full-text
+		// index through the outbox, which the test applies after the seed;
+		// the file is not there, so a hit is shown without a snippet.
+		{sql: `INSERT INTO book_chunks (book_id, library_id, file_id, position, page_from, page_to, char_offset, lang)
+			SELECT b.id, b.library_id, f.id, 0, 1, 3, 0, bk.language
 			FROM scale_books b
 			JOIN books bk ON bk.id = b.id
-			JOIN book_files f ON f.book_id = b.id AND f.format = 'epub'
+			JOIN book_files f ON f.book_id = b.id AND f.format = 'epub'`},
+		{sql: `INSERT INTO fulltext_outbox (docs)
+			SELECT jsonb_agg(jsonb_build_object('id', c.id, 'book', c.book_id, 'library', c.library_id, 'lang', c.lang, 'text', x.body))
+			FROM book_chunks c
+			JOIN scale_books b ON b.id = c.book_id
 			CROSS JOIN LATERAL (SELECT string_agg(lower(scale_word(b.n * 31 + w * 97)), ' ') AS body
-			                    FROM generate_series(1, 120) w) x`},
+			                    FROM generate_series(1, 120) w) x
+			GROUP BY b.n / 500`},
 		{sql: `INSERT INTO search_words (word) SELECT DISTINCT lower(scale_word(i)) FROM generate_series(0, 4095) i ON CONFLICT DO NOTHING`},
 		{sql: `WITH pool AS (
 				SELECT n, array_agg(random() - 0.5)::vector AS v
@@ -424,6 +426,9 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 		if _, err := base.Exec(ctx, s.sql, s.args...); err != nil {
 			t.Fatalf("seed: %v\n%s", err, s.sql)
 		}
+	}
+	if more, err := a.text.Drain(ctx, time.Now().Add(10*time.Minute)); err != nil || more {
+		t.Fatalf("index the seed: more %v, %v", more, err)
 	}
 	var books int
 	base.QueryRow(ctx, `SELECT count(*) FROM books`).Scan(&books)

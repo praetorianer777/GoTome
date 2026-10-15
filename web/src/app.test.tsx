@@ -3916,11 +3916,6 @@ describe("the search index", () => {
 		expect(
 			await panel.findByText("Books whose text search knows: 4 of 4."),
 		).toBeInTheDocument();
-		expect(
-			panel.getByText(
-				"In GOtome's own index, which takes the place of the database's: 3.",
-			),
-		).toBeInTheDocument();
 
 		await person.click(
 			panel.getByRole("button", { name: "Read all text again" }),

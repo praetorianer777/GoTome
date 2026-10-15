@@ -654,9 +654,6 @@ export const en = {
 	"settings.embeddingServer": "Embedding server",
 	"settings.embeddingServer.hint":
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",
-	"settings.searchEngine": "Full-text search engine",
-	"settings.searchEngine.hint":
-		"pg_search or tantivy. GOtome is moving its search index out of the database into its own (tantivy), which it fills in the background by reading every book; the jobs page shows how far it has come. Until then it finds only the books it has read.",
 	"settings.passwords": "Sign in with a password",
 	"settings.passwords.hint":
 		"on or off. Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account at the identity provider. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true to sign in with a password again.",
@@ -707,16 +704,15 @@ export const en = {
 	"embedding.chooseModel": "Choose the model",
 	"searchIndex.title": "Search index",
 	"searchIndex.intro":
-		"Read the text again once GOtome reads a format better; rebuild the index after the database was upgraded, which GOtome also does by itself when it starts. Search keeps working meanwhile, with what it has.",
+		"Read the text again once GOtome reads a format better; rebuild the index if it seems to miss books. GOtome rebuilds it by itself when an update changes how it is stored. Both read the books' files; search keeps working meanwhile, with what it has.",
 	"searchIndex.known": "Books whose text search knows: {indexed} of {files}.",
-	"searchIndex.inApp": "In GOtome's own index, which takes the place of the database's: {count}.",
-	"searchIndex.rebuilding": "The index is being built again; searches use the old one until it is done.",
+	"searchIndex.rebuilding": "The index is being built again from the books' files; until a book is read again, searches find what the index has of it.",
 	"searchIndex.rereadAll": "Read all text again",
 	"searchIndex.rereadLibrary": "Read this library's text again for search",
 	"searchIndex.rereadBook": "Read the text again for search",
 	"searchIndex.rereadQueued": "Books whose text is read again in the background: {count}. Search keeps the old text until then.",
 	"searchIndex.rebuild": "Rebuild the index",
-	"searchIndex.rebuildQueued": "The index is built again in the background, from the text already read.",
+	"searchIndex.rebuildQueued": "The index is built again in the background, from the books' files.",
 	"searchIndex.rebuildWaiting": "A rebuild is already waiting or running.",
 	"jobs.kind.write": "Write the details into {file}",
 	"jobs.kind.match": "Look up {book}",

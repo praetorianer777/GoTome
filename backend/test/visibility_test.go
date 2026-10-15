@@ -257,9 +257,13 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The file is no PDF, so its text is the test's: a passage that names
-	// the book, for the full-text search to find.
-	if _, err := a.pool.Exec(ctx, `INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang, body_en)
-		VALUES ($1, $2, $3, 0, 0, 'en', $4)`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
+	// the book, for the full-text index to find.
+	if _, err := a.pool.Exec(ctx, `WITH c AS (
+			INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang)
+			VALUES ($1, $2, $3, 0, 0, 'en') RETURNING id, book_id, library_id)
+		INSERT INTO fulltext_outbox (docs)
+		SELECT jsonb_build_array(jsonb_build_object('id', id, 'book', book_id, 'library', library_id, 'lang', 'en', 'text', $4::text))
+		FROM c`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
 		t.Fatal(err)
 	}
 	// The secret and a book of the open library look like one: a pair the

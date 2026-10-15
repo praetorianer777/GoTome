@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 )
 
 func TestParse(t *testing.T) {
@@ -25,14 +27,14 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestParts(t *testing.T) {
-	got := parts("the &lt;b&gt; " + matchStart + "whale" + matchEnd + " &amp; " + matchStart + "harpoons" + matchEnd)
+func TestSnippetParts(t *testing.T) {
+	got := snippetParts(fulltext.Snippet{Fragment: "the <b> whale & harpoons", Highlighted: [][2]int{{8, 13}, {16, 24}}})
 	want := []Part{{Text: "the <b> "}, {Text: "whale", Match: true}, {Text: " & "}, {Text: "harpoons", Match: true}}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("parts = %+v", got)
+		t.Errorf("snippetParts = %+v", got)
 	}
-	if got := parts(""); got != nil {
-		t.Errorf("parts of nothing = %+v", got)
+	if got := snippetParts(fulltext.Snippet{Fragment: "nothing matched"}); got != nil {
+		t.Errorf("a snippet without a match = %+v", got)
 	}
 }
 

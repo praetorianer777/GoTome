@@ -8,10 +8,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
-- Full-text search can run on GOtome's own index instead of the database's:
-  the setting "Full-text search engine" (`tantivy`), once the jobs page
-  says the new index has every book. `gotome search-compare` asks both
-  the same questions and shows how far they agree and how long each took.
 - The EPUB and PDF readers and the audiobook player can be used from the
   keyboard alone: pages turn with the arrows, Page Up and Page Down and the
   space bar; C opens the contents, F a search in the book, D the display
@@ -30,12 +26,18 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- The first start after this update reads the text of every book once more,
-  in the background ("Read the books' text into the search index" on the
-  jobs page), to build a new search index on the data volume, under
-  `search/`. Until a later update takes the text out of the database, both
-  are kept: the data volume grows by about a third of the database's size.
-  Backups leave the index out; it is built again from the books.
+- GOtome no longer keeps a copy of the books' text: full-text search runs on
+  an index of its own on the data volume (`search/`), and snippets are read
+  from the books' files. The database shrinks by most of its size (for
+  48,000 EPUBs from about 28 GB to about 3.5 GB, beside an index of about
+  7.6 GB); the space is freed during the first start after the update,
+  which takes a few minutes longer on a large library. That start then
+  reads every book once more in the background to build the index ("Read
+  the books' text into the search index" on the jobs page), which takes
+  about as long as reading the library did the first time, an hour or two
+  for 48,000 EPUBs; until a book is read, full-text search does not find
+  it. Backups leave the index out; a restore builds it again from the
+  books. The database no longer needs ParadeDB's `pg_search`.
 - Screen readers are told of new notifications, of each finished upload and
   of the page a PDF turns to; panels and dialogs take the focus when they
   open and give it back when they close. The focus ring, grey text on the

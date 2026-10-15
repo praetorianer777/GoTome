@@ -106,7 +106,9 @@ func chunkSections(format string, sections []Section) []textproc.Section {
 }
 
 // writeChunksTx replaces the book's chunks with those of the file's text,
-// adds their words to the vocabulary, and records the file as chunked.
+// hands their text to the full-text index and their words to the
+// vocabulary, and records the file as chunked. The text itself is kept
+// nowhere: what reads it later reads the file (#265).
 func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, format, langHint string, sections []Section) error {
 	q := sqlc.New(tx)
 	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
@@ -114,6 +116,7 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 	}
 	chunks := textproc.Split(chunkSections(format, sections), textproc.Options{CharsPerPage: charsPerPage, LangHint: langHint})
 	rows := make([]sqlc.InsertBookChunksParams, len(chunks))
+	texts := make([]string, len(chunks))
 	for i, c := range chunks {
 		r := sqlc.InsertBookChunksParams{
 			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
@@ -124,22 +127,14 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 			from, to := int32(c.PageFrom), int32(c.PageTo)
 			r.PageFrom, r.PageTo = &from, &to
 		}
-		text := c.Text
-		switch c.Lang {
-		case "en":
-			r.BodyEn = &text
-		case "de":
-			r.BodyDe = &text
-		default:
-			r.BodyXx = &text
-		}
 		rows[i] = r
+		texts[i] = c.Text
 	}
 	if len(rows) > 0 {
 		if _, err := q.InsertBookChunks(ctx, rows); err != nil {
 			return err
 		}
-		if err := q.AddSearchWords(ctx, bookID); err != nil {
+		if err := q.AddSearchWords(ctx, texts); err != nil {
 			return err
 		}
 	}
@@ -150,7 +145,7 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 		return err
 	}
 	if s.OnChunked != nil {
-		return s.OnChunked(ctx, tx, bookID, fileID)
+		return s.OnChunked(ctx, tx, bookID, fileID, texts)
 	}
 	return nil
 }

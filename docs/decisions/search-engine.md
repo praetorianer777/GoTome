@@ -1,6 +1,9 @@
 # Full-text search engine
 
-Decided in #14, 2026-10-04.
+Decided in #14, 2026-10-04. Superseded in #265, 2026-10-15: the index is
+Tantivy in the app, without a copy of the text
+([text-store.md](text-store.md)); the measurements below still describe
+the engine, which is pg_search's.
 
 ## Question
 

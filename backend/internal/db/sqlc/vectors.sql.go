@@ -393,38 +393,6 @@ func (q *Queries) ListBooksToEmbed(ctx context.Context, arg ListBooksToEmbedPara
 	return items, nil
 }
 
-const listChunkBodies = `-- name: ListChunkBodies :many
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks
-WHERE file_id = $1 AND position = ANY($2::int[])
-ORDER BY position
-`
-
-type ListChunkBodiesParams struct {
-	FileID    uuid.UUID
-	Positions []int32
-}
-
-func (q *Queries) ListChunkBodies(ctx context.Context, arg ListChunkBodiesParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, listChunkBodies, arg.FileID, arg.Positions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var body string
-		if err := rows.Scan(&body); err != nil {
-			return nil, err
-		}
-		items = append(items, body)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listChunkPositions = `-- name: ListChunkPositions :many
 SELECT position FROM book_chunks WHERE file_id = $1 ORDER BY position
 `

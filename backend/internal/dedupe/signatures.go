@@ -23,19 +23,15 @@ const (
 	crowd = 50
 )
 
-// SignTx makes the signature of the book's primary text file from its
-// chunks, in the transaction that wrote them, and drops the signatures of
-// the book's other files.
-func (s *Service) SignTx(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
+// SignTx makes the signature of the book's primary text file from the
+// texts of its chunks, in the transaction that wrote them, and drops the
+// signatures of the book's other files.
+func (s *Service) SignTx(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error {
 	q := sqlc.New(tx)
 	if err := q.DropBookSignatures(ctx, sqlc.DropBookSignaturesParams{BookID: bookID, FileID: fileID}); err != nil {
 		return err
 	}
 	if err := q.DropFileBuckets(ctx, fileID); err != nil {
-		return err
-	}
-	texts, err := q.ListFileChunkTexts(ctx, fileID)
-	if err != nil {
 		return err
 	}
 	sig, ok := Sign(texts)
@@ -57,8 +53,8 @@ func (s *Service) SignTx(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUI
 
 // ChunkedTx follows the writing of a book's chunks: the file is signed and
 // the book checked once the transaction has committed.
-func (s *Service) ChunkedTx(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
-	if err := s.SignTx(ctx, tx, bookID, fileID); err != nil {
+func (s *Service) ChunkedTx(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error {
+	if err := s.SignTx(ctx, tx, bookID, fileID, texts); err != nil {
 		return err
 	}
 	return s.EnqueueTx(ctx, tx, bookID)
@@ -120,9 +116,16 @@ func (s *Service) EnqueueUnsigned(ctx context.Context) error {
 	return nil
 }
 
-// SignFile signs the file, if it is still its book's text, and checks the
-// book.
+// SignFile signs the file, if it is still its book's text, from its text
+// read again (Texts), and checks the book.
 func (s *Service) SignFile(ctx context.Context, bookID, fileID uuid.UUID) error {
+	if s.Texts == nil {
+		return errors.New("signing a file needs its texts read")
+	}
+	texts, err := s.Texts(ctx, fileID)
+	if err != nil {
+		return err
+	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		primary, err := sqlc.New(tx).GetPrimaryTextFile(ctx, bookID)
 		if errors.Is(err, pgx.ErrNoRows) || primary == nil || *primary != fileID {
@@ -131,7 +134,7 @@ func (s *Service) SignFile(ctx context.Context, bookID, fileID uuid.UUID) error 
 		if err != nil {
 			return err
 		}
-		return s.ChunkedTx(ctx, tx, bookID, fileID)
+		return s.ChunkedTx(ctx, tx, bookID, fileID, texts)
 	})
 }
 

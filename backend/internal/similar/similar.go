@@ -136,6 +136,9 @@ type Service struct {
 	Probe Probe
 	// queries embeds the descriptions Describe is asked about.
 	queries queries
+	// Passages reads a file's chunks at positions from the file, which is
+	// where their text is kept (ingest.Service.Passages).
+	Passages func(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error)
 }
 
 // NewService returns the Service; Queue is set once the runner exists.
@@ -307,7 +310,10 @@ func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix st
 	if err != nil || len(positions) == 0 {
 		return nil, err
 	}
-	bodies, err := q.ListChunkBodies(ctx, sqlc.ListChunkBodiesParams{FileID: fileID, Positions: spread(positions, Samples)})
+	if s.Passages == nil {
+		return nil, errors.New("embedding a book's text needs its passages read")
+	}
+	bodies, err := s.Passages(ctx, fileID, spread(positions, Samples))
 	if err != nil || len(bodies) == 0 {
 		return nil, err
 	}

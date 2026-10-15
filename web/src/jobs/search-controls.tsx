@@ -62,7 +62,6 @@ export function SearchIndexPanel() {
 							files: status.data.files,
 						})}
 					</p>
-					<p>{t("searchIndex.inApp", { count: status.data.inApp })}</p>
 					{status.data.rebuilding && <p>{t("searchIndex.rebuilding")}</p>}
 				</div>
 			)}

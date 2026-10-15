@@ -87,6 +87,7 @@ func TestBooksAreEmbeddedOnAServerBesideTheVectorsOfTheModelBefore(t *testing.T)
 			a.opened.Add(1)
 			return &embed.Fake{}, nil
 		}, a.settings.EmbeddingServer), slog.New(slog.DiscardHandler))
+	a.vectors.Passages = a.scans.Passages
 	a.embedAll()
 	e5 := embed.E5Small.Model.Name
 	if got := a.vectorsOf(e5); got["content"] != 384 || got["metadata"] != 384 {

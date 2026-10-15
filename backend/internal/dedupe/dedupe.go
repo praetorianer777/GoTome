@@ -65,6 +65,9 @@ type Service struct {
 	Queue *jobs.Runner
 	// Events, when set, hears of new pairs.
 	Events *notify.Events
+	// Texts reads a file's chunk texts again, for signing it anew: no copy
+	// of them is kept (ingest.Service.FileTexts).
+	Texts func(ctx context.Context, fileID uuid.UUID) ([]string, error)
 }
 
 // NewService returns the Service on the pool; Queue is set once the runner

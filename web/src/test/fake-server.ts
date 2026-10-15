@@ -284,7 +284,7 @@ export class FakeServer {
 	/** The files in the trash, with the record each came from. */
 	trashed: { view: TrashedFile; file: BookDetail["files"][number] }[] = [];
 	/** How much of the text search knows; rebuilding and rereading change it. */
-	searchStatus = { files: 4, indexed: 4, inApp: 3, rebuilding: false, engine: "0.25.11" };
+	searchStatus = { files: 4, indexed: 4, rebuilding: false, engine: "0.25.11" };
 	/** The signed-in person's statistics, the same whatever the window. */
 	stats?: ReadingStats;
 	/** The audio of each book, as the player asks for it. */
