@@ -30,6 +30,9 @@ const (
 	QueueMetadata = "metadata"
 	QueueEmbed    = "embed"
 	QueueNotify   = "notify"
+	// QueueIndex is the full-text index's: one writer, which applies the
+	// outbox in order.
+	QueueIndex = "index"
 )
 
 // queues is how many jobs of each queue run at once. The numbers are for
@@ -42,11 +45,12 @@ var queues = map[string]river.QueueConfig{
 	QueueMetadata: {MaxWorkers: 2},
 	QueueEmbed:    {MaxWorkers: 1},
 	QueueNotify:   {MaxWorkers: 4},
+	QueueIndex:    {MaxWorkers: 1},
 }
 
 // Queues lists the names of the queues.
 func Queues() []string {
-	return []string{QueueDefault, QueueScan, QueueExtract, QueueMetadata, QueueEmbed, QueueNotify}
+	return []string{QueueDefault, QueueScan, QueueExtract, QueueMetadata, QueueEmbed, QueueNotify, QueueIndex}
 }
 
 // shutdownGrace is how long Stop lets running jobs finish before it cancels

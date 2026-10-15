@@ -39,7 +39,11 @@ type Section struct {
 	// Label names the section for a person: a chapter's title, a page's
 	// number. It may be empty.
 	Label string
-	Text  string
+	// Source is what the format calls the section, by which a passage is
+	// read from it again (readPassages): an EPUB's document, a PDF's page
+	// number. Empty for a format that is read whole.
+	Source string
+	Text   string
 }
 
 // Extracted is what reading one file yields.

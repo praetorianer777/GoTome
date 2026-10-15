@@ -219,3 +219,23 @@ func resolve(base, href string) (string, error) {
 	}
 	return joined, nil
 }
+
+// ReadDocuments reads the text of the archive's documents at the paths
+// named, as Parse reads a chapter's, without reading the rest: a passage of
+// a book is read again from the chapters it spans.
+func ReadDocuments(r io.ReaderAt, size int64, paths []string) ([]string, error) {
+	zr, err := openZip(r, size, DefaultLimits)
+	if err != nil {
+		return nil, err
+	}
+	a := newArchive(zr, DefaultLimits)
+	out := make([]string, len(paths))
+	for i, p := range paths {
+		doc, err := a.read(p)
+		if err != nil {
+			return nil, err
+		}
+		out[i], _ = markup.Text(doc)
+	}
+	return out, nil
+}

@@ -70,6 +70,9 @@ type BookChunk struct {
 	BodyEn     *string
 	BodyDe     *string
 	BodyXx     *string
+	Sources    []string
+	SourceFrom int32
+	SourceTo   int32
 }
 
 type BookContributor struct {
@@ -111,6 +114,7 @@ type BookFile struct {
 	KoreaderMd5     *string
 	EpubMeasures    []byte
 	EreaderFindings []string
+	IndexedAt       *time.Time
 }
 
 type BookIdentifier struct {
@@ -246,6 +250,12 @@ type FileSignature struct {
 	Shingles  int32
 	Signature []byte
 	SignedAt  time.Time
+}
+
+type FulltextOutbox struct {
+	ID      int64
+	Deletes []int64
+	Docs    []byte
 }
 
 type IndexVersion struct {

@@ -26,6 +26,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The first start after this update reads the text of every book once more,
+  in the background ("Read the books' text into the search index" on the
+  jobs page), to build a new search index on the data volume, under
+  `search/`. Until a later update takes the text out of the database, both
+  are kept: the data volume grows by about a third of the database's size.
+  Backups leave the index out; it is built again from the books.
 - Screen readers are told of new notifications, of each finished upload and
   of the page a PDF turns to; panels and dialogs take the focus when they
   open and give it back when they close. The focus ring, grey text on the

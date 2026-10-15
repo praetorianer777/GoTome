@@ -435,3 +435,18 @@ func FuzzDocuments(f *testing.F) {
 		}
 	})
 }
+
+func TestReadDocumentsReadsChaptersAsParseDoes(t *testing.T) {
+	data := epub3(t)
+	book := parse(t, data)
+	texts, err := ReadDocuments(bytes.NewReader(data), int64(len(data)), []string{book.Chapters[1].Href, book.Chapters[0].Href})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if texts[0] != book.Chapters[1].Text || texts[1] != book.Chapters[0].Text {
+		t.Errorf("read %q", texts)
+	}
+	if _, err := ReadDocuments(bytes.NewReader(data), int64(len(data)), []string{"OEBPS/text/gone.xhtml"}); err == nil {
+		t.Error("a document that is not there was read")
+	}
+}

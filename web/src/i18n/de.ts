@@ -706,6 +706,8 @@ export const de: Record<MessageKey, string> = {
 	"settings.oidcLinkByEmail.hint":
 		"on oder off. Mit on übernimmt eine erste Anmeldung das Konto mit der Adresse, die der Identitätsanbieter als bestätigt meldet. Nur für einen Anbieter, der Adressen bestätigt.",
 	"jobs.kind.rebuildIndex": "Suchindex neu aufbauen",
+	"jobs.kind.applyIndex": "Suchindex auf den neuesten Stand bringen",
+	"jobs.kind.indexFiles": "Text der Bücher in den Suchindex lesen",
 	"jobs.kind.duplicates": "Nach Duplikaten von {book} suchen",
 	"jobs.kind.sign": "Text von {file} mit anderen Büchern vergleichen",
 	"embedding.title": "Erfassen, worum es in Büchern geht",

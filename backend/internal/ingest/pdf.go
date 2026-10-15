@@ -79,7 +79,7 @@ func extractPDF(ctx context.Context, path string) (Extracted, error) {
 				letters++
 			}
 		}
-		out.Sections = append(out.Sections, Section{Label: strconv.Itoa(i + 1), Text: strings.TrimSpace(page)})
+		out.Sections = append(out.Sections, Section{Label: strconv.Itoa(i + 1), Source: strconv.Itoa(i + 1), Text: strings.TrimSpace(page)})
 	}
 	out.HasText = len(pages) > 0 && letters >= minLettersPerPage*len(pages)
 	if id, ok := findDOI(append([]string{fields["Subject"], fields["Keywords"]}, pages[:min(len(pages), doiPages)]...)...); ok {

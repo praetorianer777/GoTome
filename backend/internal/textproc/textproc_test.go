@@ -128,3 +128,35 @@ func pages(chunks []Chunk) [][2]int {
 	}
 	return out
 }
+
+func TestSliceCutsAChunkOutOfItsSectionsAgain(t *testing.T) {
+	para := strings.Repeat(english, 20)
+	long := strings.Repeat(german, 120) // longer than a chunk, cut at spaces
+	sections := []Section{
+		{Label: "One", Text: "Short opening.\r\n\r\n   \r\n\r\n" + para},
+		{Label: "Two", Text: "tiny"},
+		{Label: "Three", Text: para + "\n\n\n\n" + long + "\n\n" + para},
+		{Label: "Four", Text: ""},
+		{Label: "Five", Text: french},
+	}
+	chunks := Split(sections, Options{})
+	if len(chunks) < 4 {
+		t.Fatalf("only %d chunks", len(chunks))
+	}
+	blank := strings.NewReplacer("\n\n\n\n", "\n\n")
+	for _, c := range chunks {
+		var texts []string
+		for _, s := range sections[c.SectionFrom : c.SectionTo+1] {
+			texts = append(texts, s.Text)
+		}
+		if got := blank.Replace(Slice(texts, c.From, c.To)); got != c.Text {
+			t.Errorf("chunk %d (sections %d to %d, %d to %d) read again is\n%.200q…\nwant\n%.200q…", c.Position, c.SectionFrom, c.SectionTo, c.From, c.To, got, c.Text)
+		}
+	}
+	if got := Slice([]string{"short"}, 2, 900); got != "ort" {
+		t.Errorf("a slice past the text is %q", got)
+	}
+	if got := Slice(nil, 0, 1); got != "" {
+		t.Errorf("no sections give %q", got)
+	}
+}
