@@ -188,7 +188,7 @@ export function SwitchModelDialog({
 				<button
 					type="button"
 					onClick={onConfirm}
-					className="rounded-md bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800"
+					className="rounded-md bg-brand-strong px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300"
 				>
 					{t("embeddingModel.confirm.switch")}
 				</button>

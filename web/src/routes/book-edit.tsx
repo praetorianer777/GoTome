@@ -16,6 +16,7 @@ import {
 	usePutCover,
 } from "@/books/edit";
 import { FormError, SubmitButton, fieldErrors } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 
 type Role = "author" | "narrator" | "translator" | "editor" | "illustrator";
@@ -157,7 +158,7 @@ export function BookEditPage({ id }: { id: string }) {
 	if (!book.data) {
 		return (
 			<div className="flex flex-col gap-4">
-				{book.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{book.isPending && <Loading />}
 				<FormError error={book.error} />
 			</div>
 		);
@@ -243,14 +244,10 @@ function EditForm({ book }: { book: BookDetail }) {
 			>
 				{t("edit.back")}
 			</Link>
-			<div>
-				<h1 className="text-2xl font-semibold">
-					{t("edit.title", { title: book.title })}
-				</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("edit.intro")}
-				</p>
-			</div>
+			<PageHeader
+				title={t("edit.title", { title: book.title })}
+				intro={t("edit.intro")}
+			/>
 			<form
 				onSubmit={submit}
 				noValidate

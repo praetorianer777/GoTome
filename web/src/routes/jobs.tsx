@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -83,12 +84,7 @@ export function Jobs() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("jobs.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("jobs.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("jobs.title")} intro={t("jobs.intro")} />
 			<SearchIndexPanel />
 			<EmbeddingPanel />
 			<fieldset className="flex flex-wrap items-center gap-2 text-sm">
@@ -99,14 +95,14 @@ export function Jobs() {
 						type="button"
 						aria-pressed={group === g.value}
 						onClick={() => setGroup(g.value)}
-						className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+						className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink"
 					>
 						{t(g.label)}
 					</button>
 				))}
 			</fieldset>
 			<FormError error={jobs.error ?? retry.error ?? cancel.error} />
-			{jobs.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{jobs.isPending && <Loading />}
 			{jobs.data?.length === 0 && (
 				<p className="text-slate-600 dark:text-slate-400">{t("jobs.none")}</p>
 			)}

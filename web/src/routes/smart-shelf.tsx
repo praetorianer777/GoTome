@@ -17,6 +17,7 @@ import {
 	useUpdateSmartShelf,
 } from "@/books/smart-shelves";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { VisibilityPicker, button, control } from "@/routes/collections";
 
@@ -36,7 +37,7 @@ export function SmartShelfPage({ shelfId }: { shelfId: string }) {
 	if (!s) {
 		return (
 			<>
-				{shelf.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{shelf.isPending && <Loading />}
 				<FormError error={shelf.error} />
 			</>
 		);

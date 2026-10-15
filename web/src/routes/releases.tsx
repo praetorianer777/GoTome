@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { candidateCoverUrl } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { PageHeader } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatDate, formatReleaseDate } from "@/lib/format";
 import {
@@ -22,12 +23,7 @@ const button =
 export function Releases() {
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-2">
-				<h1 className="text-2xl font-semibold">{t("releases.title")}</h1>
-				<p className="max-w-prose text-slate-600 dark:text-slate-400">
-					{t("releases.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("releases.title")} intro={t("releases.intro")} />
 			<Following />
 			<ReleaseList when="upcoming" />
 			<ReleaseList when="recent" />

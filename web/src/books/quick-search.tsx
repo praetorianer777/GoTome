@@ -157,7 +157,7 @@ export function QuickSearch() {
 							onMouseDown={(e) => e.preventDefault()}
 							onClick={() => go(hit)}
 							onMouseEnter={() => setActive(i)}
-							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-sky-100 dark:aria-selected:bg-sky-900"
+							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-brand-strong/10 dark:aria-selected:bg-brand/15"
 						>
 							<span className="block truncate font-medium">{hit.title}</span>
 							{hit.authors.length > 0 && (

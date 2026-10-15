@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import type { CurrentUser } from "@/auth/session";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate, formatSize } from "@/lib/format";
 import {
@@ -35,7 +36,7 @@ export function AdminUsers({ user }: { user: CurrentUser }) {
 				<h2 id="existing-users" className="text-lg font-medium">
 					{t("users.existing")}
 				</h2>
-				{users.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{users.isPending && <Loading />}
 				<FormError error={users.error} />
 				<ul className="flex flex-col gap-3">
 					{users.data?.map((account) => (

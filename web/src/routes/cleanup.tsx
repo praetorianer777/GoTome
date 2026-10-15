@@ -10,14 +10,15 @@ import {
 	useDismissCleanup,
 } from "@/books/cleanup";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 
 const button =
-	"rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300";
+	"rounded-md bg-brand-strong px-3 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60 dark:bg-brand dark:text-ink dark:hover:bg-sky-300";
 const quietButton =
 	"rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
 const pill =
-	"rounded-full border border-slate-300 px-3 py-1 aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:aria-pressed:border-slate-100 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900";
+	"rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink";
 
 /** What looks wrong in how the books are described, with a fix for each. */
 export function Cleanup({
@@ -55,12 +56,7 @@ export function Cleanup({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("cleanup.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("cleanup.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("cleanup.title")} intro={t("cleanup.intro")} />
 			<fieldset className="flex flex-wrap gap-2 text-sm">
 				<legend className="sr-only">{t("cleanup.kinds")}</legend>
 				{CLEANUP_KINDS.map((k) => (
@@ -91,7 +87,7 @@ export function Cleanup({
 					</Link>
 				</p>
 			)}
-			{list.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{list.isPending && <Loading />}
 			<FormError error={list.error ?? apply.error} />
 			{list.data && suggestions.length === 0 && (
 				<p className="text-slate-600 dark:text-slate-400">

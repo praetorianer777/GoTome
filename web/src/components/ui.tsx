@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "@/i18n";
 
 /**
  * The parts every page is made of, as docs/design.md describes them. Pages
@@ -103,5 +104,19 @@ export function Skeleton({ className = "" }: { className?: string }) {
 			aria-hidden="true"
 			className={`animate-pulse rounded-md bg-slate-200 motion-reduce:animate-none dark:bg-slate-800 ${className}`}
 		/>
+	);
+}
+
+/** Rows standing for a list still loading, said as "Loading…" to a screen reader. */
+export function Loading({ rows = 3 }: { rows?: number }) {
+	return (
+		<div className="flex flex-col gap-3">
+			<span className="sr-only">
+				{t("loading")}
+			</span>
+			{Array.from({ length: rows }, (_, i) => (
+				<Skeleton key={i} className="h-12 w-full" />
+			))}
+		</div>
 	);
 }

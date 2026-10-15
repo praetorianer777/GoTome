@@ -347,7 +347,7 @@ function BulkEditForm({
 				<button
 					type="submit"
 					disabled={busy}
-					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 				>
 					{t("bulk.form.start")}
 				</button>

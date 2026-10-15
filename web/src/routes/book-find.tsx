@@ -13,6 +13,7 @@ import {
 	useApplyCandidate,
 } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
 import { typing } from "@/lib/keys";
@@ -27,7 +28,7 @@ export function FindDetails({ id }: { id: string }) {
 	if (!book.data) {
 		return (
 			<div className="flex flex-col gap-4">
-				{book.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{book.isPending && <Loading />}
 				<FormError error={book.error} />
 			</div>
 		);
@@ -205,14 +206,10 @@ function FindPage({ book }: { book: BookDetail }) {
 			>
 				{t("find.back")}
 			</Link>
-			<div>
-				<h1 className="text-2xl font-semibold">
-					{t("find.title", { title: book.title })}
-				</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("find.intro")}
-				</p>
-			</div>
+			<PageHeader
+				title={t("find.title", { title: book.title })}
+				intro={t("find.intro")}
+			/>
 			{found.isPending && (
 				<p className="text-slate-500">{t("find.searching")}</p>
 			)}
@@ -411,7 +408,7 @@ export function Compare({
 					type="button"
 					disabled={busy || take.size === 0}
 					onClick={submit}
-					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 				>
 					{t("find.apply")}
 				</button>

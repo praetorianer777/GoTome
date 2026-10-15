@@ -50,7 +50,7 @@ export function Devices({ username }: { username: string }) {
 				<a
 					href="/api/v1/koreader/plugin.zip"
 					download
-					className="text-brand-strong hover:underline dark:text-sky-400"
+					className="text-brand-strong hover:underline dark:text-brand"
 				>
 					{t("devices.pluginDownload")}
 				</a>
@@ -98,7 +98,7 @@ export function Devices({ username }: { username: string }) {
 											},
 										)
 									}
-									className="rounded-md bg-brand-strong px-3 py-1 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+									className="rounded-md bg-brand-strong px-3 py-1 text-sm font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 								>
 									{t("devices.accept")}
 								</button>
@@ -126,7 +126,7 @@ export function Devices({ username }: { username: string }) {
 								to="/devices/$deviceId"
 								params={{ deviceId: d.id }}
 								aria-label={t("devices.books", { name: d.name })}
-								className="font-medium text-brand-strong hover:underline dark:text-sky-400"
+								className="font-medium text-brand-strong hover:underline dark:text-brand"
 							>
 								{d.name}
 							</Link>

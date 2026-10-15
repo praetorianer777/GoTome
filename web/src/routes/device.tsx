@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { Cover } from "@/books/cover";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import {
@@ -32,7 +33,7 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 			<div>
 				<Link
 					to="/profile"
-					className="text-sm text-brand-strong hover:underline dark:text-sky-400"
+					className="text-sm text-brand-strong hover:underline dark:text-brand"
 				>
 					{t("deviceBooks.back")}
 				</Link>
@@ -46,7 +47,7 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 				)}
 			</div>
 			<FormError error={pages.error ?? takeOff.error} />
-			{pages.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{pages.isPending && <Loading />}
 			{pages.isSuccess && books.length === 0 && (
 				<p role="status" className="text-slate-600 dark:text-slate-400">
 					{t("deviceBooks.none")}

@@ -18,6 +18,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { librariesQuery } from "@/libraries/api";
 import { EBOOK_FORMATS, type ReaderSearch } from "@/routes/read";
@@ -35,7 +36,7 @@ const control =
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
 const pill =
-	"rounded-full border border-slate-300 px-3 py-1 aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:aria-pressed:border-slate-100 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900";
+	"rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink";
 
 /** The text of the books searched, with the libraries and filters of the library page. */
 export function SearchPage({
@@ -185,7 +186,7 @@ export function SearchPage({
 						</p>
 					)}
 					{shown.isPending && q !== "" && (
-						<p className="text-slate-500">{t("loading")}</p>
+						<Loading />
 					)}
 					{shown.isSuccess && (describing ? near : books).length === 0 && (
 						<p role="status" className="text-slate-600 dark:text-slate-400">
