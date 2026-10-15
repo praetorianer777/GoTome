@@ -986,6 +986,12 @@ describe("books", () => {
 		]) {
 			expect(screen.getByText(text)).toBeInTheDocument();
 		}
+		// An audiobook alone is listened to, not read.
+		expect(screen.getByRole("link", { name: "Listen" })).toHaveAttribute(
+			"href",
+			"/books/book-2/listen",
+		);
+		expect(screen.queryByRole("link", { name: "Read" })).not.toBeInTheDocument();
 		const files = within(screen.getByRole("region", { name: "Files" }));
 		const download = files.getByRole("link", { name: "Download Dune 1.mp3" });
 		expect(download).toHaveAttribute("href", "/api/v1/files/file-2/download");
