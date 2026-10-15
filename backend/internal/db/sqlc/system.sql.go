@@ -9,6 +9,55 @@ import (
 	"context"
 )
 
+const databaseSize = `-- name: DatabaseSize :one
+SELECT pg_database_size(current_database())::bigint AS bytes
+`
+
+func (q *Queries) DatabaseSize(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, databaseSize)
+	var bytes int64
+	err := row.Scan(&bytes)
+	return bytes, err
+}
+
+const postgresSettings = `-- name: PostgresSettings :many
+SELECT name::text AS name,
+       (setting::bigint * CASE
+            WHEN unit IS NULL THEN 1
+            WHEN unit ~ '^[0-9]' THEN pg_size_bytes(unit)
+            ELSE pg_size_bytes('1' || unit)
+        END)::bigint AS value
+FROM pg_catalog.pg_settings
+WHERE name = ANY($1::text[])
+`
+
+type PostgresSettingsRow struct {
+	Name  string
+	Value int64
+}
+
+// Settings by name, in bytes where they are sizes (whose unit is 8kB, kB
+// or MB), as they are otherwise.
+func (q *Queries) PostgresSettings(ctx context.Context, names []string) ([]PostgresSettingsRow, error) {
+	rows, err := q.db.Query(ctx, postgresSettings, names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PostgresSettingsRow{}
+	for rows.Next() {
+		var i PostgresSettingsRow
+		if err := rows.Scan(&i.Name, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const serverVersion = `-- name: ServerVersion :one
 SELECT current_setting('server_version')::text AS server_version
 `

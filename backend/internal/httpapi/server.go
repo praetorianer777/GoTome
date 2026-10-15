@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -98,6 +99,9 @@ type Server struct {
 	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.
 	Stats *stats.Service
+	// Resources checks the machine's memory and disk against what
+	// Postgres, the app and the embedding model are set to take.
+	Resources *resources.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
 	// Cleanup suggests fixes for how books are described.

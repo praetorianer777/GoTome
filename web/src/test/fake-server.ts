@@ -37,6 +37,7 @@ import { type DuplicatePair, overlapOf } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
 import type { Release, Tracker } from "@/releases/api";
+import type { Health } from "@/system/health";
 import { makeRouter } from "@/router";
 
 const PERMISSIONS = {
@@ -237,6 +238,39 @@ export class FakeServer {
 		months: [{ name: "2026-10", count: 1200 }],
 	};
 	/** How far the background work is, as the overview page shows it. */
+	health: Health = {
+		memory: {
+			machineBytes: 8_000_000_000,
+			limited: false,
+			cpus: 4,
+			appBytes: 536_870_912,
+			embeddingModel: "intfloat/multilingual-e5-small",
+			embeddingBytes: 734_003_200,
+			needBytes: 1_600_000_000,
+			budgetBytes: 6_400_000_000,
+		},
+		postgres: {
+			sharedBuffersBytes: 134_217_728,
+			workMemBytes: 4_194_304,
+			maintenanceWorkMemBytes: 67_108_864,
+			effectiveCacheSizeBytes: 4_294_967_296,
+			maxConnections: 100,
+			connections: 16,
+			maxParallelWorkers: 4,
+			maxParallelWorkersPerGather: 2,
+			maxParallelMaintenanceWorkers: 2,
+			needBytes: 268_435_456,
+		},
+		disk: {
+			path: "/data",
+			freeBytes: 80_000_000_000,
+			totalBytes: 110_000_000_000,
+			databaseBytes: 2_000_000_000,
+			indexBytes: 300_000_000,
+			needFreeBytes: 11_000_000_000,
+		},
+		warnings: [],
+	};
 	work = {
 		files: { done: 1300, total: 1500, lastHour: 400, minutesLeft: 30 },
 		filesFailed: 4,
@@ -517,6 +551,15 @@ export class FakeServer {
 					);
 				}
 				return Response.json(this.embeddingModels);
+			}
+			if (path === "/system/health") {
+				if (!this.session?.permissions.includes("settings:manage")) {
+					return Response.json(
+						{ error: { code: "forbidden", message: "You do not have permission to do that." } },
+						{ status: 403 },
+					);
+				}
+				return Response.json(this.health);
 			}
 			if (path === "/statistics") {
 				return Response.json(this.figures);

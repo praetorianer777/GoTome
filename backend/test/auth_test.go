@@ -39,6 +39,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -189,6 +190,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Similar.Passages = a.scans.Passages
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
+	a.server.Resources = resources.NewService(a.pool)
+	a.server.Resources.DataDir = a.dataDir
+	a.server.Resources.Embedding, a.server.Resources.Server = a.settings.Embedding, a.settings.EmbeddingServer
 	a.server.Deliveries = deliveries.NewService(a.pool)
 	a.server.Pairing = pairing.NewService(a.pool)
 	a.server.Kobo = kobo.NewService(a.pool)

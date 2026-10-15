@@ -5015,6 +5015,53 @@ describe("the overview", () => {
 		expect(library.queryByText(/files missing/)).not.toBeInTheDocument();
 	});
 
+	it("tells an administrator that the machine has room", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/overview");
+		const panel = within(await screen.findByRole("region", { name: "This machine" }));
+		expect(
+			await panel.findByText("There is room for Postgres, the app and the embedding model, and space on the disk."),
+		).toBeInTheDocument();
+		expect(panel.getByText("Free on the data directory's disk").nextSibling).toHaveTextContent("80 GB of 110 GB");
+		expect(panel.getByText("Embedding model on the CPU").nextSibling).toHaveTextContent(
+			"734 MB (intfloat/multilingual-e5-small)",
+		);
+	});
+
+	it("warns an administrator of settings too large for the machine, with the commands that fit", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		server.health = {
+			...server.health,
+			memory: { ...server.health.memory, needBytes: 11_000_000_000, budgetBytes: 4_300_000_000 },
+			disk: { ...server.health.disk, freeBytes: 2_000_000_000, needFreeBytes: 11_000_000_000 },
+			warnings: [
+				{ kind: "memory", commands: ["ALTER SYSTEM SET shared_buffers = '1024MB';"] },
+				{ kind: "disk", commands: [] },
+			],
+		};
+		renderApp("/overview");
+		const panel = within(await screen.findByRole("region", { name: "This machine" }));
+		expect(await panel.findByText(/may take 11 GB, more than the 4.3 GB/)).toBeInTheDocument();
+		expect(
+			panel.getByText(/docker compose exec db psql -U gotome -d gotome -c "ALTER SYSTEM SET shared_buffers = '1024MB';"/),
+		).toHaveTextContent(/docker compose restart db$/);
+		expect(panel.getByText(/Only 2 GB is free on the data directory's disk; keep at least 11 GB\./)).toHaveTextContent(
+			/docker image prune/,
+		);
+		expect(panel.queryByText(/There is room/)).not.toBeInTheDocument();
+	});
+
+	it("does not show an editor the machine", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		renderApp("/overview");
+		expect(await screen.findByRole("region", { name: "Background work" })).toBeInTheDocument();
+		expect(screen.queryByRole("region", { name: "This machine" })).not.toBeInTheDocument();
+		expect(server.requests.some((r) => r.path === "/system/health")).toBe(false);
+	});
+
 	it("counts the books with files missing and leads to them", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
@@ -5050,6 +5097,7 @@ describe("the overview", () => {
 		renderApp("/overview");
 		expect(await screen.findByRole("region", { name: "What the library holds" })).toBeInTheDocument();
 		expect(screen.queryByRole("region", { name: "Background work" })).not.toBeInTheDocument();
+		expect(screen.queryByRole("region", { name: "This machine" })).not.toBeInTheDocument();
 	});
 });
 
