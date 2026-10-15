@@ -9,7 +9,7 @@ ON CONFLICT (name) DO UPDATE SET version = EXCLUDED.version, updated_at = now();
 -- Marks the primary text files of the visible books, of a library or of
 -- one book when named, as still to be chunked. Their chunks stay, and are
 -- found, until the new ones replace them.
-UPDATE book_files f SET chunked_at = NULL
+UPDATE book_files f SET chunked_at = NULL, indexed_at = NULL
 FROM books b
 WHERE f.id = b.primary_text_file_id
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
@@ -20,12 +20,12 @@ WHERE f.id = b.primary_text_file_id
 RETURNING f.id;
 
 -- name: ClearAllChunked :exec
-UPDATE book_files SET chunked_at = NULL WHERE chunked_at IS NOT NULL;
+UPDATE book_files SET chunked_at = NULL, indexed_at = NULL WHERE chunked_at IS NOT NULL;
 
 -- name: CountChunked :one
 -- How many of the visible books' primary text files, of a library when
 -- named, there are, how many of them are chunked, and how many the
--- full-text index in the app has.
+-- full-text index has been given.
 SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS in_app
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id

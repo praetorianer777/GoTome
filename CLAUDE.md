@@ -25,6 +25,8 @@ ever in the compose file or an environment variable. init only adds what is miss
   under `docs/decisions/`. No search or embedding feature work starts before them.
   #14 chose pg_search in the pinned ParadeDB image
   (`docs/decisions/search-engine.md`); its harness is `spikes/search`.
+  #244 and #265 moved the index into the app, on Tantivy, without a copy
+  of the text (`docs/decisions/text-store.md`).
   #15 chose ONNX Runtime directly, with a tokenizer of GOtome's own, int8
   weights, 16 passages per book prefixed `query: `
   (`docs/decisions/embedding-runtime.md`); its harness is `spikes/embed`.
@@ -49,16 +51,17 @@ ever in the compose file or an environment variable. init only adds what is miss
   and builds the library the Go tests load (`GOTOME_TEST_FULLTEXT`).
 - `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
-  `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit
+  `pg_search` and `pgvector`; GOtome uses `pgvector` only since #265), pinned by digest; change the pin only in a commit
   about that. `db` runs with `init: true`: Postgres as process 1 inherits
   every orphan in its container, such as a health check past its timeout,
   and restarts when one exits with a code above 1 (#168). `make
   stack-check` fails when Postgres is process 1.
 - `deploy/backup.sh` and `deploy/restore.sh` are the operator's backup and
   restore (`docs/backup-and-upgrade.md`). A backup leaves out the rows GOtome
-  makes again (`derived` in backup.sh: chunks, search words, signatures,
-  vectors, provider answers); a restore clears `chunked_at`, so every text is
-  read again. A new table of that kind goes into `derived`. `make
+  makes again (`derived` in backup.sh: chunks, search words, the full-text
+  outbox, signatures, vectors, provider answers) and the full-text index
+  (`/data/search`); a restore clears `chunked_at`, so every text is read
+  again. A new table of that kind goes into `derived`. `make
   upgrade-test` (its own CI job, `tests/test-upgrade.sh`) sets an installation
   up on the previous release's image, or before the first release on one
   built from the merge base (`tests/upgrade-from.sh`), backs it up, upgrades
@@ -470,7 +473,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 
 ## Chunks
 
-- A book's text is kept as `book_chunks`, read from its primary text file
+- A book's text is cut into `book_chunks`, read from its primary text file
   only: the best of its readable files, an EPUB, then a Kindle file, then a
   PDF (`choosePrimaryTx`, by `catalog.FormatRank`). `internal/textproc`
   normalises the extractor's sections and cuts them at paragraph breaks into
@@ -478,15 +481,25 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   pages (a PDF's own, or estimated at `charsPerPage`), its offset and its
   language (`textproc.Detect`, by function words, the book's language when a
   chunk cannot tell).
-- The text goes into `body_en`, `body_de` or `body_xx` by language, the
-  columns the search index stems each its own way. `library_id` follows the
-  book's through the foreign key on `(book_id, library_id)`.
+- No copy of the text is kept (#265, `docs/decisions/text-store.md`): a
+  chunk row records where its text is in the file (`sources`: an EPUB's
+  documents or a PDF's page numbers, empty for a format read whole;
+  `source_from`, `source_to`, from `textproc.Chunk`'s sections), and
+  `ingest.ReadPassages` reads it again from there (`textproc.Slice`), or
+  the file whole where it has none. What needs the text reads the file:
+  snippets, embeddings (`similar.Service.Passages`), and signing for
+  overlap again (`dedupe.Service.Texts`, `ingest.Service.FileTexts`).
+  `library_id` follows the book's through the foreign key on
+  `(book_id, library_id)`.
 - Extraction writes the chunks in the transaction that records the file, and
-  replaces what was there: the book's chunks and the file's. When another
-  file becomes the primary one, it is queued as `ingest.chunk_file`
-  (`Service.Chunk`), which reads the file again for its text only. The app
-  queues every primary text file whose `chunked_at` is NULL at start
-  (`EnqueueUnchunked`); clearing it is how chunks are rebuilt.
+  replaces what was there: the book's chunks and the file's, keeping the IDs
+  of chunks the text cuts into as before (`sameChunks`), so the index finds
+  them throughout; the texts go to the full-text index, the vocabulary and
+  `OnChunked` (signing) from memory.
+  When another file becomes the primary one, it is queued as
+  `ingest.chunk_file` (`Service.Chunk`), which reads the file again for its
+  text only. The app queues every primary text file whose `chunked_at` is
+  NULL at start (`EnqueueUnchunked`); clearing it is how chunks are rebuilt.
 - `search_words` is every word of every chunk, lower case and as written,
   for repairing typos (#55). Words are only added, never counted or removed,
   so books chunked in parallel do not wait on each other. It holds the words
@@ -494,61 +507,49 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Placeholders have no files and so no chunks. A merge of books chooses the
   surviving book's primary text file again and rechunks it if it changed.
 
-## Full-text index in the app
+## Full-text index
 
-- The text is moving out of Postgres into a Tantivy index in the app
-  (#265, `docs/decisions/text-store.md`): `internal/fulltext` over the
-  engine of `engine/`, under `GOTOME_DATA_DIR/search/tantivy`, derived and
-  not backed up. pg_search still answers searches meanwhile.
+- The index is Tantivy in the app (#265, `docs/decisions/text-store.md`):
+  `internal/fulltext` over the engine of `engine/`, under
+  `GOTOME_DATA_DIR/search/tantivy`, derived and not backed up. It holds no
+  text: per chunk its ID, book, library and words, in the field of its
+  language (English and German stemmed by Snowball, every other language
+  as written), with positions for phrases. One process holds its writer,
+  with a buffer of `fulltext.Heap`; others may open it to search.
 - Chunks reach it through the outbox `fulltext_outbox`, in the transaction
   that changes them: `writeChunksTx` adds a book's chunks with their text
   (`fulltext.AddTx`), and a trigger on `book_chunks` records every delete,
   however the chunks go. The `fulltext.apply_outbox` job (queue `index`,
   one worker; queued with each add and every minute) applies it in id
   order, commits the index, then deletes the rows; each add deletes its
-  chunk first, so a row applied twice adds it once. Search must check what
-  the index finds against `book_chunks`, which may be ahead of it.
-- A chunk records where its text is in its file (`sources`: an EPUB's
-  documents or a PDF's pages; `source_from`, `source_to`), from
-  `textproc.Chunk`'s sections; `ingest.ReadPassages` reads it again from
-  there, or the file whole where there are none (`textproc.Slice`).
-- `book_files.indexed_at` says the index has a file's chunks. A new index,
-  or one of another format (`index_versions` `fulltext`), clears it for
-  every file, and `ingest.index_files` (a snoozing job, queued at start)
-  reads those files again (`Reindex`): chunks that cut the same keep their
-  IDs and `chunked_at`, so nothing is embedded or signed again. A book
-  that changes library has its file read again (trigger).
-- `search.TantivySearch` is the `Searcher` on it, chosen by the setting
-  `search.engine` (`search.Switch`; pg_search by default until the text
-  leaves Postgres). It asks the index for the window among the visible
-  libraries (`where`, shared with `PGSearch`), keeps the hits still in
-  `book_chunks` of books the filter's conditions match, repairs typos from
-  `search_words` as before, and makes snippets with the engine's
-  `SnippetGenerator` from the passages `ReadPassages` reads from the files.
-  The search tests run on both engines (`eachEngine`);
-  `gotome search-compare` asks both the benchmark's queries on an
-  installation.
+  chunk first, so a row applied twice adds it once. What the index finds is
+  checked against `book_chunks`, which may be ahead of it.
+- `book_files.indexed_at` says the index has been given a file's chunks.
+  A new index, or one of another format (`index_versions` `fulltext`, the
+  "format N" of the engine's version, raised with a change to its schema
+  or tokenizers), clears it for every file, and `ingest.index_files` (a
+  snoozing job, queued at start) reads those files again (`Reindex`):
+  chunks that cut the same keep their IDs and `chunked_at`, so nothing is
+  embedded or signed again. A book that changes library has its file read
+  again (trigger), as the index has no text to write it anew from.
 
 ## Full-text search
 
-- `internal/search` is the `Searcher`; `PGSearch` runs it on the BM25 index
-  `book_chunks_bm25` (migration 00022), as `docs/decisions/search-engine.md`
-  decided. `GET /search` takes words, all of which a chunk must hold in any
-  form (`&&&`), and phrases in double quotes (`###`), in every language
-  column at once.
+- `internal/search` is the `Searcher`; `TantivySearch` runs it on the index
+  above. `GET /search` takes words, all of which a chunk must hold in any
+  form, and phrases in double quotes, in one of the language fields.
 - Visibility is inside the index: the visible libraries
   (`visible_library_ids`), and the books of a filter when
-  `catalog.Service.Select` names few enough, are term sets in the query, so
-  the best chunks are taken among them alone. The outer query checks
-  `catalog.BookConditions` again on the books found.
+  `catalog.Service.Select` names few enough, are term sets in the query
+  (`where`), so the best chunks are taken among them alone. The outer query
+  joins the hits to `book_chunks` and checks `catalog.BookConditions` again
+  on the books found.
 - The best `window` chunks are grouped by book in Go, the best book first,
   and pages are counted by `offset`: ranked results have no keys to page by.
-  Snippets are read for the page's passages only, wrapped in control
-  characters and returned as parts, so no client puts HTML from a book on a
-  page.
-- Its transaction sets `plan_cache_mode = force_custom_plan`: pg_search
-  needs the query text as a constant, and a prepared statement's generic
-  plan hands it a parameter instead.
+  Snippets are made for the page's passages only, from their text read
+  again from the files, by the engine's `SnippetGenerator`, and returned as
+  parts, so no client puts HTML from a book on a page. A passage whose file
+  cannot be read is shown without one.
 - Stemming is Snowball's: "running" finds "runs", but irregular forms such
   as "ran" are other words to it.
 - Typos are repaired only when the query as written finds fewer than
@@ -568,17 +569,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the word itself, in foliate-js's search or in the pages' text, and takes
   the place whose words the snippet shares most (`reader/passage.ts`). A
   place opened so is not saved until the person moves on from it.
-- Rebuilding, as `docs/search-index.md` tells an operator: `index_versions`
-  holds the pg_search version the index was built with and the
-  `ingest.ChunkVersion` the chunks were cut with. At start,
-  `search.Index.CheckEngine` updates the extension to the image's and
-  queues `search.rebuild_index` (`REINDEX INDEX CONCURRENTLY`, which records
-  the version when done) on a change; `ingest.Service.CheckChunkVersion`
-  marks every file to be read again. Raise `ChunkVersion` with a change to
-  how text is extracted or cut. `POST /search/reread` and
-  `POST /search/rebuild` do the same by hand (`index:rebuild`);
-  `GET /search/status` counts the visible books' text files and how many
-  are chunked. Old chunks and the old index answer until replaced.
+- Rebuilding, as `docs/search-index.md` tells an operator:
+  `ingest.Service.CheckChunkVersion` marks every file to be read again when
+  `ingest.ChunkVersion` changed (raise it with a change to how text is
+  extracted or cut), and `fulltext.OpenService` makes the index anew when
+  its format changed. `POST /search/reread` reads text again by hand,
+  `POST /search/rebuild` (`search.rebuild_index`) hands every file to the
+  index again (`index:rebuild`); `GET /search/status` counts the visible
+  books' text files and how many the index has. Old chunks and index
+  entries answer until replaced.
+- The integration tests' app searches the index of its own, applying the
+  outbox before each search (`drainingSearch`); `GOTOME_TEST_FULLTEXT`
+  names the engine, which `make check-engine` builds.
 
 ## Duplicates
 

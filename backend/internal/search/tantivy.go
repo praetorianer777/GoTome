@@ -30,9 +30,11 @@ func NewTantivySearch(pool *pgxpool.Pool, books *catalog.Service, index *fulltex
 	return &TantivySearch{pool: pool, books: books, index: index}
 }
 
-// Search is PGSearch's, on the index: the best window of chunks among the
-// visible libraries, typos repaired from search_words when that finds few
-// books, grouped by book.
+// Search takes the best window of chunks among the visible libraries,
+// and when that finds fewer than sparseBooks books, takes the query's
+// unknown words for typos and searches the words of the text like them as
+// well; the books only that finds come after the others, marked as
+// corrected.
 func (s *TantivySearch) Search(ctx context.Context, scope library.Scope, q Query) (Result, error) {
 	p, err := parse(q.Text)
 	if err != nil {
@@ -184,7 +186,6 @@ func (s *TantivySearch) passages(ctx context.Context, tx pgx.Tx, ids []int64, p 
 // snippetParts cuts a fragment at its matches.
 func snippetParts(s fulltext.Snippet) []Part {
 	if len(s.Highlighted) == 0 {
-		// pg_search gives no snippet of a passage it finds nothing in.
 		return nil
 	}
 	var out []Part
@@ -204,20 +205,4 @@ func snippetParts(s fulltext.Snippet) []Part {
 		out = append(out, Part{Text: s.Fragment[at:]})
 	}
 	return out
-}
-
-// Switch is the Searcher an administrator chooses while the index moves
-// out of Postgres: Tantivy when Engine says "tantivy" and there is one,
-// pg_search otherwise.
-type Switch struct {
-	PG      Searcher
-	Tantivy Searcher
-	Engine  func(ctx context.Context) string
-}
-
-func (w *Switch) Search(ctx context.Context, scope library.Scope, q Query) (Result, error) {
-	if w.Tantivy != nil && w.Engine != nil && w.Engine(ctx) == "tantivy" {
-		return w.Tantivy.Search(ctx, scope, q)
-	}
-	return w.PG.Search(ctx, scope, q)
 }

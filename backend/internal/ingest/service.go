@@ -115,8 +115,9 @@ type Service struct {
 	// Events, when set, hears of scans and of files that cannot be read.
 	Events *notify.Events
 	// OnChunked, when set, runs in the transaction that wrote a book's
-	// chunks from the file: its signature for overlap is made there.
-	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error
+	// chunks from the file, with their texts, which are not kept: its
+	// signature for overlap is made there.
+	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error
 	// OnFilesChanged, when set, runs in the transaction that trashed,
 	// restored or purged one of a book's files: its duplicates are looked
 	// for again.

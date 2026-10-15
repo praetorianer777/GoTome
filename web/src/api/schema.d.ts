@@ -2085,7 +2085,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Build the search index again from the text already read; searches use the old one until then */
+        /** Build the search index again from the books' files; searches find what it has of a book until the book is read again */
         post: operations["rebuildSearchIndex"];
         delete?: never;
         options?: never;
@@ -3018,7 +3018,6 @@ export interface components {
         IndexStatus: {
             engine: string;
             files: number;
-            inApp: number;
             indexed: number;
             rebuilding: boolean;
         };

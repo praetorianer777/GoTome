@@ -63,10 +63,6 @@ const (
 	// models GOtome does not run itself, such as bge-m3 on a GPU: the
 	// models of embed.Specs with a Server. Unset, they are not available.
 	EmbeddingServer = "embedding.server"
-	// SearchEngine is what full-text search runs on while the index moves
-	// out of Postgres (#265): "pg_search", or "tantivy", the index in the
-	// app, which answers from the books it has been given so far.
-	SearchEngine = "search.engine"
 	// Passwords is "on" or "off": whether people may sign in with a
 	// password. Off leaves it to administrators while none of them can sign
 	// in through the identity provider.
@@ -130,7 +126,6 @@ var Definitions = []Definition{
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
-	{Key: SearchEngine, Kind: KindText, Default: "pg_search", Check: searchEngine},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
@@ -168,14 +163,6 @@ func onOff(v string) (string, error) {
 		return v, nil
 	}
 	return "", errors.New("Say on or off.")
-}
-
-func searchEngine(v string) (string, error) {
-	switch v = strings.ToLower(strings.TrimSpace(v)); v {
-	case "pg_search", "tantivy":
-		return v, nil
-	}
-	return "", errors.New("Say pg_search or tantivy.")
 }
 
 func threshold(v string) (string, error) {

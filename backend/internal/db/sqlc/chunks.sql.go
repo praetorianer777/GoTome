@@ -15,18 +15,18 @@ import (
 const addSearchWords = `-- name: AddSearchWords :exec
 INSERT INTO search_words (word)
 SELECT DISTINCT w
-FROM book_chunks c,
-     unnest(tsvector_to_array(to_tsvector('simple', coalesce(c.body_en, c.body_de, c.body_xx)))) AS w
-WHERE c.book_id = $1 AND length(w) BETWEEN 2 AND 40
+FROM unnest($1::text[]) AS t,
+     unnest(tsvector_to_array(to_tsvector('simple', t))) AS w
+WHERE length(w) BETWEEN 2 AND 40
 ORDER BY w
 ON CONFLICT (word) DO NOTHING
 `
 
-// Every word of the book's chunks that is not known yet. In order, so that
-// two books adding the same new words wait for each other instead of
-// deadlocking; words too long to be typed are left out.
-func (q *Queries) AddSearchWords(ctx context.Context, bookID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, addSearchWords, bookID)
+// Every word of the texts, a book's chunks, that is not known yet. In
+// order, so that two books adding the same new words wait for each other
+// instead of deadlocking; words too long to be typed are left out.
+func (q *Queries) AddSearchWords(ctx context.Context, texts []string) error {
+	_, err := q.db.Exec(ctx, addSearchWords, texts)
 	return err
 }
 
@@ -52,6 +52,22 @@ DELETE FROM book_chunks WHERE file_id = $1
 
 func (q *Queries) DeleteFileChunks(ctx context.Context, fileID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteFileChunks, fileID)
+	return err
+}
+
+const deleteOtherChunks = `-- name: DeleteOtherChunks :exec
+DELETE FROM book_chunks
+WHERE (book_id = $1 AND file_id <> $2) OR (file_id = $2 AND book_id <> $1)
+`
+
+type DeleteOtherChunksParams struct {
+	BookID uuid.UUID
+	FileID uuid.UUID
+}
+
+// The book's chunks of its other files, and the file's of another book.
+func (q *Queries) DeleteOtherChunks(ctx context.Context, arg DeleteOtherChunksParams) error {
+	_, err := q.db.Exec(ctx, deleteOtherChunks, arg.BookID, arg.FileID)
 	return err
 }
 
@@ -114,9 +130,6 @@ type InsertBookChunksParams struct {
 	PageTo     *int32
 	CharOffset int32
 	Lang       string
-	BodyEn     *string
-	BodyDe     *string
-	BodyXx     *string
 	Sources    []string
 	SourceFrom int32
 	SourceTo   int32
@@ -145,6 +158,61 @@ func (q *Queries) ListBookTextFiles(ctx context.Context, bookID uuid.UUID) ([]Li
 	for rows.Next() {
 		var i ListBookTextFilesRow
 		if err := rows.Scan(&i.ID, &i.Format, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChunkPlaces = `-- name: ListChunkPlaces :many
+SELECT c.id, c.position, c.sources, c.source_from, c.source_to, f.format, l.root_path, f.rel_path
+FROM book_chunks c
+JOIN book_files f ON f.id = c.file_id
+JOIN libraries l ON l.id = f.library_id
+WHERE c.file_id = $1 AND c.position = ANY($2::int[])
+ORDER BY c.position
+`
+
+type ListChunkPlacesParams struct {
+	FileID    uuid.UUID
+	Positions []int32
+}
+
+type ListChunkPlacesRow struct {
+	ID         int64
+	Position   int32
+	Sources    []string
+	SourceFrom int32
+	SourceTo   int32
+	Format     string
+	RootPath   string
+	RelPath    string
+}
+
+// Where the file's chunks at the positions are, to read them from it.
+func (q *Queries) ListChunkPlaces(ctx context.Context, arg ListChunkPlacesParams) ([]ListChunkPlacesRow, error) {
+	rows, err := q.db.Query(ctx, listChunkPlaces, arg.FileID, arg.Positions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListChunkPlacesRow{}
+	for rows.Next() {
+		var i ListChunkPlacesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Position,
+			&i.Sources,
+			&i.SourceFrom,
+			&i.SourceTo,
+			&i.Format,
+			&i.RootPath,
+			&i.RelPath,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

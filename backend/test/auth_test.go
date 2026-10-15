@@ -107,7 +107,8 @@ type app struct {
 	logs     lockedBuffer
 	// works is what the providers list for following authors and series.
 	works *fakeWorks
-	// text is the full-text index in the app, when the test searches it.
+	// text is the app's full-text index, which every search brings up to
+	// date with the outbox first, as the job would shortly after.
 	text *fulltext.Service
 	now  time.Time
 	mu   sync.Mutex
@@ -177,19 +178,22 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
-	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
+	a.text = openTextIndex(t, a.pool)
+	a.server.Search = drainingSearch{a.text, search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())}
 	a.server.Duplicates = dedupe.NewService(a.pool, a.server.Books, quiet)
 	a.server.Duplicates.Queue = queue
+	a.server.Duplicates.Texts = a.scans.FileTexts
 	// Descriptions are embedded as the books' passages were in the tests:
 	// by the fake model, under the name the settings give.
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
+	a.server.Similar.Passages = a.scans.Passages
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Deliveries = deliveries.NewService(a.pool)
 	a.server.Pairing = pairing.NewService(a.pool)
 	a.server.Kobo = kobo.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
-	a.server.Index = search.NewIndex(a.pool, quiet)
+	a.server.Index = search.NewIndex(a.pool, quiet, textEngine)
 	a.server.Index.Queue = queue
 	a.works = &fakeWorks{}
 	a.server.Releases = releases.NewService(a.pool, a.works, quiet)

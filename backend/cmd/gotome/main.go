@@ -97,7 +97,6 @@ Commands:
   fulltext-check Load the full-text engine and print its version
   migrate        Bring the database schema up to date and exit
   similar-check  Measure the similar books of a sample of the library (-h for options)
-  search-compare Ask pg_search and the index in the app the same queries and compare
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
 `
@@ -129,8 +128,6 @@ func run(args []string) error {
 		return migrate()
 	case "similar-check":
 		return similarCheck(args[1:])
-	case "search-compare":
-		return searchCompare(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -236,8 +233,10 @@ func serve() error {
 	}
 	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
 	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
-	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error {
-		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID); err != nil {
+	vectors.Passages = scans.Passages
+	duplicates.Texts = scans.FileTexts
+	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error {
+		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID, texts); err != nil {
 			return err
 		}
 		return vectors.EnqueueTx(ctx, tx)
@@ -269,12 +268,12 @@ func serve() error {
 	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
 	river.AddWorker(workers, &ingest.ChunkWorker{Service: scans})
 	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
-	searchIndex := search.NewIndex(pool, log)
-	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
 		return err
 	}
+	searchIndex := search.NewIndex(pool, log, engineVersion)
+	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	textIndex, freshIndex, err := fulltext.OpenService(ctx, pool, fulltext.Dir(cfg.DataDir), engineVersion, log)
 	if err != nil {
 		return err
@@ -327,11 +326,8 @@ func serve() error {
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
-	// A new pg_search, or a new way of cutting text into chunks, is rebuilt
-	// for in the background; search keeps answering from what is there.
-	if err := searchIndex.CheckEngine(ctx); err != nil {
-		log.Warn("could not check the search index", "error", err)
-	}
+	// A new way of cutting text into chunks is rebuilt for in the
+	// background; search keeps answering from what is there.
 	if err := scans.CheckChunkVersion(ctx); err != nil {
 		log.Warn("could not check the chunks", "error", err)
 	}
@@ -365,29 +361,22 @@ func serve() error {
 	hub := notify.NewHub(pool, log)
 	go hub.Run(ctx)
 	server := &httpapi.Server{
-		Log:       log,
-		DB:        pool,
-		Auth:      accounts,
-		SSO:       sso.NewService(pool, accounts, settingStore),
-		Logins:    httpapi.NewLoginLimits(time.Now),
-		Libraries: libraries,
-		Settings:  settingStore,
-		Scans:     scans,
-		Books:     books,
-		Covers:    coverStore,
-		Metadata:  meta,
-		Matches:   matches,
-		Bulk:      changes,
-		Reading:   readingService,
-		Shelves:   shelves.NewService(pool, books),
-		Search: &search.Switch{
-			PG:      search.NewPGSearch(pool, books),
-			Tantivy: search.NewTantivySearch(pool, books, textIndex.Index()),
-			Engine: func(ctx context.Context) string {
-				engine, _ := settingStore.Text(ctx, settings.SearchEngine)
-				return engine
-			},
-		},
+		Log:        log,
+		DB:         pool,
+		Auth:       accounts,
+		SSO:        sso.NewService(pool, accounts, settingStore),
+		Logins:     httpapi.NewLoginLimits(time.Now),
+		Libraries:  libraries,
+		Settings:   settingStore,
+		Scans:      scans,
+		Books:      books,
+		Covers:     coverStore,
+		Metadata:   meta,
+		Matches:    matches,
+		Bulk:       changes,
+		Reading:    readingService,
+		Shelves:    shelves.NewService(pool, books),
+		Search:     search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),

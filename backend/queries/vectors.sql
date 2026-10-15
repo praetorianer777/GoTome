@@ -33,12 +33,6 @@ SELECT coalesce(book_metadata_text(sqlc.arg(book_id)::uuid), '')::text;
 -- name: ListChunkPositions :many
 SELECT position FROM book_chunks WHERE file_id = $1 ORDER BY position;
 
--- name: ListChunkBodies :many
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks
-WHERE file_id = sqlc.arg(file_id) AND position = ANY(sqlc.arg(positions)::int[])
-ORDER BY position;
-
 -- name: PutBookVector :exec
 -- Nothing is stored for a book deleted since it was read.
 INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)

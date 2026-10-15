@@ -128,8 +128,9 @@ scale-test: | $(GO_CACHE) go-toolchain ## Time the main views at 50,000 books an
 		-e GOTOME_TEST_DATABASE_URL="postgres://gotome:$$(docker compose exec -T db cat /secrets/db-password)@db:5432/gotome?sslmode=disable") \
 		go test -tags integration -count=1 -timeout 30m -v -run TestTheMainViewsAtFiftyThousandBooks ./test/
 
-# The pinned database image is what promises pg_search and pgvector; this fails
-# the gate when a new pin no longer carries them.
+# The pinned database image is what promises pgvector; this fails the gate
+# when a new pin no longer carries it. Full-text search no longer runs in the
+# database (#265).
 .PHONY: stack-check
 stack-check: ## Check the running stack: two services, web app and API answering, extensions and programs available
 	@test "$$(docker compose ps --status running --services | grep -vx keycloak | sort | tr '\n' ' ')" = "app db " \
@@ -142,7 +143,7 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		|| { echo "the app does not serve the web app at /"; exit 1; }
 	@curl -fsS http://localhost:$(GOTOME_PORT)/api/v1/version | grep -q '"version"' \
 		|| { echo "the app does not serve the API under /api/v1"; exit 1; }
-	@for ext in pg_search vector; do \
+	@for ext in vector; do \
 		docker compose exec -T db psql -U gotome -d gotome -Atc \
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
@@ -157,7 +158,7 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
 	@docker compose exec -T app gotome fulltext-check >/dev/null \
 		|| { echo "the app image cannot load the full-text engine"; exit 1; }
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, db behind an init, poppler, ffmpeg, ONNX Runtime and the full-text engine installed"
+	@echo "stack ok: app and db healthy, web app and API served, vector available, db behind an init, poppler, ffmpeg, ONNX Runtime and the full-text engine installed"
 
 # The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
 # there already, so this reaches Hugging Face once per cache; the gate leaves

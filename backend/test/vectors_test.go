@@ -66,6 +66,7 @@ func newVectorApp(t *testing.T) *vectorApp {
 			a.opened.Add(1)
 			return &embed.Fake{}, nil
 		}, slog.New(slog.DiscardHandler))
+	a.vectors.Passages = a.scans.Passages
 	return a
 }
 
@@ -315,6 +316,7 @@ func TestTheRealModelEmbedsABook(t *testing.T) {
 	a.vectors = similar.NewService(a.pool, a.settings.Embedding, similar.OnnxOpener(embed.OnnxOptions{
 		Runtime: lib, ModelDir: dir, Threads: 2, Fetch: embed.FetchOptions{Offline: true},
 	}), slog.New(slog.DiscardHandler))
+	a.vectors.Passages = a.scans.Passages
 	a.embedAll()
 	if got := kinds(a.storedVectors(a.text)); !slices.Equal(got, []string{"content", "metadata"}) {
 		t.Fatalf("the book with text has %v", got)

@@ -1,6 +1,7 @@
 // Package search finds books by the words of their text: the chunks
-// internal/textproc cuts and extraction stores, through the BM25 index the
-// search decision chose (docs/decisions/search-engine.md).
+// internal/textproc cuts and extraction records, through the full-text
+// index in the app (internal/fulltext, docs/decisions/text-store.md), with
+// the passages read again from the files.
 package search
 
 import (

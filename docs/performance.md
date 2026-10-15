@@ -42,7 +42,7 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | count of a filter | 2 ms | 2 ms |  |
 | quick search | 70 ms | 69 ms |  |
 | author names | 21 ms | 20 ms |  |
-| full-text search | 185 ms | 185 ms |  |
+| full-text search | 12 ms | 14 ms |  |
 | book | 2 ms | 2 ms |  |
 | similar books | 236 ms | 225 ms | compares with every book |
 | duplicates | 9 ms | 10 ms |  |
@@ -68,9 +68,11 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | overview: work | 405 ms | 424 ms | counts every book and file |
 
 The seed has one chunk of text per book, where a real book has about 75: the
-full-text search's plans are those of a full library, its timings at full
-size are those of [the search decision](decisions/search-engine.md) (under
-170 ms at p95 for every kind of query at 50,000 books).
+full-text search's plans are those of a full library; it runs on the index
+in the app (#265), whose timings at full size are those of
+[text-store.md](decisions/text-store.md) (under 11 ms for the best 1,000
+chunks of 3.19 million, snippets aside). Its files are not there, so its hits
+come without snippets, which a real search reads from the files.
 
 ## What made the difference
 

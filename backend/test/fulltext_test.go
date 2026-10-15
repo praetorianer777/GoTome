@@ -10,10 +10,12 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -21,32 +23,45 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/search"
 )
 
-// textIndex opens a full-text index of the test's own over its database,
-// with the engine GOTOME_TEST_FULLTEXT names, and skips without one.
-func (a *app) textIndex() *fulltext.Service {
-	a.t.Helper()
+// textEngine is the version of the engine GOTOME_TEST_FULLTEXT names, which
+// make check-engine builds and make test-integration passes on.
+var (
+	textEngine     string
+	textEngineOnce sync.Once
+)
+
+// openTextIndex opens a full-text index of the test's own over its
+// database.
+func openTextIndex(t *testing.T, pool *pgxpool.Pool) *fulltext.Service {
+	t.Helper()
 	lib := os.Getenv("GOTOME_TEST_FULLTEXT")
 	if lib == "" {
-		a.t.Skip("GOTOME_TEST_FULLTEXT does not name the full-text engine; make check-engine builds it")
+		t.Fatal("GOTOME_TEST_FULLTEXT does not name the full-text engine; make check-engine builds it")
 	}
 	version, err := fulltext.Load(lib)
 	if err != nil {
-		a.t.Fatal(err)
+		t.Fatal(err)
 	}
-	s, _, err := fulltext.OpenService(context.Background(), a.pool, a.t.TempDir(), version, slog.New(slog.DiscardHandler))
+	textEngineOnce.Do(func() { textEngine = version })
+	s, _, err := fulltext.OpenService(context.Background(), pool, t.TempDir(), version, slog.New(slog.DiscardHandler))
 	if err != nil {
-		a.t.Fatal(err)
+		t.Fatal(err)
 	}
-	a.t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { s.Close() })
 	return s
 }
 
-// useTantivy has the app search the index in the app, which every search
-// of searchText brings up to date first.
-func (a *app) useTantivy() {
-	a.t.Helper()
-	a.text = a.textIndex()
-	a.server.Search = search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())
+// drainingSearch applies the outbox before each search.
+type drainingSearch struct {
+	text *fulltext.Service
+	search.Searcher
+}
+
+func (d drainingSearch) Search(ctx context.Context, scope library.Scope, q search.Query) (search.Result, error) {
+	if _, err := d.text.Drain(ctx, time.Now().Add(time.Minute)); err != nil {
+		return search.Result{}, err
+	}
+	return d.Searcher.Search(ctx, scope, q)
 }
 
 func (a *app) drain(s *fulltext.Service) {
@@ -110,7 +125,11 @@ func TestChunksReachTheFullTextIndexThroughTheOutbox(t *testing.T) {
 		t.Error("the file is not recorded as handed to the index")
 	}
 
-	s := a.textIndex()
+	var outbox []byte
+	if err := a.pool.QueryRow(ctx, "SELECT docs FROM fulltext_outbox WHERE docs <> '[]' ORDER BY id DESC LIMIT 1").Scan(&outbox); err != nil {
+		t.Fatal(err)
+	}
+	s := a.text
 	a.drain(s)
 	if got := indexFinds(t, s, lib, "harpoon whales"); len(got) != 1 || got[0] != ids[len(ids)-1] {
 		t.Errorf("the whale is in chunks %v, want the last of %v", got, ids)
@@ -124,10 +143,7 @@ func TestChunksReachTheFullTextIndexThroughTheOutbox(t *testing.T) {
 
 	// A crash between the index's commit and the outbox's delete applies
 	// the rows again, which adds nothing twice.
-	if _, err := a.pool.Exec(ctx, `INSERT INTO fulltext_outbox (docs)
-		SELECT jsonb_agg(jsonb_build_object('id', id, 'book', book_id, 'library', library_id, 'lang', lang,
-		                                    'text', coalesce(body_en, body_de, body_xx)))
-		FROM book_chunks WHERE file_id = $1`, file.ID); err != nil {
+	if _, err := a.pool.Exec(ctx, "INSERT INTO fulltext_outbox (docs) VALUES ($1)", outbox); err != nil {
 		t.Fatal(err)
 	}
 	a.drain(s)
@@ -136,9 +152,13 @@ func TestChunksReachTheFullTextIndexThroughTheOutbox(t *testing.T) {
 		t.Errorf("after applying twice the index holds %+v, %v; want %d chunks", info, err, len(ids))
 	}
 
-	// Read again, the old chunks go and the new ones come.
+	// Read again, the text cuts the same: the chunks keep their IDs, so
+	// the index finds them throughout.
 	a.extract(file.ID)
 	again := a.chunkIDs(file.ID)
+	if !slices.Equal(again, ids) {
+		t.Errorf("read again, the chunks are %v, were %v", again, ids)
+	}
 	a.drain(s)
 	if got := indexFinds(t, s, lib, "harpoon whales"); len(got) != 1 || got[0] != again[len(again)-1] {
 		t.Errorf("after reading again the whale is in %v, want the last of %v", got, again)
@@ -188,8 +208,7 @@ func TestReindexReadsTheFileAgainAndKeepsTheChunks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// A new index asks for every file's chunks.
-	s := a.textIndex()
+	s := a.text
 	if more, err := a.scans.IndexFiles(ctx, time.Now().Add(time.Minute)); err != nil || more {
 		t.Fatalf("index files: %v, %v", more, err)
 	}
@@ -240,7 +259,7 @@ func TestPassagesAreReadAgainFromTheirFiles(t *testing.T) {
 
 	rows, err := a.pool.Query(ctx, `
 		SELECT c.id, c.file_id, f.format, l.root_path || '/' || f.rel_path, c.position, c.sources,
-		       c.source_from, c.source_to, coalesce(c.body_en, c.body_de, c.body_xx)
+		       c.source_from, c.source_to
 		FROM book_chunks c JOIN book_files f ON f.id = c.file_id JOIN libraries l ON l.id = f.library_id
 		ORDER BY c.id`)
 	if err != nil {
@@ -249,14 +268,22 @@ func TestPassagesAreReadAgainFromTheirFiles(t *testing.T) {
 	var refs []ingest.PassageRef
 	want := map[int64]string{}
 	formats := map[string]int{}
+	texts := map[uuid.UUID][]string{}
 	for rows.Next() {
 		var r ingest.PassageRef
 		var from, to int32
 		var position int32
-		var text string
-		if err := rows.Scan(&r.ChunkID, &r.FileID, &r.Format, &r.Path, &position, &r.Sources, &from, &to, &text); err != nil {
+		if err := rows.Scan(&r.ChunkID, &r.FileID, &r.Format, &r.Path, &position, &r.Sources, &from, &to); err != nil {
 			t.Fatal(err)
 		}
+		if texts[r.FileID] == nil {
+			whole, err := a.scans.FileTexts(ctx, r.FileID)
+			if err != nil || whole == nil {
+				t.Fatalf("the texts of %s: %v", r.Format, err)
+			}
+			texts[r.FileID] = whole
+		}
+		text := texts[r.FileID][position]
 		r.Position, r.From, r.To = int(position), int(from), int(to)
 		if len(r.Sources) == 0 {
 			t.Errorf("chunk %d of a %s does not know where it is", r.ChunkID, r.Format)
@@ -287,39 +314,5 @@ func TestPassagesAreReadAgainFromTheirFiles(t *testing.T) {
 	}
 	if text, ok := got[refs[len(refs)-1].ChunkID]; ok {
 		t.Errorf("a gone file gave %.80q", text)
-	}
-}
-
-func TestBothEnginesFindTheSameBooks(t *testing.T) {
-	t.Parallel()
-	a := newApp(t)
-	admin, _ := a.signedIn("admin", "admin")
-	a.useTantivy()
-	a.shelfOfTexts(admin, map[string]string{
-		"Whaling":  "They followed the white whale for three days, and the whales were harpooned at dawn.",
-		"Harbour":  "The colour of the sea changed in the morning over the harbour.",
-		"American": "The color of the sea changed in the morning.",
-		"Märchen":  "Es war einmal ein alter Mann, und die Kinder spielten am Fluss bei den Häusern.",
-		"Maison":   "La maison au bord du jardin, la nuit, once upon a time.",
-	})
-	a.drain(a.text)
-	pg := search.NewPGSearch(a.pool, a.server.Books)
-	tv := search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())
-	queries := append([]string{"colours", "whael", `"wite whale"`}, search.CompareQueries...)
-	answered := 0
-	for _, c := range search.Compare(context.Background(), pg, tv, library.Scope{SeesAll: true}, queries, 20) {
-		if len(c.A) > 0 {
-			answered++
-		}
-		if c.ErrorA != nil || c.ErrorB != nil {
-			t.Errorf("%s: %v, %v", c.Query, c.ErrorA, c.ErrorB)
-			continue
-		}
-		if !slices.Equal(c.A, c.B) {
-			t.Errorf("%s: pg_search finds %v, the index %v", c.Query, c.A, c.B)
-		}
-	}
-	if answered < 8 {
-		t.Errorf("only %d of %d queries found anything", answered, len(queries))
 	}
 }

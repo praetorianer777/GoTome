@@ -12,7 +12,7 @@ import (
 )
 
 const clearAllChunked = `-- name: ClearAllChunked :exec
-UPDATE book_files SET chunked_at = NULL WHERE chunked_at IS NOT NULL
+UPDATE book_files SET chunked_at = NULL, indexed_at = NULL WHERE chunked_at IS NOT NULL
 `
 
 func (q *Queries) ClearAllChunked(ctx context.Context) error {
@@ -21,7 +21,7 @@ func (q *Queries) ClearAllChunked(ctx context.Context) error {
 }
 
 const clearChunked = `-- name: ClearChunked :many
-UPDATE book_files f SET chunked_at = NULL
+UPDATE book_files f SET chunked_at = NULL, indexed_at = NULL
 FROM books b
 WHERE f.id = b.primary_text_file_id
   AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
@@ -91,7 +91,7 @@ type CountChunkedRow struct {
 
 // How many of the visible books' primary text files, of a library when
 // named, there are, how many of them are chunked, and how many the
-// full-text index in the app has.
+// full-text index has been given.
 func (q *Queries) CountChunked(ctx context.Context, arg CountChunkedParams) (CountChunkedRow, error) {
 	row := q.db.QueryRow(ctx, countChunked, arg.Viewer, arg.SeesAll, arg.LibraryID)
 	var i CountChunkedRow

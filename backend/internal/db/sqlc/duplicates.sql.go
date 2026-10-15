@@ -326,32 +326,6 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 	return items, nil
 }
 
-const listFileChunkTexts = `-- name: ListFileChunkTexts :many
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks WHERE file_id = $1 ORDER BY position
-`
-
-// The file's text as its chunks hold it, in order.
-func (q *Queries) ListFileChunkTexts(ctx context.Context, fileID uuid.UUID) ([]string, error) {
-	rows, err := q.db.Query(ctx, listFileChunkTexts, fileID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var body string
-		if err := rows.Scan(&body); err != nil {
-			return nil, err
-		}
-		items = append(items, body)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLibraryBookIDs = `-- name: ListLibraryBookIDs :many
 SELECT b.id FROM books b
 WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
