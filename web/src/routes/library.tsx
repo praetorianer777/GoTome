@@ -20,6 +20,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { FormError } from "@/components/form";
+import { button, control, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import { libraryIsBusy, librariesQuery } from "@/libraries/api";
@@ -46,9 +47,6 @@ const VIEWS: { value: LibraryView; label: MessageKey }[] = [
 ];
 
 const BOOKS_POLL_MS = 3000;
-
-const control =
-	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
 
 export function Library({
 	user,
@@ -132,37 +130,35 @@ export function Library({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-semibold">{t("library.title")}</h1>
-			{libraries.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			<PageHeader title={t("library.title")} />
+			{libraries.isPending && <GridSkeleton />}
 			<FormError error={libraries.error} />
 
 			{libraries.data?.length === 0 && (
-				<div className="rounded-lg border border-dashed border-slate-300 px-6 py-16 text-center dark:border-slate-700">
-					<h2 className="text-lg font-medium">{t("library.none.title")}</h2>
-					<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
-						{t(
-							can(user, "storage:manage")
-								? "library.none.admin"
-								: "library.none.other",
-						)}
-					</p>
-					{can(user, "storage:manage") && (
-						<Link
-							to="/admin/libraries"
-							className="mt-4 inline-block rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800"
-						>
-							{t("library.none.add")}
-						</Link>
+				<EmptyState
+					title={t("library.none.title")}
+					action={
+						can(user, "storage:manage") && (
+							<Link to="/admin/libraries" className={button("primary", "md")}>
+								{t("library.none.add")}
+							</Link>
+						)
+					}
+				>
+					{t(
+						can(user, "storage:manage")
+							? "library.none.admin"
+							: "library.none.other",
 					)}
-				</div>
+				</EmptyState>
 			)}
 
 			{list.length > 0 && (
 				<>
-					<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-slate-200 pb-4 text-sm dark:border-slate-800">
 						{list.length > 1 && (
 							<label className="flex items-center gap-2">
-								<span>{t("library.choose")}</span>
+								<span className="text-slate-600 dark:text-slate-400">{t("library.choose")}</span>
 								<select
 									value={selected?.id ?? ""}
 									onChange={(e) =>
@@ -180,7 +176,7 @@ export function Library({
 							</label>
 						)}
 						<label className="flex items-center gap-2">
-							<span>{t("library.sort")}</span>
+							<span className="text-slate-600 dark:text-slate-400">{t("library.sort")}</span>
 							<select
 								value={sort}
 								onChange={(e) => onSearch({ sort: e.target.value as BookSort })}
@@ -193,7 +189,7 @@ export function Library({
 								))}
 							</select>
 						</label>
-						<fieldset className="flex items-center gap-2">
+						<fieldset className="flex items-center">
 							<legend className="sr-only">{t("library.view")}</legend>
 							{VIEWS.map((v) => (
 								<button
@@ -201,7 +197,7 @@ export function Library({
 									type="button"
 									aria-pressed={view === v.value}
 									onClick={() => onSearch({ view: v.value })}
-									className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+									className={`${button("toggle")} first:rounded-r-none last:-ml-px last:rounded-l-none`}
 								>
 									{t(v.label)}
 								</button>
@@ -215,7 +211,7 @@ export function Library({
 									setSelecting(!selecting);
 									clearSelection();
 								}}
-								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+								className={`${button("toggle")} sm:ml-auto`}
 							>
 								{t(selecting ? "bulk.selectDone" : "bulk.select")}
 							</button>
@@ -225,7 +221,7 @@ export function Library({
 							aria-expanded={filtersOpen}
 							aria-controls="filters"
 							onClick={() => setFiltersOpen(!filtersOpen)}
-							className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 lg:hidden dark:border-slate-600 dark:hover:bg-slate-800"
+							className={`${button()} lg:hidden`}
 						>
 							{filtered > 0
 								? t("filter.toggleActive", { count: filtered })
@@ -237,7 +233,7 @@ export function Library({
 						<aside
 							id="filters"
 							aria-label={t("filter.title")}
-							className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:block lg:w-60`}
+							className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-56 lg:overflow-y-auto`}
 						>
 							<FilterPanel
 								facets={facets.data ?? []}
@@ -280,40 +276,31 @@ export function Library({
 									/>
 								)}
 								<FormError error={books.error} />
-								{books.isSuccess && shown.length === 0 && (
-									<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
-										{filtered > 0 ? (
-											<>
-												<h2 className="font-medium">
-													{t("library.filtered.title")}
-												</h2>
-												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
-													{t("library.filtered.body")}
-												</p>
+								{books.isPending && <GridSkeleton />}
+								{books.isSuccess &&
+									shown.length === 0 &&
+									(filtered > 0 ? (
+										<EmptyState
+											title={t("library.filtered.title")}
+											action={
 												<button
 													type="button"
 													onClick={() => setPicks({})}
-													className="mt-4 rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+													className={button()}
 												>
 													{t("filter.clear")}
 												</button>
-											</>
-										) : busy ? (
-											<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
-												{t("library.adding")}
-											</p>
-										) : (
-											<>
-												<h2 className="font-medium">
-													{t("library.empty.title")}
-												</h2>
-												<p className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">
-													{t("library.empty.body")}
-												</p>
-											</>
-										)}
-									</div>
-								)}
+											}
+										>
+											{t("library.filtered.body")}
+										</EmptyState>
+									) : busy ? (
+										<EmptyState>{t("library.adding")}</EmptyState>
+									) : (
+										<EmptyState title={t("library.empty.title")}>
+											{t("library.empty.body")}
+										</EmptyState>
+									))}
 								{shown.length > 0 &&
 									(view === "grid" ? (
 										<Grid books={shown} selection={selection} />
@@ -344,7 +331,7 @@ function Stars({ rating }: { rating: number }) {
 		<span
 			role="img"
 			aria-label={t("reading.stars", { count: rating })}
-			className="text-amber-500"
+			className="tracking-tight text-candle-strong dark:text-candle"
 		>
 			{"★".repeat(rating)}
 		</span>
@@ -358,7 +345,17 @@ function Standing({ book }: { book: BookSummary }) {
 	}
 	return (
 		<span className="flex gap-2 text-sm text-slate-600 dark:text-slate-400">
-			{book.status !== "unread" && <span>{t(STATUS_LABELS[book.status])}</span>}
+			{book.status !== "unread" && (
+				<span
+					className={
+						book.status === "reading"
+							? "font-medium text-candle-strong dark:text-candle"
+							: undefined
+					}
+				>
+					{t(STATUS_LABELS[book.status])}
+				</span>
+			)}
 			{book.rating ? <Stars rating={book.rating} /> : null}
 		</span>
 	);
@@ -412,7 +409,23 @@ function Grid({ books, selection }: { books: BookSummary[]; selection?: Selectio
 	);
 }
 
-const GRID = "grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
+const GRID =
+	"grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-5";
+
+/** Covers standing for the books while the first page loads. */
+function GridSkeleton() {
+	return (
+		<div className={GRID}>
+			{Array.from({ length: 10 }, (_, i) => (
+				<div key={i} className="flex flex-col gap-2">
+					<Skeleton className="aspect-[2/3] w-full" />
+					<Skeleton className="h-4 w-4/5" />
+					<Skeleton className="h-3 w-1/2" />
+				</div>
+			))}
+		</div>
+	);
+}
 
 /** A card's height with its cover and three lines, before it is measured. */
 const CARD_ROW_ESTIMATE = 360;
@@ -462,22 +475,22 @@ function GridCard({ book, selection }: { book: BookSummary; selection?: Selectio
 	return (
 		<>
 			{selection && (
-				<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 dark:bg-slate-900/90">
+				<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 shadow-sm dark:bg-slate-900/90">
 					<Tick book={book} selection={selection} />
 				</span>
 			)}
 			<Link
 				to="/books/$bookId"
 				params={{ bookId: book.id }}
-				className="group flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
+				className="group flex flex-col gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4"
 			>
 				<Cover
 					book={book}
 					size="small"
-					className="transition group-hover:opacity-90"
+					className={`transition duration-200 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 ${book.status === "reading" ? "shadow-candle" : ""}`}
 				/>
-				<span className="flex flex-col">
-					<span className="line-clamp-2 font-medium leading-snug">
+				<span className="flex flex-col gap-0.5">
+					<span className="line-clamp-2 font-medium leading-snug group-hover:text-brand-strong dark:group-hover:text-brand">
 						{book.title}
 					</span>
 					{book.authors.length > 0 && (
@@ -501,9 +514,9 @@ function Table({ books, selection }: { books: BookSummary[]; selection?: Selecti
 		"px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400";
 	const columns = selection ? 7 : 6;
 	return (
-		<div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+		<div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
 			<table className="w-full text-sm" aria-rowcount={books.length + 1}>
-				<thead className="bg-slate-50 dark:bg-slate-900">
+				<thead className="border-b border-slate-200 bg-slate-100/60 text-xs tracking-wide uppercase dark:border-slate-800 dark:bg-slate-900">
 					<tr aria-rowindex={1}>
 						{selection && (
 							<th scope="col" className={head}>
@@ -606,7 +619,12 @@ function BookRow({
 	measure?: (element: HTMLTableRowElement | null) => void;
 }) {
 	return (
-		<tr ref={measure} data-index={index} aria-rowindex={index + 2}>
+		<tr
+			ref={measure}
+			data-index={index}
+			aria-rowindex={index + 2}
+			className="hover:bg-slate-50 dark:hover:bg-slate-900/60"
+		>
 			{selection && (
 				<td className="w-8 px-3 py-2">
 					<Tick book={book} selection={selection} />
@@ -616,7 +634,7 @@ function BookRow({
 				<Link
 					to="/books/$bookId"
 					params={{ bookId: book.id }}
-					className="font-medium hover:underline"
+					className="font-medium hover:text-brand-strong hover:underline dark:hover:text-brand"
 				>
 					{book.title}
 				</Link>
@@ -627,7 +645,7 @@ function BookRow({
 				)}
 			</td>
 			<td className="px-3 py-2">{book.authors.join(", ")}</td>
-			<td className="hidden px-3 py-2 uppercase sm:table-cell">
+			<td className="hidden px-3 py-2 text-xs tracking-wide text-slate-600 uppercase sm:table-cell dark:text-slate-400">
 				{book.formats.join(", ")}
 			</td>
 			<td className="hidden px-3 py-2 md:table-cell">
@@ -655,7 +673,7 @@ function MoreBooks({
 	loading: boolean;
 	onMore: () => void;
 }) {
-	const button = useRef<HTMLButtonElement>(null);
+	const end = useRef<HTMLButtonElement>(null);
 	const more = useRef(onMore);
 	more.current = onMore;
 	// Whether the end is near, not only when it comes near: a page that
@@ -663,7 +681,7 @@ function MoreBooks({
 	// the next one too. The observer says only when that changes.
 	const [near, setNear] = useState(false);
 	useEffect(() => {
-		const target = button.current;
+		const target = end.current;
 		if (!target || typeof IntersectionObserver === "undefined") {
 			return;
 		}
@@ -681,11 +699,11 @@ function MoreBooks({
 	}, [near, loading]);
 	return (
 		<button
-			ref={button}
+			ref={end}
 			type="button"
 			disabled={loading}
 			onClick={onMore}
-			className="self-center rounded-md border border-slate-300 px-4 py-2 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+			className={`${button("secondary", "md")} self-center`}
 		>
 			{loading ? t("loading") : t("library.more")}
 		</button>
