@@ -141,7 +141,7 @@ export function Listen({ bookId }: { bookId: string }) {
 			{!mine && (
 				<button
 					type="button"
-					className="self-start rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800"
+					className="self-start rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300"
 					onClick={() => player.open(bookId)}
 				>
 					{state.bookId ? t("player.switch") : t("player.load")}
@@ -227,7 +227,7 @@ export function Listen({ bookId }: { bookId: string }) {
 									</button>
 									<button
 										type="button"
-										className="rounded-md bg-brand-strong px-4 py-1 font-medium text-white hover:bg-sky-800 disabled:opacity-50"
+										className="rounded-md bg-brand-strong px-4 py-1 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-50"
 										disabled={stopped}
 										onClick={() => player.toggle()}
 									>

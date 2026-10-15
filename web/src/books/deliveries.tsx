@@ -78,7 +78,7 @@ export function SendToDevice({ bookId }: { bookId: string }) {
 					{t("deliveries.noDevice")}{" "}
 					<Link
 						to="/profile"
-						className="text-brand-strong hover:underline dark:text-sky-400"
+						className="text-brand-strong hover:underline dark:text-brand"
 					>
 						{t("deliveries.addDevice")}
 					</Link>

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BULK_OUTCOME_LABELS as OUTCOMES, BULK_OUTCOMES, type BulkOutcome, bulkQuery } from "@/books/bulk";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 
 
@@ -32,7 +33,7 @@ export function BulkProgress({ id }: { id: string }) {
 			<h1 className="text-2xl font-semibold">
 				{status ? t(`bulk.title.${status.action}`) : t("bulk.title")}
 			</h1>
-			{bulk.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{bulk.isPending && <Loading />}
 			<FormError error={bulk.error} />
 			{status && (
 				<>
@@ -130,4 +131,4 @@ export function BulkProgress({ id }: { id: string }) {
 }
 
 const pill =
-	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900";
+	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink";

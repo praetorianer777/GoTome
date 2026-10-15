@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import {
 	type Library,
@@ -31,7 +32,7 @@ export function AdminLibraries() {
 					{t("libraries.existing")}
 				</h2>
 				{libraries.isPending && (
-					<p className="text-slate-500">{t("loading")}</p>
+					<Loading />
 				)}
 				<FormError error={libraries.error} />
 				{libraries.data?.length === 0 && (

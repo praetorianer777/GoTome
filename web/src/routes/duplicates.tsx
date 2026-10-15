@@ -18,6 +18,7 @@ import {
 	useReplacePair,
 	useSetPairState,
 } from "@/duplicates/api";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { MergeForm } from "@/duplicates/merge-form";
 import { formatDate, formatLanguage, formatSize } from "@/lib/format";
@@ -68,7 +69,7 @@ const LEAST = [50, 75, 90, 100];
 const control =
 	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
 const button =
-	"rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900";
+	"rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink";
 
 const percent = (score: number) => Math.round(score * 100);
 
@@ -106,12 +107,7 @@ export function Duplicates({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("duplicates.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("duplicates.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("duplicates.title")} intro={t("duplicates.intro")} />
 			<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
 				<fieldset className="flex items-center gap-2">
 					<legend className="sr-only">{t("duplicates.state")}</legend>
@@ -190,7 +186,7 @@ export function Duplicates({
 				className="flex flex-col gap-4"
 			>
 				<FormError error={pairs.error} />
-				{pairs.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{pairs.isPending && <Loading />}
 				{pairs.isSuccess && shown.length === 0 && (
 					<p role="status" className="text-slate-600 dark:text-slate-400">
 						{t(VIEWS.find((v) => v.value === view)?.none ?? "duplicates.none")}
@@ -456,7 +452,7 @@ function Compare({ pair }: { pair: DuplicatePair }) {
 		return (
 			<>
 				{(a.isPending || b.isPending) && (
-					<p className="text-slate-500">{t("loading")}</p>
+					<Loading />
 				)}
 				<FormError error={a.error ?? b.error} />
 			</>

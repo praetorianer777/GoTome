@@ -14,6 +14,7 @@ import {
 } from "@/books/collections";
 import { Cover } from "@/books/cover";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { VisibilityPicker, button, control } from "@/routes/collections";
 
@@ -28,7 +29,7 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
 	if (!c) {
 		return (
 			<>
-				{collection.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{collection.isPending && <Loading />}
 				<FormError error={collection.error} />
 			</>
 		);

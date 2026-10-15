@@ -10,6 +10,7 @@ import {
 	useRejectMatch,
 } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { typing } from "@/lib/keys";
 import { Compare } from "@/routes/book-find";
@@ -45,13 +46,8 @@ export function Review() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("review.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("review.intro")}
-				</p>
-			</div>
-			{review.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			<PageHeader title={t("review.title")} intro={t("review.intro")} />
+			{review.isPending && <Loading />}
 			<FormError error={review.error} />
 			{review.data && books.length === 0 && (
 				<p className="text-slate-600 dark:text-slate-400">{t("review.none")}</p>

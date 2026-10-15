@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { statsQuery } from "@/books/stats";
 import { FormError } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatCount } from "@/lib/format";
 
@@ -32,14 +33,14 @@ export function Stats() {
 							type="button"
 							aria-pressed={days === w.days}
 							onClick={() => setDays(w.days)}
-							className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+							className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink"
 						>
 							{t(w.label)}
 						</button>
 					))}
 				</fieldset>
 			</div>
-			{stats.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{stats.isPending && <Loading />}
 			<FormError error={stats.error} />
 			{data && (
 				<>

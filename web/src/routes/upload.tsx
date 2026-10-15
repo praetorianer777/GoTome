@@ -4,6 +4,7 @@ import { type DragEvent, useEffect, useId, useRef, useState } from "react";
 import { type CurrentUser, can } from "@/auth/session";
 import { UPLOAD_FORMATS, type Uploaded, uploadFile } from "@/books/upload";
 import { errorMessage, FormError, fieldErrors } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
@@ -107,7 +108,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 				<h1 className="text-2xl font-semibold">{t("upload.title")}</h1>
 				<StorageUse />
 			</div>
-			{libraries.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{libraries.isPending && <Loading />}
 			<FormError error={libraries.error} />
 
 			{libraries.isSuccess && managed.length === 0 && (
@@ -122,7 +123,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 					{can(user, "storage:manage") && (
 						<Link
 							to="/admin/libraries"
-							className="mt-4 inline-block rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800"
+							className="mt-4 inline-block rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300"
 						>
 							{t("library.none.add")}
 						</Link>
@@ -168,7 +169,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 						</p>
 						<label
 							htmlFor={inputId}
-							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-strong dark:has-focus-visible:outline-brand"
+							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-strong dark:has-focus-visible:outline-brand"
 						>
 							{t("upload.choose")}
 							{/* Inside its label, so that the label shows the ring when the
@@ -267,7 +268,7 @@ function Outcome({ result }: { result: Uploaded }) {
 		<Link
 			to="/books/$bookId"
 			params={{ bookId: result.bookId }}
-			className="font-medium text-sky-800 hover:underline dark:text-sky-300"
+			className="font-medium text-brand-strong hover:underline dark:text-brand"
 		>
 			{t("upload.open")}
 		</Link>

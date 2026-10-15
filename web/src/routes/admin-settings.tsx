@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import { type Setting, settingsQuery, useUpdateSettings } from "@/settings/api";
@@ -124,7 +125,7 @@ export function AdminSettings() {
 			<p className="text-slate-600 dark:text-slate-400">
 				{t("settings.intro")}
 			</p>
-			{settings.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{settings.isPending && <Loading />}
 			<FormError error={settings.error} />
 			{settings.data && <SettingsForm settings={settings.data} />}
 		</div>

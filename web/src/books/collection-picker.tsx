@@ -49,7 +49,7 @@ export function CollectionPicker({ bookId }: { bookId: string }) {
 				</ul>
 				<Link
 					to="/collections"
-					className="self-start text-brand-strong hover:underline dark:text-sky-400"
+					className="self-start text-brand-strong hover:underline dark:text-brand"
 				>
 					{t("collections.manage")}
 				</Link>

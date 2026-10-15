@@ -24,6 +24,9 @@ What changes for someone who runs or uses GOtome. The format follows
 - A book's page leads with its cover and title, with Read (or Listen) as
   its first button, and gives the details a box of their own beside the
   files.
+- Every other page follows the same design: one kind of page heading,
+  buttons and toggles in the accent colour, placeholders while lists load,
+  and progress bars and checkboxes in the accent.
 
 ### Added
 
