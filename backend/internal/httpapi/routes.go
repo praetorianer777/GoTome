@@ -5,6 +5,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
@@ -95,6 +96,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/version", ID: "getVersion",
 			Summary: "Which build of GOtome is running", Tag: "system",
 			Response: buildInfo{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getVersion,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
+			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
+			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
@@ -770,5 +776,14 @@ type buildInfo version.Info
 
 func (s *Server) getVersion(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, buildInfo(version.Current()))
+	return nil
+}
+
+func (s *Server) getSystemHealth(w http.ResponseWriter, r *http.Request) error {
+	health, err := s.Resources.Check(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, health)
 	return nil
 }

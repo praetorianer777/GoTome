@@ -2268,6 +2268,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit */
+        get: operations["getSystemHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trackers": {
         parameters: {
             query?: never;
@@ -2887,6 +2904,14 @@ export interface components {
             lastUsedAt?: string;
             name: string;
         };
+        Disk: {
+            databaseBytes: number;
+            freeBytes: number;
+            indexBytes: number;
+            needFreeBytes: number;
+            path: string;
+            totalBytes: number;
+        };
         DuplicateCheckRequest: {
             /** Format: uuid */
             library?: string;
@@ -3007,6 +3032,12 @@ export interface components {
         FullTextResult: {
             books: components["schemas"]["TextBook"][];
             more: boolean;
+        };
+        Health: {
+            disk: components["schemas"]["Disk"];
+            memory: components["schemas"]["Memory"];
+            postgres: components["schemas"]["Postgres"];
+            warnings: components["schemas"]["Warning"][];
         };
         Identifier: {
             type: string;
@@ -3167,6 +3198,16 @@ export interface components {
         MemberList: {
             members: components["schemas"]["Member"][];
         };
+        Memory: {
+            appBytes: number;
+            budgetBytes: number;
+            cpus: number;
+            embeddingBytes: number;
+            embeddingModel: string;
+            limited: boolean;
+            machineBytes: number;
+            needBytes: number;
+        };
         MergeRequest: {
             /** Format: uuid */
             from: string;
@@ -3230,6 +3271,18 @@ export interface components {
             relation?: "edition" | "translation" | "related";
             /** @enum {string} */
             state: "kept_both" | "open";
+        };
+        Postgres: {
+            connections: number;
+            effectiveCacheSizeBytes: number;
+            maintenanceWorkMemBytes: number;
+            maxConnections: number;
+            maxParallelMaintenanceWorkers: number;
+            maxParallelWorkers: number;
+            maxParallelWorkersPerGather: number;
+            needBytes: number;
+            sharedBuffersBytes: number;
+            workMemBytes: number;
         };
         ProgressSaved: {
             progress: components["schemas"]["ProgressView"] | null;
@@ -3641,6 +3694,10 @@ export interface components {
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             username: string;
+        };
+        Warning: {
+            commands: string[];
+            kind: string;
         };
         WishRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -8507,6 +8564,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Work"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
                 };
             };
             /** @description The request failed. */

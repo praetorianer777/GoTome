@@ -50,6 +50,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -360,6 +361,10 @@ func serve() error {
 
 	hub := notify.NewHub(pool, log)
 	go hub.Run(ctx)
+	health := resources.NewService(pool)
+	health.DataDir, health.IndexDir = cfg.DataDir, fulltext.Dir(cfg.DataDir)
+	health.Embedding, health.Server = settingStore.Embedding, settingStore.EmbeddingServer
+	go health.Watch(ctx, log)
 	server := &httpapi.Server{
 		Log:        log,
 		DB:         pool,
@@ -380,6 +385,7 @@ func serve() error {
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),
+		Resources:  health,
 		Deliveries: deliveries.NewService(pool),
 		Pairing:    pairing.NewService(pool),
 		Kobo:       kobo.NewService(pool),

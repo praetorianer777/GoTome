@@ -31,7 +31,7 @@ func Apply() int64 {
 	if os.Getenv("GOMEMLIMIT") != "" {
 		return 0
 	}
-	limit := containerLimit(files)
+	limit := Limit()
 	if limit <= 0 {
 		return 0
 	}
@@ -39,6 +39,9 @@ func Apply() int64 {
 	debug.SetMemoryLimit(soft)
 	return soft
 }
+
+// Limit is the container's memory limit, or 0 for none.
+func Limit() int64 { return containerLimit(files) }
 
 // containerLimit is the first limit one of the files states, or 0.
 func containerLimit(paths []string) int64 {

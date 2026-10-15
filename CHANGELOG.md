@@ -11,6 +11,14 @@ What changes for someone who runs or uses GOtome. The format follows
 - The web app's pages end in a footer that says which version of GOtome runs,
   linked to its release notes, and, when GOtome was updated while the page
   was open, that it should be reloaded.
+- The overview tells administrators when the machine is too small for
+  what runs on it: Postgres's memory settings (which travel with the
+  database's volume, sized for the machine it was first made on) with the
+  app's and the embedding model's, more parallel workers than CPUs, or a
+  nearly full disk (under 10 GB or 10% free). Each warning comes with the
+  commands that make the settings fit, and is logged at start and hourly
+  while it stands. `docs/backup-and-upgrade.md` says how to move to another
+  machine and how much room an installation needs.
 
 ## [0.5.0] - 2026-10-15
 

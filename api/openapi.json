@@ -7353,6 +7353,43 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/system/health": {
+      "get": {
+        "operationId": "getSystemHealth",
+        "summary": "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/trackers": {
       "get": {
         "operationId": "listTrackers",
@@ -9541,6 +9578,37 @@
           "createdAt"
         ]
       },
+      "Disk": {
+        "type": "object",
+        "properties": {
+          "databaseBytes": {
+            "type": "integer"
+          },
+          "freeBytes": {
+            "type": "integer"
+          },
+          "indexBytes": {
+            "type": "integer"
+          },
+          "needFreeBytes": {
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "totalBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "freeBytes",
+          "totalBytes",
+          "databaseBytes",
+          "indexBytes",
+          "needFreeBytes"
+        ]
+      },
       "DuplicateCheckRequest": {
         "type": "object",
         "properties": {
@@ -10043,6 +10111,32 @@
         "required": [
           "books",
           "more"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "disk": {
+            "$ref": "#/components/schemas/Disk"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/Memory"
+          },
+          "postgres": {
+            "$ref": "#/components/schemas/Postgres"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Warning"
+            }
+          }
+        },
+        "required": [
+          "memory",
+          "postgres",
+          "disk",
+          "warnings"
         ]
       },
       "Identifier": {
@@ -10617,6 +10711,45 @@
           "members"
         ]
       },
+      "Memory": {
+        "type": "object",
+        "properties": {
+          "appBytes": {
+            "type": "integer"
+          },
+          "budgetBytes": {
+            "type": "integer"
+          },
+          "cpus": {
+            "type": "integer"
+          },
+          "embeddingBytes": {
+            "type": "integer"
+          },
+          "embeddingModel": {
+            "type": "string"
+          },
+          "limited": {
+            "type": "boolean"
+          },
+          "machineBytes": {
+            "type": "integer"
+          },
+          "needBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "machineBytes",
+          "limited",
+          "cpus",
+          "appBytes",
+          "embeddingModel",
+          "embeddingBytes",
+          "needBytes",
+          "budgetBytes"
+        ]
+      },
       "MergeRequest": {
         "type": "object",
         "properties": {
@@ -10866,6 +10999,53 @@
         },
         "required": [
           "state"
+        ]
+      },
+      "Postgres": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "integer"
+          },
+          "effectiveCacheSizeBytes": {
+            "type": "integer"
+          },
+          "maintenanceWorkMemBytes": {
+            "type": "integer"
+          },
+          "maxConnections": {
+            "type": "integer"
+          },
+          "maxParallelMaintenanceWorkers": {
+            "type": "integer"
+          },
+          "maxParallelWorkers": {
+            "type": "integer"
+          },
+          "maxParallelWorkersPerGather": {
+            "type": "integer"
+          },
+          "needBytes": {
+            "type": "integer"
+          },
+          "sharedBuffersBytes": {
+            "type": "integer"
+          },
+          "workMemBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sharedBuffersBytes",
+          "workMemBytes",
+          "maintenanceWorkMemBytes",
+          "effectiveCacheSizeBytes",
+          "maxConnections",
+          "connections",
+          "maxParallelWorkers",
+          "maxParallelWorkersPerGather",
+          "maxParallelMaintenanceWorkers",
+          "needBytes"
         ]
       },
       "ProgressSaved": {
@@ -12337,6 +12517,24 @@
           "id",
           "username",
           "role"
+        ]
+      },
+      "Warning": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "commands"
         ]
       },
       "WishRequest": {

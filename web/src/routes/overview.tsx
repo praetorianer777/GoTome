@@ -9,6 +9,7 @@ import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatCount, formatLanguage, formatMonth, formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
+import { HealthPanel } from "@/system/health";
 
 type Step = components["schemas"]["Step"];
 type Queue = components["schemas"]["Queue"];
@@ -360,6 +361,7 @@ export function Overview() {
 					</label>
 				)}
 			</div>
+			{can(user.data ?? null, "settings:manage") && <HealthPanel />}
 			{can(user.data ?? null, "index:rebuild") && <Work library={library} />}
 			<Figures library={library} />
 		</div>

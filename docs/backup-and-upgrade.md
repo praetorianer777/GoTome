@@ -92,6 +92,82 @@ installation with the new one.
 Going back to an older version is restoring a backup made by it: migrations
 only go forward.
 
+## Moving to another machine
+
+Backing up on the old machine and restoring on the new one moves an
+installation, as does copying its volumes. Either way the database brings
+its settings along: Postgres keeps them in the `db-data` volume, and the
+database image sized its memory for the machine the database was first
+made on (`postgresql.conf`). On a smaller machine, Postgres may then take
+more memory than there is, and the kernel kills it, in the middle of a
+VACUUM or a large query; it recovers and is killed again.
+
+GOtome checks this at start and every hour, logs a warning while something
+does not fit, and shows it to administrators on the overview, with the
+commands to run. It compares with the memory GOtome's container sees: its
+limit, or the machine's where it has none. Postgres's container may have a
+limit of its own, which GOtome cannot see. What is counted:
+
+| Part | Memory |
+|---|---|
+| Postgres | `shared_buffers`, one `maintenance_work_mem` (a VACUUM), and `work_mem` for each of GOtome's connections (16) |
+| The app | about 512 MB: the server, the full-text index's writer, the programs that read files |
+| The embedding model, when it runs on the CPU | multilingual-e5-small about 700 MB, its fp32 weights 1.1 GB, bge-m3 about 3 GB |
+
+Together they may take 80% of the memory; the rest is for the kernel and
+the file cache, which Postgres and the full-text index read through. A
+machine with less memory than bge-m3 needs runs a smaller model, or bge-m3
+on an embedding server ([embedding-server.md](embedding-server.md)).
+
+The settings are changed with `ALTER SYSTEM`, which writes them to
+`postgresql.auto.conf` in the volume, where they win over
+`postgresql.conf`; a restart of the database applies them:
+
+```bash
+cd deploy
+docker compose exec db psql -U gotome -d gotome -c "ALTER SYSTEM SET shared_buffers = '1024MB';"
+docker compose restart db
+```
+
+What fits, by the machine's memory, with the default embedding model on
+the CPU (with bge-m3 there, the overview suggests less):
+
+| Memory | `shared_buffers` | `maintenance_work_mem` | `work_mem` | `effective_cache_size` |
+|---|---|---|---|---|
+| 2 GB | 200MB | 100MB | 6MB | 1024MB |
+| 4 GB | 800MB | 256MB | 16MB | 2048MB |
+| 8 GB | 1600MB | 256MB | 16MB | 4096MB |
+| 16 GB and more | a fifth of it | 256MB | 16MB | half of it |
+
+Keep `max_parallel_workers` to the number of CPUs, and
+`max_parallel_workers_per_gather` and `max_parallel_maintenance_workers`
+to half of them: each worker takes its own `work_mem`. `ALTER SYSTEM RESET
+<name>` goes back to the value in `postgresql.conf`.
+
+### Disk space
+
+Postgres stops when its disk is full, and starts again only once there is
+room to recover. GOtome warns when the disk of its data directory has less
+than 10 GB or 10% free, or less than the database and the full-text index
+take together. Docker usually keeps the database's volume on the same disk;
+where it does not, watch that disk as well. Leave room for:
+
+- the write-ahead log, which grows during large imports before a
+  checkpoint recycles it;
+- VACUUM, and above all `VACUUM FULL` or a rebuilt index, which write a
+  table's or an index's new copy before removing the old one;
+- the full-text index under `/data/search`, which is built again beside
+  the old one when its engine changes, and so needs its size again;
+- new images: each update brings an app image of about 1 GB, and the old
+  ones stay until they are removed:
+
+```bash
+docker image prune
+```
+
+A backup made with `backup.sh` needs room on its own disk too: about the
+size of the books and the database without the text.
+
 ## What is tested
 
 `make upgrade-test`, which CI runs on every pull request, sets up an

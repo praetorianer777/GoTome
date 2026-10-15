@@ -1161,6 +1161,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   which the queue keeps for a while once finished. Both count every book
   by design and are in the scale test.
 
+## Machine resources
+
+- `internal/resources` checks the machine against what is set to run on it
+  (#240): Postgres's memory settings (`shared_buffers`, one
+  `maintenance_work_mem`, `work_mem` per pool connection), the app
+  (`AppBytes`) and the embedding model on the CPU (`Spec.Memory`) against
+  `Budget` of the memory GOtome's container sees (cgroup limit, else
+  `MemTotal`), parallel workers against the CPUs, and the free space of
+  `GOTOME_DATA_DIR`'s disk. Postgres's own container and volume are not
+  visible to the app. `serve` runs `Watch` (every ten minutes, logging on
+  a change and hourly while warnings stand); `GET /system/health`
+  (`settings:manage`) is the overview's "This machine" panel, with the
+  `ALTER SYSTEM` commands that fit.
+
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
