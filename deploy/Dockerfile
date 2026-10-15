@@ -1,7 +1,11 @@
 # The one application image. Stages: web (the browser app, built to static
 # files), onnxruntime (the embedding runtime's library for the target's
-# architecture), toolchain (what compiles and tests the backend), build,
-# runtime.
+# architecture), fulltext (the full-text engine's library, engine/),
+# toolchain (what compiles and tests the backend), build, runtime.
+
+# Rust for the full-text engine, at the host toolchain's version the crate
+# was locked with, pinned by digest; mk/engine.mk reads it from here.
+ARG RUST_IMAGE=rust:1.96.0-slim-bookworm@sha256:4732ca96fd086cb9be682050c3f0176288eebaac2b80aa2bcefccfaf198e1950
 
 FROM node:24-alpine AS web
 WORKDIR /src/web
@@ -27,6 +31,18 @@ RUN printf '%s\n' \
     mkdir /out && \
     tar -xzf "/ort-$(dpkg --print-architecture).tgz" -C /out --strip-components=2 \
       --wildcards '*/lib/libonnxruntime.so.1.30.0'
+
+# The full-text engine (#265), which the binary loads at run time. With the
+# crates in engine/vendor (make engine-fetch) it builds offline; without,
+# cargo fetches what Cargo.lock pins, as CI does.
+FROM ${RUST_IMAGE} AS fulltext
+WORKDIR /src/engine
+COPY engine/ ./
+RUN if [ -d vendor ]; then \
+      set -- --offline --config 'source.crates-io.replace-with="vendored"' --config 'source.vendored.directory="vendor"'; \
+    fi && \
+    cargo build --release --locked "$@" && \
+    mkdir /out && cp target/release/libgotome_fulltext.so /out/
 
 FROM golang:1.27-bookworm AS toolchain
 ENV GOFLAGS=-buildvcs=false GOTOOLCHAIN=local
@@ -62,6 +78,7 @@ RUN apt-get update && \
     install -d -o gotome -g gotome /data
 COPY --from=build /out/gotome /usr/local/bin/gotome
 COPY --from=onnxruntime /out/libonnxruntime.so.1.30.0 /usr/local/lib/
+COPY --from=fulltext /out/libgotome_fulltext.so /usr/local/lib/
 USER gotome
 # What GOtome itself stores: managed libraries, covers. A volume mounted here
 # inherits the directory's owner, so the app can write to it.

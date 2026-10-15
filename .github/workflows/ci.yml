@@ -27,6 +27,14 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
+      # The full-text engine's crates (make engine-fetch), kept until
+      # Cargo.lock changes.
+      - name: Cache the engine's crates
+        uses: actions/cache@v4
+        with:
+          path: engine/vendor
+          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
+
       - name: Cache the npm download cache
         uses: actions/cache@v4
         with:

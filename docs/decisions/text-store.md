@@ -3,8 +3,9 @@
 Measured in #244, 2026-10-14. Decided by the owner in #265, the same day:
 option 5, the index without the text. Which engine holds that index,
 Tantivy in the app or Manticore Search in a third container, was measured
-in #268 ([below](#manticore-search-as-a-third-container-268)); the choice
-is the owner's, and the section recommends one.
+in #268 ([below](#manticore-search-as-a-third-container-268)); the owner
+chose **Tantivy in the app** on 2026-10-15, as recommended there: the
+smaller index (7.6 against 12.5 GB) and two containers.
 
 ## Question
 
