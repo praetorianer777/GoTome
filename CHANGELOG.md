@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-15
+
 ### Changed
 
 - The web app has a new look taken from GOtome's artwork: a midnight-blue
