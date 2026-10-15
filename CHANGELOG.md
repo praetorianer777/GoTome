@@ -37,7 +37,9 @@ What changes for someone who runs or uses GOtome. The format follows
   about as long as reading the library did the first time, an hour or two
   for 48,000 EPUBs; until a book is read, full-text search does not find
   it. Backups leave the index out; a restore builds it again from the
-  books. The database no longer needs ParadeDB's `pg_search`.
+  books. The database no longer needs ParadeDB's `pg_search`. This
+  update cannot be undone: back up first (`deploy/backup.sh`), as going
+  back to 0.4 means restoring that backup on the 0.4 image.
 - Screen readers are told of new notifications, of each finished upload and
   of the page a PDF turns to; panels and dialogs take the focus when they
   open and give it back when they close. The focus ring, grey text on the
