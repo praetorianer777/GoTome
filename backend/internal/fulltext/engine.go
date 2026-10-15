@@ -19,6 +19,7 @@ static int (*p_commit)(engine *, char **);
 static int (*p_reload)(engine *, char **);
 static int (*p_search)(engine *, const char *, char **, char **);
 static int (*p_info)(engine *, char **, char **);
+static int (*p_snippets)(engine *, const char *, char **, char **);
 static void (*p_free)(char *);
 
 static const char *gtf_load(const char *path) {
@@ -33,6 +34,7 @@ static const char *gtf_load(const char *path) {
 	SYM(p_reload, "gtf_reload");
 	SYM(p_search, "gtf_search");
 	SYM(p_info, "gtf_info");
+	SYM(p_snippets, "gtf_snippets");
 	SYM(p_free, "gtf_free");
 	return NULL;
 }
@@ -45,6 +47,7 @@ static int call_commit(engine *e, char **err) { return p_commit(e, err); }
 static int call_reload(engine *e, char **err) { return p_reload(e, err); }
 static int call_search(engine *e, const char *q, char **out, char **err) { return p_search(e, q, out, err); }
 static int call_info(engine *e, char **out, char **err) { return p_info(e, out, err); }
+static int call_snippets(engine *e, const char *r, char **out, char **err) { return p_snippets(e, r, out, err); }
 static void call_free(char *s) { p_free(s); }
 */
 import "C"
@@ -55,6 +58,8 @@ import (
 	"fmt"
 	"sync"
 	"unsafe"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -189,6 +194,28 @@ func (ix *Index) Search(q Query) ([]Hit, error) {
 	}
 	var hits []Hit
 	return hits, json.Unmarshal(out, &hits)
+}
+
+// Snippets makes a snippet of each passage around what the query matches,
+// of about maxChars characters.
+func (ix *Index) Snippets(q Query, passages []Passage, maxChars int) ([]Snippet, error) {
+	if q.Libraries == nil {
+		q.Libraries = []uuid.UUID{}
+	}
+	data, err := json.Marshal(snippetRequest{Query: q, Passages: passages, MaxChars: maxChars})
+	if err != nil {
+		return nil, err
+	}
+	out, err := ix.call(func(cout **C.char, cerr **C.char) C.int {
+		cr := C.CString(string(data))
+		defer C.free(unsafe.Pointer(cr))
+		return C.call_snippets(ix.e, cr, cout, cerr)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("make snippets: %w", err)
+	}
+	var got []Snippet
+	return got, json.Unmarshal(out, &got)
 }
 
 // Info says what the index holds.

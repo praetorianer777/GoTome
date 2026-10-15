@@ -518,6 +518,16 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   reads those files again (`Reindex`): chunks that cut the same keep their
   IDs and `chunked_at`, so nothing is embedded or signed again. A book
   that changes library has its file read again (trigger).
+- `search.TantivySearch` is the `Searcher` on it, chosen by the setting
+  `search.engine` (`search.Switch`; pg_search by default until the text
+  leaves Postgres). It asks the index for the window among the visible
+  libraries (`where`, shared with `PGSearch`), keeps the hits still in
+  `book_chunks` of books the filter's conditions match, repairs typos from
+  `search_words` as before, and makes snippets with the engine's
+  `SnippetGenerator` from the passages `ReadPassages` reads from the files.
+  The search tests run on both engines (`eachEngine`);
+  `gotome search-compare` asks both the benchmark's queries on an
+  installation.
 
 ## Full-text search
 

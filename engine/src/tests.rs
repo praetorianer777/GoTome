@@ -283,3 +283,24 @@ fn the_c_interface_round_trips() {
             .starts_with("gotome-fulltext "));
     }
 }
+
+#[test]
+fn snippets_mark_the_query_in_passages_it_is_given() {
+    let dir = TempDir::new("snippets");
+    let e = Engine::open(&dir.0, 20_000_000).unwrap();
+    fill(&e);
+    let mut q = search(&[LIB_A, LIB_B]);
+    q.words = "whale run".into();
+    let r = SnippetRequest {
+        query: q,
+        passages: vec![
+            Passage { lang: "en".into(), text: "Long before, the whales were running before the harpooned ship.".into() },
+            Passage { lang: "en".into(), text: "Nothing here.".into() },
+        ],
+        max_chars: 200,
+    };
+    let got = e.snippets(&r).unwrap();
+    let marked: Vec<&str> = got[0].highlighted.iter().map(|&(s, e)| &got[0].fragment[s..e]).collect();
+    assert_eq!(marked, vec!["whales", "running"]);
+    assert!(got[1].highlighted.is_empty());
+}

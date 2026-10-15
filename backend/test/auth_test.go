@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -106,8 +107,10 @@ type app struct {
 	logs     lockedBuffer
 	// works is what the providers list for following authors and series.
 	works *fakeWorks
-	now   time.Time
-	mu    sync.Mutex
+	// text is the full-text index in the app, when the test searches it.
+	text *fulltext.Service
+	now  time.Time
+	mu   sync.Mutex
 }
 
 func (a *app) clock() time.Time {

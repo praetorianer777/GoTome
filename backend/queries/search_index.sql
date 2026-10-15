@@ -24,8 +24,9 @@ UPDATE book_files SET chunked_at = NULL WHERE chunked_at IS NOT NULL;
 
 -- name: CountChunked :one
 -- How many of the visible books' primary text files, of a library when
--- named, there are, and how many of them are chunked.
-SELECT count(*) AS files, count(f.chunked_at) AS chunked
+-- named, there are, how many of them are chunked, and how many the
+-- full-text index in the app has.
+SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS in_app
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))

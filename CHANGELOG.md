@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Full-text search can run on GOtome's own index instead of the database's:
+  the setting "Full-text search engine" (`tantivy`), once the jobs page
+  says the new index has every book. `gotome search-compare` asks both
+  the same questions and shows how far they agree and how long each took.
 - The EPUB and PDF readers and the audiobook player can be used from the
   keyboard alone: pages turn with the arrows, Page Up and Page Down and the
   space bar; C opens the contents, F a search in the book, D the display

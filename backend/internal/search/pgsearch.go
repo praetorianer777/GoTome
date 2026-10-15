@@ -154,10 +154,45 @@ func (s *PGSearch) Search(ctx context.Context, scope library.Scope, q Query) (Re
 				readings = append(readings, reading{chunks: more, query: fixed, corrected: true})
 			}
 		}
-		res, err = s.group(ctx, tx, readings, limit, offset)
+		res, err = group(ctx, tx, readings, limit, offset, s.passages)
 		return err
 	})
 	return res, err
+}
+
+// where is what a search looks among: the libraries the scope sees, of
+// the query's when it names one, and the books of its filter when the
+// filter picks few enough to name; nil books when it has none or picks too
+// many, whose conditions the outer query keeps.
+func where(ctx context.Context, tx pgx.Tx, books *catalog.Service, scope library.Scope, q Query) ([]uuid.UUID, []uuid.UUID, error) {
+	rows, err := tx.Query(ctx, "SELECT visible_library_ids($1, $2)", scope.Viewer, scope.SeesAll)
+	if err != nil {
+		return nil, nil, err
+	}
+	libs, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, nil, err
+	}
+	if q.LibraryID != nil {
+		if !slices.Contains(libs, *q.LibraryID) {
+			return nil, nil, nil
+		}
+		libs = []uuid.UUID{*q.LibraryID}
+	}
+	if len(libs) == 0 || matchesAll(q.Filter) {
+		return libs, nil, nil
+	}
+	ids, err := books.Select(ctx, scope, q.LibraryID, q.Filter, nil)
+	switch {
+	case errors.Is(err, catalog.ErrTooMany):
+		// Too many to name; the outer conditions keep them apart.
+		return libs, nil, nil
+	case err != nil:
+		return nil, nil, err
+	case len(ids) == 0:
+		return libs, []uuid.UUID{}, nil
+	}
+	return libs, ids, nil
 }
 
 // best is the window of the best chunks of visible books that match. The
@@ -165,38 +200,14 @@ func (s *PGSearch) Search(ctx context.Context, scope library.Scope, q Query) (Re
 // inside the index, so the window is taken among those alone; the filter's
 // own conditions are checked again on the books found.
 func (s *PGSearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope, q Query, p parsed) ([]found, error) {
-	var libs []uuid.UUID
-	rows, err := tx.Query(ctx, "SELECT visible_library_ids($1, $2)", scope.Viewer, scope.SeesAll)
-	if err != nil {
+	libs, books, err := where(ctx, tx, s.books, scope, q)
+	if err != nil || len(libs) == 0 || (books != nil && len(books) == 0) {
 		return nil, err
 	}
-	if libs, err = pgx.CollectRows(rows, pgx.RowTo[uuid.UUID]); err != nil {
-		return nil, err
-	}
-	if q.LibraryID != nil {
-		if !slices.Contains(libs, *q.LibraryID) {
-			return nil, nil
-		}
-		libs = []uuid.UUID{*q.LibraryID}
-	}
-	if len(libs) == 0 {
-		return nil, nil
-	}
-
 	var a args
 	inner := []string{match(p, a.add), "library_id = ANY(" + a.add(libs) + "::uuid[])"}
-	if !matchesAll(q.Filter) {
-		ids, err := s.books.Select(ctx, scope, q.LibraryID, q.Filter, nil)
-		switch {
-		case errors.Is(err, catalog.ErrTooMany):
-			// Too many to name; the outer conditions keep them apart.
-		case err != nil:
-			return nil, err
-		case len(ids) == 0:
-			return nil, nil
-		default:
-			inner = append(inner, "book_id = ANY("+a.add(ids)+"::uuid[])")
-		}
+	if books != nil {
+		inner = append(inner, "book_id = ANY("+a.add(books)+"::uuid[])")
 	}
 	outer, err := catalog.BookConditions(scope, q.LibraryID, q.Filter, a.add)
 	if err != nil {
@@ -209,7 +220,7 @@ func (s *PGSearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope, q Q
 	) c JOIN books b ON b.id = c.book_id
 	WHERE ` + strings.Join(outer, " AND ") + `
 	ORDER BY c.score DESC, c.id`
-	rows, err = tx.Query(ctx, sql, a.values...)
+	rows, err := tx.Query(ctx, sql, a.values...)
 	if err != nil {
 		return nil, err
 	}
@@ -222,10 +233,14 @@ func (s *PGSearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope, q Q
 	})
 }
 
+// passagesFunc reads the chunks of ids with a snippet of each around what
+// the query matches.
+type passagesFunc func(ctx context.Context, tx pgx.Tx, ids []int64, p parsed) (map[int64]Hit, error)
+
 // group makes books of the readings' chunks, the first reading's books
 // first, each in the order of its best chunk, and reads the passages of the
 // page's books. A book a reading before found is not found again.
-func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, readings []reading, limit, offset int) (Result, error) {
+func group(ctx context.Context, tx pgx.Tx, readings []reading, limit, offset int, passages passagesFunc) (Result, error) {
 	type entry struct {
 		id      uuid.UUID
 		reading int
@@ -264,7 +279,7 @@ func (s *PGSearch) group(ctx context.Context, tx pgx.Tx, readings []reading, lim
 		if len(ids) == 0 {
 			continue
 		}
-		got, err := s.passages(ctx, tx, ids, rd.query)
+		got, err := passages(ctx, tx, ids, rd.query)
 		if err != nil {
 			return Result{}, err
 		}

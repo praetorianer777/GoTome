@@ -672,6 +672,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.embeddingServer": "Embedding-Server",
 	"settings.embeddingServer.hint":
 		"Die Adresse eines Ollama-Servers für bge-m3, etwa http://host.docker.internal:11434, auf dem das Modell geladen ist (ollama pull bge-m3). Leer führt GOtome bge-m3 selbst auf der CPU aus; die Vektoren sind in beiden Fällen dieselben.",
+	"settings.searchEngine": "Volltextsuche",
+	"settings.searchEngine.hint":
+		"pg_search oder tantivy. GOtome verlegt seinen Suchindex aus der Datenbank in einen eigenen (tantivy), den es im Hintergrund füllt, indem es jedes Buch liest; die Seite der Aufgaben zeigt, wie weit es ist. Bis dahin findet er nur die Bücher, die schon gelesen sind.",
 	"settings.passwords": "Anmeldung mit Passwort",
 	"settings.passwords.hint":
 		"on oder off. off lässt, solange ein Identitätsanbieter eingerichtet ist, nur Single Sign-on zu, außer für Administratoren, solange keiner von ihnen ein Konto beim Identitätsanbieter verknüpft hat. Fällt der Anbieter weg, GOtome mit GOTOME_FORCE_PASSWORD_LOGIN=true starten, um sich wieder mit Passwort anzumelden.",
@@ -725,6 +728,7 @@ export const de: Record<MessageKey, string> = {
 	"searchIndex.intro":
 		"Den Text erneut lesen, sobald GOtome ein Format besser liest; den Index neu aufbauen, nachdem die Datenbank aktualisiert wurde, was GOtome beim Start auch selbst tut. Die Suche funktioniert währenddessen mit dem, was sie hat.",
 	"searchIndex.known": "Bücher, deren Text die Suche kennt: {indexed} von {files}.",
+	"searchIndex.inApp": "Im eigenen Index von GOtome, der den der Datenbank ablöst: {count}.",
 	"searchIndex.rebuilding":
 		"Der Index wird neu aufgebaut; bis dahin nutzen Suchen den alten.",
 	"searchIndex.rereadAll": "Alle Texte erneut lesen",

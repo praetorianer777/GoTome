@@ -109,6 +109,9 @@ type IndexStatus struct {
 	// many of those files are cut into chunks, which search finds.
 	Files   int `json:"files"`
 	Indexed int `json:"indexed"`
+	// InApp is how many of those files the full-text index in the app has
+	// (#265), which it is given in the background.
+	InApp int `json:"inApp"`
 	// Rebuilding says the index is being built again; until it is done,
 	// searches use the old one.
 	Rebuilding bool `json:"rebuilding"`
@@ -126,7 +129,7 @@ func (x *Index) Status(ctx context.Context, scope library.Scope, libraryID *uuid
 		if err != nil {
 			return err
 		}
-		out.Files, out.Indexed = int(counts.Files), int(counts.Chunked)
+		out.Files, out.Indexed, out.InApp = int(counts.Files), int(counts.Chunked), int(counts.InApp)
 		return tx.QueryRow(ctx, `
 			SELECT (SELECT extversion FROM pg_extension WHERE extname = 'pg_search'),
 			       EXISTS (SELECT 1 FROM river_job WHERE kind = $1

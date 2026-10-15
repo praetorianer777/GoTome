@@ -97,6 +97,7 @@ Commands:
   fulltext-check Load the full-text engine and print its version
   migrate        Bring the database schema up to date and exit
   similar-check  Measure the similar books of a sample of the library (-h for options)
+  search-compare Ask pg_search and the index in the app the same queries and compare
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
 `
@@ -128,6 +129,8 @@ func run(args []string) error {
 		return migrate()
 	case "similar-check":
 		return similarCheck(args[1:])
+	case "search-compare":
+		return searchCompare(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -362,22 +365,29 @@ func serve() error {
 	hub := notify.NewHub(pool, log)
 	go hub.Run(ctx)
 	server := &httpapi.Server{
-		Log:        log,
-		DB:         pool,
-		Auth:       accounts,
-		SSO:        sso.NewService(pool, accounts, settingStore),
-		Logins:     httpapi.NewLoginLimits(time.Now),
-		Libraries:  libraries,
-		Settings:   settingStore,
-		Scans:      scans,
-		Books:      books,
-		Covers:     coverStore,
-		Metadata:   meta,
-		Matches:    matches,
-		Bulk:       changes,
-		Reading:    readingService,
-		Shelves:    shelves.NewService(pool, books),
-		Search:     search.NewPGSearch(pool, books),
+		Log:       log,
+		DB:        pool,
+		Auth:      accounts,
+		SSO:       sso.NewService(pool, accounts, settingStore),
+		Logins:    httpapi.NewLoginLimits(time.Now),
+		Libraries: libraries,
+		Settings:  settingStore,
+		Scans:     scans,
+		Books:     books,
+		Covers:    coverStore,
+		Metadata:  meta,
+		Matches:   matches,
+		Bulk:      changes,
+		Reading:   readingService,
+		Shelves:   shelves.NewService(pool, books),
+		Search: &search.Switch{
+			PG:      search.NewPGSearch(pool, books),
+			Tantivy: search.NewTantivySearch(pool, books, textIndex.Index()),
+			Engine: func(ctx context.Context) string {
+				engine, _ := settingStore.Text(ctx, settings.SearchEngine)
+				return engine
+			},
+		},
 		Duplicates: duplicates,
 		Similar:    vectors,
 		Stats:      stats.NewService(pool, vectors),
