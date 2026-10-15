@@ -3018,6 +3018,7 @@ export interface components {
         IndexStatus: {
             engine: string;
             files: number;
+            inApp: number;
             indexed: number;
             rebuilding: boolean;
         };

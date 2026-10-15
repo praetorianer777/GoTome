@@ -17,6 +17,8 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/search"
 )
 
 // textIndex opens a full-text index of the test's own over its database,
@@ -37,6 +39,14 @@ func (a *app) textIndex() *fulltext.Service {
 	}
 	a.t.Cleanup(func() { s.Close() })
 	return s
+}
+
+// useTantivy has the app search the index in the app, which every search
+// of searchText brings up to date first.
+func (a *app) useTantivy() {
+	a.t.Helper()
+	a.text = a.textIndex()
+	a.server.Search = search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())
 }
 
 func (a *app) drain(s *fulltext.Service) {
@@ -277,5 +287,39 @@ func TestPassagesAreReadAgainFromTheirFiles(t *testing.T) {
 	}
 	if text, ok := got[refs[len(refs)-1].ChunkID]; ok {
 		t.Errorf("a gone file gave %.80q", text)
+	}
+}
+
+func TestBothEnginesFindTheSameBooks(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	a.useTantivy()
+	a.shelfOfTexts(admin, map[string]string{
+		"Whaling":  "They followed the white whale for three days, and the whales were harpooned at dawn.",
+		"Harbour":  "The colour of the sea changed in the morning over the harbour.",
+		"American": "The color of the sea changed in the morning.",
+		"Märchen":  "Es war einmal ein alter Mann, und die Kinder spielten am Fluss bei den Häusern.",
+		"Maison":   "La maison au bord du jardin, la nuit, once upon a time.",
+	})
+	a.drain(a.text)
+	pg := search.NewPGSearch(a.pool, a.server.Books)
+	tv := search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())
+	queries := append([]string{"colours", "whael", `"wite whale"`}, search.CompareQueries...)
+	answered := 0
+	for _, c := range search.Compare(context.Background(), pg, tv, library.Scope{SeesAll: true}, queries, 20) {
+		if len(c.A) > 0 {
+			answered++
+		}
+		if c.ErrorA != nil || c.ErrorB != nil {
+			t.Errorf("%s: %v, %v", c.Query, c.ErrorA, c.ErrorB)
+			continue
+		}
+		if !slices.Equal(c.A, c.B) {
+			t.Errorf("%s: pg_search finds %v, the index %v", c.Query, c.A, c.B)
+		}
+	}
+	if answered < 8 {
+		t.Errorf("only %d of %d queries found anything", answered, len(queries))
 	}
 }

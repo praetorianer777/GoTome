@@ -25,7 +25,7 @@ use tantivy::schema::{
 use tantivy::tokenizer::{
     Language, LowerCaser, RemoveLongFilter, SimpleTokenizer, Stemmer, TextAnalyzer,
 };
-use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument, Term};
+use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, SnippetGenerator, TantivyDocument, Term};
 
 /// What an index written by this library is: a change to the schema or the
 /// tokenizers raises it, and an index of another one is built again.
@@ -166,11 +166,7 @@ impl Engine {
             w.delete_term(Term::from_field_text(self.library, lib));
         }
         for d in &b.add {
-            let body = match d.lang.as_str() {
-                "en" => self.bodies[0],
-                "de" => self.bodies[1],
-                _ => self.bodies[2],
-            };
+            let body = self.bodies[lang_index(&d.lang)];
             let mut doc = TantivyDocument::default();
             doc.add_u64(self.id, d.id);
             doc.add_text(self.book, &d.book);
@@ -234,6 +230,31 @@ impl Engine {
         Ok(out)
     }
 
+    /// A snippet of each passage around the query's words, which it is
+    /// given rather than reads: the index holds no text. A passage is
+    /// tokenized as the field of its language, and the fragment chosen is
+    /// the one whose words are rarest in the index.
+    pub fn snippets(&self, r: &SnippetRequest) -> Res<Vec<SnippetOut>> {
+        let query = self.matcher(&r.query)?;
+        let searcher = self.reader.searcher();
+        let mut generators: Vec<Option<SnippetGenerator>> = vec![None, None, None];
+        let mut out = Vec::with_capacity(r.passages.len());
+        for p in &r.passages {
+            let i = lang_index(&p.lang);
+            if generators[i].is_none() {
+                let mut g = SnippetGenerator::create(&searcher, &*query, self.bodies[i]).map_err(err)?;
+                g.set_max_num_chars(r.max_chars.max(1));
+                generators[i] = Some(g);
+            }
+            let snippet = generators[i].as_ref().unwrap().snippet(&p.text);
+            out.push(SnippetOut {
+                fragment: snippet.fragment().to_string(),
+                highlighted: snippet.highlighted().iter().map(|h| (h.start, h.end)).collect(),
+            });
+        }
+        Ok(out)
+    }
+
     /// pg_search's condition, as `internal/search` writes it: in one of the
     /// language fields, every free word (`&&&`), one word of each group
     /// (`|||`), each phrase (`###`) and one phrase of each set of variants,
@@ -289,6 +310,14 @@ impl Engine {
             return Ok(Box::new(EmptyQuery));
         }
         Ok(Box::new(BooleanQuery::new(alts)))
+    }
+}
+
+fn lang_index(lang: &str) -> usize {
+    match lang {
+        "en" => 0,
+        "de" => 1,
+        _ => 2,
     }
 }
 
@@ -348,6 +377,29 @@ pub struct Search {
     pub libraries: Vec<String>,
     pub books: Option<Vec<String>>,
     pub limit: usize,
+}
+
+/// Passages to make snippets of, for a query.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub struct SnippetRequest {
+    #[serde(flatten)]
+    pub query: Search,
+    pub passages: Vec<Passage>,
+    pub max_chars: usize,
+}
+
+#[derive(Deserialize)]
+pub struct Passage {
+    pub lang: String,
+    pub text: String,
+}
+
+/// A fragment of a passage and the byte ranges in it that match.
+#[derive(Serialize, Debug)]
+pub struct SnippetOut {
+    pub fragment: String,
+    pub highlighted: Vec<(usize, usize)>,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -478,6 +530,21 @@ pub unsafe extern "C" fn gtf_search(
         let q: Search = serde_json::from_str(from_c(query)?).map_err(err)?;
         let hits = engine(e)?.search(&q)?;
         *out = to_c(serde_json::to_string(&hits).map_err(err)?);
+        Ok(())
+    })
+}
+
+/// Snippets of passages for a query, as JSON in and out.
+///
+/// # Safety
+/// e is an open index; request is a NUL-terminated string; out and err
+/// point to writable pointers.
+#[no_mangle]
+pub unsafe extern "C" fn gtf_snippets(e: *const Engine, request: *const c_char, out: *mut *mut c_char, errp: *mut *mut c_char) -> c_int {
+    guard(errp, || {
+        let r: SnippetRequest = serde_json::from_str(from_c(request)?).map_err(err)?;
+        let got = engine(e)?.snippets(&r)?;
+        *out = to_c(serde_json::to_string(&got).map_err(err)?);
         Ok(())
     })
 }

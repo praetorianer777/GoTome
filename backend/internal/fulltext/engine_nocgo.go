@@ -16,5 +16,8 @@ func (ix *Index) Apply(b Batch) error           { return errNoCgo }
 func (ix *Index) Commit() error                 { return errNoCgo }
 func (ix *Index) Reload() error                 { return errNoCgo }
 func (ix *Index) Search(q Query) ([]Hit, error) { return nil, errNoCgo }
-func (ix *Index) Info() (Info, error)           { return Info{}, errNoCgo }
-func (ix *Index) Close() error                  { return nil }
+func (ix *Index) Snippets(q Query, passages []Passage, maxChars int) ([]Snippet, error) {
+	return nil, errNoCgo
+}
+func (ix *Index) Info() (Info, error) { return Info{}, errNoCgo }
+func (ix *Index) Close() error        { return nil }

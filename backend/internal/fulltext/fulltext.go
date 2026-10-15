@@ -63,6 +63,24 @@ type Hit struct {
 	Score float64 `json:"score"`
 }
 
+// Passage is text to make a snippet of, in the language its chunk is in.
+type Passage struct {
+	Lang string `json:"lang"`
+	Text string `json:"text"`
+}
+
+// Snippet is a fragment of a passage, and the byte ranges in it that match.
+type Snippet struct {
+	Fragment    string   `json:"fragment"`
+	Highlighted [][2]int `json:"highlighted"`
+}
+
+type snippetRequest struct {
+	Query
+	Passages []Passage `json:"passages"`
+	MaxChars int       `json:"max_chars"`
+}
+
 // Info is what the index holds, as of its last commit.
 type Info struct {
 	Docs     int64 `json:"docs"`

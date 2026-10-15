@@ -10083,6 +10083,9 @@
           "files": {
             "type": "integer"
           },
+          "inApp": {
+            "type": "integer"
+          },
           "indexed": {
             "type": "integer"
           },
@@ -10093,6 +10096,7 @@
         "required": [
           "files",
           "indexed",
+          "inApp",
           "rebuilding",
           "engine"
         ]
