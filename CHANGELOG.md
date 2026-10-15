@@ -21,6 +21,9 @@ What changes for someone who runs or uses GOtome. The format follows
   book being read marked in candlelight; the filters stay in view while
   the list scrolls, and the first page loads behind placeholders of the
   covers to come.
+- A book's page leads with its cover and title, with Read (or Listen) as
+  its first button, and gives the details a box of their own beside the
+  files.
 
 ### Added
 
