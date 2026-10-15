@@ -128,6 +128,12 @@ export const de: Record<MessageKey, string> = {
 	"role.editor": "Redakteur",
 	"role.reader": "Leser",
 
+	"version.release": "GOtome v{version}",
+	"version.build": "GOtome {version} (kein Release)",
+	"version.buildWithCommit": "GOtome {version} (kein Release, Commit {commit})",
+	"version.updated": "Eine neue Version von GOtome läuft.",
+	"version.reload": "Neu laden",
+
 	"theme.label": "Farben",
 	"theme.system": "Wie das Gerät",
 	"theme.light": "Hell",

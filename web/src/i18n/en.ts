@@ -121,6 +121,12 @@ export const en = {
 	"role.editor": "Editor",
 	"role.reader": "Reader",
 
+	"version.release": "GOtome v{version}",
+	"version.build": "GOtome {version} (not a release)",
+	"version.buildWithCommit": "GOtome {version} (not a release, commit {commit})",
+	"version.updated": "A new version of GOtome is running.",
+	"version.reload": "Reload",
+
 	"theme.label": "Colours",
 	"theme.system": "As the device",
 	"theme.light": "Light",

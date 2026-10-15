@@ -342,6 +342,48 @@ describe("signed in", () => {
 		expect(document.documentElement.dataset.theme).toBeUndefined();
 	});
 
+	it("says in the footer which version runs, and when another one does", async () => {
+		const { queryClient } = renderApp("/");
+
+		expect(
+			await screen.findByRole("link", { name: "GOtome v0.5.0" }),
+		).toHaveAttribute(
+			"href",
+			"https://github.com/praetorianer777/GoTome/releases/tag/v0.5.0",
+		);
+		expect(screen.queryByText(/A new version/)).not.toBeInTheDocument();
+
+		server.build = { version: "0.6.0", commit: "1234567890ab" };
+		await queryClient.refetchQueries({ queryKey: ["version"] });
+
+		expect(
+			await screen.findByText("A new version of GOtome is running."),
+		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "GOtome v0.5.0" })).toBeInTheDocument();
+	});
+
+	it("says a build that is not a release is one, with its commit", async () => {
+		server.build = { version: "dev", commit: "abcdef0123456" };
+		renderApp("/");
+		expect(
+			await screen.findByText("GOtome dev (not a release, commit abcdef0)"),
+		).toBeInTheDocument();
+	});
+
+	it("leaves the footer out of the readers", async () => {
+		const { router } = renderApp("/");
+		await screen.findByRole("link", { name: "GOtome v0.5.0" });
+
+		await router.navigate({ to: "/books/$bookId/listen", params: { bookId: "b1" } });
+
+		await waitFor(() =>
+			expect(
+				screen.queryByRole("link", { name: "GOtome v0.5.0" }),
+			).not.toBeInTheDocument(),
+		);
+	});
+
 	it("answers an unknown address with a way back", async () => {
 		renderApp("/no/such/page");
 		expect(

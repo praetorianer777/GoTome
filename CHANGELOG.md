@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The web app's pages end in a footer that says which version of GOtome runs,
+  linked to its release notes, and, when GOtome was updated while the page
+  was open, that it should be reloaded.
+
 ## [0.5.0] - 2026-10-15
 
 ### Added

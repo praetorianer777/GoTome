@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useMatchRoute, useNavigate } from "@tanstack/react-router";
 import {
 	type CurrentUser,
 	can,
@@ -7,6 +7,7 @@ import {
 } from "@/auth/session";
 import mark from "@/assets/mark.webp";
 import { QuickSearch } from "@/books/quick-search";
+import { useServerVersion, VersionFooter } from "@/components/version-footer";
 import { Bell } from "@/notifications/bell";
 import { type MessageKey, t } from "@/i18n";
 import { type Theme, useTheme } from "@/lib/theme";
@@ -67,6 +68,12 @@ export function Shell({ user }: { user: CurrentUser }) {
 	const navigate = useNavigate();
 	const [theme, setTheme] = useTheme();
 	const roleLabel = ROLE_LABELS[user.role];
+	const version = useServerVersion();
+	const matchRoute = useMatchRoute();
+	// The readers and the player take the whole screen.
+	const fullScreen =
+		!!matchRoute({ to: "/books/$bookId/read/$fileId" }) ||
+		!!matchRoute({ to: "/books/$bookId/listen" });
 
 	return (
 		<PlayerProvider>
@@ -142,6 +149,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 			<main id="content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
 				<Outlet />
 			</main>
+			{!fullScreen && <VersionFooter {...version} />}
 			<MiniPlayer />
 		</div>
 		</PlayerProvider>
