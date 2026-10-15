@@ -494,6 +494,31 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Placeholders have no files and so no chunks. A merge of books chooses the
   surviving book's primary text file again and rechunks it if it changed.
 
+## Full-text index in the app
+
+- The text is moving out of Postgres into a Tantivy index in the app
+  (#265, `docs/decisions/text-store.md`): `internal/fulltext` over the
+  engine of `engine/`, under `GOTOME_DATA_DIR/search/tantivy`, derived and
+  not backed up. pg_search still answers searches meanwhile.
+- Chunks reach it through the outbox `fulltext_outbox`, in the transaction
+  that changes them: `writeChunksTx` adds a book's chunks with their text
+  (`fulltext.AddTx`), and a trigger on `book_chunks` records every delete,
+  however the chunks go. The `fulltext.apply_outbox` job (queue `index`,
+  one worker; queued with each add and every minute) applies it in id
+  order, commits the index, then deletes the rows; each add deletes its
+  chunk first, so a row applied twice adds it once. Search must check what
+  the index finds against `book_chunks`, which may be ahead of it.
+- A chunk records where its text is in its file (`sources`: an EPUB's
+  documents or a PDF's pages; `source_from`, `source_to`), from
+  `textproc.Chunk`'s sections; `ingest.ReadPassages` reads it again from
+  there, or the file whole where there are none (`textproc.Slice`).
+- `book_files.indexed_at` says the index has a file's chunks. A new index,
+  or one of another format (`index_versions` `fulltext`), clears it for
+  every file, and `ingest.index_files` (a snoozing job, queued at start)
+  reads those files again (`Reindex`): chunks that cut the same keep their
+  IDs and `chunked_at`, so nothing is embedded or signed again. A book
+  that changes library has its file read again (trigger).
+
 ## Full-text search
 
 - `internal/search` is the `Searcher`; `PGSearch` runs it on the BM25 index

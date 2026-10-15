@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/textproc"
@@ -117,6 +118,7 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 		r := sqlc.InsertBookChunksParams{
 			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
 			Chapter: c.Chapter, CharOffset: int32(c.Offset), Lang: c.Lang,
+			Sources: chunkSources(sections, c), SourceFrom: int32(c.From), SourceTo: int32(c.To),
 		}
 		if c.PageFrom > 0 {
 			from, to := int32(c.PageFrom), int32(c.PageTo)
@@ -141,6 +143,9 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 			return err
 		}
 	}
+	if err := s.indexChunksTx(ctx, q, tx, bookID, libraryID, fileID, chunks); err != nil {
+		return err
+	}
 	if err := q.SetFileChunked(ctx, fileID); err != nil {
 		return err
 	}
@@ -148,6 +153,39 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 		return s.OnChunked(ctx, tx, bookID, fileID)
 	}
 	return nil
+}
+
+// chunkSources names the sections a chunk spans by their sources, or none
+// when the format's sections have none and the file is read whole.
+func chunkSources(sections []Section, c textproc.Chunk) []string {
+	var out []string
+	for _, s := range sections[c.SectionFrom : c.SectionTo+1] {
+		if s.Source == "" {
+			return []string{}
+		}
+		out = append(out, s.Source)
+	}
+	return out
+}
+
+// indexChunksTx hands the file's chunks, as stored, to the full-text index
+// through its outbox, and records that it has them.
+func (s *Service) indexChunksTx(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, chunks []textproc.Chunk) error {
+	stored, err := q.ListFileChunks(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if len(stored) != len(chunks) {
+		return fmt.Errorf("file %s has %d chunks stored for %d cut", fileID, len(stored), len(chunks))
+	}
+	docs := make([]fulltext.Doc, len(chunks))
+	for i, c := range chunks {
+		docs[i] = fulltext.Doc{ID: stored[i].ID, BookID: bookID, LibraryID: libraryID, Lang: c.Lang, Text: c.Text}
+	}
+	if err := fulltext.AddTx(ctx, tx, s.Queue, docs); err != nil {
+		return err
+	}
+	return q.SetFileIndexed(ctx, fileID)
 }
 
 // chunkTimeout ends the reading of one file that does not end.

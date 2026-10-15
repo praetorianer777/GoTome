@@ -117,6 +117,9 @@ type InsertBookChunksParams struct {
 	BodyEn     *string
 	BodyDe     *string
 	BodyXx     *string
+	Sources    []string
+	SourceFrom int32
+	SourceTo   int32
 }
 
 const listBookTextFiles = `-- name: ListBookTextFiles :many
@@ -142,6 +145,43 @@ func (q *Queries) ListBookTextFiles(ctx context.Context, bookID uuid.UUID) ([]Li
 	for rows.Next() {
 		var i ListBookTextFilesRow
 		if err := rows.Scan(&i.ID, &i.Format, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFileChunks = `-- name: ListFileChunks :many
+SELECT id, position, char_offset, lang FROM book_chunks WHERE file_id = $1 ORDER BY position
+`
+
+type ListFileChunksRow struct {
+	ID         int64
+	Position   int32
+	CharOffset int32
+	Lang       string
+}
+
+// What locates each of the file's chunks, in order.
+func (q *Queries) ListFileChunks(ctx context.Context, fileID uuid.UUID) ([]ListFileChunksRow, error) {
+	rows, err := q.db.Query(ctx, listFileChunks, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFileChunksRow{}
+	for rows.Next() {
+		var i ListFileChunksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Position,
+			&i.CharOffset,
+			&i.Lang,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -179,6 +219,33 @@ func (q *Queries) ListUnchunkedTextFiles(ctx context.Context) ([]uuid.UUID, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const setChunkSources = `-- name: SetChunkSources :exec
+UPDATE book_chunks c
+SET sources = string_to_array(s.sources, E'\x1f'), source_from = s.source_from, source_to = s.source_to
+FROM (SELECT unnest($1::bigint[]) AS id, unnest($2::int[]) AS source_from,
+             unnest($3::int[]) AS source_to, unnest($4::text[]) AS sources) s
+WHERE c.id = s.id
+`
+
+type SetChunkSourcesParams struct {
+	Ids     []int64
+	Froms   []int32
+	Tos     []int32
+	Sources []string
+}
+
+// An array of arrays cannot be ragged: each chunk's sections come joined by
+// a unit separator, which no file name or page number holds.
+func (q *Queries) SetChunkSources(ctx context.Context, arg SetChunkSourcesParams) error {
+	_, err := q.db.Exec(ctx, setChunkSources,
+		arg.Ids,
+		arg.Froms,
+		arg.Tos,
+		arg.Sources,
+	)
+	return err
 }
 
 const setFileChunked = `-- name: SetFileChunked :exec

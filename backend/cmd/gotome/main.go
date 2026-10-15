@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -81,6 +82,9 @@ const (
 	koreaderHashInterval = 10 * time.Minute
 	// EPUBs read before measuring was, or changed since, are measured.
 	measureInterval = 10 * time.Minute
+	// Deletes reach the full-text index's outbox through a trigger, which
+	// queues no job; they are applied this often.
+	outboxInterval = time.Minute
 )
 
 const usage = `Usage: gotome <command>
@@ -264,6 +268,17 @@ func serve() error {
 	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
 	searchIndex := search.NewIndex(pool, log)
 	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
+	engineVersion, err := fulltext.Load(cfg.Fulltext)
+	if err != nil {
+		return err
+	}
+	textIndex, freshIndex, err := fulltext.OpenService(ctx, pool, fulltext.Dir(cfg.DataDir), engineVersion, log)
+	if err != nil {
+		return err
+	}
+	defer textIndex.Close()
+	river.AddWorker(workers, &fulltext.ApplyWorker{Service: textIndex})
+	river.AddWorker(workers, &ingest.IndexFilesWorker{Service: scans})
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
@@ -287,6 +302,7 @@ func serve() error {
 		releases.Periodic(releasePollInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
+		fulltext.Periodic(outboxInterval),
 	}
 	if cfg.ScanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is
@@ -315,6 +331,14 @@ func serve() error {
 	}
 	if err := scans.CheckChunkVersion(ctx); err != nil {
 		log.Warn("could not check the chunks", "error", err)
+	}
+	// Chunks the full-text index lacks, all of them when it is new: their
+	// files are read again, as it holds no text to be built from.
+	if freshIndex {
+		log.Info("the full-text index is new; reading the text of every book into it", "engine", engineVersion)
+	}
+	if err := scans.EnqueueIndexing(ctx); err != nil {
+		log.Warn("could not queue indexing", "error", err)
 	}
 	// Books read before their text was kept, or whose chunks were dropped to
 	// be rebuilt. Search works without them meanwhile, only knows less.

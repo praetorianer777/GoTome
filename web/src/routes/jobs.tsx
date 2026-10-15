@@ -51,6 +51,10 @@ function describe(job: Job): string {
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
 		case "search.rebuild_index":
 			return t("jobs.kind.rebuildIndex");
+		case "fulltext.apply_outbox":
+			return t("jobs.kind.applyIndex");
+		case "ingest.index_files":
+			return t("jobs.kind.indexFiles");
 		case "similar.embed_books":
 			return t("jobs.kind.embed");
 		case "dedupe.sign_file":

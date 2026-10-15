@@ -28,10 +28,11 @@ fi
 umask 077
 
 # Rows GOtome makes again from the files: the text cut into chunks and the
-# words of the search, the duplicate signatures, the vectors, and the cache of
-# what metadata sources answered. Their tables stay in the dump, empty;
-# restore.sh has the text read again, which fills them.
-derived=(book_chunks search_words file_signatures file_lsh book_vectors provider_records)
+# words of the search, what the full-text index is still to get, the
+# duplicate signatures, the vectors, and the cache of what metadata sources
+# answered. Their tables stay in the dump, empty; restore.sh has the text
+# read again, which fills them.
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors provider_records)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")
@@ -41,7 +42,9 @@ echo "Copying the database"
 docker compose exec -T db pg_dump -U gotome -d gotome --format=custom "${exclude[@]}" >"$dir/database.dump"
 
 echo "Copying GOtome's files"
-docker compose exec -T app tar -C /data --exclude=./models -cf - . >"$dir/data.tar"
+# Not the models, which are downloaded again, nor the full-text index, which
+# is made again from the files.
+docker compose exec -T app tar -C /data --exclude=./models --exclude=./search -cf - . >"$dir/data.tar"
 
 echo "Copying the secret key"
 docker compose exec -T app cat /secrets/secret-key >"$dir/secret-key"

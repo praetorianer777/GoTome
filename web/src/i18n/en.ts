@@ -688,6 +688,8 @@ export const en = {
 	"settings.oidcLinkByEmail.hint":
 		"on or off. On, a first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
 	"jobs.kind.rebuildIndex": "Build the search index again",
+	"jobs.kind.applyIndex": "Bring the search index up to date",
+	"jobs.kind.indexFiles": "Read the books' text into the search index",
 	"jobs.kind.duplicates": "Look for duplicates of {book}",
 	"jobs.kind.sign": "Compare the text of {file} with other books",
 	"embedding.title": "Working out what books are about",
