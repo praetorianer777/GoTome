@@ -6,9 +6,13 @@
 //!
 //!     tantivy-spike <chunks.jsonl.gz> <index dir> <store> <queries.json> <result.json>
 //!
-//! store is `none`, `lz4`, or `zstd<level>[-<block KB>]`.
+//! store is `none`, `lz4`, or `zstd<level>[-<block KB>]`. Without a store,
+//! snippets are made from the text handed in, read again from the chunks
+//! for the hits, as the app would hand in text it keeps elsewhere (#268).
+//! RUNS (default 5) and WINDOWS (default 1000, comma separated) set how
+//! often each query runs and how many hits it takes.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
@@ -26,10 +30,8 @@ use tantivy::tokenizer::{
 };
 use tantivy::{doc, Index, IndexSettings, IndexWriter, SnippetGenerator, TantivyDocument, Term};
 
-const WINDOW: usize = 1000;
 const SNIPPET_HITS: usize = 20;
 const SNIPPET_CHARS: usize = 200;
-const RUNS: usize = 5;
 const LANGS: [&str; 3] = ["en", "de", "xx"];
 
 type Res<T> = Result<T, Box<dyn std::error::Error>>;
@@ -41,6 +43,13 @@ fn main() -> Res<()> {
     }
     let (src, dir, store, queries, out) = (&args[1], &args[2], &args[3], &args[4], &args[5]);
     let stored = store != "none";
+    let runs: usize = std::env::var("RUNS").map_or(Ok(5), |v| v.parse())?;
+    let windows: Vec<usize> = std::env::var("WINDOWS")
+        .unwrap_or_else(|_| "1000".into())
+        .split(',')
+        .map(|w| w.parse())
+        .collect::<Result<_, _>>()?;
+    let rss_start = rss();
 
     let mut sb = Schema::builder();
     let id = sb.add_u64_field("id", INDEXED | FAST);
@@ -126,6 +135,7 @@ fn main() -> Res<()> {
     let writer: IndexWriter = index.writer_with_num_threads(1, 50_000_000)?;
     writer.garbage_collect_files().wait()?;
     drop(writer);
+    let rss_built = rss();
 
     let mut sizes: BTreeMap<String, u64> = BTreeMap::new();
     for entry in std::fs::read_dir(dir)? {
@@ -146,80 +156,99 @@ fn main() -> Res<()> {
 
     let reader = index.reader()?;
     let searcher = reader.searcher();
+    let rss_opened = rss();
     let libs: Vec<Term> = (0..2)
         .map(|i| Term::from_field_text(library, &format!("00000000-0000-4000-a000-{i:012}")))
         .collect();
     let qs: Vec<Value> = serde_json::from_reader(File::open(queries)?)?;
     let mut latency = Vec::new();
-    for q in &qs {
-        let snippets = q["snippets"].as_bool().unwrap_or(false);
-        if snippets && !stored {
-            continue;
-        }
-        let (text, phrase) = match q["phrase"].as_str() {
-            Some(p) => (p, true),
-            None => (q["words"].as_str().unwrap(), false),
-        };
-        let one_library = q["library"].as_bool().unwrap_or(false);
-        let matcher = text_query(&index, &bodies, text, phrase)?;
-        let lib_terms = if one_library { &libs[..1] } else { &libs[..] };
-        let lib_query: Box<dyn Query> = Box::new(BooleanQuery::new(
-            lib_terms
-                .iter()
-                .map(|t| {
-                    (
-                        Occur::Should,
-                        Box::new(TermQuery::new(t.clone(), IndexRecordOption::Basic))
-                            as Box<dyn Query>,
-                    )
-                })
-                .collect(),
-        ));
-        let query = BooleanQuery::new(vec![
-            (Occur::Must, matcher.box_clone()),
-            (Occur::Must, lib_query),
-        ]);
-        let mut times = Vec::new();
-        let mut hits = 0;
-        for run in 0..=RUNS {
-            let start = Instant::now();
-            let top = searcher.search(&query, &TopDocs::with_limit(WINDOW))?;
-            hits = top.len();
-            if snippets {
-                let mut gens = Vec::new();
-                for &f in &bodies {
-                    let mut g = SnippetGenerator::create(&searcher, &*matcher, f)?;
-                    g.set_max_num_chars(SNIPPET_CHARS);
-                    gens.push(g);
-                }
+    for &window in &windows {
+        for q in &qs {
+            let snippets = q["snippets"].as_bool().unwrap_or(false);
+            let (text, phrase) = match q["phrase"].as_str() {
+                Some(p) => (p, true),
+                None => (q["words"].as_str().unwrap(), false),
+            };
+            let one_library = q["library"].as_bool().unwrap_or(false);
+            let matcher = text_query(&index, &bodies, text, phrase)?;
+            let lib_terms = if one_library { &libs[..1] } else { &libs[..] };
+            let lib_query: Box<dyn Query> = Box::new(BooleanQuery::new(
+                lib_terms
+                    .iter()
+                    .map(|t| {
+                        (
+                            Occur::Should,
+                            Box::new(TermQuery::new(t.clone(), IndexRecordOption::Basic))
+                                as Box<dyn Query>,
+                        )
+                    })
+                    .collect(),
+            ));
+            let query = BooleanQuery::new(vec![
+                (Occur::Must, matcher.box_clone()),
+                (Occur::Must, lib_query),
+            ]);
+            let mut handed_in = HashMap::new();
+            if snippets && !stored {
+                let top = searcher.search(&query, &TopDocs::with_limit(window))?;
+                let mut want = HashSet::new();
                 for (_, addr) in top.iter().take(SNIPPET_HITS) {
-                    let d: TantivyDocument = searcher.doc(*addr)?;
-                    for g in &gens {
-                        let s = g.snippet_from_doc(&d);
-                        if !s.is_empty() {
-                            break;
+                    want.insert(chunk_id(&searcher, *addr)?);
+                }
+                handed_in = read_texts(src, &want)?;
+            }
+            let mut times = Vec::new();
+            let mut hits = 0;
+            for run in 0..=runs {
+                let start = Instant::now();
+                let top = searcher.search(&query, &TopDocs::with_limit(window))?;
+                hits = top.len();
+                if snippets {
+                    let mut gens = Vec::new();
+                    for &f in &bodies {
+                        let mut g = SnippetGenerator::create(&searcher, &*matcher, f)?;
+                        g.set_max_num_chars(SNIPPET_CHARS);
+                        gens.push(g);
+                    }
+                    for (_, addr) in top.iter().take(SNIPPET_HITS) {
+                        if stored {
+                            let d: TantivyDocument = searcher.doc(*addr)?;
+                            for g in &gens {
+                                if !g.snippet_from_doc(&d).is_empty() {
+                                    break;
+                                }
+                            }
+                        } else if let Some((lang, body)) =
+                            handed_in.get(&chunk_id(&searcher, *addr)?)
+                        {
+                            let i = LANGS.iter().position(|l| l == lang).unwrap_or(2);
+                            gens[i].snippet(body);
                         }
                     }
                 }
+                if run > 0 {
+                    times.push(start.elapsed().as_secs_f64() * 1000.0);
+                }
             }
-            if run > 0 {
-                times.push(start.elapsed().as_secs_f64() * 1000.0);
-            }
+            times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let p50 = times[times.len() / 2];
+            let p95 = times[(times.len() * 95).div_ceil(100) - 1];
+            let max = times[times.len() - 1];
+            let kind = q["kind"].as_str().unwrap();
+            println!(
+                "  top {window:4} {kind:8} {:24} {hits:5} hits  p50 {p50:7.1} ms  p95 {p95:7.1} ms",
+                format!("{text:?}")
+            );
+            latency.push(json!({"kind": kind, "query": text, "top": window, "hits": hits, "p50": p50, "p95": p95, "max": max}));
         }
-        times.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let (p50, max) = (times[times.len() / 2], times[times.len() - 1]);
-        let kind = q["kind"].as_str().unwrap();
-        println!(
-            "  {kind:8} {:24} {hits:5} hits  p50 {p50:7.1} ms  max {max:7.1} ms",
-            format!("{text:?}")
-        );
-        latency.push(json!({"kind": kind, "query": text, "hits": hits, "p50": p50, "max": max}));
     }
+    let rss_searched = rss();
 
     let result = json!({
         "store": store, "books": books, "chunks": chunks, "textBytes": text_bytes,
         "segmentsBeforeMerge": segment_count, "indexSeconds": indexed, "mergedSeconds": merged,
-        "sizes": sizes, "latencyMs": latency,
+        "sizes": sizes, "latencyMs": latency, "runs": runs,
+        "rssKB": {"start": rss_start, "built": rss_built, "opened": rss_opened, "searched": rss_searched},
     });
     std::fs::write(out, serde_json::to_string_pretty(&result)? + "\n")?;
     Ok(())
@@ -258,4 +287,56 @@ fn text_query(index: &Index, bodies: &[Field], text: &str, phrase: bool) -> Res<
         alts.push((Occur::Should, q));
     }
     Ok(Box::new(BooleanQuery::new(alts)))
+}
+
+fn chunk_id(searcher: &tantivy::Searcher, addr: tantivy::DocAddress) -> Res<u64> {
+    let ids = searcher
+        .segment_reader(addr.segment_ord)
+        .fast_fields()
+        .u64("id")?;
+    Ok(ids.first(addr.doc_id).ok_or("chunk without id")?)
+}
+
+/// The language and text of the chunks in want, numbered as they were
+/// indexed: what the app would hand in from wherever it keeps the text.
+fn read_texts(src: &str, want: &HashSet<u64>) -> Res<HashMap<u64, (String, String)>> {
+    let mut out = HashMap::new();
+    let mut n = 0u64;
+    let reader = BufReader::with_capacity(1 << 20, GzDecoder::new(File::open(src)?));
+    for line in reader.lines() {
+        let b: Value = serde_json::from_str(&line?)?;
+        for c in b["chunks"].as_array().unwrap() {
+            n += 1;
+            if want.contains(&n) {
+                out.insert(
+                    n,
+                    (
+                        c["lang"].as_str().unwrap().to_string(),
+                        c["text"].as_str().unwrap().to_string(),
+                    ),
+                );
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// The process's resident and peak memory in KB, from /proc/self/status.
+fn rss() -> Value {
+    let status = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+    let mut v = serde_json::Map::new();
+    for line in status.lines() {
+        for key in ["VmRSS", "VmHWM", "RssAnon", "RssFile"] {
+            if let Some(rest) = line.strip_prefix(&format!("{key}:")) {
+                let kb: u64 = rest
+                    .trim()
+                    .trim_end_matches("kB")
+                    .trim()
+                    .parse()
+                    .unwrap_or(0);
+                v.insert(key.into(), kb.into());
+            }
+        }
+    }
+    Value::Object(v)
 }

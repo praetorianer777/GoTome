@@ -1,0 +1,301 @@
+{
+  "books": 1981,
+  "chunks": 131845,
+  "indexSeconds": 23.418831529,
+  "latencyMs": [
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 2.433148,
+      "p50": 2.1467460000000003,
+      "p95": 2.2187919999999997,
+      "query": "nacht stadt",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "words",
+      "max": 2.10685,
+      "p50": 2.034964,
+      "p95": 2.051706,
+      "query": "liebe krieg",
+      "top": 1000
+    },
+    {
+      "hits": 127,
+      "kind": "words",
+      "max": 0.48915700000000006,
+      "p50": 0.48089,
+      "p95": 0.487343,
+      "query": "magie drache schwert",
+      "top": 1000
+    },
+    {
+      "hits": 8,
+      "kind": "words",
+      "max": 0.124215,
+      "p50": 0.11931599999999999,
+      "p95": 0.124015,
+      "query": "detective murder",
+      "top": 1000
+    },
+    {
+      "hits": 0,
+      "kind": "words",
+      "max": 0.047039000000000004,
+      "p50": 0.044224,
+      "p95": 0.045605999999999994,
+      "query": "ship captain storm",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 10.060213000000001,
+      "p50": 9.627283,
+      "p95": 9.867939,
+      "query": "in der nacht",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "phrase",
+      "max": 10.993941,
+      "p50": 10.690888000000001,
+      "p95": 10.938426,
+      "query": "zum ersten mal",
+      "top": 1000
+    },
+    {
+      "hits": 16,
+      "kind": "phrase",
+      "max": 0.23652800000000002,
+      "p50": 0.200319,
+      "p95": 0.22961499999999999,
+      "query": "the old man",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 1.324368,
+      "p50": 1.302026,
+      "p95": 1.312486,
+      "query": "nacht stadt",
+      "top": 1000
+    },
+    {
+      "hits": 3,
+      "kind": "library",
+      "max": 0.023444,
+      "p50": 0.019517,
+      "p95": 0.020779,
+      "query": "detective murder",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "library",
+      "max": 8.924793000000001,
+      "p50": 8.574138999999999,
+      "p95": 8.899144,
+      "query": "in der nacht",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "snippets",
+      "max": 13.225768,
+      "p50": 11.956745,
+      "p95": 12.288313,
+      "query": "nacht stadt",
+      "top": 1000
+    },
+    {
+      "hits": 8,
+      "kind": "snippets",
+      "max": 4.1797960000000005,
+      "p50": 4.109403,
+      "p95": 4.1732130000000005,
+      "query": "detective murder",
+      "top": 1000
+    },
+    {
+      "hits": 1000,
+      "kind": "snippets",
+      "max": 25.706596,
+      "p50": 19.497885999999998,
+      "p95": 23.782360999999998,
+      "query": "in der nacht",
+      "top": 1000
+    },
+    {
+      "hits": 10,
+      "kind": "words",
+      "max": 2.743827,
+      "p50": 2.18575,
+      "p95": 2.673273,
+      "query": "nacht stadt",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "words",
+      "max": 1.871304,
+      "p50": 1.857238,
+      "p95": 1.861065,
+      "query": "liebe krieg",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "words",
+      "max": 0.5042850000000001,
+      "p50": 0.48602,
+      "p95": 0.491261,
+      "query": "magie drache schwert",
+      "top": 10
+    },
+    {
+      "hits": 8,
+      "kind": "words",
+      "max": 0.173378,
+      "p50": 0.16650500000000001,
+      "p95": 0.172718,
+      "query": "detective murder",
+      "top": 10
+    },
+    {
+      "hits": 0,
+      "kind": "words",
+      "max": 0.049213,
+      "p50": 0.044665,
+      "p95": 0.046808,
+      "query": "ship captain storm",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "phrase",
+      "max": 10.793662000000001,
+      "p50": 9.468122000000001,
+      "p95": 10.087184,
+      "query": "in der nacht",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "phrase",
+      "max": 14.206105,
+      "p50": 11.019891000000001,
+      "p95": 13.4377,
+      "query": "zum ersten mal",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "phrase",
+      "max": 0.262668,
+      "p50": 0.198025,
+      "p95": 0.230727,
+      "query": "the old man",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "library",
+      "max": 1.227625,
+      "p50": 1.142685,
+      "p95": 1.2013550000000002,
+      "query": "nacht stadt",
+      "top": 10
+    },
+    {
+      "hits": 3,
+      "kind": "library",
+      "max": 0.020509,
+      "p50": 0.019447,
+      "p95": 0.019777,
+      "query": "detective murder",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "library",
+      "max": 9.666707,
+      "p50": 8.55894,
+      "p95": 9.333355999999998,
+      "query": "in der nacht",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "snippets",
+      "max": 9.383281,
+      "p50": 7.052887,
+      "p95": 9.316794999999999,
+      "query": "nacht stadt",
+      "top": 10
+    },
+    {
+      "hits": 8,
+      "kind": "snippets",
+      "max": 4.555498,
+      "p50": 4.432835000000001,
+      "p95": 4.497939000000001,
+      "query": "detective murder",
+      "top": 10
+    },
+    {
+      "hits": 10,
+      "kind": "snippets",
+      "max": 14.551919,
+      "p50": 14.250028,
+      "p95": 14.512314,
+      "query": "in der nacht",
+      "top": 10
+    }
+  ],
+  "mergedSeconds": 32.072485749,
+  "rssKB": {
+    "built": {
+      "RssAnon": 314860,
+      "RssFile": 7188,
+      "VmHWM": 834168,
+      "VmRSS": 322048
+    },
+    "opened": {
+      "RssAnon": 314864,
+      "RssFile": 7452,
+      "VmHWM": 834168,
+      "VmRSS": 322316
+    },
+    "searched": {
+      "RssAnon": 315044,
+      "RssFile": 23084,
+      "VmHWM": 834168,
+      "VmRSS": 338128
+    },
+    "start": {
+      "RssAnon": 528,
+      "RssFile": 3500,
+      "VmHWM": 4028,
+      "VmRSS": 4028
+    }
+  },
+  "runs": 20,
+  "segmentsBeforeMerge": 4,
+  "sizes": {
+    "fast": 168543,
+    "fieldnorm": 791214,
+    "idx": 92098362,
+    "json": 1996,
+    "lock": 0,
+    "pos": 209524922,
+    "store": 530694,
+    "term": 11303406,
+    "total": 314419137
+  },
+  "store": "none",
+  "textBytes": 1044355385
+}

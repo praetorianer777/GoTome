@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
@@ -127,6 +128,30 @@ func extract(dir string, every int, out string) error {
 	fmt.Printf("%d books, %d chunks, %.1f MB of text (%.1f M characters), %d without text\n",
 		books, chunks, float64(bytes)/1e6, float64(chars)/1e6, len(files)-books)
 	return f.Close()
+}
+
+// readTime times reading the chunks of some of the sample's books back
+// from their files, one at a time, as a search would to make snippets if
+// the files were the only copy of the text (#268).
+func readTime(dir string, every, books int, out string) error {
+	files, err := sample(dir, every)
+	if err != nil {
+		return err
+	}
+	step := max(len(files)/books, 1)
+	l := Latency{Kind: "read", Query: "a book's chunks from its EPUB"}
+	var times []float64
+	for i := 0; i < len(files) && len(times) < books; i += step {
+		start := time.Now()
+		if _, err := readChunks(files[i]); err != nil {
+			continue
+		}
+		times = append(times, float64(time.Since(start).Microseconds())/1000)
+		l.Hits++
+	}
+	percentiles(&l, times)
+	fmt.Printf("%d books: p50 %.1f ms  p95 %.1f ms  max %.1f ms\n", l.Hits, l.P50, l.P95, l.Max)
+	return writeJSON(out, l)
 }
 
 func readChunks(path string) (chunks []Chunk, err error) {
