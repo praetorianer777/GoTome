@@ -94,6 +94,8 @@ export class FakeServer {
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
 	down = false;
+	/** The build the server says it runs. */
+	build: { version: string; commit?: string } = { version: "0.5.0", commit: "8c98a9d0e1f2" };
 	/**
 	 * E-readers asking to be added. Accepting one adds it to the devices at
 	 * once, as its app would come for the token.
@@ -952,6 +954,8 @@ export class FakeServer {
 			case "POST /auth/logout":
 				this.session = null;
 				return new Response(null, { status: 204 });
+			case "GET /version":
+				return Response.json(this.build);
 			case "GET /auth/methods":
 				return Response.json(this.signInMethods);
 			case "POST /auth/oidc/start":
@@ -2450,5 +2454,9 @@ export function renderApp(path: string) {
 	});
 	const history = createMemoryHistory({ initialEntries: [path] });
 	const router = makeRouter(queryClient, history);
-	return { router, ...render(createElement(App, { queryClient, router })) };
+	return {
+		router,
+		queryClient,
+		...render(createElement(App, { queryClient, router })),
+	};
 }
