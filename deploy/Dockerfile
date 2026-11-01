@@ -63,7 +63,7 @@ COPY deploy/vendor/ /vendor/
 RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && \
     tarball="/vendor/ffmpeg-$FFMPEG_VERSION.tar.xz" && \
     if [ ! -f "$tarball" ]; then \
-      curl -fsSL --retry 3 -o "$tarball" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"; \
+      curl -fsSL --retry 5 --retry-all-errors -o "$tarball" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"; \
     fi && \
     echo "$FFMPEG_SHA256  $tarball" | sha256sum -c - && \
     mkdir /src /out && tar -xJf "$tarball" -C /src --strip-components=1 && \

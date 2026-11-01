@@ -94,6 +94,13 @@ jobs:
           # The release tags and the commit the change started from.
           fetch-depth: 0
 
+      # FFmpeg's source (make ffmpeg-fetch), kept until its pin changes.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+
       - name: Upgrade an installation and restore its backup
         run: make upgrade-test
 
@@ -113,6 +120,13 @@ jobs:
         with:
           path: .cache/embed/model
           key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
+
+      # FFmpeg's source (make ffmpeg-fetch), kept until its pin changes.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
 
       - name: Build the image and start the stack
         run: make stack-up

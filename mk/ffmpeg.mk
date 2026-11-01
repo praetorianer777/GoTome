@@ -15,7 +15,7 @@ FFMPEG_IMAGE := gotome-ffmpeg:$(FFMPEG_STAGE_SUM)
 .PHONY: ffmpeg-fetch
 ffmpeg-fetch: ## Fetch FFmpeg's pinned source into deploy/vendor and check it (reaches the internet)
 	@mkdir -p $(FFMPEG_VENDOR)
-	curl -fsSL --retry 3 -o $(FFMPEG_VENDOR)/$(FFMPEG_TARBALL).part https://ffmpeg.org/releases/$(FFMPEG_TARBALL)
+	curl -fsSL --retry 5 --retry-all-errors -o $(FFMPEG_VENDOR)/$(FFMPEG_TARBALL).part https://ffmpeg.org/releases/$(FFMPEG_TARBALL)
 	@sha256sum $(FFMPEG_VENDOR)/$(FFMPEG_TARBALL).part
 	@echo '$(FFMPEG_SHA256)  $(FFMPEG_VENDOR)/$(FFMPEG_TARBALL).part' | sha256sum -c --quiet - \
 		|| { echo "$(FFMPEG_TARBALL) is not the file pinned in deploy/Dockerfile"; rm -f $(FFMPEG_VENDOR)/$(FFMPEG_TARBALL).part; exit 1; }
