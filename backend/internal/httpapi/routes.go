@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
@@ -416,6 +417,16 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
 			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listBooks,
+		},
+		{
+			Method: http.MethodGet, Path: "/authors", ID: "listAuthors",
+			Summary: "The authors of the books the caller sees, each person once, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesPeople),
+		},
+		{
+			Method: http.MethodGet, Path: "/series", ID: "listSeries",
+			Summary: "The series of the books the caller sees, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesSeries),
 		},
 		{
 			Method: http.MethodGet, Path: "/authors/{authorKey}", ID: "getAuthor",

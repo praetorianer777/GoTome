@@ -68,6 +68,27 @@ export function facetsQuery(
 	});
 }
 
+export type NamedEntry = components["schemas"]["NamedEntry"];
+
+const NAMES_PAGE_SIZE = 100;
+
+/** Every author or every series the person sees, a page at a time. */
+export function namesQuery(kind: "/authors" | "/series") {
+	return infiniteQueryOptions({
+		queryKey: ["books", "names", kind],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET(kind, {
+					params: {
+						query: { limit: NAMES_PAGE_SIZE, after: pageParam || undefined },
+					},
+				})
+			).data ?? { names: [] },
+		initialPageParam: "",
+		getNextPageParam: (last) => last.nextCursor || undefined,
+	});
+}
+
 export type SeriesDetail = components["schemas"]["SeriesDetail"];
 export type ListedBook = components["schemas"]["ListedBook"];
 

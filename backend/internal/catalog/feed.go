@@ -30,11 +30,14 @@ func HasEbook() filter.Node {
 	return filter.Node{Field: FieldFormat, Op: OpIn, Values: EbookFormats()}
 }
 
-// Name is an author or a series as a catalogue lists them, with how many of
-// its books with an ebook the viewer sees.
+// Name is an author or a series as a list of them shows it, with how many of
+// the listed books the viewer sees.
 type Name struct {
-	Name  string
-	Key   string
+	Name string
+	Key  string
+	// Sort is what the list is ordered by: an author's sort name, a
+	// series' key.
+	Sort  string
 	Books int
 }
 
@@ -47,24 +50,41 @@ type NamePage struct {
 
 // Name lists.
 const (
+	// NamesAuthors lists each spelling apart, as the OPDS feeds' links
+	// compare names.
 	NamesAuthors = "authors"
-	NamesSeries  = "series"
+	// NamesPeople lists each person once, under the spelling most of their
+	// visible books use, where the first of their spellings stands.
+	NamesPeople = "people"
+	NamesSeries = "series"
 )
 
 // nameLists are what each list of names reads: the table, the column it is
-// ordered by, and how one name's books are found.
-var nameLists = map[string]struct{ table, order, books string }{
-	NamesAuthors: {"authors", "n.sort_name", `book_contributors c JOIN books b ON b.id = c.book_id
-		WHERE c.author_id = n.id AND c.role = '` + RoleAuthor + `'`},
-	NamesSeries: {"series", "n.name_key", "books b WHERE b.series_id = n.id"},
+// ordered by, how one name's books are found, and how its name and key are
+// read. name may use what counted adds to the count; only keeps some rows.
+var nameLists = map[string]struct{ table, order, books, name, key, counted, only string }{
+	NamesAuthors: {
+		table: "authors", order: "n.sort_name", name: "n.name", key: "n.name_key",
+		books: `book_contributors c JOIN books b ON b.id = c.book_id
+		WHERE c.author_id = n.id AND c.role = '` + RoleAuthor + `'`,
+	},
+	NamesPeople: {
+		table: "authors", order: "n.sort_name", name: "counted.name", key: "n.person_key",
+		books: `authors p JOIN book_contributors c ON c.author_id = p.id JOIN books b ON b.id = c.book_id
+		WHERE p.person_key = n.person_key AND c.role = '` + RoleAuthor + `'`,
+		counted: ", mode() WITHIN GROUP (ORDER BY p.name) AS name",
+		only: `NOT EXISTS (SELECT 1 FROM authors f
+		WHERE f.person_key = n.person_key AND (f.sort_name, f.id) < (n.sort_name, n.id))`,
+	},
+	NamesSeries: {table: "series", order: "n.name_key", name: "n.name", key: "n.name_key", books: "books b WHERE b.series_id = n.id"},
 }
 
-// NameList returns a page of the authors or series that have books with an
-// ebook the scope may see, in alphabetical order. Pages are cut by the last
-// name, as lists of books are. The names are walked in their index's order
-// and each one's books counted through its own index, so a page reads as
-// many names as it needs and never the whole catalogue.
-func (s *Service) NameList(ctx context.Context, scope library.Scope, list, after string, limit int) (NamePage, error) {
+// NameList returns a page of the authors or series that have books the scope
+// may see and the tree keeps, in alphabetical order. Pages are cut by the
+// last name, as lists of books are. The names are walked in their index's
+// order and each one's books counted through its own index, so a page reads
+// as many names as it needs and never the whole catalogue.
+func (s *Service) NameList(ctx context.Context, scope library.Scope, list string, tree filter.Node, after string, limit int) (NamePage, error) {
 	l, ok := nameLists[list]
 	if !ok {
 		return NamePage{}, fmt.Errorf("unknown list %q", list)
@@ -75,11 +95,14 @@ func (s *Service) NameList(ctx context.Context, scope library.Scope, list, after
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
-	visible, err := visibleBooks(scope, nil, HasEbook(), false, arg)
+	visible, err := visibleBooks(scope, nil, tree, false, arg)
 	if err != nil {
 		return NamePage{}, err
 	}
 	where := []string{"counted.books > 0"}
+	if l.only != "" {
+		where = append(where, l.only)
+	}
 	if after != "" {
 		c, err := decodeCursor(after)
 		if err != nil || c.Order != list || len(c.Keys) != 1 {
@@ -92,10 +115,10 @@ func (s *Service) NameList(ctx context.Context, scope library.Scope, list, after
 		where = append(where, "("+l.order+", n.id) > ("+arg(c.Keys[0])+", "+arg(id)+")")
 	}
 	query := `
-SELECT n.id, n.name, n.name_key, ` + l.order + `, counted.books
+SELECT n.id, ` + l.name + `, ` + l.key + `, ` + l.order + `, counted.books
 FROM ` + l.table + ` n
 CROSS JOIN LATERAL (
-    SELECT count(DISTINCT b.id) AS books
+    SELECT count(DISTINCT b.id) AS books` + l.counted + `
     FROM ` + l.books + ` AND ` + strings.Join(visible, " AND ") + `
 ) counted
 WHERE ` + strings.Join(where, " AND ") + `
@@ -108,20 +131,19 @@ LIMIT ` + arg(limit+1)
 	defer rows.Close()
 	page := NamePage{Names: []Name{}}
 	var lastID uuid.UUID
-	var lastOrder string
 	for rows.Next() {
 		var n Name
 		var id uuid.UUID
-		var order string
-		if err := rows.Scan(&id, &n.Name, &n.Key, &order, &n.Books); err != nil {
+		if err := rows.Scan(&id, &n.Name, &n.Key, &n.Sort, &n.Books); err != nil {
 			return NamePage{}, err
 		}
 		if len(page.Names) == limit {
-			page.Next = encodeCursor(cursor{Order: list, Keys: []string{lastOrder}, ID: lastID.String()})
+			last := page.Names[limit-1]
+			page.Next = encodeCursor(cursor{Order: list, Keys: []string{last.Sort}, ID: lastID.String()})
 			break
 		}
 		page.Names = append(page.Names, n)
-		lastID, lastOrder = id, order
+		lastID = id
 	}
 	return page, rows.Err()
 }

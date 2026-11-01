@@ -295,6 +295,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The authors of the books the caller sees, each person once, alphabetically */
+        get: operations["listAuthors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/authors/{authorKey}": {
         parameters: {
             query?: never;
@@ -2161,6 +2178,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The series of the books the caller sees, alphabetically */
+        get: operations["listSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/series/{seriesKey}": {
         parameters: {
             query?: never;
@@ -3295,6 +3329,16 @@ export interface components {
         NameList: {
             names: string[];
         };
+        NamedEntry: {
+            books: number;
+            key: string;
+            name: string;
+            sort: string;
+        };
+        NamedList: {
+            names: components["schemas"]["NamedEntry"][];
+            nextCursor?: string;
+        };
         Notification: {
             /** Format: uuid */
             bookId?: string;
@@ -4377,6 +4421,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Storage"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAuthors: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                after?: string;
+                /** @description How many names a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedList"];
                 };
             };
             /** @description The request failed. */
@@ -8290,6 +8368,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndexStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSeries: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                after?: string;
+                /** @description How many names a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedList"];
                 };
             };
             /** @description The request failed. */

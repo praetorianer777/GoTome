@@ -368,6 +368,8 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "library page 2", path: "/books?limit=50&cursor=@next"},
 		{name: "one library", path: "/books?limit=50&library=" + library},
 		{name: "filter by author", path: "/books?limit=50&" + filter(byAuthor)},
+		{name: "authors", path: "/authors?limit=60"},
+		{name: "series", path: "/series?limit=60"},
 		{name: "an author", path: "/authors/" + url.PathEscape(author)},
 		{name: "an author's books", path: "/books?limit=50&sort=series&" + filter(byPerson)},
 		{name: "an author's facets", path: "/books/facets?" + filter(byPerson)},

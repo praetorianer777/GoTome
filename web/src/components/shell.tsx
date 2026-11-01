@@ -27,6 +27,8 @@ export type NavGroup = "library" | "catalogue" | "admin";
 export interface NavItem {
 	to:
 		| "/"
+		| "/authors"
+		| "/series"
 		| "/search"
 		| "/duplicates"
 		| "/upload"
@@ -64,6 +66,20 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "library:read",
 		group: "library",
 		icon: "library",
+	},
+	{
+		to: "/authors",
+		label: "nav.authors",
+		permission: "library:read",
+		group: "library",
+		icon: "person",
+	},
+	{
+		to: "/series",
+		label: "nav.series",
+		permission: "library:read",
+		group: "library",
+		icon: "shelf",
 	},
 	{
 		to: "/search",

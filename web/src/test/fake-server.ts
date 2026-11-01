@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser, SignInMethods } from "@/auth/session";
-import type { BookDetail, BookSummary, ListedBook, NameHit, TextHit } from "@/books/api";
+import type { BookDetail, BookSummary, ListedBook, NamedEntry, NameHit, TextHit } from "@/books/api";
 import type {
 	Collection,
 	CollectionAdd,
@@ -734,6 +734,9 @@ export class FakeServer {
 				this.deliveries = this.deliveries.filter((d) => d.id !== takeBack[1]);
 				return new Response(null, { status: 204 });
 			}
+			if (path === "/authors" || path === "/series") {
+				return this.nameList(path, url.searchParams);
+			}
 			if (path.startsWith("/authors/")) {
 				return this.author(decodeURIComponent(path.slice("/authors/".length)));
 			}
@@ -1265,6 +1268,34 @@ export class FakeServer {
 			books: page.map(summaryOf),
 			nextCursor:
 				start + limit < sorted.length ? String(start + limit) : undefined,
+		});
+	}
+
+	private nameList(path: string, query: URLSearchParams): Response {
+		const found = new Map<string, NamedEntry>();
+		const add = (name: string, key: string, sort: string) => {
+			const hit = found.get(key);
+			if (hit) {
+				hit.books += 1;
+			} else {
+				found.set(key, { name, key, sort, books: 1 });
+			}
+		};
+		for (const b of this.books.filter((x) => !x.placeholder)) {
+			if (path === "/series") {
+				if (b.series) add(b.series, nameKey(b.series), nameKey(b.series));
+				continue;
+			}
+			for (const c of b.contributors.filter((x) => x.role === "author")) {
+				add(c.name, personKey(c.name), c.name.split(" ").at(-1) ?? c.name);
+			}
+		}
+		const sorted = [...found.values()].sort((a, b) => a.sort.localeCompare(b.sort));
+		const start = Number(query.get("after") || 0);
+		const limit = Number(query.get("limit") || 50);
+		return Response.json({
+			names: sorted.slice(start, start + limit),
+			nextCursor: start + limit < sorted.length ? String(start + limit) : undefined,
 		});
 	}
 

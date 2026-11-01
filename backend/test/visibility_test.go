@@ -86,8 +86,10 @@ func readCases() map[string][]readCase {
 			{path: "/trash", control: "insider"},
 			{path: "/trash", query: q("library", "{library}"), control: "insider"},
 		},
-		"getAuthor": {{path: "/authors/{author}", control: "insider"}},
-		"getSeries": {{path: "/series/{series}", control: "insider"}},
+		"listAuthors": {{path: "/authors", query: q("limit", "200"), control: "insider"}},
+		"listSeries":  {{path: "/series", query: q("limit", "200"), control: "insider"}},
+		"getAuthor":   {{path: "/authors/{author}", control: "insider"}},
+		"getSeries":   {{path: "/series/{series}", control: "insider"}},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},

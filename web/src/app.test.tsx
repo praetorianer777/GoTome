@@ -4908,6 +4908,39 @@ describe("an author's and a series' pages", () => {
 	});
 });
 
+describe("the lists of authors and series", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] })
+			.withBook("Persuasion", { contributors: [{ name: "Jane Austen", role: "author" }], series: "Bath" })
+			.withBook("Dune", { contributors: [{ name: "Frank Herbert", role: "author" }] });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("lists the authors A to Z with their books, and opens one", async () => {
+		const person = userEvent.setup();
+		renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Authors" }));
+		const a = await screen.findByRole("region", { name: "A" });
+		expect(a).toHaveTextContent("Jane Austen2 books");
+		expect(screen.getByRole("region", { name: "H" })).toHaveTextContent("Frank Herbert1 book");
+		await person.click(within(a).getByRole("link", { name: "Jane Austen" }));
+		expect(await screen.findByRole("heading", { level: 1, name: "Jane Austen" })).toBeInTheDocument();
+	});
+
+	it("lists the series", async () => {
+		const person = userEvent.setup();
+		renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Series" }));
+		await person.click(await screen.findByRole("link", { name: "Bath" }));
+		expect(await screen.findByRole("heading", { level: 1, name: "Bath" })).toBeInTheDocument();
+	});
+});
+
 describe("links to authors and series", () => {
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);

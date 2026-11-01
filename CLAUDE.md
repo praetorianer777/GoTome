@@ -354,6 +354,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `books/name-links.tsx` holds the links to them, used wherever a book's
   authors and series are written. The quick search answers `names` beside
   `books` (`catalog.Service.SearchNames`), a person once, offered first.
+- `GET /authors` and `GET /series` (`routes/names.tsx`) are A to Z, by
+  `catalog.NameList`: `NamesPeople` lists a person once, where the first of
+  their spellings stands, under the spelling their visible books use mostly;
+  the OPDS feeds keep `NamesAuthors`, one entry per spelling, of ebooks alone.
 
 ## Scanning
 

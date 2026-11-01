@@ -231,3 +231,54 @@ func TestTheQuickSearchOffersAuthorsAndSeriesTheViewerSees(t *testing.T) {
 		t.Errorf("the administrator: %v", got)
 	}
 }
+
+func TestTheListsOfNamesHoldEachOnceWithWhatTheViewerSees(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("rita", "reader")
+	lib := a.library(admin, "Open", "shared")
+	vault := a.library(admin, "Vault", "private")
+	a.bookBy(lib, "One", "Barbara Goldstein")
+	a.bookBy(lib, "Two", "Barbara Goldstein")
+	a.bookBy(lib, "Three", "Goldstein, Barbara")
+	a.bookBy(lib, "Four", "Carl Adams")
+	a.bookBy(vault, "Five", "Zoe Hidden")
+	a.inSeries(admin, a.bookBy(lib, "Six", "Carl Adams"), "Rivers", 1)
+	a.inSeries(admin, a.bookBy(vault, "Seven", "Zoe Hidden"), "Hidden Things", 1)
+
+	list := func(path string, c *http.Client, size int) []string {
+		t.Helper()
+		out := []string{}
+		after := ""
+		for {
+			q := url.Values{"limit": {fmt.Sprint(size)}, "after": {after}}
+			status, body, _ := a.call(c, http.MethodGet, path+"?"+q.Encode(), nil)
+			if status != http.StatusOK {
+				t.Fatalf("GET %s: %d %v", path, status, body)
+			}
+			for _, n := range body["names"].([]any) {
+				e := n.(map[string]any)
+				out = append(out, fmt.Sprintf("%s=%v", e["key"], e["books"]))
+			}
+			next, _ := body["nextCursor"].(string)
+			if next == "" {
+				return out
+			}
+			after = next
+		}
+	}
+	for _, size := range []int{1, 50} {
+		got := list("/authors", reader, size)
+		slices.Sort(got)
+		if want := []string{"adams carl=2", "barbara goldstein=3"}; !slices.Equal(got, want) {
+			t.Errorf("authors in pages of %d: %v", size, got)
+		}
+	}
+	if got := list("/series", reader, 50); !slices.Equal(got, []string{"rivers=1"}) {
+		t.Errorf("series: %v", got)
+	}
+	if got := list("/series", admin, 50); len(got) != 2 {
+		t.Errorf("the administrator's series: %v", got)
+	}
+}

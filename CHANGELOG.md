@@ -15,6 +15,8 @@ What changes for someone who runs or uses GOtome. The format follows
   wishlist.
 - Authors and series are links wherever a book is shown, and the quick
   search offers them.
+- Authors and Series in the navigation list every author and series from
+  A to Z, with how many books each has.
 
 ## [0.6.0] - 2026-10-15
 

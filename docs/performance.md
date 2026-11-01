@@ -31,6 +31,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | library page 2 | 5 ms | 3 ms |  |
 | one library | 4 ms | 2 ms |  |
 | filter by author | 3 ms | 2 ms |  |
+| authors | 3 ms | 3 ms |  |
+| series | 2 ms | 2 ms |  |
 | an author | 1 ms | 3 ms |  |
 | an author's books | 8 ms | 7 ms |  |
 | an author's facets | 21 ms | 24 ms |  |

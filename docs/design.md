@@ -83,7 +83,7 @@ checked before it is used.
 
 - **Desktop (≥ 1024 px)**: a sidebar on the left, always there, with the
   wordmark (icon, "GO" in cyan sans, "tome" in cream serif) and the
-  navigation in groups: the library (Library, Search, Collections,
+  navigation in groups: the library (Library, Authors, Series, Search, Collections,
   Wishlist, New books, Your reading, Overview, Profile), work on the
   catalogue (Add books, Review, Duplicates, Clean up, Trash, Jobs) and
   administration (Libraries, Users, Settings). The two lower groups fold;
