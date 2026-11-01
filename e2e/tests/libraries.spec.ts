@@ -72,7 +72,7 @@ test("an existing folder is scanned when it is added, and again when asked", asy
 	const books = page.getByRole("region", { name: "Books" });
 	await expect(books.getByRole("link", { name: /^Emma/ })).toBeVisible();
 	await expect(books.getByRole("link", { name: /^Persuasion/ })).toBeVisible();
-	await expect(books.getByRole("link", { name: /^Emma/ })).toContainText("Jane Austen", { timeout: 15_000 });
+	await expect(books.getByRole("link", { name: "Jane Austen" }).first()).toBeVisible({ timeout: 15_000 });
 
 	await books.getByRole("link", { name: /^Emma/ }).click();
 	await expect(page.getByRole("heading", { name: "Emma", level: 1 })).toBeVisible();

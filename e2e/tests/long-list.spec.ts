@@ -30,6 +30,7 @@ test("a long list keeps only the books near the window, and back returns to the 
 				libraryId: "00000000-0000-7000-8000-999999999999",
 				title: title(from + k),
 				authors: ["A. Writer"],
+				authorKeys: ["a writer"],
 				formats: ["epub"],
 				addedAt: "2026-01-01T00:00:00Z",
 				status: "unread",

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { BookSummary } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { STATUS_LABELS } from "@/books/reading";
 import { useColumns, useWindowRows, VIRTUAL_FROM } from "@/books/virtual";
 import { button, Skeleton } from "@/components/ui";
@@ -58,20 +59,6 @@ function FilesMissing({ book }: { book: BookSummary }) {
 	);
 }
 
-/** A book's series and its place in it, or that it stands alone. */
-function SeriesLine({ book }: { book: BookSummary }) {
-	if (!book.series) {
-		return null;
-	}
-	return (
-		<span className="line-clamp-1 block text-sm text-slate-600 dark:text-slate-400">
-			{book.seriesIndex != null
-				? t("book.seriesPosition", { index: book.seriesIndex, series: book.series })
-				: book.series}
-		</span>
-	);
-}
-
 /** Which books are ticked, while books are being selected. */
 export interface Selection {
 	isSelected: (id: string) => boolean;
@@ -93,20 +80,18 @@ function Tick({ book, selection }: { book: BookSummary; selection: Selection }) 
 export function Grid({
 	books,
 	selection,
-	showSeries,
 }: {
 	books: BookSummary[];
 	selection?: Selection;
-	showSeries?: boolean;
 }) {
 	if (books.length >= VIRTUAL_FROM) {
-		return <VirtualGrid books={books} selection={selection} showSeries={showSeries} />;
+		return <VirtualGrid books={books} selection={selection} />;
 	}
 	return (
 		<ul className={GRID}>
 			{books.map((book) => (
 				<li key={book.id} className="relative">
-					<GridCard book={book} selection={selection} showSeries={showSeries} />
+					<GridCard book={book} selection={selection} />
 				</li>
 			))}
 		</ul>
@@ -141,11 +126,9 @@ const CARD_ROW_ESTIMATE = 360;
 function VirtualGrid({
 	books,
 	selection,
-	showSeries,
 }: {
 	books: BookSummary[];
 	selection?: Selection;
-	showSeries?: boolean;
 }) {
 	const columns = useColumns();
 	const list = useRef<HTMLDivElement>(null);
@@ -174,7 +157,7 @@ function VirtualGrid({
 							aria-setsize={books.length}
 							className="relative"
 						>
-							<GridCard book={book} selection={selection} showSeries={showSeries} />
+							<GridCard book={book} selection={selection} />
 						</div>
 					))}
 				</div>
@@ -186,11 +169,9 @@ function VirtualGrid({
 function GridCard({
 	book,
 	selection,
-	showSeries,
 }: {
 	book: BookSummary;
 	selection?: Selection;
-	showSeries?: boolean;
 }) {
 	return (
 		<>
@@ -209,20 +190,20 @@ function GridCard({
 					size="small"
 					className={`transition duration-200 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 ${book.status === "reading" ? "shadow-candle" : ""}`}
 				/>
-				<span className="flex flex-col gap-0.5">
-					<span className="line-clamp-2 font-medium leading-snug group-hover:text-brand-strong dark:group-hover:text-brand">
-						{book.title}
-					</span>
-					{book.authors.length > 0 && (
-						<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
-							{book.authors.join(", ")}
-						</span>
-					)}
-					{showSeries && <SeriesLine book={book} />}
-					<Standing book={book} />
-					<FilesMissing book={book} />
+				<span className="line-clamp-2 font-medium leading-snug group-hover:text-brand-strong dark:group-hover:text-brand">
+					{book.title}
 				</span>
 			</Link>
+			<div className="mt-0.5 flex flex-col gap-0.5">
+				{book.authors.length > 0 && (
+					<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
+						<AuthorLinks book={book} />
+					</span>
+				)}
+				<SeriesLine book={book} />
+				<Standing book={book} />
+				<FilesMissing book={book} />
+			</div>
 		</>
 	);
 }
@@ -233,11 +214,9 @@ const TABLE_ROW_ESTIMATE = 41;
 export function Table({
 	books,
 	selection,
-	showSeries,
 }: {
 	books: BookSummary[];
 	selection?: Selection;
-	showSeries?: boolean;
 }) {
 	const head =
 		"px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400";
@@ -276,13 +255,12 @@ export function Table({
 					<VirtualRows
 						books={books}
 						selection={selection}
-						showSeries={showSeries}
 						columns={columns}
 					/>
 				) : (
 					<tbody className="divide-y divide-slate-200 dark:divide-slate-800">
 						{books.map((book, i) => (
-							<BookRow key={book.id} book={book} selection={selection} showSeries={showSeries} index={i} />
+							<BookRow key={book.id} book={book} selection={selection} index={i} />
 						))}
 					</tbody>
 				)}
@@ -298,12 +276,10 @@ export function Table({
 function VirtualRows({
 	books,
 	selection,
-	showSeries,
 	columns,
 }: {
 	books: BookSummary[];
 	selection?: Selection;
-	showSeries?: boolean;
 	columns: number;
 }) {
 	const body = useRef<HTMLTableSectionElement>(null);
@@ -328,7 +304,6 @@ function VirtualRows({
 							key={book.id}
 							book={book}
 							selection={selection}
-							showSeries={showSeries}
 							index={item.index}
 							measure={rows.measureElement}
 						/>
@@ -347,13 +322,11 @@ function VirtualRows({
 function BookRow({
 	book,
 	selection,
-	showSeries,
 	index,
 	measure,
 }: {
 	book: BookSummary;
 	selection?: Selection;
-	showSeries?: boolean;
 	index: number;
 	measure?: (element: HTMLTableRowElement | null) => void;
 }) {
@@ -382,9 +355,11 @@ function BookRow({
 						<FilesMissing book={book} />
 					</span>
 				)}
-				{showSeries && <SeriesLine book={book} />}
+				<SeriesLine book={book} />
 			</td>
-			<td className="px-3 py-2">{book.authors.join(", ")}</td>
+			<td className="px-3 py-2">
+				<AuthorLinks book={book} />
+			</td>
 			<td className="hidden px-3 py-2 text-xs tracking-wide text-slate-600 uppercase sm:table-cell dark:text-slate-400">
 				{book.formats.join(", ")}
 			</td>

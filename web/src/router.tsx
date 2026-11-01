@@ -36,6 +36,7 @@ import { Review } from "@/routes/review";
 import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
+import { NamesPage } from "@/routes/names";
 import { NotFound } from "@/routes/not-found";
 import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
@@ -197,6 +198,18 @@ const duplicatesRoute = createRoute({
 			/>
 		);
 	},
+});
+
+const authorsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/authors",
+	component: () => <NamesPage kind="authors" />,
+});
+
+const allSeriesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/series",
+	component: () => <NamesPage kind="series" />,
 });
 
 const authorRoute = createRoute({
@@ -507,7 +520,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

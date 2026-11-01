@@ -86,16 +86,7 @@ ORDER BY best.score DESC, b.sort_title, b.id
 LIMIT $4`
 
 	hits := []Hit{}
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL pg_trgm.word_similarity_threshold = %g", matchThreshold)); err != nil {
-			return err
-		}
-		// The planner takes a trigram comparison for as cheap as any other
-		// and reads all 50,000 titles of a library rather than the index:
-		// 150 ms instead of 6.
-		if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
-			return err
-		}
+	err := trigramTx(ctx, s, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, query, scope.Viewer, scope.SeesAll, key, limit)
 		if err != nil {
 			return err
@@ -108,6 +99,95 @@ LIMIT $4`
 				return err
 			}
 			h.Series = deref(series)
+			hits = append(hits, h)
+		}
+		return rows.Err()
+	})
+	return hits, err
+}
+
+// trigramTx runs fn in a transaction set up for a search with <%.
+func trigramTx(ctx context.Context, s *Service, fn func(tx pgx.Tx) error) error {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL pg_trgm.word_similarity_threshold = %g", matchThreshold)); err != nil {
+			return err
+		}
+		// The planner takes a trigram comparison for as cheap as any other
+		// and reads all 50,000 titles of a library rather than the index:
+		// 150 ms instead of 6.
+		if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan = off"); err != nil {
+			return err
+		}
+		return fn(tx)
+	})
+}
+
+// NameHit is an author or a series a quick search found: Match says which,
+// Key is what their page goes by, Books how many of their books the scope
+// sees.
+type NameHit struct {
+	Match string
+	Name  string
+	Key   string
+	Books int
+}
+
+// SearchNames finds the authors and series with books the scope may see
+// whose name looks like the words, the best first. A person is found once,
+// under the spelling most of those books use.
+func (s *Service) SearchNames(ctx context.Context, scope library.Scope, words string, limit int) ([]NameHit, error) {
+	key := Key(words)
+	hits := []NameHit{}
+	if utf8.RuneCountInString(strings.ReplaceAll(key, " ", "")) < minSearchLen {
+		return hits, nil
+	}
+	if len(key) > maxSearchLen {
+		key = strings.TrimSpace(key[:maxSearchLen])
+	}
+	// Ordered before the books are counted, and counted in that order, so
+	// that the limit stops the counting; a name of three letters may look
+	// like hundreds.
+	query := `
+WITH matched AS (
+    SELECT '` + MatchAuthor + `' AS match, a.person_key AS key, max(word_similarity($3, a.name_key)) AS score
+    FROM authors a
+    WHERE $3 <% a.name_key
+    GROUP BY a.person_key
+  UNION ALL
+    SELECT '` + MatchSeries + `', sr.name_key, word_similarity($3, sr.name_key)
+    FROM series sr
+    WHERE $3 <% sr.name_key
+)
+SELECT m.match, counted.name, m.key, counted.books
+FROM (SELECT * FROM matched ORDER BY score DESC, key) m
+CROSS JOIN LATERAL (
+    SELECT count(DISTINCT b.id)::int AS books, mode() WITHIN GROUP (ORDER BY n.name) AS name
+    FROM (SELECT a.name, c.book_id
+          FROM authors a
+          JOIN book_contributors c ON c.author_id = a.id AND c.role = '` + RoleAuthor + `'
+          WHERE m.match = '` + MatchAuthor + `' AND a.person_key = m.key
+          UNION ALL
+          SELECT sr.name, bs.id
+          FROM series sr
+          JOIN books bs ON bs.series_id = sr.id
+          WHERE m.match = '` + MatchSeries + `' AND sr.name_key = m.key) n
+    JOIN books b ON b.id = n.book_id
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2))
+) counted
+WHERE counted.books > 0
+LIMIT $4`
+	err := trigramTx(ctx, s, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, query, scope.Viewer, scope.SeesAll, key, min(max(limit, 1), MaxHits))
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var h NameHit
+			if err := rows.Scan(&h.Match, &h.Name, &h.Key, &h.Books); err != nil {
+				return err
+			}
 			hits = append(hits, h)
 		}
 		return rows.Err()

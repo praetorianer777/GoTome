@@ -203,7 +203,7 @@ function SeriesBooks({ seriesKey }: { seriesKey: string }) {
 		<section aria-label={t("library.books")} className="flex flex-col gap-4">
 			<FormError error={books.error} />
 			{books.isPending && <GridSkeleton />}
-			{shown.length > 0 && <Grid books={shown} showSeries />}
+			{shown.length > 0 && <Grid books={shown} />}
 			{books.hasNextPage && (
 				<MoreBooks
 					loading={books.isFetchingNextPage}

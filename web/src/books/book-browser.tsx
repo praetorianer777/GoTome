@@ -132,7 +132,6 @@ export function BookBrowser({
 		onSearch(
 			Object.fromEntries(FACET_FIELDS.map((field) => [field, next[field]])),
 		);
-	const showSeries = sort === "series";
 
 	return (
 		<>
@@ -247,9 +246,9 @@ export function BookBrowser({
 							))}
 						{shown.length > 0 &&
 							(view === "grid" ? (
-								<Grid books={shown} selection={selection} showSeries={showSeries} />
+								<Grid books={shown} selection={selection} />
 							) : (
-								<Table books={shown} selection={selection} showSeries={showSeries} />
+								<Table books={shown} selection={selection} />
 							))}
 						{books.hasNextPage && (
 							<MoreBooks

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"errors"
 	"net/http"
 	"net/url"
@@ -11,9 +12,55 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 )
+
+type namedQuery struct {
+	After string `query:"after" doc:"The nextCursor of the page before."`
+	Limit int    `query:"limit" doc:"How many names a page holds, at most 200; 50 when left out."`
+}
+
+// namedEntry is an author or a series in a list of them.
+type namedEntry struct {
+	Name string `json:"name"`
+	// Key is what GET /authors/{authorKey} or GET /series/{seriesKey} takes.
+	Key string `json:"key"`
+	// Sort is what the list is in the order of: for an author "Austen, Jane".
+	Sort string `json:"sort"`
+	// Books counts the books of it the caller sees.
+	Books int `json:"books"`
+}
+
+type namedList struct {
+	Names []namedEntry `json:"names"`
+	// NextCursor asks for the page after this one; left out on the last.
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+// listNamed answers a page of a list of names.
+func (s *Server) listNamed(list string) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		var q namedQuery
+		if err := decodeQuery(r, &q); err != nil {
+			return err
+		}
+		page, err := s.Books.NameList(r.Context(), library.ScopeOf(*UserFrom(r.Context())), list, filter.Node{}, q.After, cmp.Or(q.Limit, defaultPage))
+		if errors.Is(err, catalog.ErrBadCursor) {
+			return ErrValidation(map[string]string{"after": "This cursor belongs to another list; start again from the first page."})
+		}
+		if err != nil {
+			return err
+		}
+		out := namedList{Names: make([]namedEntry, len(page.Names)), NextCursor: page.Next}
+		for i, n := range page.Names {
+			out.Names[i] = namedEntry{Name: n.Name, Key: n.Key, Sort: n.Sort, Books: n.Books}
+		}
+		writeJSON(w, r, http.StatusOK, out)
+		return nil
+	}
+}
 
 // authorDetail is an author as the books the caller sees name them. The
 // books themselves come from GET /books with a rule on person.

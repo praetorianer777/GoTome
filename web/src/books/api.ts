@@ -68,6 +68,27 @@ export function facetsQuery(
 	});
 }
 
+export type NamedEntry = components["schemas"]["NamedEntry"];
+
+const NAMES_PAGE_SIZE = 100;
+
+/** Every author or every series the person sees, a page at a time. */
+export function namesQuery(kind: "/authors" | "/series") {
+	return infiniteQueryOptions({
+		queryKey: ["books", "names", kind],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET(kind, {
+					params: {
+						query: { limit: NAMES_PAGE_SIZE, after: pageParam || undefined },
+					},
+				})
+			).data ?? { names: [] },
+		initialPageParam: "",
+		getNextPageParam: (last) => last.nextCursor || undefined,
+	});
+}
+
 export type SeriesDetail = components["schemas"]["SeriesDetail"];
 export type ListedBook = components["schemas"]["ListedBook"];
 
@@ -99,13 +120,15 @@ export function seriesQuery(key: string) {
 
 export type SearchHit = components["schemas"]["SearchHit"];
 
-/** The books whose title, author or series looks like the words. */
+export type NameHit = components["schemas"]["NameHit"];
+
+/** The books, authors and series whose title or name looks like the words. */
 export function searchQuery(words: string) {
 	return queryOptions({
 		queryKey: ["books", "search", words],
 		queryFn: async () =>
-			(await api.GET("/books/search", { params: { query: { q: words } } })).data
-				?.books ?? [],
+			(await api.GET("/books/search", { params: { query: { q: words } } }))
+				.data ?? { books: [], names: [] },
 		// While the next answer is on its way, the last one stays in view.
 		placeholderData: (previous) => previous,
 	});

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { type CurrentUser, can } from "@/auth/session";
 import { type BookDetail, type BookSummary, bookQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { FormError } from "@/components/form";
 import {
 	type DuplicatePair,
@@ -421,26 +422,35 @@ function Pair({ pair, canAct }: { pair: DuplicatePair; canAct: boolean }) {
 
 function BookCard({ book }: { book: BookSummary }) {
 	return (
-		<Link
-			to="/books/$bookId"
-			params={{ bookId: book.id }}
-			className="flex gap-3 rounded-md p-1 hover:bg-slate-50 dark:hover:bg-slate-900"
-		>
-			<span className="w-12 shrink-0">
+		<div className="flex gap-3 rounded-md p-1 hover:bg-slate-50 dark:hover:bg-slate-900">
+			<Link
+				to="/books/$bookId"
+				params={{ bookId: book.id }}
+				tabIndex={-1}
+				aria-hidden="true"
+				className="w-12 shrink-0"
+			>
 				<Cover book={book} size="small" />
-			</span>
-			<span className="flex min-w-0 flex-col">
-				<span className="font-medium">{book.title}</span>
+			</Link>
+			<div className="flex min-w-0 flex-col">
+				<Link
+					to="/books/$bookId"
+					params={{ bookId: book.id }}
+					className="font-medium hover:underline"
+				>
+					{book.title}
+				</Link>
 				{book.authors.length > 0 && (
 					<span className="text-sm text-slate-600 dark:text-slate-400">
-						{book.authors.join(", ")}
+						<AuthorLinks book={book} />
 					</span>
 				)}
+				<SeriesLine book={book} />
 				<span className="text-sm uppercase text-slate-600 dark:text-slate-400">
 					{book.formats.join(", ")}
 				</span>
-			</span>
-		</Link>
+			</div>
+		</div>
 	);
 }
 

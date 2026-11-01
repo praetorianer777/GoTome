@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
@@ -418,6 +419,16 @@ func (s *Server) routes() []Route {
 			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/authors", ID: "listAuthors",
+			Summary: "The authors of the books the caller sees, each person once, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesPeople),
+		},
+		{
+			Method: http.MethodGet, Path: "/series", ID: "listSeries",
+			Summary: "The series of the books the caller sees, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesSeries),
+		},
+		{
 			Method: http.MethodGet, Path: "/authors/{authorKey}", ID: "getAuthor",
 			Summary: "An author, under every spelling of their name, as the caller's books name them", Tag: "books",
 			Response: authorDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAuthor,
@@ -429,7 +440,7 @@ func (s *Server) routes() []Route {
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
-			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
+			Summary: "Books, authors and series whose title or name looks like the words, the best first", Tag: "books",
 			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.searchBooks,
 		},
 		{

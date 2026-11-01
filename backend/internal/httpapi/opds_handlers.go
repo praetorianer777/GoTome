@@ -266,7 +266,7 @@ func (s *Server) opdsNames(list string) HandlerFunc {
 		if err := decodeQuery(r, &q); err != nil {
 			return err
 		}
-		page, err := s.Books.NameList(r.Context(), library.ScopeOf(*UserFrom(r.Context())), list, q.After, opdsPage)
+		page, err := s.Books.NameList(r.Context(), library.ScopeOf(*UserFrom(r.Context())), list, catalog.HasEbook(), q.After, opdsPage)
 		if errors.Is(err, catalog.ErrBadCursor) {
 			return ErrValidation(map[string]string{"after": "This cursor belongs to another list; start again from the first page."})
 		}

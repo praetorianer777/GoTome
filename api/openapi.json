@@ -797,6 +797,61 @@
         "x-permission": "signed-in"
       }
     },
+    "/authors": {
+      "get": {
+        "operationId": "listAuthors",
+        "summary": "The authors of the books the caller sees, each person once, alphabetically",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The nextCursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many names a page holds, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamedList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/authors/{authorKey}": {
       "get": {
         "operationId": "getAuthor",
@@ -1228,7 +1283,7 @@
     "/books/search": {
       "get": {
         "operationId": "searchBooks",
-        "summary": "Books whose title, author or series looks like the words, the best first",
+        "summary": "Books, authors and series whose title or name looks like the words, the best first",
         "tags": [
           "books"
         ],
@@ -6843,6 +6898,61 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/series": {
+      "get": {
+        "operationId": "listSeries",
+        "summary": "The series of the books the caller sees, alphabetically",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The nextCursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many names a page holds, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamedList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/series/{seriesKey}": {
       "get": {
         "operationId": "getSeries",
@@ -11021,6 +11131,33 @@
           "models"
         ]
       },
+      "NameHit": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "key",
+          "books"
+        ]
+      },
       "NameList": {
         "type": "object",
         "properties": {
@@ -11029,6 +11166,46 @@
             "items": {
               "type": "string"
             }
+          }
+        },
+        "required": [
+          "names"
+        ]
+      },
+      "NamedEntry": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "key",
+          "sort",
+          "books"
+        ]
+      },
+      "NamedList": {
+        "type": "object",
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedEntry"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
           }
         },
         "required": [
@@ -11880,10 +12057,17 @@
             "items": {
               "$ref": "#/components/schemas/SearchHit"
             }
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameHit"
+            }
           }
         },
         "required": [
-          "books"
+          "books",
+          "names"
         ]
       },
       "SendRequest": {
