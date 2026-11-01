@@ -20,7 +20,7 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- The app image is far smaller, about 200 MB instead of 865 MB: it carries
+- The app image is far smaller, about 260 MB instead of 865 MB: it carries
   a small FFmpeg of its own that only reads audio files' tags, chapters
   and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
   reach of a hostile file.

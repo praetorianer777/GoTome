@@ -60,7 +60,8 @@ FROM golang:1.27-bookworm AS ffmpeg
 ARG FFMPEG_VERSION
 ARG FFMPEG_SHA256
 COPY deploy/vendor/ /vendor/
-RUN tarball="/vendor/ffmpeg-$FFMPEG_VERSION.tar.xz" && \
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && \
+    tarball="/vendor/ffmpeg-$FFMPEG_VERSION.tar.xz" && \
     if [ ! -f "$tarball" ]; then \
       curl -fsSL --retry 3 -o "$tarball" "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VERSION.tar.xz"; \
     fi && \

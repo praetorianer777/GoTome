@@ -57,8 +57,10 @@ func readAudioFacts(ctx context.Context, dirs ...string) (map[string]audioFacts,
 
 // CheckAudio reads the audio files of the folders with the FFmpeg installed
 // here and compares what comes of them with the first folder's reference
-// file, which a full FFmpeg of Debian's wrote: GOtome's own build has no
-// decoders, so a demuxer or parser left out of it shows here and in no error.
+// file: GOtome's own build has no decoders, so a demuxer or parser left out of
+// it shows here and in no error. A full FFmpeg of Debian's, 5.1, wrote the
+// file. Only the MP3s' durations have changed since: 5.1 counted the encoder's
+// padding, up to 71 ms here, which 9.0 leaves out.
 func CheckAudio(ctx context.Context, dirs ...string) error {
 	if len(dirs) == 0 {
 		return errors.New("no folder of audio files given")
@@ -81,7 +83,9 @@ func CheckAudio(ctx context.Context, dirs ...string) error {
 		if !ok {
 			differ = append(differ, fmt.Errorf("%s: not found", name))
 		} else if !reflect.DeepEqual(found, facts) {
-			differ = append(differ, fmt.Errorf("%s: got %+v, want %+v", name, found, facts))
+			gotJSON, _ := json.Marshal(found)
+			wantJSON, _ := json.Marshal(facts)
+			differ = append(differ, fmt.Errorf("%s: got %s, want %s", name, gotJSON, wantJSON))
 		}
 	}
 	return errors.Join(differ...)
