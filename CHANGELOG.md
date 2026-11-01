@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A page for each author, with all their books under every spelling of
+  their name, series by series, and a page for each series, in its order,
+  saying how many you have read, which is next, which are missing, and
+  offering the books the sources list that the library lacks for the
+  wishlist.
+
 ## [0.6.0] - 2026-10-15
 
 ### Changed

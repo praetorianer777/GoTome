@@ -160,3 +160,38 @@ ORDER BY CASE WHEN sqlc.arg(upcoming)::boolean THEN m.release_date END ASC NULLS
          CASE WHEN NOT sqlc.arg(upcoming)::boolean THEN m.release_date END DESC,
          lower(m.title)
 LIMIT 200;
+
+-- name: ListSeriesReleases :many
+-- The books the sources list of a series, each once: those of the series
+-- followed, and those of a followed author that name it. held says a
+-- library the viewer sees has it, wished that one has it wished for.
+WITH listed AS (
+    SELECT DISTINCT ON (r.dedupe_key) r.*
+    FROM releases r
+    JOIN release_subjects s ON s.id = r.subject_id
+    WHERE (s.kind = 'series' AND s.name_key = sqlc.arg(name_key)::text) OR r.series = sqlc.arg(name)::text
+    ORDER BY r.dedupe_key, r.series_index NULLS LAST, r.id
+)
+SELECT l.id, l.title, l.authors, l.series_index, l.release_date, l.precision,
+       l.isbns, l.provider, l.cover_url,
+       COALESCE(m.wished, false)::boolean AS wished
+FROM listed l
+LEFT JOIN LATERAL (
+    SELECT bool_or(NOT f.placeholder) AS held, bool_or(f.placeholder) AS wished
+    FROM (SELECT b.placeholder
+          FROM books b
+          WHERE b.title_key = l.dedupe_key AND b.deleted_at IS NULL
+            AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+            AND (cardinality(l.author_keys) = 0 OR EXISTS (
+                SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                WHERE c.book_id = b.id AND a.name_key = ANY(l.author_keys)))
+          UNION ALL
+          SELECT b.placeholder
+          FROM book_identifiers i
+          JOIN books b ON b.id = i.book_id
+          WHERE i.type = 'isbn' AND i.value = ANY(l.isbns) AND b.deleted_at IS NULL
+            AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))) f
+) m ON true
+WHERE m.held IS NOT TRUE
+ORDER BY l.series_index NULLS LAST, lower(l.title)
+LIMIT 200;

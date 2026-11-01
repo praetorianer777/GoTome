@@ -68,6 +68,35 @@ export function facetsQuery(
 	});
 }
 
+export type SeriesDetail = components["schemas"]["SeriesDetail"];
+export type ListedBook = components["schemas"]["ListedBook"];
+
+/** An author as the books the person sees name them. */
+export function authorQuery(key: string) {
+	return queryOptions({
+		queryKey: ["books", "author", key],
+		queryFn: async () =>
+			(
+				await api.GET("/authors/{authorKey}", {
+					params: { path: { authorKey: key } },
+				})
+			).data,
+	});
+}
+
+/** A series as far as the person sees it. */
+export function seriesQuery(key: string) {
+	return queryOptions({
+		queryKey: ["books", "series", key],
+		queryFn: async () =>
+			(
+				await api.GET("/series/{seriesKey}", {
+					params: { path: { seriesKey: key } },
+				})
+			).data,
+	});
+}
+
 export type SearchHit = components["schemas"]["SearchHit"];
 
 /** The books whose title, author or series looks like the words. */

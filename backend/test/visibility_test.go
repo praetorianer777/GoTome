@@ -86,6 +86,8 @@ func readCases() map[string][]readCase {
 			{path: "/trash", control: "insider"},
 			{path: "/trash", query: q("library", "{library}"), control: "insider"},
 		},
+		"getAuthor": {{path: "/authors/{author}", control: "insider"}},
+		"getSeries": {{path: "/series/{series}", control: "insider"}},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
@@ -174,7 +176,7 @@ func readCases() map[string][]readCase {
 // twinned are the placeholders that name the secret itself. A call that
 // uses one must be answered to someone outside the library exactly as the
 // same call about something that does not exist.
-var twinned = []string{"book", "file", "library", "title", "author", "tag"}
+var twinned = []string{"book", "file", "library", "title", "author", "tag", "series"}
 
 var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
@@ -232,17 +234,17 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	}
 	secret := map[string]string{
 		"book": up["bookId"].(string), "file": up["fileId"].(string), "library": vault,
-		"title": "Secretum " + mark, "author": "Abditus " + mark, "tag": "Arcanum" + mark,
+		"title": "Secretum " + mark, "author": "Abditus " + mark, "tag": "Arcanum" + mark, "series": "Occultum " + mark,
 	}
 	twin := map[string]string{
 		"book": uuid.NewString(), "file": uuid.NewString(), "library": uuid.NewString(),
 		// Other words than the secret's: the quick search and the names
 		// match words alike, which would find the secret for its twin.
-		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark,
+		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark, "series": "Nescitum " + twinMark,
 	}
 	book := secret["book"]
 	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+book, map[string]any{
-		"title": secret["title"], "series": map[string]any{"name": "Occultum " + mark},
+		"title": secret["title"], "series": map[string]any{"name": secret["series"]},
 		"contributors": []map[string]string{{"name": secret["author"], "role": "author"}},
 		"tags":         []string{secret["tag"]},
 	}); status != 200 {
@@ -303,7 +305,7 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	for _, b := range []string{book, near["bookId"].(string)} {
 		a.putVector(uuid.MustParse(b), similar.KindMetadata, same)
 	}
-	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}
+	markers := []string{secret["title"], secret["author"], secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.

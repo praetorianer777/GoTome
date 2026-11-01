@@ -175,6 +175,98 @@ func (q *Queries) ListReleases(ctx context.Context, arg ListReleasesParams) ([]L
 	return items, nil
 }
 
+const listSeriesReleases = `-- name: ListSeriesReleases :many
+WITH listed AS (
+    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at
+    FROM releases r
+    JOIN release_subjects s ON s.id = r.subject_id
+    WHERE (s.kind = 'series' AND s.name_key = $3::text) OR r.series = $4::text
+    ORDER BY r.dedupe_key, r.series_index NULLS LAST, r.id
+)
+SELECT l.id, l.title, l.authors, l.series_index, l.release_date, l.precision,
+       l.isbns, l.provider, l.cover_url,
+       COALESCE(m.wished, false)::boolean AS wished
+FROM listed l
+LEFT JOIN LATERAL (
+    SELECT bool_or(NOT f.placeholder) AS held, bool_or(f.placeholder) AS wished
+    FROM (SELECT b.placeholder
+          FROM books b
+          WHERE b.title_key = l.dedupe_key AND b.deleted_at IS NULL
+            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+            AND (cardinality(l.author_keys) = 0 OR EXISTS (
+                SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                WHERE c.book_id = b.id AND a.name_key = ANY(l.author_keys)))
+          UNION ALL
+          SELECT b.placeholder
+          FROM book_identifiers i
+          JOIN books b ON b.id = i.book_id
+          WHERE i.type = 'isbn' AND i.value = ANY(l.isbns) AND b.deleted_at IS NULL
+            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))) f
+) m ON true
+WHERE m.held IS NOT TRUE
+ORDER BY l.series_index NULLS LAST, lower(l.title)
+LIMIT 200
+`
+
+type ListSeriesReleasesParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+	NameKey string
+	Name    string
+}
+
+type ListSeriesReleasesRow struct {
+	ID          uuid.UUID
+	Title       string
+	Authors     []string
+	SeriesIndex *float64
+	ReleaseDate *time.Time
+	Precision   *string
+	Isbns       []string
+	Provider    string
+	CoverUrl    *string
+	Wished      bool
+}
+
+// The books the sources list of a series, each once: those of the series
+// followed, and those of a followed author that name it. held says a
+// library the viewer sees has it, wished that one has it wished for.
+func (q *Queries) ListSeriesReleases(ctx context.Context, arg ListSeriesReleasesParams) ([]ListSeriesReleasesRow, error) {
+	rows, err := q.db.Query(ctx, listSeriesReleases,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.NameKey,
+		arg.Name,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSeriesReleasesRow{}
+	for rows.Next() {
+		var i ListSeriesReleasesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Authors,
+			&i.SeriesIndex,
+			&i.ReleaseDate,
+			&i.Precision,
+			&i.Isbns,
+			&i.Provider,
+			&i.CoverUrl,
+			&i.Wished,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTrackers = `-- name: ListTrackers :many
 SELECT t.id, s.kind, s.name, t.created_at, s.polled_at
 FROM trackers t

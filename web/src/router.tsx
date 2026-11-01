@@ -10,12 +10,14 @@ import {
 } from "@tanstack/react-router";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
 import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
+import type { BookSearch } from "@/books/book-browser";
 import { picksFrom } from "@/books/filters";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { AdminLibraries } from "@/routes/admin-libraries";
 import { AdminSettings } from "@/routes/admin-settings";
 import { AdminUsers } from "@/routes/admin-users";
+import { AuthorPage } from "@/routes/author";
 import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
 import { BulkProgress } from "@/routes/bulk";
@@ -38,6 +40,7 @@ import { NotFound } from "@/routes/not-found";
 import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
 import { SearchPage, type TextSearch } from "@/routes/search";
+import { SeriesPage } from "@/routes/series";
 import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
 import { Setup } from "@/routes/setup";
 import { Trash } from "@/routes/trash";
@@ -117,6 +120,7 @@ const appRoute = createRoute({
 });
 
 const SORTS = ["title", "author", "added"] as const;
+const AUTHOR_SORTS = ["series", "title", "added"] as const;
 const VIEWS = ["grid", "list"] as const;
 
 function oneOf<T extends string>(values: readonly T[], value: unknown): T | undefined {
@@ -190,6 +194,42 @@ const duplicatesRoute = createRoute({
 				user={useRouteContext({ from: "/app" }).user}
 				search={duplicatesRoute.useSearch()}
 				onSearch={(change) => navigate({ search: (previous) => ({ ...previous, ...change }) })}
+			/>
+		);
+	},
+});
+
+const authorRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/authors/$authorKey",
+	validateSearch: (search): BookSearch => ({
+		...picksFrom(search),
+		sort: oneOf(AUTHOR_SORTS, search.sort),
+		view: oneOf(VIEWS, search.view),
+	}),
+	component: function AuthorRoute() {
+		const navigate = authorRoute.useNavigate();
+		return (
+			<AuthorPage
+				user={useRouteContext({ from: "/app" }).user}
+				authorKey={authorRoute.useParams().authorKey}
+				search={authorRoute.useSearch()}
+				onSearch={(change) =>
+					navigate({ search: (previous) => ({ ...previous, ...change }), replace: true })
+				}
+			/>
+		);
+	},
+});
+
+const seriesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/series/$seriesKey",
+	component: function SeriesRoute() {
+		return (
+			<SeriesPage
+				user={useRouteContext({ from: "/app" }).user}
+				seriesKey={seriesRoute.useParams().seriesKey}
 			/>
 		);
 	},
@@ -467,7 +507,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

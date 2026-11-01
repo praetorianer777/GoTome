@@ -20,7 +20,11 @@ import (
 
 // Fields books can be filtered by, as a rule names them.
 const (
-	FieldAuthor    = "author"
+	FieldAuthor = "author"
+	// FieldPerson is an author under every spelling of their name; a value
+	// compares as PersonKey does. It has no facet, so a list narrowed to one
+	// person still offers the author facet, with their co-authors.
+	FieldPerson    = "person"
 	FieldSeries    = "series"
 	FieldTag       = "tag"
 	FieldLanguage  = "language"
@@ -92,6 +96,12 @@ var Filters = filter.Registry{
 		}},
 		OpEmpty: {SQL: func([]string, func(any) string) string {
 			return `NOT EXISTS (SELECT 1 FROM book_contributors c WHERE c.book_id = b.id AND c.role = '` + RoleAuthor + `')`
+		}},
+	},
+	FieldPerson: {
+		OpIn: {Arity: -1, Value: personKey, SQL: func(v []string, arg func(any) string) string {
+			return `EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
+				WHERE c.book_id = b.id AND c.role = '` + RoleAuthor + `' AND a.person_key = ANY(` + arg(v) + `::text[]))`
 		}},
 	},
 	FieldSeries: {
@@ -211,6 +221,13 @@ func ratingOrNone(v string) (string, error) {
 
 func nameKey(v string) (string, error) {
 	if k := Key(v); k != "" {
+		return k, nil
+	}
+	return "", fmt.Errorf("%q has no letter or digit to compare by", v)
+}
+
+func personKey(v string) (string, error) {
+	if k := PersonKey(v); k != "" {
 		return k, nil
 	}
 	return "", fmt.Errorf("%q has no letter or digit to compare by", v)

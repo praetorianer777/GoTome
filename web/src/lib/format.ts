@@ -24,6 +24,11 @@ function dateFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
 	return format;
 }
 
+/** How many books, as a heading says it. */
+export function bookCount(count: number): string {
+	return count === 1 ? t("names.book") : t("names.books", { count });
+}
+
 /** A count or a measure as the language writes it: 12,345 or 12.345, 1.5 or 1,5. */
 export function formatCount(value: number, fractionDigits = 1): string {
 	return numberFormat({ maximumFractionDigits: fractionDigits }).format(value);

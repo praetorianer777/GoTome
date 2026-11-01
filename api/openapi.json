@@ -797,6 +797,53 @@
         "x-permission": "signed-in"
       }
     },
+    "/authors/{authorKey}": {
+      "get": {
+        "operationId": "getAuthor",
+        "summary": "An author, under every spelling of their name, as the caller's books name them",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "authorKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/books": {
       "get": {
         "operationId": "listBooks",
@@ -816,7 +863,7 @@
           {
             "name": "filter",
             "in": "query",
-            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
             "schema": {
               "type": "string"
             }
@@ -824,13 +871,14 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "What the books are ordered by; title when left out.",
+            "description": "What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series.",
             "schema": {
               "type": "string",
               "enum": [
                 "title",
                 "author",
-                "added"
+                "added",
+                "series"
               ]
             }
           },
@@ -6795,6 +6843,53 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/series/{seriesKey}": {
+      "get": {
+        "operationId": "getSeries",
+        "summary": "A series: how far the caller has read it, what is missing and what the sources list of it",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "seriesKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "listSettings",
@@ -8124,6 +8219,32 @@
           "complete"
         ]
       },
+      "AuthorDetail": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "spellings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "key",
+          "spellings",
+          "books"
+        ]
+      },
       "BookCount": {
         "type": "object",
         "properties": {
@@ -8206,6 +8327,9 @@
           },
           "seriesIndex": {
             "type": "number"
+          },
+          "seriesKey": {
+            "type": "string"
           },
           "subtitle": {
             "type": "string"
@@ -8338,6 +8462,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "authorKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "authors": {
             "type": "array",
             "items": {
@@ -8379,6 +8509,9 @@
           "seriesIndex": {
             "type": "number"
           },
+          "seriesKey": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -8401,6 +8534,7 @@
           "libraryId",
           "title",
           "authors",
+          "authorKeys",
           "formats",
           "addedAt",
           "status",
@@ -9117,6 +9251,9 @@
       "Contributor": {
         "type": "object",
         "properties": {
+          "key": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -10581,6 +10718,52 @@
           "lastUsedAt"
         ]
       },
+      "ListedBook": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "isbns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "published": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "wishable": {
+            "type": "boolean"
+          },
+          "wished": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "authors",
+          "source",
+          "isbns",
+          "wishable",
+          "wished"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "properties": {
@@ -11600,6 +11783,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "authorKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "authors": {
             "type": "array",
             "items": {
@@ -11649,6 +11838,9 @@
           "seriesIndex": {
             "type": "number"
           },
+          "seriesKey": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -11671,6 +11863,7 @@
           "libraryId",
           "title",
           "authors",
+          "authorKeys",
           "formats",
           "addedAt",
           "status",
@@ -11720,6 +11913,66 @@
         },
         "required": [
           "queued"
+        ]
+      },
+      "SeriesDetail": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListedBook"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeriesGap"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "next": {
+            "$ref": "#/components/schemas/BookSummary"
+          },
+          "read": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "key",
+          "books",
+          "read",
+          "missing",
+          "listed",
+          "library"
+        ]
+      },
+      "SeriesGap": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "integer"
+          },
+          "to": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to"
         ]
       },
       "SeriesPlace": {

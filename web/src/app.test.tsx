@@ -4855,6 +4855,64 @@ describe("following authors and series", () => {
 	});
 });
 
+describe("an author's and a series' pages", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		const by = [{ name: "Liza Grimm", role: "author" as const }];
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Zweiter", { contributors: by, series: "Die Götter", seriesIndex: 2, reading: { status: "completed" } })
+			.withBook("Erster", { contributors: by, series: "Die Götter", seriesIndex: 1, reading: { status: "completed" } })
+			.withBook("Vierter", { contributors: by, series: "Die Götter", seriesIndex: 4 })
+			.withBook("Alleine", { contributors: [{ name: "Grimm, Liza", role: "author" }] })
+			.withBook("Fremdes", { contributors: [{ name: "Jane Austen", role: "author" }] });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows an author's books by series, under every spelling", async () => {
+		renderApp("/authors/grimm%20liza");
+		expect(await screen.findByRole("heading", { level: 1, name: "Liza Grimm" })).toBeInTheDocument();
+		expect(screen.getByText("4 books")).toBeInTheDocument();
+		expect(screen.getByText("Also written Grimm, Liza")).toBeInTheDocument();
+		const titles = await screen.findAllByRole("link", { name: /Erster|Zweiter|Vierter|Alleine|Fremdes/ });
+		expect(titles.map((l) => l.textContent)).toEqual([
+			expect.stringContaining("Erster"),
+			expect.stringContaining("Zweiter"),
+			expect.stringContaining("Vierter"),
+			expect.stringContaining("Alleine"),
+		]);
+		expect(screen.getByRole("button", { name: "Liza Grimm" })).toHaveAttribute("aria-pressed", "false");
+	});
+
+	it("says so of an author nobody is", async () => {
+		renderApp("/authors/nobody");
+		expect(await screen.findByText("There is no such author among your books.")).toBeInTheDocument();
+	});
+
+	it("shows a series in its order, with what is read, next and missing", async () => {
+		server.withListed("Die Götter", { title: "Fünfter", seriesIndex: 5 });
+		const person = userEvent.setup();
+		renderApp("/series/die%20gotter");
+		expect(await screen.findByRole("heading", { level: 1, name: "Die Götter" })).toBeInTheDocument();
+		expect(screen.getByText("You have read 2 of 3.")).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "4. Vierter" })).toBeInTheDocument();
+		expect(screen.getByText("Book 3 is missing")).toBeInTheDocument();
+		expect(screen.getByText("5. Fünfter")).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Add Fünfter to the wishlist" }));
+		expect(await screen.findByText("Wished for")).toBeInTheDocument();
+		const wish = server.requests.find((r) => r.method === "POST" && r.path === "/books/wishes");
+		expect(wish?.body).toMatchObject({
+			library: server.libraries[0]?.id,
+			title: "Fünfter",
+			provider: "openlibrary",
+			series: { name: "Die Götter", index: 5 },
+		});
+	});
+});
+
 describe("cleaning up how books are described", () => {
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);

@@ -12,17 +12,27 @@ import {
 
 type BookDetail = components["schemas"]["BookDetail"];
 
+interface Subject {
+	kind: FollowKind;
+	name: string;
+}
+
 /** Buttons that follow the book's authors and its series for new books, or stop. */
 export function FollowButtons({ book }: { book: BookDetail }) {
-	const trackers = useQuery(trackersQuery);
-	const follow = useFollow();
-	const unfollow = useUnfollow();
-	const subjects: { kind: FollowKind; name: string }[] = book.contributors
+	const subjects: Subject[] = book.contributors
 		.filter((c) => c.role === "author")
 		.map((c) => ({ kind: "author" as const, name: c.name }));
 	if (book.series) {
 		subjects.push({ kind: "series", name: book.series });
 	}
+	return <Follow subjects={subjects} />;
+}
+
+/** The button that follows one author or series, or stops. */
+export function Follow({ subjects }: { subjects: Subject[] }) {
+	const trackers = useQuery(trackersQuery);
+	const follow = useFollow();
+	const unfollow = useUnfollow();
 	if (subjects.length === 0 || !trackers.isSuccess) {
 		return null;
 	}

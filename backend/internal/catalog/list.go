@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +26,11 @@ const (
 	OrderTitle  = "title"
 	OrderAuthor = "author"
 	OrderAdded  = "added"
+	// OrderSeries lists a series' books in their order, and the books of
+	// each series after one another, those of no series last. It is for a
+	// list narrowed to an author or a series: no index covers it over a
+	// whole library.
+	OrderSeries = "series"
 )
 
 // orderKeys are the columns each order sorts by, before the ID that breaks
@@ -32,6 +39,7 @@ var orderKeys = map[string][]string{
 	OrderTitle:  {"b.sort_title"},
 	OrderAuthor: {"b.author_sort", "b.sort_title"},
 	OrderAdded:  {"b.created_at"},
+	OrderSeries: {"(s.id IS NULL)", "COALESCE(s.name_key, '')", "COALESCE(b.series_index, 'Infinity'::float8)", "b.sort_title"},
 }
 
 // MaxPage is the most books one page of a list holds.
@@ -151,15 +159,11 @@ func (s *Service) List(ctx context.Context, scope library.Scope, p ListParams) (
 		}
 		var values []string
 		for i, k := range c.Keys {
-			if keys[i] == "b.created_at" {
-				t, err := time.Parse(time.RFC3339Nano, k)
-				if err != nil {
-					return Page{}, ErrBadCursor
-				}
-				values = append(values, arg(t))
-				continue
+			value, err := cursorValue(p.Order, i, k)
+			if err != nil {
+				return Page{}, ErrBadCursor
 			}
-			values = append(values, arg(k))
+			values = append(values, arg(value))
 		}
 		values = append(values, arg(id))
 		op := ">"
@@ -211,6 +215,13 @@ LIMIT ` + arg(limit+1)
 				c.Keys = []string{lastAuthorSort, lastSortTitle}
 			case OrderAdded:
 				c.Keys = []string{last.AddedAt.Format(time.RFC3339Nano)}
+			case OrderSeries:
+				index := math.Inf(1)
+				if last.SeriesIndex != nil {
+					index = *last.SeriesIndex
+				}
+				c.Keys = []string{strconv.FormatBool(last.Series == ""), Key(last.Series),
+					strconv.FormatFloat(index, 'g', -1, 64), lastSortTitle}
 			}
 			page.Next = encodeCursor(c)
 			break
@@ -257,6 +268,19 @@ ORDER BY n.ord`
 		out = append(out, b)
 	}
 	return out, rows.Err()
+}
+
+// cursorValue is a cursor's key as the column of that order compares it.
+func cursorValue(order string, key int, value string) (any, error) {
+	switch {
+	case order == OrderAdded:
+		return time.Parse(time.RFC3339Nano, value)
+	case order == OrderSeries && key == 0:
+		return strconv.ParseBool(value)
+	case order == OrderSeries && key == 2:
+		return strconv.ParseFloat(value, 64)
+	}
+	return value, nil
 }
 
 func encodeCursor(c cursor) string {

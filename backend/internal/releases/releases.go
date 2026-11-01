@@ -202,6 +202,42 @@ func (s *Service) Releases(ctx context.Context, scope library.Scope, upcoming bo
 	return out, nil
 }
 
+// Listed is a book the sources list of a series that no library the viewer
+// sees holds.
+type Listed struct {
+	Title       string
+	Authors     []string
+	SeriesIndex *float64
+	// Date and Precision are as a Release's.
+	Date      *time.Time
+	Precision *string
+	ISBNs     []string
+	Provider  string
+	CoverURL  *string
+	// Wished is a book wished for in a library the viewer sees.
+	Wished bool
+}
+
+// OfSeries are the books the sources list of the series, by its key and its
+// name in the catalogue, in series order. They are found only while someone
+// follows the series, or an author whose books name it.
+func (s *Service) OfSeries(ctx context.Context, scope library.Scope, key, name string) ([]Listed, error) {
+	rows, err := sqlc.New(s.pool).ListSeriesReleases(ctx, sqlc.ListSeriesReleasesParams{
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, NameKey: key, Name: name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Listed, len(rows))
+	for i, r := range rows {
+		out[i] = Listed{
+			Title: r.Title, Authors: r.Authors, SeriesIndex: r.SeriesIndex, Date: r.ReleaseDate, Precision: r.Precision,
+			ISBNs: r.Isbns, Provider: r.Provider, CoverURL: r.CoverUrl, Wished: r.Wished,
+		}
+	}
+	return out, nil
+}
+
 // Poll asks the providers about the subjects not asked about for a day,
 // the longest waiting first, until the deadline, and then tells of the
 // releases whose day has come. It reports whether no subject is left.

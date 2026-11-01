@@ -295,6 +295,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/authors/{authorKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An author, under every spelling of their name, as the caller's books name them */
+        get: operations["getAuthor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books": {
         parameters: {
             query?: never;
@@ -2144,6 +2161,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/series/{seriesKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A series: how far the caller has read it, what is missing and what the sources list of it */
+        get: operations["getSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -2512,6 +2546,12 @@ export interface components {
             durationMs: number;
             parts: components["schemas"]["AudioPart"][];
         };
+        AuthorDetail: {
+            books: number;
+            key: string;
+            name: string;
+            spellings: string[];
+        };
         BookCount: {
             count: number;
         };
@@ -2539,6 +2579,7 @@ export interface components {
             reading: components["schemas"]["ReadingState"];
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             subtitle?: string;
             tags: string[];
             title: string;
@@ -2573,6 +2614,7 @@ export interface components {
         BookSummary: {
             /** Format: date-time */
             addedAt: string;
+            authorKeys: string[];
             authors: string[];
             coverKey?: string;
             filesMissing: boolean;
@@ -2586,6 +2628,7 @@ export interface components {
             rating?: number;
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             /** @enum {string} */
             status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
@@ -2776,6 +2819,7 @@ export interface components {
             visibility?: "private" | "shared";
         };
         Contributor: {
+            key?: string;
             name: string;
             /** @enum {string} */
             role: "author" | "narrator" | "translator" | "editor" | "illustrator";
@@ -3163,6 +3207,17 @@ export interface components {
             /** Format: date-time */
             lastUsedAt: string;
         };
+        ListedBook: {
+            authors: string[];
+            coverToken?: string;
+            isbns: string[];
+            published?: string;
+            seriesIndex?: number;
+            source: string;
+            title: string;
+            wishable: boolean;
+            wished: boolean;
+        };
         LoginRequest: {
             password: string;
             username: string;
@@ -3435,6 +3490,7 @@ export interface components {
         SearchHit: {
             /** Format: date-time */
             addedAt: string;
+            authorKeys: string[];
             authors: string[];
             coverKey?: string;
             filesMissing: boolean;
@@ -3450,6 +3506,7 @@ export interface components {
             rating?: number;
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             /** @enum {string} */
             status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
@@ -3465,6 +3522,21 @@ export interface components {
         };
         SendResult: {
             queued: number;
+        };
+        SeriesDetail: {
+            books: number;
+            key: string;
+            /** Format: uuid */
+            library: string;
+            listed: components["schemas"]["ListedBook"][];
+            missing: components["schemas"]["SeriesGap"][];
+            name: string;
+            next?: components["schemas"]["BookSummary"];
+            read: number;
+        };
+        SeriesGap: {
+            from: number;
+            to: number;
         };
         SeriesPlace: {
             index?: number;
@@ -4310,15 +4382,46 @@ export interface operations {
             };
         };
     };
+    getAuthor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                authorKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listBooks: {
         parameters: {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
-                /** @description What the books are ordered by; title when left out. */
-                sort?: "title" | "author" | "added";
+                /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
+                sort?: "title" | "author" | "added" | "series";
                 /** @description The direction; asc when left out. */
                 order?: "asc" | "desc";
                 /** @description The nextCursor of the page before. */
@@ -8179,6 +8282,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndexStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                seriesKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeriesDetail"];
                 };
             };
             /** @description The request failed. */
