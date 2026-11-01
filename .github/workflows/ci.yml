@@ -35,6 +35,13 @@ jobs:
           path: engine/vendor
           key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
 
+      # FFmpeg's source (make ffmpeg-fetch), kept until its pin changes.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+
       - name: Cache the npm download cache
         uses: actions/cache@v4
         with:

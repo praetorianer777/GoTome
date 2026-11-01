@@ -14,6 +14,9 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+      # What make stack-check has FFmpeg read.
+      - ../backend/internal/ingest/testdata/audio:/fixtures/audio:ro
+      - ../e2e/fixtures/audio:/fixtures/audio-e2e:ro
 
   db:
     # What a stall in the tests is made of, in the logs CI keeps when they

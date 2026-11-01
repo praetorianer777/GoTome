@@ -3,10 +3,9 @@ package ingest
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	"image/color"
 	"image/png"
 	"os"
 	"os/exec"
@@ -24,74 +23,47 @@ func needFFmpeg(t *testing.T) {
 	}
 }
 
-// audioFile is an audio file for writeAudio to make: tags, chapters and a
-// cover, of a length in seconds.
-type audioFile struct {
-	seconds  float64
-	tags     map[string]string
-	chapters []Chapter
-	cover    bool
+const audioFiles = "testdata/audio"
+
+func TestAudioReadsAsTheReferenceSays(t *testing.T) {
+	needFFmpeg(t)
+	dirs := []string{audioFiles, "../../../e2e/fixtures/audio"}
+	if os.Getenv("GOTOME_WRITE_AUDIO_REFERENCE") != "" {
+		facts, err := readAudioFacts(context.Background(), dirs...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := json.MarshalIndent(facts, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(audioFiles, audioReference), append(out, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := CheckAudio(context.Background(), dirs...); err != nil {
+		t.Error(err)
+	}
 }
 
-// writeAudio makes the file with ffmpeg, in the format its name says.
-func writeAudio(t testing.TB, path string, f audioFile) {
-	t.Helper()
+func TestCheckAudioSaysWhatDiffers(t *testing.T) {
+	needFFmpeg(t)
 	dir := t.TempDir()
-	var meta strings.Builder
-	meta.WriteString(";FFMETADATA1\n")
-	for k, v := range f.tags {
-		fmt.Fprintf(&meta, "%s=%s\n", k, v)
-	}
-	for _, c := range f.chapters {
-		fmt.Fprintf(&meta, "[CHAPTER]\nTIMEBASE=1/1000\nSTART=%d\nEND=%d\ntitle=%s\n", c.StartMS, c.EndMS, c.Title)
-	}
-	metaPath := filepath.Join(dir, "meta.txt")
-	if err := os.WriteFile(metaPath, []byte(meta.String()), 0o644); err != nil {
+	raw, err := os.ReadFile(filepath.Join(audioFiles, "emma.mp3"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=440:duration=%g", f.seconds), "-i", metaPath}
-	maps := []string{"-map", "0:a", "-map_metadata", "1", "-map_chapters", "1"}
-	if f.cover {
-		img := image.NewRGBA(image.Rect(0, 0, 60, 90))
-		for i := range img.Pix {
-			img.Pix[i] = 0x90
-		}
-		img.Set(0, 0, color.Black)
-		var buf bytes.Buffer
-		png.Encode(&buf, img)
-		coverPath := filepath.Join(dir, "cover.png")
-		os.WriteFile(coverPath, buf.Bytes(), 0o644)
-		args = append(args, "-i", coverPath)
-		maps = append(maps, "-map", "2:v", "-c:v", "png", "-disposition:v", "attached_pic")
-	}
-	args = append(args, maps...)
-	switch filepath.Ext(path) {
-	case ".m4b":
-		args = append(args, "-c:a", "aac", "-f", "ipod")
-	case ".mp3":
-		args = append(args, "-c:a", "libmp3lame", "-id3v2_version", "3")
-	case ".ogg":
-		args = append(args, "-c:a", "libvorbis")
-	}
-	args = append(args, path)
-	if out, err := exec.Command(ffmpeg, args...).CombinedOutput(); err != nil {
-		t.Fatalf("ffmpeg %s: %v\n%s", strings.Join(args, " "), err, out)
+	os.WriteFile(filepath.Join(dir, "emma.mp3"), raw, 0o644)
+	os.WriteFile(filepath.Join(dir, audioReference), []byte(`{"emma.mp3": {"DurationMS": 1}, "gone.mp3": {}}`), 0o644)
+	err = CheckAudio(context.Background(), dir)
+	if err == nil || !strings.Contains(err.Error(), "emma.mp3: got") || !strings.Contains(err.Error(), "gone.mp3: not found") {
+		t.Errorf("err = %v", err)
 	}
 }
 
 func TestM4BWithChapters(t *testing.T) {
 	needFFmpeg(t)
-	path := filepath.Join(t.TempDir(), "dune.m4b")
-	writeAudio(t, path, audioFile{
-		seconds: 3,
-		tags: map[string]string{
-			"title": "Dune", "artist": "Frank Herbert", "composer": "Scott Brick; Orlagh Cassidy",
-			"genre": "Science Fiction", "date": "2007-01-01", "comment": "The desert planet.",
-		},
-		chapters: []Chapter{{"Opening Credits", 0, 500}, {"Book One", 500, 2000}, {"Book Two", 2000, 3000}},
-		cover:    true,
-	})
-	got, err := extractAudio(context.Background(), path)
+	got, err := extractAudio(context.Background(), filepath.Join(audioFiles, "dune.m4b"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,13 +95,9 @@ func TestM4BWithChapters(t *testing.T) {
 
 func TestEveryAudioFormatIsRead(t *testing.T) {
 	needFFmpeg(t)
-	for _, ext := range []string{".mp3", ".flac", ".ogg", ".m4b"} {
+	for _, ext := range []string{".mp3", ".flac", ".ogg", ".opus", ".m4b"} {
 		t.Run(ext, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "part"+ext)
-			writeAudio(t, path, audioFile{seconds: 1.5, tags: map[string]string{
-				"title": "Chapter Three", "album": "Emma", "artist": "Jane Austen", "track": "3/10", "disc": "2/2",
-			}, cover: ext != ".ogg"})
-			got, err := extractAudio(context.Background(), path)
+			got, err := extractAudio(context.Background(), filepath.Join(audioFiles, "emma"+ext))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,7 +110,7 @@ func TestEveryAudioFormatIsRead(t *testing.T) {
 			if got.DurationMS == nil || *got.DurationMS < 1400 || *got.DurationMS > 1700 {
 				t.Errorf("duration = %v ms, want about 1500", got.DurationMS)
 			}
-			if (got.Cover != nil) != (ext != ".ogg") {
+			if hasCover := ext != ".ogg" && ext != ".opus"; (got.Cover != nil) != hasCover {
 				t.Errorf("cover of %d bytes", len(got.Cover))
 			}
 		})
@@ -151,9 +119,7 @@ func TestEveryAudioFormatIsRead(t *testing.T) {
 
 func TestATrackTitleDoesNotNameTheBook(t *testing.T) {
 	needFFmpeg(t)
-	path := filepath.Join(t.TempDir(), "07.mp3")
-	writeAudio(t, path, audioFile{seconds: 1, tags: map[string]string{"title": "Chapter Seven", "track": "7"}})
-	got, err := extractAudio(context.Background(), path)
+	got, err := extractAudio(context.Background(), filepath.Join(audioFiles, "chapter-seven.mp3"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,435 @@
+{
+  "chapter-seven.mp3": {
+    "Metadata": {
+      "Title": "",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": null,
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1071,
+    "Track": 7,
+    "Disc": null,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "dune.m4b": {
+    "Metadata": {
+      "Title": "Dune",
+      "Subtitle": "",
+      "Description": "The desert planet.",
+      "Language": "und",
+      "Published": "2007",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Frank Herbert",
+          "SortName": "",
+          "Role": "author"
+        },
+        {
+          "Name": "Scott Brick",
+          "SortName": "",
+          "Role": "narrator"
+        },
+        {
+          "Name": "Orlagh Cassidy",
+          "SortName": "",
+          "Role": "narrator"
+        }
+      ],
+      "Tags": [
+        "Science Fiction"
+      ],
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 3000,
+    "Track": null,
+    "Disc": null,
+    "Chapters": [
+      {
+        "Title": "Opening Credits",
+        "StartMS": 0,
+        "EndMS": 500
+      },
+      {
+        "Title": "Book One",
+        "StartMS": 500,
+        "EndMS": 2000
+      },
+      {
+        "Title": "Book Two",
+        "StartMS": 2000,
+        "EndMS": 3000
+      }
+    ],
+    "CoverBytes": 193,
+    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
+  },
+  "emma.flac": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1500,
+    "Track": 3,
+    "Disc": 2,
+    "Chapters": null,
+    "CoverBytes": 193,
+    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
+  },
+  "emma.m4b": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "und",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1500,
+    "Track": 3,
+    "Disc": 2,
+    "Chapters": null,
+    "CoverBytes": 193,
+    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
+  },
+  "emma.mp3": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1567,
+    "Track": 3,
+    "Disc": 2,
+    "Chapters": null,
+    "CoverBytes": 193,
+    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
+  },
+  "emma.ogg": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1500,
+    "Track": 3,
+    "Disc": 2,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "emma.opus": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1507,
+    "Track": 3,
+    "Disc": 2,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "part-1.mp3": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1071,
+    "Track": 2,
+    "Disc": null,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "part-2.mp3": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1071,
+    "Track": 3,
+    "Disc": null,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "part-3.mp3": {
+    "Metadata": {
+      "Title": "Emma",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Jane Austen",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 1071,
+    "Track": 1,
+    "Disc": null,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "part1.mp3": {
+    "Metadata": {
+      "Title": "",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "GOtome Tests",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 6060,
+    "Track": null,
+    "Disc": null,
+    "Chapters": [
+      {
+        "Title": "Arrival",
+        "StartMS": 0,
+        "EndMS": 3000
+      },
+      {
+        "Title": "The Keeper",
+        "StartMS": 3000,
+        "EndMS": 6000
+      }
+    ],
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "part2.mp3": {
+    "Metadata": {
+      "Title": "",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": null,
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 6060,
+    "Track": null,
+    "Disc": null,
+    "Chapters": null,
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  },
+  "three-chapters.m4b": {
+    "Metadata": {
+      "Title": "Dune",
+      "Subtitle": "",
+      "Description": "",
+      "Language": "und",
+      "Published": "",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "Frank Herbert",
+          "SortName": "",
+          "Role": "author"
+        }
+      ],
+      "Tags": null,
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 3000,
+    "Track": null,
+    "Disc": null,
+    "Chapters": [
+      {
+        "Title": "Book One",
+        "StartMS": 0,
+        "EndMS": 1000
+      },
+      {
+        "Title": "Book Two",
+        "StartMS": 1000,
+        "EndMS": 2000
+      },
+      {
+        "Title": "Book Three",
+        "StartMS": 2000,
+        "EndMS": 3000
+      }
+    ],
+    "CoverBytes": 0,
+    "CoverSHA256": ""
+  }
+}

@@ -51,6 +51,10 @@ node_modules/
 # An installation's own settings for docker compose (deploy/.env.example).
 /deploy/.env
 
+# FFmpeg's source, fetched by make ffmpeg-fetch.
+/deploy/vendor/*
+!/deploy/vendor/.gitkeep
+
 # The engine's crates, vendored by make engine-fetch, and its build.
 /engine/vendor/
 /engine/target/

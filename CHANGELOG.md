@@ -18,6 +18,13 @@ What changes for someone who runs or uses GOtome. The format follows
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
 
+### Changed
+
+- The app image is far smaller, about 200 MB instead of 865 MB: it carries
+  a small FFmpeg of its own that only reads audio files' tags, chapters
+  and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
+  reach of a hostile file.
+
 ## [0.6.0] - 2026-10-15
 
 ### Changed

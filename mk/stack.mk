@@ -65,7 +65,7 @@ stack-env:
 		> $(STACK_ENV_FILE)
 
 .PHONY: up
-up: stack-env ## Build and start the stack in the background, and say where it is
+up: stack-env ffmpeg-source ## Build and start the stack in the background, and say where it is
 	docker compose up -d --build --wait
 	@echo "GOtome  http://localhost:$(GOTOME_PORT)"
 	@echo "Port and project name are in $(STACK_ENV_FILE)."
@@ -103,7 +103,7 @@ similar-check: ## Measure the similar books of the running stack's library: make
 .PHONY: stack-up
 # Its database is thrown away after the run, so it need not survive a crash.
 stack-up: export GOTOME_DB_DURABLE := off
-stack-up: stack-env ## The gate's stack: build and start it, and wait until both services are healthy
+stack-up: stack-env ffmpeg-source ## The gate's stack: build and start it, and wait until both services are healthy
 	docker compose up -d --build --wait --quiet-pull
 
 # The suite runs against the stack's Postgres rather than one of its own, so
@@ -154,11 +154,13 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
 			|| { echo "the app image has no $$program"; exit 1; }; \
 	done
+	@docker compose exec -T app gotome audio-check /fixtures/audio /fixtures/audio-e2e >/dev/null \
+		|| { echo "the app image's FFmpeg does not read the audio files as the reference says: gotome audio-check tells how"; exit 1; }
 	@docker compose exec -T app gotome embed-check >/dev/null \
 		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
 	@docker compose exec -T app gotome fulltext-check >/dev/null \
 		|| { echo "the app image cannot load the full-text engine"; exit 1; }
-	@echo "stack ok: app and db healthy, web app and API served, vector available, db behind an init, poppler, ffmpeg, ONNX Runtime and the full-text engine installed"
+	@echo "stack ok: app and db healthy, web app and API served, vector available, db behind an init, poppler, an FFmpeg that reads the four audio formats, ONNX Runtime and the full-text engine installed"
 
 # The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
 # there already, so this reaches Hugging Face once per cache; the gate leaves
@@ -177,7 +179,7 @@ embed-check: ## Run the app image's embedding model against the reference vector
 
 
 .PHONY: upgrade-test
-upgrade-test: ## Upgrade an earlier image's installation to this checkout's, and restore its backup into a new one (builds both images)
+upgrade-test: ffmpeg-source ## Upgrade an earlier image's installation to this checkout's, and restore its backup into a new one (builds both images)
 	docker compose build app
 	@# A stack of its own, beside the checkout's.
 	tests/test-upgrade.sh "$$(tests/upgrade-from.sh)" $(GOTOME_IMAGE) $(STACK_PROJECT)-upgrade
