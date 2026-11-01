@@ -75,8 +75,8 @@ func (s *Server) serveCover(w http.ResponseWriter, r *http.Request, id uuid.UUID
 
 type listBooksQuery struct {
 	Library      string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
-	Sort         string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
+	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
+	Sort         string `query:"sort" enum:"title,author,added,series" doc:"What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series."`
 	Order        string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor       string `query:"cursor" doc:"The nextCursor of the page before."`
 	Limit        int    `query:"limit" doc:"How many books a page holds, at most 200; 50 when left out."`
@@ -85,14 +85,18 @@ type listBooksQuery struct {
 
 // bookSummary is a book as a list shows it.
 type bookSummary struct {
-	ID            uuid.UUID `json:"id"`
-	LibraryID     uuid.UUID `json:"libraryId"`
-	Title         string    `json:"title"`
-	Subtitle      string    `json:"subtitle,omitempty"`
-	Authors       []string  `json:"authors"`
-	Series        string    `json:"series,omitempty"`
-	SeriesIndex   *float64  `json:"seriesIndex,omitempty"`
-	PublishedYear *int32    `json:"publishedYear,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	LibraryID uuid.UUID `json:"libraryId"`
+	Title     string    `json:"title"`
+	Subtitle  string    `json:"subtitle,omitempty"`
+	Authors   []string  `json:"authors"`
+	// AuthorKeys are what GET /authors/{authorKey} takes for each of authors.
+	AuthorKeys []string `json:"authorKeys"`
+	Series     string   `json:"series,omitempty"`
+	// SeriesKey is what GET /series/{seriesKey} takes for series.
+	SeriesKey     string   `json:"seriesKey,omitempty"`
+	SeriesIndex   *float64 `json:"seriesIndex,omitempty"`
+	PublishedYear *int32   `json:"publishedYear,omitempty"`
 	// CoverKey is what a cover's address carries as v, so that it can be
 	// kept for good. Left out when the book has no cover.
 	CoverKey string    `json:"coverKey,omitempty"`
@@ -117,6 +121,9 @@ type bookList struct {
 
 type contributor struct {
 	Name string `json:"name"`
+	// Key is what GET /authors/{authorKey} takes for an author; only a
+	// book's answers carry it.
+	Key string `json:"key,omitempty"`
 	// Role is author, narrator, translator, editor or illustrator.
 	Role string `json:"role"`
 }
@@ -190,9 +197,11 @@ type bookDetail struct {
 	Language    string    `json:"language,omitempty"`
 	// Published is as much of the date as is known: "2010", "2010-08" or
 	// "2010-08-31".
-	Published    string           `json:"published,omitempty"`
-	Publisher    string           `json:"publisher,omitempty"`
-	Series       string           `json:"series,omitempty"`
+	Published string `json:"published,omitempty"`
+	Publisher string `json:"publisher,omitempty"`
+	Series    string `json:"series,omitempty"`
+	// SeriesKey is what GET /series/{seriesKey} takes for series.
+	SeriesKey    string           `json:"seriesKey,omitempty"`
 	SeriesIndex  *float64         `json:"seriesIndex,omitempty"`
 	PageCount    *int32           `json:"pageCount,omitempty"`
 	Contributors []contributor    `json:"contributors"`
@@ -258,9 +267,13 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 }
 
 func summaryOf(b catalog.Summary) bookSummary {
+	authorKeys := make([]string, len(b.Authors))
+	for i, name := range b.Authors {
+		authorKeys[i] = catalog.PersonKey(name)
+	}
 	return bookSummary{
-		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
-		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
+		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors, AuthorKeys: authorKeys,
+		Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
 		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
 		Placeholder: b.Placeholder, FilesMissing: b.FilesMissing,
 	}
@@ -400,13 +413,13 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 func detailOf(b catalog.Book, user *auth.User) bookDetail {
 	out := bookDetail{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Description: b.Description,
-		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
+		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
 	}
 	for _, c := range b.Contributors {
-		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Role: c.Role})
+		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Key: catalog.PersonKey(c.Name), Role: c.Role})
 	}
 	out.Tags = append(out.Tags, b.Tags...)
 	// The same ISBN in two files is one identifier to whoever reads it.

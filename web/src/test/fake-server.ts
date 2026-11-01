@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser, SignInMethods } from "@/auth/session";
-import type { BookDetail, BookSummary, TextHit } from "@/books/api";
+import type { BookDetail, BookSummary, ListedBook, TextHit } from "@/books/api";
 import type {
 	Collection,
 	CollectionAdd,
@@ -91,6 +91,7 @@ export class FakeServer {
 	requests: { method: string; path: string; body: unknown }[] = [];
 	libraries: Library[] = [];
 	books: BookDetail[] = [];
+	listed: (ListedBook & { series: string })[] = [];
 	/** What the next scan of a library finds; a scan is finished at once. */
 	scanFinds: Partial<Scan> = { filesSeen: 0 };
 	/** Set to make every request fail as if the server were unreachable. */
@@ -406,7 +407,6 @@ export class FakeServer {
 			id: `book-${n}`,
 			libraryId: library?.id ?? "lib-1",
 			title,
-			contributors: [],
 			tags: [],
 			identifiers: [],
 			files: [],
@@ -415,6 +415,25 @@ export class FakeServer {
 			placeholder: false,
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
+			contributors: (overrides.contributors ?? []).map((c) => ({
+				...c,
+				key: personKey(c.name),
+			})),
+			seriesKey: overrides.series ? nameKey(overrides.series) : undefined,
+		});
+		return this;
+	}
+
+	/** Has the sources list a book of the series that the library lacks. */
+	withListed(series: string, book: Partial<ListedBook> & { title: string }): this {
+		this.listed.push({
+			series,
+			authors: [],
+			source: "openlibrary",
+			isbns: [],
+			wishable: true,
+			wished: false,
+			...book,
 		});
 		return this;
 	}
@@ -714,6 +733,12 @@ export class FakeServer {
 			if (takeBack && request.method === "DELETE") {
 				this.deliveries = this.deliveries.filter((d) => d.id !== takeBack[1]);
 				return new Response(null, { status: 204 });
+			}
+			if (path.startsWith("/authors/")) {
+				return this.author(decodeURIComponent(path.slice("/authors/".length)));
+			}
+			if (path.startsWith("/series/")) {
+				return this.seriesOf(decodeURIComponent(path.slice("/series/".length)));
 			}
 			if (path === "/books" || path.startsWith("/books/")) {
 				return this.answerBooks(request.method, path, url.searchParams, body);
@@ -1122,6 +1147,9 @@ export class FakeServer {
 				placeholder: true,
 				reading: { status: "wishlist" },
 			});
+			for (const listed of this.listed) {
+				listed.wished ||= listed.title === wish.title;
+			}
 			return Response.json(this.books.at(-1), { status: 201 });
 		}
 		if (path === "/books/reading") {
@@ -1211,7 +1239,9 @@ export class FakeServer {
 				? `${authorOf(b)}\u0000${b.title}`
 				: sort === "added"
 					? b.addedAt
-					: b.title;
+					: sort === "series"
+						? `${b.series ? 0 : 1}${b.series ?? ""}\u0000${String(b.seriesIndex ?? 1e6).padStart(8, "0")}\u0000${b.title}`
+						: b.title;
 		const tree = query.get("filter");
 		const sorted = this.books
 			.filter(
@@ -1232,6 +1262,65 @@ export class FakeServer {
 			books: page.map(summaryOf),
 			nextCursor:
 				start + limit < sorted.length ? String(start + limit) : undefined,
+		});
+	}
+
+	private author(key: string): Response {
+		const spellings = this.books.flatMap((b) =>
+			b.placeholder
+				? []
+				: b.contributors
+						.filter((c) => c.role === "author" && personKey(c.name) === personKey(key))
+						.map((c) => c.name),
+		);
+		const name = spellings[0];
+		if (!name) {
+			return Response.json(
+				{ error: { code: "not_found", message: "There is no such author." } },
+				{ status: 404 },
+			);
+		}
+		return Response.json({
+			name,
+			key: personKey(key),
+			spellings: [...new Set(spellings)],
+			books: spellings.length,
+		});
+	}
+
+	private seriesOf(key: string): Response {
+		const books = this.books
+			.filter((b) => !b.placeholder && b.seriesKey === key)
+			.sort((a, b) => (a.seriesIndex ?? 1e6) - (b.seriesIndex ?? 1e6));
+		const first = books[0];
+		if (!first) {
+			return Response.json(
+				{ error: { code: "not_found", message: "There is no such series." } },
+				{ status: 404 },
+			);
+		}
+		const next = books.find((b) => b.reading.status === "unread");
+		const listed = this.listed.filter((l) => nameKey(l.series) === key);
+		const places = [...books, ...listed].flatMap((b) => b.seriesIndex ?? []);
+		const missing = [];
+		for (let place = 1; place < Math.max(0, ...places); place++) {
+			const last = missing.at(-1);
+			if (places.includes(place)) continue;
+			if (last?.to === place - 1) {
+				last.to = place;
+			} else {
+				missing.push({ from: place, to: place });
+			}
+		}
+		return Response.json({
+			name: first.series,
+			key,
+			books: books.length,
+			read: books.filter((b) => b.reading.status === "completed").length,
+			next: next && summaryOf(next),
+			missing,
+			listed: listed.map(({ series: _, ...book }) => book),
+			library: first.libraryId,
 		});
 	}
 
@@ -2312,6 +2401,7 @@ export class FakeServer {
 
 type Field =
 	| "author"
+	| "person"
 	| "series"
 	| "tag"
 	| "language"
@@ -2349,13 +2439,16 @@ function snippetText(hit: TextHit): string {
 }
 
 function summaryOf(b: BookDetail): BookSummary {
+	const authors = b.contributors.filter((c) => c.role === "author");
 	return {
 		id: b.id,
 		libraryId: b.libraryId,
 		title: b.title,
-		authors: b.contributors
-			.filter((c) => c.role === "author")
-			.map((c) => c.name),
+		series: b.series,
+		seriesKey: b.seriesKey,
+		seriesIndex: b.seriesIndex,
+		authors: authors.map((c) => c.name),
+		authorKeys: authors.map((c) => personKey(c.name)),
 		coverKey: b.coverKey,
 		formats: [...new Set(b.files.map((f) => f.format))],
 		addedAt: b.addedAt,
@@ -2364,6 +2457,10 @@ function summaryOf(b: BookDetail): BookSummary {
 		placeholder: b.placeholder,
 		filesMissing: b.files.length > 0 && b.files.every((f) => f.missing),
 	};
+}
+
+function personKey(name: string): string {
+	return nameKey(name).split(" ").sort().join(" ");
 }
 
 function nameKey(name: string): string {
@@ -2398,6 +2495,10 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 			return b.contributors
 				.filter((c) => c.role === "author")
 				.map((c) => [nameKey(c.name), c.name]);
+		case "person":
+			return b.contributors
+				.filter((c) => c.role === "author")
+				.map((c) => [personKey(c.name), c.name]);
 		case "series":
 			return b.series ? [[nameKey(b.series), b.series]] : [];
 		case "tag":

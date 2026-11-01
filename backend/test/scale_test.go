@@ -337,7 +337,7 @@ type scaleView struct {
 func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 	t.Helper()
 	var book, library, collection, shelf string
-	var author, tag, quick, word string
+	var author, series, tag, quick, word string
 	for _, q := range []struct {
 		sql string
 		to  *string
@@ -347,6 +347,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{`SELECT id::text FROM collections WHERE name = 'Favourites'`, &collection},
 		{`SELECT id::text FROM smart_shelves`, &shelf},
 		{`SELECT name FROM scale_authors WHERE n = 4242`, &author},
+		{`SELECT s.name_key FROM series s JOIN scale_series n ON n.id = s.id WHERE n.n = 1300`, &series},
 		{`SELECT name FROM scale_tags WHERE n = 17`, &tag},
 		{`SELECT lower(scale_word(37035))`, &quick},
 		{`SELECT lower(scale_word(25000 * 31 + 5 * 97))`, &word},
@@ -357,6 +358,8 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 	}
 	filter := func(tree string) string { return url.Values{"filter": {tree}}.Encode() }
 	byAuthor := fmt.Sprintf(`{"field": "author", "op": "in", "values": [%q]}`, author)
+	byPerson := fmt.Sprintf(`{"field": "person", "op": "in", "values": [%q]}`, author)
+	bySeries := fmt.Sprintf(`{"field": "series", "op": "in", "values": [%q]}`, series)
 	tagAndLanguage := fmt.Sprintf(`{"all": [{"field": "tag", "op": "in", "values": [%q]}, {"field": "language", "op": "in", "values": ["de"]}]}`, tag)
 	return []scaleView{
 		{name: "library by title", path: "/books?limit=50"},
@@ -365,6 +368,11 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "library page 2", path: "/books?limit=50&cursor=@next"},
 		{name: "one library", path: "/books?limit=50&library=" + library},
 		{name: "filter by author", path: "/books?limit=50&" + filter(byAuthor)},
+		{name: "an author", path: "/authors/" + url.PathEscape(author)},
+		{name: "an author's books", path: "/books?limit=50&sort=series&" + filter(byPerson)},
+		{name: "an author's facets", path: "/books/facets?" + filter(byPerson)},
+		{name: "a series", path: "/series/" + url.PathEscape(series)},
+		{name: "a series' books", path: "/books?limit=50&sort=series&" + filter(bySeries)},
 		{name: "filter by tag and language", path: "/books?limit=50&" + filter(tagAndLanguage)},
 		{name: "filter by status", path: "/books?limit=50&" + filter(`{"field": "status", "op": "in", "values": ["reading"]}`)},
 		{name: "filter by year", path: "/books?limit=50&" + filter(`{"field": "published", "op": "between", "values": ["1900", "1950"]}`)},

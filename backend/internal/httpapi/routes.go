@@ -418,6 +418,16 @@ func (s *Server) routes() []Route {
 			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/authors/{authorKey}", ID: "getAuthor",
+			Summary: "An author, under every spelling of their name, as the caller's books name them", Tag: "books",
+			Response: authorDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAuthor,
+		},
+		{
+			Method: http.MethodGet, Path: "/series/{seriesKey}", ID: "getSeries",
+			Summary: "A series: how far the caller has read it, what is missing and what the sources list of it", Tag: "books",
+			Response: seriesDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getSeries,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
 			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
 			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.searchBooks,

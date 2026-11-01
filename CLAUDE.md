@@ -329,6 +329,29 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
   and without the server's write deadline.
 
+## Authors and series
+
+- An author is a person, whichever way their name is spelled: `/authors/$key`
+  and `GET /authors/{authorKey}` go by `catalog.PersonKey`, and the filter field
+  `person` is an author under every spelling (`authors.person_key`). It has no
+  facet, so `author`'s facet on that page is the author and their co-authors.
+  A series goes by its `name_key`. Lists and pages get the keys from
+  `authorKeys`, `seriesKey` and a contributor's `key`.
+- Their books are `GET /books` with the rule as `base` in `books/book-browser.tsx`
+  (`filterTree(picks, base)`), the library's sorting, filters and selection.
+  `sort=series` (`catalog.OrderSeries`) is each series in `series_index`, then
+  title, then the books of no series. No index covers it over a whole library,
+  so only a list narrowed to an author or a series asks for it.
+- `GET /series/{seriesKey}` (`catalog.Service.Series`) gives what `user_books`
+  says the viewer read, the next book of status unread or wishlist, the places
+  no book takes (`catalog.Gaps`, whole numbers up to the last book) and what
+  `releases` lists that no visible library holds (`releases.Service.OfSeries`,
+  known while someone follows the series or an author of it). A listing at a
+  place a book takes is that book under another title and is left out; a
+  placeholder of it says `wished`. "Add to wishlist" sends it to
+  `POST /books/wishes` in the library that holds most of the series. An author
+  or a series with no visible book is a 404 like a name nobody has.
+
 ## Scanning
 
 - `internal/ingest` brings a library folder's files into the catalogue. It only

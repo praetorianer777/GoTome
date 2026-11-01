@@ -24,7 +24,7 @@ export const FACET_FIELDS: FacetField[] = [
 	"ereader",
 ];
 
-interface Rule {
+export interface Rule {
 	field?: string;
 	op?: string;
 	values?: string[];
@@ -32,9 +32,12 @@ interface Rule {
 	any?: Rule[];
 }
 
-/** The picks as the rule tree the server filters by, or undefined for none. */
-export function filterTree(picks: FilterPicks): string | undefined {
-	const all: Rule[] = [];
+/**
+ * The picks as the rule tree the server filters by, beside the rule of the
+ * list they narrow, or undefined for neither.
+ */
+export function filterTree(picks: FilterPicks, base?: Rule): string | undefined {
+	const all: Rule[] = base ? [base] : [];
 	for (const field of FACET_FIELDS) {
 		const values = picks[field];
 		if (!values?.length) {

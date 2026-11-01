@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -173,5 +174,23 @@ func TestKindOf(t *testing.T) {
 	}
 	if _, ok := KindOf("docx"); ok {
 		t.Error("docx is a known format")
+	}
+}
+
+func TestGapsAreTheWholePlacesNoBookTakes(t *testing.T) {
+	for _, c := range []struct {
+		indexes []float64
+		want    []Gap
+	}{
+		{nil, []Gap{}},
+		{[]float64{1, 2, 3}, []Gap{}},
+		{[]float64{1, 3}, []Gap{{2, 2}}},
+		{[]float64{2, 6, 7}, []Gap{{1, 1}, {3, 5}}},
+		{[]float64{0, 1, 2.5, 4}, []Gap{{2, 3}}},
+		{[]float64{1, 2.5}, []Gap{{2, 2}}},
+	} {
+		if got := Gaps(c.indexes); !slices.Equal(got, c.want) {
+			t.Errorf("Gaps(%v) = %v, want %v", c.indexes, got, c.want)
+		}
 	}
 }
