@@ -471,6 +471,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   is recorded as `ErrUnreadable`. They are installed in the app image and in the
   test toolchain image (`deploy/toolchain.Dockerfile`), which `mk/go.mk` builds
   on demand; `make stack-check` fails when the app image lacks one.
+- FFmpeg is GOtome's own build (#271): the `ffmpeg` stage of `deploy/Dockerfile`
+  compiles the release pinned there by version and SHA-256 with
+  `--disable-everything` and only what `ingest/audio.go` asks: the `file` and
+  `pipe` protocols, the demuxers mov, mp3, flac and ogg, the parsers their
+  durations need, the `image2pipe` muxer. It decodes and encodes nothing; it
+  links only libc, so zlib-compressed `moov` boxes and ID3 frames are not read.
+  The toolchain image copies the same programs (`mk/ffmpeg.mk`). The source lies
+  in the git-ignored `deploy/vendor`, which `make ffmpeg-fetch` fills once (the
+  owner runs it; a worktree links the main checkout's; CI fetches it). As it
+  cannot encode, the tests read the files of `ingest/testdata/audio`, made
+  under Debian's full FFmpeg by `make-files.sh`. Its `reference.json` is what
+  came of them there; `gotome audio-check`, in `make stack-check`, and
+  `TestAudioReadsAsTheReferenceSays` hold every build to it.
 - When two files of one book say different things, the format decides: EPUB over
   MOBI and AZW3 over PDF (`formatRanks` in `catalog`); within a rank, the file
   read first.
@@ -807,8 +820,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   in. Its locator is the millisecond of the whole. Formats the browser's
   `canPlayType` refuses are said, with the files to download, rather than
   tried.
-- `e2e/fixtures/audio` holds two short MP3 parts, made with the toolchain's
-  ffmpeg as its README says. Firefox in the test container has no audio
+- `e2e/fixtures/audio` holds two short MP3 parts, made with a full FFmpeg
+  as its README says. Firefox in the test container has no audio
   output, so the player's browser test skips it.
 - `e2e/fixtures/pdf.ts` makes PDFs of any size for the browser tests.
 

@@ -96,6 +96,7 @@ Commands:
   healthcheck    Probe a running server; exits non-zero unless it is ready
   embed-check    Load ONNX Runtime; with -reference, check the embedding model against it
   fulltext-check Load the full-text engine and print its version
+  audio-check    Compare what FFmpeg reads from folders of audio files with their reference
   migrate        Bring the database schema up to date and exit
   similar-check  Measure the similar books of a sample of the library (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
@@ -125,6 +126,8 @@ func run(args []string) error {
 		return embedCheck(args[1:])
 	case "fulltext-check":
 		return fulltextCheck()
+	case "audio-check":
+		return audioCheck(args[1:])
 	case "migrate":
 		return migrate()
 	case "similar-check":

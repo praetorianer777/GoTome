@@ -466,49 +466,33 @@ func TestKindleFilesAreRead(t *testing.T) {
 	}
 }
 
-// writeTone makes an audio file of the length with the tags, and with
-// chapters when there are any, by asking ffmpeg for a tone.
-func writeTone(t *testing.T, path string, seconds float64, tags map[string]string, chapters ...string) {
+// copyAudio puts a file of the ingest tests' audio at the path.
+func copyAudio(t *testing.T, name, path string) {
 	t.Helper()
-	var meta strings.Builder
-	meta.WriteString(";FFMETADATA1\n")
-	for k, v := range tags {
-		fmt.Fprintf(&meta, "%s=%s\n", k, v)
+	raw, err := os.ReadFile(filepath.Join("../internal/ingest/testdata/audio", name))
+	if err != nil {
+		t.Fatal(err)
 	}
-	step := int(seconds * 1000 / float64(max(len(chapters), 1)))
-	for i, title := range chapters {
-		fmt.Fprintf(&meta, "[CHAPTER]\nTIMEBASE=1/1000\nSTART=%d\nEND=%d\ntitle=%s\n", i*step, (i+1)*step, title)
-	}
-	metaPath := filepath.Join(t.TempDir(), "meta.txt")
-	os.WriteFile(metaPath, []byte(meta.String()), 0o644)
 	os.MkdirAll(filepath.Dir(path), 0o755)
-	args := []string{"-v", "error", "-f", "lavfi", "-i", fmt.Sprintf("sine=duration=%g", seconds), "-i", metaPath,
-		"-map_metadata", "1", "-map_chapters", "1"}
-	if strings.HasSuffix(path, ".m4b") {
-		args = append(args, "-c:a", "aac", "-f", "ipod")
-	}
-	if out, err := exec.Command("ffmpeg", append(args, path)...).CombinedOutput(); err != nil {
-		t.Fatalf("ffmpeg: %v\n%s", err, out)
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
 func TestAudiobooksAreRead(t *testing.T) {
 	t.Parallel()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("ffmpeg is not installed here; the toolchain image has it")
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe is not installed here; the toolchain image has it")
 	}
 	a := newApp(t)
 	ctx := context.Background()
 	admin, _ := a.signedIn("admin", "admin")
 	books := t.TempDir()
 	// The names say one order, the tags another; the tags are right.
-	for name, track := range map[string]string{"Emma 1.mp3": "2", "Emma 2.mp3": "3", "Emma 3.mp3": "1"} {
-		writeTone(t, filepath.Join(books, "Austen", name), 1, map[string]string{
-			"album": "Emma", "artist": "Jane Austen", "title": "Part " + track, "track": track,
-		})
+	for _, n := range []string{"1", "2", "3"} {
+		copyAudio(t, "part-"+n+".mp3", filepath.Join(books, "Austen", "Emma "+n+".mp3"))
 	}
-	writeTone(t, filepath.Join(books, "Herbert", "Dune.m4b"), 3, map[string]string{"title": "Dune", "artist": "Frank Herbert"},
-		"Book One", "Book Two", "Book Three")
+	copyAudio(t, "three-chapters.m4b", filepath.Join(books, "Herbert", "Dune.m4b"))
 
 	id := a.externalLibrary(admin, "Audio", "shared", books)
 	a.scanNow(id)

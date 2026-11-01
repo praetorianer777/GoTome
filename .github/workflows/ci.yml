@@ -35,6 +35,15 @@ jobs:
           path: engine/vendor
           key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
 
+      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
+      # away. An older key's file serves unless the pin changed.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
+
       - name: Cache the npm download cache
         uses: actions/cache@v4
         with:
@@ -87,6 +96,15 @@ jobs:
           # The release tags and the commit the change started from.
           fetch-depth: 0
 
+      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
+      # away. An older key's file serves unless the pin changed.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
+
       - name: Upgrade an installation and restore its backup
         run: make upgrade-test
 
@@ -106,6 +124,15 @@ jobs:
         with:
           path: .cache/embed/model
           key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
+
+      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
+      # away. An older key's file serves unless the pin changed.
+      - name: Cache FFmpeg's source
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
 
       - name: Build the image and start the stack
         run: make stack-up

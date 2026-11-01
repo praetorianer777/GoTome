@@ -307,7 +307,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	for _, b := range []string{book, near["bookId"].(string)} {
 		a.putVector(uuid.MustParse(b), similar.KindMetadata, same)
 	}
-	markers := []string{secret["title"], secret["author"], secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
+	// The list of people shows either spelling of the secret's author, by how
+	// the mark sorts.
+	markers := []string{secret["title"], secret["author"], mark + ", Abditus", secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.

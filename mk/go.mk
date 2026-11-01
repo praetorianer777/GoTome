@@ -4,10 +4,10 @@
 # Bookworm rather than alpine: the race detector needs cgo, and alpine ships no
 # C compiler. The version is pinned; see CLAUDE.md. The tests run in an image
 # built on it with the programs the app calls (deploy/toolchain.Dockerfile),
-# tagged by what it is built from, so a change to either builds a new one.
+# tagged by what it is built from, so a change to any of it builds a new one.
 GO_BASE ?= golang:1.27-bookworm
 GO_TOOLCHAIN_FILE := $(ROOT)/deploy/toolchain.Dockerfile
-GO_IMAGE ?= gotome-toolchain:$(shell printf '%s' '$(GO_BASE)' | cat - '$(GO_TOOLCHAIN_FILE)' | cksum | cut -d' ' -f1)
+GO_IMAGE ?= gotome-toolchain:$(shell printf '%s' '$(GO_BASE)$(FFMPEG_IMAGE)' | cat - '$(GO_TOOLCHAIN_FILE)' | cksum | cut -d' ' -f1)
 GO_CACHE := $(ROOT)/.cache/go
 GO_PKG   := github.com/praetorianer777/gotome/backend
 GO_LDFLAGS := -X $(GO_PKG)/internal/version.Version=$(VERSION)
@@ -35,8 +35,10 @@ $(GO_CACHE):
 # first: building it again, even from docker's cache, takes longer than the look.
 .PHONY: go-toolchain
 go-toolchain:
-	@docker image inspect $(GO_IMAGE) >/dev/null 2>&1 || \
-		docker build --quiet --build-arg GO_BASE=$(GO_BASE) -t $(GO_IMAGE) - < $(GO_TOOLCHAIN_FILE)
+	@docker image inspect $(GO_IMAGE) >/dev/null 2>&1 || { \
+		$(MAKE) --no-print-directory ffmpeg-image && \
+		docker build --quiet --build-arg GO_BASE=$(GO_BASE) --build-arg FFMPEG_IMAGE=$(FFMPEG_IMAGE) \
+			-t $(GO_IMAGE) - < $(GO_TOOLCHAIN_FILE); }
 
 .PHONY: fmt
 fmt: | $(GO_CACHE) go-toolchain ## Format the Go sources in place
