@@ -1228,7 +1228,7 @@
     "/books/search": {
       "get": {
         "operationId": "searchBooks",
-        "summary": "Books whose title, author or series looks like the words, the best first",
+        "summary": "Books, authors and series whose title or name looks like the words, the best first",
         "tags": [
           "books"
         ],
@@ -11021,6 +11021,33 @@
           "models"
         ]
       },
+      "NameHit": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "author",
+              "series"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "key",
+          "books"
+        ]
+      },
       "NameList": {
         "type": "object",
         "properties": {
@@ -11880,10 +11907,17 @@
             "items": {
               "$ref": "#/components/schemas/SearchHit"
             }
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameHit"
+            }
           }
         },
         "required": [
-          "books"
+          "books",
+          "names"
         ]
       },
       "SendRequest": {

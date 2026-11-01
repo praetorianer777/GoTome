@@ -762,8 +762,8 @@ describe("books", () => {
 	// cover, which carries the title again for the eye only.
 	const cards = (books: ReturnType<typeof within>) =>
 		books
-			.getAllByRole("link")
-			.map((l: HTMLElement) => l.lastElementChild?.textContent);
+			.getAllByRole("link", { name: /^(?!.*(Herbert|Austen|Chronicles))/ })
+			.map((l: HTMLElement) => `${l.lastElementChild?.textContent}${l.parentElement?.lastElementChild?.firstElementChild?.textContent}`);
 
 	function withShelf() {
 		server
@@ -852,7 +852,7 @@ describe("books", () => {
 		);
 
 		await person.selectOptions(screen.getByLabelText("Library"), "Audio");
-		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(1));
+		await waitFor(() => expect(cards(books)).toHaveLength(1));
 		expect(router.state.location.search).toEqual({ library: "lib-2" });
 		expect(
 			screen.getByRole("heading", { name: "Audio", level: 2 }),
@@ -868,7 +868,7 @@ describe("books", () => {
 		withShelf();
 		renderApp("/");
 		const books = within(await screen.findByRole("region", { name: "Books" }));
-		await waitFor(() => expect(books.getAllByRole("link")).toHaveLength(3));
+		await waitFor(() => expect(cards(books)).toHaveLength(3));
 
 		await person.selectOptions(screen.getByLabelText("Sort by"), "Author");
 		await waitFor(() =>
@@ -967,7 +967,7 @@ describe("books", () => {
 		const person = userEvent.setup();
 		withShelf();
 		const { router } = renderApp("/");
-		await person.click(await screen.findByRole("link", { name: /^Dune/ }));
+		await person.click(await screen.findByRole("link", { name: "Dune" }));
 
 		expect(
 			await screen.findByRole("heading", { name: "Dune", level: 1 }),
@@ -975,9 +975,7 @@ describe("books", () => {
 		expect(router.state.location.pathname).toBe("/books/book-2");
 		for (const text of [
 			"Deluxe Edition",
-			"by Frank Herbert",
 			"Read by Scott Brick",
-			"Book 1 of Dune Chronicles",
 			"Chilton",
 			"1965",
 			"21 h 2 min",
@@ -986,6 +984,8 @@ describe("books", () => {
 		]) {
 			expect(screen.getByText(text)).toBeInTheDocument();
 		}
+		expect(screen.getByText(/^by/)).toHaveTextContent("by Frank Herbert");
+		expect(screen.getByText(/^Book 1 of/)).toHaveTextContent("Book 1 of Dune Chronicles");
 		// An audiobook alone is listened to, not read.
 		expect(screen.getByRole("link", { name: "Listen" })).toHaveAttribute(
 			"href",
@@ -1153,7 +1153,8 @@ describe("filters", () => {
 	const titles = () =>
 		within(screen.getByRole("region", { name: "Books" }))
 			.getAllByRole("link")
-			.map((l) => l.lastElementChild?.firstElementChild?.textContent);
+			.filter((l) => l.getAttribute("href")?.startsWith("/books/"))
+			.map((l) => l.lastElementChild?.textContent);
 
 	function withShelf() {
 		const author = (name: string) => [{ name, role: "author" as const }];
@@ -1294,7 +1295,7 @@ describe("filters", () => {
 		const books = within(screen.getByRole("region", { name: "Books" }));
 		const marks = books.getAllByText("Files missing");
 		expect(marks).toHaveLength(1);
-		expect(marks[0]?.closest("a")).toHaveTextContent("Jane Eyre");
+		expect(marks[0]?.closest("li")).toHaveTextContent("Jane Eyre");
 		await person.click(screen.getByRole("button", { name: "List" }));
 		const row = (await books.findByRole("link", { name: "Jane Eyre" })).closest("tr");
 		expect(row).toHaveTextContent("Files missing");
@@ -2561,9 +2562,8 @@ describe("reading state", () => {
 		await person.click(
 			screen.getByRole("link", { name: "Back to the library" }),
 		);
-		const emma = (await screen.findByRole("link", {
-			name: /^Emma/,
-		})) as HTMLElement;
+		const emma = (await screen.findByRole("link", { name: /^Emma/ }))
+			.parentElement as HTMLElement;
 		expect(within(emma).getByText("Reading")).toBeInTheDocument();
 		expect(
 			within(emma).getByRole("img", { name: "5 of 5 stars" }),
@@ -4876,13 +4876,8 @@ describe("an author's and a series' pages", () => {
 		expect(await screen.findByRole("heading", { level: 1, name: "Liza Grimm" })).toBeInTheDocument();
 		expect(screen.getByText("4 books")).toBeInTheDocument();
 		expect(screen.getByText("Also written Grimm, Liza")).toBeInTheDocument();
-		const titles = await screen.findAllByRole("link", { name: /Erster|Zweiter|Vierter|Alleine|Fremdes/ });
-		expect(titles.map((l) => l.textContent)).toEqual([
-			expect.stringContaining("Erster"),
-			expect.stringContaining("Zweiter"),
-			expect.stringContaining("Vierter"),
-			expect.stringContaining("Alleine"),
-		]);
+		const titles = await screen.findAllByRole("link", { name: /^(Erster|Zweiter|Vierter|Alleine|Fremdes)$/ });
+		expect(titles.map((l) => l.lastElementChild?.textContent)).toEqual(["Erster", "Zweiter", "Vierter", "Alleine"]);
 		expect(screen.getByRole("button", { name: "Liza Grimm" })).toHaveAttribute("aria-pressed", "false");
 	});
 
@@ -4910,6 +4905,51 @@ describe("an author's and a series' pages", () => {
 			provider: "openlibrary",
 			series: { name: "Die Götter", index: 5 },
 		});
+	});
+});
+
+describe("links to authors and series", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Eislotus", {
+				contributors: [{ name: "Grimm, Liza", role: "author" }],
+				series: "Die Götter",
+				seriesIndex: 1,
+			});
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("goes from a book's page to its author and its series", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/books/book-1");
+		expect(await screen.findByText(/^by/)).toHaveTextContent("by Grimm, Liza");
+		await person.click(screen.getByRole("link", { name: "Grimm, Liza" }));
+		await screen.findByRole("heading", { level: 1, name: "Grimm, Liza" });
+		expect(decodeURI(router.state.location.pathname)).toBe("/authors/grimm liza");
+
+		await person.click(await screen.findByRole("link", { name: "Die Götter" }));
+		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
+		expect(decodeURI(router.state.location.pathname)).toBe("/series/die gotter");
+	});
+
+	it("offers authors and series in the quick search before the books", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/");
+		await person.type(await screen.findByRole("combobox", { name: "Search books" }), "grimm");
+		const option = await screen.findByRole("option", { name: /Grimm, Liza\s*Author · 1 book/ });
+		await person.click(option);
+		await screen.findByRole("heading", { level: 1, name: "Grimm, Liza" });
+		expect(decodeURI(router.state.location.pathname)).toBe("/authors/grimm liza");
+
+		const box = screen.getByRole("combobox", { name: "Search books" });
+		await person.type(box, "gotter");
+		await screen.findByRole("option", { name: /Die Götter/ });
+		await person.keyboard("{Enter}");
+		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
 	});
 });
 

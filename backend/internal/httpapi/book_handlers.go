@@ -284,9 +284,22 @@ type searchQuery struct {
 	Limit int    `query:"limit" doc:"How many books to return, at most 50; 10 when left out."`
 }
 
-// searchResult is the books a quick search found, the best first.
+// searchResult is the books, authors and series a quick search found, the
+// best first.
 type searchResult struct {
 	Books []searchHit `json:"books"`
+	Names []nameHit   `json:"names"`
+}
+
+// nameHit is an author or a series whose name looks like the search.
+type nameHit struct {
+	// Kind says which it is: author or series.
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	// Key is what GET /authors/{authorKey} or GET /series/{seriesKey} takes.
+	Key string `json:"key"`
+	// Books counts the books of it the caller sees.
+	Books int `json:"books"`
 }
 
 type searchHit struct {
@@ -300,18 +313,29 @@ type searchHit struct {
 // not say.
 const defaultHits = 10
 
+// nameHits is how many authors and series a quick search returns.
+const nameHits = 3
+
 func (s *Server) searchBooks(w http.ResponseWriter, r *http.Request) error {
 	var q searchQuery
 	if err := decodeQuery(r, &q); err != nil {
 		return err
 	}
-	hits, err := s.Books.Search(r.Context(), library.ScopeOf(*UserFrom(r.Context())), q.Q, cmp.Or(q.Limit, defaultHits))
+	scope := library.ScopeOf(*UserFrom(r.Context()))
+	hits, err := s.Books.Search(r.Context(), scope, q.Q, cmp.Or(q.Limit, defaultHits))
 	if err != nil {
 		return err
 	}
-	out := searchResult{Books: make([]searchHit, len(hits))}
+	names, err := s.Books.SearchNames(r.Context(), scope, q.Q, nameHits)
+	if err != nil {
+		return err
+	}
+	out := searchResult{Books: make([]searchHit, len(hits)), Names: make([]nameHit, len(names))}
 	for i, h := range hits {
 		out.Books[i] = searchHit{bookSummary: summaryOf(h.Summary), Match: h.Match}
+	}
+	for i, n := range names {
+		out.Names[i] = nameHit{Kind: n.Match, Name: n.Name, Key: n.Key, Books: n.Books}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

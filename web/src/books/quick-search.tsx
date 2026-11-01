@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
-import { type SearchHit, searchQuery } from "@/books/api";
+import { type NameHit, type SearchHit, searchQuery } from "@/books/api";
 import { t } from "@/i18n";
+import { bookCount } from "@/lib/format";
 
 /** How long typing has to pause before the search is asked. */
 const DEBOUNCE_MS = 200;
@@ -15,9 +16,9 @@ function letters(words: string): number {
 
 /**
  * The search box in the header: titles, authors and series, misspelt or only
- * begun, and last a way to search the text of the books for the words. It is
- * a combobox: the arrow keys move through what was found, Enter opens a book
- * or the text search, Escape closes the list, and "/" anywhere comes back to
+ * begun, the authors and series first, and last a way to search the text of the books for the words. It is
+ * a combobox: the arrow keys move through what was found, Enter opens what is
+ * chosen or the text search, Escape closes the list, and "/" anywhere comes back to
  * it.
  */
 export function QuickSearch() {
@@ -56,7 +57,9 @@ export function QuickSearch() {
 
 	const enough = letters(asked) >= MIN_LETTERS;
 	const search = useQuery({ ...searchQuery(asked), enabled: enough });
-	const hits = enough ? (search.data ?? []) : [];
+	const names = enough ? (search.data?.names ?? []) : [];
+	const hits = enough ? (search.data?.books ?? []) : [];
+	const options = names.length + hits.length;
 	const shown = open && letters(words) >= MIN_LETTERS && enough;
 
 	function close() {
@@ -70,6 +73,15 @@ export function QuickSearch() {
 		navigate({ to: "/books/$bookId", params: { bookId: hit.id } });
 	}
 
+	function goToName(name: NameHit) {
+		close();
+		if (name.kind === "author") {
+			navigate({ to: "/authors/$authorKey", params: { authorKey: name.key } });
+		} else {
+			navigate({ to: "/series/$seriesKey", params: { seriesKey: name.key } });
+		}
+	}
+
 	function searchText() {
 		close();
 		navigate({ to: "/search", search: { q: words.trim() } });
@@ -80,7 +92,7 @@ export function QuickSearch() {
 			case "ArrowDown":
 				event.preventDefault();
 				setOpen(true);
-				setActive((i) => Math.min(i + 1, hits.length));
+				setActive((i) => Math.min(i + 1, options));
 				break;
 			case "ArrowUp":
 				event.preventDefault();
@@ -89,8 +101,12 @@ export function QuickSearch() {
 			case "Enter": {
 				if (!shown) break;
 				event.preventDefault();
-				const hit = hits[Math.max(active, 0)];
-				if (hit && active < hits.length) {
+				const at = Math.max(active, 0);
+				const name = names[at];
+				const hit = hits[at - names.length];
+				if (name) {
+					goToName(name);
+				} else if (hit) {
 					go(hit);
 				} else {
 					searchText();
@@ -136,7 +152,7 @@ export function QuickSearch() {
 				hidden={!shown}
 				className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
 			>
-				{search.isSuccess && hits.length === 0 && (
+				{search.isSuccess && options === 0 && (
 					<p
 						role="status"
 						className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400"
@@ -145,18 +161,39 @@ export function QuickSearch() {
 					</p>
 				)}
 				<div id={listId} role="listbox" aria-label={t("search.results")}>
-					{hits.map((hit, i) => (
+					{names.map((name, i) => (
 						// biome-ignore lint/a11y/useKeyWithClickEvents: the keys work on the input, which keeps the focus; this is the combobox pattern with aria-activedescendant.
 						<div
-							key={hit.id}
+							key={`${name.kind} ${name.key}`}
 							id={`${listId}-${i}`}
 							role="option"
 							tabIndex={-1}
 							aria-selected={i === active}
+							onMouseDown={(e) => e.preventDefault()}
+							onClick={() => goToName(name)}
+							onMouseEnter={() => setActive(i)}
+							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-brand-strong/10 dark:aria-selected:bg-brand/15"
+						>
+							<span className="block truncate font-medium">{name.name}</span>
+							<span className="block truncate text-slate-600 dark:text-slate-400">
+								{t(name.kind === "author" ? "search.name.author" : "search.name.series", {
+									books: bookCount(name.books),
+								})}
+							</span>
+						</div>
+					))}
+					{hits.map((hit, i) => (
+						// biome-ignore lint/a11y/useKeyWithClickEvents: as above.
+						<div
+							key={hit.id}
+							id={`${listId}-${names.length + i}`}
+							role="option"
+							tabIndex={-1}
+							aria-selected={names.length + i === active}
 							// Before the input loses focus, which would close the list.
 							onMouseDown={(e) => e.preventDefault()}
 							onClick={() => go(hit)}
-							onMouseEnter={() => setActive(i)}
+							onMouseEnter={() => setActive(names.length + i)}
 							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-brand-strong/10 dark:aria-selected:bg-brand/15"
 						>
 							<span className="block truncate font-medium">{hit.title}</span>
@@ -170,13 +207,13 @@ export function QuickSearch() {
 					))}
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: as above. */}
 					<div
-						id={`${listId}-${hits.length}`}
+						id={`${listId}-${options}`}
 						role="option"
 						tabIndex={-1}
-						aria-selected={active === hits.length}
+						aria-selected={active === options}
 						onMouseDown={(e) => e.preventDefault()}
 						onClick={searchText}
-						onMouseEnter={() => setActive(hits.length)}
+						onMouseEnter={() => setActive(options)}
 						className="cursor-pointer border-t border-slate-200 px-3 py-2 text-sm text-brand-strong aria-selected:bg-sky-100 dark:border-slate-700 dark:text-brand dark:aria-selected:bg-sky-900"
 					>
 						{t("search.fullText", { words: words.trim() })}

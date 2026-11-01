@@ -56,6 +56,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["SearchHit.match"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
 	}}
+	b.FieldOverrides["NameHit.kind"] = &openapi.Schema{Type: "string", Enum: []string{catalog.MatchAuthor, catalog.MatchSeries}}
 	visibility := &openapi.Schema{Type: "string", Enum: []string{shelves.Private, shelves.Shared}}
 	b.FieldOverrides["Collection.visibility"] = visibility
 	b.FieldOverrides["CollectionDetail.visibility"] = visibility

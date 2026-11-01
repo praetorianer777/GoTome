@@ -10,6 +10,7 @@ import {
 	textSearchQuery,
 } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { FilterPanel } from "@/books/filter-panel";
 import {
 	FACET_FIELDS,
@@ -242,8 +243,11 @@ function Near({ book }: { book: BookSummary }) {
 					</Link>
 				</h2>
 				{book.authors.length > 0 && (
-					<p className="text-sm text-slate-600 dark:text-slate-400">{book.authors.join(", ")}</p>
+					<p className="text-sm text-slate-600 dark:text-slate-400">
+						<AuthorLinks book={book} />
+					</p>
 				)}
+				<SeriesLine book={book} />
 			</div>
 		</li>
 	);
@@ -275,9 +279,10 @@ function Found({ found }: { found: TextBook }) {
 					</h2>
 					{book.authors.length > 0 && (
 						<p className="text-sm text-slate-600 dark:text-slate-400">
-							{book.authors.join(", ")}
+							<AuthorLinks book={book} />
 						</p>
 					)}
+					<SeriesLine book={book} />
 					{found.corrected && (
 						<p className="text-sm text-amber-700 dark:text-amber-400">
 							{t("fulltext.corrected")}

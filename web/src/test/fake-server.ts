@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { vi } from "vitest";
 import { App } from "@/app";
 import type { CurrentUser, SignInMethods } from "@/auth/session";
-import type { BookDetail, BookSummary, ListedBook, TextHit } from "@/books/api";
+import type { BookDetail, BookSummary, ListedBook, NameHit, TextHit } from "@/books/api";
 import type {
 	Collection,
 	CollectionAdd,
@@ -1217,7 +1217,10 @@ export class FakeServer {
 			});
 		}
 		if (path === "/books/search") {
-			return Response.json({ books: this.search(query.get("q") ?? "") });
+			return Response.json({
+				books: this.search(query.get("q") ?? ""),
+				names: this.searchNames(query.get("q") ?? ""),
+			});
 		}
 		if (path === "/books/facets") {
 			return Response.json({ facets: this.facets(query) });
@@ -2156,6 +2159,29 @@ export class FakeServer {
 	 * Titles and authors that contain the words, or a word one letter off:
 	 * close enough to the server's trigrams for what the tests type.
 	 */
+	private searchNames(words: string) {
+		const key = nameKey(words);
+		const found = new Map<string, NameHit>();
+		const add = (kind: NameHit["kind"], name: string, k: string) => {
+			if (!k.includes(key)) return;
+			const hit = found.get(`${kind} ${k}`);
+			if (hit) {
+				hit.books += 1;
+			} else {
+				found.set(`${kind} ${k}`, { kind, name, key: k, books: 1 });
+			}
+		};
+		for (const b of this.books.filter((x) => !x.placeholder)) {
+			for (const c of b.contributors.filter((x) => x.role === "author")) {
+				add("author", c.name, personKey(c.name));
+			}
+			if (b.series) {
+				add("series", b.series, nameKey(b.series));
+			}
+		}
+		return [...found.values()].slice(0, 3);
+	}
+
 	private search(words: string) {
 		const q = nameKey(words);
 		if (q.replace(/ /g, "").length < 3) {

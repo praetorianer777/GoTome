@@ -14,6 +14,7 @@ import { EReaderFindings } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
+import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
@@ -155,12 +156,18 @@ function BookPage({ book }: { book: BookDetail }) {
 					<header className="flex flex-col gap-1.5">
 						{book.series && (
 							<p className="text-sm font-medium tracking-wide text-brand-strong dark:text-brand">
-								{book.seriesIndex != null
-									? t("book.seriesPosition", {
-											index: book.seriesIndex,
-											series: book.series,
-										})
-									: t("book.series", { series: book.series })}
+								<Around
+									text={
+										book.seriesIndex != null
+											? t("book.seriesPosition", {
+													index: book.seriesIndex,
+													series: MARK,
+												})
+											: t("book.series", { series: MARK })
+									}
+								>
+									<SeriesLink name={book.series} seriesKey={book.seriesKey ?? book.series} />
+								</Around>
 							</p>
 						)}
 						<h1 className="text-3xl leading-tight font-semibold sm:text-4xl">
@@ -172,7 +179,11 @@ function BookPage({ book }: { book: BookDetail }) {
 							</p>
 						)}
 						{authors && (
-							<p className="text-lg">{t("book.by", { names: authors })}</p>
+							<p className="text-lg">
+								<Around text={t("book.by", { names: MARK })}>
+									<PeopleLinks people={book.contributors.filter((c) => c.role === "author")} />
+								</Around>
+							</p>
 						)}
 						{narrators && (
 							<p className="text-slate-600 dark:text-slate-400">

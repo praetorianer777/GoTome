@@ -429,7 +429,7 @@ func (s *Server) routes() []Route {
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
-			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
+			Summary: "Books, authors and series whose title or name looks like the words, the best first", Tag: "books",
 			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.searchBooks,
 		},
 		{

@@ -99,13 +99,15 @@ export function seriesQuery(key: string) {
 
 export type SearchHit = components["schemas"]["SearchHit"];
 
-/** The books whose title, author or series looks like the words. */
+export type NameHit = components["schemas"]["NameHit"];
+
+/** The books, authors and series whose title or name looks like the words. */
 export function searchQuery(words: string) {
 	return queryOptions({
 		queryKey: ["books", "search", words],
 		queryFn: async () =>
-			(await api.GET("/books/search", { params: { query: { q: words } } })).data
-				?.books ?? [],
+			(await api.GET("/books/search", { params: { query: { q: words } } }))
+				.data ?? { books: [], names: [] },
 		// While the next answer is on its way, the last one stays in view.
 		placeholderData: (previous) => previous,
 	});

@@ -13,6 +13,8 @@ What changes for someone who runs or uses GOtome. The format follows
   saying how many you have read, which is next, which are missing, and
   offering the books the sources list that the library lacks for the
   wishlist.
+- Authors and series are links wherever a book is shown, and the quick
+  search offers them.
 
 ## [0.6.0] - 2026-10-15
 

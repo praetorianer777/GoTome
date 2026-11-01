@@ -197,3 +197,37 @@ func TestASeriesSaysHowFarTheReaderIsAndWhatIsMissing(t *testing.T) {
 		t.Errorf("a series nothing is in: %d", status)
 	}
 }
+
+func TestTheQuickSearchOffersAuthorsAndSeriesTheViewerSees(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("rita", "reader")
+	lib := a.library(admin, "Open", "shared")
+	vault := a.library(admin, "Vault", "private")
+	a.bookBy(lib, "One", "Barbara Goldstein")
+	a.inSeries(admin, a.bookBy(lib, "Two", "Goldstein, Barbara"), "Goldsteins Saga", 1)
+	a.bookBy(vault, "Three", "Goldstein Hidden")
+
+	names := func(c *http.Client) []string {
+		t.Helper()
+		status, body, _ := a.call(c, http.MethodGet, "/books/search?q=goldstein", nil)
+		if status != http.StatusOK {
+			t.Fatalf("searching: %d %v", status, body)
+		}
+		out := []string{}
+		for _, n := range body["names"].([]any) {
+			hit := n.(map[string]any)
+			out = append(out, fmt.Sprintf("%s %s %v", hit["kind"], hit["key"], hit["books"]))
+		}
+		slices.Sort(out)
+		return out
+	}
+	want := []string{"author barbara goldstein 2", "series goldsteins saga 1"}
+	if got := names(reader); !slices.Equal(got, want) {
+		t.Errorf("the reader: %v", got)
+	}
+	if got := names(admin); len(got) != 3 {
+		t.Errorf("the administrator: %v", got)
+	}
+}

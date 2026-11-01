@@ -421,7 +421,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Books whose title, author or series looks like the words, the best first */
+        /** Books, authors and series whose title or name looks like the words, the best first */
         get: operations["searchBooks"];
         put?: never;
         post?: never;
@@ -3285,6 +3285,13 @@ export interface components {
             models: components["schemas"]["ModelChoice"][];
             withText: number;
         };
+        NameHit: {
+            books: number;
+            key: string;
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+        };
         NameList: {
             names: string[];
         };
@@ -3514,6 +3521,7 @@ export interface components {
         };
         SearchResult: {
             books: components["schemas"]["SearchHit"][];
+            names: components["schemas"]["NameHit"][];
         };
         SendRequest: {
             books?: string[];
