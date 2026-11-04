@@ -71,3 +71,57 @@ function nameKey(kind: FollowKind, name: string): string {
 		.replace(/[^\p{L}\p{N}]+/gu, " ")
 		.trim();
 }
+
+export type Feed = components["schemas"]["Feed"];
+export type FeedItem = components["schemas"]["FeedItem"];
+
+/** The feeds the person follows, and how fetching each goes. */
+export const feedsQuery = queryOptions({
+	queryKey: ["feeds"],
+	queryFn: async () => (await api.GET("/feeds")).data?.feeds ?? [],
+});
+
+/** The items of the person's feeds that name what they asked for. */
+export const feedItemsQuery = queryOptions({
+	queryKey: ["feeds", "items"],
+	queryFn: async () => (await api.GET("/feeds/items")).data?.items ?? [],
+});
+
+/** Follows a feed, with the words and authors an item must name. */
+export function useAddFeed() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (body: { url: string; keywords: string[]; authors: string[] }) =>
+			(await api.POST("/feeds", { body })).data,
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feeds"] }),
+	});
+}
+
+/** Stops following a feed. */
+export function useRemoveFeed() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (id: string) => {
+			await api.DELETE("/feeds/{feedId}", { params: { path: { feedId: id } } });
+		},
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feeds"] }),
+	});
+}
+
+/** Fetches a feed soon, also one that stopped after failing. */
+export function useRetryFeed() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (id: string) =>
+			(await api.POST("/feeds/{feedId}/fetch", { params: { path: { feedId: id } } })).data,
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feeds"] }),
+	});
+}
+
+/** The parts of a list typed into one field, without the empty ones. */
+export function splitList(text: string, separator: string): string[] {
+	return text
+		.split(separator)
+		.map((s) => s.trim())
+		.filter((s) => s !== "");
+}

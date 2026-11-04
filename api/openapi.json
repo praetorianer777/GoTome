@@ -3455,6 +3455,212 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/feeds": {
+      "get": {
+        "operationId": "listFeeds",
+        "summary": "The RSS and Atom feeds the caller follows for new books, and how fetching each goes",
+        "tags": [
+          "releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "post": {
+        "operationId": "addFeed",
+        "summary": "Follow an RSS or Atom feed for items naming keywords or authors; following it again gives it the new filters",
+        "tags": [
+          "releases"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/feeds/items": {
+      "get": {
+        "operationId": "listFeedItems",
+        "summary": "The items of the caller's feeds that name what their filters ask for, the newest first",
+        "tags": [
+          "releases"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedItemList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/feeds/{feedId}": {
+      "delete": {
+        "operationId": "removeFeed",
+        "summary": "Stop following a feed",
+        "tags": [
+          "releases"
+        ],
+        "parameters": [
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/feeds/{feedId}/fetch": {
+      "post": {
+        "operationId": "fetchFeed",
+        "summary": "Fetch one of the caller's feeds soon, also one that stopped after failing too often",
+        "tags": [
+          "releases"
+        ],
+        "parameters": [
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feed"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/files/{fileId}": {
       "delete": {
         "operationId": "purgeFile",
@@ -10146,6 +10352,149 @@
           "count"
         ]
       },
+      "Feed": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failures": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "nextFetchAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "keywords",
+          "authors",
+          "failures",
+          "createdAt"
+        ]
+      },
+      "FeedItem": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "feed": {
+            "type": "string"
+          },
+          "feedId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "link": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "seenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedId",
+          "feed",
+          "title",
+          "authors",
+          "seenAt"
+        ]
+      },
+      "FeedItemList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedItem"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "FeedList": {
+        "type": "object",
+        "properties": {
+          "feeds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Feed"
+            }
+          }
+        },
+        "required": [
+          "feeds"
+        ]
+      },
+      "FeedRequest": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
       "FieldState": {
         "type": "object",
         "properties": {
@@ -11242,6 +11591,7 @@
               "wish.fulfilled",
               "release.announced",
               "release.out",
+              "feed.item",
               "review.needed",
               "duplicates.found",
               "files.unreadable",
@@ -11297,6 +11647,7 @@
               "wish.fulfilled",
               "release.announced",
               "release.out",
+              "feed.item",
               "review.needed",
               "duplicates.found",
               "files.unreadable",

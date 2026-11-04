@@ -17,6 +17,12 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- New books can come from publishers' and authors' RSS and Atom feeds: on
+  New books, follow a feed's address with words or authors an item must
+  name, and you are told once of each new item that does. A feed is read
+  hourly, asking only for what changed; one that cannot be read says why
+  and is tried less often, then stops until you try it again. Feeds on
+  GOtome's own network are refused.
 
 ### Changed
 
