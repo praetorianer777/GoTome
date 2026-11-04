@@ -1,18 +1,20 @@
 -- name: ListFilesToMeasure :many
--- EPUBs on disk not measured yet, with where they lie.
+-- EPUBs on disk not measured yet, or measured by an older version of
+-- epub.Measure, with where they lie.
 SELECT f.id, f.rel_path, f.sha256, l.root_path
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
-WHERE f.format = 'epub' AND f.ereader_findings IS NULL
+WHERE f.format = 'epub' AND (f.measures_version IS NULL OR f.measures_version < sqlc.arg(version)::smallint)
   AND f.trashed_at IS NULL AND f.missing_at IS NULL
 ORDER BY f.id
-LIMIT $1;
+LIMIT sqlc.arg(batch);
 
 -- name: SetFileMeasures :exec
 -- The measures of a file as it is now: one whose bytes changed since it
 -- was read keeps none, and is measured again.
 UPDATE book_files
-SET epub_measures = sqlc.narg(measures)::jsonb, ereader_findings = sqlc.arg(findings)::text[]
+SET epub_measures = sqlc.narg(measures)::jsonb, ereader_findings = sqlc.arg(findings)::text[],
+    measures_version = sqlc.arg(version)::smallint
 WHERE id = sqlc.arg(id) AND sha256 IS NOT DISTINCT FROM sqlc.narg(sha256)::bytea;
 
 -- name: GetFileToFix :one
@@ -42,10 +44,10 @@ SELECT EXISTS (SELECT 1 FROM book_files WHERE library_id = $1 AND rel_path = $2)
 INSERT INTO book_files (
     book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256,
     content_sha256, page_count, pages_estimated, has_text, drm, extract_state, uploaded_by,
-    epub_measures, ereader_findings, trashed_at, trashed_by)
+    epub_measures, ereader_findings, measures_version, trashed_at, trashed_by)
 SELECT s.book_id, s.library_id, s.kind, s.format, sqlc.arg(rel_path), s.size_bytes, s.modified_at, s.sha256, s.original_sha256,
        s.content_sha256, s.page_count, s.pages_estimated, s.has_text, s.drm, s.extract_state, s.uploaded_by,
-       s.epub_measures, s.ereader_findings, now(), sqlc.arg(by)::uuid
+       s.epub_measures, s.ereader_findings, s.measures_version, now(), sqlc.arg(by)::uuid
 FROM book_files s
 WHERE s.id = sqlc.arg(id)
 RETURNING book_files.id;

@@ -25,6 +25,13 @@ What changes for someone who runs or uses GOtome. The format follows
   genre. Nothing is written until an administrator sets "Genres for books"
   (`genres.suggest`); `gotome genre-check` measures the suggestions on a
   library first. A book's tags are never changed.
+- The e-reader check also finds chapter files that are not well-formed
+  XHTML, which some readers such as the Tolino's refuse, and tables of
+  contents with entries that lead nowhere, and repairs both: a chapter file
+  is written again only where its text stays the same, and an entry is
+  taken out only when it leads nowhere, or pointed at its chapter's start
+  when only the place in it is gone. EPUBs checked before are checked again
+  once.
 
 ### Changed
 

@@ -92,7 +92,7 @@ func TestMeasureFindsWhatIsSlow(t *testing.T) {
 	if !slices.Equal(m.MissingResources, []string{"OEBPS/images/gone.jpg"}) {
 		t.Errorf("missing %v", m.MissingResources)
 	}
-	if got := m.Findings(); !slices.Equal(got, Findings) {
+	if got := m.Findings(); !slices.Equal(got, Findings[:4]) {
 		t.Errorf("findings %v", got)
 	}
 }
@@ -124,5 +124,66 @@ func TestMeasureFindsNothingInAnOrdinaryBook(t *testing.T) {
 func TestMeasureRefusesWhatIsNoEPUB(t *testing.T) {
 	if _, err := Measure(bytes.NewReader([]byte("no zip")), 6); err == nil {
 		t.Error("measured a file that is no zip")
+	}
+}
+
+// troubledOPF lists XHTML documents, an HTML one, a navigation document and
+// an NCX.
+const troubledOPF = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">troubled</dc:identifier><dc:title>Troubled</dc:title><dc:language>de</dc:language>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="a" href="a.xhtml" media-type="application/xhtml+xml"/>
+    <item id="b" href="b.xhtml" media-type="application/xhtml+xml"/>
+    <item id="c" href="c.xhtml" media-type="application/xhtml+xml"/>
+    <item id="d" href="d.xhtml" media-type="application/xhtml+xml"/>
+    <item id="e" href="e.html" media-type="text/html"/>
+  </manifest>
+  <spine toc="ncx"><itemref idref="a"/><itemref idref="b"/><itemref idref="c"/><itemref idref="d"/><itemref idref="e"/></spine>
+</package>`
+
+func TestMeasureFindsMalformedDocumentsAndABrokenTOC(t *testing.T) {
+	data := build(t,
+		entry{"mimetype", "application/epub+zip"},
+		container("OEBPS/content.opf"),
+		entry{"OEBPS/content.opf", troubledOPF},
+		entry{"OEBPS/nav.xhtml", `<html xmlns="http://www.w3.org/1999/xhtml"><body><nav><ol>
+<li><a href="d.xhtml">D</a></li>
+<li><a href="missing.xhtml#x">Missing</a></li>
+<li><a href="https://example.com/">Elsewhere</a></li>
+<li><a href="a.xhtml#a1">A</a></li>
+</ol></nav></body></html>`},
+		entry{"OEBPS/toc.ncx", `<?xml version="1.0"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><navMap>
+<navPoint id="p1"><navLabel><text>C</text></navLabel><content src="c.xhtml#c1"/></navPoint>
+<navPoint id="p2"><navLabel><text>Gone</text></navLabel><content src="gone.xhtml"/>
+  <navPoint id="p3"><navLabel><text>Nope</text></navLabel><content src="c.xhtml#nope"/></navPoint>
+</navPoint>
+</navMap></ncx>`},
+		// An end tag missing, and an entity no DTD declares.
+		entry{"OEBPS/a.xhtml", `<html><body><p id="a1">Tom &amp; Jerry<br></p></body></html>`},
+		entry{"OEBPS/b.xhtml", `<html><body><p>Rittersporn&nbsp;sang.</p></body></html>`},
+		// HTML's entities under the XHTML DTD, and one the document declares.
+		entry{"OEBPS/c.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><body><h1 id="c1">Eins&nbsp;&mdash;&nbsp;zwei</h1></body></html>`},
+		entry{"OEBPS/d.xhtml", `<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html [<!ENTITY gotome "GOtome">]>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><p>&gotome; f` + "\xfc" + `r alle.</p></body></html>`},
+		// HTML need not be XML.
+		entry{"OEBPS/e.html", `<html><body><p>Frei<br>heraus</body></html>`},
+	)
+	m := measure(t, data)
+	if !slices.Equal(m.MalformedDocuments, []string{"OEBPS/a.xhtml", "OEBPS/b.xhtml"}) {
+		t.Errorf("malformed %v", m.MalformedDocuments)
+	}
+	if want := []string{"OEBPS/missing.xhtml", "OEBPS/gone.xhtml", "OEBPS/c.xhtml#nope"}; !slices.Equal(m.BrokenTocEntries, want) {
+		t.Errorf("broken entries %v, want %v", m.BrokenTocEntries, want)
+	}
+	if got := m.Findings(); !slices.Equal(got, []string{MalformedDocument, BrokenTOC}) {
+		t.Errorf("findings %v", got)
 	}
 }

@@ -113,8 +113,9 @@ func xhtml(title, body string) string {
 }
 
 // heavyParts are an EPUB with every finding: one chapter of the whole
-// novel, two fonts of 1.2 MB, a map of 4.25 megapixels and a picture the
-// package lists and the archive lacks.
+// novel, two fonts of 1.2 MB, a map of 4.25 megapixels, a picture the
+// package lists and the archive lacks, notes that are not well formed
+// and an entry of the table of contents that leads nowhere.
 func heavyParts(t *testing.T) []epubPart {
 	var novel strings.Builder
 	for ch := 1; ch <= 6; ch++ {
@@ -125,9 +126,11 @@ func heavyParts(t *testing.T) []epubPart {
 	}
 	return []epubPart{
 		{id: "nav", name: "nav.xhtml", mediaType: "application/xhtml+xml", properties: "nav", content: xhtml("Inhalt",
-			`<nav epub:type="toc" xmlns:epub="http://www.idpf.org/2007/ops"><ol><li><a href="tower.xhtml">Der Schwalbenturm</a></li></ol></nav>`)},
+			`<nav epub:type="toc" xmlns:epub="http://www.idpf.org/2007/ops"><ol><li><a href="tower.xhtml">Der Schwalbenturm</a></li>
+<li><a href="lost.xhtml">Verloren</a></li></ol></nav>`)},
 		{id: "tower", name: "tower.xhtml", mediaType: "application/xhtml+xml", read: true, content: xhtml("Der Schwalbenturm",
 			novel.String()+strings.Repeat("<p>"+strings.Repeat("Schnee ", 60)+"</p>\n", 800)+`<p><img src="map.png" alt="Karte"/></p>`)},
+		{id: "notes", name: "notes.xhtml", mediaType: "application/xhtml+xml", read: true, content: `<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Anmerkung<br>zum Turm.</p></body></html>`},
 		{id: "css", name: "style.css", mediaType: "text/css", content: `@font-face { font-family: "DejaVu Serif"; src: url(fonts/DejaVuSerif.ttf); }
 @font-face { font-family: "DejaVu Sans"; src: url("fonts/DejaVuSans.ttf") format("truetype"); }
 body { font-family: "DejaVu Serif"; }`},
@@ -169,11 +172,12 @@ func TestEPUBsSlowOnAnEReaderAreFound(t *testing.T) {
 		return check
 	}
 	heavy := findings(reader, "Schwalbenturm.epub")
-	if got := heavy["findings"]; fmt.Sprint(got) != fmt.Sprint([]any{epub.LargeDocument, epub.LargeFonts, epub.LargeImage, epub.MissingResources}) {
+	if got := heavy["findings"]; fmt.Sprint(got) != fmt.Sprint(epub.Findings) {
 		t.Errorf("findings of the heavy book: %v", heavy)
 	}
 	if heavy["fonts"] != 2.0 || heavy["fontBytes"] != 1_250_000.0 || heavy["imageWidth"] != 2500.0 || heavy["imageHeight"] != 1700.0 ||
-		heavy["largestDocument"].(float64) < epub.MaxDocumentBytes || fmt.Sprint(heavy["missingResources"]) != "[OEBPS/gone.jpg]" {
+		heavy["largestDocument"].(float64) < epub.MaxDocumentBytes || fmt.Sprint(heavy["missingResources"]) != "[OEBPS/gone.jpg]" ||
+		fmt.Sprint(heavy["malformedDocuments"]) != "[OEBPS/notes.xhtml]" || fmt.Sprint(heavy["brokenTocEntries"]) != "[OEBPS/lost.xhtml]" {
 		t.Errorf("measures of the heavy book: %v", heavy)
 	}
 	if light := findings(reader, "Light.epub"); light == nil || len(light["findings"].([]any)) != 0 {
@@ -201,7 +205,7 @@ func TestEPUBsSlowOnAnEReaderAreFound(t *testing.T) {
 
 	_, body, _ = a.call(reader, http.MethodGet, "/books/facets", nil)
 	counts, _ := facetCounts(t, body)
-	if want := map[string]int{"large-document": 1, "large-fonts": 1, "large-image": 1, "missing-resources": 1}; !mapsEqualInt(counts["ereader"], want) {
+	if want := map[string]int{"large-document": 1, "large-fonts": 1, "large-image": 1, "missing-resources": 1, "malformed-document": 1, "broken-toc": 1}; !mapsEqualInt(counts["ereader"], want) {
 		t.Errorf("the reader's facet: %v", counts["ereader"])
 	}
 	for c, want := range map[*http.Client]float64{reader: 1, admin: 2} {
@@ -216,7 +220,7 @@ func TestEPUBsSlowOnAnEReaderAreFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.scanNow(lib)
-	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET epub_measures = NULL, ereader_findings = NULL`); err != nil {
+	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET epub_measures = NULL, ereader_findings = NULL, measures_version = NULL`); err != nil {
 		t.Fatal(err)
 	}
 	if n, err := a.scans.MeasureFiles(ctx); err != nil || n != 4 {
@@ -235,6 +239,21 @@ func TestEPUBsSlowOnAnEReaderAreFound(t *testing.T) {
 	}
 	if again := findings(reader, "Schwalbenturm.epub"); fmt.Sprint(again) != fmt.Sprint(heavy) {
 		t.Errorf("measured by the job: %v, at extraction: %v", again, heavy)
+	}
+
+	// Files an older version measured keep their findings until the job
+	// measures them again.
+	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET measures_version = $1`, epub.MeasuresVersion-1); err != nil {
+		t.Fatal(err)
+	}
+	if kept := findings(reader, "Schwalbenturm.epub"); fmt.Sprint(kept) != fmt.Sprint(heavy) {
+		t.Errorf("findings of an older version: %v", kept)
+	}
+	if n, err := a.scans.MeasureFiles(ctx); err != nil || n != 4 {
+		t.Fatalf("measured %d files of an older version: %v", n, err)
+	}
+	if n, err := a.scans.MeasureFiles(ctx); err != nil || n != 0 {
+		t.Errorf("measured %d files again: %v", n, err)
 	}
 
 	// New bytes are measured again.

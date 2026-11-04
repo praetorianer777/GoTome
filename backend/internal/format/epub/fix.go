@@ -26,11 +26,20 @@ type Fixed struct {
 	FontsRemoved int `json:"fontsRemoved"`
 	// ItemsRemoved are the manifest items without a file taken out.
 	ItemsRemoved int `json:"itemsRemoved"`
+	// DocumentsRepaired are the content documents written again as
+	// well-formed XHTML.
+	DocumentsRepaired int `json:"documentsRepaired"`
+	// TocEntriesRemoved are the entries of the tables of contents taken
+	// out as they led nowhere, TocEntriesRepointed those pointed at the
+	// start of their document or at an entry below them instead.
+	TocEntriesRemoved   int `json:"tocEntriesRemoved"`
+	TocEntriesRepointed int `json:"tocEntriesRepointed"`
 }
 
 // Any reports whether anything was changed.
 func (f Fixed) Any() bool {
-	return f.DocumentsSplit+f.ImagesScaled+f.FontsRemoved+f.ItemsRemoved > 0
+	return f.DocumentsSplit+f.ImagesScaled+f.FontsRemoved+f.ItemsRemoved+
+		f.DocumentsRepaired+f.TocEntriesRemoved+f.TocEntriesRepointed > 0
 }
 
 // fixer holds an EPUB while fixes change it: the package document as text,
@@ -52,7 +61,10 @@ type fixer struct {
 // on an e-reader fixed, each finding of epub.Findings by its own step:
 // LargeDocument splits content documents, LargeImage scales images down,
 // LargeFonts removes embedded fonts, MissingResources takes manifest items
-// whose file is missing out of the manifest and spine. What a step does
+// whose file is missing out of the manifest and spine, MalformedDocument
+// writes documents that are not well formed again as XHTML, and BrokenTOC
+// takes entries of the tables of contents out that lead nowhere. A step
+// changes a document only where it can check the result. What a step does
 // not touch is copied as stored. A step that finds nothing to do changes
 // nothing, and Fixed says so; w is then written all the same.
 func Fix(r io.ReaderAt, size int64, w io.Writer, findings []string, modified time.Time) (Fixed, error) {
@@ -84,13 +96,17 @@ func Fix(r io.ReaderAt, size int64, w io.Writer, findings []string, modified tim
 		return Fixed{}, err
 	}
 	fx := &fixer{zr: zr, a: a, opfPath: a.find(opfPath).Name, opf: opf, data: map[string][]byte{}, removed: map[string]bool{}}
-	// Missing files first, so that no other step trips over them; fonts
+	// Missing files first, so that no other step trips over them; documents
+	// before the tables of contents, which are edited only where they are
+	// well formed, and before splitting, which splits only those; fonts
 	// before splitting, so that the parts carry no @font-face either.
 	steps := []struct {
 		finding string
 		run     func() error
 	}{
 		{MissingResources, fx.repair},
+		{MalformedDocument, fx.repairDocuments},
+		{BrokenTOC, fx.repairTOC},
 		{LargeFonts, fx.removeFonts},
 		{LargeImage, fx.scaleImages},
 		{LargeDocument, fx.splitDocuments},
@@ -320,6 +336,12 @@ func (fx *fixer) exists(name string) bool {
 
 // editPackage applies edits to the package document.
 func (fx *fixer) editPackage(edits []edit) {
+	fx.opf = applyEdits(fx.opf, edits)
+}
+
+// applyEdits replaces the spans of data the edits name; an edit that
+// starts inside one before it is passed over.
+func applyEdits(data []byte, edits []edit) []byte {
 	slices.SortStableFunc(edits, func(a, b edit) int { return int(a.start - b.start) })
 	var out bytes.Buffer
 	var at int64
@@ -327,22 +349,24 @@ func (fx *fixer) editPackage(edits []edit) {
 		if e.start < at {
 			continue
 		}
-		out.Write(fx.opf[at:e.start])
+		out.Write(data[at:e.start])
 		out.WriteString(e.text)
 		at = e.end
 	}
-	out.Write(fx.opf[at:])
-	fx.opf = out.Bytes()
+	out.Write(data[at:])
+	return out.Bytes()
 }
+
+func (fx *fixer) lineBefore(s span) span { return lineBefore(fx.opf, s) }
 
 // lineBefore extends a span to the whitespace before it on its line, so that
 // taking an element out leaves no empty line.
-func (fx *fixer) lineBefore(s span) span {
+func lineBefore(data []byte, s span) span {
 	start := s.start
-	for start > 0 && (fx.opf[start-1] == ' ' || fx.opf[start-1] == '\t') {
+	for start > 0 && (data[start-1] == ' ' || data[start-1] == '\t') {
 		start--
 	}
-	if start > 0 && fx.opf[start-1] == '\n' {
+	if start > 0 && data[start-1] == '\n' {
 		start--
 	}
 	return span{start, s.end}
