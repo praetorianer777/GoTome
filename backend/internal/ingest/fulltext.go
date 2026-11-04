@@ -297,24 +297,46 @@ func (s *Service) FileTexts(ctx context.Context, fileID uuid.UUID) ([]string, er
 // Passages reads the file's chunks at the positions again from the file, in
 // the order of their positions; those that cannot be read are left out.
 func (s *Service) Passages(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error) {
-	places, err := sqlc.New(s.pool).ListChunkPlaces(ctx, sqlc.ListChunkPlacesParams{FileID: fileID, Positions: positions})
-	if err != nil || len(places) == 0 {
+	ids, texts, err := s.readChunks(ctx, fileID, positions)
+	if err != nil {
 		return nil, err
 	}
+	var out []string
+	for _, id := range ids {
+		if t, ok := texts[id]; ok {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+// FileChunks reads every chunk of the file again from it, by chunk ID;
+// those that cannot be read are left out.
+func (s *Service) FileChunks(ctx context.Context, fileID uuid.UUID) (map[int64]string, error) {
+	positions, err := sqlc.New(s.pool).ListChunkPositions(ctx, fileID)
+	if err != nil || len(positions) == 0 {
+		return nil, err
+	}
+	_, texts, err := s.readChunks(ctx, fileID, positions)
+	return texts, err
+}
+
+// readChunks reads the file's chunks at the positions, and returns their
+// IDs in the order of their positions with the texts it could read.
+func (s *Service) readChunks(ctx context.Context, fileID uuid.UUID, positions []int32) ([]int64, map[int64]string, error) {
+	places, err := sqlc.New(s.pool).ListChunkPlaces(ctx, sqlc.ListChunkPlacesParams{FileID: fileID, Positions: positions})
+	if err != nil || len(places) == 0 {
+		return nil, nil, err
+	}
 	refs := make([]PassageRef, len(places))
+	ids := make([]int64, len(places))
 	for i, p := range places {
 		refs[i] = PassageRef{
 			ChunkID: p.ID, FileID: fileID, Format: p.Format,
 			Path:     filepath.Join(p.RootPath, filepath.FromSlash(p.RelPath)),
 			Position: int(p.Position), Sources: p.Sources, From: int(p.SourceFrom), To: int(p.SourceTo),
 		}
+		ids[i] = p.ID
 	}
-	texts := ReadPassages(ctx, refs)
-	var out []string
-	for _, r := range refs {
-		if t, ok := texts[r.ChunkID]; ok {
-			out = append(out, t)
-		}
-	}
-	return out, nil
+	return ids, ReadPassages(ctx, refs), nil
 }

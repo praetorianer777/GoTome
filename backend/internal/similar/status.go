@@ -24,6 +24,20 @@ type Status struct {
 	// MetadataLastHour is how many metadata vectors were made in the last
 	// hour, the pace of a pass.
 	MetadataLastHour int `json:"metadataLastHour"`
+	// Passages is how far the passages are embedded (#174); left out
+	// while they are not.
+	Passages *PassageStatus `json:"passages,omitempty"`
+}
+
+// PassageStatus is how far the books a scope sees have a vector per
+// passage of their text.
+type PassageStatus struct {
+	// WithText is how many books have text, WithPassages how many of them
+	// have their passages' vectors of the chosen model.
+	WithText     int `json:"withText"`
+	WithPassages int `json:"withPassages"`
+	// Bytes is what the passages' vectors take on disk, of every library.
+	Bytes int64 `json:"bytes"`
 }
 
 // Status counts the books the scope sees, of one library when given, and
@@ -39,9 +53,15 @@ func (s *Service) Status(ctx context.Context, scope library.Scope, libraryID *uu
 	if err != nil {
 		return Status{}, err
 	}
-	return Status{
+	status := Status{
 		Model: spec.Model.Name, Enabled: enabled,
 		Books: int(row.Books), WithText: int(row.WithText), Metadata: int(row.Metadata), Content: int(row.Content),
 		MetadataLastHour: int(row.MetadataLastHour),
-	}, nil
+	}
+	if s.PassageStatus != nil {
+		if status.Passages, err = s.PassageStatus(ctx, scope, libraryID); err != nil {
+			return Status{}, err
+		}
+	}
+	return status, nil
 }

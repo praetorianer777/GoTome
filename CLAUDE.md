@@ -1089,6 +1089,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   run is `ErrUnavailable`, a 503. The search page offers it as a mode
   (`mode=description`). `similar-check -describe "…"` prints what it finds
   on a library.
+- Passage vectors (#174, `docs/decisions/passage-vectors.md`):
+  `internal/passages`, off unless `embedding.passages` is on. A vector per
+  chunk (its first 512 tokens, `Spec.PassageText`), kept not in Postgres
+  but in a `Store` under `GOTOME_DATA_DIR/passages`: per passage its
+  chunk, library, signs around a centre (the mean of the first 2,000
+  stored) and an int8 copy, 446 bytes. `passage_files` says which files
+  have them, of which model and `chunked_at`; both are derived (backup.sh
+  leaves them out). The `passages.embed` job (queue `embed`) embeds the
+  stale files; another model empties the store. A search scans the signs
+  of the visible libraries, rescores a fiftieth by int8, and checks the
+  hits in SQL (`ListPassageBooks`, `visible_library_ids`); the store may
+  be behind and is compacted daily or once a fifth is dead.
+  `similar.Service.Describe` blends a book's best passage (0.6) with its
+  metadata vector (0.4) through `NearPassages`.
 - `gotome similar-check` (`Service.Check`, `make similar-check`) measures
   them on an installation's own library: a sample by a hash of the book
   ID, the shares by the book's own author and series, copies, and authors

@@ -62,6 +62,10 @@ type Spec struct {
 	Server string
 	// Prefix goes before every text the model embeds, as its authors ask.
 	Prefix string
+	// PassagePrefix goes before a passage embedded on its own, to be found
+	// by a query (#174), where the model's authors ask for another than
+	// Prefix.
+	PassagePrefix string
 	// Memory is roughly what running the model on the CPU adds to the
 	// process, in bytes: an estimate from the weights and the measurements
 	// of #15 and #228, not measured per installation.
@@ -124,6 +128,8 @@ var E5Small = Spec{
 	// A book is compared with books, which the model's authors call a
 	// symmetric task and give the query prefix.
 	Prefix: "query: ",
+	// A passage is found by a description, which they call asymmetric.
+	PassagePrefix: "passage: ",
 	// #15 measured 0.70–0.72 GB at peak for the whole process.
 	Memory: 700 << 20,
 }
@@ -145,8 +151,9 @@ var E5SmallFP32 = Spec{
 		Size:   470268510,
 		SHA256: "ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665",
 	},
-	Tokenizer: E5Small.Tokenizer,
-	Prefix:    E5Small.Prefix,
+	Tokenizer:     E5Small.Tokenizer,
+	Prefix:        E5Small.Prefix,
+	PassagePrefix: E5Small.PassagePrefix,
 	// #15 measured 1.07 GB at peak for the whole process.
 	Memory: 1100 << 20,
 }
@@ -204,6 +211,14 @@ var Specs = map[string]Spec{
 	"multilingual-e5-small":      E5Small,
 	"multilingual-e5-small-fp32": E5SmallFP32,
 	"bge-m3":                     BGEM3,
+}
+
+// PassageText is a passage as the spec embeds it to be found.
+func (s Spec) PassageText(text string) string {
+	if s.PassagePrefix != "" {
+		return s.PassagePrefix + text
+	}
+	return s.Prefix + text
 }
 
 // DefaultSpec is the name in Specs used unless another is chosen.
