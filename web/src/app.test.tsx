@@ -5347,6 +5347,15 @@ describe("pausing the embedding", () => {
 		expect(panel.getByRole("link", { name: "Choose the model" })).toHaveAttribute("href", "/admin/settings#embedding-model");
 	});
 
+	it("shows how far the passages are while they are on", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.embedding.passages = { withText: 100, withPassages: 40, bytes: 3_000_000 };
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/jobs");
+		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
+		expect(await panel.findByText(/^Passages: 40 of 100 books with text, 3 MB on disk\.$/)).toBeInTheDocument();
+	});
+
 	it("shows an editor the progress without the button", async () => {
 		vi.stubGlobal("EventSource", undefined);
 		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");

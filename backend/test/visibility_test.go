@@ -120,9 +120,14 @@ func readCases() map[string][]readCase {
 		"listReview":          {{path: "/matches", control: "insider"}},
 		"embeddingStatus":     {{path: "/embedding/status", why: "counts only; TestEmbeddingProgressCountsTheBooksTheCallerSees holds them to the caller's libraries"}},
 		"listEmbeddingModels": {{path: "/embedding/models", why: "counts only; TestEmbeddingModelsCountTheBooksTheCallerSees holds them to the caller's libraries"}},
-		// Every book with vectors is ranked, the secret too where it is
-		// seen: TestADescriptionFindsTheNearestBooksTheViewerSees.
-		"searchDescribed": {{path: "/search/similar", query: q("q", "{title}"), why: "ranks every visible book; proven in TestADescriptionFindsTheNearestBooksTheViewerSees"}},
+		// Every book with vectors is ranked, by its book vectors and its
+		// passages', the secret first where it is seen:
+		// TestADescriptionFindsTheNearestBooksTheViewerSees and
+		// TestPassagesFindTheBooksTheyAreFromOnlyWhereTheyAreSeen.
+		"searchDescribed": {
+			{path: "/search/similar", query: q("q", "{title}"), control: "insider"},
+			{path: "/search/similar", query: q("q", "{title}", "library", "{library}"), control: "insider"},
+		},
 		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {
@@ -211,7 +216,7 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	a.withProvider()
 	a.matcher()
 	ctx := context.Background()
-	admin, _ := a.signedIn("admin", "admin")
+	admin, adminID := a.signedIn("admin", "admin")
 	insider, insiderID := a.signedIn("insider", "editor")
 	former, formerID := a.signedIn("former", "editor")
 	stranger, _ := a.signedIn("stranger", "reader")
@@ -270,6 +275,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		FROM c`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
 		t.Fatal(err)
 	}
+	// With passages on, that passage has a vector, right where a
+	// description of the title is.
+	a.passageOf(adminID, book, secret["file"], secret["title"])
 	// The secret and a book of the open library look like one: a pair the
 	// stranger, who sees only the one, must not be shown.
 	pairA, pairB := book, plain["bookId"].(string)

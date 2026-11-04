@@ -663,6 +663,7 @@ export const en = {
 	"jobs.kind.purgeTrash": "Empty the trash of what has been there long enough",
 	"jobs.kind.measure": "Measure EPUBs for what makes them slow on e-readers",
 	"jobs.kind.embed": "Work out what books are about",
+	"jobs.kind.embedPassages": "Work out what each passage of the books is about",
 	"nav.trash": "Trash",
 	"trash.title": "Trash",
 	"trash.intro":
@@ -707,6 +708,9 @@ export const en = {
 	"settings.embeddingServer": "Embedding server",
 	"settings.embeddingServer.hint":
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",
+	"settings.embeddingPassages": "A vector for every passage",
+	"settings.embeddingPassages.hint":
+		"on or off, off unless set. When on, and books are embedded, every passage of a book's text gets a vector of its own, and the search by description finds books by the passage nearest it: a scene, not only what a book is about as a whole. It reads every book again, which takes days of the CPU on a large library, and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups.",
 	"settings.passwords": "Sign in with a password",
 	"settings.passwords.hint":
 		"on or off. Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account at the identity provider. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true to sign in with a password again.",
@@ -750,6 +754,7 @@ export const en = {
 		"Each book's description and text are turned into vectors, by which similar books are found and books are searched by a description.",
 	"embedding.progress":
 		"Described: {metadata} of {books} books. Read: {content} of {withText} books with text.",
+	"embedding.passages": "Passages: {done} of {withText} books with text, {size} on disk.",
 	"embedding.running": "Running, with {model}.",
 	"embedding.paused": "Paused. {model} goes on with the books not yet done once it is started again.",
 	"embedding.pause": "Pause",

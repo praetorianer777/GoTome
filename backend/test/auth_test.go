@@ -37,6 +37,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/passages"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -111,8 +112,10 @@ type app struct {
 	// text is the app's full-text index, which every search brings up to
 	// date with the outbox first, as the job would shortly after.
 	text *fulltext.Service
-	now  time.Time
-	mu   sync.Mutex
+	// passages embeds and finds the books' passages, while they are on.
+	passages *passages.Service
+	now      time.Time
+	mu       sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -189,6 +192,17 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Similar.Passages = a.scans.Passages
+	// Passages are off unless a test switches them on.
+	passageStore, err := passages.OpenStore(passages.Dir(a.dataDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { passageStore.Close() })
+	a.passages = passages.NewService(a.pool, passageStore, a.settings.Embedding, a.settings.EmbeddingPassages,
+		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
+	a.passages.Chunks = a.scans.FileChunks
+	a.server.Similar.NearPassages = a.passages.Near
+	a.server.Similar.PassageStatus = a.passages.Status
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Resources = resources.NewService(a.pool)
 	a.server.Resources.DataDir = a.dataDir

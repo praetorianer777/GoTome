@@ -48,6 +48,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/passages"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -238,9 +239,22 @@ func serve() error {
 	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
 	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
 	vectors.Passages = scans.Passages
+	passageStore, err := passages.OpenStore(passages.Dir(cfg.DataDir))
+	if err != nil {
+		return err
+	}
+	defer passageStore.Close()
+	passageVectors := passages.NewService(pool, passageStore, settingStore.Embedding, settingStore.EmbeddingPassages,
+		similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
+	passageVectors.Chunks = scans.FileChunks
+	vectors.NearPassages = passageVectors.Near
+	vectors.PassageStatus = passageVectors.Status
 	duplicates.Texts = scans.FileTexts
 	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error {
 		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID, texts); err != nil {
+			return err
+		}
+		if err := passageVectors.EnqueueTx(ctx, tx); err != nil {
 			return err
 		}
 		return vectors.EnqueueTx(ctx, tx)
@@ -253,6 +267,9 @@ func serve() error {
 		// the books. Switched off, the pass finds nothing to do.
 		if err := vectors.Enqueue(ctx); err != nil {
 			log.Warn("could not queue embedding", "error", err)
+		}
+		if err := passageVectors.Enqueue(ctx); err != nil {
+			log.Warn("could not queue embedding passages", "error", err)
 		}
 	}
 	scans.OnFilesChanged = duplicates.EnqueueTx
@@ -288,6 +305,7 @@ func serve() error {
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
+	river.AddWorker(workers, &passages.EmbedWorker{Service: passageVectors})
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &releases.PollWorker{Service: follows})
 	river.AddWorker(workers, &kosync.HashWorker{Service: progressSync})
@@ -305,6 +323,7 @@ func serve() error {
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 		similar.Periodic(embedInterval),
+		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
@@ -325,6 +344,7 @@ func serve() error {
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
+	passageVectors.Queue = runner
 	events.Queue = runner
 	follows.Queue = runner
 	if err := runner.Start(ctx); err != nil {

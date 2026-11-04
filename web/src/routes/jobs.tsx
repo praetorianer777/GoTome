@@ -58,6 +58,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.indexFiles");
 		case "similar.embed_books":
 			return t("jobs.kind.embed");
+		case "passages.embed":
+			return t("jobs.kind.embedPassages");
 		case "dedupe.sign_file":
 			return t("jobs.kind.sign", { file: job.filePath || t("jobs.goneFile") });
 		case "dedupe.check_book":

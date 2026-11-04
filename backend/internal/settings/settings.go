@@ -63,6 +63,11 @@ const (
 	// models GOtome does not run itself, such as bge-m3 on a GPU: the
 	// models of embed.Specs with a Server. Unset, they are not available.
 	EmbeddingServer = "embedding.server"
+	// EmbeddingPassages is "on" or "off": whether every passage of a book's
+	// text gets a vector of its own, for searching by description (#174).
+	// Off by default: on a library of 50,000 books it is about 1.5 GB on
+	// disk and days of the CPU (docs/decisions/passage-vectors.md).
+	EmbeddingPassages = "embedding.passages"
 	// Passwords is "on" or "off": whether people may sign in with a
 	// password. Off leaves it to administrators while none of them can sign
 	// in through the identity provider.
@@ -126,6 +131,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
+	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
@@ -518,6 +524,12 @@ func (s *Store) TrashRetention(ctx context.Context) (time.Duration, error) {
 		return 0, fmt.Errorf("%s: %w", TrashRetentionDays, err)
 	}
 	return time.Duration(days) * 24 * time.Hour, nil
+}
+
+// EmbeddingPassages says whether passages are embedded and searched.
+func (s *Store) EmbeddingPassages(ctx context.Context) (bool, error) {
+	v, err := s.Text(ctx, EmbeddingPassages)
+	return v == "on", err
 }
 
 // EmbeddingServer is the address of the embedding server, or "" for none.

@@ -17,6 +17,13 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- The search by description can find books by their passages: with the
+  new setting "A vector for every passage" (`embedding.passages`, off by
+  default) every passage of a book's text gets a vector of its own, so
+  that a description of a scene finds the book it happens in. It reads
+  every book again, which on a large library takes days of the CPU, and
+  keeps about 1.5 GB per 50,000 books under `/data/passages`, outside the
+  database and the backups. The jobs page shows how far it is.
 
 ### Changed
 

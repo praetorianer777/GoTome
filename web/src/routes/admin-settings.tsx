@@ -58,6 +58,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",
 	},
+	"embedding.passages": {
+		label: "settings.embeddingPassages",
+		hint: "settings.embeddingPassages.hint",
+	},
 	"auth.passwords": {
 		label: "settings.passwords",
 		hint: "settings.passwords.hint",

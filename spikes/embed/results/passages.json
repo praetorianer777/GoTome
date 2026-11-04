@@ -1,0 +1,100 @@
+{
+  "Books": 2011,
+  "Passages": 70700,
+  "Quality": [
+    {
+      "method": "book vector (mean of 16)",
+      "descriptionP10": 0.18333333333333332,
+      "descriptionMAP": 0.1119274226026289,
+      "insideMRR": 0.19471575177700615,
+      "insideAt1": 0.13444302176696543,
+      "insideAt10": 0.3072983354673495,
+      "outsideMRR": 0.14426173457811672,
+      "outsideAt1": 0.088348271446863,
+      "outsideAt10": 0.24199743918053776
+    },
+    {
+      "method": "passages, fp32, best one",
+      "descriptionP10": 0.2222222222222222,
+      "descriptionMAP": 0.17334779915676024,
+      "insideMRR": 0.4370965813622835,
+      "insideAt1": 0.3700384122919334,
+      "insideAt10": 0.5697823303457106,
+      "outsideMRR": 0.17893952442604355,
+      "outsideAt1": 0.11523687580025609,
+      "outsideAt10": 0.29833546734955185
+    },
+    {
+      "method": "passages, halfvec, best one",
+      "descriptionP10": 0.2222222222222222,
+      "descriptionMAP": 0.17330679237190683,
+      "insideMRR": 0.43709775846526483,
+      "insideAt1": 0.3700384122919334,
+      "insideAt10": 0.5697823303457106,
+      "outsideMRR": 0.17872545317664879,
+      "outsideAt1": 0.11523687580025609,
+      "outsideAt10": 0.29833546734955185
+    },
+    {
+      "method": "passages, int8, best one",
+      "descriptionP10": 0.23333333333333334,
+      "descriptionMAP": 0.1741835387261654,
+      "insideMRR": 0.4386095084839744,
+      "insideAt1": 0.3738796414852753,
+      "insideAt10": 0.5659411011523687,
+      "outsideMRR": 0.17897179642040673,
+      "outsideAt1": 0.11523687580025609,
+      "outsideAt10": 0.2970550576184379
+    },
+    {
+      "method": "passages, bit, best one",
+      "descriptionP10": 0.03888888888888889,
+      "descriptionMAP": 0.02954483461997532,
+      "insideMRR": 0.037510375667948216,
+      "insideAt1": 0.015364916773367477,
+      "insideAt10": 0.07810499359795134,
+      "outsideMRR": 0.023246778934476745,
+      "outsideAt1": 0.0076824583866837385,
+      "outsideAt10": 0.04225352112676056
+    },
+    {
+      "method": "passages, bit+int8, best one",
+      "descriptionP10": 0.18888888888888888,
+      "descriptionMAP": 0.10928506225637721,
+      "insideMRR": 0.3028262747606045,
+      "insideAt1": 0.2586427656850192,
+      "insideAt10": 0.38028169014084506,
+      "outsideMRR": 0.1333794592915663,
+      "outsideAt1": 0.08322663252240717,
+      "outsideAt10": 0.22407170294494239
+    },
+    {
+      "method": "passages, fp32, mean of best 3",
+      "descriptionP10": 0.23333333333333334,
+      "descriptionMAP": 0.15458774208763856,
+      "insideMRR": 0.3532807587139582,
+      "insideAt1": 0.28681177976952626,
+      "insideAt10": 0.47247119078104993,
+      "outsideMRR": 0.20325358813729777,
+      "outsideAt1": 0.14596670934699105,
+      "outsideAt10": 0.30217669654289375
+    },
+    {
+      "method": "blend 0.5 book vector + 0.5 best passage (fp32)",
+      "descriptionP10": 0.2222222222222222,
+      "descriptionMAP": 0.14889255822245054,
+      "insideMRR": 0.38521388696538444,
+      "insideAt1": 0.31882202304737517,
+      "insideAt10": 0.5160051216389244,
+      "outsideMRR": 0.1948853474616189,
+      "outsideAt1": 0.13444302176696543,
+      "outsideAt10": 0.3047375160051216
+    }
+  ],
+  "Recall": {
+    "bit": 0.03712658227848114,
+    "bit+int8": 0.27629113924050697,
+    "halfvec": 0.9989367088607604,
+    "int8": 0.9667405063291274
+  }
+}

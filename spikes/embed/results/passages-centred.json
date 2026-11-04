@@ -1,0 +1,32 @@
+{
+  "Books": 2011,
+  "Passages": 70700,
+  "Quality": [
+    {
+      "method": "passages, bit centred, best one",
+      "descriptionP10": 0.17777777777777778,
+      "descriptionMAP": 0.11061541853051465,
+      "insideMRR": 0.2584595133714786,
+      "insideAt1": 0.19590268886043533,
+      "insideAt10": 0.3905249679897567,
+      "outsideMRR": 0.10736764476008573,
+      "outsideAt1": 0.06145966709346991,
+      "outsideAt10": 0.1946222791293214
+    },
+    {
+      "method": "passages, bit centred+int8, best one",
+      "descriptionP10": 0.23333333333333334,
+      "descriptionMAP": 0.17039880423645182,
+      "insideMRR": 0.43118925061675445,
+      "insideAt1": 0.36619718309859156,
+      "insideAt10": 0.5608194622279129,
+      "outsideMRR": 0.17737453789882687,
+      "outsideAt1": 0.11523687580025609,
+      "outsideAt10": 0.29449423815621
+    }
+  ],
+  "Recall": {
+    "bit centred": 0.2361329113924048,
+    "bit centred+int8": 0.7752341772151891
+  }
+}

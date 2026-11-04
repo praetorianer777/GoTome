@@ -167,6 +167,8 @@ export class FakeServer {
 		withText: 100,
 		metadata: 80,
 		content: 60,
+		/** Left out while passages are off, as the server does. */
+		passages: undefined as { withText: number; withPassages: number; bytes: number } | undefined,
 	};
 	/** The models embedding.model may name, as the settings page shows them. */
 	embeddingModels = {

@@ -357,6 +357,15 @@ type OidcLogin struct {
 	ExpiresAt  time.Time
 }
 
+type PassageFile struct {
+	FileID       uuid.UUID
+	Model        string
+	ModelVersion string
+	ChunkedAt    time.Time
+	Passages     int32
+	EmbeddedAt   time.Time
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte

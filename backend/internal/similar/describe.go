@@ -40,6 +40,15 @@ func (s *Service) Describe(ctx context.Context, scope library.Scope, libraryID *
 		return nil, false, err
 	}
 	limit = min(max(limit, 1), MaxDescribed)
+	if s.NearPassages != nil {
+		near, err := s.NearPassages(ctx, scope, libraryID, spec, vec)
+		if err != nil {
+			return nil, false, err
+		}
+		if len(near) > 0 {
+			return s.describeBlended(ctx, scope, libraryID, spec, vec, near, offset, limit)
+		}
+	}
 	rows, err := sqlc.New(s.pool).ListBooksNearQuery(ctx, sqlc.ListBooksNearQueryParams{
 		Query: literal(vec), Model: spec.Model.Name, ModelVersion: Version(spec.Model),
 		Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID,
@@ -54,10 +63,79 @@ func (s *Service) Describe(ctx context.Context, scope library.Scope, libraryID *
 	for i, r := range rows {
 		ids[i] = r.BookID
 	}
-	// A copy of a book listed before it on the page is left out.
-	all, err := traitsOf(ctx, sqlc.New(s.pool), ids)
+	out, err := s.withoutCopies(ctx, ids)
+	return out, more, err
+}
+
+// blended is how many of the books nearest by their book vectors a search
+// that also has passages ranks: the books its passages found are ranked
+// with them, and pages go no further.
+const blended = 500
+
+// describeBlended ranks the books found by their passages with those found
+// by their book vectors: a book with passages near the query by its best
+// passage in place of its content vector, blended with its metadata vector
+// as the content vector is (docs/decisions/passage-vectors.md).
+func (s *Service) describeBlended(ctx context.Context, scope library.Scope, libraryID *uuid.UUID, spec embed.Spec, vec []float32, near map[uuid.UUID]float64, offset, limit int) ([]uuid.UUID, bool, error) {
+	q := sqlc.New(s.pool)
+	model, version := spec.Model.Name, Version(spec.Model)
+	rows, err := q.ListBooksNearQuery(ctx, sqlc.ListBooksNearQueryParams{
+		Query: literal(vec), Model: model, ModelVersion: version,
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID, Max: blended, Skip: 0,
+	})
 	if err != nil {
 		return nil, false, err
+	}
+	score := make(map[uuid.UUID]float64, len(rows)+len(near))
+	for _, r := range rows {
+		score[r.BookID] = r.Score
+	}
+	ids := make([]uuid.UUID, 0, len(near))
+	for id := range near {
+		ids = append(ids, id)
+	}
+	vecs, err := q.ScoreMetadataNearQuery(ctx, sqlc.ScoreMetadataNearQueryParams{Query: literal(vec), Ids: ids, Model: model, ModelVersion: version})
+	if err != nil {
+		return nil, false, err
+	}
+	metadata := make(map[uuid.UUID]float64, len(vecs))
+	for _, v := range vecs {
+		metadata[v.BookID] = v.Score
+	}
+	for id, p := range near {
+		if m, ok := metadata[id]; ok {
+			score[id] = 0.6*p + 0.4*m
+		} else {
+			score[id] = p
+		}
+	}
+	ranked := make([]uuid.UUID, 0, len(score))
+	for id := range score {
+		ranked = append(ranked, id)
+	}
+	slices.SortFunc(ranked, func(a, b uuid.UUID) int {
+		if score[a] != score[b] {
+			if score[a] > score[b] {
+				return -1
+			}
+			return 1
+		}
+		return strings.Compare(a.String(), b.String())
+	})
+	offset = max(offset, 0)
+	if offset >= len(ranked) {
+		return nil, false, nil
+	}
+	page := ranked[offset:min(offset+limit, len(ranked))]
+	out, err := s.withoutCopies(ctx, page)
+	return out, offset+limit < len(ranked), err
+}
+
+// withoutCopies leaves out a copy of a book listed before it.
+func (s *Service) withoutCopies(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	all, err := traitsOf(ctx, sqlc.New(s.pool), ids)
+	if err != nil {
+		return nil, err
 	}
 	var kept []traits
 	for _, id := range ids {
@@ -70,7 +148,7 @@ func (s *Service) Describe(ctx context.Context, scope library.Scope, libraryID *
 	for i, t := range kept {
 		out[i] = t.id
 	}
-	return out, more, nil
+	return out, nil
 }
 
 func (s *Service) embedQuery(ctx context.Context, spec embed.Spec, text string) ([]float32, error) {

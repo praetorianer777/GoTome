@@ -678,6 +678,7 @@ export const de: Record<MessageKey, string> = {
 	"jobs.kind.purgeTrash": "Abgelaufenes aus dem Papierkorb löschen",
 	"jobs.kind.measure": "EPUBs darauf messen, was sie auf E-Readern langsam macht",
 	"jobs.kind.embed": "Erfassen, worum es in Büchern geht",
+	"jobs.kind.embedPassages": "Erfassen, worum es in jeder Textstelle der Bücher geht",
 	"nav.trash": "Papierkorb",
 	"trash.title": "Papierkorb",
 	"trash.intro":
@@ -725,6 +726,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.embeddingServer": "Embedding-Server",
 	"settings.embeddingServer.hint":
 		"Die Adresse eines Ollama-Servers für bge-m3, etwa http://host.docker.internal:11434, auf dem das Modell geladen ist (ollama pull bge-m3). Leer führt GOtome bge-m3 selbst auf der CPU aus; die Vektoren sind in beiden Fällen dieselben.",
+	"settings.embeddingPassages": "Ein Vektor für jede Textstelle",
+	"settings.embeddingPassages.hint":
+		"on oder off, ohne Angabe off. Ist es an und werden Bücher erfasst, bekommt jede Textstelle eines Buchs einen eigenen Vektor, und die Suche nach einer Beschreibung findet Bücher über die Stelle, die ihr am nächsten ist: eine Szene, nicht nur, worum es in einem Buch als Ganzem geht. Dafür wird jedes Buch noch einmal gelesen, was bei einer großen Bibliothek Tage der CPU braucht, und es belegt etwa 1,5 GB je 50.000 Bücher auf dem Datenvolume, außerhalb der Datenbank und der Sicherungen.",
 	"settings.passwords": "Anmeldung mit Passwort",
 	"settings.passwords.hint":
 		"on oder off. off lässt, solange ein Identitätsanbieter eingerichtet ist, nur Single Sign-on zu, außer für Administratoren, solange keiner von ihnen ein Konto beim Identitätsanbieter verknüpft hat. Fällt der Anbieter weg, GOtome mit GOTOME_FORCE_PASSWORD_LOGIN=true starten, um sich wieder mit Passwort anzumelden.",
@@ -768,6 +772,7 @@ export const de: Record<MessageKey, string> = {
 		"Beschreibung und Text jedes Buchs werden in Vektoren umgewandelt, über die ähnliche Bücher gefunden und Bücher nach einer Beschreibung gesucht werden.",
 	"embedding.progress":
 		"Beschrieben: {metadata} von {books} Büchern. Gelesen: {content} von {withText} Büchern mit Text.",
+	"embedding.passages": "Textstellen: {done} von {withText} Büchern mit Text, {size} auf der Platte.",
 	"embedding.running": "Läuft, mit {model}.",
 	"embedding.paused":
 		"Pausiert. {model} macht mit den noch offenen Büchern weiter, sobald es wieder gestartet wird.",

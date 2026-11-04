@@ -139,6 +139,13 @@ type Service struct {
 	// Passages reads a file's chunks at positions from the file, which is
 	// where their text is kept (ingest.Service.Passages).
 	Passages func(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error)
+	// NearPassages, when set, finds the books whose passages are nearest a
+	// query, each with its best passage's cosine (passages.Service.Near);
+	// Describe blends them in.
+	NearPassages func(ctx context.Context, scope library.Scope, libraryID *uuid.UUID, spec embed.Spec, query []float32) (map[uuid.UUID]float64, error)
+	// PassageStatus, when set, says how far the passages are embedded,
+	// nil while they are not (passages.Service.Status).
+	PassageStatus func(ctx context.Context, scope library.Scope, libraryID *uuid.UUID) (*PassageStatus, error)
 }
 
 // NewService returns the Service; Queue is set once the runner exists.

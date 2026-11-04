@@ -33,11 +33,13 @@ GOtome keeps running. The folder then holds:
 - `database.dump`: the database in `pg_dump`'s custom format. Where the
   books' text is (`book_chunks`, `search_words`, `fulltext_outbox`), the
   duplicate signatures (`file_signatures`, `file_lsh`), the vectors
-  (`book_vectors`) and the cache of what metadata sources answered
+  (`book_vectors`, and `passage_files`, which says whose passages have
+  them) and the cache of what metadata sources answered
   (`provider_records`) are left out: GOtome makes them again from the
   files, and they are most of the database.
 - `data.tar`: covers and managed libraries, without the full-text index
-  (`search/`), which GOtome makes again from the files.
+  (`search/`) and the passages' vectors (`passages/`), which GOtome makes
+  again from the files.
 - `secret-key`, readable by its owner alone.
 - `VERSION`: the version that made the backup.
 
@@ -63,7 +65,7 @@ before: their books are found by their paths.
 
 What was left out is made again in the background: every text file is read
 again, which fills the full-text search, the duplicate signatures and, if
-embedding is on, the vectors. The jobs page shows the work; until it is
+embedding is on, the vectors (and the passages', if they are on). The jobs page shows the work; until it is
 done the search finds fewer books. The image may be newer than the one
 that made the backup: GOtome brings the database up to date when it starts.
 
