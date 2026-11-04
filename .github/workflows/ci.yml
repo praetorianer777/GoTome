@@ -83,41 +83,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # TEMPORARY (#122): ten full WebKit runs, each on a freshly started stack.
-  webkit-repeat:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: engine/vendor
-          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
-      - uses: actions/cache@v4
-        with:
-          path: deploy/vendor
-          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
-          restore-keys: ffmpeg-source-
-      - uses: actions/cache@v4
-        with:
-          path: .cache/npm
-          key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: npm-${{ runner.os }}-
-      - name: Ten WebKit runs
-        run: |
-          make engine-vendor
-          failed=0
-          for i in $(seq 1 10); do
-            make stack-up
-            make sso-up
-            if make test-e2e FULL=1 E2E_SELECTION=--project=webkit > run$i.log 2>&1; then r=ok; else r=FAILED; failed=$((failed+1)); fi
-            echo "run $i: $r load $(cut -d' ' -f1-3 /proc/loadavg) $(grep -E '^ +[0-9]+ (passed|failed|flaky)' run$i.log | tr -s ' ' | tr '\n' ' ')"
-            [ $r = ok ] || grep -E '^ +[0-9]+\) \[|Error|waiting for|stable' run$i.log | head -40
-            make stack-down
-          done
-          echo "failed runs: $failed"
-          [ $failed -eq 0 ]
-
   # An installation of the previous release (before the first one, of the
   # commit this change started from) is upgraded to this change's image, and
   # its backup restored into a new one: docs/backup-and-upgrade.md.
