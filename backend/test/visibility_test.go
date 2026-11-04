@@ -121,13 +121,11 @@ func readCases() map[string][]readCase {
 		"embeddingStatus":     {{path: "/embedding/status", why: "counts only; TestEmbeddingProgressCountsTheBooksTheCallerSees holds them to the caller's libraries"}},
 		"listEmbeddingModels": {{path: "/embedding/models", why: "counts only; TestEmbeddingModelsCountTheBooksTheCallerSees holds them to the caller's libraries"}},
 		// Every book with vectors is ranked, by its book vectors and its
-		// passages', the secret first where it is seen:
+		// passages', the secret too where it is seen:
 		// TestADescriptionFindsTheNearestBooksTheViewerSees and
 		// TestPassagesFindTheBooksTheyAreFromOnlyWhereTheyAreSeen.
-		"searchDescribed": {
-			{path: "/search/similar", query: q("q", "{title}"), control: "insider"},
-			{path: "/search/similar", query: q("q", "{title}", "library", "{library}"), control: "insider"},
-		},
+		// Not by the title, which a twin would be ranked by otherwise.
+		"searchDescribed": {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
 		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {
