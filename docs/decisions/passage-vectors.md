@@ -175,7 +175,8 @@ visible; the host was loaded by other work throughout:
 
 An HNSW index on `halfvec` (pgvector 0.8.4, `m` 16, `ef_construction`
 64) over 1 million passages outgrew 1 GB of `maintenance_work_mem` after
-737,586 of them and was still loading after 40 minutes on four CPUs; at
+737,586 of them and had loaded 92 % of the table after 67 minutes on four
+CPUs, when the run was stopped; at
 3.19 million its graph needs several GB to build in memory, more than the
 owner's server has, and the index itself is about as large again as the
 table. An exact scan needs none of it.
