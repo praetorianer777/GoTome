@@ -2041,6 +2041,21 @@ describe("jobs", () => {
 			screen.getByRole("button", { name: "Read Broken.epub again" }),
 		);
 		await waitFor(() => expect(server.reread).toContain("file-9"));
+		// The page asks for the book until the file is read: a second
+		// failure shows as the first did.
+		expect(await screen.findByText(/Not read yet/)).toBeInTheDocument();
+		const file = server.books[0]?.files[0];
+		if (file) {
+			file.extractState = "failed";
+			file.extractError = "still not a zip file";
+		}
+		expect(
+			await screen.findByText(
+				"Could not be read: still not a zip file",
+				{},
+				{ timeout: 5000 },
+			),
+		).toBeInTheDocument();
 		unmount();
 
 		server.signedInAs("Rita");
@@ -2052,7 +2067,7 @@ describe("jobs", () => {
 		expect(
 			screen.queryByRole("link", { name: "Jobs" }),
 		).not.toBeInTheDocument();
-	});
+	}, 15_000);
 });
 
 describe("editing a book", () => {

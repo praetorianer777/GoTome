@@ -935,6 +935,12 @@ export class FakeServer {
 			const file = path.match(/^\/files\/([^/]+)\/extraction$/);
 			if (file?.[1]) {
 				this.reread.push(file[1]);
+				for (const f of this.books.flatMap((b) => b.files)) {
+					if (f.id === file[1]) {
+						f.extractState = "pending";
+						f.extractError = undefined;
+					}
+				}
 				return Response.json({ queued: 1 }, { status: 202 });
 			}
 			const library = this.libraries.find(

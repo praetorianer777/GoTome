@@ -25,6 +25,11 @@ What changes for someone who runs or uses GOtome. The format follows
   and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
   reach of a hostile file.
 
+### Fixed
+
+- A file asked to be read again just as its last read finished is read
+  again, instead of staying "Not read yet" until the next scan.
+
 ## [0.6.0] - 2026-10-15
 
 ### Changed
