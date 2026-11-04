@@ -92,7 +92,7 @@ const usage = `Usage: gotome <command>
 
 Commands:
   serve          Bring the database schema up to date, then run the server
-  init           Write the database password for a new installation, once
+  init           Write the database password and secret key for a new installation, once
   healthcheck    Probe a running server; exits non-zero unless it is ready
   embed-check    Load ONNX Runtime; with -reference, check the embedding model against it
   fulltext-check Load the full-text engine and print its version

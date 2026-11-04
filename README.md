@@ -6,25 +6,23 @@
 
 Self-hosted library manager for ebooks, PDFs and audiobooks.
 
-**Status: early development.** Nothing is usable yet. The plan is tracked as
-[issues](https://github.com/praetorianer777/GoTome/issues) grouped into
-[milestones](https://github.com/praetorianer777/GoTome/milestones).
+Read ebooks and PDFs in the browser, listen to audiobooks, find books by a
+word of their text, send them to your e-reader, and share the library with
+your household, each person with their own reading state.
 
-## Planned
-
-- Exact and near-duplicate detection (file hashes, ISBN, title and author, text
-  overlap via MinHash/LSH) with a merge and replace dashboard
-- Metadata from OpenLibrary, Google Books, Hardcover and CrossRef; editing, EPUB
-  write-back, bulk operations and background matching
-- Filtering, typo-tolerant and full-text search inside book text
-- Per-user reading state, synced progress, statistics
-- In-browser EPUB/PDF reader and audiobook player
-- Smart shelves defined by rules
-- Release tracking for authors and series with notifications (Discord, Telegram,
-  ntfy, Gotify, in-app)
-- Content-based "similar books"
-- Multi-user with roles (Admin, Editor, Reader), private and shared libraries,
-  optional OIDC
+- Libraries of folders you already have, or of uploads GOtome arranges
+- Details from Open Library, CrossRef and Hardcover; editing, writing them
+  back into EPUBs, bulk changes and a review queue
+- Exact and near-duplicate detection, with merging and replacing
+- Filters, smart shelves, collections, a wishlist; typo-tolerant full-text
+  search inside the books' text, and search by description
+- In-browser EPUB, Kindle and PDF reader and audiobook player, with the
+  reading place kept in step across devices; reading statistics
+- Similar books, worked out from what books are about
+- Following authors and series for new books, with notifications
+- KOReader (OPDS and progress sync), Kobo, and Tolino
+- Readers, editors and administrators; shared and private libraries;
+  single sign-on through OpenID Connect
 
 ## Stack
 
@@ -50,17 +48,11 @@ has to choose or type them. The key encrypts what is stored for other services,
 such as API tokens: back up the `secrets` volume together with the database, or
 those have to be entered again.
 
-`deploy/.env.example` lists what can be changed, each with its default. With
-`GOTOME_IMAGE` pinned to a version you choose when to upgrade; left out, the
-image is `latest`. `docker compose up -d --build` builds the image from the
-checkout instead.
-
-Backing up, restoring and upgrading: [docs/backup-and-upgrade.md](docs/backup-and-upgrade.md).
-
-E-readers: KOReader and OPDS in [docs/koreader.md](docs/koreader.md); the
-companion app for Tolinos on Android firmware in
-[clients/android/README.md](clients/android/README.md); Tolinos on the
-Kobo-based firmware in [docs/tolino-kobo-mode.md](docs/tolino-kobo-mode.md).
+The [documentation](docs/README.md) takes it from there:
+[getting started](docs/getting-started.md) (libraries, a reverse proxy),
+the [configuration reference](docs/configuration.md),
+[backing up and upgrading](docs/backup-and-upgrade.md),
+[e-readers](docs/devices.md) and [troubleshooting](docs/troubleshooting.md).
 
 ## Development
 
