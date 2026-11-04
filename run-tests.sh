@@ -55,7 +55,7 @@ if has_target stack-up; then
       make "$layer"
     fi
   done
-  [[ -n $FULL ]] && make test-e2e FULL=1 ONLY='a file that cannot be read" --repeat-each=10 --grep "a file that cannot be read'
+  if [[ -n $FULL ]]; then make test-e2e FULL=1 ONLY='a file that cannot be read" --repeat-each=10 --grep "a file that cannot be read'; fi
 fi
 
 echo "✅ All tests passed"
