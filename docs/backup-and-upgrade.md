@@ -33,8 +33,9 @@ GOtome keeps running. The folder then holds:
 - `database.dump`: the database in `pg_dump`'s custom format. Where the
   books' text is (`book_chunks`, `search_words`, `fulltext_outbox`), the
   duplicate signatures (`file_signatures`, `file_lsh`), the vectors
-  (`book_vectors`) and the cache of what metadata sources answered
-  (`provider_records`) are left out: GOtome makes them again from the
+  (`book_vectors`), the cache of what metadata sources answered
+  (`provider_records`) and which books were looked at for genres
+  (`book_genre_checks`) are left out: GOtome makes them again from the
   files, and they are most of the database.
 - `data.tar`: covers and managed libraries, without the full-text index
   (`search/`), which GOtome makes again from the files.

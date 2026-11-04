@@ -114,6 +114,24 @@ type BookFile struct {
 	IndexedAt       *time.Time
 }
 
+type BookGenre struct {
+	BookID    uuid.UUID
+	Genre     string
+	Source    string
+	Method    *string
+	Score     *float32
+	State     string
+	DecidedBy *uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type BookGenreCheck struct {
+	BookID    uuid.UUID
+	Recipe    string
+	CheckedAt time.Time
+}
+
 type BookIdentifier struct {
 	ID     uuid.UUID
 	BookID uuid.UUID

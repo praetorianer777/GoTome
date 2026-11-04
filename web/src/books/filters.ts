@@ -22,6 +22,7 @@ export const FACET_FIELDS: FacetField[] = [
 	"format",
 	"files",
 	"ereader",
+	"genre",
 ];
 
 export interface Rule {
