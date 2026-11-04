@@ -16,10 +16,10 @@ const addTrashedOriginal = `-- name: AddTrashedOriginal :one
 INSERT INTO book_files (
     book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256,
     content_sha256, page_count, pages_estimated, has_text, drm, extract_state, uploaded_by,
-    epub_measures, ereader_findings, trashed_at, trashed_by)
+    epub_measures, ereader_findings, measures_version, trashed_at, trashed_by)
 SELECT s.book_id, s.library_id, s.kind, s.format, $1, s.size_bytes, s.modified_at, s.sha256, s.original_sha256,
        s.content_sha256, s.page_count, s.pages_estimated, s.has_text, s.drm, s.extract_state, s.uploaded_by,
-       s.epub_measures, s.ereader_findings, now(), $2::uuid
+       s.epub_measures, s.ereader_findings, s.measures_version, now(), $2::uuid
 FROM book_files s
 WHERE s.id = $3
 RETURNING book_files.id
@@ -130,11 +130,16 @@ const listFilesToMeasure = `-- name: ListFilesToMeasure :many
 SELECT f.id, f.rel_path, f.sha256, l.root_path
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
-WHERE f.format = 'epub' AND f.ereader_findings IS NULL
+WHERE f.format = 'epub' AND (f.measures_version IS NULL OR f.measures_version < $1::smallint)
   AND f.trashed_at IS NULL AND f.missing_at IS NULL
 ORDER BY f.id
-LIMIT $1
+LIMIT $2
 `
+
+type ListFilesToMeasureParams struct {
+	Version int16
+	Batch   int32
+}
 
 type ListFilesToMeasureRow struct {
 	ID       uuid.UUID
@@ -143,9 +148,10 @@ type ListFilesToMeasureRow struct {
 	RootPath string
 }
 
-// EPUBs on disk not measured yet, with where they lie.
-func (q *Queries) ListFilesToMeasure(ctx context.Context, limit int32) ([]ListFilesToMeasureRow, error) {
-	rows, err := q.db.Query(ctx, listFilesToMeasure, limit)
+// EPUBs on disk not measured yet, or measured by an older version of
+// epub.Measure, with where they lie.
+func (q *Queries) ListFilesToMeasure(ctx context.Context, arg ListFilesToMeasureParams) ([]ListFilesToMeasureRow, error) {
+	rows, err := q.db.Query(ctx, listFilesToMeasure, arg.Version, arg.Batch)
 	if err != nil {
 		return nil, err
 	}
@@ -238,13 +244,15 @@ func (q *Queries) SetFileFixed(ctx context.Context, arg SetFileFixedParams) erro
 
 const setFileMeasures = `-- name: SetFileMeasures :exec
 UPDATE book_files
-SET epub_measures = $1::jsonb, ereader_findings = $2::text[]
-WHERE id = $3 AND sha256 IS NOT DISTINCT FROM $4::bytea
+SET epub_measures = $1::jsonb, ereader_findings = $2::text[],
+    measures_version = $3::smallint
+WHERE id = $4 AND sha256 IS NOT DISTINCT FROM $5::bytea
 `
 
 type SetFileMeasuresParams struct {
 	Measures []byte
 	Findings []string
+	Version  int16
 	ID       uuid.UUID
 	Sha256   []byte
 }
@@ -255,6 +263,7 @@ func (q *Queries) SetFileMeasures(ctx context.Context, arg SetFileMeasuresParams
 	_, err := q.db.Exec(ctx, setFileMeasures,
 		arg.Measures,
 		arg.Findings,
+		arg.Version,
 		arg.ID,
 		arg.Sha256,
 	)

@@ -112,6 +112,7 @@ type BookFile struct {
 	EpubMeasures    []byte
 	EreaderFindings []string
 	IndexedAt       *time.Time
+	MeasuresVersion *int16
 }
 
 type BookIdentifier struct {

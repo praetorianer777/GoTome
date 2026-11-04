@@ -918,7 +918,7 @@
           {
             "name": "filter",
             "in": "query",
-            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
             "schema": {
               "type": "string"
             }
@@ -8761,7 +8761,9 @@
                 "large-document",
                 "large-fonts",
                 "large-image",
-                "missing-resources"
+                "missing-resources",
+                "malformed-document",
+                "broken-toc"
               ]
             }
           },
@@ -10024,6 +10026,12 @@
       "EreaderCheck": {
         "type": "object",
         "properties": {
+          "brokenTocEntries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "findings": {
             "type": "array",
             "items": {
@@ -10032,7 +10040,9 @@
                 "large-document",
                 "large-fonts",
                 "large-image",
-                "missing-resources"
+                "missing-resources",
+                "malformed-document",
+                "broken-toc"
               ]
             }
           },
@@ -10054,6 +10064,12 @@
           "largestImage": {
             "type": "integer"
           },
+          "malformedDocuments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "missingResources": {
             "type": "array",
             "items": {
@@ -10069,7 +10085,9 @@
           "largestImage",
           "imageWidth",
           "imageHeight",
-          "missingResources"
+          "missingResources",
+          "malformedDocuments",
+          "brokenTocEntries"
         ]
       },
       "ErrorEnvelope": {
@@ -10268,7 +10286,9 @@
                 "large-document",
                 "large-fonts",
                 "large-image",
-                "missing-resources"
+                "missing-resources",
+                "malformed-document",
+                "broken-toc"
               ]
             }
           }
@@ -10280,6 +10300,9 @@
       "FixResult": {
         "type": "object",
         "properties": {
+          "documentsRepaired": {
+            "type": "integer"
+          },
           "documentsSplit": {
             "type": "integer"
           },
@@ -10294,6 +10317,12 @@
           },
           "partsAdded": {
             "type": "integer"
+          },
+          "tocEntriesRemoved": {
+            "type": "integer"
+          },
+          "tocEntriesRepointed": {
+            "type": "integer"
           }
         },
         "required": [
@@ -10301,7 +10330,10 @@
           "partsAdded",
           "imagesScaled",
           "fontsRemoved",
-          "itemsRemoved"
+          "itemsRemoved",
+          "documentsRepaired",
+          "tocEntriesRemoved",
+          "tocEntriesRepointed"
         ]
       },
       "FollowRequest": {

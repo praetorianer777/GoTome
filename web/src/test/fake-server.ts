@@ -550,6 +550,9 @@ export class FakeServer {
 					imagesScaled: findings.includes("large-image") ? 1 : 0,
 					fontsRemoved: findings.includes("large-fonts") ? 8 : 0,
 					itemsRemoved: findings.includes("missing-resources") ? 1 : 0,
+					documentsRepaired: findings.includes("malformed-document") ? 2 : 0,
+					tocEntriesRemoved: findings.includes("broken-toc") ? 1 : 0,
+					tocEntriesRepointed: findings.includes("broken-toc") ? 3 : 0,
 				});
 			}
 			const fileAction = /^\/files\/([^/]+)(?:\/(trash|restore))?$/.exec(path);

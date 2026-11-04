@@ -41,7 +41,18 @@ type Measures struct {
 	// MissingResources are manifest items whose file the archive does not
 	// hold.
 	MissingResources []string `json:"missingResources,omitempty"`
+	// MalformedDocuments are XHTML content documents that are not
+	// well-formed XML, which some readers refuse or lay out wrongly.
+	MalformedDocuments []string `json:"malformedDocuments,omitempty"`
+	// BrokenTocEntries are where entries of the table of contents lead
+	// that lead nowhere: a document the archive lacks, or a fragment no
+	// element of its document has.
+	BrokenTocEntries []string `json:"brokenTocEntries,omitempty"`
 }
+
+// MeasuresVersion is raised with every change to what Measure measures, so
+// that files measured before are measured again.
+const MeasuresVersion = 2
 
 // The findings a file can have, in the order they are listed.
 const (
@@ -54,10 +65,14 @@ const (
 	// MissingResources is a manifest that lists files the archive does not
 	// hold, which some readers refuse to open.
 	MissingResources = "missing-resources"
+	// MalformedDocument is a content document that is not well-formed XML.
+	MalformedDocument = "malformed-document"
+	// BrokenTOC is a table of contents with entries that lead nowhere.
+	BrokenTOC = "broken-toc"
 )
 
 // Findings are every finding, in order.
-var Findings = []string{LargeDocument, LargeFonts, LargeImage, MissingResources}
+var Findings = []string{LargeDocument, LargeFonts, LargeImage, MissingResources, MalformedDocument, BrokenTOC}
 
 // The limits past which a file is slow on an e-reader. They are set from
 // a sample of a real library (#233) and are meant to be tuned with books
@@ -84,6 +99,12 @@ func (m Measures) Findings() []string {
 	}
 	if len(m.MissingResources) > 0 {
 		out = append(out, MissingResources)
+	}
+	if len(m.MalformedDocuments) > 0 {
+		out = append(out, MalformedDocument)
+	}
+	if len(m.BrokenTocEntries) > 0 {
+		out = append(out, BrokenTOC)
 	}
 	return out
 }
@@ -112,9 +133,10 @@ func isFont(mediaType, name string) bool {
 	return slices.Contains(fontExtensions, strings.ToLower(path.Ext(name)))
 }
 
-// Measure reads what makes an EPUB slow on an e-reader. It reads the
-// archive's directory, the package document and the start of each image,
-// nothing else; sizes are those the archive declares.
+// Measure reads what makes an EPUB slow or troublesome on an e-reader. It
+// reads the archive's directory, the package document, the start of each
+// image, the XHTML documents and the tables of contents; sizes are those
+// the archive declares.
 func Measure(r io.ReaderAt, size int64) (Measures, error) {
 	var m Measures
 	zr, err := openZip(r, size, DefaultLimits)
@@ -156,6 +178,11 @@ func Measure(r io.ReaderAt, size int64) (Measures, error) {
 			if size > m.LargestDocument {
 				m.LargestDocument, m.LargestDocumentName = size, f.Name
 			}
+			if it.isXHTML() {
+				if data, err := a.read(f.Name); err == nil && malformed(data) {
+					m.MalformedDocuments = append(m.MalformedDocuments, f.Name)
+				}
+			}
 		case isFont(it.MediaType, f.Name):
 			fonts[f] = true
 		case it.isImage() && it.MediaType != "image/svg+xml":
@@ -180,7 +207,34 @@ func Measure(r io.ReaderAt, size int64) (Measures, error) {
 		m.FontBytes += size
 		m.LargestFont = max(m.LargestFont, size)
 	}
+	l := archiveLinks(a)
+	for _, toc := range tocFiles(opfPath, pkg) {
+		f := a.find(toc.name)
+		if f == nil {
+			continue
+		}
+		data, err := a.read(f.Name)
+		if err != nil {
+			continue
+		}
+		m.BrokenTocEntries = append(m.BrokenTocEntries, l.brokenEntries(tocFile{name: f.Name, ncx: toc.ncx}, data)...)
+	}
 	return m, nil
+}
+
+// archiveLinks follows references among the entries of an archive as it
+// is.
+func archiveLinks(a *archive) *links {
+	return &links{
+		find: func(name string) (string, bool) {
+			if f := a.find(name); f != nil {
+				return f.Name, true
+			}
+			return "", false
+		},
+		read: a.read,
+		ids:  map[string]map[string]bool{},
+	}
 }
 
 // imageSize reads an image's dimensions from its header.

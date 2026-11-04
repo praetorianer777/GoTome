@@ -17,6 +17,13 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- The e-reader check also finds chapter files that are not well-formed
+  XHTML, which some readers such as the Tolino's refuse, and tables of
+  contents with entries that lead nowhere, and repairs both: a chapter file
+  is written again only where its text stays the same, and an entry is
+  taken out only when it leads nowhere, or pointed at its chapter's start
+  when only the place in it is gone. EPUBs checked before are checked again
+  once.
 
 ### Changed
 
