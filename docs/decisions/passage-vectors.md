@@ -38,7 +38,7 @@ in Postgres:
   **446 bytes a passage, 1.5 GB per 50,000 books**, on the data volume.
   The database gains one row per file (`passage_files`: which model, which
   chunking).
-- **A search reads every passage's signs** (150 MB at 3.19 million),
+- **A search reads every passage's signs** (185 MB at 3.19 million),
   keeps the best fiftieth by bits in common among the visible libraries,
   reads those passages' int8 vectors (25 MB, by their place), and takes
   the best 1,000 by cosine. **150 ms at 3.19 million passages**, no index,
