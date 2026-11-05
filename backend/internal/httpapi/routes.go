@@ -624,6 +624,32 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.unfollow,
 		},
 		{
+			Method: http.MethodGet, Path: "/feeds", ID: "listFeeds",
+			Summary: "The RSS and Atom feeds the caller follows for new books, and how fetching each goes", Tag: "releases",
+			Response: feedList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listFeeds,
+		},
+		{
+			Method: http.MethodPost, Path: "/feeds", ID: "addFeed",
+			Summary: "Follow an RSS or Atom feed for items naming keywords or authors; following it again gives it the new filters", Tag: "releases",
+			Request: feedRequest{}, Response: feed{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.addFeed,
+		},
+		{
+			Method: http.MethodGet, Path: "/feeds/items", ID: "listFeedItems",
+			Summary: "The items of the caller's feeds that name what their filters ask for, the newest first", Tag: "releases",
+			Response: feedItemList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listFeedItems,
+		},
+		{
+			Method: http.MethodPost, Path: "/feeds/{feedId}/fetch", ID: "fetchFeed",
+			Summary: "Fetch one of the caller's feeds soon, also one that stopped after failing too often", Tag: "releases",
+			Response: feed{}, Permission: auth.PersonalManage, Handler: s.retryFeed,
+		},
+		{
+			Method: http.MethodDelete, Path: "/feeds/{feedId}", ID: "removeFeed",
+			Summary: "Stop following a feed", Tag: "releases",
+			Permission: auth.PersonalManage, Handler: s.removeFeed,
+		},
+		{
 			Method: http.MethodGet, Path: "/releases", ID: "listReleases",
 			Summary: "Upcoming and recent books of what the caller follows, and whether a library they see has each", Tag: "releases",
 			Query: releasesQuery{}, Response: releaseList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReleases,

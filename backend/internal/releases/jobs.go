@@ -50,3 +50,43 @@ func (w *PollWorker) Work(ctx context.Context, _ *river.Job[PollArgs]) error {
 	}
 	return nil
 }
+
+// FetchFeedsArgs is the job that fetches the feeds due.
+type FetchFeedsArgs struct{}
+
+// fetchKind names the job in the queue. It is stored with every job, so it
+// stays.
+const fetchKind = "releases.fetch_feeds"
+
+func (FetchFeedsArgs) Kind() string { return fetchKind }
+
+// Beside the poll, as both reach other servers; a feed has no interval to
+// wait on, but a feed that is slow to answer keeps a worker.
+var fetchOpts = jobs.InsertOpts{Queue: jobs.QueueMetadata, Unique: true, MaxAttempts: 5}
+
+// FeedsPeriodic is the scheduled fetch, also at start; a feed is fetched
+// once an hour however often it runs, less often after failures.
+func FeedsPeriodic(interval time.Duration) *river.PeriodicJob {
+	return jobs.Every(interval, true, FetchFeedsArgs{}, jobs.QueueMetadata)
+}
+
+// FetchFeedsWorker runs FetchFeedsArgs.
+type FetchFeedsWorker struct {
+	river.WorkerDefaults[FetchFeedsArgs]
+	Service *Service
+}
+
+func (w *FetchFeedsWorker) Timeout(*river.Job[FetchFeedsArgs]) time.Duration {
+	return passBudget + feedTimeout + time.Minute
+}
+
+func (w *FetchFeedsWorker) Work(ctx context.Context, _ *river.Job[FetchFeedsArgs]) error {
+	complete, err := w.Service.FetchFeeds(ctx, time.Now().Add(passBudget))
+	if err != nil {
+		return err
+	}
+	if !complete {
+		return river.JobSnooze(time.Second)
+	}
+	return nil
+}

@@ -82,6 +82,8 @@ const (
 	genreInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
+	// feedFetchInterval is how often feeds are looked at for those due.
+	feedFetchInterval = 10 * time.Minute
 	// New and changed ebook files get the MD5 KOReader names them by.
 	koreaderHashInterval = 10 * time.Minute
 	// EPUBs read before measuring was, or changed since, are measured.
@@ -291,6 +293,7 @@ func serve() error {
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
 	follows.Events = events
+	follows.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
 	progressSync := kosync.NewService(pool, readingService, log)
 	workers := jobs.NewWorkers()
@@ -322,6 +325,7 @@ func serve() error {
 	river.AddWorker(workers, &passages.EmbedWorker{Service: passageVectors})
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &releases.PollWorker{Service: follows})
+	river.AddWorker(workers, &releases.FetchFeedsWorker{Service: follows})
 	river.AddWorker(workers, &kosync.HashWorker{Service: progressSync})
 	river.AddWorker(workers, &ingest.MeasureWorker{Service: scans})
 	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
@@ -340,6 +344,7 @@ func serve() error {
 		genres.Periodic(genreInterval),
 		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
+		releases.FeedsPeriodic(feedFetchInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		fulltext.Periodic(outboxInterval),

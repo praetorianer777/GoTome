@@ -114,6 +114,20 @@ func (s *Service) EnqueuePending(ctx context.Context, libraryID uuid.UUID) error
 	return err
 }
 
+// queueReadTx has a file read once the transaction commits. A read that is
+// running may have read the file before the change that asks for this one,
+// and the queue marks it finished only after its result is committed, so a
+// second read is queued beside it.
+func (s *Service) queueReadTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID) error {
+	opts := jobs.InsertOpts{Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts}
+	res, err := s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: fileID}, opts)
+	if err != nil || !res.Running {
+		return err
+	}
+	_, err = s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: fileID, Again: true}, opts)
+	return err
+}
+
 // readableFormats are the formats a reader is registered for.
 func readableFormats() []string { return slices.Sorted(maps.Keys(extractors)) }
 
@@ -302,6 +316,9 @@ func safely(ctx context.Context, format string, extract Extractor, path string) 
 // ExtractArgs is the job that reads one file.
 type ExtractArgs struct {
 	FileID uuid.UUID `json:"fileId"`
+	// Again marks a read queued while another of the file was running,
+	// which River would otherwise take for that one (#142).
+	Again bool `json:"again,omitempty"`
 }
 
 // extractKind names the job in the queue. It is stored with every job, so it

@@ -450,7 +450,7 @@ func TestFixRepairsAManifestThatListsMissingFiles(t *testing.T) {
 }
 
 func TestFixDoesAllAtOnceAndNothingWhereNothingIsWrong(t *testing.T) {
-	written, fixed := fix(t, largeBook(t, novel(2, 1000)), Findings...)
+	written, fixed := fix(t, largeBook(t, novel(8, 100)), Findings...)
 	if fixed.Any() {
 		t.Errorf("fixed %+v in a book that is fine", fixed)
 	}

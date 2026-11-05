@@ -94,8 +94,14 @@ vi.mock("@/reader/ebook", () => ({
 			search: async (query: string) =>
 				query === "whale"
 					? [
-							{ cfi: "epubcfi(/6/1)", excerpt: { pre: "a ", match: "whale", post: " in One" } },
-							{ cfi: "epubcfi(/6/7)", excerpt: { pre: "a ", match: "whale", post: " in Two" } },
+							{
+								cfi: "epubcfi(/6/1)",
+								excerpt: { pre: "a ", match: "whale", post: " in One" },
+							},
+							{
+								cfi: "epubcfi(/6/7)",
+								excerpt: { pre: "a ", match: "whale", post: " in Two" },
+							},
 						]
 					: [],
 			clearSearch: () => {},
@@ -441,7 +447,9 @@ describe("signed in", () => {
 			await screen.findByText("A new version of GOtome is running."),
 		).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: "GOtome v0.5.0" })).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", { name: "GOtome v0.5.0" }),
+		).toBeInTheDocument();
 	});
 
 	it("says a build that is not a release is one, with its commit", async () => {
@@ -456,7 +464,10 @@ describe("signed in", () => {
 		const { router } = renderApp("/");
 		await screen.findByRole("link", { name: "GOtome v0.5.0" });
 
-		await router.navigate({ to: "/books/$bookId/listen", params: { bookId: "b1" } });
+		await router.navigate({
+			to: "/books/$bookId/listen",
+			params: { bookId: "b1" },
+		});
 
 		await waitFor(() =>
 			expect(
@@ -763,7 +774,10 @@ describe("books", () => {
 	const cards = (books: ReturnType<typeof within>) =>
 		books
 			.getAllByRole("link", { name: /^(?!.*(Herbert|Austen|Chronicles))/ })
-			.map((l: HTMLElement) => `${l.lastElementChild?.textContent}${l.parentElement?.lastElementChild?.firstElementChild?.textContent}`);
+			.map(
+				(l: HTMLElement) =>
+					`${l.lastElementChild?.textContent}${l.parentElement?.lastElementChild?.firstElementChild?.textContent}`,
+			);
 
 	function withShelf() {
 		server
@@ -985,13 +999,17 @@ describe("books", () => {
 			expect(screen.getByText(text)).toBeInTheDocument();
 		}
 		expect(screen.getByText(/^by/)).toHaveTextContent("by Frank Herbert");
-		expect(screen.getByText(/^Book 1 of/)).toHaveTextContent("Book 1 of Dune Chronicles");
+		expect(screen.getByText(/^Book 1 of/)).toHaveTextContent(
+			"Book 1 of Dune Chronicles",
+		);
 		// An audiobook alone is listened to, not read.
 		expect(screen.getByRole("link", { name: "Listen" })).toHaveAttribute(
 			"href",
 			"/books/book-2/listen",
 		);
-		expect(screen.queryByRole("link", { name: "Read" })).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("link", { name: "Read" }),
+		).not.toBeInTheDocument();
 		const files = within(screen.getByRole("region", { name: "Files" }));
 		const download = files.getByRole("link", { name: "Download Dune 1.mp3" });
 		expect(download).toHaveAttribute("href", "/api/v1/files/file-2/download");
@@ -1277,7 +1295,10 @@ describe("filters", () => {
 			extractState: "done" as const,
 		});
 		withShelf();
-		server.books[0]!.files = [file("emma", "epub", false), file("emma-pdf", "pdf", true)];
+		server.books[0]!.files = [
+			file("emma", "epub", false),
+			file("emma-pdf", "pdf", true),
+		];
 		server.books[2]!.files = [file("eyre", "mobi", true)];
 		server.books[3]!.files = [file("process", "pdf", false)];
 		renderApp("/");
@@ -1285,10 +1306,14 @@ describe("filters", () => {
 			await screen.findByRole("complementary", { name: "Filters" }),
 		);
 		expect(
-			await filters.findByRole("checkbox", { name: "None left in the folder (1)" }),
+			await filters.findByRole("checkbox", {
+				name: "None left in the folder (1)",
+			}),
 		).toBeInTheDocument();
 		await person.click(
-			filters.getByRole("checkbox", { name: "Some missing from the folder (2)" }),
+			filters.getByRole("checkbox", {
+				name: "Some missing from the folder (2)",
+			}),
 		);
 		await waitFor(() => expect(titles()).toEqual(["Emma", "Jane Eyre"]));
 
@@ -1297,11 +1322,13 @@ describe("filters", () => {
 		expect(marks).toHaveLength(1);
 		expect(marks[0]?.closest("li")).toHaveTextContent("Jane Eyre");
 		await person.click(screen.getByRole("button", { name: "List" }));
-		const row = (await books.findByRole("link", { name: "Jane Eyre" })).closest("tr");
-		expect(row).toHaveTextContent("Files missing");
-		expect(books.getByRole("link", { name: "Emma" }).closest("tr")).not.toHaveTextContent(
-			"Files missing",
+		const row = (await books.findByRole("link", { name: "Jane Eyre" })).closest(
+			"tr",
 		);
+		expect(row).toHaveTextContent("Files missing");
+		expect(
+			books.getByRole("link", { name: "Emma" }).closest("tr"),
+		).not.toHaveTextContent("Files missing");
 	});
 
 	it("finds the books slow on e-readers and says why on the book's page", async () => {
@@ -1318,7 +1345,12 @@ describe("filters", () => {
 				drm: false,
 				extractState: "done",
 				ereader: {
-					findings: ["large-document", "large-fonts", "large-image", "missing-resources"],
+					findings: [
+						"large-document",
+						"large-fonts",
+						"large-image",
+						"missing-resources",
+					],
 					largestDocument: 1_280_000,
 					fonts: 8,
 					fontBytes: 3_500_000,
@@ -1326,6 +1358,8 @@ describe("filters", () => {
 					imageWidth: 3000,
 					imageHeight: 2000,
 					missingResources: ["OEBPS/gone.jpg"],
+					malformedDocuments: [],
+					brokenTocEntries: [],
 				},
 			},
 		];
@@ -1348,6 +1382,8 @@ describe("filters", () => {
 					imageWidth: 0,
 					imageHeight: 0,
 					missingResources: [],
+					malformedDocuments: [],
+					brokenTocEntries: [],
 				},
 			},
 		];
@@ -1357,17 +1393,29 @@ describe("filters", () => {
 			await screen.findByRole("complementary", { name: "Filters" }),
 		);
 		await person.click(
-			await filters.findByRole("checkbox", { name: "Large embedded fonts (1)" }),
+			await filters.findByRole("checkbox", {
+				name: "Large embedded fonts (1)",
+			}),
 		);
 		await waitFor(() => expect(titles()).toEqual([slow]));
 
-		await person.click(screen.getByRole("link", { name: new RegExp(`^${slow}`) }));
+		await person.click(
+			screen.getByRole("link", { name: new RegExp(`^${slow}`) }),
+		);
 		const files = within(await screen.findByRole("region", { name: "Files" }));
 		expect(files.getByText("May be slow on e-readers:")).toBeInTheDocument();
-		expect(files.getByText("One chapter file holds 1.3 MB, which an e-reader lays out at once")).toBeInTheDocument();
+		expect(
+			files.getByText(
+				"One chapter file holds 1.3 MB, which an e-reader lays out at once",
+			),
+		).toBeInTheDocument();
 		expect(files.getByText("8 embedded fonts take 3.5 MB")).toBeInTheDocument();
-		expect(files.getByText("Images up to 3000 × 2000 pixels and 1.5 MB")).toBeInTheDocument();
-		expect(files.getByText("Files the EPUB lists but lacks: 1")).toBeInTheDocument();
+		expect(
+			files.getByText("Images up to 3000 × 2000 pixels and 1.5 MB"),
+		).toBeInTheDocument();
+		expect(
+			files.getByText("Files the EPUB lists but lacks: 1"),
+		).toBeInTheDocument();
 	});
 });
 
@@ -1524,40 +1572,78 @@ describe("settings", () => {
 		server.withAccount("Steve", "a long password").signedInAs("Steve");
 		renderApp("/admin/settings");
 
-		const choice = await screen.findByRole("combobox", { name: "Language model" });
+		const choice = await screen.findByRole("combobox", {
+			name: "Language model",
+		});
 		expect(choice).toHaveValue("multilingual-e5-small");
-		expect(within(choice).getAllByRole("option").map((o) => o.textContent)).toEqual([
+		expect(
+			within(choice)
+				.getAllByRole("option")
+				.map((o) => o.textContent),
+		).toEqual([
 			"multilingual-e5-small (in use)",
 			"multilingual-e5-small-fp32",
 			"bge-m3",
 		]);
-		const models = within(screen.getByRole("list", { name: "The models to choose from" }));
+		const models = within(
+			screen.getByRole("list", { name: "The models to choose from" }),
+		);
 		const bge = within(models.getByRole("listitem", { name: "bge-m3" }));
 		expect(bge.getByText("1024 dimensions")).toBeInTheDocument();
-		expect(bge.getByText("2.3 GB to download, about 3.2 GB of memory on the CPU (an estimate).")).toBeInTheDocument();
-		expect(bge.getByText(/^Cannot run here: not downloaded/)).toBeInTheDocument();
-		expect(bge.getByText("Has vectors for 110 of 120 books' descriptions and 95 of 100 books' text.")).toBeInTheDocument();
 		expect(
-			within(models.getByRole("listitem", { name: "multilingual-e5-small" })).getByText("Runs here: its files are downloaded."),
+			bge.getByText(
+				"2.3 GB to download, about 3.2 GB of memory on the CPU (an estimate).",
+			),
+		).toBeInTheDocument();
+		expect(
+			bge.getByText(/^Cannot run here: not downloaded/),
+		).toBeInTheDocument();
+		expect(
+			bge.getByText(
+				"Has vectors for 110 of 120 books' descriptions and 95 of 100 books' text.",
+			),
+		).toBeInTheDocument();
+		expect(
+			within(
+				models.getByRole("listitem", { name: "multilingual-e5-small" }),
+			).getByText("Runs here: its files are downloaded."),
 		).toBeInTheDocument();
 
 		await person.selectOptions(choice, "multilingual-e5-small-fp32");
 		await person.click(screen.getByRole("button", { name: "Save" }));
-		let dialog = within(await screen.findByRole("alertdialog", { name: "Switch to multilingual-e5-small-fp32?" }));
-		expect(dialog.getByText(/has vectors for 0 of 120 books\. Every other book is embedded again/)).toBeInTheDocument();
-		expect(dialog.getByRole("button", { name: "Keep the model in use" })).toHaveFocus();
-		await person.click(dialog.getByRole("button", { name: "Keep the model in use" }));
+		let dialog = within(
+			await screen.findByRole("alertdialog", {
+				name: "Switch to multilingual-e5-small-fp32?",
+			}),
+		);
+		expect(
+			dialog.getByText(
+				/has vectors for 0 of 120 books\. Every other book is embedded again/,
+			),
+		).toBeInTheDocument();
+		expect(
+			dialog.getByRole("button", { name: "Keep the model in use" }),
+		).toHaveFocus();
+		await person.click(
+			dialog.getByRole("button", { name: "Keep the model in use" }),
+		);
 		expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
 		expect(server.requests.some((r) => r.method === "PATCH")).toBe(false);
 
 		await person.click(screen.getByRole("button", { name: "Save" }));
 		dialog = within(await screen.findByRole("alertdialog"));
-		await person.click(dialog.getByRole("button", { name: "Switch and embed again" }));
+		await person.click(
+			dialog.getByRole("button", { name: "Switch and embed again" }),
+		);
 		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
 		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({
 			values: { "embedding.model": "multilingual-e5-small-fp32" },
 		});
-		expect(await screen.findByRole("option", { name: "multilingual-e5-small-fp32 (in use)" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("option", {
+				name: "multilingual-e5-small-fp32 (in use)",
+			}),
+		).toBeInTheDocument();
 	});
 
 	it("switches to a model that has most books' vectors without asking", async () => {
@@ -1565,11 +1651,16 @@ describe("settings", () => {
 		server.withAccount("Steve", "a long password").signedInAs("Steve");
 		renderApp("/admin/settings");
 
-		await person.selectOptions(await screen.findByRole("combobox", { name: "Language model" }), "bge-m3");
+		await person.selectOptions(
+			await screen.findByRole("combobox", { name: "Language model" }),
+			"bge-m3",
+		);
 		await person.click(screen.getByRole("button", { name: "Save" }));
 		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
 		expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({ values: { "embedding.model": "bge-m3" } });
+		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({
+			values: { "embedding.model": "bge-m3" },
+		});
 	});
 
 	it("keeps an editor out", async () => {
@@ -1665,12 +1756,17 @@ describe("profile", () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		const first = renderApp("/profile");
 
-		await person.selectOptions(await screen.findByLabelText(/The language GOtome speaks/), "de");
-		expect(await screen.findByRole("heading", { name: "Ihr Konto" })).toBeInTheDocument();
-		expect(document.documentElement.lang).toBe("de");
-		expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toContainElement(
-			screen.getByRole("link", { name: "Bibliothek" }),
+		await person.selectOptions(
+			await screen.findByLabelText(/The language GOtome speaks/),
+			"de",
 		);
+		expect(
+			await screen.findByRole("heading", { name: "Ihr Konto" }),
+		).toBeInTheDocument();
+		expect(document.documentElement.lang).toBe("de");
+		expect(
+			screen.getByRole("navigation", { name: "Hauptnavigation" }),
+		).toContainElement(screen.getByRole("link", { name: "Bibliothek" }));
 
 		first.unmount();
 		renderApp("/profile");
@@ -1678,7 +1774,9 @@ describe("profile", () => {
 		expect(choice).toHaveValue("de");
 
 		await person.selectOptions(choice, "browser");
-		expect(await screen.findByRole("heading", { name: "Your account" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { name: "Your account" }),
+		).toBeInTheDocument();
 		expect(document.documentElement.lang).toBe("en");
 	});
 
@@ -1743,10 +1841,9 @@ describe("profile", () => {
 		const devices = within(
 			await screen.findByRole("region", { name: "E-readers" }),
 		);
-		expect(devices.getByRole("link", { name: "Download the KOReader plugin" })).toHaveAttribute(
-			"href",
-			"/api/v1/koreader/plugin.zip",
-		);
+		expect(
+			devices.getByRole("link", { name: "Download the KOReader plugin" }),
+		).toHaveAttribute("href", "/api/v1/koreader/plugin.zip");
 		await person.type(devices.getByLabelText("Name of the device"), " ");
 		await person.click(devices.getByRole("button", { name: "Add a device" }));
 		expect(
@@ -2041,6 +2138,21 @@ describe("jobs", () => {
 			screen.getByRole("button", { name: "Read Broken.epub again" }),
 		);
 		await waitFor(() => expect(server.reread).toContain("file-9"));
+		// The page asks for the book until the file is read: a second
+		// failure shows as the first did.
+		expect(await screen.findByText(/Not read yet/)).toBeInTheDocument();
+		const file = server.books[0]?.files[0];
+		if (file) {
+			file.extractState = "failed";
+			file.extractError = "still not a zip file";
+		}
+		expect(
+			await screen.findByText(
+				"Could not be read: still not a zip file",
+				{},
+				{ timeout: 5000 },
+			),
+		).toBeInTheDocument();
 		unmount();
 
 		server.signedInAs("Rita");
@@ -2052,7 +2164,7 @@ describe("jobs", () => {
 		expect(
 			screen.queryByRole("link", { name: "Jobs" }),
 		).not.toBeInTheDocument();
-	});
+	}, 15_000);
 });
 
 describe("editing a book", () => {
@@ -2462,7 +2574,9 @@ describe("changing many books", () => {
 		expect(server.books[2]?.tags).toEqual([]);
 
 		await person.click(screen.getByRole("button", { name: "Changed: 2" }));
-		expect(within(screen.getByRole("main")).getAllByRole("listitem")).toHaveLength(2);
+		expect(
+			within(screen.getByRole("main")).getAllByRole("listitem"),
+		).toHaveLength(2);
 	});
 
 	it("looks up the books ticked", async () => {
@@ -2750,7 +2864,9 @@ describe("the PDF reader", () => {
 		const person = userEvent.setup();
 		withPdf();
 		renderApp("/books/book-1/read/file-1");
-		expect(await screen.findByRole("figure", { name: "Page 1 of Emma" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("figure", { name: "Page 1 of Emma" }),
+		).toBeInTheDocument();
 
 		await person.keyboard(" ");
 		expect(page()).toHaveValue("2");
@@ -2761,29 +2877,43 @@ describe("the PDF reader", () => {
 		await person.keyboard("+");
 		expect(screen.getByRole("button", { name: "125%" })).toBeInTheDocument();
 		await person.keyboard("0");
-		expect(screen.getByRole("button", { name: "Fit width" })).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Fit width" }),
+		).toBeInTheDocument();
 
 		await person.keyboard("g");
 		expect(page()).toHaveFocus();
 		await person.keyboard("7{Enter}");
-		expect(screen.getByRole("figure", { name: "Page 7 of Emma" })).toBeInTheDocument();
+		expect(
+			screen.getByRole("figure", { name: "Page 7 of Emma" }),
+		).toBeInTheDocument();
 		page().blur();
 
 		await person.keyboard("c");
 		const contents = screen.getByRole("button", { name: "Contents" });
 		expect(contents).toHaveAttribute("aria-expanded", "true");
-		expect(await screen.findByRole("button", { name: "Chapter One" })).toHaveFocus();
+		expect(
+			await screen.findByRole("button", { name: "Chapter One" }),
+		).toHaveFocus();
 		await person.keyboard("{Escape}");
 		expect(contents).toHaveAttribute("aria-expanded", "false");
 		expect(contents).toHaveFocus();
 
 		await person.keyboard("f");
-		const words = screen.getByRole("searchbox", { name: "Words to look for in the book" });
+		const words = screen.getByRole("searchbox", {
+			name: "Words to look for in the book",
+		});
 		expect(words).toHaveFocus();
 		await person.type(words, "whale{Enter}");
 		expect(await screen.findByText("Places found: 1")).toBeInTheDocument();
-		await person.click(screen.getByRole("button", { name: /^Page 8:\s*a white ledger and a whale$/ }));
-		expect(screen.getByRole("figure", { name: "Page 8 of Emma" })).toBeInTheDocument();
+		await person.click(
+			screen.getByRole("button", {
+				name: /^Page 8:\s*a white ledger and a whale$/,
+			}),
+		);
+		expect(
+			screen.getByRole("figure", { name: "Page 8 of Emma" }),
+		).toBeInTheDocument();
 		await person.click(words);
 		await person.keyboard("{Escape}");
 		expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
@@ -2960,7 +3090,9 @@ describe("the audiobook player", () => {
 		expect(await screen.findByTestId("position")).toHaveTextContent("0:00");
 
 		await person.keyboard("k");
-		expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("button", { name: "Pause" }),
+		).toBeInTheDocument();
 		await person.keyboard("{ArrowRight}");
 		expect(screen.getByTestId("position")).toHaveTextContent("0:30");
 		await person.keyboard("{Shift>}{ArrowRight}{/Shift}");
@@ -2984,10 +3116,14 @@ describe("the audiobook player", () => {
 		expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
 		(document.activeElement as HTMLElement).blur();
 		await person.keyboard(" ");
-		expect(await screen.findByRole("button", { name: "Play" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("button", { name: "Play" }),
+		).toBeInTheDocument();
 
 		await person.keyboard("?");
-		const help = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+		const help = await screen.findByRole("dialog", {
+			name: "Keyboard shortcuts",
+		});
 		expect(within(help).getByText("Play or pause")).toBeInTheDocument();
 		await person.keyboard("k");
 		expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
@@ -3612,7 +3748,9 @@ describe("the EPUB and MOBI reader", () => {
 		};
 		renderApp("/books/book-1/read/file-1");
 		await waitFor(() =>
-			expect(ebook.opened).toEqual([{ name: "Persuasion.epub", start: "fraction:0.6" }]),
+			expect(ebook.opened).toEqual([
+				{ name: "Persuasion.epub", start: "fraction:0.6" },
+			]),
 		);
 	});
 
@@ -3653,7 +3791,9 @@ describe("the EPUB and MOBI reader", () => {
 		renderApp("/books/book-1/read/file-1");
 		expect(await screen.findByText("0%")).toBeInTheDocument();
 		await screen.findByRole("button", { name: "Keys" });
-		await waitFor(() => expect(screen.getByRole("button", { name: "Keys" })).toBeEnabled());
+		await waitFor(() =>
+			expect(screen.getByRole("button", { name: "Keys" })).toBeEnabled(),
+		);
 
 		await person.keyboard(" ");
 		expect(await screen.findByText("10%")).toBeInTheDocument();
@@ -3672,14 +3812,20 @@ describe("the EPUB and MOBI reader", () => {
 		expect(ebook.looks.at(-1)).toMatchObject({ fontSize: 100 });
 
 		await person.keyboard("c");
-		const contents = within(screen.getByRole("navigation", { name: "Contents" }));
+		const contents = within(
+			screen.getByRole("navigation", { name: "Contents" }),
+		);
 		expect(contents.getByRole("button", { name: "One" })).toHaveFocus();
 		await person.keyboard("{Escape}");
-		expect(screen.queryByRole("navigation", { name: "Contents" })).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("navigation", { name: "Contents" }),
+		).not.toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Contents" })).toHaveFocus();
 
 		await person.keyboard("f");
-		const words = screen.getByRole("searchbox", { name: "Words to look for in the book" });
+		const words = screen.getByRole("searchbox", {
+			name: "Words to look for in the book",
+		});
 		expect(words).toHaveFocus();
 		await person.type(words, "whale{Enter}");
 		expect(await screen.findByText("Places found: 2")).toBeInTheDocument();
@@ -3690,7 +3836,9 @@ describe("the EPUB and MOBI reader", () => {
 		expect(screen.getByRole("button", { name: "Search" })).toHaveFocus();
 
 		await person.keyboard("?");
-		const help = within(screen.getByRole("dialog", { name: "Keyboard shortcuts" }));
+		const help = within(
+			screen.getByRole("dialog", { name: "Keyboard shortcuts" }),
+		);
 		expect(help.getByText("Show or hide the contents")).toBeInTheDocument();
 		expect(help.getAllByText("Space")).toHaveLength(2);
 		await person.keyboard("{ArrowRight}");
@@ -3780,13 +3928,20 @@ describe("notifications", () => {
 			name: "Notifications, 1 unread",
 		});
 		// A screen reader hears of new ones; the count on arrival is not news.
-		server.notify({ id: "note-later", data: { action: "fetch", outcomes: { changed: 1 } } });
+		server.notify({
+			id: "note-later",
+			data: { action: "fetch", outcomes: { changed: 1 } },
+		});
 		stream?.emit("unread", '{"unread":2}');
 		await screen.findByRole("button", { name: "Notifications, 2 unread" });
-		expect(bell.previousElementSibling).toHaveTextContent("Notifications, 2 unread");
+		expect(bell.previousElementSibling).toHaveTextContent(
+			"Notifications, 2 unread",
+		);
 		await person.click(bell);
 		await person.keyboard("{Escape}");
-		expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("region", { name: "Notifications" }),
+		).not.toBeInTheDocument();
 		expect(bell).toHaveFocus();
 		await person.click(bell);
 		const panel = within(screen.getByRole("region", { name: "Notifications" }));
@@ -4401,6 +4556,8 @@ describe("fixing EPUBs for e-readers", () => {
 			imageWidth: 0,
 			imageHeight: 0,
 			missingResources: [],
+			malformedDocuments: [],
+			brokenTocEntries: [],
 		},
 	});
 
@@ -4414,22 +4571,78 @@ describe("fixing EPUBs for e-readers", () => {
 		renderApp("/books/book-1");
 		const files = within(await screen.findByRole("region", { name: "Files" }));
 		expect(
-			await files.findByRole("button", { name: "Split into chapters in Schwalbenturm.epub" }),
+			await files.findByRole("button", {
+				name: "Split into chapters in Schwalbenturm.epub",
+			}),
 		).toBeInTheDocument();
 		await person.click(
-			files.getByRole("button", { name: "Remove the fonts in Schwalbenturm.epub" }),
+			files.getByRole("button", {
+				name: "Remove the fonts in Schwalbenturm.epub",
+			}),
 		);
 		expect(
 			await files.findByText(
 				"Fixed. The file as it was is in the trash, from where it can be restored beside this one.",
 			),
 		).toBeInTheDocument();
-		expect(server.fixes).toEqual([{ file: "tower", findings: ["large-fonts"] }]);
+		expect(server.fixes).toEqual([
+			{ file: "tower", findings: ["large-fonts"] },
+		]);
 		await waitFor(() =>
-			expect(files.queryByText("8 embedded fonts take 3.5 MB")).not.toBeInTheDocument(),
+			expect(
+				files.queryByText("8 embedded fonts take 3.5 MB"),
+			).not.toBeInTheDocument(),
 		);
 		expect(
-			files.getByText("One chapter file holds 1.3 MB, which an e-reader lays out at once"),
+			files.getByText(
+				"One chapter file holds 1.3 MB, which an e-reader lays out at once",
+			),
+		).toBeInTheDocument();
+	});
+
+	it("names broken chapter files and a broken table of contents and repairs them", async () => {
+		const person = userEvent.setup();
+		const file = {
+			...heavy(),
+			ereader: {
+				...heavy().ereader,
+				findings: ["malformed-document" as const, "broken-toc" as const],
+				malformedDocuments: ["OEBPS/a.xhtml", "OEBPS/b.xhtml"],
+				brokenTocEntries: ["OEBPS/gone.xhtml"],
+			},
+		};
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [file] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(
+			await files.findByText(
+				"Chapter files that are not well-formed XHTML, which some readers refuse: 2",
+			),
+		).toBeInTheDocument();
+		expect(
+			files.getByText("Entries of the table of contents that lead nowhere: 1"),
+		).toBeInTheDocument();
+		await person.click(
+			files.getByRole("button", {
+				name: "Repair the table of contents in Schwalbenturm.epub",
+			}),
+		);
+		expect(server.fixes).toEqual([{ file: "tower", findings: ["broken-toc"] }]);
+		await waitFor(() =>
+			expect(
+				files.queryByText(
+					"Entries of the table of contents that lead nowhere: 1",
+				),
+			).not.toBeInTheDocument(),
+		);
+		expect(
+			files.getByRole("button", {
+				name: "Repair the chapter files in Schwalbenturm.epub",
+			}),
 		).toBeInTheDocument();
 	});
 
@@ -4456,21 +4669,38 @@ describe("fixing EPUBs for e-readers", () => {
 			.withBook("Der Schwalbenturm", { files: [heavy()] })
 			.withBook("Emma");
 		const { router } = renderApp("/");
-		await person.click(await screen.findByRole("button", { name: "Select books" }));
-		await person.click(screen.getByRole("button", { name: "Select every book that matches" }));
+		await person.click(
+			await screen.findByRole("button", { name: "Select books" }),
+		);
+		await person.click(
+			screen.getByRole("button", { name: "Select every book that matches" }),
+		);
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Fix for e-readers" }),
 			"Everything found",
 		);
-		await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/bulk\//));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toMatch(/^\/bulk\//),
+		);
 		expect(
-			server.requests.find((r) => r.method === "POST" && r.path === "/books/bulk")?.body,
+			server.requests.find(
+				(r) => r.method === "POST" && r.path === "/books/bulk",
+			)?.body,
 		).toMatchObject({
 			action: "fix",
-			findings: ["large-document", "large-fonts", "large-image", "missing-resources"],
+			findings: [
+				"large-document",
+				"large-fonts",
+				"large-image",
+				"missing-resources",
+				"malformed-document",
+				"broken-toc",
+			],
 		});
 		expect(
-			await screen.findByRole("heading", { name: "Fixing EPUBs for e-readers" }),
+			await screen.findByRole("heading", {
+				name: "Fixing EPUBs for e-readers",
+			}),
 		).toBeInTheDocument();
 		expect(server.books[0]?.files[0]?.ereader?.findings).toEqual([]);
 	});
@@ -4755,29 +4985,53 @@ describe("following authors and series", () => {
 		expect(author).toHaveAttribute("aria-pressed", "false");
 		await person.click(author);
 		await waitFor(() =>
-			expect(screen.getByRole("button", { name: "✓ Grimm, Liza" })).toHaveAttribute("aria-pressed", "true"),
+			expect(
+				screen.getByRole("button", { name: "✓ Grimm, Liza" }),
+			).toHaveAttribute("aria-pressed", "true"),
 		);
-		expect(server.requests.find((r) => r.method === "POST" && r.path === "/trackers")?.body).toEqual({
+		expect(
+			server.requests.find((r) => r.method === "POST" && r.path === "/trackers")
+				?.body,
+		).toEqual({
 			kind: "author",
 			name: "Grimm, Liza",
 		});
-		expect(screen.getByRole("button", { name: "Series Die Götter" })).toHaveAttribute("aria-pressed", "false");
+		expect(
+			screen.getByRole("button", { name: "Series Die Götter" }),
+		).toHaveAttribute("aria-pressed", "false");
 
 		await person.click(screen.getByRole("button", { name: "✓ Grimm, Liza" }));
 		await waitFor(() => expect(server.trackers).toHaveLength(0));
-		expect(await screen.findByRole("button", { name: "Grimm, Liza" })).toHaveAttribute("aria-pressed", "false");
+		expect(
+			await screen.findByRole("button", { name: "Grimm, Liza" }),
+		).toHaveAttribute("aria-pressed", "false");
 	});
 
 	it("knows an author it follows in the other order of the name", async () => {
-		server.trackers = [{ id: "tracker-1", kind: "author", name: "Liza Grimm", createdAt: "2026-01-02T00:00:00Z" }];
+		server.trackers = [
+			{
+				id: "tracker-1",
+				kind: "author",
+				name: "Liza Grimm",
+				createdAt: "2026-01-02T00:00:00Z",
+			},
+		];
 		renderApp("/books/book-1");
-		expect(await screen.findByRole("button", { name: "✓ Grimm, Liza" })).toHaveAttribute("aria-pressed", "true");
+		expect(
+			await screen.findByRole("button", { name: "✓ Grimm, Liza" }),
+		).toHaveAttribute("aria-pressed", "true");
 	});
 
 	it("lists what the person follows and its new books, and follows by name", async () => {
 		const person = userEvent.setup();
 		server.trackers = [
-			{ id: "tracker-1", kind: "author", name: "Liza Grimm", createdAt: "2026-01-02T00:00:00Z", polledAt: "2026-01-03T00:00:00Z" },
+			{
+				id: "tracker-1",
+				kind: "author",
+				name: "Liza Grimm",
+				createdAt: "2026-01-02T00:00:00Z",
+				polledAt: "2026-01-03T00:00:00Z",
+			},
 		];
 		server.releases.upcoming = [
 			{
@@ -4805,30 +5059,123 @@ describe("following authors and series", () => {
 		renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "New books" }));
 
-		const coming = within(await screen.findByRole("region", { name: "Coming" }));
+		const coming = within(
+			await screen.findByRole("region", { name: "Coming" }),
+		);
 		const card = (await coming.findByText("Feuerlotus")).closest("li");
 		expect(card).toHaveTextContent("Die Götter #2");
-		expect(card).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }).format(new Date("2026-11-03T00:00:00Z")));
+		expect(card).toHaveTextContent(
+			new Intl.DateTimeFormat(undefined, {
+				dateStyle: "medium",
+				timeZone: "UTC",
+			}).format(new Date("2026-11-03T00:00:00Z")),
+		);
 		expect(card).not.toHaveTextContent("In your library");
 		const undated = coming.getByText("Ohne Tag").closest("li");
 		expect(undated).toHaveTextContent("Date not known");
 		expect(undated).toHaveTextContent("In your library");
 		expect(
-			within(screen.getByRole("region", { name: "Out in the last year" })).getByText(
-				"No book came out in the last year.",
-			),
+			within(
+				screen.getByRole("region", { name: "Out in the last year" }),
+			).getByText("No book came out in the last year."),
 		).toBeInTheDocument();
 
-		const following = within(screen.getByRole("region", { name: "You follow" }));
+		const following = within(
+			screen.getByRole("region", { name: "You follow" }),
+		);
 		expect(following.getByText("Liza Grimm")).toBeInTheDocument();
-		await person.selectOptions(following.getByRole("combobox", { name: "What" }), "series");
-		await person.type(following.getByRole("textbox", { name: "Name" }), "Die Götter");
+		await person.selectOptions(
+			following.getByRole("combobox", { name: "What" }),
+			"series",
+		);
+		await person.type(
+			following.getByRole("textbox", { name: "Name" }),
+			"Die Götter",
+		);
 		await person.click(following.getByRole("button", { name: "Follow" }));
 		expect(await following.findByText("Die Götter")).toBeInTheDocument();
-		expect(server.trackers.at(-1)).toMatchObject({ kind: "series", name: "Die Götter" });
+		expect(server.trackers.at(-1)).toMatchObject({
+			kind: "series",
+			name: "Die Götter",
+		});
 
-		await person.click(following.getByRole("button", { name: "Stop following Liza Grimm" }));
-		await waitFor(() => expect(following.queryByText("Liza Grimm")).not.toBeInTheDocument());
+		await person.click(
+			following.getByRole("button", { name: "Stop following Liza Grimm" }),
+		);
+		await waitFor(() =>
+			expect(following.queryByText("Liza Grimm")).not.toBeInTheDocument(),
+		);
+	});
+
+	it("follows a feed with its filters, says why one stopped, and lists what matched", async () => {
+		const person = userEvent.setup();
+		server.feeds = [
+			{
+				id: "feed-1",
+				url: "https://publisher.example/feed.xml",
+				title: "Publisher News",
+				keywords: ["dragon"],
+				authors: [],
+				failures: 8,
+				lastError: "not an RSS or Atom feed: the document is <html>",
+				createdAt: "2026-01-02T00:00:00Z",
+			},
+		];
+		server.feedItems = [
+			{
+				feedId: "feed-1",
+				feed: "Publisher News",
+				title: "Dragon Summer",
+				link: "https://publisher.example/dragon-summer",
+				authors: ["Sam Other"],
+				seenAt: "2026-01-02T00:00:00Z",
+			},
+		];
+		renderApp("/releases");
+
+		const feeds = within(await screen.findByRole("region", { name: "Feeds" }));
+		expect(await feeds.findByText("Publisher News")).toBeInTheDocument();
+		expect(feeds.getByText("Naming dragon")).toBeInTheDocument();
+		expect(
+			feeds.getByText("Stopped after 8 failures in a row: not an RSS or Atom feed: the document is <html>."),
+		).toBeInTheDocument();
+		await person.click(feeds.getByRole("button", { name: "Try again" }));
+		await waitFor(() => expect(feeds.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument());
+
+		await person.type(feeds.getByRole("textbox", { name: "Feed address" }), "https://author.example/atom");
+		await person.type(feeds.getByRole("textbox", { name: "Words" }), "novel, , spring");
+		await person.type(feeds.getByRole("textbox", { name: "Authors" }), "Cornwell, Bernard; Liza Grimm");
+		await person.click(feeds.getByRole("button", { name: "Follow the feed" }));
+		expect(await feeds.findByText("https://author.example/atom")).toBeInTheDocument();
+		expect(server.requests.find((r) => r.method === "POST" && r.path === "/feeds")?.body).toEqual({
+			url: "https://author.example/atom",
+			keywords: ["novel", "spring"],
+			authors: ["Cornwell, Bernard", "Liza Grimm"],
+		});
+		expect(feeds.getByText("Naming novel, spring · By Cornwell, Bernard; Liza Grimm")).toBeInTheDocument();
+
+		const items = within(screen.getByRole("region", { name: "From your feeds" }));
+		const link = items.getByRole("link", { name: "Dragon Summer" });
+		expect(link).toHaveAttribute("href", "https://publisher.example/dragon-summer");
+		expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+		await person.click(feeds.getByRole("button", { name: "Stop following Publisher News" }));
+		await waitFor(() => expect(server.feeds.map((f) => f.id)).toEqual(["feed-2"]));
+	});
+
+	it("words a new item of a feed by its title, and several by their count", async () => {
+		const person = userEvent.setup();
+		server
+			.notify({ kind: "feed.item", data: { title: "Dragon Summer", feed: "Publisher News" }, link: "/releases" })
+			.notify({ kind: "feed.item", data: { count: 3 }, link: "/releases" });
+		renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+		const panel = within(screen.getByRole("region", { name: "Notifications" }));
+		const told = panel.getAllByRole("button", { name: /^Unread: New in a feed you follow/ });
+		expect(told.map((b) => b.textContent)).toEqual([
+			expect.stringContaining("3 new items in the feeds you follow."),
+			expect.stringContaining("Dragon Summer, in Publisher News."),
+		]);
 	});
 
 	it("words a new book by its title and date, and several by their count", async () => {
@@ -4836,22 +5183,32 @@ describe("following authors and series", () => {
 		server
 			.notify({
 				kind: "release.announced",
-				data: { title: "Feuerlotus", authors: "Liza Grimm", subject: "Liza Grimm", date: "2026-11-01", precision: "month" },
+				data: {
+					title: "Feuerlotus",
+					authors: "Liza Grimm",
+					subject: "Liza Grimm",
+					date: "2026-11-01",
+					precision: "month",
+				},
 				link: "/releases",
 			})
 			.notify({ kind: "release.out", data: { count: 2 }, link: "/releases" });
 		renderApp("/");
-		await person.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+		await person.click(
+			await screen.findByRole("button", { name: "Notifications, 2 unread" }),
+		);
 		const panel = within(screen.getByRole("region", { name: "Notifications" }));
-		const month = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-			new Date("2026-11-01T00:00:00Z"),
-		);
-		expect(panel.getByRole("button", { name: /^Unread: A new book is announced/ })).toHaveTextContent(
-			`Feuerlotus by Liza Grimm, ${month}.`,
-		);
-		expect(panel.getByRole("button", { name: /^Unread: A book is out/ })).toHaveTextContent(
-			"2 books of what you follow came out.",
-		);
+		const month = new Intl.DateTimeFormat(undefined, {
+			month: "long",
+			year: "numeric",
+			timeZone: "UTC",
+		}).format(new Date("2026-11-01T00:00:00Z"));
+		expect(
+			panel.getByRole("button", { name: /^Unread: A new book is announced/ }),
+		).toHaveTextContent(`Feuerlotus by Liza Grimm, ${month}.`);
+		expect(
+			panel.getByRole("button", { name: /^Unread: A book is out/ }),
+		).toHaveTextContent("2 books of what you follow came out.");
 	});
 });
 
@@ -4863,42 +5220,82 @@ describe("an author's and a series' pages", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Zweiter", { contributors: by, series: "Die Götter", seriesIndex: 2, reading: { status: "completed" } })
-			.withBook("Erster", { contributors: by, series: "Die Götter", seriesIndex: 1, reading: { status: "completed" } })
-			.withBook("Vierter", { contributors: by, series: "Die Götter", seriesIndex: 4 })
-			.withBook("Alleine", { contributors: [{ name: "Grimm, Liza", role: "author" }] })
-			.withBook("Fremdes", { contributors: [{ name: "Jane Austen", role: "author" }] });
+			.withBook("Zweiter", {
+				contributors: by,
+				series: "Die Götter",
+				seriesIndex: 2,
+				reading: { status: "completed" },
+			})
+			.withBook("Erster", {
+				contributors: by,
+				series: "Die Götter",
+				seriesIndex: 1,
+				reading: { status: "completed" },
+			})
+			.withBook("Vierter", {
+				contributors: by,
+				series: "Die Götter",
+				seriesIndex: 4,
+			})
+			.withBook("Alleine", {
+				contributors: [{ name: "Grimm, Liza", role: "author" }],
+			})
+			.withBook("Fremdes", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+			});
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
 	it("shows an author's books by series, under every spelling", async () => {
 		renderApp("/authors/grimm%20liza");
-		expect(await screen.findByRole("heading", { level: 1, name: "Liza Grimm" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Liza Grimm" }),
+		).toBeInTheDocument();
 		expect(screen.getByText("4 books")).toBeInTheDocument();
 		expect(screen.getByText("Also written Grimm, Liza")).toBeInTheDocument();
-		const titles = await screen.findAllByRole("link", { name: /^(Erster|Zweiter|Vierter|Alleine|Fremdes)$/ });
-		expect(titles.map((l) => l.lastElementChild?.textContent)).toEqual(["Erster", "Zweiter", "Vierter", "Alleine"]);
-		expect(screen.getByRole("button", { name: "Liza Grimm" })).toHaveAttribute("aria-pressed", "false");
+		const titles = await screen.findAllByRole("link", {
+			name: /^(Erster|Zweiter|Vierter|Alleine|Fremdes)$/,
+		});
+		expect(titles.map((l) => l.lastElementChild?.textContent)).toEqual([
+			"Erster",
+			"Zweiter",
+			"Vierter",
+			"Alleine",
+		]);
+		expect(screen.getByRole("button", { name: "Liza Grimm" })).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
 	});
 
 	it("says so of an author nobody is", async () => {
 		renderApp("/authors/nobody");
-		expect(await screen.findByText("There is no such author among your books.")).toBeInTheDocument();
+		expect(
+			await screen.findByText("There is no such author among your books."),
+		).toBeInTheDocument();
 	});
 
 	it("shows a series in its order, with what is read, next and missing", async () => {
 		server.withListed("Die Götter", { title: "Fünfter", seriesIndex: 5 });
 		const person = userEvent.setup();
 		renderApp("/series/die%20gotter");
-		expect(await screen.findByRole("heading", { level: 1, name: "Die Götter" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Die Götter" }),
+		).toBeInTheDocument();
 		expect(screen.getByText("You have read 2 of 3.")).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: "4. Vierter" })).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", { name: "4. Vierter" }),
+		).toBeInTheDocument();
 		expect(screen.getByText("Book 3 is missing")).toBeInTheDocument();
 		expect(screen.getByText("5. Fünfter")).toBeInTheDocument();
 
-		await person.click(screen.getByRole("button", { name: "Add Fünfter to the wishlist" }));
+		await person.click(
+			screen.getByRole("button", { name: "Add Fünfter to the wishlist" }),
+		);
 		expect(await screen.findByText("Wished for")).toBeInTheDocument();
-		const wish = server.requests.find((r) => r.method === "POST" && r.path === "/books/wishes");
+		const wish = server.requests.find(
+			(r) => r.method === "POST" && r.path === "/books/wishes",
+		);
 		expect(wish?.body).toMatchObject({
 			library: server.libraries[0]?.id,
 			title: "Fünfter",
@@ -4915,9 +5312,16 @@ describe("the lists of authors and series", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] })
-			.withBook("Persuasion", { contributors: [{ name: "Jane Austen", role: "author" }], series: "Bath" })
-			.withBook("Dune", { contributors: [{ name: "Frank Herbert", role: "author" }] });
+			.withBook("Emma", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+			})
+			.withBook("Persuasion", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				series: "Bath",
+			})
+			.withBook("Dune", {
+				contributors: [{ name: "Frank Herbert", role: "author" }],
+			});
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -4927,9 +5331,13 @@ describe("the lists of authors and series", () => {
 		await person.click(await screen.findByRole("link", { name: "Authors" }));
 		const a = await screen.findByRole("region", { name: "A" });
 		expect(a).toHaveTextContent("Jane Austen2 books");
-		expect(screen.getByRole("region", { name: "H" })).toHaveTextContent("Frank Herbert1 book");
+		expect(screen.getByRole("region", { name: "H" })).toHaveTextContent(
+			"Frank Herbert1 book",
+		);
 		await person.click(within(a).getByRole("link", { name: "Jane Austen" }));
-		expect(await screen.findByRole("heading", { level: 1, name: "Jane Austen" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Jane Austen" }),
+		).toBeInTheDocument();
 	});
 
 	it("lists the series", async () => {
@@ -4937,7 +5345,9 @@ describe("the lists of authors and series", () => {
 		renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "Series" }));
 		await person.click(await screen.findByRole("link", { name: "Bath" }));
-		expect(await screen.findByRole("heading", { level: 1, name: "Bath" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { level: 1, name: "Bath" }),
+		).toBeInTheDocument();
 	});
 });
 
@@ -4962,21 +5372,32 @@ describe("links to authors and series", () => {
 		expect(await screen.findByText(/^by/)).toHaveTextContent("by Grimm, Liza");
 		await person.click(screen.getByRole("link", { name: "Grimm, Liza" }));
 		await screen.findByRole("heading", { level: 1, name: "Grimm, Liza" });
-		expect(decodeURI(router.state.location.pathname)).toBe("/authors/grimm liza");
+		expect(decodeURI(router.state.location.pathname)).toBe(
+			"/authors/grimm liza",
+		);
 
 		await person.click(await screen.findByRole("link", { name: "Die Götter" }));
 		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
-		expect(decodeURI(router.state.location.pathname)).toBe("/series/die gotter");
+		expect(decodeURI(router.state.location.pathname)).toBe(
+			"/series/die gotter",
+		);
 	});
 
 	it("offers authors and series in the quick search before the books", async () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/");
-		await person.type(await screen.findByRole("combobox", { name: "Search books" }), "grimm");
-		const option = await screen.findByRole("option", { name: /Grimm, Liza\s*Author · 1 book/ });
+		await person.type(
+			await screen.findByRole("combobox", { name: "Search books" }),
+			"grimm",
+		);
+		const option = await screen.findByRole("option", {
+			name: /Grimm, Liza\s*Author · 1 book/,
+		});
 		await person.click(option);
 		await screen.findByRole("heading", { level: 1, name: "Grimm, Liza" });
-		expect(decodeURI(router.state.location.pathname)).toBe("/authors/grimm liza");
+		expect(decodeURI(router.state.location.pathname)).toBe(
+			"/authors/grimm liza",
+		);
 
 		const box = screen.getByRole("combobox", { name: "Search books" });
 		await person.type(box, "gotter");
@@ -5048,7 +5469,10 @@ describe("reviewing suggested genres", () => {
 describe("cleaning up how books are described", () => {
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);
-		server.withAccount("Rita", "a long password", "editor").signedInAs("Rita").withLibrary("Novels");
+		server
+			.withAccount("Rita", "a long password", "editor")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
 		server.cleanup = [
 			{
 				kind: "authors",
@@ -5064,7 +5488,12 @@ describe("cleaning up how books are described", () => {
 			{
 				kind: "titles",
 				subject: "book-9",
-				found: [{ name: "Das letzte Evangelium: Historischer Roman (German Edition)", books: 1 }],
+				found: [
+					{
+						name: "Das letzte Evangelium: Historischer Roman (German Edition)",
+						books: 1,
+					},
+				],
 				fix: "retitle",
 				suggested: "Das letzte Evangelium",
 				books: 1,
@@ -5092,29 +5521,57 @@ describe("cleaning up how books are described", () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "Clean up" }));
-		expect(await screen.findByRole("button", { name: "Author spellings: 1" })).toHaveAttribute("aria-pressed", "true");
-		expect(screen.getByRole("button", { name: "Placeholder authors: 2" })).toBeInTheDocument();
-		expect(screen.getByRole("radio", { name: /^Goldstein, Barbara Books: 2/ })).toBeChecked();
+		expect(
+			await screen.findByRole("button", { name: "Author spellings: 1" }),
+		).toHaveAttribute("aria-pressed", "true");
+		expect(
+			screen.getByRole("button", { name: "Placeholder authors: 2" }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("radio", { name: /^Goldstein, Barbara Books: 2/ }),
+		).toBeChecked();
 
-		await person.click(screen.getByRole("radio", { name: /^Barbara Goldstein Books: 1/ }));
-		await person.click(screen.getByRole("button", { name: "Use this spelling" }));
-		expect(await screen.findByRole("status")).toHaveTextContent("Being applied to 3 books.");
-		expect(screen.getByRole("link", { name: "See how it goes" })).toHaveAttribute("href", "/bulk/bulk-1");
-		expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({
+		await person.click(
+			screen.getByRole("radio", { name: /^Barbara Goldstein Books: 1/ }),
+		);
+		await person.click(
+			screen.getByRole("button", { name: "Use this spelling" }),
+		);
+		expect(await screen.findByRole("status")).toHaveTextContent(
+			"Being applied to 3 books.",
+		);
+		expect(
+			screen.getByRole("link", { name: "See how it goes" }),
+		).toHaveAttribute("href", "/bulk/bulk-1");
+		expect(
+			server.requests.find((r) => r.path === "/cleanup/apply")?.body,
+		).toEqual({
 			kind: "authors",
 			picks: [{ subject: "barbara goldstein", to: "Barbara Goldstein" }],
 		});
-		expect(await screen.findByText("Nothing to suggest here.")).toBeInTheDocument();
-
-		await person.click(screen.getByRole("button", { name: "Title additions: 1" }));
-		expect(router.state.location.search).toEqual({ kind: "titles" });
-		expect(await screen.findByText("Das letzte Evangelium")).toBeInTheDocument();
 		expect(
-			screen.getByRole("link", { name: "Das letzte Evangelium: Historischer Roman (German Edition)" }),
+			await screen.findByText("Nothing to suggest here."),
+		).toBeInTheDocument();
+
+		await person.click(
+			screen.getByRole("button", { name: "Title additions: 1" }),
+		);
+		expect(router.state.location.search).toEqual({ kind: "titles" });
+		expect(
+			await screen.findByText("Das letzte Evangelium"),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", {
+				name: "Das letzte Evangelium: Historischer Roman (German Edition)",
+			}),
 		).toHaveAttribute("href", "/books/book-9");
 		await person.click(screen.getByRole("button", { name: "Leave it" }));
-		expect(await screen.findByText("Nothing to suggest here.")).toBeInTheDocument();
-		expect(server.requests.find((r) => r.path === "/cleanup/dismiss")?.body).toEqual({
+		expect(
+			await screen.findByText("Nothing to suggest here."),
+		).toBeInTheDocument();
+		expect(
+			server.requests.find((r) => r.path === "/cleanup/dismiss")?.body,
+		).toEqual({
 			kind: "titles",
 			subject: "book-9",
 		});
@@ -5123,11 +5580,20 @@ describe("cleaning up how books are described", () => {
 	it("keeps a spelling typed in, of the same name", async () => {
 		const person = userEvent.setup();
 		renderApp("/cleanup");
-		await person.type(await screen.findByRole("textbox", { name: "Another spelling" }), "Barbara A. Goldstein");
-		expect(screen.getByRole("radio", { name: /^Another spelling:/ })).toBeChecked();
-		await person.click(screen.getByRole("button", { name: "Use this spelling" }));
+		await person.type(
+			await screen.findByRole("textbox", { name: "Another spelling" }),
+			"Barbara A. Goldstein",
+		);
+		expect(
+			screen.getByRole("radio", { name: /^Another spelling:/ }),
+		).toBeChecked();
+		await person.click(
+			screen.getByRole("button", { name: "Use this spelling" }),
+		);
 		await waitFor(() =>
-			expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({
+			expect(
+				server.requests.find((r) => r.path === "/cleanup/apply")?.body,
+			).toEqual({
 				kind: "authors",
 				picks: [{ subject: "barbara goldstein", to: "Barbara A. Goldstein" }],
 			}),
@@ -5137,20 +5603,32 @@ describe("cleaning up how books are described", () => {
 	it("applies every suggestion of a kind once asked twice, and shows how it goes", async () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/cleanup?kind=placeholders");
-		expect(await screen.findByText("“authors_sort” is not a name.")).toBeInTheDocument();
+		expect(
+			await screen.findByText("“authors_sort” is not a name."),
+		).toBeInTheDocument();
 		await person.click(screen.getByRole("button", { name: "Apply all 2" }));
-		expect(server.requests.some((r) => r.path === "/cleanup/apply")).toBe(false);
+		expect(server.requests.some((r) => r.path === "/cleanup/apply")).toBe(
+			false,
+		);
 		await person.click(screen.getByRole("button", { name: "Apply all" }));
-		expect(await screen.findByRole("heading", { name: "Editing many books" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { name: "Editing many books" }),
+		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/bulk/bulk-1");
-		expect(server.requests.find((r) => r.path === "/cleanup/apply")?.body).toEqual({ kind: "placeholders" });
+		expect(
+			server.requests.find((r) => r.path === "/cleanup/apply")?.body,
+		).toEqual({ kind: "placeholders" });
 	});
 
 	it("is not offered to a reader", async () => {
 		server.withAccount("Rob", "a long password", "reader").signedInAs("Rob");
 		const { router } = renderApp("/cleanup");
-		expect(await screen.findByRole("link", { name: "Library" })).toBeInTheDocument();
-		expect(screen.queryByRole("link", { name: "Clean up" })).not.toBeInTheDocument();
+		expect(
+			await screen.findByRole("link", { name: "Library" }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("link", { name: "Clean up" }),
+		).not.toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/");
 	});
 });
@@ -5162,8 +5640,13 @@ describe("searching by a description", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Death at La Fenice", { description: "Commissario Brunetti, a detective in Venice, investigates a death." })
-			.withBook("Brunetti's Cookbook", { description: "Recipes from the detective's Venice." })
+			.withBook("Death at La Fenice", {
+				description:
+					"Commissario Brunetti, a detective in Venice, investigates a death.",
+			})
+			.withBook("Brunetti's Cookbook", {
+				description: "Recipes from the detective's Venice.",
+			})
 			.withBook("A Gardening Year", { description: "What to sow when." });
 	});
 	afterEach(() => vi.unstubAllGlobals());
@@ -5171,18 +5654,42 @@ describe("searching by a description", () => {
 	it("lists the books nearest what is described, and keeps it in the address", async () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/search");
-		await person.click(await screen.findByRole("button", { name: "Description" }));
-		expect(screen.getByRole("button", { name: "Description" })).toHaveAttribute("aria-pressed", "true");
-		expect(screen.queryByRole("complementary", { name: "Filters" })).not.toBeInTheDocument();
-		await person.type(screen.getByRole("searchbox", { name: "What the books are about" }), "a detective in Venice");
+		await person.click(
+			await screen.findByRole("button", { name: "Description" }),
+		);
+		expect(screen.getByRole("button", { name: "Description" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		expect(
+			screen.queryByRole("complementary", { name: "Filters" }),
+		).not.toBeInTheDocument();
+		await person.type(
+			screen.getByRole("searchbox", { name: "What the books are about" }),
+			"a detective in Venice",
+		);
 		await person.keyboard("{Enter}");
 
-		const found = within(await screen.findByRole("region", { name: "Books found" }));
-		const links = await found.findAllByRole("link", { name: /Fenice|Cookbook/ });
-		expect(links.map((l) => l.textContent)).toEqual(["Death at La Fenice", "Brunetti's Cookbook"]);
-		expect(found.queryByRole("link", { name: "A Gardening Year" })).not.toBeInTheDocument();
-		expect(router.state.location.search).toMatchObject({ mode: "description", q: "a detective in Venice" });
-		expect(server.requests.some((r) => r.path.startsWith("/search/similar?"))).toBe(true);
+		const found = within(
+			await screen.findByRole("region", { name: "Books found" }),
+		);
+		const links = await found.findAllByRole("link", {
+			name: /Fenice|Cookbook/,
+		});
+		expect(links.map((l) => l.textContent)).toEqual([
+			"Death at La Fenice",
+			"Brunetti's Cookbook",
+		]);
+		expect(
+			found.queryByRole("link", { name: "A Gardening Year" }),
+		).not.toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({
+			mode: "description",
+			q: "a detective in Venice",
+		});
+		expect(
+			server.requests.some((r) => r.path.startsWith("/search/similar?")),
+		).toBe(true);
 	});
 
 	it("says so while the model cannot run", async () => {
@@ -5212,15 +5719,24 @@ describe("sending to an e-reader", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withBook("Persuasion", { files: [epub] });
-		server.devices = [{ id: "d-1", name: "Tolino", createdAt: "2026-01-04T08:00:00Z" }];
+		server.devices = [
+			{ id: "d-1", name: "Tolino", createdAt: "2026-01-04T08:00:00Z" },
+		];
 		renderApp("/books/book-1");
-		const section = within(await screen.findByRole("region", { name: "E-readers" }));
-		await person.selectOptions(await section.findByRole("combobox", { name: "Send to an e-reader" }), "Tolino");
+		const section = within(
+			await screen.findByRole("region", { name: "E-readers" }),
+		);
+		await person.selectOptions(
+			await section.findByRole("combobox", { name: "Send to an e-reader" }),
+			"Tolino",
+		);
 		expect(await section.findByText("Waiting for Tolino")).toBeInTheDocument();
 		expect(server.deliveries).toHaveLength(1);
 
 		await person.click(section.getByRole("button", { name: "Take back" }));
-		await waitFor(() => expect(section.queryByText("Waiting for Tolino")).not.toBeInTheDocument());
+		await waitFor(() =>
+			expect(section.queryByText("Waiting for Tolino")).not.toBeInTheDocument(),
+		);
 		expect(server.deliveries).toHaveLength(0);
 	});
 
@@ -5230,33 +5746,81 @@ describe("sending to an e-reader", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withBook("Persuasion", { files: [epub] })
-			.withBook("Emma", { files: [{ ...epub, id: "file-2", name: "Emma.epub" }] })
-			.withBook("Sanditon", { files: [{ ...epub, id: "file-3", name: "Sanditon.epub" }] });
-		server.devices = [{ id: "d-1", name: "Kobo", createdAt: "2026-01-04T08:00:00Z" }];
+			.withBook("Emma", {
+				files: [{ ...epub, id: "file-2", name: "Emma.epub" }],
+			})
+			.withBook("Sanditon", {
+				files: [{ ...epub, id: "file-3", name: "Sanditon.epub" }],
+			});
+		server.devices = [
+			{ id: "d-1", name: "Kobo", createdAt: "2026-01-04T08:00:00Z" },
+		];
 		server.deliveries = [
-			{ id: "dl-1", bookId: "book-1", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-05T08:00:00Z", deliveredAt: "2026-01-06T08:00:00Z" },
-			{ id: "dl-2", bookId: "book-2", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-07T08:00:00Z", syncedAt: "2026-01-07T09:00:00Z" },
-			{ id: "dl-3", bookId: "book-3", deviceId: "d-1", deviceName: "Kobo", queuedAt: "2026-01-08T08:00:00Z" },
+			{
+				id: "dl-1",
+				bookId: "book-1",
+				deviceId: "d-1",
+				deviceName: "Kobo",
+				queuedAt: "2026-01-05T08:00:00Z",
+				deliveredAt: "2026-01-06T08:00:00Z",
+			},
+			{
+				id: "dl-2",
+				bookId: "book-2",
+				deviceId: "d-1",
+				deviceName: "Kobo",
+				queuedAt: "2026-01-07T08:00:00Z",
+				syncedAt: "2026-01-07T09:00:00Z",
+			},
+			{
+				id: "dl-3",
+				bookId: "book-3",
+				deviceId: "d-1",
+				deviceName: "Kobo",
+				queuedAt: "2026-01-08T08:00:00Z",
+			},
 		];
 		renderApp("/profile");
-		await person.click(await screen.findByRole("link", { name: "Books on Kobo" }));
-		expect(await screen.findByRole("heading", { name: "Kobo" })).toBeInTheDocument();
-		const list = within(await screen.findByRole("list", { name: "Books on this e-reader" }));
-		expect(list.getAllByRole("listitem").map((li) => li.getAttribute("aria-label"))).toEqual(["Sanditon", "Emma", "Persuasion"]);
-		const persuasion = within(list.getByRole("listitem", { name: "Persuasion" }));
+		await person.click(
+			await screen.findByRole("link", { name: "Books on Kobo" }),
+		);
+		expect(
+			await screen.findByRole("heading", { name: "Kobo" }),
+		).toBeInTheDocument();
+		const list = within(
+			await screen.findByRole("list", { name: "Books on this e-reader" }),
+		);
+		expect(
+			list.getAllByRole("listitem").map((li) => li.getAttribute("aria-label")),
+		).toEqual(["Sanditon", "Emma", "Persuasion"]);
+		const persuasion = within(
+			list.getByRole("listitem", { name: "Persuasion" }),
+		);
 		expect(persuasion.getByText(/^On the e-reader since/)).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
-		expect(within(list.getByRole("listitem", { name: "Emma" })).getByText(/^Announced to the reader/)).toBeInTheDocument();
+		expect(
+			within(list.getByRole("listitem", { name: "Emma" })).getByText(
+				/^Announced to the reader/,
+			),
+		).toBeInTheDocument();
 
-		await person.click(list.getByRole("button", { name: "Take Sanditon off this device" }));
-		await waitFor(() => expect(list.queryByRole("listitem", { name: "Sanditon" })).not.toBeInTheDocument());
+		await person.click(
+			list.getByRole("button", { name: "Take Sanditon off this device" }),
+		);
+		await waitFor(() =>
+			expect(
+				list.queryByRole("listitem", { name: "Sanditon" }),
+			).not.toBeInTheDocument(),
+		);
 		expect(server.deliveries.map((d) => d.id)).toEqual(["dl-1", "dl-2"]);
 	});
 
 	it("says a device that is not one's own is not there", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		renderApp("/devices/d-9");
-		expect(await screen.findByText("There is no such e-reader among yours.")).toBeInTheDocument();
+		expect(
+			await screen.findByText("There is no such e-reader among yours."),
+		).toBeInTheDocument();
 	});
 
 	it("says where to add an e-reader when there is none", async () => {
@@ -5265,8 +5829,12 @@ describe("sending to an e-reader", () => {
 			.signedInAs("Rita")
 			.withBook("Persuasion", { files: [epub] });
 		renderApp("/books/book-1");
-		const section = within(await screen.findByRole("region", { name: "E-readers" }));
-		expect(await section.findByRole("link", { name: "Add one on your profile." })).toHaveAttribute("href", "/profile");
+		const section = within(
+			await screen.findByRole("region", { name: "E-readers" }),
+		);
+		expect(
+			await section.findByRole("link", { name: "Add one on your profile." }),
+		).toHaveAttribute("href", "/profile");
 	});
 });
 
@@ -5275,22 +5843,40 @@ describe("the overview", () => {
 
 	it("shows an editor how far the work is and what the library holds", async () => {
 		vi.stubGlobal("EventSource", undefined);
-		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		server
+			.withAccount("Eddie", "a long password", "editor")
+			.signedInAs("Eddie");
 		renderApp("/");
 		const person = userEvent.setup();
 		await person.click(await screen.findByRole("link", { name: "Overview" }));
-		const work = within(await screen.findByRole("region", { name: "Background work" }));
+		const work = within(
+			await screen.findByRole("region", { name: "Background work" }),
+		);
 		expect(await work.findByText("1,300 of 1,500")).toBeInTheDocument();
-		expect(work.getByText("400 in the last hour · about 30 min left")).toBeInTheDocument();
-		expect(work.getByRole("link", { name: "4 could not be read: see the jobs" })).toHaveAttribute("href", "/jobs");
-		expect(work.getByText("60 in the last hour · about 30 min left · 2 possible duplicates to decide")).toBeInTheDocument();
+		expect(
+			work.getByText("400 in the last hour · about 30 min left"),
+		).toBeInTheDocument();
+		expect(
+			work.getByRole("link", { name: "4 could not be read: see the jobs" }),
+		).toHaveAttribute("href", "/jobs");
+		expect(
+			work.getByText(
+				"60 in the last hour · about 30 min left · 2 possible duplicates to decide",
+			),
+		).toBeInTheDocument();
 
-		const library = within(screen.getByRole("region", { name: "What the library holds" }));
+		const library = within(
+			screen.getByRole("region", { name: "What the library holds" }),
+		);
 		expect(library.getByText("Books").nextSibling).toHaveTextContent("1,200");
 		expect(library.getByText("Size").nextSibling).toHaveTextContent("3.4 GB");
-		const formats = within(library.getByRole("region", { name: "Files by format" }));
+		const formats = within(
+			library.getByRole("region", { name: "Files by format" }),
+		);
 		expect(formats.getByText("EPUB")).toBeInTheDocument();
-		const languages = within(library.getByRole("region", { name: "Books by language" }));
+		const languages = within(
+			library.getByRole("region", { name: "Books by language" }),
+		);
 		expect(languages.getByText("Not known")).toBeInTheDocument();
 		expect(library.queryByText(/files missing/)).not.toBeInTheDocument();
 	});
@@ -5299,14 +5885,20 @@ describe("the overview", () => {
 		vi.stubGlobal("EventSource", undefined);
 		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
 		renderApp("/overview");
-		const panel = within(await screen.findByRole("region", { name: "This machine" }));
-		expect(
-			await panel.findByText("There is room for Postgres, the app and the embedding model, and space on the disk."),
-		).toBeInTheDocument();
-		expect(panel.getByText("Free on the data directory's disk").nextSibling).toHaveTextContent("80 GB of 110 GB");
-		expect(panel.getByText("Embedding model on the CPU").nextSibling).toHaveTextContent(
-			"734 MB (intfloat/multilingual-e5-small)",
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
 		);
+		expect(
+			await panel.findByText(
+				"There is room for Postgres, the app and the embedding model, and space on the disk.",
+			),
+		).toBeInTheDocument();
+		expect(
+			panel.getByText("Free on the data directory's disk").nextSibling,
+		).toHaveTextContent("80 GB of 110 GB");
+		expect(
+			panel.getByText("Embedding model on the CPU").nextSibling,
+		).toHaveTextContent("734 MB (intfloat/multilingual-e5-small)");
 	});
 
 	it("warns an administrator of settings too large for the machine, with the commands that fit", async () => {
@@ -5314,37 +5906,67 @@ describe("the overview", () => {
 		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
 		server.health = {
 			...server.health,
-			memory: { ...server.health.memory, needBytes: 11_000_000_000, budgetBytes: 4_300_000_000 },
-			disk: { ...server.health.disk, freeBytes: 2_000_000_000, needFreeBytes: 11_000_000_000 },
+			memory: {
+				...server.health.memory,
+				needBytes: 11_000_000_000,
+				budgetBytes: 4_300_000_000,
+			},
+			disk: {
+				...server.health.disk,
+				freeBytes: 2_000_000_000,
+				needFreeBytes: 11_000_000_000,
+			},
 			warnings: [
-				{ kind: "memory", commands: ["ALTER SYSTEM SET shared_buffers = '1024MB';"] },
+				{
+					kind: "memory",
+					commands: ["ALTER SYSTEM SET shared_buffers = '1024MB';"],
+				},
 				{ kind: "disk", commands: [] },
 			],
 		};
 		renderApp("/overview");
-		const panel = within(await screen.findByRole("region", { name: "This machine" }));
-		expect(await panel.findByText(/may take 11 GB, more than the 4.3 GB/)).toBeInTheDocument();
-		expect(
-			panel.getByText(/docker compose exec db psql -U gotome -d gotome -c "ALTER SYSTEM SET shared_buffers = '1024MB';"/),
-		).toHaveTextContent(/docker compose restart db$/);
-		expect(panel.getByText(/Only 2 GB is free on the data directory's disk; keep at least 11 GB\./)).toHaveTextContent(
-			/docker image prune/,
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
 		);
+		expect(
+			await panel.findByText(/may take 11 GB, more than the 4.3 GB/),
+		).toBeInTheDocument();
+		expect(
+			panel.getByText(
+				/docker compose exec db psql -U gotome -d gotome -c "ALTER SYSTEM SET shared_buffers = '1024MB';"/,
+			),
+		).toHaveTextContent(/docker compose restart db$/);
+		expect(
+			panel.getByText(
+				/Only 2 GB is free on the data directory's disk; keep at least 11 GB\./,
+			),
+		).toHaveTextContent(/docker image prune/);
 		expect(panel.queryByText(/There is room/)).not.toBeInTheDocument();
 	});
 
 	it("does not show an editor the machine", async () => {
 		vi.stubGlobal("EventSource", undefined);
-		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		server
+			.withAccount("Eddie", "a long password", "editor")
+			.signedInAs("Eddie");
 		renderApp("/overview");
-		expect(await screen.findByRole("region", { name: "Background work" })).toBeInTheDocument();
-		expect(screen.queryByRole("region", { name: "This machine" })).not.toBeInTheDocument();
-		expect(server.requests.some((r) => r.path === "/system/health")).toBe(false);
+		expect(
+			await screen.findByRole("region", { name: "Background work" }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("region", { name: "This machine" }),
+		).not.toBeInTheDocument();
+		expect(server.requests.some((r) => r.path === "/system/health")).toBe(
+			false,
+		);
 	});
 
 	it("counts the books with files missing and leads to them", async () => {
 		const person = userEvent.setup();
-		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
 		server.figures.withMissingFiles = 1234;
 		const { router } = renderApp("/overview");
 		await person.click(
@@ -5358,7 +5980,10 @@ describe("the overview", () => {
 
 	it("counts the books slow on e-readers and leads to them", async () => {
 		const person = userEvent.setup();
-		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
 		server.figures.withEreaderFindings = 41;
 		const { router } = renderApp("/overview");
 		await person.click(
@@ -5368,16 +5993,29 @@ describe("the overview", () => {
 		);
 		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
 		expect(router.state.location.search).toMatchObject({
-			ereader: ["large-document", "large-fonts", "large-image", "missing-resources"],
+			ereader: [
+				"large-document",
+				"large-fonts",
+				"large-image",
+				"missing-resources",
+				"malformed-document",
+				"broken-toc",
+			],
 		});
 	});
 
 	it("shows a reader what the library holds and not the work", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		renderApp("/overview");
-		expect(await screen.findByRole("region", { name: "What the library holds" })).toBeInTheDocument();
-		expect(screen.queryByRole("region", { name: "Background work" })).not.toBeInTheDocument();
-		expect(screen.queryByRole("region", { name: "This machine" })).not.toBeInTheDocument();
+		expect(
+			await screen.findByRole("region", { name: "What the library holds" }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("region", { name: "Background work" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("region", { name: "This machine" }),
+		).not.toBeInTheDocument();
 	});
 });
 
@@ -5389,21 +6027,41 @@ describe("pausing the embedding", () => {
 		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
 		const person = userEvent.setup();
 		renderApp("/jobs");
-		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
-		expect(await panel.findByText("Described: 80 of 120 books. Read: 60 of 100 books with text.")).toBeInTheDocument();
-		expect(panel.getByText("Running, with intfloat/multilingual-e5-small.")).toBeInTheDocument();
+		const panel = within(
+			await screen.findByRole("region", {
+				name: "Working out what books are about",
+			}),
+		);
+		expect(
+			await panel.findByText(
+				"Described: 80 of 120 books. Read: 60 of 100 books with text.",
+			),
+		).toBeInTheDocument();
+		expect(
+			panel.getByText("Running, with intfloat/multilingual-e5-small."),
+		).toBeInTheDocument();
 
 		await person.click(panel.getByRole("button", { name: "Pause" }));
-		expect(await panel.findByRole("button", { name: "Start" })).toBeInTheDocument();
+		expect(
+			await panel.findByRole("button", { name: "Start" }),
+		).toBeInTheDocument();
 		expect(panel.getByText(/^Paused\./)).toBeInTheDocument();
-		expect(server.requests.find((r) => r.method === "PATCH" && r.path === "/settings")?.body).toEqual({
+		expect(
+			server.requests.find(
+				(r) => r.method === "PATCH" && r.path === "/settings",
+			)?.body,
+		).toEqual({
 			values: { "embedding.enabled": "off" },
 		});
 
 		await person.click(panel.getByRole("button", { name: "Start" }));
-		expect(await panel.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		expect(
+			await panel.findByRole("button", { name: "Pause" }),
+		).toBeInTheDocument();
 		expect(server.embedding.enabled).toBe(true);
-		expect(panel.getByRole("link", { name: "Choose the model" })).toHaveAttribute("href", "/admin/settings#embedding-model");
+		expect(
+			panel.getByRole("link", { name: "Choose the model" }),
+		).toHaveAttribute("href", "/admin/settings#embedding-model");
 	});
 
 	it("shows how far the passages are while they are on", async () => {
@@ -5417,11 +6075,23 @@ describe("pausing the embedding", () => {
 
 	it("shows an editor the progress without the button", async () => {
 		vi.stubGlobal("EventSource", undefined);
-		server.withAccount("Eddie", "a long password", "editor").signedInAs("Eddie");
+		server
+			.withAccount("Eddie", "a long password", "editor")
+			.signedInAs("Eddie");
 		renderApp("/jobs");
-		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
-		expect(await panel.findByText(/^Described: 80 of 120 books/)).toBeInTheDocument();
-		expect(panel.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
-		expect(panel.queryByRole("link", { name: "Choose the model" })).not.toBeInTheDocument();
+		const panel = within(
+			await screen.findByRole("region", {
+				name: "Working out what books are about",
+			}),
+		);
+		expect(
+			await panel.findByText(/^Described: 80 of 120 books/),
+		).toBeInTheDocument();
+		expect(
+			panel.queryByRole("button", { name: "Pause" }),
+		).not.toBeInTheDocument();
+		expect(
+			panel.queryByRole("link", { name: "Choose the model" }),
+		).not.toBeInTheDocument();
 	});
 });

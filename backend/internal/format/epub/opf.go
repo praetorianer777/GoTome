@@ -130,6 +130,17 @@ func (i *opfItem) isImage() bool { return strings.HasPrefix(i.MediaType, "image/
 
 // isDocument accepts the media types content documents are declared with,
 // and the extension where a file declares none.
+// isXHTML reports whether the item is a document that must be XML.
+func (i *opfItem) isXHTML() bool {
+	switch strings.ToLower(i.MediaType) {
+	case "application/xhtml+xml":
+		return true
+	case "":
+		return strings.HasSuffix(strings.ToLower(i.Href), ".xhtml")
+	}
+	return false
+}
+
 func (i *opfItem) isDocument() bool {
 	switch i.MediaType {
 	case "application/xhtml+xml", "text/html", "application/x-dtbook+xml":

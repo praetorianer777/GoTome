@@ -18,7 +18,9 @@ test("a file that cannot be read shows on the jobs page and its book, and is rea
 
 	await page.goto(`/books/${bookId}`);
 	await expect(page.getByText(/^Could not be read: /)).toBeVisible({ timeout: 15_000 });
+	const reread = page.waitForResponse((r) => r.url().endsWith("/extraction") && r.request().method() === "POST");
 	await page.getByRole("button", { name: `Read Broken ${stamp}.epub again` }).click();
+	expect((await reread).status()).toBe(202);
 	await expect(page.getByText(/^Could not be read: /)).toBeVisible({ timeout: 15_000 });
 
 	await (await mainNav(page)).getByRole("link", { name: "Jobs" }).click();

@@ -17,6 +17,12 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- New books can come from publishers' and authors' RSS and Atom feeds: on
+  New books, follow a feed's address with words or authors an item must
+  name, and you are told once of each new item that does. A feed is read
+  hourly, asking only for what changed; one that cannot be read says why
+  and is tried less often, then stops until you try it again. Feeds on
+  GOtome's own network are refused.
 - Genres from a fixed list of 44, in English and German: books get the
   genres their tags mean ("Krimi", "Kriminalroman" and
   "Belletristik/Kriminalromane" are all Crime), and GOtome can suggest more
@@ -32,6 +38,13 @@ What changes for someone who runs or uses GOtome. The format follows
   every book again, which on a large library takes days of the CPU, and
   keeps about 1.5 GB per 50,000 books under `/data/passages`, outside the
   database and the backups. The jobs page shows how far it is.
+- The e-reader check also finds chapter files that are not well-formed
+  XHTML, which some readers such as the Tolino's refuse, and tables of
+  contents with entries that lead nowhere, and repairs both: a chapter file
+  is written again only where its text stays the same, and an entry is
+  taken out only when it leads nowhere, or pointed at its chapter's start
+  when only the place in it is gone. EPUBs checked before are checked again
+  once.
 
 ### Changed
 
@@ -39,6 +52,11 @@ What changes for someone who runs or uses GOtome. The format follows
   a small FFmpeg of its own that only reads audio files' tags, chapters
   and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
   reach of a hostile file.
+
+### Fixed
+
+- A file asked to be read again just as its last read finished is read
+  again, instead of staying "Not read yet" until the next scan.
 
 ## [0.6.0] - 2026-10-15
 
