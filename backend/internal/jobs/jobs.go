@@ -200,6 +200,16 @@ type Inserted struct {
 	// Duplicate is true when a unique insert found the job already there; ID
 	// is then that job's.
 	Duplicate bool
+	// Running is true when that job is running: it may have read what it
+	// works on before the change that asked for it again.
+	Running bool
+}
+
+func inserted(res *rivertype.JobInsertResult) Inserted {
+	return Inserted{
+		ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate,
+		Running: res.UniqueSkippedAsDuplicate && res.Job.State == rivertype.JobStateRunning,
+	}
 }
 
 // Insert enqueues a job.
@@ -208,7 +218,7 @@ func (r *Runner) Insert(ctx context.Context, args river.JobArgs, opts InsertOpts
 	if err != nil {
 		return Inserted{}, err
 	}
-	return Inserted{ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate}, nil
+	return inserted(res), nil
 }
 
 // InsertTx enqueues a job as part of a transaction: it becomes visible to the
@@ -218,7 +228,7 @@ func (r *Runner) InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, op
 	if err != nil {
 		return Inserted{}, err
 	}
-	return Inserted{ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate}, nil
+	return inserted(res), nil
 }
 
 // insertBatch keeps one bulk insert well below the number of parameters a
