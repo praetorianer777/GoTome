@@ -80,7 +80,7 @@ func (s *Service) describeBlended(ctx context.Context, scope library.Scope, libr
 	q := sqlc.New(s.pool)
 	model, version := spec.Model.Name, Version(spec.Model)
 	rows, err := q.ListBooksNearQuery(ctx, sqlc.ListBooksNearQueryParams{
-		Query: literal(vec), Model: model, ModelVersion: version,
+		Query: Literal(vec), Model: model, ModelVersion: version,
 		Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID, Max: blended, Skip: 0,
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Service) describeBlended(ctx context.Context, scope library.Scope, libr
 	for id := range near {
 		ids = append(ids, id)
 	}
-	vecs, err := q.ScoreMetadataNearQuery(ctx, sqlc.ScoreMetadataNearQueryParams{Query: literal(vec), Ids: ids, Model: model, ModelVersion: version})
+	vecs, err := q.ScoreMetadataNearQuery(ctx, sqlc.ScoreMetadataNearQueryParams{Query: Literal(vec), Ids: ids, Model: model, ModelVersion: version})
 	if err != nil {
 		return nil, false, err
 	}
