@@ -55,6 +55,27 @@ than the model's 512 tokens.
   the ten nearest books share a subject heading, against the share among all
   pairs, and how many are in the same language.
 
+## Passage vectors (#174)
+
+`passages.go`, `passages.sql` and `passages-pg.sh` are the measurements of
+`docs/decisions/passage-vectors.md`. They take the 64-passage vectors of
+step `books` (`-samples 64 -prefix 'passage: '`, fp32) and run in the same
+containers, by hand:
+
+- **probes**: embeds 18 descriptions with the subject headings of their
+  books, and two sentences of each of about 800 books, one the model read
+  and one past a chunk's first 512 tokens (`.cache/embed/queries.gob`).
+- **passages**: ranks the books for each of them by their book vector and
+  by their best passage in each coding (fp32, halfvec, int8, signs, signs
+  around the mean, each with int8 rescoring), and the recall of each
+  coding's best 100 passages (`results/passages.json`; `-only` narrows it).
+- **passage-recall**: what the centred signs lose as the store grows, on
+  passages mixed from two real ones (`results/passage-recall.json`).
+- **passage-scale**: exact int8 and sign scans over that many passages
+  (`results/passage-scale.json`).
+- **passage-export** and `passages-pg.sh <file>`: the same in the pinned
+  Postgres image, sizes and times of each layout.
+
 ## Limits
 
 Each run gets a container with 2 GB of memory, no swap and four CPUs, like

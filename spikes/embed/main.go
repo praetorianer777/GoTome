@@ -27,6 +27,11 @@ Commands:
   speed    Embed passages of the corpus and measure the rate and memory
   books    Embed the sampled chunks of every book
   quality  Judge the book vectors by the related books they find
+  probes   Embed descriptions and sentences of books to search for (#174)
+  passages Judge search by passage vectors against book vectors (#174)
+  passage-scale   Time exact scans over many passage vectors (#174)
+  passage-recall  Recall of the centred signs as the library grows (#174)
+  passage-export  Write passage vectors as COPY text for Postgres (#174)
 
 Run "embed <command> -h" for the flags of a command.
 `
@@ -91,6 +96,16 @@ func run(ctx context.Context, args []string) error {
 		return runBooks(ctx, args[1:])
 	case "quality":
 		return runQuality(args[1:])
+	case "probes":
+		return runProbes(ctx, args[1:])
+	case "passages":
+		return runPassages(args[1:])
+	case "passage-scale":
+		return runScale(args[1:])
+	case "passage-recall":
+		return runRecall(args[1:])
+	case "passage-export":
+		return runExport(args[1:])
 	default:
 		fmt.Fprint(os.Stderr, usage)
 		return fmt.Errorf("unknown command %q", args[0])

@@ -36,6 +36,13 @@ What changes for someone who runs or uses GOtome. The format follows
   genre. Nothing is written until an administrator sets "Genres for books"
   (`genres.suggest`); `gotome genre-check` measures the suggestions on a
   library first. A book's tags are never changed.
+- The search by description can find books by their passages: with the
+  new setting "A vector for every passage" (`embedding.passages`, off by
+  default) every passage of a book's text gets a vector of its own, so
+  that a description of a scene finds the book it happens in. It reads
+  every book again, which on a large library takes days of the CPU, and
+  keeps about 1.5 GB per 50,000 books under `/data/passages`, outside the
+  database and the backups. The jobs page shows how far it is.
 - The e-reader check also finds chapter files that are not well-formed
   XHTML, which some readers such as the Tolino's refuse, and tables of
   contents with entries that lead nowhere, and repairs both: a chapter file

@@ -3545,6 +3545,11 @@ export interface components {
             /** @enum {string} */
             state: "kept_both" | "open";
         };
+        PassageStatus: {
+            bytes: number;
+            withPassages: number;
+            withText: number;
+        };
         Postgres: {
             connections: number;
             effectiveCacheSizeBytes: number;
@@ -3867,6 +3872,7 @@ export interface components {
             metadata: number;
             metadataLastHour: number;
             model: string;
+            passages?: components["schemas"]["PassageStatus"];
             withText: number;
         };
         Step: {

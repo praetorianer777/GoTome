@@ -11955,6 +11955,25 @@
           "state"
         ]
       },
+      "PassageStatus": {
+        "type": "object",
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "withPassages": {
+            "type": "integer"
+          },
+          "withText": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "withText",
+          "withPassages",
+          "bytes"
+        ]
+      },
       "Postgres": {
         "type": "object",
         "properties": {
@@ -13146,6 +13165,9 @@
           },
           "model": {
             "type": "string"
+          },
+          "passages": {
+            "$ref": "#/components/schemas/PassageStatus"
           },
           "withText": {
             "type": "integer"

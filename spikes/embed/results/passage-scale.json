@@ -1,0 +1,25 @@
+[
+  {
+    "passages": 1000000,
+    "threads": 4,
+    "msP50": {
+      "bit exact": 49.296,
+      "int8 exact": 170.435
+    }
+  },
+  {
+    "passages": 3190000,
+    "threads": 4,
+    "msP50": {
+      "bit exact": 149.841,
+      "int8 exact": 1118.417
+    }
+  },
+  {
+    "passages": 10000000,
+    "threads": 4,
+    "msP50": {
+      "bit exact": 591.618
+    }
+  }
+]
