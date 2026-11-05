@@ -292,7 +292,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Sp
 		for _, m := range out {
 			if err := q.PutBookVector(ctx, sqlc.PutBookVectorParams{
 				BookID: r.BookID, Kind: m.kind, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
-				SourceHash: m.hash, Embedding: literal(m.vec),
+				SourceHash: m.hash, Embedding: Literal(m.vec),
 			}); err != nil {
 				return err
 			}
@@ -354,8 +354,8 @@ func spread(positions []int32, n int) []int32 {
 	return out
 }
 
-// literal is a vector as pgvector reads it: [0.1,-0.2,…].
-func literal(v []float32) string {
+// Literal is a vector as pgvector reads it: [0.1,-0.2,…].
+func Literal(v []float32) string {
 	var b strings.Builder
 	b.WriteByte('[')
 	for i, x := range v {

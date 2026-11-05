@@ -7,6 +7,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { type ReadingStatus, STATUS_LABELS } from "@/books/reading";
+import { isGenre } from "@/books/genres";
 import { EREADER_FINDINGS } from "@/books/rules";
 import { button } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
@@ -26,6 +27,7 @@ const FIELD_LABELS: Record<FacetField, MessageKey> = {
 	format: "filter.field.format",
 	files: "filter.field.files",
 	ereader: "filter.field.ereader",
+	genre: "filter.field.genre",
 };
 
 /** A value as people read it; the server labels names, the rest is ours. */
@@ -49,6 +51,8 @@ function valueLabel(field: FacetField, value: string, label?: string): string {
 			return (EREADER_FINDINGS as readonly string[]).includes(value)
 				? t(`filter.ereader.${value as (typeof EREADER_FINDINGS)[number]}`)
 				: value;
+		case "genre":
+			return isGenre(value) ? t(`genre.${value}`) : value;
 		default:
 			return label ?? value;
 	}

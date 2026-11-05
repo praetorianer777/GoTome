@@ -18,6 +18,7 @@ import type {
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
 import type { CleanupKind, CleanupSuggestion } from "@/books/cleanup";
+import type { GenreSuggestion } from "@/books/genres";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { WishRequest } from "@/books/wishes";
@@ -288,6 +289,8 @@ export class FakeServer {
 	describable = true;
 	/** What the clean-up page suggests. */
 	cleanup: CleanupSuggestion[] = [];
+	/** The genres suggested for books that wait for a person. */
+	genreSuggestions: GenreSuggestion[] = [];
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
@@ -626,6 +629,9 @@ export class FakeServer {
 			}
 			if (path === "/cleanup" || path.startsWith("/cleanup/")) {
 				return this.answerCleanup(path, url.searchParams, body);
+			}
+			if (path === "/genres/suggestions" || /^\/books\/[^/]+\/genres\/[^/]+$/.test(path)) {
+				return this.answerGenres(path, url.searchParams, body);
 			}
 			if (path === "/books/bulk" || path.startsWith("/bulk/")) {
 				return this.answerBulk(path, body as BulkRequest);
@@ -1750,6 +1756,35 @@ export class FakeServer {
 			books: results,
 		});
 		return Response.json({ id, total: results.length }, { status: 202 });
+	}
+
+	private answerGenres(path: string, query: URLSearchParams, body: unknown): Response {
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+		}
+		if (path === "/genres/suggestions") {
+			const waiting: { genre: string; waiting: number }[] = [];
+			for (const s of this.genreSuggestions) {
+				const w = waiting.find((x) => x.genre === s.genre);
+				if (w) w.waiting++;
+				else waiting.push({ genre: s.genre, waiting: 1 });
+			}
+			const genre = query.get("genre");
+			return Response.json({
+				suggestions: this.genreSuggestions.filter((s) => !genre || s.genre === genre),
+				waiting,
+			});
+		}
+		const [, , bookId, , genre] = path.split("/");
+		const found = this.genreSuggestions.find((s) => s.book.id === bookId && s.genre === genre);
+		if (!found || !["accepted", "rejected"].includes((body as { state?: string })?.state ?? "")) {
+			return Response.json(
+				{ error: { code: "not_found", message: "The book has no such genre." } },
+				{ status: 404 },
+			);
+		}
+		this.genreSuggestions = this.genreSuggestions.filter((s) => s !== found);
+		return new Response(null, { status: 204 });
 	}
 
 	private answerCleanup(path: string, query: URLSearchParams, body: unknown): Response {

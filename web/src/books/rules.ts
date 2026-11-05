@@ -14,6 +14,7 @@ export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	rating: ["in", "between", "empty"],
 	files: ["in"],
 	ereader: ["in"],
+	genre: ["in", "empty"],
 };
 
 /** Where a book's files are, as the files field compares it. */
@@ -29,14 +30,19 @@ export const EREADER_FINDINGS = [
 
 /** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
 export function picksValues(field: FacetField): boolean {
-	return field === "status" || field === "files" || field === "ereader";
+	return (
+		field === "status" ||
+		field === "files" ||
+		field === "ereader" ||
+		field === "genre"
+	);
 }
 
 export const RULE_FIELDS = FACET_FIELDS;
 
 /**
  * One rule as the builder edits it. Values of in are typed as one text,
- * split at commas when the tree is made, except for status, files and ereader, which are
+ * split at commas when the tree is made, except for status, files, ereader and genre, which are
  * picked; between keeps its lower and upper bound.
  */
 export interface RuleItem {
