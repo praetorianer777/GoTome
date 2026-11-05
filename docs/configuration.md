@@ -25,20 +25,6 @@ a line in `.env` is all it takes:
 GOTOME_SCAN_INTERVAL=1h
 ```
 
-A variable the compose file does not pass on, such as
-`GOTOME_EMBED_THREADS`, goes into the app's `environment:` instead. Rather
-than edit `docker-compose.yml`, which an upgrade replaces, put it in a
-`docker-compose.override.yml` beside it, which Docker Compose reads as
-well:
-
-```yaml
-# deploy/docker-compose.override.yml
-services:
-  app:
-    environment:
-      GOTOME_EMBED_THREADS: "2"
-```
-
 Then `docker compose up -d` restarts the app with it. A value GOtome cannot
 use stops it at start with a message in the log
 (`docker compose logs app`) that names the variable and what it wants.
@@ -55,6 +41,7 @@ compose file passes each on from `.env`.
 | `GOTOME_SCAN_INTERVAL` | `6h` | How often every library's folder is looked through for new, changed, moved and missing files: a duration of a minute or more, such as `30m` or `6h`. `0` turns scheduled scans off and leaves them to **Scan now** on the Libraries page. A new library is scanned at once either way. |
 | `GOTOME_UPLOAD_LIMIT_MB` | `4096` | The largest file one upload may carry, in MiB, from 1 to 1048576. A reverse proxy in front has its own limit ([getting-started.md](getting-started.md#a-reverse-proxy-and-https)). Per-person quotas are set on the Users page. |
 | `GOTOME_OFFLINE` | `false` | `true` keeps GOtome off the internet: no metadata source is asked (no lookups, no new books of followed authors), and no language model is downloaded. An embedding server you named on the Settings page is still used. |
+| `GOTOME_EMBED_THREADS` | half the CPUs | How many CPU threads working out what a book is about may use, from 1 to 256. Lower it on a small machine to leave room for everything else ([troubleshooting.md](troubleshooting.md#similar-books-on-slow-hardware)). |
 | `GOTOME_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `GOTOME_FORCE_PASSWORD_LOGIN` | `false` | `true` lets everyone sign in with a password even where the setting `auth.passwords` turned passwords off: the way back in when the identity provider is gone. Set it back once you are in. |
 | `GOTOME_ENV` | `production` | `production` logs one JSON object per line; `development`, for working on GOtome itself, logs plain text. |
@@ -76,13 +63,31 @@ when you run GOtome some other way.
 ### Usually left alone
 
 The image's defaults are right for these. They are there for an unusual
-machine or layout.
+machine or layout, or for running GOtome without the compose file, which
+does not pass them on from `.env`: each names a place inside the
+container, and a path there means nothing without a volume or a file
+mounted at it, which `.env` cannot do.
+
+To keep the language models (120 MB to 2.3 GB each) on another disk,
+mount it at `/data/models` rather than move `GOTOME_MODEL_DIR`. Rather
+than edit `docker-compose.yml`, which an upgrade replaces, put the mount
+in a `docker-compose.override.yml` beside it, which Docker Compose reads
+as well:
+
+```yaml
+# deploy/docker-compose.override.yml
+services:
+  app:
+    volumes:
+      - /mnt/big-disk/gotome-models:/data/models
+```
+
+The folder must be writable by the app's user, 10001.
 
 | Variable | Default | What it does |
 |---|---|---|
 | `GOTOME_DATA_DIR` | `/data` | Where GOtome keeps its own files: managed libraries (`libraries/`), covers (`covers/`), the full-text index (`search/`) and language models (`models/`). The compose file mounts the `app-data` volume there. A full path. |
-| `GOTOME_MODEL_DIR` | `$GOTOME_DATA_DIR/models` | Where language models for similar books are downloaded to and read from. A full path. Point it at another disk to keep the 120 MB to 2.3 GB of a model off the data volume. |
-| `GOTOME_EMBED_THREADS` | half the CPUs | How many CPU threads working out what a book is about may use, from 1 to 256. Lower it on a small machine to leave room for everything else ([troubleshooting.md](troubleshooting.md#similar-books-on-slow-hardware)). |
+| `GOTOME_MODEL_DIR` | `$GOTOME_DATA_DIR/models` | Where language models for similar books are downloaded to and read from. A full path. |
 | `GOTOME_ONNXRUNTIME` | `/usr/local/lib/libonnxruntime.so.1.30.0` | The ONNX Runtime library the language model runs on. The image carries it there. |
 | `GOTOME_FULLTEXT_LIBRARY` | `/usr/local/lib/libgotome_fulltext.so` | GOtome's full-text search engine. The image carries it there. |
 

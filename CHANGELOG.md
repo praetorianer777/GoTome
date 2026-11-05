@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed

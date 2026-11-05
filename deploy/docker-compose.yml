@@ -44,6 +44,9 @@ services:
       # true lets everyone sign in with a password even where the settings
       # turned that off: the way back in when the identity provider is gone.
       GOTOME_FORCE_PASSWORD_LOGIN: ${GOTOME_FORCE_PASSWORD_LOGIN:-false}
+      # How many CPU threads working out what a book is about may use. Empty
+      # is half the CPUs, which compose cannot count.
+      GOTOME_EMBED_THREADS: ${GOTOME_EMBED_THREADS:-}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
       # Encrypts the secrets kept in the database, such as provider keys.
