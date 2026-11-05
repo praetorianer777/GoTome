@@ -146,6 +146,13 @@ type fixResult struct {
 	ImagesScaled   int `json:"imagesScaled"`
 	FontsRemoved   int `json:"fontsRemoved"`
 	ItemsRemoved   int `json:"itemsRemoved"`
+	// DocumentsRepaired are documents written again as well-formed XHTML.
+	DocumentsRepaired int `json:"documentsRepaired"`
+	// TocEntriesRemoved are entries of the tables of contents that led
+	// nowhere and were taken out, TocEntriesRepointed those pointed at
+	// the start of their document or at an entry below them.
+	TocEntriesRemoved   int `json:"tocEntriesRemoved"`
+	TocEntriesRepointed int `json:"tocEntriesRepointed"`
 }
 
 func (s *Server) fixFile(w http.ResponseWriter, r *http.Request) error {

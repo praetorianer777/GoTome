@@ -15,7 +15,8 @@ import (
 )
 
 // MeasureArgs is the job that measures the EPUBs read before measuring
-// was, and those whose bytes changed since (#233).
+// was, those whose bytes changed since (#233), and those an older version
+// of epub.Measure measured (epub.MeasuresVersion).
 type MeasureArgs struct{}
 
 const measureKind = "ingest.measure_files"
@@ -23,8 +24,8 @@ const measureKind = "ingest.measure_files"
 func (MeasureArgs) Kind() string { return measureKind }
 
 // measureBatch is how many files a pass measures at most. Each costs its
-// archive's directory, its package document and the headers of its
-// images, a few hundred kilobytes at most.
+// archive's directory, its package document, the headers of its images
+// and its XHTML documents, a few megabytes at most.
 const measureBatch = 200
 
 // MeasureWorker runs MeasureArgs.
@@ -54,7 +55,7 @@ func MeasurePeriodic(interval time.Duration) *river.PeriodicJob {
 // findings, until its bytes change.
 func (s *Service) MeasureFiles(ctx context.Context) (int, error) {
 	q := sqlc.New(s.pool)
-	files, err := q.ListFilesToMeasure(ctx, measureBatch)
+	files, err := q.ListFilesToMeasure(ctx, sqlc.ListFilesToMeasureParams{Version: epub.MeasuresVersion, Batch: measureBatch})
 	if err != nil {
 		return 0, err
 	}
@@ -86,7 +87,7 @@ func measureEPUB(path string) (*epub.Measures, error) {
 // setMeasures records a file's measures and findings; nil is a file that
 // could not be measured.
 func setMeasures(ctx context.Context, q *sqlc.Queries, fileID uuid.UUID, sha256 []byte, m *epub.Measures) error {
-	params := sqlc.SetFileMeasuresParams{ID: fileID, Sha256: sha256, Findings: []string{}}
+	params := sqlc.SetFileMeasuresParams{ID: fileID, Sha256: sha256, Findings: []string{}, Version: epub.MeasuresVersion}
 	if m != nil {
 		raw, err := json.Marshal(m)
 		if err != nil {
