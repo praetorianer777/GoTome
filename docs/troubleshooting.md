@@ -150,6 +150,10 @@ takes too much from the machine:
   about** off in the settings. Everything else works; similar books and
   the search by description are shown for books already done. **Start**
   goes on where it stopped.
+- **No passage vectors**: **A vector for every passage**
+  (`embedding.passages`) embeds every passage of every book, many times
+  the work of the rest. Leave it off on a server without a GPU, or expect
+  the first pass to take days.
 - **Fewer threads**: `GOTOME_EMBED_THREADS` (half the CPUs by default)
   leaves the rest of the machine free.
 - **Another model**: on a CPU without int8 instructions (older x86, some
