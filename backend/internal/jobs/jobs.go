@@ -224,7 +224,26 @@ func (r *Runner) Insert(ctx context.Context, args river.JobArgs, opts InsertOpts
 // InsertTx enqueues a job as part of a transaction: it becomes visible to the
 // workers when the transaction commits and never exists if it rolls back.
 func (r *Runner) InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts InsertOpts) (Inserted, error) {
-	res, err := r.client.InsertTx(ctx, tx, args, opts.river())
+	// River finds a unique job's duplicate by updating its row, which locks
+	// it until the transaction ends. A running duplicate's completion then
+	// waits on the transaction, and once that wait outlasts River's
+	// completer timeout, its retry can read the job as still running and
+	// panic (#303). A duplicate inserts nothing, so rolling back to a
+	// savepoint loses nothing and releases the lock.
+	sp, err := tx.Begin(ctx)
+	if err != nil {
+		return Inserted{}, err
+	}
+	res, err := r.client.InsertTx(ctx, sp, args, opts.river())
+	if err != nil {
+		_ = sp.Rollback(ctx)
+		return Inserted{}, err
+	}
+	if res.UniqueSkippedAsDuplicate {
+		err = sp.Rollback(ctx)
+	} else {
+		err = sp.Commit(ctx)
+	}
 	if err != nil {
 		return Inserted{}, err
 	}
