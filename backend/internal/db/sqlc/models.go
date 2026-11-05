@@ -112,6 +112,7 @@ type BookFile struct {
 	EpubMeasures    []byte
 	EreaderFindings []string
 	IndexedAt       *time.Time
+	MeasuresVersion *int16
 }
 
 type BookGenre struct {
@@ -251,6 +252,35 @@ type DuplicatePair struct {
 	UpdatedAt time.Time
 	Score     float32
 	Contained bool
+}
+
+type FeedItem struct {
+	TrackerID   uuid.UUID
+	ItemKey     string
+	Title       string
+	Link        *string
+	Authors     []string
+	PublishedAt *time.Time
+	Matched     bool
+	Backlog     bool
+	FirstSeenAt time.Time
+	LastSeenAt  time.Time
+}
+
+type FeedTracker struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	Url          string
+	Title        *string
+	Keywords     []string
+	Authors      []string
+	Etag         *string
+	LastModified *string
+	CheckedAt    *time.Time
+	Failures     int32
+	LastError    *string
+	NextFetchAt  *time.Time
+	CreatedAt    time.Time
 }
 
 type FileLsh struct {

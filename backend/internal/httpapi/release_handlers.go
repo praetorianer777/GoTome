@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -146,6 +147,144 @@ func (s *Server) listReleases(w http.ResponseWriter, r *http.Request) error {
 		if rel.CoverURL != nil && s.Metadata != nil && s.Metadata.Has(rel.Provider) {
 			token := s.Metadata.CoverToken(rel.Provider, *rel.CoverURL)
 			out.Releases[i].CoverToken = &token
+		}
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+// feed is an RSS or Atom feed the caller follows for new books.
+type feed struct {
+	ID  uuid.UUID `json:"id"`
+	URL string    `json:"url"`
+	// Title is the feed's own, once it has answered.
+	Title *string `json:"title,omitempty"`
+	// Keywords and Authors are what an item must name: one of the
+	// keywords, if any, and one of the authors, if any.
+	Keywords []string `json:"keywords"`
+	Authors  []string `json:"authors"`
+	// CheckedAt is when the feed last answered; left out until it has.
+	CheckedAt *time.Time `json:"checkedAt,omitempty"`
+	// Failures are the fetches in a row that failed, LastError the last
+	// one's reason.
+	Failures  int     `json:"failures"`
+	LastError *string `json:"lastError,omitempty"`
+	// NextFetchAt is when it is fetched next; left out once it failed too
+	// often, until it is asked for again.
+	NextFetchAt *time.Time `json:"nextFetchAt,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+}
+
+func feedOf(f releases.Feed) feed {
+	return feed{
+		ID: f.ID, URL: f.URL, Title: f.Title, Keywords: f.Keywords, Authors: f.Authors,
+		CheckedAt: f.CheckedAt, Failures: f.Failures, LastError: f.LastError,
+		NextFetchAt: f.NextFetchAt, CreatedAt: f.CreatedAt,
+	}
+}
+
+type feedList struct {
+	Feeds []feed `json:"feeds"`
+}
+
+// feedRequest is a feed to follow. Following an address again gives it the
+// new filters.
+type feedRequest struct {
+	URL      string   `json:"url"`
+	Keywords []string `json:"keywords,omitempty"`
+	Authors  []string `json:"authors,omitempty"`
+}
+
+// feedItem is an item of one of the caller's feeds that names what its
+// filters ask for.
+type feedItem struct {
+	FeedID uuid.UUID `json:"feedId"`
+	// Feed is the feed's title, or its address.
+	Feed  string `json:"feed"`
+	Title string `json:"title"`
+	// Link is the item's page, an http or https address.
+	Link      *string    `json:"link,omitempty"`
+	Authors   []string   `json:"authors"`
+	Published *time.Time `json:"published,omitempty"`
+	SeenAt    time.Time  `json:"seenAt"`
+}
+
+type feedItemList struct {
+	Items []feedItem `json:"items"`
+}
+
+func (s *Server) listFeeds(w http.ResponseWriter, r *http.Request) error {
+	list, err := s.Releases.Feeds(r.Context(), UserFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	out := feedList{Feeds: make([]feed, len(list))}
+	for i, f := range list {
+		out.Feeds[i] = feedOf(f)
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func (s *Server) addFeed(w http.ResponseWriter, r *http.Request) error {
+	var req feedRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	f, err := s.Releases.AddFeed(r.Context(), UserFrom(r.Context()).ID, req.URL, req.Keywords, req.Authors)
+	switch {
+	case errors.Is(err, releases.ErrBadFeedURL):
+		return ErrValidation(map[string]string{"url": "Give the feed's http or https address."})
+	case errors.Is(err, releases.ErrTooManyFeeds):
+		return ErrValidation(map[string]string{"url": fmt.Sprintf("You follow %d feeds, which is as many as one may.", releases.MaxFeeds)})
+	case err != nil:
+		return err
+	}
+	writeJSON(w, r, http.StatusCreated, feedOf(f))
+	return nil
+}
+
+func (s *Server) removeFeed(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "feedId", "feed")
+	if err != nil {
+		return err
+	}
+	if err := s.Releases.RemoveFeed(r.Context(), UserFrom(r.Context()).ID, id); err != nil {
+		if errors.Is(err, releases.ErrNotFound) {
+			return ErrNotFound("There is no such feed.")
+		}
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) retryFeed(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "feedId", "feed")
+	if err != nil {
+		return err
+	}
+	f, err := s.Releases.RetryFeed(r.Context(), UserFrom(r.Context()).ID, id)
+	if errors.Is(err, releases.ErrNotFound) {
+		return ErrNotFound("There is no such feed.")
+	}
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, feedOf(f))
+	return nil
+}
+
+func (s *Server) listFeedItems(w http.ResponseWriter, r *http.Request) error {
+	list, err := s.Releases.FeedEntries(r.Context(), UserFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	out := feedItemList{Items: make([]feedItem, len(list))}
+	for i, e := range list {
+		out.Items[i] = feedItem{
+			FeedID: e.FeedID, Feed: e.Feed, Title: e.Title, Link: e.Link, Authors: e.Authors,
+			Published: e.Published, SeenAt: e.SeenAt,
 		}
 	}
 	writeJSON(w, r, http.StatusOK, out)

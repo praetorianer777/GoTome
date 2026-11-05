@@ -1067,6 +1067,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The RSS and Atom feeds the caller follows for new books, and how fetching each goes */
+        get: operations["listFeeds"];
+        put?: never;
+        /** Follow an RSS or Atom feed for items naming keywords or authors; following it again gives it the new filters */
+        post: operations["addFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The items of the caller's feeds that name what their filters ask for, the newest first */
+        get: operations["listFeedItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/{feedId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop following a feed */
+        delete: operations["removeFeed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/{feedId}/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch one of the caller's feeds soon, also one that stopped after failing too often */
+        post: operations["fetchFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}": {
         parameters: {
             query?: never;
@@ -2728,7 +2797,7 @@ export interface components {
             books?: string[];
             change?: components["schemas"]["BulkChange"];
             filter?: string;
-            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
+            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
             library?: string;
         };
         BulkResult: {
@@ -3070,13 +3139,15 @@ export interface components {
             title?: string;
         };
         EreaderCheck: {
-            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
+            brokenTocEntries: string[];
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
             fontBytes: number;
             fonts: number;
             imageHeight: number;
             imageWidth: number;
             largestDocument: number;
             largestImage: number;
+            malformedDocuments: string[];
             missingResources: string[];
         };
         ErrorEnvelope: {
@@ -3094,6 +3165,45 @@ export interface components {
             count: number;
             label: string;
             value: string;
+        };
+        Feed: {
+            authors: string[];
+            /** Format: date-time */
+            checkedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            failures: number;
+            /** Format: uuid */
+            id: string;
+            keywords: string[];
+            lastError?: string;
+            /** Format: date-time */
+            nextFetchAt?: string;
+            title?: string;
+            url: string;
+        };
+        FeedItem: {
+            authors: string[];
+            feed: string;
+            /** Format: uuid */
+            feedId: string;
+            link?: string;
+            /** Format: date-time */
+            published?: string;
+            /** Format: date-time */
+            seenAt: string;
+            title: string;
+        };
+        FeedItemList: {
+            items: components["schemas"]["FeedItem"][];
+        };
+        FeedList: {
+            feeds: components["schemas"]["Feed"][];
+        };
+        FeedRequest: {
+            authors?: string[];
+            keywords?: string[];
+            url: string;
         };
         FieldState: {
             detail?: string;
@@ -3122,14 +3232,17 @@ export interface components {
             withoutText: number;
         };
         FixRequest: {
-            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources")[];
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
         };
         FixResult: {
+            documentsRepaired: number;
             documentsSplit: number;
             fontsRemoved: number;
             imagesScaled: number;
             itemsRemoved: number;
             partsAdded: number;
+            tocEntriesRemoved: number;
+            tocEntriesRepointed: number;
         };
         FollowRequest: {
             /** @enum {string} */
@@ -3404,7 +3517,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3417,7 +3530,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -4558,7 +4671,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
                 sort?: "title" | "author" | "added" | "series";
@@ -6194,6 +6307,157 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listFeeds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listFeedItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedItemList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    fetchFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
                 };
             };
             /** @description The request failed. */

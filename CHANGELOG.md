@@ -22,6 +22,12 @@ What changes for someone who runs or uses GOtome. The format follows
   proxy, every environment variable and setting, NAS, arm64 and small
   machines, roles and libraries, metadata sources, single sign-on,
   e-readers, and troubleshooting.
+- New books can come from publishers' and authors' RSS and Atom feeds: on
+  New books, follow a feed's address with words or authors an item must
+  name, and you are told once of each new item that does. A feed is read
+  hourly, asking only for what changed; one that cannot be read says why
+  and is tried less often, then stops until you try it again. Feeds on
+  GOtome's own network are refused.
 - Genres from a fixed list of 44, in English and German: books get the
   genres their tags mean ("Krimi", "Kriminalroman" and
   "Belletristik/Kriminalromane" are all Crime), and GOtome can suggest more
@@ -30,6 +36,13 @@ What changes for someone who runs or uses GOtome. The format follows
   genre. Nothing is written until an administrator sets "Genres for books"
   (`genres.suggest`); `gotome genre-check` measures the suggestions on a
   library first. A book's tags are never changed.
+- The e-reader check also finds chapter files that are not well-formed
+  XHTML, which some readers such as the Tolino's refuse, and tables of
+  contents with entries that lead nowhere, and repairs both: a chapter file
+  is written again only where its text stays the same, and an entry is
+  taken out only when it leads nowhere, or pointed at its chapter's start
+  when only the place in it is gone. EPUBs checked before are checked again
+  once.
 
 ### Changed
 

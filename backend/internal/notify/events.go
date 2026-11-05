@@ -45,6 +45,9 @@ const (
 	// KindReleaseOut is a book the person follows that came out. Data as
 	// KindReleaseAnnounced.
 	KindReleaseOut = "release.out"
+	// KindFeedItem is a new item of a feed the person follows that names
+	// what they asked for. Data: title, feed, and authors where named.
+	KindFeedItem = "feed.item"
 )
 
 // EventKind says who hears of a kind of event and where a summary of
@@ -66,6 +69,7 @@ var EventKinds = []EventKind{
 	{Kind: KindWishFulfilled, Permission: auth.PersonalManage, Default: true, Summary: page("/wishlist")},
 	{Kind: KindReleaseAnnounced, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
 	{Kind: KindReleaseOut, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
+	{Kind: KindFeedItem, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
 	{Kind: KindReviewNeeded, Permission: auth.MetadataEdit, Default: true, Summary: page("/review")},
 	{Kind: KindDuplicatesFound, Permission: auth.MetadataEdit, Default: true, Summary: page("/duplicates")},
 	{Kind: KindFilesUnreadable, Permission: auth.MetadataEdit, Default: true, Summary: page("/jobs")},
