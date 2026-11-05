@@ -306,6 +306,60 @@ func TestUniqueJobs(t *testing.T) {
 	}
 }
 
+// River's unique insert finds a duplicate by updating its row, which locks a
+// running job until the inserting transaction ends. Its completer then
+// waits; past its ten-second timeout it tries again while the first try still
+// waits, and the try that loses reads the job as running and panics (#303).
+// A duplicate insert must not keep the lock.
+func TestADuplicateInsertLeavesTheRunningJobFree(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	pool := dbtest.New(t)
+	w := newNoteWorker()
+	runner := startRunner(t, pool, w, jobs.Config{})
+	unique := jobs.InsertOpts{Queue: jobs.QueueScan, Unique: true}
+	args := noteArgs{Note: "outbox", TakeMS: 3000}
+
+	first, err := runner.Insert(ctx, args, unique)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForState(t, runner, first.ID, "running")
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	again, err := runner.InsertTx(ctx, tx, args, unique)
+	if err != nil || !again.Duplicate || !again.Running || again.ID != first.ID {
+		t.Fatalf("asking again while it runs: %+v, %v", again, err)
+	}
+	other, err := runner.InsertTx(ctx, tx, noteArgs{Note: "new"}, unique)
+	if err != nil || other.Duplicate {
+		t.Fatalf("a new job in the same transaction: %+v, %v", other, err)
+	}
+
+	// The job takes long enough to be running at the insert under load; the
+	// wait stays inside River's timeout, so that a failure cannot panic.
+	for deadline := time.Now().Add(8 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		job, err := runner.Get(ctx, first.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if job.State == "completed" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the job is %s while the transaction that asked for it again is open", job.State)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	waitForState(t, runner, other.ID, "completed")
+}
+
 func TestEveryQueueIsWorked(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
