@@ -184,17 +184,23 @@ func (s *Service) suggestBook(ctx context.Context, p pass, id uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		if p.mode == MethodVector || p.mode == MethodCombined {
-			found = pickMargins(Margins(book, p.genres), Genre.threshold, skip, MaxGenres-len(have))
-			method = MethodVector
-		}
-		if (p.mode == MethodNeighbours || (p.mode == MethodCombined && len(found) == 0)) && library != uuid.Nil {
+		var shares map[string]float64
+		if (p.mode == MethodNeighbours || p.mode == MethodCombined) && library != uuid.Nil {
 			near, err := s.neighbours(ctx, p.spec, id, library, book)
 			if err != nil {
 				return err
 			}
-			found = pickShares(Shares(near), NeighbourShare, skip, MaxGenres-len(have))
+			shares = Shares(near)
+			found = pickShares(shares, NeighbourShare, skip, MaxGenres-len(have))
 			method = MethodNeighbours
+		}
+		// Combined asks the vectors only where the neighbours cannot tell:
+		// against the descriptions they separate genres no better than
+		// guessing the commonest (docs/genres.md), so where both answer
+		// they could only take the neighbours' place with worse.
+		if p.mode == MethodVector || (p.mode == MethodCombined && shares == nil) {
+			found = pickMargins(Margins(book, p.genres), Genre.threshold, skip, MaxGenres-len(have))
+			method = MethodVector
 		}
 	}
 	keep := slices.Clone(fromTags)

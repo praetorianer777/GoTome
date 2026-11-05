@@ -6,6 +6,18 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- More tags give a genre: romance imprints (Julia, Romana, Baccara, Bianca,
+  Tiffany, Historical RomanHefte), Jugend, Mord, Historisch, Historischer
+  Krimi, horror series (Dorian Hunter, Dämonenkiller, Vampir Horror Roman),
+  Rettungskreuzer Ikarus, Scheibenwelt and Sex.
+- Genre suggestions from the nearest books need 40% of them to agree
+  instead of half, and `combined` now follows them, using the comparison
+  with the genres' descriptions only for a book whose neighbours have no
+  genres: on a real library that comparison was no better than guessing
+  ([docs/genres.md](docs/genres.md)). Use `neighbours`.
+
 ### Security
 
 - An identity provider's signing keys are read with go-jose 4.1.6, which

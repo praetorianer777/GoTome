@@ -242,14 +242,15 @@ func thresholdOf(method string) func(string) float64 {
 }
 
 // predict is what a method gives a book at the thresholds, at most
-// MaxGenres. Combined takes the vector's where it gives any and the
-// neighbours' else, at the thresholds in the code.
+// MaxGenres. Combined takes the neighbours' where enough of them have
+// genres and the vector's else, at the thresholds in the code, as Suggest
+// does.
 func predict(b sampled, method string, threshold func(string) float64) []string {
 	if method == MethodCombined {
-		if got := predict(b, MethodVector, thresholdOf(MethodVector)); len(got) > 0 {
-			return got
+		if _, ok := b.scores[MethodNeighbours]; ok {
+			return predict(b, MethodNeighbours, thresholdOf(MethodNeighbours))
 		}
-		return predict(b, MethodNeighbours, thresholdOf(MethodNeighbours))
+		return predict(b, MethodVector, thresholdOf(MethodVector))
 	}
 	var picked []Scored
 	for g, score := range b.scores[method] {
