@@ -442,6 +442,8 @@ func serve() error {
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,
 		Web:           webui.Handler(),
+
+		TrustedProxies: cfg.TrustedProxies,
 	}
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

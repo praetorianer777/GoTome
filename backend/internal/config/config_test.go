@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,11 +44,16 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_ONNXRUNTIME":      "/opt/libonnxruntime.so",
 		"GOTOME_FULLTEXT_LIBRARY": "/opt/libgotome_fulltext.so",
 		"GOTOME_EMBED_THREADS":    "3",
+		"GOTOME_TRUSTED_PROXIES":  "172.18.0.0/16, 192.0.2.7 2001:db8::1,10.1.2.3/8",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", Fulltext: "/opt/libgotome_fulltext.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true}
+	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", Fulltext: "/opt/libgotome_fulltext.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true,
+		TrustedProxies: []netip.Prefix{
+			netip.MustParsePrefix("172.18.0.0/16"), netip.MustParsePrefix("192.0.2.7/32"),
+			netip.MustParsePrefix("2001:db8::1/128"), netip.MustParsePrefix("10.0.0.0/8"),
+		}}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -68,6 +74,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_UPLOAD_LIMIT_MB", "0"},
 		{"GOTOME_UPLOAD_LIMIT_MB", "2GB"},
 		{"GOTOME_OFFLINE", "sometimes"},
+		{"GOTOME_TRUSTED_PROXIES", "proxy.local"},
+		{"GOTOME_TRUSTED_PROXIES", "10.0.0.0/33"},
 	}
 	for _, c := range cases {
 		_, err := load(env(map[string]string{c.key: c.value}))

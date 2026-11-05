@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -62,6 +63,10 @@ type Server struct {
 	// Auth signs people in; Logins slows down guessing at passwords.
 	Auth   *auth.Service
 	Logins *LoginLimits
+	// TrustedProxies are the reverse proxies whose X-Forwarded-For and
+	// X-Forwarded-Proto are believed. None leaves every limit on the
+	// connection's address.
+	TrustedProxies []netip.Prefix
 	// SSO signs people in through an identity provider; nil offers none.
 	SSO       *sso.Service
 	Libraries *library.Service
@@ -122,7 +127,7 @@ type Server struct {
 // Routes is the handler for every path the server answers.
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(requestID, securityHeaders, logging(s.Log), recovery)
+	r.Use(requestID, forwarded(s.TrustedProxies), securityHeaders, logging(s.Log), recovery)
 	r.NotFound(s.notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 

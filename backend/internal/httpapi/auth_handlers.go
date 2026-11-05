@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -192,24 +191,6 @@ func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 		Secure:   overTLS(r),
 		SameSite: http.SameSiteLaxMode,
 	})
-}
-
-// overTLS reports whether the browser reached the server over HTTPS, directly
-// or through a reverse proxy that says so. Home installations often run plain
-// HTTP on a local network, where a Secure cookie would never be sent back.
-func overTLS(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
-}
-
-// clientAddress is the address the connection came from. Behind a reverse
-// proxy that is the proxy's, which makes the per-address limit one shared by
-// everybody; the per-account limit still holds.
-func clientAddress(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // authenticate resolves the session cookie, or a device's token sent as
