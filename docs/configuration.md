@@ -145,6 +145,14 @@ GOtome works out what each book is about with a language model, for
 | `embedding.model` | Language model | `multilingual-e5-small` | The model: `multilingual-e5-small` (int8 weights, 120 MB, about 700 MB of memory), `multilingual-e5-small-fp32` (the same model in full precision, 470 MB, about 1.1 GB, faster on CPUs without int8 instructions), or `bge-m3` (larger and better, 2.3 GB and about 3 GB of memory on the CPU, or on an embedding server). Another model reads every book again; the vectors of the one before are kept, so going back costs nothing. |
 | `embedding.server` | Embedding server | none | The address of an Ollama server that runs `bge-m3`, such as `http://host.docker.internal:11434`, without a path. GOtome may reach this one address even on your own network. Empty, `bge-m3` runs in GOtome on the CPU. |
 
+### Genres
+
+See [genres.md](genres.md).
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `genres.suggest` | Genres for books | `off` | How books are given genres of GOtome's fixed list: `off` writes none; `tags` gives each book the genres its tags mean; `vector`, `neighbours` and `combined` also suggest genres from what a book is about, from the books most like it, or the second where the first finds nothing, for review under **Genres**. The last three need similar books worked out; measure them with `gotome genre-check` first. A book's tags are never changed. |
+
 ### Signing in
 
 See [single-sign-on.md](single-sign-on.md).
