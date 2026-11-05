@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-05
+
 ### Changed
 
 - More tags give a genre: romance imprints (Julia, Romana, Baccara, Bianca,
