@@ -143,6 +143,7 @@ GOtome works out what each book is about with a language model, for
 |---|---|---|---|
 | `embedding.enabled` | Work out what books are about | `on` | `on` reads every book in the background, one at a time. `off` pauses that at the next book; on again goes on where it stopped. The jobs page has the same switch as **Pause** and **Start**. |
 | `embedding.model` | Language model | `multilingual-e5-small` | The model: `multilingual-e5-small` (int8 weights, 120 MB, about 700 MB of memory), `multilingual-e5-small-fp32` (the same model in full precision, 470 MB, about 1.1 GB, faster on CPUs without int8 instructions), or `bge-m3` (larger and better, 2.3 GB and about 3 GB of memory on the CPU, or on an embedding server). Another model reads every book again; the vectors of the one before are kept, so going back costs nothing. |
+| `embedding.passages` | A vector for every passage | `off` | `on`, while books are embedded, gives every passage of a book's text a vector of its own, so that the search by description finds a book by the passage nearest it, a scene rather than only what the book is about as a whole. It reads every book again, which takes days of the CPU on a large library, and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups. |
 | `embedding.server` | Embedding server | none | The address of an Ollama server that runs `bge-m3`, such as `http://host.docker.internal:11434`, without a path. GOtome may reach this one address even on your own network. Empty, `bge-m3` runs in GOtome on the CPU. |
 
 ### Genres

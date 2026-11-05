@@ -45,4 +45,4 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Design](design.md): how the web app looks.
 - [Performance at 50,000 books](performance.md).
 - [Decision records](decisions/): the search engine, the text store, the
-  embedding runtime, the MOBI reader.
+  embedding runtime, the MOBI reader, passage vectors.
