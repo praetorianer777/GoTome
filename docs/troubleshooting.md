@@ -113,6 +113,8 @@ filter **On e-readers** finds every such book.
 | Images of tens of megapixels, or megabytes each | **Scale the images down** | Scales JPEG and PNG images to at most 1600 pixels on their longer side. |
 | Embedded fonts of megabytes | **Remove the fonts** | Removes the fonts; the e-reader uses its own. |
 | Files the EPUB lists but lacks | **Repair the list of files** | Takes what is missing out of the EPUB's list. |
+| Chapter files that are not well-formed XHTML, which some readers (the Tolino's among them) refuse | **Repair the chapter files** | Writes each such file again as well-formed XHTML, only where its text stays the same. |
+| Entries of the table of contents that lead nowhere | **Repair the table of contents** | Points an entry at its chapter's start where only the place in it is gone, and takes it out where the chapter itself is gone. |
 
 Fixing needs an editor and a writable library. The fixed EPUB replaces
 the file, keeping its book, details and reading places; the file as it

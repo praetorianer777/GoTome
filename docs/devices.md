@@ -53,7 +53,8 @@ a Kobo, taking a book back removes it at the next sync.
 
 Some EPUBs are hard on an e-reader: a chapter file of several megabytes
 that it lays out at once, images of tens of megapixels, megabytes of
-embedded fonts. GOtome measures every EPUB and shows such findings on the
+embedded fonts, chapter files that are not well-formed XHTML, a table of
+contents that leads nowhere. GOtome measures every EPUB and shows such findings on the
 book's page; the library's filter **On e-readers** finds them all, and the
 Overview counts them. An editor can **Fix** a finding where the library is
 writable ([troubleshooting.md](troubleshooting.md#e-reader-findings-and-fixes)).

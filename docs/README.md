@@ -25,7 +25,7 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Book details from metadata sources](metadata.md): Open Library,
   CrossRef and Hardcover, their keys, automatic lookups and review.
 - [Notifications and new books](notifications.md): what people are told
-  of, and following authors and series.
+  of, and following authors, series and feeds.
 - [Single sign-on](single-sign-on.md): OpenID Connect with Authentik,
   Authelia, Keycloak and others; roles from groups.
 - [E-readers](devices.md): which way for which device, adding one, and

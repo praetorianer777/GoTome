@@ -16,6 +16,7 @@ on until turned off.
 | A book on my wishlist arrives | everyone |
 | A new book of an author or series I follow is announced | everyone |
 | A book of an author or series I follow comes out | everyone |
+| A feed I follow lists a new item I asked for | everyone |
 | Details found for a book wait for review | editors and administrators |
 | New possible duplicates | editors and administrators |
 | Files that cannot be read | editors and administrators |
@@ -50,3 +51,23 @@ announced, and again when it comes out, unless a library you see already
 has it. Several at once come as one notification.
 
 With `GOTOME_OFFLINE=true` nothing is looked up.
+
+## Following feeds
+
+Publishers and authors announce books in RSS and Atom feeds. On **New
+books**, under **Feeds**, give a feed's address and, if you like:
+
+- **Words**, separated by commas: an item must name one of them. None is
+  every item.
+- **Authors**, separated by semicolons: an item must name one of them.
+
+Each feed is read once an hour, asking the server only for what changed.
+What it lists the first time is its past and is not told; after that you
+are told once of each new item that names what you asked for, and **From
+your feeds** lists them. Each person may follow up to 50 feeds.
+
+A feed that cannot be read says why under its address, and is tried less
+and less often: after two hours, then four, up to once a day. After 8
+failures in a row it stops until you press **Try again**. Feeds on your
+own network (private addresses) are refused, as are answers over 4 MB.
+With `GOTOME_OFFLINE=true` no feed is read.
