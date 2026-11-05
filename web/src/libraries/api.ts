@@ -89,3 +89,48 @@ export function useScanLibrary() {
 		onSuccess: useInvalidate(),
 	});
 }
+
+export type Member = components["schemas"]["Member"];
+
+/** Who may see a private library besides administrators and its owner. */
+export function membersQuery(libraryId: string) {
+	return queryOptions({
+		queryKey: ["libraries", libraryId, "members"],
+		queryFn: async (): Promise<Member[]> =>
+			(
+				await api.GET("/libraries/{libraryId}/members", {
+					params: { path: { libraryId } },
+				})
+			).data?.members ?? [],
+	});
+}
+
+function useInvalidateMembers(libraryId: string) {
+	const queryClient = useQueryClient();
+	return () =>
+		queryClient.invalidateQueries({
+			queryKey: membersQuery(libraryId).queryKey,
+		});
+}
+
+export function useAddMember(libraryId: string) {
+	return useMutation({
+		mutationFn: async (userId: string) => {
+			await api.PUT("/libraries/{libraryId}/members/{userId}", {
+				params: { path: { libraryId, userId } },
+			});
+		},
+		onSuccess: useInvalidateMembers(libraryId),
+	});
+}
+
+export function useRemoveMember(libraryId: string) {
+	return useMutation({
+		mutationFn: async (userId: string) => {
+			await api.DELETE("/libraries/{libraryId}/members/{userId}", {
+				params: { path: { libraryId, userId } },
+			});
+		},
+		onSuccess: useInvalidateMembers(libraryId),
+	});
+}

@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The Libraries page lists a private library's members and lets an
+  administrator add and remove them, without the API.
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed
