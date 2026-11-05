@@ -66,6 +66,9 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 		case f.MissingAt != nil:
 			return ErrFileMissing
 		}
+		if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+			return err
+		}
 		if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
 			return err
 		}
@@ -89,7 +92,7 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 	if err != nil && to != "" {
 		s.moveBack(to, from)
 	}
-	return err
+	return s.noteUnwritable(ctx, err)
 }
 
 // Restore brings a trashed file of a writable library the scope sees back
@@ -111,6 +114,9 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 			return ErrNoFile
 		case !f.Writable:
 			return ErrReadOnly
+		}
+		if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+			return err
 		}
 		if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
 			return err
@@ -149,7 +155,7 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 	} else if err == nil {
 		_ = os.Remove(filepath.Dir(from))
 	}
-	return err
+	return s.noteUnwritable(ctx, err)
 }
 
 // moveBack undoes a move whose record failed to commit.

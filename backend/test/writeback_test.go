@@ -186,11 +186,17 @@ func TestAFailedWriteLeavesTheOriginal(t *testing.T) {
 	a := newApp(t)
 	admin, _ := a.signedIn("admin", "admin")
 	editor, _ := a.signedIn("editor", "editor")
-	folder := t.TempDir()
+	root := t.TempDir()
+	// The library's folder takes new files, so the write is tried; the
+	// book's own folder does not.
+	folder := filepath.Join(root, "Austen")
+	if err := os.Mkdir(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(folder, "Emma.epub")
 	writeEPUB(t, path, emmaMetadata, nil, "Emma Woodhouse.")
-	a.scanNow(a.writableLibrary(admin, "Shelf", folder))
-	emma := a.shelfFiles()["Emma.epub"]
+	a.scanNow(a.writableLibrary(admin, "Shelf", root))
+	emma := a.shelfFiles()["Austen/Emma.epub"]
 	a.extract(emma.ID)
 	a.call(editor, http.MethodPatch, "/books/"+emma.BookID.String(), map[string]any{"title": "Changed"})
 	original, _ := os.ReadFile(path)

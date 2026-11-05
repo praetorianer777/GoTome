@@ -3395,6 +3395,9 @@ export interface components {
             /** Format: uuid */
             ownerId?: string;
             rootPath?: string;
+            unwritableReason?: string;
+            /** Format: date-time */
+            unwritableSince?: string;
             visibility: string;
             writable: boolean;
         };
@@ -3517,7 +3520,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3530,7 +3533,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];

@@ -48,12 +48,21 @@ func trashError(err error) error {
 		return ErrNotFound("There is no such file in the trash.")
 	case errors.Is(err, ingest.ErrReadOnly):
 		return ErrConflict("This library is read-only: GOtome does not move its files.")
+	case errors.Is(err, ingest.ErrFolderReadOnly):
+		return folderReadOnly(err)
 	case errors.Is(err, ingest.ErrFileMissing):
 		return ErrConflict("This file is missing from its folder.")
 	case errors.Is(err, ingest.ErrPathTaken):
 		return ErrConflict("Another file is where this one was. Move it away first.")
 	}
 	return err
+}
+
+// folderReadOnly is a writable library whose folder cannot be written to
+// now. Its reason is the system's, such as "read-only file system".
+func folderReadOnly(err error) error {
+	return ErrConflict("GOtome cannot write to this library's folder now (" + ingest.FolderReason(err) +
+		"). If its mount was made read-only, mount it writable again; the Libraries page says more.")
 }
 
 func (s *Server) trashFile(w http.ResponseWriter, r *http.Request) error {

@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **GOtome may change files here** is refused, with the reason and the
+  folder's path, on a folder GOtome cannot write to, such as one mounted
+  with `:ro`. A writable library whose folder turns read-only later is
+  shown so on the Libraries page and told once to administrators, instead
+  of failing file by file.
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed

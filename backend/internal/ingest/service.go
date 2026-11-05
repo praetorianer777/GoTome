@@ -281,6 +281,13 @@ func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (co
 			return false, err
 		}
 	}
+	// The scan only reads, but what writes into the folder later would fail
+	// file by file: that it cannot is found here, once.
+	if scanErr == nil && lib.Writable {
+		if err := s.checkFolder(record, libraryID, lib.RootPath); err != nil {
+			return false, err
+		}
+	}
 
 	switch {
 	case scanErr != nil && ctx.Err() != nil:

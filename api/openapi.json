@@ -11373,6 +11373,13 @@
           "rootPath": {
             "type": "string"
           },
+          "unwritableReason": {
+            "type": "string"
+          },
+          "unwritableSince": {
+            "type": "string",
+            "format": "date-time"
+          },
           "visibility": {
             "type": "string"
           },
@@ -11838,7 +11845,8 @@
               "review.needed",
               "duplicates.found",
               "files.unreadable",
-              "scan.failed"
+              "scan.failed",
+              "library.unwritable"
             ]
           },
           "link": {
@@ -11894,7 +11902,8 @@
               "review.needed",
               "duplicates.found",
               "files.unreadable",
-              "scan.failed"
+              "scan.failed",
+              "library.unwritable"
             ]
           }
         },

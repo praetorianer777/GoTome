@@ -84,6 +84,20 @@ What GOtome writes into a library it may change:
 - **Fix** for e-readers, which replaces an EPUB with a lighter one and
   moves the original into the trash.
 
+GOtome checks that it can write to the folder when **GOtome may change
+files here** is turned on, by making a dot file there and removing it
+again: a folder mounted with `:ro`, or one the app's user 10001 may not
+write to, is refused with the reason and the folder's path. It checks
+again at every scan of a writable library. Should the folder have become
+read-only since (a mount changed, a disk full or remounted read-only),
+the library's line on the Libraries page says so and since when, and
+administrators are notified once ("A library's folder cannot be written
+to"), not once per file. Until a scan finds the folder writable again,
+edits are kept in GOtome but not written into its files, **Move to
+trash**, **Restore** and **Fix** are refused with the reason, and its
+trash is not emptied. An edit made in that time reaches the file with
+the book's next edit.
+
 Without that permission GOtome only reads: a file that disappears from
 the folder is marked missing, and nothing on disk is moved, renamed or
 deleted. An upload of a file whose exact bytes are already in a library

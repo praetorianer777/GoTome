@@ -27,6 +27,10 @@ const (
 	// KindScanFailed is a scan that could not read the library's folder.
 	// Data: library, error.
 	KindScanFailed = "scan.failed"
+	// KindLibraryUnwritable is a writable library whose folder GOtome
+	// found it cannot write to, told once until it can again. Data:
+	// library, error.
+	KindLibraryUnwritable = "library.unwritable"
 	// KindFilesUnreadable is a file that could not be read as its format.
 	// Data: library, file, title.
 	KindFilesUnreadable = "files.unreadable"
@@ -74,6 +78,7 @@ var EventKinds = []EventKind{
 	{Kind: KindDuplicatesFound, Permission: auth.MetadataEdit, Default: true, Summary: page("/duplicates")},
 	{Kind: KindFilesUnreadable, Permission: auth.MetadataEdit, Default: true, Summary: page("/jobs")},
 	{Kind: KindScanFailed, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
+	{Kind: KindLibraryUnwritable, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
 }
 
 func libraryPage(library *uuid.UUID) string {

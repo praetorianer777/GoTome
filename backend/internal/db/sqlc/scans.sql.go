@@ -182,7 +182,7 @@ func (q *Queries) GetFileForExtraction(ctx context.Context, id uuid.UUID) (GetFi
 }
 
 const getFileForWriteBack = `-- name: GetFileForWriteBack :one
-SELECT f.id, f.book_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
        f.extract_state, f.drm, f.missing_at, f.trashed_at, l.root_path, l.writable
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
@@ -192,6 +192,7 @@ WHERE f.id = $1
 type GetFileForWriteBackRow struct {
 	ID            uuid.UUID
 	BookID        uuid.UUID
+	LibraryID     uuid.UUID
 	Format        string
 	RelPath       string
 	SizeBytes     int64
@@ -211,6 +212,7 @@ func (q *Queries) GetFileForWriteBack(ctx context.Context, id uuid.UUID) (GetFil
 	err := row.Scan(
 		&i.ID,
 		&i.BookID,
+		&i.LibraryID,
 		&i.Format,
 		&i.RelPath,
 		&i.SizeBytes,

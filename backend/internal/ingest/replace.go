@@ -44,6 +44,9 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 				return ErrReadOnly
 			}
 			if len(pending) == 0 {
+				if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+					return err
+				}
 				if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
 					return err
 				}
@@ -85,5 +88,5 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 			s.moveBack(m.to, m.from)
 		}
 	}
-	return err
+	return s.noteUnwritable(ctx, err)
 }

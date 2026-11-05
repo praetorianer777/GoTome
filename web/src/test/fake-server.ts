@@ -91,6 +91,8 @@ export class FakeServer {
 	session: CurrentUser | null = null;
 	requests: { method: string; path: string; body: unknown }[] = [];
 	libraries: Library[] = [];
+	/** Folders a library cannot be made writable on, as a :ro mount. */
+	readOnlyFolders: string[] = [];
 	books: BookDetail[] = [];
 	listed: (ListedBook & { series: string })[] = [];
 	/** What the next scan of a library finds; a scan is finished at once. */
@@ -2536,6 +2538,11 @@ export class FakeServer {
 		if (method === "PATCH") {
 			if (typeof body.name === "string" && nameTaken(body.name.trim(), id)) {
 				return invalid({ name: "Another library already has this name." });
+			}
+			if (body.writable === true && this.readOnlyFolders.includes(library.rootPath ?? "")) {
+				return invalid({
+					writable: `GOtome cannot write to ${library.rootPath}: read-only file system.`,
+				});
 			}
 			Object.assign(library, body);
 			return Response.json(library);
