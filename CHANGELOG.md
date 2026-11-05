@@ -11,6 +11,13 @@ What changes for someone who runs or uses GOtome. The format follows
 - The Libraries page lists a private library's members and lets an
   administrator add and remove them, without the API.
 
+### Fixed
+
+- Background work no longer can stop for good with "completion subscriber
+  received a job that wasn't finalized" on a heavily loaded machine: queueing
+  a job that was already running kept that job from being marked finished
+  until the change that queued it was saved.
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed
