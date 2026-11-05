@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
@@ -89,6 +90,9 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Genres gives books genres of a fixed list and keeps the suggestions
+	// that wait for a person.
+	Genres *genres.Service
 	// Pairing adds an e-reader whose app asked to be added and was accepted.
 	Pairing *pairing.Service
 	// Kobo keeps what each Kobo reader's library sync told it.

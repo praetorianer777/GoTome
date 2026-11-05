@@ -176,6 +176,9 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 		func() error {
 			return q.MoveNotifications(ctx, sqlc.MoveNotificationsParams{IntoBook: &into, FromBook: &from})
 		},
+		func() error {
+			return q.MergeBookGenres(ctx, sqlc.MergeBookGenresParams{IntoBook: into, FromBook: from})
+		},
 		func() error { return q.DropBookMatches(ctx, from) },
 		func() error {
 			return q.SettleMergedPairs(ctx, sqlc.SettleMergedPairsParams{IntoBook: into, FromBook: from})

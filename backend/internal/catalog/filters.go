@@ -36,6 +36,10 @@ const (
 	// FieldEReader is what makes a book's EPUB slow or troublesome on an
 	// e-reader: one of epub.Findings.
 	FieldEReader = "ereader"
+	// FieldGenre is a genre of the fixed list (internal/genres) the book
+	// has: one of its tags', or one a person accepted. A suggestion nobody
+	// accepted is not one.
+	FieldGenre = "genre"
 	// FieldStatus and FieldRating are where the viewer stands with a book:
 	// each person filters by their own.
 	FieldStatus = "status"
@@ -82,6 +86,10 @@ func hasEReaderFinding(values string) string {
 		WHERE f.book_id = b.id AND cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
 		  AND f.ereader_findings && ` + values + `::text[])`
 }
+
+// hasGenre is a row of book_genres g that gives its book the genre, in the
+// form the partial index book_genres_genre covers.
+const hasGenre = `(g.state = 'accepted' OR (g.state = 'suggested' AND g.source = 'tags'))`
 
 // languageOf is a book's language as filters and facets compare it: the
 // language without its region, so that en-GB and en-US are both English.
@@ -155,6 +163,15 @@ var Filters = filter.Registry{
 	FieldEReader: {
 		OpIn: {Arity: -1, Value: ereaderFinding, SQL: func(v []string, arg func(any) string) string {
 			return hasEReaderFinding(arg(v))
+		}},
+	},
+	FieldGenre: {
+		OpIn: {Arity: -1, Value: genreKey, SQL: func(v []string, arg func(any) string) string {
+			return `EXISTS (SELECT 1 FROM book_genres g
+				WHERE g.book_id = b.id AND g.genre = ANY(` + arg(v) + `::text[]) AND ` + hasGenre + `)`
+		}},
+		OpEmpty: {SQL: func([]string, func(any) string) string {
+			return `NOT EXISTS (SELECT 1 FROM book_genres g WHERE g.book_id = b.id AND ` + hasGenre + `)`
 		}},
 	},
 }
@@ -262,6 +279,17 @@ func fileState(v string) (string, error) {
 func ereaderFinding(v string) (string, error) {
 	if !slices.Contains(epub.Findings, v) {
 		return "", fmt.Errorf("%q is not a finding; one is %s", v, strings.Join(epub.Findings, ", "))
+	}
+	return v, nil
+}
+
+// genreKey is a key of the genre list's form; one of no genre matches no
+// book. The list itself is internal/genres's, which this package cannot
+// import.
+func genreKey(v string) (string, error) {
+	v = strings.TrimSpace(v)
+	if v == "" || strings.Trim(v, "abcdefghijklmnopqrstuvwxyz-") != "" {
+		return "", fmt.Errorf("%q is not a genre such as crime or science-fiction", v)
 	}
 	return v, nil
 }
@@ -419,6 +447,14 @@ FROM (SELECT b.id, f.ereader_findings
      unnest(m.ereader_findings) finding
 GROUP BY finding
 ORDER BY array_position(ARRAY['` + strings.Join(epub.Findings, "','") + `'], finding)
+LIMIT {limit}`},
+	{FieldGenre, `
+SELECT g.genre, g.genre, count(*)
+FROM books b
+JOIN book_genres g ON g.book_id = b.id AND ` + hasGenre + `
+WHERE {where}
+GROUP BY g.genre
+ORDER BY 3 DESC, 1
 LIMIT {limit}`},
 }
 

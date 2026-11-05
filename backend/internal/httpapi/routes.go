@@ -520,6 +520,16 @@ func (s *Server) routes() []Route {
 			Permission: auth.MetadataEdit, Handler: s.dismissCleanup,
 		},
 		{
+			Method: http.MethodGet, Path: "/genres/suggestions", ID: "listGenreSuggestions",
+			Summary: "Genres suggested for the books the caller sees that wait for a person, the surest first, with how many wait per genre", Tag: "books",
+			Query: genreSuggestionsQuery{}, Response: genreSuggestions{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listGenreSuggestions,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/genres/{genre}", ID: "decideGenre",
+			Summary: "Accept or reject a genre of a book; what a person decided is not changed by suggestions", Tag: "books",
+			Request: genreDecision{}, Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.decideGenre,
+		},
+		{
 			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
 			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
 			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,

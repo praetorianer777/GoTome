@@ -17,6 +17,14 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- Genres from a fixed list of 44, in English and German: books get the
+  genres their tags mean ("Krimi", "Kriminalroman" and
+  "Belletristik/Kriminalromane" are all Crime), and GOtome can suggest more
+  from what a book is about or from the books most like it, for review
+  under Genres. The library's filter and smart shelves find books by
+  genre. Nothing is written until an administrator sets "Genres for books"
+  (`genres.suggest`); `gotome genre-check` measures the suggestions on a
+  library first. A book's tags are never changed.
 
 ### Changed
 

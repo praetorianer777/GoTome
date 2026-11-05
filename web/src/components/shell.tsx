@@ -34,6 +34,7 @@ export interface NavItem {
 		| "/upload"
 		| "/review"
 		| "/cleanup"
+		| "/genres"
 		| "/collections"
 		| "/wishlist"
 		| "/releases"
@@ -151,6 +152,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "metadata:edit",
 		group: "catalogue",
 		icon: "wand",
+	},
+	{
+		to: "/genres",
+		label: "nav.genres",
+		permission: "metadata:edit",
+		group: "catalogue",
+		icon: "tag",
 	},
 	{
 		to: "/trash",
@@ -515,6 +523,7 @@ export type IconName =
 	| "check"
 	| "copy"
 	| "wand"
+	| "tag"
 	| "trash"
 	| "jobs"
 	| "folder"
@@ -526,6 +535,7 @@ export type IconName =
 	| "signOut";
 
 const ICONS: Record<IconName, string[]> = {
+	tag: ["M4 4h7l9 9-7 7-9-9z", "M8 8h.01"],
 	library: ["M4 4h3v16H4z", "M9 4h3v16H9z", "M14.5 4.7l2.9-.8 3.9 15.4-2.9.8z"],
 	search: [
 		"M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13z",
