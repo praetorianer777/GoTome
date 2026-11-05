@@ -4,6 +4,7 @@ import { api } from "@/api/client";
 import { can, currentUserQuery } from "@/auth/session";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { formatSize } from "@/lib/format";
 import { settingsQuery } from "@/settings/api";
 
 /** How often the progress is asked for again while books are embedded. */
@@ -15,7 +16,8 @@ export const embeddingStatusQuery = queryOptions({
 	queryFn: async () => (await api.GET("/embedding/status")).data,
 	refetchInterval: (query) => {
 		const s = query.state.data;
-		return s?.enabled && (s.metadata < s.books || s.content < s.withText) ? POLL_MS : false;
+		const passages = s?.passages && s.passages.withPassages < s.passages.withText;
+		return s?.enabled && (s.metadata < s.books || s.content < s.withText || passages) ? POLL_MS : false;
 	},
 });
 
@@ -61,6 +63,15 @@ export function EmbeddingPanel() {
 							withText: s.withText,
 						})}
 					</p>
+					{s.passages && (
+						<p>
+							{t("embedding.passages", {
+								done: s.passages.withPassages,
+								withText: s.passages.withText,
+								size: formatSize(s.passages.bytes),
+							})}
+						</p>
+					)}
 					<p className="text-slate-600 dark:text-slate-400">
 						{t(s.enabled ? "embedding.running" : "embedding.paused", { model: s.model })}
 					</p>
