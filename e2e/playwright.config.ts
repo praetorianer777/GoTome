@@ -44,7 +44,18 @@ export default defineConfig({
 		{
 			name: "webkit",
 			dependencies: ["first-run"],
-			use: { ...devices["Desktop Safari"] },
+			use: {
+				...devices["Desktop Safari"],
+				// Without a GPU, WebKit rasterises through Mesa's software GL,
+				// which compiles its shaders on first use, and the container
+				// starts with no shader cache: the first pages of a run then
+				// drew no frame for five seconds and more, and every click
+				// timed out waiting for its element to be stable (#122).
+				// Skia's CPU rasteriser draws the same pages without that.
+				launchOptions: {
+					env: { ...process.env, WEBKIT_SKIA_ENABLE_CPU_RENDERING: "1" },
+				},
+			},
 		},
 		{
 			name: "phone",
