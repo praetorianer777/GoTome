@@ -494,22 +494,34 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 ## E-reader checks
 
 - What makes an EPUB slow or troublesome on an e-reader (#233) is measured
-  by `epub.Measure` from the archive's directory, the package document and
-  the images' headers: the largest content document, the embedded fonts,
-  the largest image in bytes and pixels, and manifest items the archive
-  lacks. `Measures.Findings` names those past the limits (`epub.Findings`,
+  by `epub.Measure` from the archive's directory, the package document,
+  the images' headers, the XHTML documents and the tables of contents: the
+  largest content document, the embedded fonts, the largest image in bytes
+  and pixels, manifest items the archive lacks, XHTML documents that are
+  not well-formed XML (entities a DTD declares, such as HTML's under the
+  XHTML DTD, are allowed), and NCX or nav entries that lead nowhere (a
+  document the archive lacks, a fragment no element has) (#262).
+  `Measures.Findings` names those past the limits (`epub.Findings`,
   constants to be tuned). Extraction stores both on the file
-  (`epub_measures`, `ereader_findings`); the `ingest.measure_files` job
-  measures EPUBs read before, every ten minutes in batches, and a trigger
-  clears both when `sha256` changes. A file that cannot be measured has no
-  findings. The filter field is `ereader`, with its facet.
+  (`epub_measures`, `ereader_findings`, `measures_version`); the
+  `ingest.measure_files` job measures EPUBs read before or measured by an
+  older `epub.MeasuresVersion` (raise it with a change to what is
+  measured), every ten minutes in batches, and a trigger clears all three
+  when `sha256` changes. A file that cannot be measured has no findings.
+  The filter field is `ereader`, with its facet.
 - `epub.Fix` fixes findings on the zip entries, a step each: splitting
   content documents at chapters, else between blocks, into parts of at
   most `SplitBytes` (manifest, spine, NCX, nav, guide and links pointed at
   the parts), scaling JPEG and PNG down to `MaxImageSide`, removing fonts
   (entries, items, `@font-face`, their encryption.xml entries), and taking
-  manifest items without a file out. Fonts are not subset: there is no
-  font writer to do it with. `ingest.Service.Fix` is the one writer:
+  manifest items without a file out, writing a document that is not well
+  formed again from `golang.org/x/net/html`'s parse (kept only when it
+  parses as XML and has the original's text and ids in their order), and
+  mending tables of contents (an entry whose document is missing goes,
+  or points at the first entry below it that leads somewhere; one whose
+  fragment is missing points at its document; a table is changed only
+  when it parses after and keeps every entry that led somewhere). Fonts
+  are not subset: there is no font writer to do it with. `ingest.Service.Fix` is the one writer:
   written beside the file and read back, then in one transaction the
   original goes into the trash as a file of its own (`<name>
   (original).epub`, `AddTrashedOriginal`) and the fixed file takes its

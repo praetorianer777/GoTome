@@ -27,6 +27,10 @@ function findingText(finding: Finding, check: components["schemas"]["EreaderChec
 			});
 		case "missing-resources":
 			return t(key, { count: check.missingResources.length });
+		case "malformed-document":
+			return t(key, { count: check.malformedDocuments.length });
+		case "broken-toc":
+			return t(key, { count: check.brokenTocEntries.length });
 	}
 }
 

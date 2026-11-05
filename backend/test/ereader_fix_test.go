@@ -105,7 +105,7 @@ func TestAFixMakesAnEPUBLighterAndCanBeUndone(t *testing.T) {
 	if bytes.Equal(after.sha, before.sha) || !bytes.Equal(after.original, before.original) || after.relPath != before.relPath {
 		t.Errorf("the fixed file's record: %+v, before %+v", after, before)
 	}
-	if want := []string{epub.LargeDocument, epub.LargeImage, epub.MissingResources}; !slices.Equal(after.findings, want) {
+	if want := []string{epub.LargeDocument, epub.LargeImage, epub.MissingResources, epub.MalformedDocument, epub.BrokenTOC}; !slices.Equal(after.findings, want) {
 		t.Errorf("findings after removing the fonts: %v", after.findings)
 	}
 	path := filepath.Join(root, filepath.FromSlash(before.relPath))
@@ -151,8 +151,9 @@ func TestAFixMakesAnEPUBLighterAndCanBeUndone(t *testing.T) {
 	}
 
 	// The rest at once.
-	status, body = fix(editor, fileID, epub.LargeDocument, epub.LargeImage, epub.MissingResources)
-	if status != 200 || body["documentsSplit"] != 1.0 || body["imagesScaled"] != 1.0 || body["itemsRemoved"] != 1.0 {
+	status, body = fix(editor, fileID, epub.LargeDocument, epub.LargeImage, epub.MissingResources, epub.MalformedDocument, epub.BrokenTOC)
+	if status != 200 || body["documentsSplit"] != 1.0 || body["imagesScaled"] != 1.0 || body["itemsRemoved"] != 1.0 ||
+		body["documentsRepaired"] != 1.0 || body["tocEntriesRemoved"] != 1.0 {
 		t.Fatalf("the other fixes: %d %v", status, body)
 	}
 	if s := a.fileState(fileID); s.findings == nil || len(s.findings) != 0 || !bytes.Equal(s.original, before.original) {
@@ -275,7 +276,7 @@ func TestABulkFixMakesTheFilteredBooksLighter(t *testing.T) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
 	for _, id := range ids {
-		if s := a.fileState(id); !slices.Equal(s.findings, []string{epub.LargeDocument, epub.MissingResources}) {
+		if s := a.fileState(id); !slices.Equal(s.findings, []string{epub.LargeDocument, epub.MissingResources, epub.MalformedDocument, epub.BrokenTOC}) {
 			t.Errorf("%s after the bulk fix: %v", id, s.findings)
 		}
 	}

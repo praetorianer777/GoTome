@@ -26,6 +26,8 @@ export const EREADER_FINDINGS = [
 	"large-fonts",
 	"large-image",
 	"missing-resources",
+	"malformed-document",
+	"broken-toc",
 ] as const;
 
 /** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
