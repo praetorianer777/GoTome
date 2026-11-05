@@ -83,42 +83,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # TEMPORARY (#304): the audio player's test, twenty times in WebKit, on
-  # each of two freshly started stacks.
-  audio-webkit-repeat:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: engine/vendor
-          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
-      - uses: actions/cache@v4
-        with:
-          path: deploy/vendor
-          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
-          restore-keys: ffmpeg-source-
-      - uses: actions/cache@v4
-        with:
-          path: .cache/npm
-          key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: npm-${{ runner.os }}-
-      - name: Twenty WebKit runs of the audio player's test, twice
-        run: |
-          make engine-vendor
-          failed=0
-          for i in 1 2; do
-            make stack-up
-            if make test-e2e FULL=1 E2E_SELECTION="--project=webkit --repeat-each=20" ONLY="audiobook in two parts" > run$i.log 2>&1; then r=ok; else r=FAILED; failed=$((failed+1)); fi
-            echo "round $i: $r load $(cut -d' ' -f1-3 /proc/loadavg) $(grep -E '^ +[0-9]+ (passed|failed|flaky|skipped)' run$i.log | tr -s ' ' | tr '\n' ' ')"
-            grep -E 'audio-player' run$i.log | grep -E '✓|✘' || true
-            [ $r = ok ] || grep -E '^ +[0-9]+\) \[|Error|waiting for|Expected|Received' run$i.log | head -60
-            make stack-down
-          done
-          echo "failed rounds: $failed"
-          [ $failed -eq 0 ]
-
   # An installation of the previous release (before the first one, of the
   # commit this change started from) is upgraded to this change's image, and
   # its backup restored into a new one: docs/backup-and-upgrade.md.
