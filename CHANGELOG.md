@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- An identity provider's signing keys are read with go-jose 4.1.6, which
+  no longer can be made to spend unbounded time on a crafted RSA key.
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
