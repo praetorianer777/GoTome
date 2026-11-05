@@ -2041,6 +2041,21 @@ describe("jobs", () => {
 			screen.getByRole("button", { name: "Read Broken.epub again" }),
 		);
 		await waitFor(() => expect(server.reread).toContain("file-9"));
+		// The page asks for the book until the file is read: a second
+		// failure shows as the first did.
+		expect(await screen.findByText(/Not read yet/)).toBeInTheDocument();
+		const file = server.books[0]?.files[0];
+		if (file) {
+			file.extractState = "failed";
+			file.extractError = "still not a zip file";
+		}
+		expect(
+			await screen.findByText(
+				"Could not be read: still not a zip file",
+				{},
+				{ timeout: 5000 },
+			),
+		).toBeInTheDocument();
 		unmount();
 
 		server.signedInAs("Rita");
@@ -2052,7 +2067,7 @@ describe("jobs", () => {
 		expect(
 			screen.queryByRole("link", { name: "Jobs" }),
 		).not.toBeInTheDocument();
-	});
+	}, 15_000);
 });
 
 describe("editing a book", () => {
@@ -5054,6 +5069,65 @@ describe("links to authors and series", () => {
 		await screen.findByRole("option", { name: /Die Götter/ });
 		await person.keyboard("{Enter}");
 		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
+	});
+});
+
+describe("reviewing suggested genres", () => {
+	const book = (id: string, title: string) => ({
+		id,
+		libraryId: "lib-1",
+		title,
+		authors: ["Donna Leon"],
+		authorKeys: ["donna leon"],
+		formats: ["epub"],
+		addedAt: "2026-01-01T00:00:00Z",
+		status: "unread" as const,
+		placeholder: false,
+		filesMissing: false,
+	});
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Rita", "a long password", "editor").signedInAs("Rita").withLibrary("Novels");
+		server.genreSuggestions = [
+			{ book: book("book-1", "Death at La Fenice"), genre: "crime", method: "vector", score: 0.12 },
+			{ book: book("book-2", "Acqua Alta"), genre: "crime", method: "neighbours", score: 0.8 },
+			{ book: book("book-2", "Acqua Alta"), genre: "travel", method: "vector", score: 0.06 },
+		];
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("accepts and rejects suggestions, one genre at a time", async () => {
+		const person = userEvent.setup();
+		const { router } = renderApp("/");
+		await person.click(await screen.findByRole("link", { name: "Genres" }));
+		expect(await screen.findByRole("button", { name: "All: 3" })).toHaveAttribute("aria-pressed", "true");
+		await person.click(screen.getByRole("button", { name: "Crime & mystery: 2" }));
+		expect(router.state.location.search).toEqual({ genre: "crime" });
+		await waitFor(() => expect(screen.queryByText("Travel")).not.toBeInTheDocument());
+		expect(screen.getByRole("link", { name: "Death at La Fenice" })).toHaveAttribute("href", "/books/book-1");
+		expect(screen.getByText("from the books most like it")).toBeInTheDocument();
+
+		await person.click(screen.getAllByRole("button", { name: "Accept Crime & mystery" })[0] as HTMLElement);
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/books/book-1/genres/crime")?.body).toEqual({
+				state: "accepted",
+			}),
+		);
+		await person.click(await screen.findByRole("button", { name: "Reject" }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/books/book-2/genres/crime")?.body).toEqual({
+				state: "rejected",
+			}),
+		);
+		await person.click(await screen.findByRole("button", { name: "All: 1" }));
+		expect(await screen.findByRole("button", { name: "Accept Travel" })).toBeInTheDocument();
+	});
+
+	it("names the genres in German", async () => {
+		setLocale("de");
+		renderApp("/genres");
+		expect(await screen.findByRole("button", { name: "Krimi: 2" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Reisen: 1" })).toBeInTheDocument();
 	});
 });
 

@@ -22,7 +22,6 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
-	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -152,9 +151,7 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 		if err := q.SendBookAgain(ctx, f.BookID); err != nil {
 			return err
 		}
-		if _, err := s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: fileID}, jobs.InsertOpts{
-			Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
-		}); err != nil {
+		if err := s.queueReadTx(ctx, tx, fileID); err != nil {
 			return err
 		}
 		if err := s.filesChangedTx(ctx, tx, f.BookID); err != nil {

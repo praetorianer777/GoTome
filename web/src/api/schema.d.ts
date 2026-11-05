@@ -586,6 +586,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/genres/{genre}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Accept or reject a genre of a book; what a person decided is not changed by suggestions */
+        put: operations["decideGenre"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/merge": {
         parameters: {
             query?: never;
@@ -1215,6 +1232,23 @@ export interface paths {
         put?: never;
         /** Move a file of a writable library into its trash; it can be restored until the trash is purged */
         post: operations["trashFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/genres/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Genres suggested for the books the caller sees that wait for a person, the surest first, with how many wait per genre */
+        get: operations["listGenreSuggestions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3119,7 +3153,7 @@ export interface components {
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader";
+            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -3218,6 +3252,26 @@ export interface components {
         FullTextResult: {
             books: components["schemas"]["TextBook"][];
             more: boolean;
+        };
+        GenreDecision: {
+            /** @enum {string} */
+            state: "accepted" | "rejected";
+        };
+        GenreSuggestion: {
+            book: components["schemas"]["BookSummary"];
+            genre: string;
+            /** @enum {string} */
+            method: "vector" | "neighbours";
+            score: number;
+        };
+        GenreSuggestions: {
+            nextCursor?: string;
+            suggestions: components["schemas"]["GenreSuggestion"][];
+            waiting: components["schemas"]["GenreWaiting"][];
+        };
+        GenreWaiting: {
+            genre: string;
+            waiting: number;
         };
         Health: {
             disk: components["schemas"]["Disk"];
@@ -4612,7 +4666,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image or missing-resources, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
                 sort?: "title" | "author" | "added" | "series";
@@ -5168,6 +5222,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DeliveryList"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    decideGenre: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+                genre: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenreDecision"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -6550,6 +6638,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listGenreSuggestions: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description One genre's key, such as crime; left out, every genre. */
+                genre?: string;
+                /** @description Where the page before ended, as its nextCursor says; the surest suggestions come first. */
+                cursor?: string;
+                /** @description How many suggestions a page holds, at most 100; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenreSuggestions"];
+                };
             };
             /** @description The request failed. */
             default: {

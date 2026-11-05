@@ -32,7 +32,7 @@ umask 077
 # duplicate signatures, the vectors, and the cache of what metadata sources
 # answered. Their tables stay in the dump, empty; restore.sh has the text
 # read again, which fills them.
-derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors provider_records)
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors provider_records book_genre_checks)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")

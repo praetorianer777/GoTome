@@ -3,6 +3,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -159,5 +160,43 @@ func TestFailuresShowAndAreTriedAgain(t *testing.T) {
 	status, body, _ = a.call(editor, http.MethodPost, fmt.Sprintf("/jobs/%d/retry", int64(failed["id"].(float64))), nil)
 	if status != 200 || body["state"] == "cancelled" {
 		t.Errorf("retry the scan: %d %v", status, body)
+	}
+}
+
+// A read that fails commits before the queue marks its job finished. A file
+// asked to be read again in between is queued all the same (#142): the
+// running job read it before it was asked for.
+func TestAFileReadAgainWhileItsJobFinishesIsQueued(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	folder := t.TempDir()
+	if err := os.WriteFile(filepath.Join(folder, "Broken.epub"), []byte("not a zip at all"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a.scanNow(a.externalLibrary(admin, "Shelf", "shared", folder))
+	broken := a.shelfFiles()["Broken.epub"]
+	const reads = `SELECT count(*) FROM river_job WHERE kind = 'ingest.extract_file' AND args->>'fileId' = $1 AND state = $2`
+	if n := a.countRows(reads, broken.ID.String(), "available"); n != 1 {
+		t.Fatalf("reads queued by the scan: %d", n)
+	}
+	if _, err := a.pool.Exec(context.Background(),
+		`UPDATE river_job SET state = 'running', attempt = 1, attempted_at = now() WHERE kind = 'ingest.extract_file' AND args->>'fileId' = $1`,
+		broken.ID.String()); err != nil {
+		t.Fatal(err)
+	}
+	a.extract(broken.ID)
+
+	status, body, _ := a.call(editor, http.MethodPost, "/files/"+broken.ID.String()+"/extraction", nil)
+	if status != 202 || body["queued"] != 1.0 {
+		t.Fatalf("read the file again: %d %v", status, body)
+	}
+	if n := a.countRows(reads, broken.ID.String(), "available"); n != 1 {
+		t.Errorf("reads waiting beside the running one: %d", n)
+	}
+	a.call(editor, http.MethodPost, "/files/"+broken.ID.String()+"/extraction", nil)
+	if n := a.countRows(reads, broken.ID.String(), "available"); n != 1 {
+		t.Errorf("reads waiting after asking twice: %d", n)
 	}
 }

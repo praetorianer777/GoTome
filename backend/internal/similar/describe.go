@@ -41,7 +41,7 @@ func (s *Service) Describe(ctx context.Context, scope library.Scope, libraryID *
 	}
 	limit = min(max(limit, 1), MaxDescribed)
 	rows, err := sqlc.New(s.pool).ListBooksNearQuery(ctx, sqlc.ListBooksNearQueryParams{
-		Query: literal(vec), Model: spec.Model.Name, ModelVersion: Version(spec.Model),
+		Query: Literal(vec), Model: spec.Model.Name, ModelVersion: Version(spec.Model),
 		Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID,
 		Max: int32(limit + 1), Skip: int32(max(offset, 0)),
 	})
@@ -74,6 +74,23 @@ func (s *Service) Describe(ctx context.Context, scope library.Scope, libraryID *
 }
 
 func (s *Service) embedQuery(ctx context.Context, spec embed.Spec, text string) ([]float32, error) {
+	vecs, err := s.EmbedQueries(ctx, spec, []string{text})
+	if err != nil {
+		return nil, err
+	}
+	return vecs[0], nil
+}
+
+// Spec is the model books are embedded with now.
+func (s *Service) Spec(ctx context.Context) (embed.Spec, error) {
+	spec, _, err := s.config(ctx)
+	return spec, err
+}
+
+// EmbedQueries embeds texts as queries are, with the spec's prefix, by the
+// model Describe keeps open. A model that cannot run here is
+// ErrUnavailable.
+func (s *Service) EmbedQueries(ctx context.Context, spec embed.Spec, texts []string) ([][]float32, error) {
 	s.queries.mu.Lock()
 	defer s.queries.mu.Unlock()
 	if s.queries.e != nil && s.queries.model != spec.Model {
@@ -90,9 +107,9 @@ func (s *Service) embedQuery(ctx context.Context, spec embed.Spec, text string) 
 		}
 		s.queries.e, s.queries.model = e, spec.Model
 	}
-	vecs, err := s.queries.e.Embed(ctx, []string{spec.Prefix + text})
-	if err != nil {
-		return nil, err
+	prefixed := make([]string, len(texts))
+	for i, t := range texts {
+		prefixed[i] = spec.Prefix + t
 	}
-	return vecs[0], nil
+	return s.queries.e.Embed(ctx, prefixed)
 }

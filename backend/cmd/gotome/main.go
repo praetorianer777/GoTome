@@ -35,6 +35,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -77,6 +78,7 @@ const (
 	sessionSweepInterval = time.Hour
 	trashPurgeInterval   = 6 * time.Hour
 	embedInterval        = time.Hour
+	genreInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
 	// feedFetchInterval is how often feeds are looked at for those due.
@@ -101,6 +103,7 @@ Commands:
   audio-check    Compare what FFmpeg reads from folders of audio files with their reference
   migrate        Bring the database schema up to date and exit
   similar-check  Measure the similar books of a sample of the library (-h for options)
+  genre-check    Measure how well genres are found again for tagged books (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
 `
@@ -134,6 +137,8 @@ func run(args []string) error {
 		return migrate()
 	case "similar-check":
 		return similarCheck(args[1:])
+	case "genre-check":
+		return genreCheck(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -247,7 +252,15 @@ func serve() error {
 		}
 		return vectors.EnqueueTx(ctx, tx)
 	}
+	genreService := genres.NewService(pool, vectors, func(ctx context.Context) (string, error) {
+		return settingStore.Text(ctx, settings.GenreSuggestions)
+	}, log)
 	settingStore.OnChange = func(ctx context.Context, keys []string) {
+		if slices.Contains(keys, settings.GenreSuggestions) {
+			if err := genreService.Enqueue(ctx); err != nil {
+				log.Warn("could not queue genres", "error", err)
+			}
+		}
 		if !slices.ContainsFunc(keys, func(k string) bool { return strings.HasPrefix(k, "embedding.") }) {
 			return
 		}
@@ -291,6 +304,7 @@ func serve() error {
 	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
 	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
 	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
+	river.AddWorker(workers, &genres.SuggestWorker{Service: genreService})
 	river.AddWorker(workers, &notify.FlushWorker{Events: events})
 	river.AddWorker(workers, &releases.PollWorker{Service: follows})
 	river.AddWorker(workers, &releases.FetchFeedsWorker{Service: follows})
@@ -309,6 +323,7 @@ func serve() error {
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 		similar.Periodic(embedInterval),
+		genres.Periodic(genreInterval),
 		releases.Periodic(releasePollInterval),
 		releases.FeedsPeriodic(feedFetchInterval),
 		kosync.Periodic(koreaderHashInterval),
@@ -330,6 +345,7 @@ func serve() error {
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
+	genreService.Queue = runner
 	events.Queue = runner
 	follows.Queue = runner
 	if err := runner.Start(ctx); err != nil {
@@ -392,6 +408,7 @@ func serve() error {
 		Search:     search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates: duplicates,
 		Similar:    vectors,
+		Genres:     genreService,
 		Stats:      stats.NewService(pool, vectors),
 		Resources:  health,
 		Deliveries: deliveries.NewService(pool),
@@ -573,6 +590,59 @@ func similarCheck(args []string) error {
 	fmt.Printf("From the book's series      %.1f%% (of those of books in a series)\n", 100*r.SameSeries)
 	fmt.Printf("Copies of the book          %.1f%%\n", 100*r.Copies)
 	fmt.Printf("Authors among them          %.1f on average\n", r.Authors)
+	return nil
+}
+
+// genreCheck measures how well each way of suggesting genres finds again
+// the genres the tags of a sample of tagged books give. It reads only.
+func genreCheck(args []string) error {
+	flags := flag.NewFlagSet("genre-check", flag.ContinueOnError)
+	n := flags.Int("n", 300, "how many tagged books to ask about")
+	precision := flags.Float64("precision", 0.8, "the precision a genre's threshold must reach")
+	neighbours := flags.Bool("neighbours", true, "measure the neighbours too, a look at a library's vectors per book")
+	asJSON := flags.Bool("json", false, "print the report as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := cfg.RequireSecretKey(); err != nil {
+		return err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	store, err := settings.Open(ctx, pool, box)
+	if err != nil {
+		return err
+	}
+	vectors := similar.NewService(pool, store.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
+		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
+		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
+	}), store.EmbeddingServer), log)
+	r, err := genres.NewService(pool, vectors, nil, log).Check(ctx, genres.CheckOptions{
+		Books: *n, Precision: *precision, Neighbours: *neighbours,
+	})
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	genres.PrintCheck(os.Stdout, r, *precision)
 	return nil
 }
 
