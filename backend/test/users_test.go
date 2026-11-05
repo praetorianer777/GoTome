@@ -3,8 +3,13 @@
 package test
 
 import (
+	"context"
+	"crypto/rand"
+	"errors"
 	"net/http"
 	"testing"
+
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 )
 
 // signIn signs an existing account in with its password, in a new browser.
@@ -184,5 +189,68 @@ func TestPeopleManageTheirOwnAccount(t *testing.T) {
 	}
 	if status, _, _ := a.call(laptop, http.MethodGet, "/users", nil); status != 403 {
 		t.Errorf("a reader lists users: %d", status)
+	}
+}
+
+// TestAnOperatorResetsAPassword is gotome reset-password: the way back for
+// an administrator who forgot their password, without SQL.
+func TestAnOperatorResetsAPassword(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("root", "admin")
+	editor, editorID := a.signedIn("ed", "editor")
+	accounts := a.server.Auth
+
+	password := rand.Text()
+	account, err := accounts.ResetPassword(ctx, " root ", password, auth.Reset{})
+	if err != nil || account.Role != auth.RoleAdmin || account.Disabled {
+		t.Fatalf("reset the last administrator's password: %+v %v", account, err)
+	}
+	if a.signedInStill(admin) {
+		t.Error("the account's sessions outlive the reset")
+	}
+	if _, status := a.signIn("root", "a long password"); status != 401 {
+		t.Errorf("the old password still signs in: %d", status)
+	}
+	root, status := a.signIn("root", password)
+	if status != 200 {
+		t.Fatalf("the new password signs in: %d", status)
+	}
+	if !a.signedInStill(editor) {
+		t.Error("another account was signed out")
+	}
+
+	// A disabled editor, enabled and made an administrator.
+	if status, _, _ := a.call(root, http.MethodPatch, "/users/"+editorID, map[string]any{"disabled": true}); status != 200 {
+		t.Fatalf("disable: %d", status)
+	}
+	if _, err := accounts.ResetPassword(ctx, "ed", password, auth.Reset{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, status := a.signIn("ed", password); status != 401 {
+		t.Errorf("a reset without -enable enables the account: %d", status)
+	}
+	account, err = accounts.ResetPassword(ctx, "ed", password, auth.Reset{Enable: true, Admin: true})
+	if err != nil || account.Role != auth.RoleAdmin || account.Disabled {
+		t.Fatalf("enable and promote: %+v %v", account, err)
+	}
+	ed, status := a.signIn("ed", password)
+	if status != 200 {
+		t.Fatalf("the enabled account signs in: %d", status)
+	}
+	if status, _, _ := a.call(ed, http.MethodGet, "/users", nil); status != 200 {
+		t.Errorf("the promoted account administers: %d", status)
+	}
+
+	if _, err := accounts.ResetPassword(ctx, "nobody", password, auth.Reset{}); !errors.Is(err, auth.ErrNoUser) {
+		t.Errorf("an account nobody has: %v", err)
+	}
+	var invalid *auth.ValidationError
+	if _, err := accounts.ResetPassword(ctx, "root", "short", auth.Reset{}); !errors.As(err, &invalid) || invalid.Fields["password"] == "" {
+		t.Errorf("a short password: %v", err)
+	}
+	if _, status := a.signIn("root", password); status != 200 {
+		t.Errorf("a refused reset changed the password: %d", status)
 	}
 }

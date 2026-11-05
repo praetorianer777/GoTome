@@ -46,9 +46,21 @@ recovers by itself once there is room.
   an account and an address are refused for a while. Behind a reverse proxy everyone
   shares the proxy's address. Wait a few minutes.
 - **Someone forgot their password**: an administrator sets a new one on the
-  Users page. There is no other way: if the only administrator forgot
-  theirs and has no single sign-on, a backup made while it was known is
-  the way back.
+  Users page. If no administrator can sign in, whoever runs the containers
+  sets one from the shell:
+
+  ```sh
+  docker compose exec app gotome reset-password <user name>
+  ```
+
+  It asks for the new password twice, without showing it, and signs the
+  account out everywhere. `-enable` also enables a disabled account,
+  `-admin` makes it an administrator. The password is never an argument
+  or a variable, so it stays out of the process list and the shell's
+  history; to give it from a script, pipe it in on one line
+  (`docker compose exec -T app gotome reset-password <user name> < file`).
+  A sign-in refused for too many wrong passwords stays refused for a few
+  minutes. With passwords turned off for single sign-on, see below.
 - **Single sign-on fails**: [single-sign-on.md](single-sign-on.md#when-it-fails).
   Locked out after turning passwords off:
   `GOTOME_FORCE_PASSWORD_LOGIN=true`.

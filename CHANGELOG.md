@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `gotome reset-password <user name>` sets a new password from the shell
+  when no administrator can sign in, and signs the account out; `-enable`
+  and `-admin` also enable it and make it an administrator
+  ([docs/troubleshooting.md](docs/troubleshooting.md#signing-in-and-changes)).
+
 ## [0.8.0] - 2026-11-05
 
 ### Changed
