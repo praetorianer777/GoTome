@@ -1,4 +1,5 @@
-// Package releases follows authors and series for their new books (#69).
+// Package releases follows authors and series for their new books (#69),
+// and the feeds of publishers and authors (#70).
 // People follow a subject; the providers that list works are asked about
 // each subject once a day, and what they list becomes releases, one per
 // title however many providers list it. A release found later than a
@@ -12,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -81,11 +83,14 @@ type Service struct {
 	// Events tells the followers; nil tells nobody.
 	Events *notify.Events
 	Queue  Queue
+	// FeedClient fetches the feeds people follow; Offline fetches none.
+	FeedClient *http.Client
+	Offline    bool
 }
 
 // NewService returns the Service; Queue is set once the runner exists.
 func NewService(pool *pgxpool.Pool, works Lister, log *slog.Logger) *Service {
-	return &Service{pool: pool, works: works, log: log}
+	return &Service{pool: pool, works: works, log: log, FeedClient: NewFeedClient()}
 }
 
 // Tracker is a subject a person follows.

@@ -99,6 +99,7 @@ export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"wish.fulfilled": "notifications.kind.wishFulfilled",
 	"release.announced": "notifications.kind.releaseAnnounced",
 	"release.out": "notifications.kind.releaseOut",
+	"feed.item": "notifications.kind.feedItem",
 	"review.needed": "notifications.kind.reviewNeeded",
 	"duplicates.found": "notifications.kind.duplicatesFound",
 	"files.unreadable": "notifications.kind.filesUnreadable",
@@ -203,6 +204,13 @@ export function notificationText(n: Notification): {
 						: t("notification.releaseAnnounced.undated", values),
 			};
 		}
+		case "feed.item":
+			return {
+				title: t("notification.feedItem"),
+				detail: one
+					? t("notification.feedItem.one", { title: text(d.title), feed: text(d.feed) })
+					: t("notification.feedItem.many", { count: count(d.count) }),
+			};
 		case "bulk.finished": {
 			const action = typeof n.data.action === "string" ? n.data.action : "";
 			const outcomes = (n.data.outcomes ?? {}) as Partial<

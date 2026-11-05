@@ -5107,6 +5107,77 @@ describe("following authors and series", () => {
 		);
 	});
 
+	it("follows a feed with its filters, says why one stopped, and lists what matched", async () => {
+		const person = userEvent.setup();
+		server.feeds = [
+			{
+				id: "feed-1",
+				url: "https://publisher.example/feed.xml",
+				title: "Publisher News",
+				keywords: ["dragon"],
+				authors: [],
+				failures: 8,
+				lastError: "not an RSS or Atom feed: the document is <html>",
+				createdAt: "2026-01-02T00:00:00Z",
+			},
+		];
+		server.feedItems = [
+			{
+				feedId: "feed-1",
+				feed: "Publisher News",
+				title: "Dragon Summer",
+				link: "https://publisher.example/dragon-summer",
+				authors: ["Sam Other"],
+				seenAt: "2026-01-02T00:00:00Z",
+			},
+		];
+		renderApp("/releases");
+
+		const feeds = within(await screen.findByRole("region", { name: "Feeds" }));
+		expect(await feeds.findByText("Publisher News")).toBeInTheDocument();
+		expect(feeds.getByText("Naming dragon")).toBeInTheDocument();
+		expect(
+			feeds.getByText("Stopped after 8 failures in a row: not an RSS or Atom feed: the document is <html>."),
+		).toBeInTheDocument();
+		await person.click(feeds.getByRole("button", { name: "Try again" }));
+		await waitFor(() => expect(feeds.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument());
+
+		await person.type(feeds.getByRole("textbox", { name: "Feed address" }), "https://author.example/atom");
+		await person.type(feeds.getByRole("textbox", { name: "Words" }), "novel, , spring");
+		await person.type(feeds.getByRole("textbox", { name: "Authors" }), "Cornwell, Bernard; Liza Grimm");
+		await person.click(feeds.getByRole("button", { name: "Follow the feed" }));
+		expect(await feeds.findByText("https://author.example/atom")).toBeInTheDocument();
+		expect(server.requests.find((r) => r.method === "POST" && r.path === "/feeds")?.body).toEqual({
+			url: "https://author.example/atom",
+			keywords: ["novel", "spring"],
+			authors: ["Cornwell, Bernard", "Liza Grimm"],
+		});
+		expect(feeds.getByText("Naming novel, spring · By Cornwell, Bernard; Liza Grimm")).toBeInTheDocument();
+
+		const items = within(screen.getByRole("region", { name: "From your feeds" }));
+		const link = items.getByRole("link", { name: "Dragon Summer" });
+		expect(link).toHaveAttribute("href", "https://publisher.example/dragon-summer");
+		expect(link).toHaveAttribute("rel", "noopener noreferrer");
+
+		await person.click(feeds.getByRole("button", { name: "Stop following Publisher News" }));
+		await waitFor(() => expect(server.feeds.map((f) => f.id)).toEqual(["feed-2"]));
+	});
+
+	it("words a new item of a feed by its title, and several by their count", async () => {
+		const person = userEvent.setup();
+		server
+			.notify({ kind: "feed.item", data: { title: "Dragon Summer", feed: "Publisher News" }, link: "/releases" })
+			.notify({ kind: "feed.item", data: { count: 3 }, link: "/releases" });
+		renderApp("/");
+		await person.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+		const panel = within(screen.getByRole("region", { name: "Notifications" }));
+		const told = panel.getAllByRole("button", { name: /^Unread: New in a feed you follow/ });
+		expect(told.map((b) => b.textContent)).toEqual([
+			expect.stringContaining("3 new items in the feeds you follow."),
+			expect.stringContaining("Dragon Summer, in Publisher News."),
+		]);
+	});
+
 	it("words a new book by its title and date, and several by their count", async () => {
 		const person = userEvent.setup();
 		server

@@ -37,7 +37,7 @@ import type { Job } from "@/jobs/api";
 import { type DuplicatePair, overlapOf } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
-import type { Release, Tracker } from "@/releases/api";
+import type { Feed, FeedItem, Release, Tracker } from "@/releases/api";
 import type { Health } from "@/system/health";
 import { makeRouter } from "@/router";
 
@@ -349,6 +349,9 @@ export class FakeServer {
 	trackers: Tracker[] = [];
 	/** The new books of what they follow, as the server would list them. */
 	releases: { upcoming: Release[]; recent: Release[] } = { upcoming: [], recent: [] };
+	/** The feeds the signed-in person follows, and their matching items. */
+	feeds: Feed[] = [];
+	feedItems: FeedItem[] = [];
 	/** How one may sign in; a test gives `sso` to offer an identity provider. */
 	signInMethods: SignInMethods = { password: true };
 	/** The signed-in person's accounts at the identity provider. */
@@ -647,6 +650,12 @@ export class FakeServer {
 			}
 			if (path === "/trackers" || path.startsWith("/trackers/")) {
 				return this.answerTrackers(request.method, path, body as { kind: Tracker["kind"]; name: string });
+			}
+			if (path === "/feeds/items") {
+				return Response.json({ items: this.feedItems });
+			}
+			if (path === "/feeds" || path.startsWith("/feeds/")) {
+				return this.answerFeeds(request.method, path, body as { url: string; keywords?: string[]; authors?: string[] });
 			}
 			if (path === "/releases") {
 				return Response.json({
@@ -1670,6 +1679,43 @@ export class FakeServer {
 			return Response.json({ error: { code: "not_found", message: "You do not follow that." } }, { status: 404 });
 		}
 		this.trackers = this.trackers.filter((tr) => tr.id !== id);
+		return new Response(null, { status: 204 });
+	}
+
+	/** Feeds are followed, fetched again and ended; an address must be of the web. */
+	private answerFeeds(method: string, path: string, body: { url: string; keywords?: string[]; authors?: string[] }): Response {
+		if (method === "GET") {
+			return Response.json({ feeds: this.feeds });
+		}
+		if (method === "POST" && path === "/feeds") {
+			if (!/^https?:\/\/./.test(body.url)) {
+				return Response.json(
+					{ error: { code: "validation_failed", message: "Invalid", fields: { url: "Give the feed's http or https address." } } },
+					{ status: 422 },
+				);
+			}
+			const feed: Feed = {
+				id: `feed-${this.feeds.length + 1}`,
+				url: body.url,
+				keywords: body.keywords ?? [],
+				authors: body.authors ?? [],
+				failures: 0,
+				nextFetchAt: "2026-01-03T00:00:00Z",
+				createdAt: "2026-01-03T00:00:00Z",
+			};
+			this.feeds.push(feed);
+			return Response.json(feed, { status: 201 });
+		}
+		const id = path.slice("/feeds/".length).replace(/\/fetch$/, "");
+		const feed = this.feeds.find((f) => f.id === id);
+		if (!feed) {
+			return Response.json({ error: { code: "not_found", message: "There is no such feed." } }, { status: 404 });
+		}
+		if (method === "POST") {
+			feed.nextFetchAt = "2026-01-03T00:00:00Z";
+			return Response.json(feed);
+		}
+		this.feeds = this.feeds.filter((f) => f.id !== id);
 		return new Response(null, { status: 204 });
 	}
 
