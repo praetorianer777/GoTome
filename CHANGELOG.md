@@ -22,6 +22,14 @@ What changes for someone who runs or uses GOtome. The format follows
   proxy, every environment variable and setting, NAS, arm64 and small
   machines, roles and libraries, metadata sources, single sign-on,
   e-readers, and troubleshooting.
+- Genres from a fixed list of 44, in English and German: books get the
+  genres their tags mean ("Krimi", "Kriminalroman" and
+  "Belletristik/Kriminalromane" are all Crime), and GOtome can suggest more
+  from what a book is about or from the books most like it, for review
+  under Genres. The library's filter and smart shelves find books by
+  genre. Nothing is written until an administrator sets "Genres for books"
+  (`genres.suggest`); `gotome genre-check` measures the suggestions on a
+  library first. A book's tags are never changed.
 
 ### Changed
 
@@ -29,6 +37,11 @@ What changes for someone who runs or uses GOtome. The format follows
   a small FFmpeg of its own that only reads audio files' tags, chapters
   and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
   reach of a hostile file.
+
+### Fixed
+
+- A file asked to be read again just as its last read finished is read
+  again, instead of staying "Not read yet" until the next scan.
 
 ## [0.6.0] - 2026-10-15
 

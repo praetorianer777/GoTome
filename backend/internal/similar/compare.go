@@ -52,11 +52,11 @@ func CompareStored(ctx context.Context, q *sqlc.Queries, spec embed.Spec, e embe
 			return Comparison{}, err
 		}
 		for i, r := range part {
-			stored, err := parseLiteral(r.Embedding)
+			stored, err := ParseLiteral(r.Embedding)
 			if err != nil {
 				return Comparison{}, fmt.Errorf("book %s: %w", r.BookID, err)
 			}
-			cos := cosine(vecs[i], stored)
+			cos := Cosine(vecs[i], stored)
 			c.Books++
 			c.Mean += cos
 			if cos < c.MinCosine {
@@ -70,8 +70,8 @@ func CompareStored(ctx context.Context, q *sqlc.Queries, spec embed.Spec, e embe
 	return c, nil
 }
 
-// parseLiteral reads a vector as pgvector writes it.
-func parseLiteral(s string) ([]float32, error) {
+// ParseLiteral reads a vector as pgvector writes it.
+func ParseLiteral(s string) ([]float32, error) {
 	parts := strings.Split(strings.Trim(s, "[]"), ",")
 	out := make([]float32, len(parts))
 	for i, p := range parts {
@@ -84,7 +84,8 @@ func parseLiteral(s string) ([]float32, error) {
 	return out, nil
 }
 
-func cosine(a, b []float32) float64 {
+// Cosine is the cosine of two vectors; 0 for two of different lengths.
+func Cosine(a, b []float32) float64 {
 	if len(a) != len(b) {
 		return 0
 	}
@@ -93,6 +94,9 @@ func cosine(a, b []float32) float64 {
 		dot += float64(a[i]) * float64(b[i])
 		na += float64(a[i]) * float64(a[i])
 		nb += float64(b[i]) * float64(b[i])
+	}
+	if na == 0 || nb == 0 {
+		return 0
 	}
 	return dot / math.Sqrt(na*nb)
 }

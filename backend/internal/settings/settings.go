@@ -63,6 +63,11 @@ const (
 	// models GOtome does not run itself, such as bge-m3 on a GPU: the
 	// models of embed.Specs with a Server. Unset, they are not available.
 	EmbeddingServer = "embedding.server"
+	// GenreSuggestions is how books are given genres of the fixed list
+	// (internal/genres): "off", the default, writes nothing; "tags" gives
+	// the genres their tags mean; "vector", "neighbours" and "combined"
+	// suggest more from the books' vectors, for a person to review.
+	GenreSuggestions = "genres.suggest"
 	// Passwords is "on" or "off": whether people may sign in with a
 	// password. Off leaves it to administrators while none of them can sign
 	// in through the identity provider.
@@ -126,6 +131,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
+	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
@@ -163,6 +169,18 @@ func onOff(v string) (string, error) {
 		return v, nil
 	}
 	return "", errors.New("Say on or off.")
+}
+
+// GenreModes are the values of GenreSuggestions, as genres.Modes names
+// them.
+var GenreModes = []string{"off", "tags", "vector", "neighbours", "combined"}
+
+func genreMode(v string) (string, error) {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if slices.Contains(GenreModes, v) {
+		return v, nil
+	}
+	return "", errors.New("Say off, tags, vector, neighbours or combined.")
 }
 
 func threshold(v string) (string, error) {

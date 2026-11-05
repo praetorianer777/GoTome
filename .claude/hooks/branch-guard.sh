@@ -73,21 +73,63 @@ syncs_with_upstream() {
   done
   (( mode )) && [[ "$target" == "$upstream" ]]
 }
-is_branch() { git -C "$repo" show-ref --verify --quiet "refs/heads/$1"; }
+is_branch() { git -C "$1" show-ref --verify --quiet "refs/heads/$2"; }
+
+# A hook that runs past its timeout, or dies, lets the command through; a gate
+# that hangs must therefore end before the hook's 1800 s in settings.json.
+GATE_TIMEOUT="${BRANCH_GUARD_GATE_TIMEOUT:-1700}"
 
 run_tests() {
-  local log
+  local dir="$1" log rc=0
   log="$(mktemp)"
   # run-tests.sh gives each checkout its own stack, so gates running in
   # parallel worktrees do not collide (#95).
-  if ! (cd "$repo" && ./run-tests.sh) > "$log" 2>&1; then
+  (cd "$dir" && timeout -k 60 "$GATE_TIMEOUT" ./run-tests.sh) > "$log" 2>&1 || rc=$?
+  if (( rc )); then
     local tail_out
     tail_out="$(tail -n 60 "$log")"
     rm -f "$log"
-    deny "Push blocked: ./run-tests.sh failed. Fix the failures, commit, and push again.
+    (( rc == 124 )) && tail_out="./run-tests.sh did not finish within ${GATE_TIMEOUT}s.
+$tail_out"
+    deny "Push blocked: ./run-tests.sh failed in $dir. Fix the failures, commit, and push again.
 $tail_out"
   fi
   rm -f "$log"
+}
+
+DYN=$'\x1d'
+UNJUDGED="The branch guard cannot tell what this command would do, so it refuses it. Run git as a plain command with literal paths: git -C <checkout> <subcommand> ..., or cd <checkout> && git ..."
+
+# The subcommands that change a branch or send it somewhere.
+changes_branch() {
+  case "$1" in
+    add|mv|rm|restore|apply|commit|merge|rebase|cherry-pick|revert|reset|am|push|"$DYN"*) return 0 ;;
+  esac
+  return 1
+}
+
+# The directory `cd` leaves the shell in, or nothing when only the running
+# shell would know it (a variable, `cd -`, popd).
+cd_target() {
+  local base="$1" cmd="$2" a
+  shift 2
+  [[ -n "$base" && "$cmd" != popd ]] || return 0
+  for a in "$@"; do
+    case "$a" in
+      -L|-P|-e|-@|--) continue ;;
+      -|-*|+*|"$DYN"*) return 0 ;;
+    esac
+    beside "$base" "$a"
+    return 0
+  done
+  [[ "$cmd" == cd ]] && printf %s "$HOME"
+}
+
+beside() {
+  local base="$1" p="$2"
+  [[ -n "$base" && "$p" != "$DYN"* ]] || return 0
+  [[ "$p" == /* ]] || p="$base/$p"
+  realpath -m -- "$p"
 }
 
 case "$tool" in
@@ -104,70 +146,102 @@ case "$tool" in
   Bash)
     cmd="$(jq -r '.tool_input.command // empty' <<< "$input")"
     [[ -n "$cmd" ]] || exit 0
-    repo="$(checkout_for "$cwd")" || exit 0
-    branch="$(current_branch "$repo")"
+    # A hook that fails lets the command run. For anything that may push,
+    # fail closed instead; for everything else a bug here must not stop work.
+    [[ "$cmd" == *push* ]] && trap 'rc=$?; (( rc )) && deny "The branch guard failed (exit $rc) while judging a push, so the push is refused."' EXIT
 
-    # Heredoc bodies and quoted strings are data (commit messages, issue
-    # bodies), not commands; blank them before splitting into segments.
-    segments="$(perl -0pe '
-      s/(<<-?\s*([\x27"]?)(\w+)\2[^\n]*\n).*?^\s*\3[ \t]*$/$1/gms;
-      s/"(?:[^"\\]|\\.)*"/Q/gs;
-      s/\x27[^\x27]*\x27/Q/gs;
-      s/\s*(?:&&|\|\||;|\||\n)\s*/\n/g;
-    ' <<< "$cmd")"
+    commands="$(perl "$(dirname "${BASH_SOURCE[0]}")/shell-commands.pl" <<< "$cmd")" \
+      || { [[ "$cmd" == *push* ]] && deny "The branch guard could not read this command. $UNJUDGED"; exit 0; }
 
-    pushing=0
-    # Walk the segments in order so "git switch -c fix/1-x && git commit"
+    # Where the next command runs: cd moves it for the commands after it, a
+    # subshell takes it back, and -C applies to its own git command only.
+    here="$cwd"
+    dirs=()
+    declare -A branch_of=()
+    declare -A pushed=()
+    # Walk the commands in order so "git switch -c fix/1-x && git commit"
     # is judged against the branch the commit will actually land on.
-    while IFS= read -r seg; do
-      read -ra t <<< "$seg"
-      # Strip env assignments and wrappers (time git push, env -i git commit, ...).
-      k=0
-      while [[ "${t[k]:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] \
-        || [[ "${t[k]:-}" =~ ^(time|command|exec|nohup|nice|stdbuf|env|sudo|doas)$ ]]; do
-        [[ "${t[k]:-}" == env ]] && while [[ "${t[k+1]:-}" == -* ]]; do ((k++)); done
-        ((k++))
-      done
-      t=("${t[@]:k}")
+    while IFS=$'\t' read -r kind flags rest; do
+      case "$kind" in
+        '(') dirs+=("$here"); continue ;;
+        ')') if (( ${#dirs[@]} )); then here="${dirs[-1]}"; unset 'dirs[-1]'; fi; continue ;;
+        R) deny "$rest. $UNJUDGED" ;;
+        C) ;;
+        *) continue ;;
+      esac
+      IFS=$'\x1f' read -ra t <<< "$rest"
       (( ${#t[@]} )) || continue
 
-      if [[ "${t[0]}" == "gh" ]]; then
-        [[ "${t[1]:-} ${t[2]:-}" == "pr merge" ]] && ask "Merging a PR is the user's decision."
-        continue
-      fi
-      [[ "${t[0]}" == "git" ]] || continue
+      case "${t[0]}" in
+        cd|pushd|popd)
+          [[ "$flags" == *p* ]] || here="$(cd_target "$here" "${t[@]}")"
+          continue
+          ;;
+        gh)
+          [[ "${t[1]:-} ${t[2]:-}" == "pr merge" ]] && ask "Merging a PR is the user's decision."
+          continue
+          ;;
+        git) ;;
+        *) continue ;;
+      esac
 
-      target="$cwd"
+      dir="$here"
+      gitdir=0
+      [[ "$flags" == *d* ]] && gitdir=1
       i=1
       while [[ "${t[i]:-}" == -* ]]; do
-        [[ "${t[i]}" == -C ]] && target="$(cd "$cwd" 2>/dev/null && realpath -m "${t[i+1]:-.}")"
-        [[ "${t[i]}" == -C || "${t[i]}" == -c ]] && ((i++))
+        case "${t[i]}" in
+          -C)
+            # xargs -I may put anything in place of the path.
+            if [[ "$flags" == *x* ]]; then dir=""; else dir="$(beside "$dir" "${t[i+1]:-}")"; fi
+            ((i++))
+            ;;
+          -c|--config-env)
+            [[ "${t[i+1]:-}" =~ ^[Aa][Ll][Ii][Aa][Ss]\. ]] \
+              && deny "An alias given with git ${t[i]} hides which subcommand runs. $UNJUDGED"
+            ((i++))
+            ;;
+          --git-dir|--work-tree) gitdir=1; ((i++)) ;;
+          --git-dir=*|--work-tree=*) gitdir=1 ;;
+          --namespace|--super-prefix) ((i++)) ;;
+        esac
         ((i++))
       done
-      # -C into another checkout is judged by that checkout's branch. Worktrees
-      # live under .claude/worktrees inside the repo directory, so the path
-      # alone does not say which checkout it belongs to — ask git.
-      target_repo="$(checkout_for "$target")" || continue
-      if [[ "$target_repo" != "$repo" ]]; then
-        repo="$target_repo"
-        branch="$(current_branch "$repo")"
-      fi
       sub="${t[i]:-}"
-      # Redirections are not arguments of the command: "git merge --ff-only
-      # origin/main 2>&1" used to look like a merge with two targets, and every
-      # rule that inspects the argument list was reading them (#76).
-      args=()
-      skip_operand=0
-      for a in "${t[@]:i+1}"; do
-        if (( skip_operand )); then skip_operand=0; continue; fi
-        case "$a" in
-          [0-9]*'>'*|'>'*|'<'*)
-            [[ "$a" =~ (\>|\<)$ ]] && skip_operand=1
-            continue
-            ;;
-        esac
-        args+=("$a")
-      done
+      [[ -n "$sub" ]] || continue
+      args=("${t[@]:i+1}")
+      # Found among another command's arguments, it may well be text.
+      [[ "$flags" == *g* && "$sub" != push ]] && continue
+
+      if changes_branch "$sub"; then
+        [[ "$sub" == "$DYN"* ]] && deny "The git subcommand ${sub#"$DYN"} is only known when it runs. $UNJUDGED"
+        # Pointing git at a repository by --git-dir or GIT_DIR detaches it from
+        # the directory the guard judges by.
+        (( gitdir )) && deny "git with --git-dir, --work-tree, GIT_DIR or GIT_WORK_TREE is not judged by the branch guard. $UNJUDGED"
+        [[ -n "$dir" ]] || deny "The branch guard cannot tell which checkout 'git $sub' runs in. $UNJUDGED"
+        [[ "$sub" == push && "$flags" == *x* ]] \
+          && deny "xargs adds arguments to the push that the branch guard cannot see. $UNJUDGED"
+      fi
+      [[ -n "$dir" ]] || continue
+      # Worktrees live under .claude/worktrees inside the repo directory, so
+      # the path alone does not say which checkout it belongs to — ask git.
+      repo="$(checkout_for "$dir")" || continue
+
+      if ! changes_branch "$sub" && [[ "$sub" != checkout && "$sub" != switch && "$sub" != branch ]]; then
+        alias="$(git -C "$repo" config --get "alias.$sub" 2>/dev/null)" || continue
+        if [[ "$alias" == '!'* ]]; then
+          [[ "$alias" =~ (push|commit|add|merge|rebase|reset|cherry-pick|revert|am|apply|restore|rm|mv) ]] \
+            && deny "The git alias '$sub' runs a shell command the branch guard does not read. $UNJUDGED"
+          continue
+        fi
+        read -ra expanded <<< "$alias"
+        (( ${#expanded[@]} )) || continue
+        sub="${expanded[0]}"
+        args=("${expanded[@]:1}" "${args[@]}")
+      fi
+
+      branch="${branch_of[$repo]:-}"
+      [[ -n "$branch" ]] || branch="$(current_branch "$repo")"
 
       case "$sub" in
         checkout|switch)
@@ -176,8 +250,8 @@ case "$tool" in
             # A short-flag cluster counts too: -qc, -qb, --quiet -c, ...
             if [[ "${args[j]}" =~ ^-[a-zA-Z]*[bBcC]$ ]]; then
               new="${args[j+1]:-}"
-              valid "$new" || deny "Branch name '$new' is not allowed. $HINT"
-              branch="$new"
+              valid "$new" || deny "Branch name '${new#"$DYN"}' is not allowed. $HINT"
+              branch_of[$repo]="$new"
               created=1
             fi
           done
@@ -188,14 +262,14 @@ case "$tool" in
             # branch we were on before (#76).
             for a in "${args[@]}"; do
               [[ "$a" == -* ]] && continue
-              if is_branch "$a"; then branch="$a"; fi
+              if is_branch "$repo" "$a"; then branch_of[$repo]="$a"; fi
               break
             done
           fi
           ;;
         branch)
           if [[ "${#args[@]}" -ge 1 && "${args[0]}" != -* ]]; then
-            valid "${args[0]}" || deny "Branch name '${args[0]}' is not allowed. $HINT"
+            valid "${args[0]}" || deny "Branch name '${args[0]#"$DYN"}' is not allowed. $HINT"
           fi
           ;;
         add|mv|rm|restore|apply|commit|merge|rebase|cherry-pick|revert|reset|am)
@@ -210,16 +284,18 @@ case "$tool" in
           ;;
         push)
           for a in "${args[@]}"; do
-            [[ "$a" =~ (^|:|/)(main|master)$ || "$a" == --all || "$a" == --mirror ]] \
+            [[ "$a" == "$DYN"* ]] \
+              && deny "The push names ${a#"$DYN"}, which is only known when it runs; name the branch or use HEAD. $UNJUDGED"
+            [[ "$a" =~ (^|:|/|^\+)(main|master)$ || "$a" == --all || "$a" == --mirror ]] \
               && deny "Pushing to main is not allowed; push the issue branch and open a PR instead."
           done
           valid "$branch" || deny "Refusing to push from branch '$branch'. $HINT"
-          pushing=1
+          pushed[$repo]=1
           ;;
       esac
-    done <<< "$segments"
+    done <<< "$commands"
 
-    (( pushing )) && run_tests
+    for r in "${!pushed[@]}"; do run_tests "$r"; done
     ;;
 esac
 exit 0

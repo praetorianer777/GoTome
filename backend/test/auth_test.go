@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -189,6 +190,10 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Similar.Passages = a.scans.Passages
+	a.server.Genres = genres.NewService(a.pool, a.server.Similar, func(ctx context.Context) (string, error) {
+		return a.settings.Text(ctx, settings.GenreSuggestions)
+	}, quiet)
+	a.server.Genres.Queue = queue
 	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
 	a.server.Resources = resources.NewService(a.pool)
 	a.server.Resources.DataDir = a.dataDir

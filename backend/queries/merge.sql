@@ -126,6 +126,22 @@ ON CONFLICT DO NOTHING;
 -- name: MoveNotifications :exec
 UPDATE notifications SET book_id = sqlc.arg(into_book) WHERE book_id = sqlc.arg(from_book);
 
+-- name: MergeBookGenres :exec
+-- What a person decided about the merged book's genres, where the surviving
+-- book has no decision of its own; its suggestions go, and the surviving
+-- book is looked at again by the next pass.
+WITH moved AS (
+    DELETE FROM book_genres x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING genre, source, method, score, state, decided_by, created_at),
+checked AS (
+    DELETE FROM book_genre_checks c WHERE c.book_id = sqlc.arg(into_book))
+INSERT INTO book_genres AS g (book_id, genre, source, method, score, state, decided_by, created_at)
+SELECT sqlc.arg(into_book), genre, source, method, score, state, decided_by, created_at
+FROM moved WHERE state <> 'suggested'
+ON CONFLICT (book_id, genre) DO UPDATE
+SET state = EXCLUDED.state, decided_by = EXCLUDED.decided_by, updated_at = now()
+WHERE g.state = 'suggested';
+
 -- name: DropBookMatches :exec
 -- What looking the merged book up found, which was about its details.
 DELETE FROM metadata_matches WHERE book_id = $1;

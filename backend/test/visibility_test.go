@@ -124,6 +124,10 @@ func readCases() map[string][]readCase {
 		// seen: TestADescriptionFindsTheNearestBooksTheViewerSees.
 		"searchDescribed": {{path: "/search/similar", query: q("q", "{title}"), why: "ranks every visible book; proven in TestADescriptionFindsTheNearestBooksTheViewerSees"}},
 		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"listGenreSuggestions": {
+			{path: "/genres/suggestions", control: "insider"},
+			{path: "/genres/suggestions", query: q("genre", "crime"), control: "insider"},
+		},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {
 			{path: "/collections/{sharedCollection}", control: "insider"},
@@ -306,6 +310,11 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	same := direction(map[int]float32{0: 1})
 	for _, b := range []string{book, near["bookId"].(string)} {
 		a.putVector(uuid.MustParse(b), similar.KindMetadata, same)
+	}
+	// A genre suggested for it, which the review of genres lists.
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_genres (book_id, genre, source, method, score)
+		VALUES ($1, 'crime', 'automatic', 'vector', 0.2)`, book); err != nil {
+		t.Fatal(err)
 	}
 	// The list of people shows either spelling of the secret's author, by how
 	// the mark sorts.

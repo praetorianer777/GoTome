@@ -1,4 +1,5 @@
 import type { FacetField } from "@/books/filters";
+import { GENRES } from "@/books/genres";
 import { STATUS_LABELS, STATUSES } from "@/books/reading";
 import {
 	EREADER_FINDINGS,
@@ -36,6 +37,8 @@ function choices(field: FacetField): { value: string; label: string }[] {
 				value,
 				label: t(`filter.ereader.${value}`),
 			}));
+		case "genre":
+			return GENRES.map((value) => ({ value, label: t(`genre.${value}`) }));
 		default:
 			return STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
 	}

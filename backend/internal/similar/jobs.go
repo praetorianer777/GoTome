@@ -27,7 +27,8 @@ const embedKind = "similar.embed_books"
 func (EmbedArgs) Kind() string { return embedKind }
 
 // The embed queue has one worker, so books are embedded one at a time, and
-// the queue only this job: it never holds up scanning or extraction.
+// holds only the jobs that work on vectors: they never hold up scanning or
+// extraction.
 var embedOpts = jobs.InsertOpts{Queue: jobs.QueueEmbed, Unique: true, MaxAttempts: 5}
 
 // Enqueue asks for a pass over the books; a pass already waiting or

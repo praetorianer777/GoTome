@@ -1101,6 +1101,36 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   similar books are found or embedded is measured with it before and
   after.
 
+## Genres
+
+- `internal/genres` gives books genres of a fixed list (#175): `List`
+  (key, Thema code where certain, English and German names, a
+  description in each language to embed), which the owner reviews; the
+  web app's names (`genre.<key>` in `en.ts`/`de.ts`) and
+  `web/src/books/genres.ts` are held to it by a test. `Spellings` maps
+  tags to genres by `catalog.Key`, part by part for headings such as
+  "Belletristik/Kriminalromane" (`FromTag`); an unmapped tag gives none.
+- A genre is a row of `book_genres` (source `tags` or `automatic`, state
+  `suggested`, `accepted`, `rejected`); a book's tags and locked fields
+  are never written. A pass (`genres.suggest_books`, queue `embed`,
+  hourly) writes only while the setting `genres.suggest` is not `off`
+  (the default): `tags`, `vector` (zero-shot: the book's vectors against
+  each genre's descriptions embedded as queries, `Margins` over the
+  per-genre threshold), `neighbours` (the genres of the nearest books of
+  its library, `Shares`) or `combined`. It changes only undecided rows;
+  `book_genre_checks` records the recipe each book was looked at with.
+- The filter field `genre` finds the genres of tags and those a person
+  accepted, never a waiting suggestion. `GET /genres/suggestions`
+  (`routes/genres.tsx`) is the review; `PUT /books/{id}/genres/{genre}`
+  accepts or rejects. A merge keeps what a person decided.
+- `gotome genre-check` (`Service.Check`, `make genre-check`) measures
+  precision and recall per method and genre on a sample of tagged books,
+  their metadata embedded again without tags, thresholds swept. Its
+  queries stay light: one row per book and tag, then per sampled book
+  its vectors and one scan of its library's. The thresholds
+  (`Genre.Threshold`, `DefaultThreshold`, `NeighbourShare`) are set from
+  its numbers (`docs/genres.md`).
+
 ## Devices and the OPDS catalogue
 
 - A device (`devices`, `auth.Service.CreateDevice`, #195) is an e-reader

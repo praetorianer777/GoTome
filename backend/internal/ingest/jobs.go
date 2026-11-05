@@ -159,10 +159,7 @@ func (s *Service) Reread(ctx context.Context, files []uuid.UUID) (int, error) {
 			return err
 		}
 		for _, id := range ids {
-			_, err := s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: id}, jobs.InsertOpts{
-				Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
-			})
-			if err != nil {
+			if err := s.queueReadTx(ctx, tx, id); err != nil {
 				return err
 			}
 		}
