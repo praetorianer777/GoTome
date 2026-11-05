@@ -32,6 +32,7 @@ var Spellings = map[string][]string{
 		"Belletristik/Kriminalromane", "Detektivroman", "Detective", "Detective fiction", "Detective and mystery stories",
 		"Mystery", "Mysteries", "Mystery & detective", "Mystery and detective", "Crime", "Crime fiction", "Cozy mystery",
 		"Police procedural", "Whodunit", "Krimikomödie", "Skandinavien-Krimi", "Schwedenkrimi", "Ostfrieslandkrimi",
+		"Mord", "Historischer Krimi", "Historische Krimis", "Historische Kriminalromane", "Historical mystery",
 	},
 	"thriller": {
 		"Thriller", "Thrillers", "Psychothriller", "Psychothriller & Spannung", "Spannung", "Spannungsroman",
@@ -43,16 +44,18 @@ var Spellings = map[string][]string{
 	"horror": {
 		"Horror", "Horrorroman", "Grusel", "Gruselgeschichten", "Schauerroman", "Horror fiction", "Ghost stories",
 		"Geistergeschichten", "Vampire", "Vampires", "Paranormal", "Übernatürliches",
+		"Vampir Horror Roman", "Dorian Hunter", "Dämonenkiller",
 	},
 	"science-fiction": {
 		"Science Fiction", "Science-Fiction", "Sci-Fi", "SciFi", "SF", "Utopie", "Space opera", "Cyberpunk",
 		"Military science fiction", "Weltraum", "Zukunftsroman", "Hard science fiction", "Zeitreise", "Time travel",
 		"Aliens", "Außerirdische", "Science Fiction & Fantasy", "Fantasy & Science Fiction",
+		"Rettungskreuzer Ikarus",
 	},
 	"fantasy": {
 		"Fantasy", "Fantastik", "Fantasyroman", "High Fantasy", "Epic fantasy", "Urban Fantasy", "Dark Fantasy",
 		"Sword and sorcery", "Romantasy", "Magie", "Magic", "Drachen", "Dragons", "Elfen", "Science Fiction & Fantasy",
-		"Fantasy & Magic", "Fantasy & Science Fiction",
+		"Fantasy & Magic", "Fantasy & Science Fiction", "Scheibenwelt",
 	},
 	"dystopia": {
 		"Dystopie", "Dystopia", "Dystopian", "Dystopian fiction", "Endzeit", "Postapokalypse", "Post-apocalyptic",
@@ -62,15 +65,17 @@ var Spellings = map[string][]string{
 		"Liebesroman", "Liebesromane", "Liebe", "Romanze", "Romance", "Love stories", "Love story", "Liebesgeschichte",
 		"Liebesgeschichten", "Belletristik/Liebesromane", "Contemporary romance", "Historical romance", "Romantik",
 		"Romantic comedy", "Liebeskomödie", "Chick lit", "Herz-Schmerz", "Liebe & Romantik", "Romantasy",
+		"Julia", "Romana", "Baccara", "Bacarra", "Bianca", "Tiffany", "Historical RomanHefte",
 	},
 	"erotica": {
 		"Erotik", "Erotischer Roman", "Erotische Literatur", "Erotica", "Erotic fiction", "Erotic", "Dark Romance",
-		"BDSM",
+		"BDSM", "Sex",
 	},
 	"historical": {
 		"Historischer Roman", "Historische Romane", "Historische Romane, Erzählungen", "Belletristik/Historische Romane, Erzählungen",
 		"Historical fiction", "Historical", "Historical novel", "Mittelalter", "Mittelalterroman", "Antike",
 		"Historische Krimis", "Historical mystery",
+		"Historisch", "Historische", "Historischer Krimi", "Historische Kriminalromane", "Historical RomanHefte",
 	},
 	"family-saga": {
 		"Familiensaga", "Familienroman", "Familienromane", "Saga", "Family saga", "Sagas", "Family life", "Generationenroman",
@@ -86,7 +91,7 @@ var Spellings = map[string][]string{
 	"western": {"Western", "Westerns", "Wildwest", "Wild West", "Westernroman"},
 	"humour": {
 		"Humor", "Humour", "Humorous", "Humorous fiction", "Satire", "Komödie", "Comedy", "Lustiges",
-		"Belletristik/Humor", "Humoristische Romane", "Parodie",
+		"Belletristik/Humor", "Humoristische Romane", "Parodie", "Scheibenwelt",
 	},
 	"short-stories": {
 		"Erzählungen", "Kurzgeschichten", "Short stories", "Short story", "Novellen", "Anthologie", "Anthologies",
@@ -109,7 +114,7 @@ var Spellings = map[string][]string{
 	},
 	"young-adult": {
 		"Jugendbuch", "Jugendbücher", "Jugendliteratur", "Jugendroman", "Jugendbücher ab 12 Jahre", "Young adult",
-		"Young adult fiction", "YA", "Teen", "Teenager", "New Adult", "All Age",
+		"Young adult fiction", "YA", "Teen", "Teenager", "New Adult", "All Age", "Jugend",
 	},
 
 	"biography": {

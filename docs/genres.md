@@ -16,17 +16,18 @@ are kept beside them.
   part by part. A tag in none of the lists gives no genre and stays a tag.
   Add spellings there; `gotome genre-check` lists the tags of the most
   books that give none.
-- **Suggestions.** From a book's vectors (#66): how much nearer they are
-  to a genre's descriptions than to the genres on average (`vector`), or
-  which genres most of its nearest books in the library have
-  (`neighbours`), or the second where the first finds nothing
-  (`combined`). At most three genres a book. A suggestion waits under
+- **Suggestions.** From a book's vectors (#66): which genres at least
+  40% of its nearest books in the library have (`neighbours`), how much
+  nearer they are to a genre's descriptions than to the genres on average
+  (`vector`), or the neighbours and, for a book too few of whose
+  neighbours have genres, the vectors (`combined`). At most three genres
+  a book. A suggestion waits under
   Genres in the app until a person accepts or rejects it; a rejected one
   is not suggested for that book again.
 
 Nothing is written until an administrator sets **Genres for books**
 (`genres.suggest`) in the settings: `off` (the default), `tags`, `vector`,
-`neighbours` or `combined`. The library's filter finds the genres of tags
+`neighbours` or `combined`. Use `neighbours` (below). The library's filter finds the genres of tags
 and those accepted, never a suggestion that waits.
 
 ## Measuring before switching suggestions on
@@ -56,3 +57,62 @@ The report gives the share of books with a genre from their tags (before)
 and, per method, the share of the sample given one at each threshold
 (after). From it, set `DefaultThreshold`, each `Genre.Threshold` and
 `NeighbourShare`, choose the method, and only then switch the setting on.
+
+## What was measured
+
+On the owner's library (48,560 books, all with bge-m3 vectors, 13,058
+tagged, 8,077 with a genre from their tags), `genre-check -n 50` gave
+(#308; P precision, R recall, "given" the share of the sample given any
+genre):
+
+| Method | At the thresholds then | Best single threshold |
+|---|---|---|
+| vector-content | P 0.11, R 0.25, F1 0.15, 98% given | no better |
+| vector-metadata | P 0.12, R 0.26, F1 0.16 | F1 0.18 |
+| vector | P 0.12, R 0.25, F1 0.16 | F1 0.19 |
+| neighbours, share 0.5 | P 0.79, R 0.35, F1 0.49, 50% given | |
+| neighbours, share 0.4 | P 0.74, R 0.43, F1 0.54, 62% given | (now `NeighbourShare`) |
+
+`neighbours` is the method to use. `combined` takes the neighbours'
+answer wherever at least `MinNeighbours` of the nearest books have
+genres, so on a library with tags it gives what `neighbours` gives, and
+asks the vectors only for a book among untagged books.
+
+### Why the vectors are no better than guessing
+
+On the owner's library the scores of every genre lay within about 0.1 of
+each other, and no threshold separated them. bge-m3 could not be run
+here (its files are not downloaded on this machine), so the cause was
+measured on multilingual-e5-small, which the spike's corpus has vectors
+of (#15: 2,011 Project Gutenberg books in English, German and French,
+1,056 of whose subject headings give a genre, a book's content vector of
+16 passages): the best genre of each book against the genres of its
+headings.
+
+| Scores | Best genre right | Best F1 |
+|---|---|---|
+| always the commonest genre (short stories) | 0.23 | |
+| content, margins as now | 0.09 | 0.09 |
+| content, each genre's margin centred over the books | 0.19 | 0.19 |
+| content, each genre's margin as a z-score over the books | 0.23 | 0.22 |
+| metadata (title and authors), margins as now | 0.24 | 0.24 |
+| prototypes of the names alone, or with `passage: ` | 0.04–0.20 | 0.09–0.21 |
+| the mean vector of the tagged books of each genre | 0.49 | 0.38 |
+| neighbours (40 candidates, 10 with genres) | 0.60 | 0.57 |
+
+A genre's description is one sentence; a book's vector is the mean of
+passages of its prose. To the model every passage of a novel is about as
+far from every such sentence (the margins spread over 0.04 on e5), and
+what little differs is the style of the sentence more than the genre: two
+genres (horror and myths) were the nearest for 60% of the books
+whatever they were about. Taking a genre's own average off (centring,
+z-scores) removes that, but then the vectors rank genres no better than
+always guessing the commonest. Other prototype texts and the `passage: `
+prefix did not help. The prefix is not the cause for bge-m3: it takes
+none, and none is given (`embed.BGEM3`). The vectors carry genre, as the
+neighbours show, but only among books: the mean of a genre's tagged books
+finds the right genre five times as often as its description, and the
+nearest books more often still. That is what `neighbours` uses, so the zero-shot methods
+stay for measuring and are not recommended.
+
+After an upgrade, run `genre-check -n 300` and compare with the table.

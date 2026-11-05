@@ -81,7 +81,7 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		}
 		return id
 	}
-	tagged := newBook("Death at La Fenice", []string{"Krimi", "Julia"})
+	tagged := newBook("Death at La Fenice", []string{"Krimi", "Venedig"})
 	about := newBook("Acqua Alta", nil)
 	a.putVector(about, similar.KindContent, a.genreVector("crime"))
 	var lockedBefore []string
@@ -161,7 +161,7 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		FROM books b WHERE b.id = $1`, tagged).Scan(&tags, &locked); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(tags, []string{"Julia", "Krimi"}) || !slices.Equal(locked, lockedBefore) {
+	if !slices.Equal(tags, []string{"Krimi", "Venedig"}) || !slices.Equal(locked, lockedBefore) {
 		t.Errorf("the book's tags became %v, its locks %v", tags, locked)
 	}
 }
@@ -192,10 +192,27 @@ func TestGenresComeFromTheNearestBooksThatHaveThem(t *testing.T) {
 	put(lib, "Fern", []string{"Fantasy"}, direction(map[int]float32{2: 1}))
 	asked := put(lib, "Ohne Schlagwort", nil, direction(map[int]float32{0: 1, 1: 0.01}))
 
+	alone := uuid.MustParse(a.library(admin, "Alone", "shared"))
+	lonely := put(alone, "Allein", nil, a.genreVector("horror"))
+
 	a.setGenreMode(admin, genres.MethodNeighbours)
 	a.suggestGenres()
 	if got := a.genresOf(asked); !slices.Equal(got, []string{"automatic:suggested:crime"}) {
 		t.Errorf("genres from the neighbours %v", got)
+	}
+	if got := a.genresOf(lonely); len(got) != 0 {
+		t.Errorf("a book without neighbours was given %v", got)
+	}
+
+	// Combined keeps the neighbours' answer and asks the vectors only for a
+	// book none of whose neighbours have genres.
+	a.setGenreMode(admin, genres.MethodCombined)
+	a.suggestGenres()
+	if got := a.genresOf(asked); !slices.Equal(got, []string{"automatic:suggested:crime"}) {
+		t.Errorf("combined gave %v where the neighbours tell", got)
+	}
+	if got := a.genresOf(lonely); !slices.Contains(got, "automatic:suggested:horror") {
+		t.Errorf("combined gave %v where only the vectors tell", got)
 	}
 }
 
@@ -213,9 +230,9 @@ func TestAGenreCheckFindsTheGenresOfTaggedBooksAgain(t *testing.T) {
 	}{
 		{"Krimi eins", []string{"Krimi"}, "crime"},
 		{"Krimi zwei", []string{"Belletristik/Kriminalromane"}, "crime"},
-		{"Drache", []string{"Fantasy", "Julia"}, "fantasy"},
+		{"Drache", []string{"Fantasy", "Venedig"}, "fantasy"},
 		{"Kochbuch", []string{"Kochen"}, "cooking"},
-		{"Ohne Genre", []string{"Julia"}, ""},
+		{"Ohne Genre", []string{"Venedig"}, ""},
 		{"Ohne Schlagwort", nil, ""},
 	} {
 		id, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: b.title, Tags: b.tags})
@@ -235,7 +252,7 @@ func TestAGenreCheckFindsTheGenresOfTaggedBooksAgain(t *testing.T) {
 	if r.Books != 6 || r.Tagged != 5 || r.FromTags != 4 || r.Embedded != 6 || r.Sample != 4 {
 		t.Errorf("books %d, tagged %d, with a genre from tags %d, embedded %d, sample %d", r.Books, r.Tagged, r.FromTags, r.Embedded, r.Sample)
 	}
-	if r.PerGenre["crime"] != 2 || len(r.Unmapped) != 1 || r.Unmapped[0] != (genres.TagCount{Tag: "Julia", Books: 2}) {
+	if r.PerGenre["crime"] != 2 || len(r.Unmapped) != 1 || r.Unmapped[0] != (genres.TagCount{Tag: "Venedig", Books: 2}) {
 		t.Errorf("per genre %v, unmapped %v", r.PerGenre, r.Unmapped)
 	}
 	var methods []string

@@ -9,7 +9,8 @@ import (
 
 // Ways of finding a genre, as book_genres.method stores them and as the
 // setting genres.suggest names them (with "tags", the tags alone, and
-// "combined", the vectors where they are sure and the neighbours else).
+// "combined", the neighbours, and the vectors for a book too few of whose
+// neighbours have genres).
 const (
 	MethodVector     = "vector"
 	MethodNeighbours = "neighbours"
@@ -20,12 +21,14 @@ const (
 // Neighbours: a book's genres from its Neighbours nearest books that have
 // genres, among the nearest Candidates of its library; a genre at least
 // NeighbourShare of them have (weighted by how near each is), once at
-// least MinNeighbours have any. Guesses until genre-check has measured.
+// least MinNeighbours have any. NeighbourShare is genre-check's best on
+// the owner's library (#308): F1 0.54 against 0.49 at 0.5, with more
+// recall for the precision a reviewed suggestion can spare.
 const (
 	Neighbours     = 10
 	Candidates     = 40
 	MinNeighbours  = 3
-	NeighbourShare = 0.5
+	NeighbourShare = 0.4
 )
 
 // Vectors are a book's vectors of one model; either may be missing.
