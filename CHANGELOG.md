@@ -17,6 +17,11 @@ What changes for someone who runs or uses GOtome. The format follows
   search offers them.
 - Authors and Series in the navigation list every author and series from
   A to Z, with how many books each has.
+- Documentation for installing and running GOtome
+  ([docs/README.md](docs/README.md)): getting started with a reverse
+  proxy, every environment variable and setting, NAS, arm64 and small
+  machines, roles and libraries, metadata sources, single sign-on,
+  e-readers, and troubleshooting.
 - New books can come from publishers' and authors' RSS and Atom feeds: on
   New books, follow a feed's address with words or authors an item must
   name, and you are told once of each new item that does. A feed is read

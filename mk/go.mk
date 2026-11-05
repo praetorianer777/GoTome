@@ -74,8 +74,14 @@ openapi-check: | $(GO_CACHE) go-toolchain ## Fail when api/openapi.json differs 
 	@$(DOCKER_GO) sh -c 'go run ./cmd/gotome openapi /tmp/openapi.json && diff -u ../api/openapi.json /tmp/openapi.json' \
 		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
 
+# Uncached: Go's test cache does not see files outside the module, such as
+# docs/configuration.md, so test-go alone could pass on a stale result.
+.PHONY: config-reference-check
+config-reference-check: | $(GO_CACHE) go-toolchain ## Fail when docs/configuration.md lacks a GOTOME_* variable or a setting
+	$(DOCKER_GO) go test -count=1 -run '^TestTheReference' ./internal/config/
+
 .PHONY: check-go
-check-go: fmt-check vet test-go openapi-check sqlc-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift
+check-go: fmt-check vet test-go openapi-check sqlc-check config-reference-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift, the configuration reference
 
 # Both reach the internet, which nothing in the gate does. A provider's token
 # in the environment, GOTOME_HARDCOVER_TOKEN, is passed on by name, so its

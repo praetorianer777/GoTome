@@ -237,6 +237,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   is a `Definition` (key, kind text or secret, default, check); a new one is added
   there, with its label in `web/src/i18n/en.ts` and `TEXTS` in
   `web/src/routes/admin-settings.tsx`. The routes need `settings:manage`.
+- `docs/` is the operator's and user's documentation (`docs/README.md` is
+  its index). Every setting and every `GOTOME_*` variable the code or the
+  compose files name has a row in `docs/configuration.md`, the setting's
+  with its default: `make config-reference-check` (in `check-go`, uncached)
+  fails otherwise.
 - A secret is sealed with AES-256-GCM (`internal/secret`), its key as associated
   data, and stored only sealed. The API never returns it, only `isSet`; code that
   needs it calls `settings.Store.Secret` and must neither log nor send it.

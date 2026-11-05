@@ -1,6 +1,8 @@
 # GOtome is two containers: the app and its database. A third, init, runs
 # once before them and exits: it gives a new installation its own random
-# database password, which both of them read from the secrets volume.
+# database password, which both of them read from the secrets volume, and
+# the key the app encrypts stored secrets with. docs/getting-started.md
+# walks through it; docs/configuration.md lists every variable.
 #
 # For development and the test gate, run it through make (mk/stack.mk), which
 # names the project and picks the host port from the checkout's path so that
@@ -108,5 +110,5 @@ services:
 volumes:
   app-data:
   db-data:
-  # The database password, written once by init.
+  # The database password and the secret key, written once by init.
   secrets:
