@@ -52,9 +52,21 @@ func TestTagsMapOntoGenres(t *testing.T) {
 		{"Science Fiction, Fantasy", []string{"fantasy", "science-fiction"}},
 		{"Historische Romane, Erzählungen", []string{"historical"}},
 		{"Science-Fiction", []string{"science-fiction"}},
-		{"Julia", nil},
+		{"Julia", []string{"romance"}},
+		{"Historical RomanHefte", []string{"historical", "romance"}},
+		{"Historischer Krimi", []string{"crime", "historical"}},
+		{"Belletristik/Historische Kriminalromane", []string{"crime", "historical"}},
+		{"Scheibenwelt", []string{"fantasy", "humour"}},
+		{"Dämonenkiller", []string{"horror"}},
+		{"Vampir Horror Roman", []string{"horror"}},
+		{"Rettungskreuzer Ikarus", []string{"science-fiction"}},
+		{"Jugend", []string{"young-adult"}},
+		{"Sex", []string{"erotica"}},
 		{"General", nil},
 		{"Roman", nil},
+		{"Belletristik", nil},
+		{"Fiction", nil},
+		{"Sachbuch", nil},
 	} {
 		got := FromTag(c.tag)
 		slices.Sort(got)
@@ -152,6 +164,22 @@ func TestACheckMeasuresPrecisionAndRecall(t *testing.T) {
 	}
 	if !crime.Reached || crime.Precision != 1 || crime.Recall != 1 || crime.Threshold <= 0.15 {
 		t.Errorf("crime %+v", crime)
+	}
+}
+
+func TestCombinedAsksTheVectorsOnlyWithoutNeighbours(t *testing.T) {
+	vector := map[string]float64{"horror": 0.3}
+	both := sampled{scores: map[string]map[string]float64{MethodVector: vector, MethodNeighbours: {"crime": 0.6}}}
+	if got := predict(both, MethodCombined, nil); !slices.Equal(got, []string{"crime"}) {
+		t.Errorf("with neighbours, combined gives %v", got)
+	}
+	unsure := sampled{scores: map[string]map[string]float64{MethodVector: vector, MethodNeighbours: {"crime": 0.1}}}
+	if got := predict(unsure, MethodCombined, nil); len(got) != 0 {
+		t.Errorf("with neighbours that agree on nothing, combined gives %v", got)
+	}
+	alone := sampled{scores: map[string]map[string]float64{MethodVector: vector}}
+	if got := predict(alone, MethodCombined, nil); !slices.Equal(got, []string{"horror"}) {
+		t.Errorf("without neighbours, combined gives %v", got)
 	}
 }
 

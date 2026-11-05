@@ -152,7 +152,7 @@ See [genres.md](genres.md).
 
 | Key | On the page | Default | What it does |
 |---|---|---|---|
-| `genres.suggest` | Genres for books | `off` | How books are given genres of GOtome's fixed list: `off` writes none; `tags` gives each book the genres its tags mean; `vector`, `neighbours` and `combined` also suggest genres from what a book is about, from the books most like it, or the second where the first finds nothing, for review under **Genres**. The last three need similar books worked out; measure them with `gotome genre-check` first. A book's tags are never changed. |
+| `genres.suggest` | Genres for books | `off` | How books are given genres of GOtome's fixed list: `off` writes none; `tags` gives each book the genres its tags mean; `vector`, `neighbours` and `combined` also suggest genres from what a book is about, from the books most like it, or the second and, where it cannot tell, the first, for review under **Genres**. Use `neighbours` ([genres.md](genres.md)). The last three need similar books worked out; measure them with `gotome genre-check` first. A book's tags are never changed. |
 
 ### Signing in
 
