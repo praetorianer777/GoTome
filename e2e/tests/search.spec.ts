@@ -51,6 +51,8 @@ test("Enter in the header's search lists every book found, as the library does",
 	const titles = ["Eins", "Zwei", "Drei"].map((n) => `${word} ${n}`);
 	await openSignedIn(page);
 	const { id } = await libraryOfBooks(page, `Every match ${word}`, titles);
+	// The page opened before the library was made; it learns of it anew.
+	await page.goto("/");
 
 	const box = page.getByRole("combobox", { name: "Search books" });
 	await box.fill(word);
