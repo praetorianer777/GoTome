@@ -52,6 +52,7 @@ func readCases() map[string][]readCase {
 		return v
 	}
 	byAuthor := `{"field":"author","op":"in","values":["{author}"]}`
+	byWords := `{"field":"words","op":"like","values":["{title}"]}`
 	return map[string][]readCase{
 		"listLibraries":      {{path: "/libraries", control: "insider"}},
 		"getLibrary":         {{path: "/libraries/{library}", control: "insider"}},
@@ -61,6 +62,7 @@ func readCases() map[string][]readCase {
 			{path: "/books", control: "insider"},
 			{path: "/books", query: q("library", "{library}"), control: "insider"},
 			{path: "/books", query: q("filter", byAuthor), control: "insider"},
+			{path: "/books", query: q("filter", byWords), control: "insider"},
 		},
 		"searchBooks": {{path: "/books/search", query: q("q", "{title}"), control: "insider"}},
 		"searchText": {
@@ -93,6 +95,7 @@ func readCases() map[string][]readCase {
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
+			{path: "/books/facets", query: q("filter", byWords), control: "insider"},
 		},
 		"countBooks": {
 			{path: "/books/count", query: q("filter", byAuthor), control: "insider"},

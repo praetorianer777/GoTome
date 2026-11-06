@@ -6,7 +6,18 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Enter in the header's search, with no suggestion chosen, lists every
+  book the words find, like the library: sorting, covers or a list,
+  filters, selection and bulk changes. Its address keeps the words, so
+  back and reload return to it. A suggestion chosen with the arrow keys
+  still opens that book, author or series.
+
 ### Changed
+
+- The header's search suggestions are wider than the box where there is
+  room, and show a title over two lines instead of cutting it.
 
 - More tags give genres: tags a store marks, such as "Science Fiction
   (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
