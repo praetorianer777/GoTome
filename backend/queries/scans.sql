@@ -209,7 +209,7 @@ WHERE f.book_id = $1
 ORDER BY f.id;
 
 -- name: GetFileForWriteBack :one
-SELECT f.id, f.book_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
        f.extract_state, f.drm, f.missing_at, f.trashed_at, l.root_path, l.writable
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id

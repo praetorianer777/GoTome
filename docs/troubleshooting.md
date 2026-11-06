@@ -43,8 +43,14 @@ recovers by itself once there is room.
   plain HTTP makes a cookie the browser keeps to itself. Open GOtome over
   HTTPS, or fix the proxy.
 - **"Too many failed sign-in attempts"**: after several wrong passwords,
-  an account and an address are refused for a while. Behind a reverse proxy everyone
-  shares the proxy's address. Wait a few minutes.
+  an account and an address are refused for a while. Wait a few minutes.
+  Behind a reverse proxy everyone shares the proxy's address unless
+  `GOTOME_TRUSTED_PROXIES` names it
+  ([getting-started.md](getting-started.md#trust-the-proxy)).
+- **After setting `GOTOME_TRUSTED_PROXIES`, the identity provider refuses
+  the redirect URI, or e-reader setup names an `http://` address**: the
+  proxy's address is not among those named, so its `X-Forwarded-Proto` is
+  no longer believed. Name the address the requests arrive from.
 - **Someone forgot their password**: an administrator sets a new one on the
   Users page. If no administrator can sign in, whoever runs the containers
   sets one from the shell:
@@ -85,6 +91,21 @@ On the Libraries page, the library's line says what its last scan found.
 - **Books have files missing**: the files were moved or deleted from the
   folder since. They come back when the files do. A file moved within the
   library is found again by its content.
+
+## GOtome cannot write to a library's folder
+
+- **"GOtome cannot write to /books: read-only file system"** when
+  turning on **GOtome may change files here**: the folder is mounted with
+  `:ro` in the compose file. Remove `:ro` from that mount, run `docker
+  compose up -d`, and turn it on again. "permission denied" instead is
+  the folder's permissions: the app's user 10001 needs write access to
+  it ([getting-started.md](getting-started.md#2-mount-your-books)).
+- **"Since …, GOtome cannot write to this folder"** on the Libraries
+  page, with a notification to administrators: a scan of a writable
+  library found the folder read-only, usually a mount changed since or a
+  disk that the system remounted read-only after an error. Edits stay in
+  GOtome without reaching the files, and trash and fixes are refused,
+  until the folder is writable again; then **Scan now** clears it.
 
 ## Files that cannot be read
 

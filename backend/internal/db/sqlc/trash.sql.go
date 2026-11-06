@@ -91,9 +91,12 @@ func (q *Queries) GetTrashedFile(ctx context.Context, id uuid.UUID) (GetTrashedF
 }
 
 const listExpiredTrash = `-- name: ListExpiredTrash :many
-SELECT id FROM book_files WHERE trashed_at < $1::timestamptz ORDER BY trashed_at
+SELECT f.id FROM book_files f JOIN libraries l ON l.id = f.library_id
+WHERE f.trashed_at < $1::timestamptz AND l.unwritable_since IS NULL
+ORDER BY f.trashed_at
 `
 
+// Not of a library whose folder cannot be written now: each would fail.
 func (q *Queries) ListExpiredTrash(ctx context.Context, before time.Time) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listExpiredTrash, before)
 	if err != nil {

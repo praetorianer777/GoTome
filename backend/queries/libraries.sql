@@ -14,6 +14,10 @@ WHERE l.id = $1
 -- Every root, whoever may see it: a new library must not overlap any of them.
 SELECT id, root_path FROM libraries;
 
+-- name: GetLibraryRoot :one
+-- For storage managers, who see every library.
+SELECT root_path FROM libraries WHERE id = $1;
+
 -- name: CreateLibrary :one
 INSERT INTO libraries (id, name, root_path, mode, writable, visibility, owner_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -24,9 +28,25 @@ UPDATE libraries
 SET name       = COALESCE(sqlc.narg(name), name),
     visibility = COALESCE(sqlc.narg(visibility), visibility),
     writable   = COALESCE(sqlc.narg(writable), writable),
+    -- Whoever sets it has just seen the folder written to, or turned it off.
+    unwritable_since  = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_since END,
+    unwritable_reason = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: MarkLibraryUnwritable :one
+-- Only the first time: the name comes back only when the library was not
+-- marked yet, which is when its managers are told.
+UPDATE libraries
+SET unwritable_since = now(), unwritable_reason = sqlc.arg(reason)
+WHERE id = sqlc.arg(id) AND writable AND unwritable_since IS NULL
+RETURNING name;
+
+-- name: ClearLibraryUnwritable :exec
+UPDATE libraries
+SET unwritable_since = NULL, unwritable_reason = NULL
+WHERE id = $1 AND unwritable_since IS NOT NULL;
 
 -- name: DeleteLibrary :execrows
 DELETE FROM libraries WHERE id = $1;

@@ -83,6 +83,9 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 		return epub.Fixed{}, ErrFileChanged
 	}
 
+	if err := s.noteUnwritable(ctx, probeFolder(f.LibraryID, f.RootPath)); err != nil {
+		return epub.Fixed{}, err
+	}
 	temp := filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".gotome-fix")
 	_ = os.Remove(temp)
 	out, err := os.OpenFile(temp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())

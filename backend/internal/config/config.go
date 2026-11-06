@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -65,6 +66,9 @@ type Config struct {
 	// ForcePasswords lets everyone sign in with a password whatever the
 	// setting says: the way back in when the identity provider is gone.
 	ForcePasswords bool
+	// TrustedProxies are the reverse proxies whose forwarded client address
+	// and scheme are believed; none believes no forwarded address.
+	TrustedProxies []netip.Prefix
 	// ModelDir is where embedding models are downloaded to; DataDir/models
 	// unless set.
 	ModelDir string
@@ -157,6 +161,10 @@ func load(getenv func(string) string) (Config, error) {
 	if cfg.ForcePasswords, err = strconv.ParseBool(force); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_FORCE_PASSWORD_LOGIN is %q, want true or false", force)
 	}
+	proxies := get("GOTOME_TRUSTED_PROXIES", "")
+	if cfg.TrustedProxies, err = parseProxies(proxies); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_TRUSTED_PROXIES is %q, want addresses or CIDR ranges separated by commas, such as 172.16.0.0/12: %w", proxies, err)
+	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
@@ -176,6 +184,29 @@ func load(getenv func(string) string) (Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// parseProxies reads addresses and CIDR ranges separated by commas or
+// spaces; an address alone is a range of one.
+func parseProxies(s string) ([]netip.Prefix, error) {
+	var prefixes []netip.Prefix
+	for _, field := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		if strings.Contains(field, "/") {
+			p, err := netip.ParsePrefix(field)
+			if err != nil {
+				return nil, err
+			}
+			prefixes = append(prefixes, p.Masked())
+			continue
+		}
+		addr, err := netip.ParseAddr(field)
+		if err != nil {
+			return nil, err
+		}
+		addr = addr.Unmap()
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+	return prefixes, nil
 }
 
 // withPassword puts the password kept in the file into the database URL. The

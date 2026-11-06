@@ -104,6 +104,7 @@ export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"duplicates.found": "notifications.kind.duplicatesFound",
 	"files.unreadable": "notifications.kind.filesUnreadable",
 	"scan.failed": "notifications.kind.scanFailed",
+	"library.unwritable": "notifications.kind.libraryUnwritable",
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
@@ -141,6 +142,13 @@ export function notificationText(n: Notification): {
 				detail: d.error
 					? text(d.error)
 					: t("notification.scanFailed.many", { count: count(d.count) }),
+			};
+		case "library.unwritable":
+			return {
+				title: t("notification.libraryUnwritable", { library: text(d.library) }),
+				detail: d.error
+					? t("notification.libraryUnwritable.reason", { reason: text(d.error) })
+					: t("notification.libraryUnwritable.many", { count: count(d.count) }),
 			};
 		case "files.unreadable":
 			return one

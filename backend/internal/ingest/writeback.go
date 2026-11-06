@@ -166,6 +166,14 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 		return nil
 	}
 
+	// Told once for the library and not tried again: a job per file would
+	// fail as often as the library has EPUBs.
+	if err := s.noteUnwritable(ctx, probeFolder(file.LibraryID, file.RootPath)); err != nil {
+		if errors.Is(err, ErrFolderReadOnly) {
+			return nil
+		}
+		return err
+	}
 	temp := filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".gotome-write")
 	// A part left by a crash is of no use to anyone.
 	_ = os.Remove(temp)

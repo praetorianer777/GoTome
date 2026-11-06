@@ -47,6 +47,9 @@ services:
       # How many CPU threads working out what a book is about may use. Empty
       # is half the CPUs, which compose cannot count.
       GOTOME_EMBED_THREADS: ${GOTOME_EMBED_THREADS:-}
+      # The reverse proxies whose forwarded client address is believed, as
+      # addresses or CIDR ranges; empty believes none.
+      GOTOME_TRUSTED_PROXIES: ${GOTOME_TRUSTED_PROXIES:-}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
       # Encrypts the secrets kept in the database, such as provider keys.

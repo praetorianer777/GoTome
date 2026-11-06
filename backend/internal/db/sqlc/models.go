@@ -317,15 +317,17 @@ type KoboBook struct {
 }
 
 type Library struct {
-	ID         uuid.UUID
-	Name       string
-	RootPath   string
-	Mode       string
-	Writable   bool
-	Visibility string
-	OwnerID    *uuid.UUID
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID               uuid.UUID
+	Name             string
+	RootPath         string
+	Mode             string
+	Writable         bool
+	Visibility       string
+	OwnerID          *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	UnwritableSince  *time.Time
+	UnwritableReason *string
 }
 
 type LibraryMember struct {

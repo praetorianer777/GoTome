@@ -659,6 +659,37 @@ describe("libraries", () => {
 		expect(server.libraries.map((l) => l.name)).toEqual(["Fiction"]);
 	});
 
+	it("refuses a read-only folder and says when a writable one could no longer be written", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("NAS", { mode: "external", writable: false, rootPath: "/books" })
+			.withLibrary("Shelf", {
+				mode: "external",
+				writable: true,
+				rootPath: "/shelf",
+				unwritableSince: "2026-11-01T10:00:00Z",
+				unwritableReason: "read-only file system",
+			});
+		server.readOnlyFolders = ["/books"];
+		renderApp("/admin/libraries");
+
+		const nas = within(await screen.findByRole("listitem", { name: "NAS" }));
+		await person.click(
+			nas.getByRole("checkbox", { name: "GOtome may change files here" }),
+		);
+		expect(
+			await nas.findByText("GOtome cannot write to /books: read-only file system."),
+		).toBeInTheDocument();
+		expect(server.libraries[0]?.writable).toBe(false);
+
+		const shelf = within(screen.getByRole("listitem", { name: "Shelf" }));
+		expect(
+			shelf.getByText(/GOtome cannot write to this folder: read-only file system/),
+		).toBeInTheDocument();
+	});
+
 	it("gives named people a private library and takes it away again", async () => {
 		const person = userEvent.setup();
 		server

@@ -21,6 +21,7 @@ const (
 	loggerKey
 	userKey
 	deviceKey
+	clientKey
 )
 
 // RequestIDFrom is the ID of the request a context belongs to, or "".
