@@ -8,6 +8,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
 - Background work no longer can stop for good with "completion subscriber
   received a job that wasn't finalized" on a heavily loaded machine: queueing
   a job that was already running kept that job from being marked finished
