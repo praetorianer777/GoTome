@@ -16,10 +16,12 @@ function letters(words: string): number {
 
 /**
  * The search box in the header: titles, authors and series, misspelt or only
- * begun, the authors and series first, and last a way to search the text of the books for the words. It is
- * a combobox: the arrow keys move through what was found, Enter opens what is
- * chosen or the text search, Escape closes the list, and "/" anywhere comes back to
- * it.
+ * begun, the authors and series first, then a way to list every book found
+ * and last a way to search the text of the books for the words. It is a
+ * combobox: the arrow keys move through what was found, Enter opens what is
+ * chosen, or with nothing chosen the list of every book found (the text
+ * search when there is none), Escape closes the list, and "/" anywhere comes
+ * back to it.
  */
 export function QuickSearch() {
 	const navigate = useNavigate();
@@ -60,6 +62,10 @@ export function QuickSearch() {
 	const names = enough ? (search.data?.names ?? []) : [];
 	const hits = enough ? (search.data?.books ?? []) : [];
 	const options = names.length + hits.length;
+	// Where the two last options stand; the list of every book only when
+	// there is a book in it.
+	const allAt = hits.length > 0 ? options : -1;
+	const textAt = hits.length > 0 ? options + 1 : options;
 	const shown = open && letters(words) >= MIN_LETTERS && enough;
 
 	function close() {
@@ -82,6 +88,11 @@ export function QuickSearch() {
 		}
 	}
 
+	function listAll() {
+		close();
+		navigate({ to: "/", search: { q: words.trim() } });
+	}
+
 	function searchText() {
 		close();
 		navigate({ to: "/search", search: { q: words.trim() } });
@@ -92,7 +103,7 @@ export function QuickSearch() {
 			case "ArrowDown":
 				event.preventDefault();
 				setOpen(true);
-				setActive((i) => Math.min(i + 1, options));
+				setActive((i) => Math.min(i + 1, textAt));
 				break;
 			case "ArrowUp":
 				event.preventDefault();
@@ -101,13 +112,14 @@ export function QuickSearch() {
 			case "Enter": {
 				if (!shown) break;
 				event.preventDefault();
-				const at = Math.max(active, 0);
-				const name = names[at];
-				const hit = hits[at - names.length];
+				const name = names[active];
+				const hit = hits[active - names.length];
 				if (name) {
 					goToName(name);
 				} else if (hit) {
 					go(hit);
+				} else if (active === allAt || (active < 0 && allAt >= 0)) {
+					listAll();
 				} else {
 					searchText();
 				}
@@ -150,7 +162,7 @@ export function QuickSearch() {
 			/>
 			<div
 				hidden={!shown}
-				className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+				className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-md border sm:right-auto sm:w-[28rem] lg:w-[36rem] border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
 			>
 				{search.isSuccess && options === 0 && (
 					<p
@@ -174,7 +186,7 @@ export function QuickSearch() {
 							onMouseEnter={() => setActive(i)}
 							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-brand-strong/10 dark:aria-selected:bg-brand/15"
 						>
-							<span className="block truncate font-medium">{name.name}</span>
+							<span className="line-clamp-2 font-medium">{name.name}</span>
 							<span className="block truncate text-slate-600 dark:text-slate-400">
 								{t(name.kind === "author" ? "search.name.author" : "search.name.series", {
 									books: bookCount(name.books),
@@ -196,7 +208,7 @@ export function QuickSearch() {
 							onMouseEnter={() => setActive(names.length + i)}
 							className="cursor-pointer px-3 py-2 text-sm aria-selected:bg-brand-strong/10 dark:aria-selected:bg-brand/15"
 						>
-							<span className="block truncate font-medium">{hit.title}</span>
+							<span className="line-clamp-2 font-medium">{hit.title}</span>
 							{hit.authors.length > 0 && (
 								<span className="block truncate text-slate-600 dark:text-slate-400">
 									{hit.authors.join(", ")}
@@ -205,15 +217,30 @@ export function QuickSearch() {
 							)}
 						</div>
 					))}
+					{allAt >= 0 && (
+						// biome-ignore lint/a11y/useKeyWithClickEvents: as above.
+						<div
+							id={`${listId}-${allAt}`}
+							role="option"
+							tabIndex={-1}
+							aria-selected={active === allAt}
+							onMouseDown={(e) => e.preventDefault()}
+							onClick={listAll}
+							onMouseEnter={() => setActive(allAt)}
+							className="cursor-pointer border-t border-slate-200 px-3 py-2 text-sm text-brand-strong aria-selected:bg-sky-100 dark:border-slate-700 dark:text-brand dark:aria-selected:bg-sky-900"
+						>
+							{t("search.all", { words: words.trim() })}
+						</div>
+					)}
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: as above. */}
 					<div
-						id={`${listId}-${options}`}
+						id={`${listId}-${textAt}`}
 						role="option"
 						tabIndex={-1}
-						aria-selected={active === options}
+						aria-selected={active === textAt}
 						onMouseDown={(e) => e.preventDefault()}
 						onClick={searchText}
-						onMouseEnter={() => setActive(options)}
+						onMouseEnter={() => setActive(textAt)}
 						className="cursor-pointer border-t border-slate-200 px-3 py-2 text-sm text-brand-strong aria-selected:bg-sky-100 dark:border-slate-700 dark:text-brand dark:aria-selected:bg-sky-900"
 					>
 						{t("search.fullText", { words: words.trim() })}

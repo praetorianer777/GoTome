@@ -25,6 +25,7 @@ export const de: Record<MessageKey, string> = {
 	"search.results": "Gefundene Bücher",
 	"search.none": "Kein Titel, kein Autor und keine Reihe sieht so aus.",
 	"search.fullText": "Im Text der Bücher nach „{words}“ suchen",
+	"search.all": "Alle Bücher wie „{words}“",
 
 	"nav.search": "Suche",
 	"nav.duplicates": "Duplikate",
@@ -240,6 +241,13 @@ export const de: Record<MessageKey, string> = {
 
 	"library.filtered.title": "Kein Buch passt",
 	"library.filtered.body": "Keines der Bücher hier erfüllt alle Filter.",
+	"library.matching.title": "Bücher wie „{words}“",
+	"library.matching.intro":
+		"Jedes Buch, dessen Titel, Autor oder Reihe diesen Wörtern ähnelt, auch falsch geschrieben oder nur angefangen.",
+	"library.matching.clear": "Die ganze Bibliothek zeigen",
+	"library.matching.none": "Kein Buch sieht so aus",
+	"library.matching.noneBody":
+		"Kein Titel, kein Autor und keine Reihe in den Bibliotheken, die Sie sehen, ähnelt diesen Wörtern.",
 
 	"filter.title": "Filter",
 	"filter.toggle": "Filter",

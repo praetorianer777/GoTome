@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 test("a misspelt title is found from the header and opened with the keyboard", async ({
 	page,
@@ -33,6 +33,51 @@ test("a misspelt title is found from the header and opened with the keyboard", a
 	await box.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: title, level: 1 }),
+	).toBeVisible();
+
+	expect((await page.request.delete(`/api/v1/libraries/${id}`)).status()).toBe(
+		204,
+	);
+});
+
+test("Enter in the header's search lists every book found, as the library does", async ({
+	page,
+}) => {
+	// Letters drawn at random share no trigram worth counting with the
+	// titles other projects add at the same time.
+	const word = Array.from({ length: 10 }, () =>
+		String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+	).join("");
+	const titles = ["Eins", "Zwei", "Drei"].map((n) => `${word} ${n}`);
+	await openSignedIn(page);
+	const { id } = await libraryOfBooks(page, `Every match ${word}`, titles);
+	// The page opened before the library was made; it learns of it anew.
+	await page.goto("/");
+
+	const box = page.getByRole("combobox", { name: "Search books" });
+	await box.fill(word);
+	await expect(
+		page
+			.getByRole("listbox", { name: "Books found" })
+			.getByRole("option", { name: `Every book like “${word}”` }),
+	).toBeVisible();
+	await box.press("Enter");
+
+	await expect(
+		page.getByRole("heading", { name: `Books like “${word}”`, level: 1 }),
+	).toBeVisible();
+	await expect(page).toHaveURL(new RegExp(`[?&]q=${word}`));
+	const found = page
+		.getByRole("region", { name: "Books" })
+		.getByRole("link", { name: new RegExp(word) });
+	await expect(found).toHaveCount(3);
+
+	await page.getByRole("button", { name: "List", exact: true }).click();
+	await page.reload();
+	await expect(found).toHaveCount(3);
+	await page.getByRole("button", { name: "Show the whole library" }).click();
+	await expect(
+		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
 
 	expect((await page.request.delete(`/api/v1/libraries/${id}`)).status()).toBe(

@@ -40,6 +40,10 @@ const (
 	// has: one of its tags', or one a person accepted. A suggestion nobody
 	// accepted is not one.
 	FieldGenre = "genre"
+	// FieldWords is a book whose title, an author or the series looks like
+	// the words, as the quick search finds them (Search): the list Enter
+	// in the header's search opens.
+	FieldWords = "words"
 	// FieldStatus and FieldRating are where the viewer stands with a book:
 	// each person filters by their own.
 	FieldStatus = "status"
@@ -55,6 +59,9 @@ const (
 	// OpBetween takes two years, either of which may be empty for no limit,
 	// and matches the books published from the first to the second.
 	OpBetween = "between"
+	// OpLike takes words and matches what looks like them: misspelt, or
+	// only begun.
+	OpLike = "like"
 )
 
 // Values of FieldFiles. A file in the trash is neither missing nor on
@@ -174,6 +181,11 @@ var Filters = filter.Registry{
 			return `NOT EXISTS (SELECT 1 FROM book_genres g WHERE g.book_id = b.id AND ` + hasGenre + `)`
 		}},
 	},
+	FieldWords: {
+		OpLike: {Arity: 1, Value: searchWords, SQL: func(v []string, arg func(any) string) string {
+			return `b.id IN (SELECT book_id FROM quick_search_matches(` + arg(v[0]) + `))`
+		}},
+	},
 }
 
 // filtersFor is Filters with the fields that depend on who is looking.
@@ -234,6 +246,13 @@ func ratingOrNone(v string) (string, error) {
 		return "", nil
 	}
 	return rating(v)
+}
+
+func searchWords(v string) (string, error) {
+	if k, ok := searchKey(v); ok {
+		return k, nil
+	}
+	return "", fmt.Errorf("%q has fewer than %d letters or digits to look for", v, minSearchLen)
 }
 
 func nameKey(v string) (string, error) {

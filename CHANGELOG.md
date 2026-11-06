@@ -6,6 +6,19 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Enter in the header's search, with no suggestion chosen, lists every
+  book the words find, like the library: sorting, covers or a list,
+  filters, selection and bulk changes. Its address keeps the words, so
+  back and reload return to it. A suggestion chosen with the arrow keys
+  still opens that book, author or series.
+
+### Changed
+
+- The header's search suggestions are wider than the box where there is
+  room, and show a title over two lines instead of cutting it.
+
 ## [0.10.0] - 2026-11-06
 
 ### Changed
