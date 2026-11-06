@@ -6,6 +6,12 @@ services:
       # The test gate reaches no provider: what a match or a search finds
       # out there is not the gate's to know.
       GOTOME_OFFLINE: "true"
+      # In their place, what the browser tests look books up in: the
+      # records of e2e/fixtures/metadata.json, and vectors made from the
+      # words of each text, as the model is not downloaded either. Neither
+      # variable is set in a deployment.
+      GOTOME_TEST_METADATA: /fixtures/metadata.json
+      GOTOME_TEST_EMBEDDINGS: "true"
     volumes:
       # The browser tests add this folder as an external library. Two libraries
       # cannot share a folder, and the browser projects run side by side, so
@@ -14,6 +20,7 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+      - ../e2e/fixtures/metadata.json:/fixtures/metadata.json:ro
       # What make stack-check has FFmpeg read.
       - ../backend/internal/ingest/testdata/audio:/fixtures/audio:ro
       - ../e2e/fixtures/audio:/fixtures/audio-e2e:ro

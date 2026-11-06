@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { openSignedIn, signIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
 test("an author's two spellings are made one, and a title's addition is left as it is", async ({
@@ -94,6 +94,84 @@ test("an author's two spellings are made one, and a title's addition is left as 
 		page.getByRole("listitem").filter({ hasText: `Drittes ${stamp}` }),
 	).toHaveCount(0);
 
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
+	).toBe(204);
+});
+
+test("every suggestion of a kind is applied at once", async ({
+	page,
+	browser,
+}, testInfo) => {
+	test.setTimeout(60_000);
+	const stamp = `${testInfo.project.name}-${Date.now()}`;
+	const username = `cleaner-${stamp}`;
+	const password = `pw-${stamp}`;
+	await openSignedIn(page);
+	// "Apply all" applies to every book its person sees, and every project
+	// leaves books by "Unknown": an editor who sees only this library keeps
+	// it to this test's.
+	const made = await page.request.post("/api/v1/users", {
+		data: { username, password, role: "editor" },
+	});
+	expect(made.status()).toBe(201);
+	const editor = (await made.json()).id as string;
+	const created = await page.request.post("/api/v1/libraries", {
+		data: { name: `Unknown ${stamp}`, mode: "managed", visibility: "private" },
+	});
+	const library = (await created.json()).id as string;
+	expect(
+		(
+			await page.request.put(`/api/v1/libraries/${library}/members/${editor}`)
+		).status(),
+	).toBe(204);
+	const books: string[] = [];
+	for (const title of [`Nameless ${stamp}`, `Authorless ${stamp}`]) {
+		const uploaded = await page.request.post(
+			`/api/v1/libraries/${library}/uploads`,
+			{
+				multipart: {
+					file: {
+						name: `${title}.epub`,
+						mimeType: "application/epub+zip",
+						buffer: makeEpub(title, 1, `unknown ${title}`, false),
+					},
+				},
+			},
+		);
+		const book = (await uploaded.json()).bookId as string;
+		const edited = await page.request.patch(`/api/v1/books/${book}`, {
+			data: {
+				title,
+				contributors: [{ name: "Unknown", role: "author" }],
+				locks: { title: false, contributors: false },
+			},
+		});
+		expect(edited.status()).toBe(200);
+		books.push(book);
+	}
+
+	const theirs = await browser.newContext({
+		baseURL: testInfo.project.use.baseURL,
+	});
+	const them = await theirs.newPage();
+	await them.goto("/cleanup?kind=placeholders");
+	await signIn(them, { username, password });
+	await expect(
+		them.getByRole("listitem").filter({ hasText: "“Unknown” is not a name." }),
+	).toContainText("Books: 2", { timeout: 15_000 });
+	await them.getByRole("button", { name: "Apply all 1" }).click();
+	await expect(them.getByText("Apply all 1 as suggested?")).toBeVisible();
+	await them.getByRole("button", { name: "Apply all", exact: true }).click();
+	await expect(them.getByText("2 of 2 books done.")).toBeVisible({
+		timeout: 20_000,
+	});
+	await theirs.close();
+
+	for (const book of books) {
+		const detail = await (await page.request.get(`/api/v1/books/${book}`)).json();
+		expect(detail.contributors).toEqual([]);
+	}
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
 	).toBe(204);

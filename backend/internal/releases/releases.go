@@ -137,7 +137,12 @@ func (s *Service) Follow(ctx context.Context, user uuid.UUID, kind, name string)
 		}
 		t = Tracker{ID: row.ID, Kind: subject.Kind, Name: subject.Name, CreatedAt: row.CreatedAt, PolledAt: subject.PolledAt}
 		if subject.PolledAt == nil && s.Queue != nil {
-			_, err = s.Queue.InsertTx(ctx, tx, PollArgs{}, pollOpts)
+			res, err := s.Queue.InsertTx(ctx, tx, PollArgs{}, pollOpts)
+			if err != nil || !res.Running {
+				return err
+			}
+			_, err = s.Queue.InsertTx(ctx, tx, PollArgs{Again: true}, pollOpts)
+			return err
 		}
 		return err
 	})

@@ -98,13 +98,15 @@ choose another limit.
 
 ### For developing GOtome
 
-These are read only by GOtome's own tests and tools, never by an
-installation.
+These are read only by GOtome's own tests and tools, or by the app on
+the development stack, never by an installation.
 
 | Variable | What it does |
 |---|---|
 | `GOTOME_TEST_DATABASE_URL` | The Postgres server the integration tests make their databases on. |
 | `GOTOME_RECORD_FIXTURES` | Set, the metadata sources' tests record the answers they lack from the live services. |
+| `GOTOME_TEST_METADATA` | A JSON file of book records that the development stack (`deploy/docker-compose.dev.yml`) has the app look books up in, in place of every metadata source, for the browser tests: `e2e/fixtures/metadata.json`. Never set it in an installation. |
+| `GOTOME_TEST_EMBEDDINGS` | `true` has the app embed books with vectors made from the words of their texts instead of a model (`embed.Words`), so the browser tests see similar books, searches by description and genre suggestions without one: books that share words are near. The development stack sets it, an installation never. |
 
 ## Settings
 
