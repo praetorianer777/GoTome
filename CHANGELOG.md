@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- `gotome reset-password <user name>` sets a new password from the shell
+  when no administrator can sign in, and signs the account out; `-enable`
+  and `-admin` also enable it and make it an administrator
+  ([docs/troubleshooting.md](docs/troubleshooting.md#signing-in-and-changes)).
 - `GOTOME_TRUSTED_PROXIES` names the reverse proxies in front of GOtome.
   From those, the client's address is taken from `X-Forwarded-For`, so the
   limits on failed sign-ins, device requests and single sign-on starts

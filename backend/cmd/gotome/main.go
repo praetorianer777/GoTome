@@ -103,6 +103,7 @@ Commands:
   fulltext-check Load the full-text engine and print its version
   audio-check    Compare what FFmpeg reads from folders of audio files with their reference
   migrate        Bring the database schema up to date and exit
+  reset-password Set a new password for an account, read from the terminal (-h for options)
   similar-check  Measure the similar books of a sample of the library (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
@@ -136,6 +137,8 @@ func run(args []string) error {
 		return audioCheck(args[1:])
 	case "migrate":
 		return migrate()
+	case "reset-password":
+		return resetPassword(args[1:])
 	case "similar-check":
 		return similarCheck(args[1:])
 	case "genre-check":

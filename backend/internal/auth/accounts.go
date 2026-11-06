@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -236,6 +237,38 @@ func (s *Service) UpdateAccount(ctx context.Context, id uuid.UUID, c AccountChan
 		return Account{}, err
 	}
 	return toAccount(updated), nil
+}
+
+// Reset is what ResetPassword may do besides setting the password.
+type Reset struct {
+	// Enable takes back the account's being disabled.
+	Enable bool
+	// Admin makes the account an administrator.
+	Admin bool
+}
+
+// ResetPassword gives the account of that user name a new password and ends
+// its sessions, for an operator with no administrator left to do it on the
+// Users page. It changes the account as UpdateAccount does, so it can never
+// leave GOtome without an administrator.
+func (s *Service) ResetPassword(ctx context.Context, username, password string, r Reset) (Account, error) {
+	row, err := sqlc.New(s.pool).GetUserByUsername(ctx, strings.TrimSpace(username))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Account{}, ErrNoUser
+	}
+	if err != nil {
+		return Account{}, err
+	}
+	c := AccountChanges{Password: &password}
+	if r.Enable {
+		enabled := false
+		c.Disabled = &enabled
+	}
+	if r.Admin {
+		admin := RoleAdmin
+		c.Role = &admin
+	}
+	return s.UpdateAccount(ctx, row.ID, c)
 }
 
 // EndSessions signs the account out everywhere.
