@@ -230,6 +230,12 @@ older cores is slower by a factor not measured here.
   until the store is compacted: once a fifth of it is dead, or daily,
   it is written again with only the chunks `passage_files` names, under
   the library each is in now.
+- Beginning and compacting write the two files of a new generation
+  (`signs.<n>`, `vectors.<n>`) and switch to them by replacing
+  `meta.json`, which names the generation (#323): a crash leaves the old
+  set or the new one. A store whose `meta.json` names files that are not
+  there, or one of before generations cut off between its renames, is
+  started over at open, and every file is embedded again.
 - Backups leave out `passage_files` (`derived` in `deploy/backup.sh`)
   and `/data/passages`; a restore reads every text again, which, with
   passages on, embeds them again.

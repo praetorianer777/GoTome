@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Searching by description could rank passages by another passage's
+  vector after GOtome stopped while it was compacting the passage store.
+  The store now switches to its compacted files in one step, and one
+  left half switched by an earlier version is started over at the next
+  start, its passages embedded again.
+
 ## [0.9.0] - 2026-11-06
 
 ### Added

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,12 @@ type Meta struct {
 	// Libraries are the libraries the records name, by their place here.
 	Libraries   []uuid.UUID `json:"libraries"`
 	CompactedAt time.Time   `json:"compactedAt"`
+	// Generation names the data files the records are in. Begin and
+	// Compact write files of a new generation and switch to them by
+	// replacing meta.json, one rename, so a crash leaves either set whole.
+	// Generation 0 is the files of a store written before there were
+	// generations.
+	Generation int `json:"generation,omitempty"`
 }
 
 // Record is one passage to store.
@@ -57,11 +64,15 @@ type Hit struct {
 type Store struct {
 	dir string
 	mu  sync.RWMutex
-	// meta is nil for a store not begun.
+	// meta is nil for a store not begun, and the files with it.
 	meta  *Meta
 	signs *os.File
 	vecs  *os.File
 	n     int
+	// last is the highest generation taken, so that a Begin and a Compact
+	// never write the same files.
+	last        int
+	startedOver bool
 }
 
 const (
@@ -70,8 +81,20 @@ const (
 	vecsFile  = "vectors"
 )
 
+// dataFiles are the names of a generation's signs and vectors.
+func dataFiles(gen int) (string, string) {
+	if gen == 0 {
+		return signsFile, vecsFile
+	}
+	return fmt.Sprintf("%s.%d", signsFile, gen), fmt.Sprintf("%s.%d", vecsFile, gen)
+}
+
 // OpenStore opens the store in dir, made if missing. A record half
-// written when the process stopped is cut off.
+// written when the process stopped is cut off. A store whose data files
+// are not the set its meta.json names is started over, as is one whose
+// compaction was cut off between its renames before there were
+// generations: its records would pair one passage's signs with another's
+// vector. Files of no generation in use are removed.
 func OpenStore(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
@@ -87,7 +110,22 @@ func OpenStore(dir string) (*Store, error) {
 		if err := json.Unmarshal(b, &m); err != nil {
 			return nil, fmt.Errorf("passage store: %w", err)
 		}
-		s.meta = &m
+		s.last = m.Generation
+		whole, err := s.whole(&m)
+		if err != nil {
+			return nil, err
+		}
+		if whole {
+			s.meta = &m
+		} else {
+			s.startedOver = true
+		}
+	}
+	if err := s.sweep(); err != nil {
+		return nil, err
+	}
+	if s.meta == nil {
+		return s, nil
 	}
 	if err := s.open(); err != nil {
 		return nil, err
@@ -95,18 +133,66 @@ func OpenStore(dir string) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) open() error {
-	var err error
-	if s.signs, err = os.OpenFile(filepath.Join(s.dir, signsFile), os.O_RDWR|os.O_CREATE, 0o640); err != nil {
+// StartedOver says OpenStore found the files not of one set and began
+// the store again: its passages are to be embedded anew.
+func (s *Store) StartedOver() bool { return s.startedOver }
+
+// whole says the data files m names are there. Of a store before
+// generations, a vectors.new without its signs.new is a compaction that
+// stopped between the renames of the two files.
+func (s *Store) whole(m *Meta) (bool, error) {
+	sf, vf := dataFiles(m.Generation)
+	for _, f := range []string{sf, vf} {
+		if _, err := os.Stat(filepath.Join(s.dir, f)); errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+	}
+	if m.Generation > 0 {
+		return true, nil
+	}
+	_, err := os.Stat(filepath.Join(s.dir, signsFile+".new"))
+	signsLeft := err == nil
+	_, err = os.Stat(filepath.Join(s.dir, vecsFile+".new"))
+	vecsLeft := err == nil
+	return signsLeft || !vecsLeft, nil
+}
+
+// sweep removes the data files of other generations, and meta.json with
+// them when the store is not begun.
+func (s *Store) sweep() error {
+	var sf, vf string
+	if s.meta != nil {
+		sf, vf = dataFiles(s.meta.Generation)
+	}
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
 		return err
 	}
-	if s.vecs, err = os.OpenFile(filepath.Join(s.dir, vecsFile), os.O_RDWR|os.O_CREATE, 0o640); err != nil {
+	var errs []error
+	for _, e := range entries {
+		name := e.Name()
+		ours := name == metaFile && s.meta == nil || name == metaFile+".new" ||
+			strings.HasPrefix(name, signsFile) && name != sf || strings.HasPrefix(name, vecsFile) && name != vf
+		if ours && !e.IsDir() {
+			errs = append(errs, os.Remove(filepath.Join(s.dir, name)))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// open opens the data files of s.meta's generation and cuts off a record
+// half written.
+func (s *Store) open() error {
+	sf, vf := dataFiles(s.meta.Generation)
+	var err error
+	if s.signs, err = os.OpenFile(filepath.Join(s.dir, sf), os.O_RDWR, 0); err != nil {
+		return err
+	}
+	if s.vecs, err = os.OpenFile(filepath.Join(s.dir, vf), os.O_RDWR, 0); err != nil {
 		s.signs.Close()
 		return err
-	}
-	s.n = 0
-	if s.meta == nil {
-		return nil
 	}
 	ss, err := s.signs.Stat()
 	if err != nil {
@@ -135,7 +221,19 @@ func vecSize(dim int) int { return 4 + dim }
 func (s *Store) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return errors.Join(s.signs.Close(), s.vecs.Close())
+	return s.closeFiles()
+}
+
+// closeFiles closes the data files open; the caller holds the lock.
+func (s *Store) closeFiles() error {
+	var errs []error
+	for _, f := range []*os.File{s.signs, s.vecs} {
+		if f != nil {
+			errs = append(errs, f.Close())
+		}
+	}
+	s.signs, s.vecs, s.n = nil, nil, 0
+	return errors.Join(errs...)
 }
 
 // Meta is a copy of what the store holds, nil before it is begun.
@@ -146,6 +244,7 @@ func (s *Store) Meta() *Meta {
 		return nil
 	}
 	m := *s.meta
+	m.Libraries = slices.Clone(m.Libraries)
 	return &m
 }
 
@@ -172,15 +271,52 @@ func (s *Store) Size() int64 {
 func (s *Store) Begin(model, version string, centre []float32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.signs.Truncate(0); err != nil {
+	s.last++
+	gen := s.last
+	sf, vf := dataFiles(gen)
+	for _, f := range []string{sf, vf} {
+		if err := writeFile(filepath.Join(s.dir, f), nil); err != nil {
+			return errors.Join(err, s.removeGeneration(gen))
+		}
+	}
+	return s.switchTo(&Meta{Model: model, Version: version, Dim: len(centre), Centre: slices.Clone(centre), CompactedAt: time.Now(), Generation: gen})
+}
+
+// switchTo makes m, whose data files are written and synced, the store's:
+// meta.json names them once it is replaced, and the files before are
+// removed. If it cannot be replaced, the store stays as it was. The caller
+// holds the lock.
+func (s *Store) switchTo(m *Meta) error {
+	if err := syncDir(s.dir); err != nil {
+		return errors.Join(err, s.removeGeneration(m.Generation))
+	}
+	old := s.meta
+	s.meta = m
+	if err := s.writeMeta(); err != nil {
+		s.meta = old
+		return errors.Join(err, s.removeGeneration(m.Generation))
+	}
+	if err := s.closeFiles(); err != nil {
 		return err
 	}
-	if err := s.vecs.Truncate(0); err != nil {
-		return err
+	if old != nil {
+		if err := s.removeGeneration(old.Generation); err != nil {
+			return err
+		}
 	}
-	s.n = 0
-	s.meta = &Meta{Model: model, Version: version, Dim: len(centre), Centre: slices.Clone(centre), CompactedAt: time.Now()}
-	return s.writeMeta()
+	return s.open()
+}
+
+// removeGeneration removes the data files of a generation.
+func (s *Store) removeGeneration(gen int) error {
+	var errs []error
+	sf, vf := dataFiles(gen)
+	for _, f := range []string{sf, vf} {
+		if err := os.Remove(filepath.Join(s.dir, f)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // writeMeta replaces meta.json; the caller holds the lock.
@@ -189,7 +325,20 @@ func (s *Store) writeMeta() error {
 	if err != nil {
 		return err
 	}
-	return writeFile(filepath.Join(s.dir, metaFile), b)
+	if err := writeFile(filepath.Join(s.dir, metaFile), b); err != nil {
+		return err
+	}
+	return syncDir(s.dir)
+}
+
+// syncDir syncs a directory, so that the renames and files made in it
+// last.
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	return errors.Join(d.Sync(), d.Close())
 }
 
 func writeFile(path string, b []byte) error {
@@ -485,15 +634,18 @@ func (t *topK) down(i int) {
 // under its new one. Of a chunk stored twice (a file embedded again) the
 // last record is kept.
 func (s *Store) Compact(live func(chunk int64) (uuid.UUID, bool)) error {
-	s.mu.RLock()
+	s.mu.Lock()
 	m := s.meta
 	n := s.n
-	s.mu.RUnlock()
+	signs, vecs := s.signs, s.vecs
+	s.last++
+	gen := s.last
+	s.mu.Unlock()
 	if m == nil {
 		return nil
 	}
 	dim := m.Dim
-	ss, vs := signsSize(dim), vecSize(dim)
+	ss := signsSize(dim)
 	type place struct {
 		chunk int64
 		i     int
@@ -502,7 +654,7 @@ func (s *Store) Compact(live func(chunk int64) (uuid.UUID, bool)) error {
 	sbuf := make([]byte, block*ss)
 	for lo := 0; lo < n; lo += block {
 		c := min(block, n-lo)
-		if _, err := s.signs.ReadAt(sbuf[:c*ss], int64(lo*ss)); err != nil {
+		if _, err := signs.ReadAt(sbuf[:c*ss], int64(lo*ss)); err != nil {
 			return err
 		}
 		for r := range c {
@@ -523,25 +675,41 @@ func (s *Store) Compact(live func(chunk int64) (uuid.UUID, bool)) error {
 		_, keep[p.i] = live(p.chunk)
 	}
 	places = nil
-	nm := &Meta{Model: m.Model, Version: m.Version, Dim: dim, Centre: m.Centre, CompactedAt: time.Now()}
-	sf, err := os.Create(filepath.Join(s.dir, signsFile+".new"))
+	nm := &Meta{Model: m.Model, Version: m.Version, Dim: dim, Centre: m.Centre, CompactedAt: time.Now(), Generation: gen}
+	if err := s.writeGeneration(nm, n, keep, live, signs, vecs); err != nil {
+		return errors.Join(err, s.removeGeneration(gen))
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.n != n || s.meta != m {
+		return errors.Join(errors.New("passage store: changed while it was compacted"), s.removeGeneration(gen))
+	}
+	return s.switchTo(nm)
+}
+
+// writeGeneration writes the records of the n first to keep into the data
+// files of nm's generation, under their libraries in nm, and syncs them.
+func (s *Store) writeGeneration(nm *Meta, n int, keep []bool, live func(chunk int64) (uuid.UUID, bool), signs, vecs *os.File) error {
+	ss, vs := signsSize(nm.Dim), vecSize(nm.Dim)
+	sn, vn := dataFiles(nm.Generation)
+	sf, err := os.OpenFile(filepath.Join(s.dir, sn), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
 	if err != nil {
 		return err
 	}
 	defer sf.Close()
-	vf, err := os.Create(filepath.Join(s.dir, vecsFile+".new"))
+	vf, err := os.OpenFile(filepath.Join(s.dir, vn), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
 	if err != nil {
 		return err
 	}
 	defer vf.Close()
+	sbuf := make([]byte, block*ss)
 	vbuf := make([]byte, block*vs)
-	kept := 0
 	for lo := 0; lo < n; lo += block {
 		c := min(block, n-lo)
-		if _, err := s.signs.ReadAt(sbuf[:c*ss], int64(lo*ss)); err != nil {
+		if _, err := signs.ReadAt(sbuf[:c*ss], int64(lo*ss)); err != nil {
 			return err
 		}
-		if _, err := s.vecs.ReadAt(vbuf[:c*vs], int64(lo*vs)); err != nil {
+		if _, err := vecs.ReadAt(vbuf[:c*vs], int64(lo*vs)); err != nil {
 			return err
 		}
 		var so, vo []byte
@@ -560,7 +728,6 @@ func (s *Store) Compact(live func(chunk int64) (uuid.UUID, bool)) error {
 			so = binary.LittleEndian.AppendUint16(so, uint16(idx))
 			so = append(so, rec[10:]...)
 			vo = append(vo, vbuf[r*vs:(r+1)*vs]...)
-			kept++
 		}
 		if _, err := sf.Write(so); err != nil {
 			return err
@@ -569,33 +736,7 @@ func (s *Store) Compact(live func(chunk int64) (uuid.UUID, bool)) error {
 			return err
 		}
 	}
-	if err := errors.Join(sf.Sync(), vf.Sync()); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.n != n || s.meta != m {
-		return errors.New("passage store: changed while it was compacted")
-	}
-	if err := errors.Join(s.signs.Close(), s.vecs.Close()); err != nil {
-		return err
-	}
-	for _, f := range []string{signsFile, vecsFile} {
-		if err := os.Rename(filepath.Join(s.dir, f+".new"), filepath.Join(s.dir, f)); err != nil {
-			return err
-		}
-	}
-	s.meta = nm
-	if err := s.writeMeta(); err != nil {
-		return err
-	}
-	if err := s.open(); err != nil {
-		return err
-	}
-	if s.n != kept {
-		return fmt.Errorf("passage store: %d records after compacting, not %d", s.n, kept)
-	}
-	return nil
+	return errors.Join(sf.Sync(), vf.Sync())
 }
 
 // Dir is where the store is kept under the data directory.
