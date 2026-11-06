@@ -146,8 +146,17 @@ func (e *Edit) check() error {
 			problems[FieldPublished] = "Give the date as a year, year and month, or a whole date: 2010, 2010-08 or 2010-08-31."
 		}
 	}
-	if e.Series != nil && e.Series.Index != nil && *e.Series.Index < 0 {
-		problems[FieldSeries] = "The position in a series cannot be below zero."
+	if e.Series != nil && e.Series.Index != nil && SeriesIndexOf(e.Series.Index) == nil {
+		switch {
+		case e.Source != "":
+			// A provider's position out of range is left out rather than
+			// failing the rest of what it gives.
+			e.Series.Index = nil
+		case *e.Series.Index < 0:
+			problems[FieldSeries] = "The position in a series cannot be below zero."
+		default:
+			problems[FieldSeries] = fmt.Sprintf("The position in a series can be at most %d.", MaxSeriesIndex)
+		}
 	}
 	if e.PageCount != nil && *e.PageCount < 0 {
 		problems[FieldPageCount] = "The number of pages cannot be below zero."

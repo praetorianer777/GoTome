@@ -282,3 +282,37 @@ func TestTheListsOfNamesHoldEachOnceWithWhatTheViewerSees(t *testing.T) {
 		t.Errorf("the administrator's series: %v", got)
 	}
 }
+
+func TestAHugeSeriesIndexIsRefusedAndCountsNoGaps(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Open", "shared")
+	first := a.bookBy(lib, "First", "Sam Writer")
+	third := a.bookBy(lib, "Third", "Sam Writer")
+	a.inSeries(admin, first, "Endless", 1)
+	a.inSeries(admin, third, "Endless", 3)
+
+	if status, body, _ := a.call(admin, http.MethodPatch, "/books/"+third.String(),
+		map[string]any{"series": map[string]any{"name": "Endless", "index": 1e12}}); status != http.StatusUnprocessableEntity {
+		t.Errorf("an edit to place 1e12: %d %v", status, body)
+	}
+
+	// Rows from before the bound, or a file read before it.
+	for i, index := range []string{"1e12", "Infinity"} {
+		book := a.bookBy(lib, fmt.Sprintf("Stray %d", i), "Sam Writer")
+		a.inSeries(admin, book, "Endless", 2.5)
+		if _, err := a.pool.Exec(context.Background(),
+			`UPDATE books SET series_index = $2::double precision WHERE id = $1`, book, index); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, body, _ := a.call(admin, http.MethodGet, "/series/endless", nil)
+	if status != http.StatusOK {
+		t.Fatalf("GET the series: %d %v", status, body)
+	}
+	if missing := body["missing"].([]any); len(missing) != 1 ||
+		missing[0].(map[string]any)["from"] != 2.0 || missing[0].(map[string]any)["to"] != 2.0 {
+		t.Errorf("what is missing: %v", missing)
+	}
+}

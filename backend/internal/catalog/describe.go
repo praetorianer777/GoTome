@@ -142,7 +142,7 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 		if err != nil {
 			return fmt.Errorf("series: %w", err)
 		}
-		update.SeriesID, update.SeriesIndex = &series.ID, m.SeriesIndex
+		update.SeriesID, update.SeriesIndex = &series.ID, SeriesIndexOf(m.SeriesIndex)
 	}
 	if take("pageCount", m.PageCount != nil, update.PageCount == nil) {
 		update.PageCount = m.PageCount
