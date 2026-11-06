@@ -31,6 +31,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- A book's page keeps long titles, author lists, series, publishers,
+  identifiers, tags and file names inside their boxes at every width:
+  they wrap, and words too long for a line break, instead of running
+  over the details card and off the screen. The details card is a little
+  wider, and lists each identifier on a line of its own.
 - An author or series followed while GOtome was looking up the others is
   looked up right after, instead of only at the next hourly round.
 - A book's page shows the status reading gave it straight away: going
