@@ -117,7 +117,14 @@ stack-up: stack-env ffmpeg-source ## The gate's stack: build and start it, and w
 test-integration: | $(GO_CACHE) go-toolchain ## Run the integration suite against this checkout's running stack
 	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
-	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
+	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/... ./cmd/gotome/
+
+# The KOReader plugin's and the Tolino app's fixtures are the server's
+# answers (test/client_fixtures_test.go); this writes them anew after an
+# answer changed on purpose.
+.PHONY: device-fixtures
+device-fixtures: | $(GO_CACHE) go-toolchain ## Write the device clients' test fixtures anew from the running stack's answers
+	$(DOCKER_GO_STACK) go test -tags integration -count=1 -run '^TestTheDeviceClientsFixturesAreTheServersAnswers$$' ./test/ -update
 
 # The main views on a library of 50,000 books (test/scale_test.go), with the
 # plans of their queries written to .cache/scale-plans, and with the

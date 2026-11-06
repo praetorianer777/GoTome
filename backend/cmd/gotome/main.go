@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
@@ -320,65 +319,24 @@ func serve() error {
 	follows.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
 	progressSync := kosync.NewService(pool, readingService, log)
-	workers := jobs.NewWorkers()
-	river.AddWorker(workers, &enrich.MatchWorker{Service: matches})
-	river.AddWorker(workers, &bulk.Worker{Service: changes})
-	river.AddWorker(workers, &auth.SweepSessionsWorker{Service: accounts})
-	river.AddWorker(workers, &ingest.ScanWorker{Service: scans})
-	river.AddWorker(workers, &ingest.ScanAllWorker{Service: scans})
-	river.AddWorker(workers, &ingest.ExtractWorker{Service: scans})
-	river.AddWorker(workers, &ingest.ChunkWorker{Service: scans})
-	river.AddWorker(workers, &ingest.WriteBackWorker{Service: scans})
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
 		return err
 	}
 	searchIndex := search.NewIndex(pool, log, engineVersion)
-	river.AddWorker(workers, &search.RebuildIndexWorker{Index: searchIndex})
 	textIndex, freshIndex, err := fulltext.OpenService(ctx, pool, fulltext.Dir(cfg.DataDir), engineVersion, log)
 	if err != nil {
 		return err
 	}
 	defer textIndex.Close()
-	river.AddWorker(workers, &fulltext.ApplyWorker{Service: textIndex})
-	river.AddWorker(workers, &ingest.IndexFilesWorker{Service: scans})
-	river.AddWorker(workers, &dedupe.CheckWorker{Service: duplicates})
-	river.AddWorker(workers, &dedupe.SignWorker{Service: duplicates})
-	river.AddWorker(workers, &similar.EmbedWorker{Service: vectors})
-	river.AddWorker(workers, &genres.SuggestWorker{Service: genreService})
-	river.AddWorker(workers, &passages.EmbedWorker{Service: passageVectors})
-	river.AddWorker(workers, &notify.FlushWorker{Events: events})
-	river.AddWorker(workers, &releases.PollWorker{Service: follows})
-	river.AddWorker(workers, &releases.FetchFeedsWorker{Service: follows})
-	river.AddWorker(workers, &kosync.HashWorker{Service: progressSync})
-	river.AddWorker(workers, &ingest.MeasureWorker{Service: scans})
-	river.AddWorker(workers, &ingest.PurgeTrashWorker{Service: scans, Retention: func(ctx context.Context) time.Duration {
-		retention, err := settingStore.TrashRetention(ctx)
-		if err != nil {
-			log.Warn("trash retention unreadable; keeping files", "error", err)
-			// Nothing is purged until the setting can be read.
-			return 100 * 365 * 24 * time.Hour
-		}
-		return retention
-	}})
-	periodic := []*river.PeriodicJob{
-		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
-		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
-		similar.Periodic(embedInterval),
-		genres.Periodic(genreInterval),
-		passages.Periodic(embedInterval),
-		releases.Periodic(releasePollInterval),
-		releases.FeedsPeriodic(feedFetchInterval),
-		kosync.Periodic(koreaderHashInterval),
-		ingest.MeasurePeriodic(measureInterval),
-		fulltext.Periodic(outboxInterval),
-	}
-	if cfg.ScanInterval > 0 {
-		// Also once at start: what changed on disk while GOtome was down is
-		// found now, and an unchanged library costs a walk.
-		periodic = append(periodic, jobs.Every(cfg.ScanInterval, true, ingest.ScanAllArgs{}, jobs.QueueDefault))
-	}
-	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: periodic})
+	workers := background{
+		accounts: accounts, matches: matches, changes: changes, scans: scans,
+		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
+		vectors: vectors, genres: genreService, passages: passageVectors,
+		events: events, follows: follows, sync: progressSync,
+		trashRetention: settingStore.TrashRetention,
+	}.workers()
+	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
 	if err != nil {
 		return err
 	}
@@ -598,10 +556,7 @@ func similarCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	vectors := similar.NewService(pool, store.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
-		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
-		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
-	}), store.EmbeddingServer), log)
+	vectors := checkVectors(cfg, pool, store, log)
 	if *describe != "" {
 		titles, err := vectors.DescribeTitles(ctx, *describe, *k)
 		if err != nil {
@@ -673,10 +628,7 @@ func genreCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	vectors := similar.NewService(pool, store.Embedding, similar.ServerOpener(similar.OnnxOpener(embed.OnnxOptions{
-		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
-		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
-	}), store.EmbeddingServer), log)
+	vectors := checkVectors(cfg, pool, store, log)
 	r, err := genres.NewService(pool, vectors, nil, log).Check(ctx, genres.CheckOptions{
 		Books: *n, Precision: *precision, Neighbours: *neighbours,
 	})
@@ -690,6 +642,18 @@ func genreCheck(args []string) error {
 	}
 	genres.PrintCheck(os.Stdout, r, *precision)
 	return nil
+}
+
+// localOpener runs the models the checks embed with. Tests give them one
+// that needs no ONNX Runtime.
+var localOpener = similar.OnnxOpener
+
+// checkVectors is the similar books' service as the checks use it.
+func checkVectors(cfg config.Config, pool *pgxpool.Pool, store *settings.Store, log *slog.Logger) *similar.Service {
+	return similar.NewService(pool, store.Embedding, similar.ServerOpener(localOpener(embed.OnnxOptions{
+		Runtime: cfg.OnnxRuntime, ModelDir: cfg.ModelDir, Threads: cfg.EmbedThreads,
+		Fetch: embed.FetchOptions{Offline: cfg.Offline, Log: log},
+	}), store.EmbeddingServer), log)
 }
 
 func writeOpenAPI(args []string) error {

@@ -8,10 +8,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+
+	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
 type trashView struct {
@@ -183,5 +188,87 @@ func TestTrashedFilesAreRestoredOrPurged(t *testing.T) {
 	}
 	if status := trash(admin, fixed); status != 409 {
 		t.Errorf("trash in a read-only library: %d", status)
+	}
+}
+
+func TestTheTrashIsPurgedAsItsSettingSaysAndNotWhileItCannotBeRead(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Shelf", "shared")
+	var root string
+	if err := a.pool.QueryRow(ctx, "SELECT root_path FROM libraries WHERE id = $1", lib).Scan(&root); err != nil {
+		t.Fatal(err)
+	}
+	trashed := map[string]string{}
+	for name, age := range map[string]string{"Old": "40 days", "Month": "10 days", "Week": "2 days"} {
+		status, up := a.upload(admin, lib, name+".pdf", []byte("%PDF-1.4 "+name))
+		if status != 200 {
+			t.Fatalf("upload: %d %v", status, up)
+		}
+		id := up["fileId"].(string)
+		if status, _, _ := a.call(admin, http.MethodPost, "/files/"+id+"/trash", nil); status != 204 {
+			t.Fatalf("trash: %d", status)
+		}
+		if _, err := a.pool.Exec(ctx, "UPDATE book_files SET trashed_at = now() - $2::interval WHERE id = $1", id, age); err != nil {
+			t.Fatal(err)
+		}
+		trashed[name] = id
+	}
+	left := func() []string {
+		t.Helper()
+		var names []string
+		for _, name := range []string{"Old", "Month", "Week"} {
+			id := trashed[name]
+			var n int
+			if err := a.pool.QueryRow(ctx, "SELECT count(*) FROM book_files WHERE id = $1", id).Scan(&n); err != nil {
+				t.Fatal(err)
+			}
+			if inFolder := onDisk(filepath.Join(root, ".trash", id)); (n == 1) != inFolder {
+				t.Errorf("%s: record %d, in the trash folder %v", name, n, inFolder)
+			}
+			if n == 1 {
+				names = append(names, name)
+			}
+		}
+		return names
+	}
+	worker := &ingest.PurgeTrashWorker{Service: a.scans, Retention: a.settings.TrashRetention}
+	purge := func() {
+		t.Helper()
+		if err := worker.Work(ctx, &river.Job[ingest.PurgeTrashArgs]{}); err != nil {
+			t.Fatalf("purge: %v", err)
+		}
+	}
+
+	// Unset, the setting is its default of 30 days.
+	purge()
+	if got := left(); !slices.Equal(got, []string{"Month", "Week"}) {
+		t.Errorf("after 30 days: %v", got)
+	}
+	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{
+		"values": map[string]string{settings.TrashRetentionDays: "7"},
+	}); status != 200 {
+		t.Fatalf("set the retention: %d", status)
+	}
+	purge()
+	if got := left(); !slices.Equal(got, []string{"Week"}) {
+		t.Errorf("after 7 days: %v", got)
+	}
+
+	// A value that did not come through the setting's check purges nothing,
+	// least of all a retention of none.
+	if _, err := a.pool.Exec(ctx, "UPDATE book_files SET trashed_at = now() - interval '5 years' WHERE id = $1", trashed["Week"]); err != nil {
+		t.Fatal(err)
+	}
+	for _, broken := range []string{"0", "-3", "a week", ""} {
+		if _, err := a.pool.Exec(ctx, "UPDATE settings SET value = $2 WHERE key = $1", settings.TrashRetentionDays, broken); err != nil {
+			t.Fatal(err)
+		}
+		purge()
+		if got := left(); !slices.Equal(got, []string{"Week"}) {
+			t.Errorf("with the retention %q: %v", broken, got)
+		}
 	}
 }

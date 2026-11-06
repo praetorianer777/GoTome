@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "The user name or the device token is wrong.",
+    "requestId": "requestId-drawn-at-random"
+  }
+}
+

@@ -7,21 +7,25 @@
   <name>GOtome</name>
  </author>
  <link rel="self" href="/api/v1/opds/device" type="application/atom+xml;profile=opds-catalog;kind=acquisition"></link>
+ <link rel="start" href="/api/v1/opds" type="application/atom+xml;profile=opds-catalog;kind=navigation"></link>
+ <link rel="search" href="/api/v1/opds/opensearch.xml" type="application/opensearchdescription+xml"></link>
  <entry>
-  <id>urn:uuid:01a12b2a-1800-7548-b533-dd0bff7d11e5</id>
+  <id>urn:uuid:0192f0a0-0000-7000-8000-000000000001</id>
   <title>Pride &amp; Prejudice: A Novel</title>
-  <updated>2026-10-11T11:00:00Z</updated>
+  <updated>2026-10-11T12:00:00Z</updated>
   <author>
    <name>Jane Austen</name>
   </author>
-  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e6" type="application/epub+zip" title="EPUB" length="512000"></link>
-  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e7" type="application/pdf" title="PDF" length="2048000"></link>
-  <link rel="http://opds-spec.org/image" href="/api/v1/books/01a12b2a-1800-7548-b533-dd0bff7d11e5/covers/large?v=abc" type="image/jpeg"></link>
+  <content type="text">Austen&#39;s Novels, 2</content>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/0192f0a0-0000-7000-8000-000000000002" type="application/epub+zip" title="EPUB" length="604"></link>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/0192f0a0-0000-7000-8000-000000000004" type="application/pdf" title="PDF" length="28"></link>
+  <link rel="http://opds-spec.org/image" href="/api/v1/books/0192f0a0-0000-7000-8000-000000000001/covers/large?v=568fa34a63d8615987a28565dfa9516baa18ea1b8e819ee50a2faf88de2ee53d" type="image/jpeg"></link>
+  <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/books/0192f0a0-0000-7000-8000-000000000001/covers/small?v=568fa34a63d8615987a28565dfa9516baa18ea1b8e819ee50a2faf88de2ee53d" type="image/jpeg"></link>
  </entry>
  <entry>
-  <id>urn:uuid:01a12b2a-1800-7548-b533-dd0bff7d11e8</id>
+  <id>urn:uuid:0192f0a0-0000-7000-8000-000000000003</id>
   <title>Der Schimmelreiter</title>
-  <updated>2026-10-11T11:00:00Z</updated>
-  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e9" type="application/x-mobipocket-ebook" title="AZW3" length="300000"></link>
+  <updated>2026-10-11T12:00:00Z</updated>
+  <link rel="http://opds-spec.org/acquisition" href="/api/v1/opds/device/files/0192f0a0-0000-7000-8000-000000000005" type="application/vnd.amazon.ebook" title="AZW3" length="300"></link>
  </entry>
 </feed>

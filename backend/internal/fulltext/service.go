@@ -184,7 +184,7 @@ func (ApplyArgs) Kind() string { return applyKind }
 
 // Periodic queues the outbox's job every interval: deletes reach the
 // outbox through a trigger, which queues nothing.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, ApplyArgs{}, jobs.QueueIndex)
 }
 

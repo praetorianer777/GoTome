@@ -37,7 +37,7 @@ func (s *Service) Enqueue(ctx context.Context) error {
 
 // Periodic is the scheduled pass, also at start, which picks up books that
 // changed or were embedded since.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, SuggestArgs{}, jobs.QueueEmbed)
 }
 

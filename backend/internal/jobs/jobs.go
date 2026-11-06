@@ -69,7 +69,7 @@ type Config struct {
 	Logger  *slog.Logger
 	Workers *Workers
 	// Periodic jobs are enqueued on a schedule for as long as the Runner runs.
-	Periodic []*river.PeriodicJob
+	Periodic []Schedule
 	// RetryPolicy replaces River's exponential backoff. Tests use it to retry
 	// at once; nothing else should.
 	RetryPolicy river.ClientRetryPolicy
@@ -115,10 +115,12 @@ func SchemaVersion() int {
 // New builds a Runner. It does not start working jobs; Start does.
 func New(pool *pgxpool.Pool, cfg Config) (*Runner, error) {
 	riverCfg := &river.Config{
-		Logger:       slog.New(quiet{cfg.Logger.Handler()}),
-		RetryPolicy:  cfg.RetryPolicy,
-		Workers:      cfg.Workers,
-		PeriodicJobs: cfg.Periodic,
+		Logger:      slog.New(quiet{cfg.Logger.Handler()}),
+		RetryPolicy: cfg.RetryPolicy,
+		Workers:     cfg.Workers,
+	}
+	for _, p := range cfg.Periodic {
+		riverCfg.PeriodicJobs = append(riverCfg.PeriodicJobs, p.job())
 	}
 	if !cfg.InsertOnly {
 		riverCfg.Queues = queues
@@ -365,15 +367,29 @@ func (r *Runner) List(ctx context.Context, limit int, queues ...string) ([]Job, 
 	return out, nil
 }
 
-// Every returns a periodic job that enqueues args at the given interval, and
-// once at start when runOnStart is set. It is inserted as unique, so a run
-// that is still waiting or working is not joined by a second.
-func Every(interval time.Duration, runOnStart bool, args river.JobArgs, queue string) *river.PeriodicJob {
-	opts := InsertOpts{Queue: queue, Unique: true}.river()
+// Schedule is a job enqueued at an interval for as long as a Runner runs.
+// It is inserted as unique, so a run that is still waiting or working is
+// not joined by a second.
+type Schedule struct {
+	Interval time.Duration
+	// RunOnStart enqueues it once at start too.
+	RunOnStart bool
+	Args       river.JobArgs
+	Queue      string
+}
+
+// Every returns the schedule that enqueues args at the given interval, and
+// once at start when runOnStart is set.
+func Every(interval time.Duration, runOnStart bool, args river.JobArgs, queue string) Schedule {
+	return Schedule{Interval: interval, RunOnStart: runOnStart, Args: args, Queue: queue}
+}
+
+func (s Schedule) job() *river.PeriodicJob {
+	opts := InsertOpts{Queue: s.Queue, Unique: true}.river()
 	return river.NewPeriodicJob(
-		river.PeriodicInterval(interval),
-		func() (river.JobArgs, *river.InsertOpts) { return args, opts },
-		&river.PeriodicJobOpts{RunOnStart: runOnStart},
+		river.PeriodicInterval(s.Interval),
+		func() (river.JobArgs, *river.InsertOpts) { return s.Args, opts },
+		&river.PeriodicJobOpts{RunOnStart: s.RunOnStart},
 	)
 }
 

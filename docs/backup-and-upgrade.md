@@ -177,5 +177,9 @@ size of the books and the database without the text.
 installation on the previous release's image (before the first release, on
 the image of the commit the change started from), backs it up, upgrades it
 in place, then deletes it and restores the backup on the new image. Both
-must sign in, hold the uploaded book and its file unchanged, keep a secret
-setting, and find the book by a word of its text.
+must sign in, as the administrator and as a reader, hold the uploaded book
+with its file and cover unchanged, the place read in it, a collection and
+a notification, keep a secret setting, let a device's token into the OPDS
+catalogue, Kobo's sync and KOReader's, and find the book by a word of its
+text, its text signed for duplicates again. The test runs offline, so it
+does not check that the books' vectors are made again.

@@ -270,14 +270,21 @@ const purgeKind = "ingest.purge_trash"
 func (PurgeTrashArgs) Kind() string { return purgeKind }
 
 // PurgeTrashWorker runs PurgeTrashArgs. Retention says how long a file
-// stays in the trash, as the settings have it now.
+// stays in the trash, as the settings have it now; while it cannot say,
+// nothing is purged.
 type PurgeTrashWorker struct {
 	river.WorkerDefaults[PurgeTrashArgs]
 	Service   *Service
-	Retention func(context.Context) time.Duration
+	Retention func(context.Context) (time.Duration, error)
 }
 
 func (w *PurgeTrashWorker) Work(ctx context.Context, _ *river.Job[PurgeTrashArgs]) error {
-	_, err := w.Service.PurgeExpired(ctx, w.Retention(ctx))
+	retention, err := w.Retention(ctx)
+	if err != nil {
+		// Not retried: the next run, six hours on, reads the setting again.
+		w.Service.log.Warn("trash retention unreadable; keeping files", "error", err)
+		return nil
+	}
+	_, err = w.Service.PurgeExpired(ctx, retention)
 	return err
 }
