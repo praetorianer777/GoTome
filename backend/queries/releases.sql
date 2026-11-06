@@ -59,11 +59,11 @@ RETURNING (xmax = 0)::boolean AS first;
 -- provider or another, is the same release, which takes a more exact date,
 -- or a moved one from the provider that first listed it, and what it
 -- lacked. Says whether it is new.
-INSERT INTO releases (subject_id, dedupe_key, title, authors, author_keys, series, series_index,
+INSERT INTO releases (subject_id, dedupe_key, title, authors, author_keys, series, series_key, series_index,
                       release_date, precision, isbns, provider, provider_id, cover_url, backlog)
 VALUES (sqlc.arg(subject_id)::uuid, sqlc.arg(dedupe_key)::text, sqlc.arg(title)::text,
         sqlc.arg(authors)::text[], sqlc.arg(author_keys)::text[],
-        sqlc.narg(series)::text, sqlc.narg(series_index)::float8,
+        sqlc.narg(series)::text, sqlc.narg(series_key)::text, sqlc.narg(series_index)::float8,
         sqlc.narg(release_date)::date, sqlc.narg(precision)::text, sqlc.arg(isbns)::text[],
         sqlc.arg(provider)::text, sqlc.arg(provider_id)::text, sqlc.narg(cover_url)::text,
         sqlc.arg(backlog)::boolean)
@@ -74,6 +74,8 @@ ON CONFLICT (subject_id, dedupe_key) DO UPDATE SET
     precision    = CASE WHEN precision_rank(EXCLUDED.precision) > precision_rank(releases.precision)
                         THEN EXCLUDED.precision ELSE releases.precision END,
     series       = coalesce(releases.series, EXCLUDED.series),
+    series_key   = CASE WHEN releases.series IS NULL OR releases.series = EXCLUDED.series
+                        THEN EXCLUDED.series_key ELSE releases.series_key END,
     series_index = coalesce(releases.series_index, EXCLUDED.series_index),
     cover_url    = coalesce(releases.cover_url, EXCLUDED.cover_url),
     isbns        = ARRAY(SELECT DISTINCT unnest(releases.isbns || EXCLUDED.isbns)),
@@ -163,13 +165,13 @@ LIMIT 200;
 
 -- name: ListSeriesReleases :many
 -- The books the sources list of a series, each once: those of the series
--- followed, and those of a followed author that name it. held says a
--- library the viewer sees has it, wished that one has it wished for.
+-- followed, and those of a followed author that name it, by its key. held
+-- says a library the viewer sees has it, wished that one has it wished for.
 WITH listed AS (
     SELECT DISTINCT ON (r.dedupe_key) r.*
     FROM releases r
     JOIN release_subjects s ON s.id = r.subject_id
-    WHERE (s.kind = 'series' AND s.name_key = sqlc.arg(name_key)::text) OR r.series = sqlc.arg(name)::text
+    WHERE (s.kind = 'series' AND s.name_key = sqlc.arg(name_key)::text) OR r.series_key = sqlc.arg(name_key)::text
     ORDER BY r.dedupe_key, r.series_index NULLS LAST, r.id
 )
 SELECT l.id, l.title, l.authors, l.series_index, l.release_date, l.precision,

@@ -86,7 +86,7 @@ func (q *Queries) ListDueReleases(ctx context.Context) ([]ListDueReleasesRow, er
 
 const listReleases = `-- name: ListReleases :many
 WITH mine AS (
-    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at, s.kind AS subject_kind, s.name AS subject_name
+    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at, r.series_key, s.kind AS subject_kind, s.name AS subject_name
     FROM releases r
     JOIN trackers t ON t.subject_id = r.subject_id AND t.user_id = $1::uuid
     JOIN release_subjects s ON s.id = r.subject_id
@@ -177,10 +177,10 @@ func (q *Queries) ListReleases(ctx context.Context, arg ListReleasesParams) ([]L
 
 const listSeriesReleases = `-- name: ListSeriesReleases :many
 WITH listed AS (
-    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at
+    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at, r.series_key
     FROM releases r
     JOIN release_subjects s ON s.id = r.subject_id
-    WHERE (s.kind = 'series' AND s.name_key = $3::text) OR r.series = $4::text
+    WHERE (s.kind = 'series' AND s.name_key = $3::text) OR r.series_key = $3::text
     ORDER BY r.dedupe_key, r.series_index NULLS LAST, r.id
 )
 SELECT l.id, l.title, l.authors, l.series_index, l.release_date, l.precision,
@@ -212,7 +212,6 @@ type ListSeriesReleasesParams struct {
 	Viewer  uuid.UUID
 	SeesAll bool
 	NameKey string
-	Name    string
 }
 
 type ListSeriesReleasesRow struct {
@@ -229,15 +228,10 @@ type ListSeriesReleasesRow struct {
 }
 
 // The books the sources list of a series, each once: those of the series
-// followed, and those of a followed author that name it. held says a
-// library the viewer sees has it, wished that one has it wished for.
+// followed, and those of a followed author that name it, by its key. held
+// says a library the viewer sees has it, wished that one has it wished for.
 func (q *Queries) ListSeriesReleases(ctx context.Context, arg ListSeriesReleasesParams) ([]ListSeriesReleasesRow, error) {
-	rows, err := q.db.Query(ctx, listSeriesReleases,
-		arg.Viewer,
-		arg.SeesAll,
-		arg.NameKey,
-		arg.Name,
-	)
+	rows, err := q.db.Query(ctx, listSeriesReleases, arg.Viewer, arg.SeesAll, arg.NameKey)
 	if err != nil {
 		return nil, err
 	}
@@ -343,14 +337,14 @@ func (q *Queries) NextReleaseSubject(ctx context.Context, before time.Time) (Nex
 }
 
 const putRelease = `-- name: PutRelease :one
-INSERT INTO releases (subject_id, dedupe_key, title, authors, author_keys, series, series_index,
+INSERT INTO releases (subject_id, dedupe_key, title, authors, author_keys, series, series_key, series_index,
                       release_date, precision, isbns, provider, provider_id, cover_url, backlog)
 VALUES ($1::uuid, $2::text, $3::text,
         $4::text[], $5::text[],
-        $6::text, $7::float8,
-        $8::date, $9::text, $10::text[],
-        $11::text, $12::text, $13::text,
-        $14::boolean)
+        $6::text, $7::text, $8::float8,
+        $9::date, $10::text, $11::text[],
+        $12::text, $13::text, $14::text,
+        $15::boolean)
 ON CONFLICT (subject_id, dedupe_key) DO UPDATE SET
     release_date = CASE WHEN precision_rank(EXCLUDED.precision) > precision_rank(releases.precision)
                           OR (EXCLUDED.provider = releases.provider AND EXCLUDED.precision = releases.precision)
@@ -358,6 +352,8 @@ ON CONFLICT (subject_id, dedupe_key) DO UPDATE SET
     precision    = CASE WHEN precision_rank(EXCLUDED.precision) > precision_rank(releases.precision)
                         THEN EXCLUDED.precision ELSE releases.precision END,
     series       = coalesce(releases.series, EXCLUDED.series),
+    series_key   = CASE WHEN releases.series IS NULL OR releases.series = EXCLUDED.series
+                        THEN EXCLUDED.series_key ELSE releases.series_key END,
     series_index = coalesce(releases.series_index, EXCLUDED.series_index),
     cover_url    = coalesce(releases.cover_url, EXCLUDED.cover_url),
     isbns        = ARRAY(SELECT DISTINCT unnest(releases.isbns || EXCLUDED.isbns)),
@@ -372,6 +368,7 @@ type PutReleaseParams struct {
 	Authors     []string
 	AuthorKeys  []string
 	Series      *string
+	SeriesKey   *string
 	SeriesIndex *float64
 	ReleaseDate *time.Time
 	Precision   *string
@@ -403,6 +400,7 @@ func (q *Queries) PutRelease(ctx context.Context, arg PutReleaseParams) (PutRele
 		arg.Authors,
 		arg.AuthorKeys,
 		arg.Series,
+		arg.SeriesKey,
 		arg.SeriesIndex,
 		arg.ReleaseDate,
 		arg.Precision,

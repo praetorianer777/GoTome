@@ -109,6 +109,20 @@ func TestAnAtomFeedIsRead(t *testing.T) {
 	}
 }
 
+func TestALongItemKeyIsHashed(t *testing.T) {
+	link := "https://example.org/" + strings.Repeat("a", 5000)
+	doc := `<rss><channel><item><title>Long</title><link>` + link + `</link></item>` +
+		`<item><title>Longer</title><link>` + link + `b</link></item></channel></rss>`
+	f, err := parseFeed([]byte(doc), nil)
+	if err != nil || len(f.Items) != 2 {
+		t.Fatalf("%+v, %v", f, err)
+	}
+	a, b := f.Items[0].Key, f.Items[1].Key
+	if len(a) > maxKey || !strings.HasPrefix(a, "sha256:") || a == b || f.Items[0].Link != link {
+		t.Errorf("keys %q and %q", a, b)
+	}
+}
+
 func TestAFeedInLatin1IsRead(t *testing.T) {
 	doc := "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><rss><channel><title>B\xfccher</title></channel></rss>"
 	f, err := parseFeed([]byte(doc), nil)

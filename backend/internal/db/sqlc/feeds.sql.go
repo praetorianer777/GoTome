@@ -142,6 +142,44 @@ func (q *Queries) ListFeedItems(ctx context.Context, userID uuid.UUID) ([]ListFe
 	return items, nil
 }
 
+const listFeedItemsToMatch = `-- name: ListFeedItemsToMatch :many
+SELECT item_key, title, authors, match_text FROM feed_items
+WHERE tracker_id = $1
+`
+
+type ListFeedItemsToMatchRow struct {
+	ItemKey   string
+	Title     string
+	Authors   []string
+	MatchText *string
+}
+
+// What the tracker's items are matched by, for filters that changed.
+func (q *Queries) ListFeedItemsToMatch(ctx context.Context, trackerID uuid.UUID) ([]ListFeedItemsToMatchRow, error) {
+	rows, err := q.db.Query(ctx, listFeedItemsToMatch, trackerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFeedItemsToMatchRow{}
+	for rows.Next() {
+		var i ListFeedItemsToMatchRow
+		if err := rows.Scan(
+			&i.ItemKey,
+			&i.Title,
+			&i.Authors,
+			&i.MatchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFeedTrackers = `-- name: ListFeedTrackers :many
 SELECT id, user_id, url, title, keywords, authors, etag, last_modified, checked_at, failures, last_error, next_fetch_at, created_at FROM feed_trackers WHERE user_id = $1 ORDER BY lower(coalesce(title, url)), id
 `
@@ -181,16 +219,21 @@ func (q *Queries) ListFeedTrackers(ctx context.Context, userID uuid.UUID) ([]Fee
 }
 
 const lockFeedTracker = `-- name: LockFeedTracker :one
-SELECT id FROM feed_trackers WHERE id = $1 FOR UPDATE
+SELECT keywords, authors FROM feed_trackers WHERE id = $1 FOR UPDATE
 `
 
-// The tracker, held while what its feed answered is recorded, or no row
-// once its owner ended it.
-func (q *Queries) LockFeedTracker(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+type LockFeedTrackerRow struct {
+	Keywords []string
+	Authors  []string
+}
+
+// The tracker's filters, held while what its feed answered is recorded, or
+// no row once its owner ended it.
+func (q *Queries) LockFeedTracker(ctx context.Context, id uuid.UUID) (LockFeedTrackerRow, error) {
 	row := q.db.QueryRow(ctx, lockFeedTracker, id)
-	var id_2 uuid.UUID
-	err := row.Scan(&id_2)
-	return id_2, err
+	var i LockFeedTrackerRow
+	err := row.Scan(&i.Keywords, &i.Authors)
+	return i, err
 }
 
 const nextDueFeed = `-- name: NextDueFeed :one
@@ -240,11 +283,12 @@ func (q *Queries) PruneFeedItems(ctx context.Context, arg PruneFeedItemsParams) 
 }
 
 const putFeedItem = `-- name: PutFeedItem :one
-INSERT INTO feed_items (tracker_id, item_key, title, link, authors, published_at, matched, backlog)
+INSERT INTO feed_items (tracker_id, item_key, title, link, authors, published_at, match_text, matched, backlog)
 VALUES ($1::uuid, $2::text, $3::text, $4::text,
-        $5::text[], $6::timestamptz,
-        $7::boolean, $8::boolean)
-ON CONFLICT (tracker_id, item_key) DO UPDATE SET last_seen_at = now()
+        $5::text[], $6::timestamptz, $7::text,
+        $8::boolean, $9::boolean)
+ON CONFLICT (tracker_id, item_key) DO UPDATE SET
+    last_seen_at = now(), match_text = EXCLUDED.match_text, matched = EXCLUDED.matched
 RETURNING (xmax = 0)::boolean AS inserted
 `
 
@@ -255,11 +299,13 @@ type PutFeedItemParams struct {
 	Link        *string
 	Authors     []string
 	PublishedAt *time.Time
+	MatchText   string
 	Matched     bool
 	Backlog     bool
 }
 
-// An item the feed lists; says whether it is new.
+// An item the feed lists; says whether it is new. One listed before is
+// matched again, as the filters may have changed since.
 func (q *Queries) PutFeedItem(ctx context.Context, arg PutFeedItemParams) (bool, error) {
 	row := q.db.QueryRow(ctx, putFeedItem,
 		arg.TrackerID,
@@ -268,6 +314,7 @@ func (q *Queries) PutFeedItem(ctx context.Context, arg PutFeedItemParams) (bool,
 		arg.Link,
 		arg.Authors,
 		arg.PublishedAt,
+		arg.MatchText,
 		arg.Matched,
 		arg.Backlog,
 	)
@@ -351,4 +398,21 @@ func (q *Queries) RetryFeedTracker(ctx context.Context, arg RetryFeedTrackerPara
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const setFeedItemsMatched = `-- name: SetFeedItemsMatched :exec
+UPDATE feed_items i SET matched = m.matched
+FROM (SELECT unnest($2::text[]) AS item_key, unnest($3::boolean[]) AS matched) m
+WHERE i.tracker_id = $1::uuid AND i.item_key = m.item_key AND i.matched <> m.matched
+`
+
+type SetFeedItemsMatchedParams struct {
+	TrackerID uuid.UUID
+	ItemKeys  []string
+	Matched   []bool
+}
+
+func (q *Queries) SetFeedItemsMatched(ctx context.Context, arg SetFeedItemsMatchedParams) error {
+	_, err := q.db.Exec(ctx, setFeedItemsMatched, arg.TrackerID, arg.ItemKeys, arg.Matched)
+	return err
 }
