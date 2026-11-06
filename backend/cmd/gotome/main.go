@@ -254,6 +254,9 @@ func serve() error {
 		return err
 	}
 	defer passageStore.Close()
+	if passageStore.StartedOver() {
+		log.Warn("the passage store's files were not of one set, as after a crash while it was compacted: its passages are embedded again")
+	}
 	passageVectors := passages.NewService(pool, passageStore, settingStore.Embedding, settingStore.EmbeddingPassages,
 		similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
 	passageVectors.Chunks = scans.FileChunks

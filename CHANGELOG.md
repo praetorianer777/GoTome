@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- Searching by description could rank passages by another passage's
+  vector after GOtome stopped while it was compacting the passage store.
+  The store now switches to its compacted files in one step, and one
+  left half switched by an earlier version is started over at the next
+  start, its passages embedded again.
 - A feed whose items cannot be recorded, such as one with a very long
   link, is reported as failed and tried again later, instead of keeping
   every other feed from being fetched.
