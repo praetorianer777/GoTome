@@ -85,10 +85,35 @@ func (s *Service) noteUnwritable(ctx context.Context, err error) error {
 func (s *Service) checkFolder(ctx context.Context, libraryID uuid.UUID, root string) error {
 	err := probeFolder(libraryID, root)
 	if err == nil {
-		return sqlc.New(s.pool).ClearLibraryUnwritable(ctx, libraryID)
+		return s.WritableAgain(ctx, libraryID)
 	}
 	if err := s.noteUnwritable(ctx, err); !errors.Is(err, ErrFolderReadOnly) {
 		return err
 	}
 	return nil
+}
+
+// WritableAgain follows a writable library's folder found writable: a mark
+// that it was not is cleared, and the write-backs passed by meanwhile are
+// queued again. Each is queued once, however often this runs.
+func (s *Service) WritableAgain(ctx context.Context, libraryID uuid.UUID) error {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if err := q.ClearLibraryUnwritable(ctx, libraryID); err != nil {
+			return err
+		}
+		files, err := q.TakeWriteBacksPending(ctx, libraryID)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			if err := s.queueWriteBackTx(ctx, tx, file); err != nil {
+				return err
+			}
+		}
+		if len(files) > 0 {
+			s.log.Info("queued the write-backs passed by while the folder could not be written", "library", libraryID, "files", len(files))
+		}
+		return nil
+	})
 }

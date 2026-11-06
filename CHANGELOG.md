@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Edits made while a writable library's folder could not be written are
+  written into its EPUBs once it can be again, at the next scan or when
+  the library is made writable, instead of staying in the catalogue only.
+
 ## [0.9.0] - 2026-11-06
 
 ### Added
