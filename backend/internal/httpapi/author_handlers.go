@@ -151,7 +151,7 @@ func (s *Server) getSeries(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	listed, err := s.Releases.OfSeries(r.Context(), scope, series.Key, series.Name)
+	listed, err := s.Releases.OfSeries(r.Context(), scope, series.Key)
 	if err != nil {
 		return err
 	}

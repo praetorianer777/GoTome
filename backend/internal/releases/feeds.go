@@ -125,9 +125,32 @@ func (s *Service) AddFeed(ctx context.Context, user uuid.UUID, raw string, keywo
 			return err
 		}
 		f = feedOf(row)
+		if err := rematchTx(ctx, q, row); err != nil {
+			return err
+		}
 		return s.queueFetchTx(ctx, tx)
 	})
 	return f, err
+}
+
+// rematchTx matches the items stored of the tracker against its filters,
+// which may be new.
+func rematchTx(ctx context.Context, q *sqlc.Queries, t sqlc.FeedTracker) error {
+	items, err := q.ListFeedItemsToMatch(ctx, t.ID)
+	if err != nil || len(items) == 0 {
+		return err
+	}
+	match := newFeedFilter(t.Keywords, t.Authors)
+	p := sqlc.SetFeedItemsMatchedParams{TrackerID: t.ID}
+	for _, it := range items {
+		text := catalog.Key(it.Title)
+		if it.MatchText != nil {
+			text = *it.MatchText
+		}
+		p.ItemKeys = append(p.ItemKeys, it.ItemKey)
+		p.Matched = append(p.Matched, match.matchesText(text, it.Authors))
+	}
+	return q.SetFeedItemsMatched(ctx, p)
 }
 
 func filterWords(list []string) []string {
@@ -250,35 +273,57 @@ func (s *Service) fetchFeed(ctx context.Context, f sqlc.FeedTracker) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	q := sqlc.New(s.pool)
 	if err != nil {
-		failures := f.Failures + 1
-		p := sqlc.FeedFailedParams{ID: f.ID, Failures: failures, LastError: errorText(err)}
-		if failures < maxFailures {
-			next := time.Now().Add(min(fetchEvery<<failures, maxBackoff))
-			p.NextFetchAt = &next
-		}
-		s.log.Info("a feed could not be read", "feed", f.ID, "failures", failures, "error", err)
-		return q.FeedFailed(ctx, p)
+		s.log.Info("a feed could not be read", "feed", f.ID, "failures", f.Failures+1, "error", err)
+		return s.feedFailed(ctx, f, err)
 	}
 	next := time.Now().Add(fetchEvery)
 	if got.unchanged {
-		return q.FeedAnswered(ctx, sqlc.FeedAnsweredParams{ID: f.ID, NextFetchAt: next})
+		return sqlc.New(s.pool).FeedAnswered(ctx, sqlc.FeedAnsweredParams{ID: f.ID, NextFetchAt: next})
 	}
-	match := newFeedFilter(f.Keywords, f.Authors)
+	err = s.recordFeed(ctx, f, got, next)
+	if err == nil || ctx.Err() != nil {
+		return ctx.Err()
+	}
+	// Left as it was, the feed would stay the first due and be fetched
+	// again and again, and no other feed after it.
+	s.log.Warn("what a feed answered could not be recorded", "feed", f.ID, "failures", f.Failures+1, "error", err)
+	return s.feedFailed(ctx, f, errFeedNotRecorded)
+}
+
+var errFeedNotRecorded = errors.New("what the feed lists could not be recorded")
+
+// feedFailed records a failure of the feed and when it is fetched again,
+// later after each failure in a row, and never after maxFailures.
+func (s *Service) feedFailed(ctx context.Context, f sqlc.FeedTracker, err error) error {
+	failures := f.Failures + 1
+	p := sqlc.FeedFailedParams{ID: f.ID, Failures: failures, LastError: errorText(err)}
+	if failures < maxFailures {
+		next := time.Now().Add(min(fetchEvery<<failures, maxBackoff))
+		p.NextFetchAt = &next
+	}
+	return sqlc.New(s.pool).FeedFailed(ctx, p)
+}
+
+// recordFeed records the items of a feed's answer and tells of those that
+// are new and match.
+func (s *Service) recordFeed(ctx context.Context, f sqlc.FeedTracker, got fetched, next time.Time) error {
 	backlog := f.CheckedAt == nil
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		if _, err := q.LockFeedTracker(ctx, f.ID); errors.Is(err, pgx.ErrNoRows) {
+		filters, err := q.LockFeedTracker(ctx, f.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		} else if err != nil {
 			return err
 		}
+		match := newFeedFilter(filters.Keywords, filters.Authors)
 		for _, it := range got.feed.Items {
-			matched := match.matches(it)
+			text := it.matchText()
+			matched := match.matchesText(text, it.Authors)
 			p := sqlc.PutFeedItemParams{
 				TrackerID: f.ID, ItemKey: it.Key, Title: it.Title, Authors: it.Authors,
-				PublishedAt: it.Published, Matched: matched, Backlog: backlog,
+				PublishedAt: it.Published, MatchText: text, Matched: matched, Backlog: backlog,
 			}
 			if p.Authors == nil {
 				p.Authors = []string{}
@@ -434,8 +479,19 @@ func newFeedFilter(keywords, authors []string) feedFilter {
 	return f
 }
 
+// matchText is what the filters' words are looked for in: the key of the
+// item's title, categories and summary.
+func (it feedItem) matchText() string {
+	return catalog.Key(it.Title + " " + strings.Join(it.Categories, " ") + " " + it.Summary)
+}
+
 func (f feedFilter) matches(it feedItem) bool {
-	text := " " + catalog.Key(it.Title+" "+strings.Join(it.Categories, " ")+" "+it.Summary) + " "
+	return f.matchesText(it.matchText(), it.Authors)
+}
+
+// matchesText is matches on an item's matchText and its authors.
+func (f feedFilter) matchesText(key string, authors []string) bool {
+	text := " " + key + " "
 	has := func(key string) bool { return strings.Contains(text, " "+key+" ") }
 	if len(f.keywords) > 0 && !slices.ContainsFunc(f.keywords, has) {
 		return false
@@ -444,7 +500,7 @@ func (f feedFilter) matches(it feedItem) bool {
 		return true
 	}
 	var named []string
-	for _, a := range it.Authors {
+	for _, a := range authors {
 		named = append(named, metadata.NameKeys(a)...)
 	}
 	return slices.ContainsFunc(f.authors, func(keys []string) bool {

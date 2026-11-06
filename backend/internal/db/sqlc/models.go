@@ -265,6 +265,7 @@ type FeedItem struct {
 	Backlog     bool
 	FirstSeenAt time.Time
 	LastSeenAt  time.Time
+	MatchText   *string
 }
 
 type FeedTracker struct {
@@ -483,6 +484,7 @@ type Release struct {
 	CoverUrl    *string
 	Backlog     bool
 	FirstSeenAt time.Time
+	SeriesKey   *string
 }
 
 type ReleaseNotice struct {

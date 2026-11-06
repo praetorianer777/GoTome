@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A feed whose items cannot be recorded, such as one with a very long
+  link, is reported as failed and tried again later, instead of keeping
+  every other feed from being fetched.
+- Changing a feed's keywords or authors applies them to the items already
+  fetched, not only to new ones.
+- A series' page lists the books the sources announce for it however they
+  spell its name, such as "the expanse" for "The Expanse".
+
 ## [0.9.0] - 2026-11-06
 
 ### Added

@@ -2,6 +2,8 @@ package releases
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -24,6 +26,9 @@ const (
 	maxItems = 500
 	// maxTitle is how long a title or a name is kept, in characters.
 	maxTitle = 500
+	// maxKey is the longest key kept as it is, in bytes; a longer one is
+	// kept as its hash, as it could not be indexed.
+	maxKey = 512
 )
 
 const (
@@ -40,7 +45,7 @@ type parsedFeed struct {
 // feedItem is one entry of a feed.
 type feedItem struct {
 	// Key is what the item is told apart by: its guid or id, else its link,
-	// else its title.
+	// else its title; hashed past maxKey.
 	Key        string
 	Title      string
 	Link       string
@@ -249,6 +254,10 @@ func keyed(item *feedItem, id string) bool {
 	}
 	if item.Key == "" {
 		item.Key = catalog.Key(item.Title)
+	}
+	if len(item.Key) > maxKey {
+		sum := sha256.Sum256([]byte(item.Key))
+		item.Key = "sha256:" + hex.EncodeToString(sum[:])
 	}
 	return item.Key != "" && item.Title != ""
 }

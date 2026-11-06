@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"sync"
 	"testing"
@@ -272,5 +273,30 @@ func TestAReleaseIsInTheLibraryOnlyWhereItIsSeen(t *testing.T) {
 	}
 	if got := a.releases(stranger, "upcoming")["Hidden Away"]; got == nil || got["inLibrary"] != false {
 		t.Errorf("the stranger: %v", got)
+	}
+}
+
+// A followed author's release names its series as the source spells it,
+// which need not be how the catalogue does (#322).
+func TestASeriesListsReleasesOfAnyItsSpellings(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Open", "shared")
+	a.inSeries(admin, a.bookBy(lib, "Leviathan Wakes", "James Corey"), "The Expanse", 1)
+	a.follow(admin, "author", "James Corey")
+	index := 2.0
+	r := work("Caliban's War", "2027", "James Corey")
+	r.Provider, r.Series, r.SeriesIndex = "shelf", "the expanse.", &index
+	a.works.set(metadata.Answer{Provider: "shelf", Records: []metadata.Record{r}})
+	a.poll()
+
+	status, body, _ := a.call(admin, http.MethodGet, "/series/"+url.PathEscape("the expanse"), nil)
+	if status != http.StatusOK {
+		t.Fatalf("GET the series: %d %v", status, body)
+	}
+	listed, _ := body["listed"].([]any)
+	if len(listed) != 1 || listed[0].(map[string]any)["title"] != "Caliban's War" {
+		t.Errorf("what the sources list: %v", body["listed"])
 	}
 }

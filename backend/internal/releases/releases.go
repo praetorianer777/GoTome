@@ -223,12 +223,12 @@ type Listed struct {
 	Wished bool
 }
 
-// OfSeries are the books the sources list of the series, by its key and its
-// name in the catalogue, in series order. They are found only while someone
-// follows the series, or an author whose books name it.
-func (s *Service) OfSeries(ctx context.Context, scope library.Scope, key, name string) ([]Listed, error) {
+// OfSeries are the books the sources list of the series, by its key, in
+// series order. They are found only while someone follows the series, or an
+// author whose books name it.
+func (s *Service) OfSeries(ctx context.Context, scope library.Scope, key string) ([]Listed, error) {
 	rows, err := sqlc.New(s.pool).ListSeriesReleases(ctx, sqlc.ListSeriesReleasesParams{
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, NameKey: key, Name: name,
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, NameKey: key,
 	})
 	if err != nil {
 		return nil, err
@@ -411,6 +411,9 @@ func releaseOf(subject uuid.UUID, r metadata.Record) (sqlc.PutReleaseParams, boo
 	}
 	if r.Series != "" {
 		p.Series = &r.Series
+		if key := catalog.Key(r.Series); key != "" {
+			p.SeriesKey = &key
+		}
 	}
 	if r.CoverURL != "" {
 		p.CoverUrl = &r.CoverURL
