@@ -537,11 +537,14 @@ func (s *Store) TrashRetention(ctx context.Context) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	days, err := strconv.Atoi(v)
+	// The value is checked on its way in; this one may have come another
+	// way, and a retention of none would purge the whole trash.
+	n, err := days(v)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", TrashRetentionDays, err)
+		return 0, fmt.Errorf("%s is %q: %w", TrashRetentionDays, v, err)
 	}
-	return time.Duration(days) * 24 * time.Hour, nil
+	d, _ := strconv.Atoi(n)
+	return time.Duration(d) * 24 * time.Hour, nil
 }
 
 // EmbeddingPassages says whether passages are embedded and searched.

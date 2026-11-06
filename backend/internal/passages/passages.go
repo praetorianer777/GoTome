@@ -385,7 +385,7 @@ func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx) error {
 }
 
 // Periodic is the scheduled pass, also at start.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, EmbedArgs{}, jobs.QueueEmbed)
 }
 

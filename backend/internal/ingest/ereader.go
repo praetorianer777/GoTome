@@ -46,7 +46,7 @@ func (w *MeasureWorker) Work(ctx context.Context, _ *river.Job[MeasureArgs]) err
 }
 
 // MeasurePeriodic is the measuring pass, every interval and at start.
-func MeasurePeriodic(interval time.Duration) *river.PeriodicJob {
+func MeasurePeriodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, MeasureArgs{}, jobs.QueueDefault)
 }
 

@@ -11,15 +11,17 @@ local function check(name, got, want)
     end
 end
 
+-- The server's own answer, which TestTheDeviceClientsFixturesAreTheServersAnswers
+-- holds the file to (make device-fixtures writes it anew).
 local file = assert(io.open("testdata/device-feed.xml"))
 local entries = feed.entries(file:read("*a"))
 file:close()
 
 check("entries", #entries, 2)
 check("title", entries[1].title, "Pride & Prejudice: A Novel")
-check("id", entries[1].id, "urn:uuid:01a12b2a-1800-7548-b533-dd0bff7d11e5")
+check("id", entries[1].id, "urn:uuid:0192f0a0-0000-7000-8000-000000000001")
 check("links", #entries[1].links, 2)
-check("best first", entries[1].links[1].href, "/api/v1/opds/device/files/01a12b2a-1800-7548-b533-dd0bff7d11e6")
+check("best first", entries[1].links[1].href, "/api/v1/opds/device/files/0192f0a0-0000-7000-8000-000000000002")
 check("extension from the format", feed.extension(entries[1].links[1]), "epub")
 check("extension of a Kindle file", feed.extension(entries[2].links[1]), "azw3")
 check("extension from the type", feed.extension({ type = "application/pdf" }), "pdf")

@@ -28,7 +28,7 @@ var pollOpts = jobs.InsertOpts{Queue: jobs.QueueMetadata, Unique: true, MaxAttem
 
 // Periodic is the scheduled poll, also at start; a subject is asked about
 // once a day however often it runs.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, PollArgs{}, jobs.QueueMetadata)
 }
 
@@ -66,7 +66,7 @@ var fetchOpts = jobs.InsertOpts{Queue: jobs.QueueMetadata, Unique: true, MaxAtte
 
 // FeedsPeriodic is the scheduled fetch, also at start; a feed is fetched
 // once an hour however often it runs, less often after failures.
-func FeedsPeriodic(interval time.Duration) *river.PeriodicJob {
+func FeedsPeriodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, FetchFeedsArgs{}, jobs.QueueMetadata)
 }
 

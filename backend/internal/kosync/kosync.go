@@ -218,6 +218,6 @@ func (s *Service) HashFiles(ctx context.Context) (int, error) {
 
 // Periodic is the hashing pass, every interval and at start: files new or
 // changed since are hashed by it.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, HashArgs{}, jobs.QueueDefault)
 }
