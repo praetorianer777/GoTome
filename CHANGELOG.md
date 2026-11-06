@@ -12,9 +12,13 @@ What changes for someone who runs or uses GOtome. The format follows
   when no administrator can sign in, and signs the account out; `-enable`
   and `-admin` also enable it and make it an administrator
   ([docs/troubleshooting.md](docs/troubleshooting.md#signing-in-and-changes)).
+- The Libraries page lists a private library's members and lets an
+  administrator add and remove them, without the API.
 
 ### Fixed
 
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
 - Background work no longer can stop for good with "completion subscriber
   received a job that wasn't finalized" on a heavily loaded machine: queueing
   a job that was already running kept that job from being marked finished
