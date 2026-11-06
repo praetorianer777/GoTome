@@ -1,0 +1,270 @@
+[
+  {
+    "id": "harbour-chromium",
+    "title": "Quiet Harbour Chromium",
+    "authors": [
+      "Nora Vale"
+    ],
+    "description": "A harbour town waits out the winter.",
+    "publisher": "Tidewater Press",
+    "published": "2015",
+    "language": "en"
+  },
+  {
+    "id": "amber-chromium",
+    "title": "Amber Road Chromium",
+    "authors": [
+      "Petra Lind"
+    ],
+    "description": "Traders cross the steppe with amber.",
+    "published": "2011",
+    "language": "en"
+  },
+  {
+    "id": "fen-chromium",
+    "title": "Silver Fen Chromium",
+    "authors": [
+      "Tomas Reed"
+    ],
+    "description": "A fen that keeps its secrets.",
+    "published": "2012",
+    "language": "en"
+  },
+  {
+    "id": "orchard-chromium",
+    "title": "Glass Orchard Chromium",
+    "authors": [
+      "Ida Brandt"
+    ],
+    "publisher": "Pane Books",
+    "published": "2019",
+    "language": "en",
+    "isbns": [
+      "9780306401008"
+    ]
+  },
+  {
+    "id": "lantern-2-chromium",
+    "title": "The Second Lantern Chromium",
+    "authors": [
+      "Ada Moss"
+    ],
+    "series": "Lantern Cycle Chromium",
+    "seriesIndex": 2,
+    "published": "2021",
+    "language": "en",
+    "isbns": [
+      "9780306402005"
+    ]
+  },
+  {
+    "id": "comet-chromium",
+    "title": "Comet Over Kestrel Chromium",
+    "authors": [
+      "Wren Calloway Chromium"
+    ],
+    "published": "2099-05",
+    "language": "en"
+  },
+  {
+    "id": "harbour-firefox",
+    "title": "Quiet Harbour Firefox",
+    "authors": [
+      "Nora Vale"
+    ],
+    "description": "A harbour town waits out the winter.",
+    "publisher": "Tidewater Press",
+    "published": "2015",
+    "language": "en"
+  },
+  {
+    "id": "amber-firefox",
+    "title": "Amber Road Firefox",
+    "authors": [
+      "Petra Lind"
+    ],
+    "description": "Traders cross the steppe with amber.",
+    "published": "2011",
+    "language": "en"
+  },
+  {
+    "id": "fen-firefox",
+    "title": "Silver Fen Firefox",
+    "authors": [
+      "Tomas Reed"
+    ],
+    "description": "A fen that keeps its secrets.",
+    "published": "2012",
+    "language": "en"
+  },
+  {
+    "id": "orchard-firefox",
+    "title": "Glass Orchard Firefox",
+    "authors": [
+      "Ida Brandt"
+    ],
+    "publisher": "Pane Books",
+    "published": "2019",
+    "language": "en",
+    "isbns": [
+      "9780306411007"
+    ]
+  },
+  {
+    "id": "lantern-2-firefox",
+    "title": "The Second Lantern Firefox",
+    "authors": [
+      "Ada Moss"
+    ],
+    "series": "Lantern Cycle Firefox",
+    "seriesIndex": 2,
+    "published": "2021",
+    "language": "en",
+    "isbns": [
+      "9780306412004"
+    ]
+  },
+  {
+    "id": "comet-firefox",
+    "title": "Comet Over Kestrel Firefox",
+    "authors": [
+      "Wren Calloway Firefox"
+    ],
+    "published": "2099-05",
+    "language": "en"
+  },
+  {
+    "id": "harbour-webkit",
+    "title": "Quiet Harbour Webkit",
+    "authors": [
+      "Nora Vale"
+    ],
+    "description": "A harbour town waits out the winter.",
+    "publisher": "Tidewater Press",
+    "published": "2015",
+    "language": "en"
+  },
+  {
+    "id": "amber-webkit",
+    "title": "Amber Road Webkit",
+    "authors": [
+      "Petra Lind"
+    ],
+    "description": "Traders cross the steppe with amber.",
+    "published": "2011",
+    "language": "en"
+  },
+  {
+    "id": "fen-webkit",
+    "title": "Silver Fen Webkit",
+    "authors": [
+      "Tomas Reed"
+    ],
+    "description": "A fen that keeps its secrets.",
+    "published": "2012",
+    "language": "en"
+  },
+  {
+    "id": "orchard-webkit",
+    "title": "Glass Orchard Webkit",
+    "authors": [
+      "Ida Brandt"
+    ],
+    "publisher": "Pane Books",
+    "published": "2019",
+    "language": "en",
+    "isbns": [
+      "9780306421006"
+    ]
+  },
+  {
+    "id": "lantern-2-webkit",
+    "title": "The Second Lantern Webkit",
+    "authors": [
+      "Ada Moss"
+    ],
+    "series": "Lantern Cycle Webkit",
+    "seriesIndex": 2,
+    "published": "2021",
+    "language": "en",
+    "isbns": [
+      "9780306422003"
+    ]
+  },
+  {
+    "id": "comet-webkit",
+    "title": "Comet Over Kestrel Webkit",
+    "authors": [
+      "Wren Calloway Webkit"
+    ],
+    "published": "2099-05",
+    "language": "en"
+  },
+  {
+    "id": "harbour-phone",
+    "title": "Quiet Harbour Phone",
+    "authors": [
+      "Nora Vale"
+    ],
+    "description": "A harbour town waits out the winter.",
+    "publisher": "Tidewater Press",
+    "published": "2015",
+    "language": "en"
+  },
+  {
+    "id": "amber-phone",
+    "title": "Amber Road Phone",
+    "authors": [
+      "Petra Lind"
+    ],
+    "description": "Traders cross the steppe with amber.",
+    "published": "2011",
+    "language": "en"
+  },
+  {
+    "id": "fen-phone",
+    "title": "Silver Fen Phone",
+    "authors": [
+      "Tomas Reed"
+    ],
+    "description": "A fen that keeps its secrets.",
+    "published": "2012",
+    "language": "en"
+  },
+  {
+    "id": "orchard-phone",
+    "title": "Glass Orchard Phone",
+    "authors": [
+      "Ida Brandt"
+    ],
+    "publisher": "Pane Books",
+    "published": "2019",
+    "language": "en",
+    "isbns": [
+      "9780306431005"
+    ]
+  },
+  {
+    "id": "lantern-2-phone",
+    "title": "The Second Lantern Phone",
+    "authors": [
+      "Ada Moss"
+    ],
+    "series": "Lantern Cycle Phone",
+    "seriesIndex": 2,
+    "published": "2021",
+    "language": "en",
+    "isbns": [
+      "9780306432002"
+    ]
+  },
+  {
+    "id": "comet-phone",
+    "title": "Comet Over Kestrel Phone",
+    "authors": [
+      "Wren Calloway Phone"
+    ],
+    "published": "2099-05",
+    "language": "en"
+  }
+]

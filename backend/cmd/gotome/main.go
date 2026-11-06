@@ -43,6 +43,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/memlimit"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/canned"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
@@ -216,7 +217,7 @@ func serve() error {
 	if cfg.Offline {
 		providers = nil
 	}
-	meta := metadata.NewService(pool, providers, metadata.Options{
+	metaOptions := metadata.Options{
 		Language: func(ctx context.Context) string {
 			lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
 			return lang
@@ -225,7 +226,17 @@ func serve() error {
 			names, _ := settingStore.Text(ctx, settings.Providers)
 			return strings.Split(names, ",")
 		},
-	})
+	}
+	if cfg.TestMetadata != "" {
+		recorded, err := canned.Open(cfg.TestMetadata)
+		if err != nil {
+			return fmt.Errorf("GOTOME_TEST_METADATA: %w", err)
+		}
+		log.Warn("metadata comes from the test records of GOTOME_TEST_METADATA alone", "file", cfg.TestMetadata)
+		// It stands in for every provider, whichever the setting names.
+		providers, metaOptions.Enabled = []metadata.Provider{recorded}, nil
+	}
+	meta := metadata.NewService(pool, providers, metaOptions)
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
 	books := catalog.NewService(pool)
 	duplicates := dedupe.NewService(pool, books, log)
@@ -245,7 +256,14 @@ func serve() error {
 		Threads:  cfg.EmbedThreads,
 		Fetch:    embed.FetchOptions{Offline: cfg.Offline, Log: log},
 	}
-	vectors := similar.NewService(pool, settingStore.Embedding, similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
+	opener := similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer)
+	if cfg.TestEmbeddings {
+		log.Warn("books are embedded with vectors made from the words of their texts (GOTOME_TEST_EMBEDDINGS), not with a model")
+		opener = func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			return &embed.Words{As: spec.Model}, nil
+		}
+	}
+	vectors := similar.NewService(pool, settingStore.Embedding, opener, log)
 	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
 	vectors.Passages = scans.Passages
 	passageStore, err := passages.OpenStore(passages.Dir(cfg.DataDir))
@@ -257,7 +275,7 @@ func serve() error {
 		log.Warn("the passage store's files were not of one set, as after a crash while it was compacted: its passages are embedded again")
 	}
 	passageVectors := passages.NewService(pool, passageStore, settingStore.Embedding, settingStore.EmbeddingPassages,
-		similar.ServerOpener(similar.OnnxOpener(onnx), settingStore.EmbeddingServer), log)
+		opener, log)
 	passageVectors.Chunks = scans.FileChunks
 	vectors.NearPassages = passageVectors.Near
 	vectors.PassageStatus = passageVectors.Status
