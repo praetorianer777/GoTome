@@ -14,7 +14,11 @@ import (
 const passBudget = 4 * time.Minute
 
 // PollArgs is the job that asks the providers about the subjects due.
-type PollArgs struct{}
+type PollArgs struct {
+	// Again is a poll queued beside a running one, which may have looked
+	// for the subjects due before a new one was followed.
+	Again bool `json:"again,omitempty"`
+}
 
 // pollKind names the job in the queue. It is stored with every job, so it
 // stays.

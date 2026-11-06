@@ -66,6 +66,13 @@ type Config struct {
 	// ForcePasswords lets everyone sign in with a password whatever the
 	// setting says: the way back in when the identity provider is gone.
 	ForcePasswords bool
+	// TestMetadata is a file of records that, for the browser tests, is
+	// the one metadata provider in place of every other; empty in an
+	// installation.
+	TestMetadata string
+	// TestEmbeddings embeds with vectors made from the words of each text
+	// instead of a model, for the browser tests; never in an installation.
+	TestEmbeddings bool
 	// TrustedProxies are the reverse proxies whose forwarded client address
 	// and scheme are believed; none believes no forwarded address.
 	TrustedProxies []netip.Prefix
@@ -160,6 +167,11 @@ func load(getenv func(string) string) (Config, error) {
 	force := get("GOTOME_FORCE_PASSWORD_LOGIN", "false")
 	if cfg.ForcePasswords, err = strconv.ParseBool(force); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_FORCE_PASSWORD_LOGIN is %q, want true or false", force)
+	}
+	cfg.TestMetadata = get("GOTOME_TEST_METADATA", "")
+	fake := get("GOTOME_TEST_EMBEDDINGS", "false")
+	if cfg.TestEmbeddings, err = strconv.ParseBool(fake); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_TEST_EMBEDDINGS is %q, want true or false", fake)
 	}
 	proxies := get("GOTOME_TRUSTED_PROXIES", "")
 	if cfg.TrustedProxies, err = parseProxies(proxies); err != nil {
