@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -188,9 +189,26 @@ func TestGapsAreTheWholePlacesNoBookTakes(t *testing.T) {
 		{[]float64{2, 6, 7}, []Gap{{1, 1}, {3, 5}}},
 		{[]float64{0, 1, 2.5, 4}, []Gap{{2, 3}}},
 		{[]float64{1, 2.5}, []Gap{{2, 2}}},
+		{[]float64{3, 1, 3, 1}, []Gap{{2, 2}}},
+		{[]float64{1, MaxSeriesIndex}, []Gap{{2, MaxSeriesIndex - 1}}},
+		{[]float64{1, 3, 1e12, math.Inf(1), math.NaN(), -1}, []Gap{{2, 2}}},
 	} {
 		if got := Gaps(c.indexes); !slices.Equal(got, c.want) {
 			t.Errorf("Gaps(%v) = %v, want %v", c.indexes, got, c.want)
 		}
+	}
+}
+
+func TestASeriesIndexIsAFiniteNumberInRange(t *testing.T) {
+	for index, want := range map[float64]bool{
+		0: true, 2.5: true, MaxSeriesIndex: true, MaxSeriesIndex + 0.5: false,
+		1e12: false, -1: false, math.Inf(1): false, math.NaN(): false,
+	} {
+		if got := SeriesIndexOf(&index) != nil; got != want {
+			t.Errorf("SeriesIndexOf(%v) kept: %v, want %v", index, got, want)
+		}
+	}
+	if SeriesIndexOf(nil) != nil {
+		t.Error("nil is a position")
 	}
 }

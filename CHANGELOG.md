@@ -13,6 +13,10 @@ What changes for someone who runs or uses GOtome. The format follows
   The store now switches to its compacted files in one step, and one
   left half switched by an earlier version is started over at the next
   start, its passages embedded again.
+- A series page no longer hangs on a book at an absurd place in its
+  series, such as one an EPUB gives as 1e12. A position above 100,000, or
+  one that is not a number, is refused in an edit and left out when a file
+  or a metadata source gives it.
 - Edits made while a writable library's folder could not be written are
   written into its EPUBs once it can be again, at the next scan or when
   the library is made writable, instead of staying in the catalogue only.
