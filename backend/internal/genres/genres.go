@@ -215,8 +215,8 @@ func (g Genre) texts() []string {
 	return []string{g.English + ". " + g.About, g.German + ". " + g.Über}
 }
 
-// Version is a hash of the list, its descriptions, thresholds and the tag
-// table: a change has every book looked at again.
+// Version is a hash of the list, its descriptions, thresholds, the tag
+// table and the wrappers: a change has every book looked at again.
 func Version() string {
 	h := sha256.New()
 	for _, g := range List {
@@ -226,5 +226,6 @@ func Version() string {
 	for _, k := range tableKeys() {
 		h.Write([]byte(k + "=" + strings.Join(table[k], ",") + "\n"))
 	}
+	h.Write([]byte(strings.Join(wrapperPrefixes, "\x00") + "\n" + strings.Join(wrapperSuffixes, "\x00")))
 	return hex.EncodeToString(h.Sum(nil))[:12]
 }

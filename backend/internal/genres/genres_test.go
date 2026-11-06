@@ -67,6 +67,18 @@ func TestTagsMapOntoGenres(t *testing.T) {
 		{"Belletristik", nil},
 		{"Fiction", nil},
 		{"Sachbuch", nil},
+		{"Science Fiction (st)", []string{"science-fiction"}},
+		{"Erotik (ST)", []string{"erotica"}},
+		{"Frei - Fantasy", []string{"fantasy"}},
+		{"frei -Krimi (st)", []string{"crime"}},
+		{"Belletristik (st)", nil},
+		{"(st)", nil},
+		{"Gegenwartsliteratur (ab 1945)", []string{"contemporary"}},
+		{"Star Trek", []string{"science-fiction"}},
+		{"Darkover", []string{"science-fiction"}},
+		{"Geschichtswissenschaft", []string{"history"}},
+		{"Erzählung", []string{"short-stories"}},
+		{"Zeitgenössisch", []string{"contemporary"}},
 	} {
 		got := FromTag(c.tag)
 		slices.Sort(got)
@@ -77,6 +89,28 @@ func TestTagsMapOntoGenres(t *testing.T) {
 	got := FromTags([]string{"Thriller", "Krimi", "Krimi"})
 	if !slices.Equal(got, []string{"crime", "thriller"}) {
 		t.Errorf("tags give %v, in the list's order want crime, thriller", got)
+	}
+}
+
+func TestTheCheckLeavesGenericTagsOut(t *testing.T) {
+	for _, tag := range []string{
+		"Roman", "General Fiction", "Belletristik (st)", "Neue Literatur", "E-Book", "eBooks", "Retail",
+		"Foreign Languages", "Fachbücher", "Bestseller", "Gelesen", "Wunschliste", "Leihbuch", "Heyne",
+		"Deutschland", "USA", "20. Jahrhundert", "19th Century",
+	} {
+		if worthMapping(tag) {
+			t.Errorf("%q is listed to be mapped", tag)
+		}
+	}
+	for _, tag := range []string{"Adult (st)", "Schwul", "Steampunk"} {
+		if !worthMapping(tag) {
+			t.Errorf("%q is not listed to be mapped", tag)
+		}
+	}
+	for k := range generic {
+		if gs, ok := table[k]; ok {
+			t.Errorf("generic tag %q gives %v", k, gs)
+		}
 	}
 }
 

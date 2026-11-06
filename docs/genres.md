@@ -13,9 +13,15 @@ are kept beside them.
   headings write them. Tags are compared as names are elsewhere: case,
   accents and punctuation do not matter. A heading of parts
   ("Belletristik/Kriminalromane", "Fiction / Fantasy / General") is read
-  part by part. A tag in none of the lists gives no genre and stays a tag.
-  Add spellings there; `gotome genre-check` lists the tags of the most
-  books that give none.
+  part by part. What a source writes around its tags is taken off first:
+  a trailing "(st)" and a leading "Frei - " ("Science Fiction (st)" is
+  Science Fiction; `wrapperPrefixes`, `wrapperSuffixes`). Other brackets
+  stay, as "Gegenwartsliteratur (ab 1945)" is a spelling of its own. A tag
+  in none of the lists gives no genre and stays a tag. Add spellings
+  there; `gotome genre-check` lists the tags of the most books that give
+  none, leaving out those that rightly give none (`generic` in the same
+  file: "Roman", "Belletristik", "Sachbuch", "eBook", a shop's and a
+  reader's own marks, publishers, countries, and centuries).
 - **Suggestions.** From a book's vectors (#66): which genres at least
   40% of its nearest books in the library have (`neighbours`), how much
   nearer they are to a genre's descriptions than to the genres on average
