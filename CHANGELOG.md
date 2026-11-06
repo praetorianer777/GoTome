@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- More tags give genres: tags a store marks, such as "Science Fiction
+  (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
+  "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
+  are known spellings. `gotome genre-check` no longer lists tags that
+  rightly give no genre, such as "Roman", "eBook", publishers and
+  countries, among those to map.
+
 ### Fixed
 
 - Searching by description could rank passages by another passage's

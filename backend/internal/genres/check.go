@@ -46,8 +46,9 @@ type CheckReport struct {
 	Embedded int `json:"embedded"`
 	// PerGenre is how many books each genre's tags give.
 	PerGenre map[string]int `json:"perGenre"`
-	// Unmapped are the tags of the most books that give no genre: what to
-	// add to Spellings first.
+	// Unmapped are the tags of the most books that give no genre, other
+	// than those that rightly give none (isGeneric): what to add to
+	// Spellings first.
 	Unmapped []TagCount `json:"unmapped"`
 	// Sample is how many tagged books were asked about.
 	Sample  int            `json:"sample"`
@@ -150,7 +151,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 		}
 		r.Tagged++
 		for _, t := range bt {
-			if len(FromTag(t)) == 0 {
+			if worthMapping(t) {
 				unmapped[t]++
 			}
 		}

@@ -1,6 +1,7 @@
 package genres
 
 import (
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -20,7 +21,7 @@ var Spellings = map[string][]string{
 		"Gegenwartsliteratur", "Gegenwartsliteratur (ab 1945)", "Belletristik/Gegenwartsliteratur (ab 1945)",
 		"Zeitgenössische Literatur", "Moderne Literatur", "Literary fiction", "Literary", "Contemporary fiction",
 		"Contemporary", "Contemporary literature", "Fiction / Literary", "Literatur", "Romane und Erzählungen der Gegenwart",
-		"Women's fiction", "Frauenroman", "Frauenromane", "Coming of age",
+		"Women's fiction", "Frauenroman", "Frauenromane", "Coming of age", "Zeitgenössisch",
 	},
 	"classics": {
 		"Klassiker", "Klassische Literatur", "Hauptwerk vor 1945", "Belletristik/Hauptwerk vor 1945", "Classics",
@@ -50,7 +51,7 @@ var Spellings = map[string][]string{
 		"Science Fiction", "Science-Fiction", "Sci-Fi", "SciFi", "SF", "Utopie", "Space opera", "Cyberpunk",
 		"Military science fiction", "Weltraum", "Zukunftsroman", "Hard science fiction", "Zeitreise", "Time travel",
 		"Aliens", "Außerirdische", "Science Fiction & Fantasy", "Fantasy & Science Fiction",
-		"Rettungskreuzer Ikarus",
+		"Rettungskreuzer Ikarus", "Star Trek", "Darkover",
 	},
 	"fantasy": {
 		"Fantasy", "Fantastik", "Fantasyroman", "High Fantasy", "Epic fantasy", "Urban Fantasy", "Dark Fantasy",
@@ -95,7 +96,7 @@ var Spellings = map[string][]string{
 	},
 	"short-stories": {
 		"Erzählungen", "Kurzgeschichten", "Short stories", "Short story", "Novellen", "Anthologie", "Anthologies",
-		"Anthology", "Erzählband",
+		"Anthology", "Erzählband", "Erzählung",
 	},
 	"myths": {
 		"Märchen", "Sagen", "Legenden", "Mythen", "Mythologie", "Märchen, Sagen, Legenden", "Fairy tales", "Folklore",
@@ -126,7 +127,7 @@ var Spellings = map[string][]string{
 	"history": {
 		"Geschichte", "Geschichte allgemein", "Historisches Sachbuch", "Zeitgeschichte", "History", "World history",
 		"Military history", "Militärgeschichte", "Archäologie", "Archaeology", "Kulturgeschichte", "Antike Geschichte",
-		"Nationalsozialismus", "Drittes Reich", "Sachbuch/Geschichte",
+		"Nationalsozialismus", "Drittes Reich", "Sachbuch/Geschichte", "Geschichtswissenschaft",
 	},
 	"society": {
 		"Politik", "Gesellschaft", "Politik & Gesellschaft", "Politik, Gesellschaft", "Soziologie", "Zeitgeschehen",
@@ -234,13 +235,85 @@ func tableKeys() []string {
 	return keys
 }
 
-// FromTag returns the genres a tag means: those of the whole tag where the
-// table has it; otherwise, for a tag of parts split at "/" or ">", the most
+// wrapperPrefixes and wrapperSuffixes are what sources put around the tags
+// they write ("Science Fiction (st)", "Frei - Fantasy"), compared without
+// regard to case. Only these come off, not any bracket:
+// "Gegenwartsliteratur (ab 1945)" is a spelling of its own.
+var (
+	wrapperPrefixes = []string{"Frei -"}
+	wrapperSuffixes = []string{"(st)"}
+)
+
+func unwrap(tag string) string {
+	tag = strings.TrimSpace(tag)
+	for {
+		t := tag
+		for _, p := range wrapperPrefixes {
+			if len(t) >= len(p) && strings.EqualFold(t[:len(p)], p) {
+				t = strings.TrimSpace(t[len(p):])
+			}
+		}
+		for _, s := range wrapperSuffixes {
+			if len(t) >= len(s) && strings.EqualFold(t[len(t)-len(s):], s) {
+				t = strings.TrimSpace(t[:len(t)-len(s)])
+			}
+		}
+		if t == tag {
+			return t
+		}
+		tag = t
+	}
+}
+
+// generic are tags that rightly give no genre: what a book is in general,
+// its form, a shop's or a reader's own marks, publishers and countries.
+// genre-check leaves them, and centuries, out of the tags it asks to map.
+var generic = func() map[string]bool {
+	m := map[string]bool{}
+	for _, s := range []string{
+		"Roman", "Romane", "Novel", "Novels", "General Fiction", "Fiction", "General", "Allgemein", "Belletristik",
+		"Neue Literatur", "Unterhaltung", "Unterhaltungsliteratur", "Literature & Fiction", "Sachbuch", "Sachbücher",
+		"Nonfiction", "Non-fiction", "Fachbuch", "Fachbücher", "eBook", "E-Book", "eBooks", "E-Books", "Kindle eBooks",
+		"Retail", "Foreign Languages", "Fremdsprachige Bücher", "Deutsch", "German", "Englisch", "English",
+		"Bestseller", "Bestsellers", "Spiegel-Bestseller", "Gelesen", "Ungelesen", "Read", "To read", "Wunschliste",
+		"Leihbuch", "Favoriten", "Favorites",
+		"Heyne", "Goldmann", "Bastei Lübbe", "Lübbe", "Rowohlt", "Fischer", "S. Fischer", "Piper", "Droemer",
+		"Knaur", "Droemer Knaur", "Blanvalet", "dtv", "Diogenes", "Suhrkamp", "Hanser", "Kiepenheuer & Witsch",
+		"Ullstein", "Aufbau", "Penguin", "Random House", "Penguin Random House", "HarperCollins", "Macmillan",
+		"Simon & Schuster", "Hachette",
+		"Deutschland", "Germany", "Österreich", "Austria", "Schweiz", "Switzerland", "USA", "United States",
+		"Amerika", "England", "Großbritannien", "Great Britain", "Frankreich", "France", "Italien", "Italy",
+		"Spanien", "Spain", "Schweden", "Sweden", "Norwegen", "Norway", "Dänemark", "Denmark", "Russland",
+		"Russia", "Irland", "Ireland", "Schottland", "Scotland", "Japan", "China", "Kanada", "Canada",
+		"Australien", "Australia",
+	} {
+		m[catalog.Key(s)] = true
+	}
+	return m
+}()
+
+var century = regexp.MustCompile(`^\d{1,2}(st|nd|rd|th)? (jahrhundert|century)$`)
+
+// isGeneric says whether a tag is one that rightly gives no genre.
+func isGeneric(tag string) bool {
+	k := catalog.Key(unwrap(tag))
+	return generic[k] || century.MatchString(k)
+}
+
+// worthMapping says whether genre-check should list a tag to be added to
+// Spellings.
+func worthMapping(tag string) bool {
+	return len(FromTag(tag)) == 0 && !isGeneric(tag)
+}
+
+// FromTag returns the genres a tag means, once the wrappers are off: those
+// of the whole tag where the table has it; otherwise, for a tag of parts split at "/" or ">", the most
 // specific part the table knows (the last but the first, "General" and
 // such are in none), and the first part as well when it is known, as in
 // "Juvenile Fiction / Fantasy & Magic". A part the table does not know is
 // also tried as a list, split at commas, "&", "and" and "und".
 func FromTag(tag string) []string {
+	tag = unwrap(tag)
 	if gs, ok := table[catalog.Key(tag)]; ok {
 		return slices.Clone(gs)
 	}
