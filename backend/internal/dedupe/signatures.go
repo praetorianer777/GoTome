@@ -128,11 +128,14 @@ func (s *Service) SignFile(ctx context.Context, bookID, fileID uuid.UUID) error 
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		primary, err := sqlc.New(tx).GetPrimaryTextFile(ctx, bookID)
-		if errors.Is(err, pgx.ErrNoRows) || primary == nil || *primary != fileID {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
+		}
+		if primary == nil || *primary != fileID {
+			return nil
 		}
 		return s.ChunkedTx(ctx, tx, bookID, fileID, texts)
 	})

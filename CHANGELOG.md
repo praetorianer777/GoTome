@@ -13,6 +13,9 @@ What changes for someone who runs or uses GOtome. The format follows
   The store now switches to its compacted files in one step, and one
   left half switched by an earlier version is started over at the next
   start, its passages embedded again.
+- Edits made while a writable library's folder could not be written are
+  written into its EPUBs once it can be again, at the next scan or when
+  the library is made writable, instead of staying in the catalogue only.
 
 ## [0.9.0] - 2026-11-06
 
