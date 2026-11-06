@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -448,5 +449,19 @@ func TestReadDocumentsReadsChaptersAsParseDoes(t *testing.T) {
 	}
 	if _, err := ReadDocuments(bytes.NewReader(data), int64(len(data)), []string{"OEBPS/text/gone.xhtml"}); err == nil {
 		t.Error("a document that is not there was read")
+	}
+}
+
+func TestASeriesIndexIsANumberNotBelowZero(t *testing.T) {
+	for s, want := range map[string]string{
+		"2.5": "2.5", " 3 ": "3", "0": "0", "-1": "", "NaN": "", "inf": "", "+Infinity": "", "x": "",
+	} {
+		got := ""
+		if v := parseIndex(s); v != nil {
+			got = strconv.FormatFloat(*v, 'f', -1, 64)
+		}
+		if got != want {
+			t.Errorf("parseIndex(%q) = %q, want %q", s, got, want)
+		}
 	}
 }

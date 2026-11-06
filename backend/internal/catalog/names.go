@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -169,26 +170,52 @@ type Gap struct {
 	To   int
 }
 
+// MaxSeriesIndex is the highest position a book may hold in a series. The
+// longest series there are, such as Perry Rhodan past 3,300 issues, stay far
+// below it; a position above it is a slip or a file's attempt to make the
+// series page count places without end (#320).
+const MaxSeriesIndex = 100_000
+
+// SeriesIndexOf is index when it is a position a series can have (finite,
+// from 0 to MaxSeriesIndex), else nil.
+func SeriesIndexOf(index *float64) *float64 {
+	if index == nil || !validSeriesIndex(*index) {
+		return nil
+	}
+	return index
+}
+
+// validSeriesIndex is false for NaN and the infinities as for any number
+// out of range, as every comparison with NaN is false.
+func validSeriesIndex(index float64) bool {
+	return index >= 0 && index <= MaxSeriesIndex
+}
+
 // Gaps says which whole places from 1 up to the last of the indexes are
 // taken by none of them. A book at 2.5 fills no place: it lies between two.
+// Indexes no series can have are passed over. It goes through the places
+// held, not every place up to the last, so a stray large index costs one
+// gap and no time.
 func Gaps(indexes []float64) []Gap {
-	held := map[int]bool{}
+	var held []int
 	last := 0
 	for _, index := range indexes {
+		if !validSeriesIndex(index) {
+			continue
+		}
 		if place := int(index); float64(place) == index {
-			held[place] = true
+			held = append(held, place)
 		}
 		last = max(last, int(math.Ceil(index)))
 	}
+	slices.Sort(held)
 	gaps := []Gap{}
-	for place := 1; place < last; place++ {
-		switch {
-		case held[place]:
-		case len(gaps) > 0 && gaps[len(gaps)-1].To == place-1:
-			gaps[len(gaps)-1].To = place
-		default:
-			gaps = append(gaps, Gap{From: place, To: place})
+	next := 1
+	for _, place := range append(slices.Compact(held), last) {
+		if place > next {
+			gaps = append(gaps, Gap{From: next, To: place - 1})
 		}
+		next = max(next, place+1)
 	}
 	return gaps
 }

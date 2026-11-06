@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A series page no longer hangs on a book at an absurd place in its
+  series, such as one an EPUB gives as 1e12. A position above 100,000, or
+  one that is not a number, is refused in an edit and left out when a file
+  or a metadata source gives it.
+
 ## [0.9.0] - 2026-11-06
 
 ### Added
