@@ -58,11 +58,17 @@ func trashError(err error) error {
 	return err
 }
 
-// folderReadOnly is a writable library whose folder cannot be written to
-// now. Its reason is the system's, such as "read-only file system".
+// folderReadOnly is a writable library whose folder, or a folder in it,
+// cannot be written to now. Its reason is the system's, such as
+// "read-only file system".
 func folderReadOnly(err error) error {
-	return ErrConflict("GOtome cannot write to this library's folder now (" + ingest.FolderReason(err) +
-		"). If its mount was made read-only, mount it writable again; the Libraries page says more.")
+	where := "this library's folder"
+	if folder := ingest.FolderOf(err); folder != "" {
+		where = folder
+	}
+	return ErrConflict("GOtome cannot write to " + where + " now (" + ingest.FolderReason(err) +
+		"). If its mount was made read-only, mount it writable again; otherwise the app's user 10001 needs " +
+		"write access to it. The Libraries page says more.")
 }
 
 func (s *Server) trashFile(w http.ResponseWriter, r *http.Request) error {

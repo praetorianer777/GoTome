@@ -150,7 +150,12 @@ background, file by file, and the **Overview** page shows how far it is:
    metadata sources, which fill in what it lacks ([metadata.md](metadata.md)).
    Matches GOtome is not sure of wait on the **Review** page.
 4. **Duplicate checks**: books that are the same, or hold the same text,
-   go to the **Duplicates** page, to merge or keep.
+   go to the **Duplicates** page, which shows each pair side by side,
+   with what differs marked. **Keep this one** keeps a book and moves
+   the other's files to the trash, with everyone's reading and shelves
+   carried over; in a library GOtome does not write to, it merges the
+   other book in, files and all. **Keep both** and **Merge…** are there
+   too.
 5. **Books worked out for similar books**: the slowest part, a few
    seconds per book on a CPU. Pause it on the jobs page if the
    machine needs its CPU for other work.
