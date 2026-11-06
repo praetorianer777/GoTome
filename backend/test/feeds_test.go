@@ -318,3 +318,89 @@ func TestAFeedIsItsOwnersAlone(t *testing.T) {
 		t.Errorf("%d items of a feed nobody follows", n)
 	}
 }
+
+// A feed whose items cannot be recorded fails as one that cannot be read
+// would, and the feeds after it are fetched (#322).
+func TestAFeedThatCannotBeRecordedDoesNotHoldUpTheOthers(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	a.withFeedsOnTheLoopback()
+	ann, _ := a.signedIn("ann", "reader")
+	if _, err := a.pool.Exec(context.Background(), `
+		CREATE FUNCTION refuse_poison() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN
+		    IF NEW.title = 'Poison' THEN RAISE EXCEPTION 'refused'; END IF;
+		    RETURN NEW;
+		END $$;
+		CREATE TRIGGER refuse_poison BEFORE INSERT ON feed_items FOR EACH ROW EXECUTE FUNCTION refuse_poison()`); err != nil {
+		t.Fatal(err)
+	}
+	bad := newFeedServer(t)
+	bad.items(false, [2]string{"Poison", "Someone"})
+	good := newFeedServer(t)
+	// No guid, and a link longer than an index takes.
+	long := "https://publisher.example/" + strings.Repeat("x", 5000)
+	good.body = `<rss version="2.0"><channel><title>Good</title>` +
+		`<item><title>Long Link</title><link>` + long + `</link></item></channel></rss>`
+	a.addFeed(ann, map[string]any{"url": bad.URL})
+	a.addFeed(ann, map[string]any{"url": good.URL})
+
+	a.fetchFeeds()
+	for _, f := range a.feeds(ann) {
+		next, _ := time.Parse(time.RFC3339Nano, f["nextFetchAt"].(string))
+		switch f["url"] {
+		case bad.URL:
+			if msg, _ := f["lastError"].(string); f["failures"] != 1.0 || !strings.Contains(msg, "could not be recorded") ||
+				strings.Contains(msg, "refused") || time.Until(next) < time.Hour {
+				t.Errorf("the feed that cannot be recorded: %v", f)
+			}
+		default:
+			if f["failures"] != 0.0 || f["checkedAt"] == nil {
+				t.Errorf("the feed after it: %v", f)
+			}
+		}
+	}
+	if got := a.feedTitles(ann); !slices.Equal(got, []string{"Long Link"}) {
+		t.Errorf("items: %v", got)
+	}
+}
+
+// Filters that change apply to the items stored too, by all the filters
+// look at, and an item matched only so is not news (#322).
+func TestNewFiltersApplyToTheItemsStored(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	a.withFeedsOnTheLoopback()
+	events := a.withEvents()
+	a.server.Releases.Events = events
+	ann, _ := a.signedIn("ann", "reader")
+	srv := newFeedServer(t)
+	srv.body = `<rss version="2.0"><channel><title>News</title>` +
+		`<item><title>An Old Dragon Tale</title><guid>1</guid><author>Wanda Writer</author></item>` +
+		`<item><title>Kitchen Notes</title><guid>2</guid><category>Cookbook</category></item>` +
+		`<item><title>Quiet Days</title><guid>3</guid><description>Recipes for a cookbook shelf</description></item>` +
+		`</channel></rss>`
+	a.addFeed(ann, map[string]any{"url": srv.URL, "keywords": []string{"dragon"}})
+	a.fetchFeeds()
+	if got := a.feedTitles(ann); !slices.Equal(got, []string{"An Old Dragon Tale"}) {
+		t.Fatalf("items: %v", got)
+	}
+
+	a.addFeed(ann, map[string]any{"url": srv.URL, "keywords": []string{"cookbook"}})
+	if got := a.feedTitles(ann); !slices.Equal(got, []string{"Kitchen Notes", "Quiet Days"}) {
+		t.Errorf("items under the new keywords: %v", got)
+	}
+	a.addFeed(ann, map[string]any{"url": srv.URL, "authors": []string{"Writer, Wanda"}})
+	if got := a.feedTitles(ann); !slices.Equal(got, []string{"An Old Dragon Tale"}) {
+		t.Errorf("items under the new author: %v", got)
+	}
+	a.addFeed(ann, map[string]any{"url": srv.URL, "keywords": []string{"cookbook"}})
+	a.fetchFeeds()
+	a.flush(events)
+	if got := a.feedTitles(ann); !slices.Equal(got, []string{"Kitchen Notes", "Quiet Days"}) {
+		t.Errorf("items fetched again: %v", got)
+	}
+	if got := a.told(ann); len(got) != 0 {
+		t.Errorf("ann is told of items she had: %v", got)
+	}
+}

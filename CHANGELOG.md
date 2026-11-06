@@ -13,6 +13,13 @@ What changes for someone who runs or uses GOtome. The format follows
   The store now switches to its compacted files in one step, and one
   left half switched by an earlier version is started over at the next
   start, its passages embedded again.
+- A feed whose items cannot be recorded, such as one with a very long
+  link, is reported as failed and tried again later, instead of keeping
+  every other feed from being fetched.
+- Changing a feed's keywords or authors applies them to the items already
+  fetched, not only to new ones.
+- A series' page lists the books the sources announce for it however they
+  spell its name, such as "the expanse" for "The Expanse".
 - A series page no longer hangs on a book at an absurd place in its
   series, such as one an EPUB gives as 1e12. A position above 100,000, or
   one that is not a number, is refused in an edit and left out when a file

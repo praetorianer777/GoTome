@@ -65,7 +65,9 @@ books**, under **Feeds**, give a feed's address and, if you like:
 Each feed is read once an hour, asking the server only for what changed.
 What it lists the first time is its past and is not told; after that you
 are told once of each new item that names what you asked for, and **From
-your feeds** lists them. Each person may follow up to 50 feeds.
+your feeds** lists them. Adding a feed's address again with other words
+or authors applies them to what it listed before as well; an item that
+matches only so is listed, not told. Each person may follow up to 50 feeds.
 
 A feed that cannot be read says why under its address, and is tried less
 and less often: after two hours, then four, up to once a day. After 8

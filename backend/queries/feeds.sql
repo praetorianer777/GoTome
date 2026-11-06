@@ -31,9 +31,9 @@ ORDER BY next_fetch_at, id
 LIMIT 1;
 
 -- name: LockFeedTracker :one
--- The tracker, held while what its feed answered is recorded, or no row
--- once its owner ended it.
-SELECT id FROM feed_trackers WHERE id = $1 FOR UPDATE;
+-- The tracker's filters, held while what its feed answered is recorded, or
+-- no row once its owner ended it.
+SELECT keywords, authors FROM feed_trackers WHERE id = $1 FOR UPDATE;
 
 -- name: FeedAnswered :exec
 -- The feed answered, with items or as unchanged; a title, ETag or date of
@@ -57,13 +57,25 @@ UPDATE feed_trackers SET
 WHERE id = sqlc.arg(id)::uuid;
 
 -- name: PutFeedItem :one
--- An item the feed lists; says whether it is new.
-INSERT INTO feed_items (tracker_id, item_key, title, link, authors, published_at, matched, backlog)
+-- An item the feed lists; says whether it is new. One listed before is
+-- matched again, as the filters may have changed since.
+INSERT INTO feed_items (tracker_id, item_key, title, link, authors, published_at, match_text, matched, backlog)
 VALUES (sqlc.arg(tracker_id)::uuid, sqlc.arg(item_key)::text, sqlc.arg(title)::text, sqlc.narg(link)::text,
-        sqlc.arg(authors)::text[], sqlc.narg(published_at)::timestamptz,
+        sqlc.arg(authors)::text[], sqlc.narg(published_at)::timestamptz, sqlc.arg(match_text)::text,
         sqlc.arg(matched)::boolean, sqlc.arg(backlog)::boolean)
-ON CONFLICT (tracker_id, item_key) DO UPDATE SET last_seen_at = now()
+ON CONFLICT (tracker_id, item_key) DO UPDATE SET
+    last_seen_at = now(), match_text = EXCLUDED.match_text, matched = EXCLUDED.matched
 RETURNING (xmax = 0)::boolean AS inserted;
+
+-- name: ListFeedItemsToMatch :many
+-- What the tracker's items are matched by, for filters that changed.
+SELECT item_key, title, authors, match_text FROM feed_items
+WHERE tracker_id = $1;
+
+-- name: SetFeedItemsMatched :exec
+UPDATE feed_items i SET matched = m.matched
+FROM (SELECT unnest(sqlc.arg(item_keys)::text[]) AS item_key, unnest(sqlc.arg(matched)::boolean[]) AS matched) m
+WHERE i.tracker_id = sqlc.arg(tracker_id)::uuid AND i.item_key = m.item_key AND i.matched <> m.matched;
 
 -- name: PruneFeedItems :exec
 -- Items the feed has not listed for a long time: it will not list them
