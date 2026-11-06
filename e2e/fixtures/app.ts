@@ -25,12 +25,41 @@ export async function openSignedIn(page: Page): Promise<void> {
  * own to the one stack, so the page usually offers a choice.
  */
 export async function chooseLibrary(page: Page, name: string): Promise<void> {
-	// The list of books is there once the libraries are known.
-	await expect(page.getByRole("region", { name: "Books" })).toBeVisible();
-	const choice = page.getByRole("combobox", { name: "Library", exact: true });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: name });
-	}
+	await chooseLibraryIn(
+		page,
+		page.getByRole("combobox", { name: "Library", exact: true }),
+		name,
+		page.getByRole("heading", { name, level: 2 }),
+	);
+}
+
+/**
+ * Chooses a library in a choice the app offers only while there are
+ * several libraries, and only once it has them: looked for at once, the
+ * choice is missed, or lacks the library, and the test goes on in another
+ * one. It is tried again until the choice offers the library, or until no
+ * choice is needed: where chosen is given, once it is visible (the page
+ * names the library it works in); otherwise once the person sees at most
+ * one library.
+ */
+export async function chooseLibraryIn(
+	page: Page,
+	choice: Locator,
+	name: string,
+	chosen?: Locator,
+): Promise<void> {
+	await expect(async () => {
+		if (await choice.isVisible()) {
+			await choice.selectOption({ label: name }, { timeout: 1_000 });
+		} else if (!chosen) {
+			const seen = await page.request.get("/api/v1/libraries");
+			const { libraries } = (await seen.json()) as { libraries: unknown[] };
+			expect(libraries.length, "several libraries, and no choice offered yet").toBeLessThanOrEqual(1);
+		}
+		if (chosen) {
+			await expect(chosen).toBeVisible({ timeout: 1_000 });
+		}
+	}).toPass({ timeout: 15_000 });
 }
 
 /**
@@ -129,11 +158,10 @@ export async function bookFrame(page: Page, text: string): Promise<Frame> {
  * would go into whichever library comes first.
  */
 export async function chooseUploadLibrary(page: Page, name: string): Promise<void> {
-	const zone = page.getByRole("region", { name: "Files to add" });
-	await expect(zone).toBeVisible();
-	const choice = page.getByRole("combobox", { name: "Into the library" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: name });
-	}
-	await expect(zone).toContainText(`Drop files here to add them to ${name},`);
+	await chooseLibraryIn(
+		page,
+		page.getByRole("combobox", { name: "Into the library" }),
+		name,
+		page.getByRole("region", { name: "Files to add" }).getByText(`Drop files here to add them to ${name},`),
+	);
 }
