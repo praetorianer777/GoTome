@@ -1166,6 +1166,7 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.kind.placeholders": "Platzhalter-Autoren: {count}",
 	"cleanup.kind.clashes": "Autoren, die Reihen sind: {count}",
 	"cleanup.kind.titles": "Titelzusätze: {count}",
+	"cleanup.kind.series": "Reihen in Titeln: {count}",
 	"cleanup.about.authors":
 		"Ein Autor unter mehreren Schreibweisen. Die zu behaltende Schreibweise wählen: Die Bücher unter den anderen übernehmen sie.",
 	"cleanup.about.placeholders":
@@ -1174,6 +1175,8 @@ export const de: Record<MessageKey, string> = {
 		"Ein Autor mit demselben Namen wie die Reihe seiner Bücher, also ist eines von beiden falsch. Wo jedes Buch in der Reihe ist, ist der Name die Reihe; wo nur einige es sind, ist er der Autor.",
 	"cleanup.about.titles":
 		"Was ein Shop einem Titel hinzugefügt hat: die verkaufte Ausgabe oder das Genre nach einem Doppelpunkt oder Gedankenstrich.",
+	"cleanup.about.series":
+		"Bücher ohne Reihe, deren Titel eine nennt, etwa „Rain Wild Chronicles 01 - Drachenhüter“ oder „Drachenhüter (Rain Wild Chronicles #1)“. Eine Reihe wird vorgeschlagen, wenn zwei Bücher einer Bibliothek sie nennen oder es sie schon gibt. Anwenden nimmt die Bücher an den Stellen, die ihre Titel nennen, in die Reihe auf und nimmt die Reihe aus ihren Titeln.",
 	"cleanup.none": "Hier gibt es nichts vorzuschlagen.",
 	"cleanup.books": "Bücher: {count}",
 	"cleanup.keep": "Zu behaltende Schreibweise",
@@ -1183,10 +1186,13 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.removeAuthor": "{name} ist die Reihe dieser Bücher, nicht ihr Autor.",
 	"cleanup.clearSeries": "{name} ist der Autor; bei einigen Büchern steht der Name auch als Reihe.",
 	"cleanup.retitle": "wird zu",
+	"cleanup.series": "Reihe „{name}“",
+	"cleanup.seriesPlace": "{position}: {title}",
 	"cleanup.apply.merge": "Diese Schreibweise verwenden",
 	"cleanup.apply.removeAuthor": "Autor entfernen",
 	"cleanup.apply.clearSeries": "Aus der Reihe nehmen",
 	"cleanup.apply.retitle": "Titel ändern",
+	"cleanup.apply.setSeries": "In die Reihe aufnehmen",
 	"cleanup.dismiss": "Belassen",
 	"cleanup.applyAll": "Alle {count} anwenden",
 	"cleanup.applyAllSure": "Alle {count} wie vorgeschlagen anwenden?",
