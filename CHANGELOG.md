@@ -14,9 +14,13 @@ What changes for someone who runs or uses GOtome. The format follows
   count each person apart instead of everyone behind the proxy together;
   once it is set, `X-Forwarded-Proto` is believed only from them
   ([docs/getting-started.md](docs/getting-started.md#trust-the-proxy)).
+- The Libraries page lists a private library's members and lets an
+  administrator add and remove them, without the API.
 
 ### Fixed
 
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
 - Background work no longer can stop for good with "completion subscriber
   received a job that wasn't finalized" on a heavily loaded machine: queueing
   a job that was already running kept that job from being marked finished
