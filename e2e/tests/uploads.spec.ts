@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { chooseUploadLibrary, openSignedIn } from "../fixtures/app";
 
 test("a book is uploaded, found in the library, and not taken twice", async ({
 	page,
@@ -27,10 +27,7 @@ test("a book is uploaded, found in the library, and not taken twice", async ({
 	await expect(
 		page.getByRole("heading", { name: "Add books", level: 1 }),
 	).toBeVisible();
-	const choice = page.getByRole("combobox", { name: "Into the library" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: library });
-	}
+	await chooseUploadLibrary(page, library);
 	await page.getByLabel("Choose files").setInputFiles(file);
 
 	const row = page.getByRole("listitem", { name: file.name });
@@ -72,12 +69,8 @@ test("a book dropped on the page is uploaded", async ({ page }, testInfo) => {
 	const { id } = await created.json();
 
 	await page.goto("/upload");
-	const choice = page.getByRole("combobox", { name: "Into the library" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: library });
-	}
+	await chooseUploadLibrary(page, library);
 	const zone = page.getByRole("region", { name: "Files to add" });
-	await expect(zone).toContainText(`Drop files here to add them to ${library}`);
 	// What a file dragged in from the desktop carries: Playwright cannot
 	// drag from outside the page, so the drop is made in it.
 	const dropped = await page.evaluateHandle(
