@@ -19,6 +19,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- **GOtome may change files here** is refused, with the reason and the
+  folder's path, on a folder GOtome cannot write to, such as one mounted
+  with `:ro`. A writable library whose folder turns read-only later is
+  shown so on the Libraries page and told once to administrators, instead
+  of failing file by file.
 - `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
   override file before ([docs/configuration.md](docs/configuration.md)).
 - Background work no longer can stop for good with "completion subscriber

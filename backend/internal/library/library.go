@@ -75,6 +75,11 @@ type Library struct {
 	Visibility string     `json:"visibility"`
 	OwnerID    *uuid.UUID `json:"ownerId,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
+	// UnwritableSince is when GOtome found that it cannot write to the
+	// folder of this writable library, for UnwritableReason; nil while it
+	// can.
+	UnwritableSince  *time.Time `json:"unwritableSince,omitempty"`
+	UnwritableReason string     `json:"unwritableReason,omitempty"`
 }
 
 // Member is somebody who may see a private library.
@@ -210,6 +215,11 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in NewLibrary) (L
 				"rootPath": "There is no such folder inside the GOtome container. Mount it in the compose file first.",
 			}}
 		}
+		if writable {
+			if err := ProbeWritable(root); err != nil {
+				return Library{}, &ValidationError{Fields: map[string]string{"writable": unwritableMessage(root, err)}}
+			}
+		}
 	}
 
 	row, err := q.CreateLibrary(ctx, sqlc.CreateLibraryParams{
@@ -235,6 +245,18 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 	}
 	if len(fields) > 0 {
 		return Library{}, &ValidationError{Fields: fields}
+	}
+	if c.Writable != nil && *c.Writable {
+		root, err := q.GetLibraryRoot(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Library{}, ErrNotFound
+		}
+		if err != nil {
+			return Library{}, err
+		}
+		if err := ProbeWritable(root); err != nil {
+			return Library{}, &ValidationError{Fields: map[string]string{"writable": unwritableMessage(root, err)}}
+		}
 	}
 
 	row, err := q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable})
@@ -364,6 +386,38 @@ func conflict(err error) error {
 	return &ValidationError{Fields: map[string]string{"name": "Another library already has this name."}}
 }
 
+// probePrefix starts the name of the file ProbeWritable makes. A dot file,
+// which the scan passes by.
+const probePrefix = ".gotome-write-check-"
+
+// ProbeWritable checks that GOtome can write to a library's folder, by
+// making a file in it and removing it again. A mount with :ro, a full disk
+// or a folder the app's user may not write to all fail here, before any
+// book's file would.
+func ProbeWritable(root string) error {
+	f, err := os.CreateTemp(root, probePrefix+"*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	if err := f.Close(); err != nil {
+		_ = os.Remove(name)
+		return err
+	}
+	return os.Remove(name)
+}
+
+// UnwritableReason is why ProbeWritable failed, in the system's words
+// without the probe's file name.
+func UnwritableReason(err error) string {
+	return reason(err)
+}
+
+func unwritableMessage(root string, err error) string {
+	return fmt.Sprintf("GOtome cannot write to %s: %s. If it is mounted with :ro in the compose file, "+
+		"mount it without; otherwise the app's user 10001 needs write access to it.", root, reason(err))
+}
+
 // reason is an OS error without the path, which the person just typed.
 func reason(err error) string {
 	var pathErr *os.PathError
@@ -377,5 +431,13 @@ func fromRow(row sqlc.Library) Library {
 	return Library{
 		ID: row.ID, Name: row.Name, RootPath: row.RootPath, Mode: row.Mode,
 		Writable: row.Writable, Visibility: row.Visibility, OwnerID: row.OwnerID, CreatedAt: row.CreatedAt,
+		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason),
 	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

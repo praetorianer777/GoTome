@@ -80,6 +80,21 @@ On the Libraries page, the library's line says what its last scan found.
   folder since. They come back when the files do. A file moved within the
   library is found again by its content.
 
+## GOtome cannot write to a library's folder
+
+- **"GOtome cannot write to /books: read-only file system"** when
+  turning on **GOtome may change files here**: the folder is mounted with
+  `:ro` in the compose file. Remove `:ro` from that mount, run `docker
+  compose up -d`, and turn it on again. "permission denied" instead is
+  the folder's permissions: the app's user 10001 needs write access to
+  it ([getting-started.md](getting-started.md#2-mount-your-books)).
+- **"Since …, GOtome cannot write to this folder"** on the Libraries
+  page, with a notification to administrators: a scan of a writable
+  library found the folder read-only, usually a mount changed since or a
+  disk that the system remounted read-only after an error. Edits stay in
+  GOtome without reaching the files, and trash and fixes are refused,
+  until the folder is writable again; then **Scan now** clears it.
+
 ## Files that cannot be read
 
 When GOtome cannot read a file, its book still exists, under the file's

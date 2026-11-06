@@ -33,6 +33,11 @@ type libraryResponse struct {
 	FilesPending int32 `json:"filesPending"`
 	// FilesFailed is how many of its files could not be read.
 	FilesFailed int32 `json:"filesFailed"`
+	// UnwritableSince is when GOtome found that it cannot write to the
+	// folder of this writable library, for UnwritableReason. Left out while
+	// it can; cleared by a scan that finds it writable again.
+	UnwritableSince  *time.Time `json:"unwritableSince,omitempty"`
+	UnwritableReason string     `json:"unwritableReason,omitempty"`
 }
 
 // scanState is what the library responses add from the scans: the newest
@@ -90,7 +95,7 @@ func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) li
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID],
+		FilesFailed: scans.failed[l.ID], UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan

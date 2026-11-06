@@ -31,7 +31,10 @@ WHERE f.trashed_at IS NOT NULL
 ORDER BY f.trashed_at DESC, f.id DESC;
 
 -- name: ListExpiredTrash :many
-SELECT id FROM book_files WHERE trashed_at < sqlc.arg(before)::timestamptz ORDER BY trashed_at;
+-- Not of a library whose folder cannot be written now: each would fail.
+SELECT f.id FROM book_files f JOIN libraries l ON l.id = f.library_id
+WHERE f.trashed_at < sqlc.arg(before)::timestamptz AND l.unwritable_since IS NULL
+ORDER BY f.trashed_at;
 
 -- name: GetTrashedFile :one
 SELECT f.id, f.book_id, f.rel_path, l.root_path

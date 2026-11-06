@@ -28,10 +28,21 @@ func (q *Queries) AddLibraryMember(ctx context.Context, arg AddLibraryMemberPara
 	return err
 }
 
+const clearLibraryUnwritable = `-- name: ClearLibraryUnwritable :exec
+UPDATE libraries
+SET unwritable_since = NULL, unwritable_reason = NULL
+WHERE id = $1 AND unwritable_since IS NOT NULL
+`
+
+func (q *Queries) ClearLibraryUnwritable(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearLibraryUnwritable, id)
+	return err
+}
+
 const createLibrary = `-- name: CreateLibrary :one
 INSERT INTO libraries (id, name, root_path, mode, writable, visibility, owner_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason
 `
 
 type CreateLibraryParams struct {
@@ -65,6 +76,8 @@ func (q *Queries) CreateLibrary(ctx context.Context, arg CreateLibraryParams) (L
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
 	)
 	return i, err
 }
@@ -81,8 +94,20 @@ func (q *Queries) DeleteLibrary(ctx context.Context, id uuid.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const getLibraryRoot = `-- name: GetLibraryRoot :one
+SELECT root_path FROM libraries WHERE id = $1
+`
+
+// For storage managers, who see every library.
+func (q *Queries) GetLibraryRoot(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getLibraryRoot, id)
+	var root_path string
+	err := row.Scan(&root_path)
+	return root_path, err
+}
+
 const getVisibleLibrary = `-- name: GetVisibleLibrary :one
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason
 FROM libraries l
 WHERE l.id = $1
   AND l.id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
@@ -107,6 +132,8 @@ func (q *Queries) GetVisibleLibrary(ctx context.Context, arg GetVisibleLibraryPa
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
 	)
 	return i, err
 }
@@ -225,7 +252,7 @@ func (q *Queries) ListLibraryRoots(ctx context.Context) ([]ListLibraryRootsRow, 
 }
 
 const listVisibleLibraries = `-- name: ListVisibleLibraries :many
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason
 FROM libraries l
 WHERE l.id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY lower(l.name)
@@ -255,6 +282,8 @@ func (q *Queries) ListVisibleLibraries(ctx context.Context, arg ListVisibleLibra
 			&i.OwnerID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UnwritableSince,
+			&i.UnwritableReason,
 		); err != nil {
 			return nil, err
 		}
@@ -264,6 +293,27 @@ func (q *Queries) ListVisibleLibraries(ctx context.Context, arg ListVisibleLibra
 		return nil, err
 	}
 	return items, nil
+}
+
+const markLibraryUnwritable = `-- name: MarkLibraryUnwritable :one
+UPDATE libraries
+SET unwritable_since = now(), unwritable_reason = $1
+WHERE id = $2 AND writable AND unwritable_since IS NULL
+RETURNING name
+`
+
+type MarkLibraryUnwritableParams struct {
+	Reason *string
+	ID     uuid.UUID
+}
+
+// Only the first time: the name comes back only when the library was not
+// marked yet, which is when its managers are told.
+func (q *Queries) MarkLibraryUnwritable(ctx context.Context, arg MarkLibraryUnwritableParams) (string, error) {
+	row := q.db.QueryRow(ctx, markLibraryUnwritable, arg.Reason, arg.ID)
+	var name string
+	err := row.Scan(&name)
+	return name, err
 }
 
 const removeLibraryMember = `-- name: RemoveLibraryMember :execrows
@@ -288,9 +338,12 @@ UPDATE libraries
 SET name       = COALESCE($2, name),
     visibility = COALESCE($3, visibility),
     writable   = COALESCE($4, writable),
+    -- Whoever sets it has just seen the folder written to, or turned it off.
+    unwritable_since  = CASE WHEN $4::boolean IS NULL THEN unwritable_since END,
+    unwritable_reason = CASE WHEN $4::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason
 `
 
 type UpdateLibraryParams struct {
@@ -318,6 +371,8 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (L
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
 	)
 	return i, err
 }

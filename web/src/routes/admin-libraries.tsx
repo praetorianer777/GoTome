@@ -3,6 +3,7 @@ import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { button, control, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
 	type Library,
 	librariesQuery,
@@ -115,6 +116,18 @@ function LibraryRow({ library }: { library: Library }) {
 
 			<ScanStatus library={library} canScan />
 
+			{library.unwritableSince && (
+				<p
+					role="status"
+					className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
+				>
+					{t("libraries.unwritable", {
+						when: formatDateTime(library.unwritableSince),
+						reason: library.unwritableReason ?? "",
+					})}
+				</p>
+			)}
+
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
 				<label className="flex items-center gap-2">
 					<span>{t("libraries.visibility")}</span>
@@ -180,6 +193,11 @@ function LibraryRow({ library }: { library: Library }) {
 					)}
 				</div>
 			</div>
+			{errors.writable && (
+				<p role="alert" className="text-sm text-red-700 dark:text-red-300">
+					{errors.writable}
+				</p>
+			)}
 			{Object.keys(errors).length === 0 && (
 				<FormError error={update.error ?? remove.error} />
 			)}

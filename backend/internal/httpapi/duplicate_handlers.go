@@ -204,6 +204,8 @@ func (s *Server) replaceDuplicate(w http.ResponseWriter, r *http.Request) error 
 		return ErrValidation(map[string]string{"keep": "Only books of one library are replaced: a file stays in its library's folder."})
 	case errors.Is(err, ingest.ErrReadOnly):
 		return ErrConflict("This library is read-only: GOtome does not move its files.")
+	case errors.Is(err, ingest.ErrFolderReadOnly):
+		return folderReadOnly(err)
 	case err != nil:
 		return err
 	}
