@@ -72,6 +72,9 @@ export async function saveProgress(
 	).data;
 	if (answer?.saved && answer.progress) {
 		knowProgress(queryClient, bookId, medium, answer.progress);
+		// A place may change the book's status: the first makes it reading,
+		// the end completed. The book page asks again when it is next shown.
+		void queryClient.invalidateQueries({ queryKey: ["book", bookId] });
 	}
 	return answer;
 }

@@ -10,6 +10,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 - An author or series followed while GOtome was looking up the others is
   looked up right after, instead of only at the next hourly round.
+- A book's page shows the status reading gave it straight away: going
+  back from the reader or the player after reading to the end said
+  "Unread" or "Reading" until the page was loaded again.
 - Searching by description could rank passages by another passage's
   vector after GOtome stopped while it was compacting the passage store.
   The store now switches to its compacted files in one step, and one

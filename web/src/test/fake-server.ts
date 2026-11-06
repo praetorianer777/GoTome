@@ -1141,6 +1141,10 @@ export class FakeServer {
 				updatedAt: `2026-01-03T00:00:${String(this.requests.length % 60).padStart(2, "0")}Z`,
 			};
 			const id = saving[1] ?? "";
+			const book = this.books.find((b) => b.id === id);
+			if (book && ["unread", "wishlist"].includes(book.reading.status)) {
+				book.reading = { ...book.reading, status: "reading" };
+			}
 			this.progress[id] = {
 				finishes: 0,
 				...this.progress[id],

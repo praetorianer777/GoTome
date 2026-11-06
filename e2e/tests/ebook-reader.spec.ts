@@ -1,5 +1,5 @@
-import { type Frame, type Page, expect, test } from "@playwright/test";
-import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
+import { type Page, expect, test } from "@playwright/test";
+import { bookFrame, gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 import { makeEpub, makeMobi } from "../fixtures/ebooks";
 
 // Laying a book out keeps a loaded WebKit busy enough in CI that its
@@ -27,30 +27,6 @@ async function upload(
 	const { bookId, outcome } = await uploaded.json();
 	expect(outcome).toBe("added");
 	return { bookId: bookId as string, library };
-}
-
-/**
- * The frame the book's pages are in. foliate-js keeps them in a closed
- * shadow root, which locators do not reach; the frames of the page do.
- */
-async function bookFrame(page: Page, text: string): Promise<Frame> {
-	let found: Frame | undefined;
-	await expect(async () => {
-		for (const frame of page.frames()) {
-			if (frame === page.mainFrame()) continue;
-			if (
-				await frame
-					.getByText(text, { exact: false })
-					.count()
-					.catch(() => 0)
-			) {
-				found = frame;
-				return;
-			}
-		}
-		throw new Error(`no frame shows ${text}`);
-	}).toPass({ timeout: 20_000 });
-	return found as Frame;
 }
 
 const percent = (page: Page) => page.getByText(/^\d+%$/);
