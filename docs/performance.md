@@ -8,71 +8,77 @@ looks like, how it is measured, and what an operator can set.
 `make scale-test` (`backend/test/scale_test.go`) seeds 50,000 books in 20
 libraries, with 12,000 authors, 2,500 series, 400 tags, files in three
 formats, identifiers, a chunk of text and two vectors per book, reading
-state, shelves, duplicate pairs and matches to review. It then asks every
+state, shelves, duplicate pairs, matches and genres to review, and ten
+feeds of 5,000 items for each of the two people who ask. It then asks every
 main view of the web app through the API, as an administrator who sees every
 library and as an editor who sees 18 of 20, the best of three each. The app
 runs inside the test, held to 2 GB of memory.
 
 Each view must answer within one second, and none may read the books, their
-files or their chunks from end to end, except the three marked below, whose
-answer is about all of them. The test takes the plan of every statement as
-Postgres ran it (`auto_explain`, sent to the connection), so a plan that
-reads a table whole fails it; `.cache/scale-plans` keeps the plans of the
-last run.
+files or their chunks from end to end, except the views marked below, whose
+answer is about all of them (for the genre review, only its count of what
+waits per genre: its page may not). The test takes the plan of every
+statement as Postgres ran it (`auto_explain`, sent to the connection), so a
+plan that reads a table whole fails it; `.cache/scale-plans` keeps the plans
+of the last run.
 
-Measured on 2026-10-06 on a 12-core machine shared with other work, the
+Measured on 2026-11-06 on a 12-core machine shared with other work, the
 database with `random_page_cost = 1.1` as the compose file sets it:
 
 | View | Administrator | Member | Reads every book |
 |---|---:|---:|---|
-| library by title | 4 ms | 3 ms |  |
-| library by author | 6 ms | 3 ms |  |
-| library newest first | 4 ms | 3 ms |  |
-| library page 2 | 5 ms | 3 ms |  |
-| one library | 4 ms | 2 ms |  |
-| filter by author | 3 ms | 2 ms |  |
-| authors | 3 ms | 3 ms |  |
-| series | 2 ms | 2 ms |  |
-| an author | 1 ms | 3 ms |  |
-| an author's books | 8 ms | 7 ms |  |
-| an author's facets | 21 ms | 24 ms |  |
-| a series | 26 ms | 28 ms |  |
-| a series' books | 10 ms | 12 ms |  |
-| filter by tag and language | 6 ms | 3 ms |  |
-| filter by status | 9 ms | 5 ms |  |
-| filter by year | 3 ms | 3 ms |  |
-| filter by missing files | 6 ms | 5 ms |  |
-| filter by no file on disk | 8 ms | 7 ms |  |
-| filter by e-reader findings | 6 ms | 14 ms |  |
-| facets | 108 ms | 101 ms | counts every book |
-| facets of a filter | 44 ms | 40 ms |  |
+| library by title | 5 ms | 3 ms |  |
+| library by author | 5 ms | 3 ms |  |
+| library newest first | 5 ms | 3 ms |  |
+| library page 2 | 8 ms | 3 ms |  |
+| one library | 4 ms | 6 ms |  |
+| filter by author | 3 ms | 3 ms |  |
+| authors | 5 ms | 3 ms |  |
+| series | 3 ms | 3 ms |  |
+| an author | 1 ms | 1 ms |  |
+| an author's books | 2 ms | 2 ms |  |
+| an author's facets | 6 ms | 4 ms |  |
+| a series | 7 ms | 10 ms |  |
+| a series' books | 4 ms | 3 ms |  |
+| filter by tag and language | 6 ms | 4 ms |  |
+| filter by status | 7 ms | 6 ms |  |
+| filter by year | 3 ms | 4 ms |  |
+| filter by missing files | 4 ms | 5 ms |  |
+| filter by no file on disk | 6 ms | 6 ms |  |
+| filter by e-reader findings | 7 ms | 8 ms |  |
+| facets | 134 ms | 113 ms | counts every book |
+| facets of a filter | 38 ms | 37 ms |  |
 | count of a filter | 2 ms | 2 ms |  |
-| quick search | 32 ms | 29 ms |  |
-| author names | 21 ms | 20 ms |  |
-| full-text search | 12 ms | 14 ms |  |
+| quick search | 31 ms | 30 ms |  |
+| author names | 17 ms | 17 ms |  |
+| full-text search | 15 ms | 12 ms |  |
 | book | 2 ms | 2 ms |  |
-| similar books | 236 ms | 225 ms | compares with every book |
-| duplicates | 9 ms | 10 ms |  |
-| review | 32 ms | 31 ms |  |
-| collection | 64 ms | 74 ms |  |
-| smart shelf | 13 ms | 21 ms |  |
-| collections | 4 ms | 5 ms |  |
-| reading statistics | 11 ms | 32 ms |  |
-| new books | 6 ms | 9 ms |  |
-| search by description | 107 ms | 107 ms | compares with every book |
-| clean-up: authors | 237 ms | 219 ms | reads every credit and title |
-| clean-up: titles | 177 ms | 159 ms | reads every credit and title |
-| trash | 1 ms | 2 ms |  |
+| similar books | 329 ms | 243 ms | compares with every book |
+| duplicates | 32 ms | 25 ms |  |
+| review | 60 ms | 47 ms |  |
+| collection | 91 ms | 78 ms |  |
+| smart shelf | 12 ms | 21 ms |  |
+| collections | 8 ms | 14 ms |  |
+| reading statistics | 20 ms | 41 ms |  |
+| new books | 7 ms | 6 ms |  |
+| items of followed feeds | 13 ms | 10 ms |  |
+| genre review | 39 ms | 36 ms | counts every waiting suggestion |
+| genre review page 2 | 33 ms | 38 ms | counts every waiting suggestion |
+| genre review of a genre | 35 ms | 37 ms | counts every waiting suggestion |
+| search by description | 136 ms | 126 ms | compares with every book |
+| clean-up: authors | 265 ms | 233 ms | reads every credit and title |
+| clean-up: titles | 170 ms | 167 ms | reads every credit and title |
+| trash | 1 ms | 1 ms |  |
 | jobs | 0 ms | 1 ms |  |
-| libraries | 21 ms | 21 ms | counts every file |
+| libraries | 22 ms | 26 ms | counts every file |
 | users | 1 ms | – |  |
-| e-reader catalogue: newest | 17 ms | 23 ms |  |
-| e-reader catalogue: authors | 6 ms | 23 ms |  |
-| e-reader catalogue: an author | 11 ms | 18 ms |  |
-| e-reader catalogue: search | 50 ms | 98 ms |  |
-| overview | 695 ms | 602 ms | counts every book and file |
-| overview of a library | 154 ms | 130 ms | counts every book and file |
-| overview: work | 405 ms | 424 ms | counts every book and file |
+| e-reader catalogue: newest | 7 ms | 6 ms |  |
+| e-reader catalogue: authors | 4 ms | 4 ms |  |
+| e-reader catalogue: an author | 5 ms | 5 ms |  |
+| e-reader catalogue: search | 30 ms | 31 ms |  |
+| overview | 290 ms | 276 ms | counts every book and file |
+| overview of a library | 40 ms | 40 ms | counts every book and file |
+| overview: work | 166 ms | 145 ms | counts every book and file |
 
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library; it runs on the index
@@ -103,6 +109,10 @@ the facets took 600 ms, and a smart shelf 1.7 s:
   planner its statistics: it took one language for one book in 50,000.
 - **The facets at once.** Their nine counts run concurrently, each on a
   connection of its own: about the slowest of them rather than their sum.
+- **The genre review in its order.** Across every genre, a page of the
+  review sorted every waiting suggestion and read every book to do so
+  (55 ms at 17,000 suggestions); `book_genres_waiting_order` (migration
+  00053) lets it stop after a page (under 1 ms).
 - **`random_page_cost = 1.1`.** Postgres's default of 4 is for spinning
   disks; with it, joining a shelf of 2,000 books read all 50,000 rather than
   looking 2,000 up. GOtome's tables are mostly in memory, and a NAS with an

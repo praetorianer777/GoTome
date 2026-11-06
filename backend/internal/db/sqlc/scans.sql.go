@@ -821,6 +821,7 @@ UPDATE book_files
 SET sha256      = $1,
     size_bytes  = $2,
     modified_at = $3,
+    write_back_pending = false,
     updated_at  = now()
 WHERE id = $4
 `
@@ -855,6 +856,15 @@ type SetScanJobParams struct {
 
 func (q *Queries) SetScanJob(ctx context.Context, arg SetScanJobParams) error {
 	_, err := q.db.Exec(ctx, setScanJob, arg.ID, arg.JobID)
+	return err
+}
+
+const setWriteBackPending = `-- name: SetWriteBackPending :exec
+UPDATE book_files SET write_back_pending = true WHERE id = $1 AND NOT write_back_pending
+`
+
+func (q *Queries) SetWriteBackPending(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setWriteBackPending, id)
 	return err
 }
 
@@ -896,6 +906,34 @@ func (q *Queries) StartScan(ctx context.Context, arg StartScanParams) (LibrarySc
 		&i.Error,
 	)
 	return i, err
+}
+
+const takeWriteBacksPending = `-- name: TakeWriteBacksPending :many
+UPDATE book_files SET write_back_pending = false
+WHERE library_id = $1 AND write_back_pending
+RETURNING id
+`
+
+// The files of a library whose write-back was passed by while its folder
+// could not be written, taken off the list as they are queued again.
+func (q *Queries) TakeWriteBacksPending(ctx context.Context, libraryID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, takeWriteBacksPending, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateFileContent = `-- name: UpdateFileContent :exec

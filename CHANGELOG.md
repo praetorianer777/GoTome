@@ -15,6 +15,9 @@ What changes for someone who runs or uses GOtome. The format follows
   fetched, not only to new ones.
 - A series' page lists the books the sources announce for it however they
   spell its name, such as "the expanse" for "The Expanse".
+- Edits made while a writable library's folder could not be written are
+  written into its EPUBs once it can be again, at the next scan or when
+  the library is made writable, instead of staying in the catalogue only.
 
 ## [0.9.0] - 2026-11-06
 

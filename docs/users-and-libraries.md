@@ -99,8 +99,9 @@ administrators are notified once ("A library's folder cannot be written
 to"), not once per file. Until a scan finds the folder writable again,
 edits are kept in GOtome but not written into its files, **Move to
 trash**, **Restore** and **Fix** are refused with the reason, and its
-trash is not emptied. An edit made in that time reaches the file with
-the book's next edit.
+trash is not emptied. The edits made in that time are written into the
+files once a scan finds the folder writable again, or an administrator
+turns **GOtome may change files here** on again.
 
 Without that permission GOtome only reads: a file that disappears from
 the folder is marked missing, and nothing on disk is moved, renamed or
