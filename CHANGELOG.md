@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- `GOTOME_TRUSTED_PROXIES` names the reverse proxies in front of GOtome.
+  From those, the client's address is taken from `X-Forwarded-For`, so the
+  limits on failed sign-ins, device requests and single sign-on starts
+  count each person apart instead of everyone behind the proxy together;
+  once it is set, `X-Forwarded-Proto` is believed only from them
+  ([docs/getting-started.md](docs/getting-started.md#trust-the-proxy)).
 - The Libraries page lists a private library's members and lets an
   administrator add and remove them, without the API.
 

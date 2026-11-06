@@ -190,8 +190,21 @@ readable to anyone on the way.
    proxy_request_buffering off;
    ```
 
-Nginx Proxy Manager passes on the host name and `X-Forwarded-Proto`,
-which GOtome needs, by itself.
+Nginx Proxy Manager passes on the host name, `X-Forwarded-Proto` and
+`X-Forwarded-For` by itself. Tell GOtome to believe it (see
+[Trust the proxy](#trust-the-proxy) below): in `.env`, with Nginx Proxy
+Manager on the same Docker network, that network's range, which
+`docker network inspect <network>` shows under `Subnet`:
+
+```sh
+GOTOME_TRUSTED_PROXIES=172.18.0.0/16
+```
+
+or, with Nginx Proxy Manager on another machine, that machine's address,
+such as `GOTOME_TRUSTED_PROXIES=192.168.1.10`. When it runs on the same
+machine but reaches GOtome through `GOTOME_PORT`, requests may arrive
+from the gateway of GOtome's own network instead (`Gateway` in
+`docker network inspect`, such as `172.19.0.1`).
 
 ### Any other proxy
 
@@ -203,6 +216,8 @@ GOtome needs three things of a proxy:
   hands out (single sign-on, e-reader setup) from it.
 - **`X-Forwarded-Proto: https`**, so that the session cookie is marked
   Secure and single sign-on sends people back over HTTPS.
+- **`X-Forwarded-For`**, the address the request came from, so that the
+  limits on failed sign-ins count each person apart.
 - **Room for uploads**: a body as large as `GOTOME_UPLOAD_LIMIT_MB`, and
   no read timeout shorter than an upload takes.
 
@@ -231,9 +246,28 @@ The notification count is a stream that stays open. GOtome tells nginx not
 to buffer it and sends something every so often, so nothing is needed for
 it.
 
-Behind a proxy, every request comes from the proxy's address, so the
-limit on failed sign-ins per address counts everyone together. The limit
-per account holds as before.
+### Trust the proxy
+
+Behind a proxy, every request comes from the proxy's address. Unless
+GOtome is told which address that is, the limits per address (failed
+sign-ins, e-readers asking to be added, single sign-on starts) count
+everyone together, so one person guessing passwords locks out everybody
+else for a few minutes. The limit per account holds either way.
+
+Set `GOTOME_TRUSTED_PROXIES` in `.env` to the proxy's address, or a
+range holding it, and `docker compose up -d`. From those addresses GOtome
+takes the client's address from `X-Forwarded-For` (the last one in it
+that is not a trusted proxy, as anything before it the client may have
+written itself) and the scheme from `X-Forwarded-Proto`. From any other
+address it ignores both, so name only the proxy: trusting a range that
+holds other machines or containers lets them choose the address they
+are counted under.
+
+The addresses GOtome hands out (single sign-on, the Kobo and KOReader
+setup) are built from the `Host` header and the scheme so worked out.
+While `GOTOME_TRUSTED_PROXIES` is empty, `X-Forwarded-Proto` is believed
+from anyone, as before the variable existed; once it is set, only from
+the proxy.
 
 With a proxy in front, keep GOtome's port off the internet: bind it to
 the loopback address (`GOTOME_PORT=127.0.0.1:8080` in `.env`), or leave

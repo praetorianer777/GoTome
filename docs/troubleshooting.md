@@ -43,8 +43,14 @@ recovers by itself once there is room.
   plain HTTP makes a cookie the browser keeps to itself. Open GOtome over
   HTTPS, or fix the proxy.
 - **"Too many failed sign-in attempts"**: after several wrong passwords,
-  an account and an address are refused for a while. Behind a reverse proxy everyone
-  shares the proxy's address. Wait a few minutes.
+  an account and an address are refused for a while. Wait a few minutes.
+  Behind a reverse proxy everyone shares the proxy's address unless
+  `GOTOME_TRUSTED_PROXIES` names it
+  ([getting-started.md](getting-started.md#trust-the-proxy)).
+- **After setting `GOTOME_TRUSTED_PROXIES`, the identity provider refuses
+  the redirect URI, or e-reader setup names an `http://` address**: the
+  proxy's address is not among those named, so its `X-Forwarded-Proto` is
+  no longer believed. Name the address the requests arrive from.
 - **Someone forgot their password**: an administrator sets a new one on the
   Users page. There is no other way: if the only administrator forgot
   theirs and has no single sign-on, a backup made while it was known is
