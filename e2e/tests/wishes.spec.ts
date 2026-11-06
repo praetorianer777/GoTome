@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { chooseLibraryIn, openSignedIn } from "../fixtures/app";
 import { deleteLibrary, newLibrary, projectWord } from "../fixtures/library";
 
 test("a book the library lacks is looked up and wished for", async ({
@@ -20,11 +20,7 @@ test("a book the library lacks is looked up and wished for", async ({
 	await find.getByRole("button", { name: "Look it up" }).click();
 	const wish = find.getByRole("button", { name: `Wish for ${title}` });
 	await expect(wish).toBeVisible();
-	// Offered only while there is more than one library to choose from.
-	const choice = find.getByRole("combobox", { name: "Library it is to go into" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: name });
-	}
+	await chooseLibraryIn(page, find.getByRole("combobox", { name: "Library it is to go into" }), name);
 	await wish.click();
 
 	await expect(
