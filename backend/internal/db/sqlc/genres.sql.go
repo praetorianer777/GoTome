@@ -417,7 +417,7 @@ WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND ($4::text IS NULL OR g.genre = $4::text)
   AND ($5::float8 IS NULL
-       OR (g.score::float8, g.book_id, g.genre) < ($5::float8, $6::uuid, $7::text))
+       OR (g.score, g.book_id, g.genre) < (($5::float8)::real, $6::uuid, $7::text))
 ORDER BY g.score DESC, g.book_id DESC, g.genre DESC
 LIMIT $8::int
 `

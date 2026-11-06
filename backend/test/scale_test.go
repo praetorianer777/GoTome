@@ -66,6 +66,27 @@ var wholeByDesign = map[string]string{
 	"overview of a library": "counts every book and file",
 }
 
+// wholeQueriesByDesign are the statements, by their sqlc name, that read
+// every book by design within a view that otherwise may not, so that the
+// rest of the view is still held to reading only what it shows.
+var wholeQueriesByDesign = map[string]string{
+	// The genre review counts the waiting suggestions of every visible
+	// book, which a pass gives most books.
+	"CountGenreSuggestions": "counts every waiting suggestion",
+}
+
+// queryByDesign is the reason a plan's statement may read every book, if
+// it is one of wholeQueriesByDesign.
+func queryByDesign(plan map[string]any) string {
+	text, _ := plan["Query Text"].(string)
+	name, ok := strings.CutPrefix(text, "-- name: ")
+	if !ok {
+		return ""
+	}
+	name, _, _ = strings.Cut(name, " ")
+	return wholeQueriesByDesign[name]
+}
+
 // planCatcher keeps the plans Postgres reports while a view is asked.
 // auto_explain sends every plan to the connection as a message, so what is
 // caught is the plan that ran, inside the transaction and with the
@@ -151,7 +172,8 @@ type seedStatement struct {
 // are private ones the member is in and two private ones they are not:
 // authors, series, publishers and tags, files in three formats,
 // identifiers, a chunk of text per book, vectors, the member's reading
-// state, sessions and shelves, duplicate pairs and matches to review.
+// state, sessions and shelves, duplicate pairs, matches and genres to
+// review, and the feeds both follow.
 // Names are made of syllables, so that their trigrams repeat as real ones
 // do. Each book's number n is kept in scale_books.
 func scaleSeed(admin, member uuid.UUID) []seedStatement {
@@ -318,6 +340,29 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author' AND c.position = 0
 			JOIN authors au ON au.id = c.author_id
 			ON CONFLICT DO NOTHING`},
+		// Genres for a third of the books, two each: most suggested and
+		// waiting, a few decided, and some from tags, which the review
+		// leaves out.
+		{sql: `INSERT INTO book_genres (book_id, genre, source, method, score, state)
+			SELECT b.id, g.genre, CASE WHEN b.n % 7 = 0 THEN 'tags' ELSE 'automatic' END,
+			       CASE WHEN b.n % 7 <> 0 THEN (ARRAY['vector', 'neighbours'])[1 + b.n % 2] END,
+			       CASE WHEN b.n % 7 <> 0 THEN 0.3 + (b.n * 13 % 70) / 100.0 END,
+			       CASE WHEN b.n % 11 = 0 THEN 'accepted' WHEN b.n % 13 = 0 THEN 'rejected' ELSE 'suggested' END
+			FROM scale_books b
+			CROSS JOIN LATERAL (SELECT (ARRAY['crime', 'thriller', 'fantasy', 'science-fiction', 'romance', 'historical',
+			                                  'history', 'biography', 'humour', 'classics'])[1 + (b.n + k * 3) % 10] AS genre
+			                    FROM generate_series(0, 1) k) g
+			WHERE b.n % 3 = 0`},
+		// Both follow ten feeds of 5,000 items each, a fifth of which name
+		// what the feed's filters ask for.
+		{sql: `INSERT INTO feed_trackers (user_id, url, title, keywords, checked_at, next_fetch_at)
+			SELECT u, 'https://feeds.example/' || u || '/' || f, 'Feed ' || f, ARRAY['saga'], now(), now() + interval '1 hour'
+			FROM unnest(ARRAY[$1, $2]::uuid[]) u, generate_series(1, 10) f`, args: []any{admin, member}},
+		{sql: `INSERT INTO feed_items (tracker_id, item_key, title, link, authors, published_at, matched, backlog, first_seen_at, last_seen_at)
+			SELECT t.id, 'item-' || i, scale_word(i * 7) || ' Saga', 'https://feeds.example/item/' || i, ARRAY[scale_word(i)],
+			       CASE WHEN i % 4 > 0 THEN timestamptz '2020-01-01' + i * interval '3 hours' END,
+			       i % 5 = 0, i < 50, timestamptz '2020-01-01' + i * interval '3 hours', now()
+			FROM feed_trackers t, generate_series(0, 4999) i`},
 		{sql: `ANALYZE`},
 	}
 }
@@ -330,6 +375,8 @@ type scaleView struct {
 	adminOnly bool
 	// feed is an OPDS feed for e-readers, which is XML, not JSON.
 	feed bool
+	// after is the view whose nextCursor stands for @next in the path.
+	after string
 }
 
 // scaleViews are the views of the web app's pages, with what the seed
@@ -365,7 +412,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "library by title", path: "/books?limit=50"},
 		{name: "library by author", path: "/books?sort=author&limit=50"},
 		{name: "library newest first", path: "/books?sort=added&order=desc&limit=50"},
-		{name: "library page 2", path: "/books?limit=50&cursor=@next"},
+		{name: "library page 2", path: "/books?limit=50&cursor=@next", after: "library by title"},
 		{name: "one library", path: "/books?limit=50&library=" + library},
 		{name: "filter by author", path: "/books?limit=50&" + filter(byAuthor)},
 		{name: "authors", path: "/authors?limit=60"},
@@ -396,6 +443,10 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "collections", path: "/collections"},
 		{name: "reading statistics", path: "/me/stats?days=30"},
 		{name: "new books", path: "/releases"},
+		{name: "items of followed feeds", path: "/feeds/items"},
+		{name: "genre review", path: "/genres/suggestions"},
+		{name: "genre review page 2", path: "/genres/suggestions?cursor=@next", after: "genre review"},
+		{name: "genre review of a genre", path: "/genres/suggestions?genre=crime"},
 		{name: "search by description", path: "/search/similar?q=" + url.QueryEscape("a detective story set in Venice")},
 		{name: "clean-up: authors", path: "/cleanup?kind=authors"},
 		{name: "clean-up: titles", path: "/cleanup?kind=titles"},
@@ -446,8 +497,9 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 
 	views := scaleViews(t, a, ctx)
 	type result struct {
-		best  time.Duration
-		scans []string
+		best     time.Duration
+		scans    []string
+		byDesign string
 	}
 	results := map[string]map[string]result{}
 	for _, who := range []struct {
@@ -455,12 +507,12 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 		client *http.Client
 	}{{"administrator", admin}, {"member", member}} {
 		results[who.name] = map[string]result{}
-		next := ""
+		next := map[string]string{}
 		for _, v := range views {
 			if v.adminOnly && who.name != "administrator" {
 				continue
 			}
-			path := strings.Replace(v.path, "@next", url.QueryEscape(next), 1)
+			path := strings.Replace(v.path, "@next", url.QueryEscape(next[v.after]), 1)
 			key := who.name + " " + v.name
 			catcher.watch(key)
 			// The best of three, so that a busy machine does not decide.
@@ -481,19 +533,23 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 					logs := a.logs.String()
 					t.Fatalf("%s: GET %s: %d %v\n%s", key, path, status, body, logs[max(0, len(logs)-2000):])
 				}
-				if c, ok := body["nextCursor"].(string); ok && v.name == "library by title" {
-					next = c
+				if c, ok := body["nextCursor"].(string); ok {
+					next[v.name] = c
 				}
 				best = min(best, took)
 			}
 			catcher.watch("")
 			found := map[string]bool{}
+			r := result{best: best}
 			catcher.mu.Lock()
 			for _, plan := range catcher.plans[key] {
+				if why := queryByDesign(plan); why != "" {
+					r.byDesign = why
+					continue
+				}
 				wholeScans(plan, found)
 			}
 			catcher.mu.Unlock()
-			r := result{best: best}
 			for rel := range found {
 				r.scans = append(r.scans, rel)
 			}
@@ -522,7 +578,11 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 			}
 			return fmt.Sprintf("%d ms", r.best.Milliseconds())
 		}
-		fmt.Fprintf(&table, "| %s | %s | %s | %s |\n", v.name, cell("administrator"), cell("member"), wholeByDesign[v.name])
+		why := wholeByDesign[v.name]
+		if why == "" {
+			why = results["administrator"][v.name].byDesign
+		}
+		fmt.Fprintf(&table, "| %s | %s | %s | %s |\n", v.name, cell("administrator"), cell("member"), why)
 	}
 	t.Log(table.String())
 }

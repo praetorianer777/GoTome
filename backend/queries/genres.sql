@@ -103,7 +103,7 @@ WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND (sqlc.narg(genre)::text IS NULL OR g.genre = sqlc.narg(genre)::text)
   AND (sqlc.narg(after_score)::float8 IS NULL
-       OR (g.score::float8, g.book_id, g.genre) < (sqlc.narg(after_score)::float8, sqlc.arg(after_book)::uuid, sqlc.arg(after_genre)::text))
+       OR (g.score, g.book_id, g.genre) < ((sqlc.narg(after_score)::float8)::real, sqlc.arg(after_book)::uuid, sqlc.arg(after_genre)::text))
 ORDER BY g.score DESC, g.book_id DESC, g.genre DESC
 LIMIT sqlc.arg(max)::int;
 
