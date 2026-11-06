@@ -1,6 +1,7 @@
 package epub
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -301,7 +302,7 @@ func (p *opfPackage) series() (string, *float64) {
 
 func parseIndex(s string) *float64 {
 	v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-	if err != nil || v < 0 || v != v {
+	if err != nil || v < 0 || v != v || math.IsInf(v, 0) {
 		return nil
 	}
 	return &v

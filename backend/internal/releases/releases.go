@@ -391,7 +391,7 @@ func releaseOf(subject uuid.UUID, r metadata.Record) (sqlc.PutReleaseParams, boo
 	}
 	p := sqlc.PutReleaseParams{
 		SubjectID: subject, DedupeKey: key, Title: title, Authors: []string{}, AuthorKeys: []string{}, Isbns: []string{},
-		Provider: r.Provider, ProviderID: r.ID, SeriesIndex: r.SeriesIndex,
+		Provider: r.Provider, ProviderID: r.ID, SeriesIndex: catalog.SeriesIndexOf(r.SeriesIndex),
 	}
 	for _, c := range r.Contributors {
 		if c.Role != catalog.RoleAuthor {
