@@ -1850,7 +1850,7 @@ export class FakeServer {
 		if (!this.session?.permissions.includes("metadata:edit")) {
 			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
 		}
-		const counts = { authors: 0, placeholders: 0, clashes: 0, titles: 0 };
+		const counts = { authors: 0, placeholders: 0, clashes: 0, titles: 0, series: 0 };
 		for (const s of this.cleanup) counts[s.kind]++;
 		if (path === "/cleanup") {
 			const kind = query.get("kind") ?? "authors";

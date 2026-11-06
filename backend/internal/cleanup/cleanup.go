@@ -1,15 +1,18 @@
 // Package cleanup finds what is wrong with how books are described and
 // suggests what is right: one author under several spellings, a value a tool
-// left where an author belongs, an author that is the name of a series, and
-// what a shop added to a title. A person applies or dismisses each; nothing
-// changes by itself. Suggestions are worked out from the catalogue each time
-// they are asked for, from the books the asker sees.
+// left where an author belongs, an author that is the name of a series,
+// what a shop added to a title, and a series written into titles. A person
+// applies or dismisses each; nothing changes by itself. Suggestions are
+// worked out from the catalogue each time they are asked for, from the
+// books the asker sees.
 package cleanup
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -36,10 +39,13 @@ const (
 	// KindTitles is a title with a shop's addition; the subject is the
 	// book's ID.
 	KindTitles = "titles"
+	// KindSeries is a series that books without one hold in their titles;
+	// the subject is its loose key, as the SQL function loose_key makes it.
+	KindSeries = "series"
 )
 
 // Kinds lists every kind, in the order the page shows them.
-var Kinds = []string{KindAuthors, KindPlaceholders, KindClashes, KindTitles}
+var Kinds = []string{KindAuthors, KindPlaceholders, KindClashes, KindTitles, KindSeries}
 
 // What applying a suggestion does.
 const (
@@ -47,10 +53,11 @@ const (
 	FixRemoveAuthor = "removeAuthor"
 	FixClearSeries  = "clearSeries"
 	FixRetitle      = "retitle"
+	FixSetSeries    = "setSeries"
 )
 
 // Fixes lists every fix.
-var Fixes = []string{FixMerge, FixRemoveAuthor, FixClearSeries, FixRetitle}
+var Fixes = []string{FixMerge, FixRemoveAuthor, FixClearSeries, FixRetitle, FixSetSeries}
 
 // placeholderAuthors are the keys of what tools write when they have no
 // author: "authors_sort" is a template value left unfilled. "Anonymous" is
@@ -73,6 +80,10 @@ var ErrNotFound = errors.New("no such suggestion")
 type Name struct {
 	Name  string
 	Books int
+	// Book and Place are, for a series in titles, the book of the title and
+	// what it says.
+	Book  *uuid.UUID
+	Place *SeriesTitle
 }
 
 // Suggestion is one thing found and what to do about it.
@@ -80,11 +91,12 @@ type Suggestion struct {
 	Kind    string
 	Subject string
 	// Found are the names found: the spellings of an author, most used
-	// first, or the one author or title.
+	// first, the one author or title, or the titles that hold a series, in
+	// the order of their places in it.
 	Found []Name
 	Fix   string
-	// Suggested is the author's spelling to keep, or the title without its
-	// addition.
+	// Suggested is the author's spelling to keep, the title without its
+	// addition, or the series as most of the titles spell it.
 	Suggested string
 	// Books is how many books it is about: those of every spelling of an
 	// author, of the author or series that clash, or the one of a title.
@@ -137,6 +149,8 @@ func source(kind string) (string, []any, error) {
 		return "cleanup_name_clashes($1, $2)", nil, nil
 	case KindTitles:
 		return "cleanup_titles($1, $2)", nil, nil
+	case KindSeries:
+		return "cleanup_title_series($1, $2)", nil, nil
 	}
 	return "", nil, ErrKind
 }
@@ -214,8 +228,45 @@ func suggest(sg Suggestion) Suggestion {
 		if id, err := uuid.Parse(sg.Subject); err == nil {
 			sg.BookID = &id
 		}
+	case KindSeries:
+		sg.Fix = FixSetSeries
+		sg.Suggested = seriesOf(sg)
 	}
 	return sg
+}
+
+// seriesOf fills in the book and the place of each title of a series in
+// titles, puts them in the order of their places, and returns the spelling
+// of the series most of them use. The value is the books' IDs in the order
+// of the titles.
+func seriesOf(sg Suggestion) string {
+	ids := strings.Split(sg.value, "|")
+	spellings := map[string]int{}
+	for i := range sg.Found {
+		if i < len(ids) {
+			if id, err := uuid.Parse(ids[i]); err == nil {
+				sg.Found[i].Book = &id
+			}
+		}
+		if place, ok := SeriesInTitle(sg.Found[i].Name); ok {
+			sg.Found[i].Place = &place
+			spellings[place.Series]++
+		}
+	}
+	position := func(n Name) float64 {
+		if n.Place == nil {
+			return math.Inf(1)
+		}
+		return n.Place.Position
+	}
+	slices.SortStableFunc(sg.Found, func(a, b Name) int { return cmp.Compare(position(a), position(b)) })
+	best := ""
+	for _, n := range sg.Found {
+		if n.Place != nil && spellings[n.Place.Series] > spellings[best] {
+			best = n.Place.Series
+		}
+	}
+	return best
 }
 
 // Counts returns how many suggestions of each kind nobody dismissed.
@@ -347,7 +398,19 @@ func (s *Service) changes(ctx context.Context, scope library.Scope, kind string,
 		return c
 	}
 
-	if kind == KindTitles {
+	switch kind {
+	case KindSeries:
+		for _, sg := range chosen {
+			for _, n := range sg.Found {
+				if n.Book == nil || n.Place == nil {
+					continue
+				}
+				series, position, title := sg.Suggested, n.Place.Position, n.Place.Title
+				c := change(*n.Book)
+				c.Series, c.SeriesIndex, c.Title = &series, &position, &title
+			}
+		}
+	case KindTitles:
 		for _, sg := range chosen {
 			if sg.BookID == nil || sg.Suggested == "" {
 				continue
@@ -355,7 +418,7 @@ func (s *Service) changes(ctx context.Context, scope library.Scope, kind string,
 			title := sg.Suggested
 			change(*sg.BookID).Title = &title
 		}
-	} else {
+	default:
 		var people, names []string
 		bySubject := map[string]Suggestion{}
 		for _, sg := range chosen {

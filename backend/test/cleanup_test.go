@@ -180,7 +180,7 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 	if len(list) != 2 || list[0]["fix"] != "removeAuthor" {
 		t.Fatalf("placeholders: %v", list)
 	}
-	if want := map[string]any{"authors": 0.0, "placeholders": 2.0, "clashes": 2.0, "titles": 3.0}; !sameMap(counts, want) {
+	if want := map[string]any{"authors": 0.0, "placeholders": 2.0, "clashes": 2.0, "titles": 3.0, "series": 0.0}; !sameMap(counts, want) {
 		t.Errorf("counts %v, want %v", counts, want)
 	}
 	a.applyCleanup(editor, map[string]any{"kind": "placeholders"})
@@ -337,4 +337,147 @@ func sameMap(got, want map[string]any) bool {
 		}
 	}
 	return true
+}
+
+func TestASeriesInTitlesIsSuggestedAppliedAndDismissed(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	open := uuid.MustParse(a.library(admin, "Shelf", "shared"))
+	hidden := uuid.MustParse(a.library(admin, "Hidden", "private"))
+	books := catalog.NewService(a.pool)
+	ids := map[string]uuid.UUID{}
+	add := func(lib uuid.UUID, title, series string) {
+		t.Helper()
+		id, err := books.CreateBook(context.Background(), catalog.NewBook{LibraryID: lib, Title: title, Series: series})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[title] = id
+	}
+	add(open, "Rain Wild Chronicles 02 - Drachenkämpfer", "")
+	add(open, "Rain Wild Chronicles 01 - Drachenhüter", "")
+	add(open, "Drachenseele (Rain Wild Chronicles #3)", "")
+	// Another book of the series, alone in a library the editor does not
+	// see: alone, it is not taken for one.
+	add(hidden, "Rain Wild Chronicles 04 - Drachenblut", "")
+	// One title alone, but the series is known.
+	add(open, "Die Zwerge", "Die Zwerge")
+	add(open, "Die Zwerge, Band 2: Der Krieg der Zwerge", "")
+	// Known only where the editor does not look.
+	add(hidden, "Geheime Reihe", "Geheime Reihe")
+	add(open, "Geheime Reihe 1 - Das Erbe", "")
+	// Alone, and no series of the name: titles, not series.
+	add(open, "Fahrenheit 451 - Ein Klassiker", "")
+	add(open, "Es - Teil 1 - Der Club der Verlierer", "")
+	add(open, "1984 - Roman", "")
+	// In a series already.
+	add(open, "Die Zwerge 3 - Die Rache der Zwerge", "Die Zwerge")
+
+	list, counts := a.suggestions(editor, "series")
+	if counts["series"].(float64) != 2 || len(list) != 2 {
+		t.Fatalf("the editor's suggestions: %v %v", list, counts)
+	}
+	rain, zwerge := list[0], list[1]
+	if rain["subject"] != "rain wild chronicles" || rain["fix"] != "setSeries" || rain["suggested"] != "Rain Wild Chronicles" || rain["books"].(float64) != 3 {
+		t.Errorf("the series: %v", rain)
+	}
+	if got, want := found(rain), []string{
+		"Rain Wild Chronicles 01 - Drachenhüter", "Rain Wild Chronicles 02 - Drachenkämpfer", "Drachenseele (Rain Wild Chronicles #3)",
+	}; !slices.Equal(got, want) {
+		t.Errorf("the titles in their order: %v, want %v", got, want)
+	}
+	first := rain["found"].([]any)[0].(map[string]any)
+	if first["book"] != ids["Rain Wild Chronicles 01 - Drachenhüter"].String() || first["position"] != 1.0 || first["title"] != "Drachenhüter" {
+		t.Errorf("what a title says: %v", first)
+	}
+	if zwerge["subject"] != "die zwerge" || !slices.Equal(found(zwerge), []string{"Die Zwerge, Band 2: Der Krieg der Zwerge"}) {
+		t.Errorf("the known series: %v", zwerge)
+	}
+	if list, _ := a.suggestions(admin, "series"); len(list) != 3 || list[0]["books"].(float64) != 3 || list[2]["subject"] != "geheime reihe" {
+		t.Errorf("the administrator, who sees the series of the hidden library: %v", list)
+	}
+
+	// Dismissed, a suggestion stays away until another book holds the series.
+	if status, _, _ := a.call(editor, http.MethodPost, "/cleanup/dismiss", map[string]any{"kind": "series", "subject": "die zwerge"}); status != 204 {
+		t.Fatalf("dismiss: %d", status)
+	}
+	if list, _ := a.suggestions(editor, "series"); len(list) != 1 {
+		t.Errorf("after dismissing: %v", list)
+	}
+	add(open, "Die Zwerge, Band 4: Das Schicksal der Zwerge", "")
+	if list, _ := a.suggestions(editor, "series"); len(list) != 2 {
+		t.Errorf("after another book came: %v", list)
+	}
+
+	// A title locked by hand stays as it is; the book still takes the series.
+	a.call(editor, http.MethodPatch, "/books/"+ids["Drachenseele (Rain Wild Chronicles #3)"].String(), map[string]any{"locks": map[string]bool{"title": true}})
+	status := a.applyCleanup(editor, map[string]any{"kind": "series", "picks": []map[string]string{{"subject": "rain wild chronicles"}}})
+	if got, want := outcomes(status), map[string]string{
+		"Drachenhüter": "changed", "Drachenkämpfer": "changed", "Drachenseele (Rain Wild Chronicles #3)": "changed title",
+	}; !sameOutcomes(got, want) {
+		t.Errorf("outcomes %v, want %v", got, want)
+	}
+	for title, want := range map[string]struct {
+		title string
+		index float64
+	}{
+		"Rain Wild Chronicles 01 - Drachenhüter":   {"Drachenhüter", 1},
+		"Rain Wild Chronicles 02 - Drachenkämpfer": {"Drachenkämpfer", 2},
+		"Drachenseele (Rain Wild Chronicles #3)":   {"Drachenseele (Rain Wild Chronicles #3)", 3},
+	} {
+		book := a.book(ids[title])
+		if book.Title != want.title || book.Series != "Rain Wild Chronicles" || book.SeriesIndex == nil || *book.SeriesIndex != want.index {
+			t.Errorf("%s: %q in %q at %v", title, book.Title, book.Series, book.SeriesIndex)
+		}
+		if !slices.Contains(book.Locked, catalog.FieldSeries) {
+			t.Errorf("%s: the series is a person's edit, and locked", title)
+		}
+	}
+	if got := a.book(ids["Rain Wild Chronicles 04 - Drachenblut"]); got.Series != "" {
+		t.Errorf("the book the editor does not see was changed: %q", got.Series)
+	}
+	if list, _ := a.suggestions(editor, "series"); len(list) != 1 || list[0]["subject"] != "die zwerge" {
+		t.Errorf("after applying: %v", list)
+	}
+	// The book of the hidden library is in a known series now.
+	if list, _ := a.suggestions(admin, "series"); len(list) != 3 || list[0]["subject"] != "die zwerge" || list[1]["subject"] != "geheime reihe" || list[2]["subject"] != "rain wild chronicles" {
+		t.Errorf("the administrator's suggestions after applying: %v", list)
+	}
+}
+
+func TestASeriesInATitleIsOneRuleInGoAndSQL(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	for _, title := range []string{
+		"Rain Wild Chronicles 01 - Drachenhüter", "Rain Wild Chronicles 2 – Drachenkämpfer", "Wheel of Time #2: The Great Hunt",
+		"Die Zwerge, Band 3: Das Schicksal der Zwerge", "Die Zwerge Bd. 4 - Die Rache der Zwerge", "Perry Rhodan - 2500 - Projekt Saturn",
+		"Jerry Cotton 2913: Die beste Waffe", "Star Trek - Deep Space Nine 12 - Der Weg", "Die drei ??? Folge 125 - Feuermond",
+		"Der Herr der Ringe (1) - Die Gefährten", "The Expanse Book 1.5: The Butcher of Anderson", "Drachenhüter (Rain Wild Chronicles #1)",
+		"Die Gefährten (Der Herr der Ringe, Band 1)", "Ödland (Die Ödland-Chroniken Teil 2)", "Mord (in Paris) (Kommissar Dupin Nr. 3)",
+		"Es - Teil 1 - Der Club der Verlierer", "Fahrenheit 451 - Ein Roman", "Übel 3 - Ärger", "ÖDLAND 2 - Straße",
+		"1984 - Roman", "2001 - Odyssee im Weltraum", "Berlin 1945 - Das Ende", "Catch22 - Der Roman", "Krieg und Frieden - Teil 1",
+		"Krieg und Frieden, Teil 1", "Teil 2 - Die Rückkehr", "Band 3: Das Ende", "Der Hobbit (Teil 1)", "Drachenhüter (Band 1)",
+		"Die 39 Stufen", "Rain Wild Chronicles 01 Drachenhüter", "Das letzte Evangelium: Historischer Roman (German Edition)",
+		"Sterbewohl: Kriminalroman", "Die Legenden der Albae: Die Vergessenen", "Ocean's 11 - ", "A 1 - 2", "",
+		"  Rain Wild Chronicles 01 - Drachenhüter  ", "Saga 1 - A - Saga 2 - B", "X (Y #1) (Z #2)",
+	} {
+		var sql, want *string
+		place, ok := cleanup.SeriesInTitle(title)
+		if err := a.pool.QueryRow(context.Background(), `SELECT title_series_key($1), CASE WHEN $2 THEN loose_key($3) END`,
+			title, ok, place.Series).Scan(&sql, &want); err != nil {
+			t.Fatal(err)
+		}
+		if (sql == nil) != (want == nil) || (sql != nil && *sql != *want) {
+			t.Errorf("%q: Go reads %+v %v, SQL %v", title, place, ok, deref(sql))
+		}
+	}
+}
+
+func deref(s *string) any {
+	if s == nil {
+		return nil
+	}
+	return *s
 }

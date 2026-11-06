@@ -65,7 +65,12 @@ the book's EPUB files as well ([users-and-libraries.md](users-and-libraries.md))
 **Clean up** (editors) suggests fixes GOtome finds across the library: one
 person under several spellings ("Tolkien, J.R.R." and "J. R. R. Tolkien"),
 placeholders a tool left as an author ("Unknown"), an author who is
-really a series, and shop additions in titles ("(German Edition)").
+really a series, shop additions in titles ("(German Edition)"), and a
+series written into the titles of books that have none ("Rain Wild
+Chronicles 01 - Drachenhüter", "Drachenhüter (Rain Wild Chronicles
+#1)"). A series is suggested only where two books of a library name it
+or a book is in it already; applying one puts the books into it at the
+places their titles say and takes it off their titles.
 Applying one is an edit like any other; dismissing one keeps it away until
 what it was about changes.
 

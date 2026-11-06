@@ -15,6 +15,7 @@ export const CLEANUP_KINDS: CleanupKind[] = [
 	"placeholders",
 	"clashes",
 	"titles",
+	"series",
 ];
 
 /** The suggestions of a kind, a page at a time, with the counts of every kind. */
