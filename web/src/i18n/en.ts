@@ -1025,6 +1025,15 @@ export const en = {
 		"Remove it from GOtome? The folder and its files stay.",
 	"libraries.delete.yes": "Remove",
 	"libraries.delete.no": "Keep",
+	"libraries.members": "Members",
+	"libraries.members.hint":
+		"Administrators see every library. Add the others who may see this one.",
+	"libraries.members.none": "No members yet.",
+	"libraries.members.person": "Person",
+	"libraries.members.choose": "Choose someone",
+	"libraries.members.add": "Add",
+	"libraries.members.remove": "Remove {name}",
+	"libraries.members.everyone": "Everyone who is not an administrator is a member.",
 
 	"scan.reading": "{count} files are still being read.",
 	"scan.failedFiles": "Files that could not be read: {count}.",
