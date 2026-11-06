@@ -1047,6 +1047,15 @@ export const de: Record<MessageKey, string> = {
 	"libraries.delete.confirm": "Aus GOtome entfernen? Der Ordner und seine Dateien bleiben.",
 	"libraries.delete.yes": "Entfernen",
 	"libraries.delete.no": "Behalten",
+	"libraries.members": "Mitglieder",
+	"libraries.members.hint":
+		"Administratoren sehen jede Bibliothek. Hier kommen die anderen dazu, die diese sehen dürfen.",
+	"libraries.members.none": "Noch keine Mitglieder.",
+	"libraries.members.person": "Person",
+	"libraries.members.choose": "Jemanden wählen",
+	"libraries.members.add": "Hinzufügen",
+	"libraries.members.remove": "{name} entfernen",
+	"libraries.members.everyone": "Alle, die nicht Administrator sind, sind schon Mitglied.",
 
 	"scan.reading": "{count} Dateien werden noch gelesen.",
 	"scan.failedFiles": "Dateien, die sich nicht lesen ließen: {count}.",

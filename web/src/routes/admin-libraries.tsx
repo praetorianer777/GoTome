@@ -1,17 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
-import { Loading } from "@/components/ui";
-import { t } from "@/i18n";
+import { button, control, Loading } from "@/components/ui";
+import { type MessageKey, t } from "@/i18n";
 import { formatDateTime } from "@/lib/format";
 import {
 	type Library,
 	librariesQuery,
+	membersQuery,
+	useAddMember,
 	useCreateLibrary,
 	useDeleteLibrary,
+	useRemoveMember,
 	useUpdateLibrary,
 } from "@/libraries/api";
 import { ScanStatus } from "@/libraries/scan";
+import { usersQuery } from "@/users/api";
+
+const ROLE_LABELS: Record<string, MessageKey> = {
+	admin: "role.admin",
+	editor: "role.editor",
+	reader: "role.reader",
+};
 
 const selectClass =
 	"rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -191,7 +201,106 @@ function LibraryRow({ library }: { library: Library }) {
 			{Object.keys(errors).length === 0 && (
 				<FormError error={update.error ?? remove.error} />
 			)}
+			{library.visibility === "private" && <LibraryMembers library={library} />}
 		</li>
+	);
+}
+
+function LibraryMembers({ library }: { library: Library }) {
+	const members = useQuery(membersQuery(library.id));
+	const accounts = useQuery(usersQuery);
+	const add = useAddMember(library.id);
+	const remove = useRemoveMember(library.id);
+	const [chosen, setChosen] = useState("");
+	const heading = useId();
+	const hint = useId();
+
+	const memberIds = new Set(members.data?.map((m) => m.id));
+	// Administrators see every library, so making one a member would change nothing.
+	const candidates = (accounts.data ?? []).filter(
+		(a) => a.role !== "admin" && !memberIds.has(a.id),
+	);
+
+	function submit(event: FormEvent) {
+		event.preventDefault();
+		if (chosen) {
+			add.mutate(chosen, { onSuccess: () => setChosen("") });
+		}
+	}
+
+	return (
+		<section
+			aria-labelledby={heading}
+			aria-describedby={hint}
+			className="flex flex-col gap-2 border-t border-slate-200 pt-3 text-sm dark:border-slate-800"
+		>
+			<h3 id={heading} className="font-medium">
+				{t("libraries.members")}
+			</h3>
+			<p id={hint} className="text-slate-500 dark:text-slate-400">
+				{t("libraries.members.hint")}
+			</p>
+			{members.isPending && <Loading rows={1} />}
+			<FormError error={members.error ?? accounts.error} />
+			{members.data?.length === 0 && <p>{t("libraries.members.none")}</p>}
+			{members.data && members.data.length > 0 && (
+				<ul className="flex flex-col gap-1">
+					{members.data.map((member) => (
+						<li key={member.id} className="flex items-center gap-3">
+							<span className="font-medium">{member.username}</span>
+							<span className="text-slate-500 dark:text-slate-400">
+								{ROLE_LABELS[member.role]
+									? t(ROLE_LABELS[member.role] as MessageKey)
+									: member.role}
+							</span>
+							<button
+								type="button"
+								disabled={remove.isPending}
+								onClick={() => remove.mutate(member.id)}
+								aria-label={t("libraries.members.remove", {
+									name: member.username,
+								})}
+								className={`${button()} ml-auto`}
+							>
+								{t("libraries.delete")}
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+			{accounts.data && members.data && candidates.length === 0 && (
+				<p className="text-slate-500 dark:text-slate-400">
+					{t("libraries.members.everyone")}
+				</p>
+			)}
+			{candidates.length > 0 && members.data && (
+				<form onSubmit={submit} className="flex flex-wrap items-center gap-2">
+					<label className="flex items-center gap-2">
+						<span>{t("libraries.members.person")}</span>
+						<select
+							value={chosen}
+							onChange={(e) => setChosen(e.target.value)}
+							className={control}
+						>
+							<option value="">{t("libraries.members.choose")}</option>
+							{candidates.map((account) => (
+								<option key={account.id} value={account.id}>
+									{account.username}
+								</option>
+							))}
+						</select>
+					</label>
+					<button
+						type="submit"
+						disabled={!chosen || add.isPending}
+						className={button()}
+					>
+						{t("libraries.members.add")}
+					</button>
+				</form>
+			)}
+			<FormError error={add.error ?? remove.error} />
+		</section>
 	);
 }
 

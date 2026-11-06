@@ -93,6 +93,8 @@ export class FakeServer {
 	libraries: Library[] = [];
 	/** Folders a library cannot be made writable on, as a :ro mount. */
 	readOnlyFolders: string[] = [];
+	/** The user IDs of each private library's members, by library ID. */
+	members = new Map<string, string[]>();
 	books: BookDetail[] = [];
 	listed: (ListedBook & { series: string })[] = [];
 	/** What the next scan of a library finds; a scan is finished at once. */
@@ -2529,6 +2531,43 @@ export class FakeServer {
 					: {}),
 			});
 			return Response.json(this.libraries.at(-1), { status: 201 });
+		}
+
+		const membersPath = /^([^/]+)\/members(?:\/([^/]+))?$/.exec(id);
+		if (membersPath) {
+			const [, libraryId = "", userId] = membersPath;
+			if (!this.libraries.some((l) => l.id === libraryId)) {
+				return refuse(404, "not_found", "There is no such library.");
+			}
+			const ids = this.members.get(libraryId) ?? [];
+			if (method === "GET" && userId === undefined) {
+				const members = [...this.accounts.values()]
+					.filter((a) => ids.includes(a.user.id))
+					.map((a) => ({
+						id: a.user.id,
+						username: a.user.username,
+						role: a.user.role,
+						addedAt: "2026-01-02T00:00:00Z",
+					}))
+					.sort((a, b) => a.username.localeCompare(b.username));
+				return Response.json({ members });
+			}
+			if (method === "PUT" && userId !== undefined) {
+				if (![...this.accounts.values()].some((a) => a.user.id === userId)) {
+					return refuse(404, "not_found", "There is no such user.");
+				}
+				if (!ids.includes(userId)) {
+					this.members.set(libraryId, [...ids, userId]);
+				}
+				return new Response(null, { status: 204 });
+			}
+			if (method === "DELETE" && userId !== undefined) {
+				this.members.set(
+					libraryId,
+					ids.filter((m) => m !== userId),
+				);
+				return new Response(null, { status: 204 });
+			}
 		}
 
 		const library = this.libraries.find((l) => l.id === id);

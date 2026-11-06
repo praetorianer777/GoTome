@@ -59,9 +59,13 @@ catalogue or their devices. Asked for by its address, it answers exactly
 as a book that does not exist. A collection or shelf never shows more
 than its viewer may see.
 
-Members of a private library are added and removed through the API
-(`PUT` and `DELETE /api/v1/libraries/{library}/members/{user}`, as an
-administrator); the Libraries page does not show them yet.
+A private library's members are listed under it on **Libraries**, where
+an administrator adds someone by choosing them under **Person** and
+takes the library away again with **Remove**. Administrators are not
+offered, as they see every library anyway. A removed member no longer
+sees the library's books from their next request on. The same is
+`GET`, `PUT` and `DELETE /api/v1/libraries/{library}/members/{user}`
+in the API.
 
 ### Managed and existing folders
 

@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The Libraries page lists a private library's members and lets an
+  administrator add and remove them, without the API.
+
 ### Fixed
 
 - **GOtome may change files here** is refused, with the reason and the
@@ -13,6 +18,8 @@ What changes for someone who runs or uses GOtome. The format follows
   with `:ro`. A writable library whose folder turns read-only later is
   shown so on the Libraries page and told once to administrators, instead
   of failing file by file.
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
 - Background work no longer can stop for good with "completion subscriber
   received a job that wasn't finalized" on a heavily loaded machine: queueing
   a job that was already running kept that job from being marked finished

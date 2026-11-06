@@ -690,6 +690,75 @@ describe("libraries", () => {
 		).toBeInTheDocument();
 	});
 
+	it("gives named people a private library and takes it away again", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.withAccount("Rita", "a long password", "reader")
+			.withAccount("Edith", "a long password", "editor")
+			.withAccount("Ada", "a long password", "admin")
+			.signedInAs("Steve")
+			.withLibrary("Novels")
+			.withLibrary("Diaries", { visibility: "private" });
+		server.members.set("lib-2", ["id-Edith"]);
+		renderApp("/admin/libraries");
+
+		const diaries = within(
+			await screen.findByRole("listitem", { name: "Diaries" }),
+		);
+		const members = within(
+			await diaries.findByRole("region", { name: "Members" }),
+		);
+		expect(await members.findByText("Edith")).toBeInTheDocument();
+		// Administrators see every library, so they are not offered.
+		const choice = members.getByLabelText("Person");
+		expect(
+			within(choice)
+				.getAllByRole("option")
+				.map((o) => o.textContent),
+		).toEqual(["Choose someone", "Rita"]);
+
+		await person.selectOptions(choice, "Rita");
+		await person.click(members.getByRole("button", { name: "Add" }));
+		expect(await members.findByText("Rita")).toBeInTheDocument();
+		expect(server.requests).toContainEqual({
+			method: "PUT",
+			path: "/libraries/lib-2/members/id-Rita",
+			body: undefined,
+		});
+		expect(
+			await members.findByText(
+				"Everyone who is not an administrator is a member.",
+			),
+		).toBeInTheDocument();
+
+		await person.click(members.getByRole("button", { name: "Remove Edith" }));
+		await waitFor(() =>
+			expect(
+				members.queryByRole("button", { name: "Remove Edith" }),
+			).not.toBeInTheDocument(),
+		);
+		expect(server.members.get("lib-2")).toEqual(["id-Rita"]);
+		expect(
+			within(members.getByLabelText("Person")).getByRole("option", {
+				name: "Edith",
+			}),
+		).toBeInTheDocument();
+
+		const novels = within(screen.getByRole("listitem", { name: "Novels" }));
+		expect(
+			novels.queryByRole("region", { name: "Members" }),
+		).not.toBeInTheDocument();
+		await person.selectOptions(
+			novels.getByLabelText("Who sees it"),
+			"Only its members",
+		);
+		expect(
+			await novels.findByRole("region", { name: "Members" }),
+		).toBeInTheDocument();
+		expect(novels.getByText("No members yet.")).toBeInTheDocument();
+	});
+
 	it("lets an administrator scan a library and says what the scan found", async () => {
 		const person = userEvent.setup();
 		server
