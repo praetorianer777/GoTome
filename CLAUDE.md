@@ -100,6 +100,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Integration tests live in `backend/test` behind the `integration` build tag and run
   with `make test-integration` against the running stack (`make up` first). Each test
   gets its own database from `dbtest.New(t)`, copied from a migrated template.
+  The same target runs `cmd/gotome/cli_test.go`, the subcommands against a
+  test database.
 
 ## Web app
 
@@ -1210,6 +1212,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   What it does outside KOReader is `gotome_feed.lua`, tested in LuaJIT
   (`make test-koplugin`, in the push gate; LuaJIT is in the toolchain
   image), which also checks that the rest compiles.
+- The feed the plugin is tested with (`koplugin/testdata/device-feed.xml`)
+  and the Tolino app's answers (`clients/android/app/src/test/resources/api`)
+  are the server's own, IDs numbered and times and secrets fixed:
+  `TestTheDeviceClientsFixturesAreTheServersAnswers` fails when an answer
+  changes, and `make device-fixtures` writes them anew.
 - A Kobo reader, and a Tolino in Kobo mode, syncs over Kobo's own sync
   (`internal/kobo`, `httpapi/kobo_handlers.go`, #230): its
   `api_endpoint` is `/api/v1/kobo/<device token>`, as the reader sends no
@@ -1288,8 +1295,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
   inside the app process; there is no separate worker container.
 - A feature defines its job as an args type with a `Kind()` and a worker, registers
-  the worker in `cmd/gotome` with `river.AddWorker`, and enqueues through the
-  `jobs.Runner`. Use `InsertTx` when the job follows from a change in the same
+  the worker in `registrations` (`cmd/gotome/background.go`), a periodic one's
+  `jobs.Schedule` in `schedules`, and enqueues through the `jobs.Runner`; a test
+  fails for a `Kind()` without a worker or a schedule function not called. Use `InsertTx` when the job follows from a change in the same
   transaction, and `Unique` for work that must not be queued twice.
 - The jobs page reads `river_job` directly (`ingest/jobs.go`), joined to the
   library, book or file a job names in its arguments as `libraryId`, `bookId`

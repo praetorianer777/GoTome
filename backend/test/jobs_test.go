@@ -388,7 +388,7 @@ func TestPeriodicJob(t *testing.T) {
 	pool := dbtest.New(t)
 	w := newNoteWorker()
 	startRunner(t, pool, w, jobs.Config{
-		Periodic: []*river.PeriodicJob{jobs.Every(time.Hour, true, noteArgs{Note: "on the hour"}, jobs.QueueDefault)},
+		Periodic: []jobs.Schedule{jobs.Every(time.Hour, true, noteArgs{Note: "on the hour"}, jobs.QueueDefault)},
 	})
 	if got := w.wait(t); got != "on the hour" {
 		t.Errorf("the periodic job that ran is %q", got)
@@ -449,7 +449,7 @@ func TestSessionSweepJob(t *testing.T) {
 	runner, err := jobs.New(pool, jobs.Config{
 		Logger:   slog.New(slog.DiscardHandler),
 		Workers:  workers,
-		Periodic: []*river.PeriodicJob{jobs.Every(time.Hour, true, auth.SweepSessionsArgs{}, jobs.QueueDefault)},
+		Periodic: []jobs.Schedule{jobs.Every(time.Hour, true, auth.SweepSessionsArgs{}, jobs.QueueDefault)},
 	})
 	if err != nil {
 		t.Fatal(err)
