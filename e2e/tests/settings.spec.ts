@@ -44,6 +44,11 @@ test("a setting of a few values is chosen, not typed", async ({
 	// The development stack looks books up in its test records whichever
 	// sources this names, so changing it disturbs no other test.
 	await openSignedIn(page);
+	// From the default, whatever a run before left.
+	const reset = await page.request.patch("/api/v1/settings", {
+		data: { values: { "metadata.providers": null } },
+	});
+	expect(reset.status()).toBe(200);
 	await page.goto("/admin/settings");
 	const sources = page.getByRole("group", { name: "Sources to ask" });
 	const crossref = sources.getByRole("checkbox", { name: "Crossref" });
