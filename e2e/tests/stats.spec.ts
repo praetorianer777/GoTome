@@ -106,6 +106,9 @@ test("the overview counts what a library holds, and shows the background work on
 	const name = `Overview ${stamp}`;
 	await openSignedIn(page);
 	const library = await makeLibrary(page.request, name, "shared");
+	// The page offers a choice of library only when there are two: on a
+	// fresh stack this test may run while no other one exists.
+	const other = await makeLibrary(page.request, `Overview other ${stamp}`, "private");
 	await uploadFile(
 		page.request,
 		library,
@@ -165,6 +168,9 @@ test("the overview counts what a library holds, and shows the background work on
 	).toHaveCount(0);
 	await context.close();
 
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${other}`)).status(),
+	).toBe(204);
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
 	).toBe(204);

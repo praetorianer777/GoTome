@@ -121,3 +121,19 @@ export async function bookFrame(page: Page, text: string): Promise<Frame> {
 	}).toPass({ timeout: 20_000 });
 	return found as Frame;
 }
+
+/**
+ * Chooses the library the upload page adds files to. The choice is there
+ * only once the page knows the libraries, and only when there are several
+ * to choose from: looked for before that, it would be missed and the files
+ * would go into whichever library comes first.
+ */
+export async function chooseUploadLibrary(page: Page, name: string): Promise<void> {
+	const zone = page.getByRole("region", { name: "Files to add" });
+	await expect(zone).toBeVisible();
+	const choice = page.getByRole("combobox", { name: "Into the library" });
+	if (await choice.isVisible()) {
+		await choice.selectOption({ label: name });
+	}
+	await expect(zone).toContainText(`Drop files here to add them to ${name},`);
+}
