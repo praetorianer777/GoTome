@@ -12870,6 +12870,12 @@
       "SettingView": {
         "type": "object",
         "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "isSet": {
             "type": "boolean"
           },
@@ -12882,6 +12888,9 @@
               "text",
               "secret"
             ]
+          },
+          "multiple": {
+            "type": "boolean"
           },
           "updatedAt": {
             "type": "string",

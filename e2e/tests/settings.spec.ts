@@ -33,3 +33,44 @@ test("a token is saved encrypted and never shown again", async ({
 		.click();
 	await expect(page.getByLabel("Hardcover API token")).toHaveAccessibleDescription(/Not set\./);
 });
+
+test("a setting of a few values is chosen, not typed", async ({
+	page,
+}, testInfo) => {
+	test.skip(
+		testInfo.project.name !== "chromium",
+		"settings are global to the stack",
+	);
+	// The development stack looks books up in its test records whichever
+	// sources this names, so changing it disturbs no other test.
+	await openSignedIn(page);
+	await page.goto("/admin/settings");
+	const sources = page.getByRole("group", { name: "Sources to ask" });
+	const crossref = sources.getByRole("checkbox", { name: "Crossref" });
+	await expect(crossref).toBeChecked();
+	await crossref.uncheck();
+	await page.getByRole("button", { name: "Save" }).click();
+	await expect(page.getByRole("status")).toHaveText("Saved.");
+
+	await page.reload();
+	await expect(crossref).not.toBeChecked();
+	const answer = await (await page.request.get("/api/v1/settings")).json();
+	const providers = answer.settings.find(
+		(s: { key: string }) => s.key === "metadata.providers",
+	);
+	expect(providers).toMatchObject({
+		value: "openlibrary,hardcover",
+		multiple: true,
+		choices: ["openlibrary", "crossref", "hardcover"],
+	});
+	await expect(
+		page.getByRole("combobox", { name: "Genres for books" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("switch", { name: "Look up new books by themselves" }),
+	).toBeVisible();
+
+	await crossref.check();
+	await page.getByRole("button", { name: "Save" }).click();
+	await expect(page.getByRole("status")).toHaveText("Saved.");
+});

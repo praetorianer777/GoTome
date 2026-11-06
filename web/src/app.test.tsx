@@ -1667,6 +1667,73 @@ describe("settings", () => {
 		).toBeInTheDocument();
 	});
 
+	it("offers each setting of a few values as a choice, in sections", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		const sections = within(
+			await screen.findByRole("navigation", { name: "Sections" }),
+		);
+		expect(sections.getAllByRole("link").map((l) => l.textContent)).toEqual([
+			"Sign-in",
+			"Book details",
+			"Similar books and search",
+			"Genres",
+		]);
+		expect(sections.getByRole("link", { name: "Genres" })).toHaveAttribute(
+			"href",
+			"#settings-genres",
+		);
+		const signIn = within(screen.getByRole("region", { name: "Sign-in" }));
+		const passwords = signIn.getByRole("switch", {
+			name: "Sign in with a password",
+		});
+		expect(passwords).toBeChecked();
+		await person.click(passwords);
+		expect(passwords).not.toBeChecked();
+
+		const genres = within(
+			screen.getByRole("region", { name: "Genres" }),
+		).getByRole("combobox", { name: "Genres for books" });
+		expect(genres).toHaveValue("off");
+		expect(
+			within(genres)
+				.getAllByRole("option")
+				.map((o) => o.textContent),
+		).toEqual([
+			"Off: write nothing",
+			"Tags only (tags)",
+			"Tags and what books are about (vector)",
+			"Tags and the books most like them (neighbours)",
+			"Tags, the books most like them, else what they are about (combined)",
+		]);
+		await person.selectOptions(genres, "Tags only (tags)");
+
+		const sources = within(
+			screen.getByRole("group", { name: "Sources to ask" }),
+		);
+		await person.click(sources.getByRole("checkbox", { name: "Crossref" }));
+		await person.click(
+			sources.getByRole("checkbox", { name: "Open Library" }),
+		);
+		// Asking no source at all is what turning the lookups off is for.
+		expect(sources.getByRole("checkbox", { name: "Hardcover" })).toBeDisabled();
+
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({
+			values: {
+				"auth.passwords": "off",
+				"genres.suggest": "tags",
+				"metadata.providers": "hardcover",
+			},
+		});
+		expect(
+			screen.getByRole("switch", { name: "Sign in with a password" }),
+		).not.toBeChecked();
+	});
+
 	it("offers the embedding models with what each takes, and asks before one that embeds every book again", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Steve", "a long password").signedInAs("Steve");
@@ -3585,6 +3652,72 @@ describe("smart shelves", () => {
 			});
 	}
 
+	it("picks formats and stars from lists rather than typing them", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		renderApp("/smart-shelves/new");
+		await person.type(
+			await screen.findByRole("textbox", { name: "Name" }),
+			"Good EPUBs",
+		);
+		const first = within(
+			screen.getByRole("group", { name: "Rule 1 of Rules" }),
+		);
+		await person.selectOptions(
+			first.getByRole("combobox", { name: "Field" }),
+			"Format",
+		);
+		expect(first.queryByRole("textbox")).not.toBeInTheDocument();
+		await person.click(first.getByRole("checkbox", { name: "EPUB" }));
+
+		await person.click(screen.getByRole("button", { name: "Add a rule" }));
+		const second = within(
+			screen.getByRole("group", { name: "Rule 2 of Rules" }),
+		);
+		await person.selectOptions(
+			second.getByRole("combobox", { name: "Field" }),
+			"My rating",
+		);
+		await person.click(
+			second.getByRole("checkbox", { name: "5 of 5 stars" }),
+		);
+		await person.click(screen.getByRole("button", { name: "Add a rule" }));
+		const third = within(
+			screen.getByRole("group", { name: "Rule 3 of Rules" }),
+		);
+		await person.selectOptions(
+			third.getByRole("combobox", { name: "Field" }),
+			"My rating",
+		);
+		await person.selectOptions(
+			third.getByRole("combobox", { name: "Comparison" }),
+			"is between",
+		);
+		await person.selectOptions(
+			third.getByRole("combobox", { name: "From" }),
+			"3 of 5 stars",
+		);
+		await person.click(screen.getByRole("button", { name: "Create" }));
+
+		await waitFor(() =>
+			expect(
+				server.requests.find(
+					(r) => r.path === "/smart-shelves" && r.method === "POST",
+				)?.body,
+			).toEqual({
+				name: "Good EPUBs",
+				visibility: "private",
+				filter: JSON.stringify({
+					all: [
+						{ field: "format", op: "in", values: ["epub"] },
+						{ field: "rating", op: "in", values: ["5"] },
+						{ field: "rating", op: "between", values: ["3", ""] },
+					],
+				}),
+			}),
+		);
+	});
+
 	it("builds a shelf from rules with a live count, and what is on it follows the person's status", async () => {
 		const person = userEvent.setup();
 		withShelf();
@@ -3700,7 +3833,10 @@ describe("smart shelves", () => {
 			rule.getByRole("combobox", { name: "Comparison" }),
 			"is between",
 		);
-		await person.type(rule.getByRole("textbox", { name: "From" }), "5");
+		await person.selectOptions(
+			rule.getByRole("combobox", { name: "From" }),
+			"5 of 5 stars",
+		);
 		await person.click(rule.getByRole("checkbox", { name: "Not" }));
 		expect(
 			await screen.findByText("Books matching now: 2"),
