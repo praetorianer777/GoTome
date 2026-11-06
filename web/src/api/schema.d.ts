@@ -3789,10 +3789,12 @@ export interface components {
             settings: components["schemas"]["SettingView"][];
         };
         SettingView: {
+            choices?: string[];
             isSet: boolean;
             key: string;
             /** @enum {string} */
             kind: "text" | "secret";
+            multiple?: boolean;
             /** Format: date-time */
             updatedAt?: string;
             value?: string;
