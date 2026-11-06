@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-06
+
 ### Changed
 
 - More tags give genres: tags a store marks, such as "Science Fiction
