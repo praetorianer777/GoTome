@@ -75,3 +75,8 @@ what it was about changes.
 and keeps it as a wish: a book without files. When a file of that book
 arrives in the library chosen for it (by ISBN, or title and author), the
 wish is fulfilled and the wisher is told.
+
+A wish has the reading status "Wishlist". The same status on a book the
+library already holds is called "Want to read": the page lists those
+books apart from the wishes, under "Want to read" and "Not in the
+library yet".

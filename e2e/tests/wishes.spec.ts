@@ -36,10 +36,9 @@ test("a book the library lacks is looked up and wished for", async ({
 	// Earlier runs on the same stack may have left a wish of the same title.
 	await expect(
 		page
-			.getByRole("region", { name: "Wished for" })
-			.getByRole("listitem")
-			.filter({ has: page.locator(`a[href="${wished}"]`) }),
-	).toContainText("Not in the library yet");
+			.getByRole("region", { name: "Not in the library yet" })
+			.locator(`a[href="${wished}"]`),
+	).toBeVisible();
 
 	await deleteLibrary(page, library);
 });
