@@ -105,7 +105,8 @@ On the Libraries page, the library's line says what its last scan found.
   library found the folder read-only, usually a mount changed since or a
   disk that the system remounted read-only after an error. Edits stay in
   GOtome without reaching the files, and trash and fixes are refused,
-  until the folder is writable again; then **Scan now** clears it.
+  until the folder is writable again; then **Scan now** clears it and
+  writes the edits made meanwhile into the files.
 
 ## Files that cannot be read
 

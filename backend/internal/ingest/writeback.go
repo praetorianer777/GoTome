@@ -93,16 +93,20 @@ func (s *Service) WriteBackTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) 
 		return 0, err
 	}
 	for _, file := range files {
-		// Not unique: a job already running may have read the book before
-		// this change, and the one after it must write it again.
-		_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: file}, jobs.InsertOpts{
-			Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
-		})
-		if err != nil {
+		if err := s.queueWriteBackTx(ctx, tx, file); err != nil {
 			return 0, err
 		}
 	}
 	return len(files), nil
+}
+
+func (s *Service) queueWriteBackTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID) error {
+	// Not unique: a job already running may have read the book before
+	// this change, and the one after it must write it again.
+	_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: fileID}, jobs.InsertOpts{
+		Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
+	})
+	return err
 }
 
 // catalogRoles are the MARC relator codes of the roles the catalogue knows.
@@ -132,6 +136,15 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 	if file.Format != "epub" || !file.Writable || file.Drm || file.ExtractState != "done" ||
 		file.MissingAt != nil || file.TrashedAt != nil || file.Sha256 == nil {
 		return nil
+	}
+	// Told once for the library and not tried again: a job per file would
+	// fail as often as the library has EPUBs. The file is remembered, and
+	// written once the folder can be again (WritableAgain).
+	if err := s.noteUnwritable(ctx, probeFolder(file.LibraryID, file.RootPath)); err != nil {
+		if errors.Is(err, ErrFolderReadOnly) {
+			return sqlc.New(s.pool).SetWriteBackPending(ctx, fileID)
+		}
+		return err
 	}
 	book, err := catalog.NewService(s.pool).Get(ctx, library.Scope{SeesAll: true}, file.BookID)
 	if errors.Is(err, catalog.ErrNotFound) {
@@ -166,14 +179,6 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 		return nil
 	}
 
-	// Told once for the library and not tried again: a job per file would
-	// fail as often as the library has EPUBs.
-	if err := s.noteUnwritable(ctx, probeFolder(file.LibraryID, file.RootPath)); err != nil {
-		if errors.Is(err, ErrFolderReadOnly) {
-			return nil
-		}
-		return err
-	}
 	temp := filepath.Join(filepath.Dir(path), "."+filepath.Base(path)+".gotome-write")
 	// A part left by a crash is of no use to anyone.
 	_ = os.Remove(temp)

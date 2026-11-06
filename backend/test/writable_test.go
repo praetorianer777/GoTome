@@ -151,3 +151,80 @@ func TestAFolderThatTurnedReadOnlyIsToldOnce(t *testing.T) {
 		t.Errorf("the folder holds %v", names)
 	}
 }
+
+func TestAnEditWhileReadOnlyIsWrittenOnceTheFolderIsWritable(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	folder := t.TempDir()
+	for _, name := range []string{"Emma.epub", "Persuasion.epub"} {
+		writeEPUB(t, filepath.Join(folder, name), emmaMetadata, nil, "Emma Woodhouse.")
+	}
+	lib := a.writableLibrary(admin, "Shelf", folder)
+	a.scanNow(lib)
+	files := a.shelfFiles()
+	for _, f := range files {
+		a.extract(f.ID)
+	}
+	emma, persuasion := files["Emma.epub"], files["Persuasion.epub"]
+	emmaPath := filepath.Join(folder, "Emma.epub")
+
+	writable := readOnly(t, folder)
+	if status, body, _ := a.call(editor, http.MethodPatch, "/books/"+emma.BookID.String(), map[string]any{"title": "Emma (Annotated)"}); status != 200 {
+		t.Fatalf("edit: %d %v", status, body)
+	}
+	if err := a.writeBack(emma.ID); err != nil {
+		t.Fatal(err)
+	}
+	if title := readEPUB(t, emmaPath).Metadata.Title; title != "Emma" {
+		t.Fatalf("a read-only folder's file says %q", title)
+	}
+	if n := a.writeJobs(emma.ID); n != 1 {
+		t.Fatalf("%d writes queued while read-only, want the edit's", n)
+	}
+
+	// Found writable at the next scan: the write passed by is queued again,
+	// once, and the file that was not passed by is left alone.
+	writable()
+	a.scanNow(lib)
+	a.scanNow(lib)
+	if n := a.writeJobs(emma.ID); n != 2 {
+		t.Errorf("%d writes queued after the folder is writable, want 2", n)
+	}
+	if n := a.writeJobs(persuasion.ID); n != 0 {
+		t.Errorf("%d writes queued for a file nobody changed", n)
+	}
+	if err := a.writeBack(emma.ID); err != nil {
+		t.Fatal(err)
+	}
+	if title := readEPUB(t, emmaPath).Metadata.Title; title != "Emma (Annotated)" {
+		t.Errorf("once writable the file says %q", title)
+	}
+	a.scanNow(lib)
+	if n := a.writeJobs(emma.ID); n != 2 {
+		t.Errorf("%d writes queued after the file was written, want 2", n)
+	}
+
+	// Made writable again by hand instead of by a scan.
+	writable = readOnly(t, folder)
+	if status, body, _ := a.call(editor, http.MethodPatch, "/books/"+emma.BookID.String(), map[string]any{"title": "Emma (Second)"}); status != 200 {
+		t.Fatalf("edit: %d %v", status, body)
+	}
+	if err := a.writeBack(emma.ID); err != nil {
+		t.Fatal(err)
+	}
+	writable()
+	if status, body, _ := a.call(admin, http.MethodPatch, "/libraries/"+lib, map[string]any{"writable": true}); status != 200 {
+		t.Fatalf("make writable: %d %v", status, body)
+	}
+	if n := a.writeJobs(emma.ID); n != 4 {
+		t.Errorf("%d writes queued after the library was made writable, want 4", n)
+	}
+	if err := a.writeBack(emma.ID); err != nil {
+		t.Fatal(err)
+	}
+	if title := readEPUB(t, emmaPath).Metadata.Title; title != "Emma (Second)" {
+		t.Errorf("once made writable the file says %q", title)
+	}
+}

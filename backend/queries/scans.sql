@@ -225,5 +225,16 @@ UPDATE book_files
 SET sha256      = sqlc.arg(sha256),
     size_bytes  = sqlc.arg(size_bytes),
     modified_at = sqlc.arg(modified_at),
+    write_back_pending = false,
     updated_at  = now()
 WHERE id = sqlc.arg(id);
+
+-- name: SetWriteBackPending :exec
+UPDATE book_files SET write_back_pending = true WHERE id = $1 AND NOT write_back_pending;
+
+-- name: TakeWriteBacksPending :many
+-- The files of a library whose write-back was passed by while its folder
+-- could not be written, taken off the list as they are queued again.
+UPDATE book_files SET write_back_pending = false
+WHERE library_id = $1 AND write_back_pending
+RETURNING id;

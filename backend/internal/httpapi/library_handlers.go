@@ -231,6 +231,12 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return libraryError(err)
 	}
+	// Update has just seen the folder written to.
+	if req.Writable != nil && *req.Writable {
+		if err := s.Scans.WritableAgain(r.Context(), id); err != nil {
+			return err
+		}
+	}
 	user := UserFrom(r.Context())
 	scans, err := s.scanState(r, library.ScopeOf(*user))
 	if err != nil {
