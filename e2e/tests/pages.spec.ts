@@ -4,15 +4,15 @@ import { VIEWS } from "../fixtures/views";
 
 // Most pages load on their first visit rather than with the app (#353): each
 // is opened here by its address, as a bookmark or a reload opens it.
-test("every main page loads on its own", async ({ page }) => {
-	await openSignedIn(page);
-	for (const view of VIEWS) {
+for (const view of VIEWS) {
+	test(`${view.path} loads on its own`, async ({ page }) => {
+		await openSignedIn(page);
 		await page.goto(view.path);
 		await expect(
 			page.getByRole("heading", { name: view.heading, level: 1 }),
 		).toBeVisible();
-	}
-});
+	});
+}
 
 test("the app's files are sent compressed", async ({ page }) => {
 	const scripts: Response[] = [];
