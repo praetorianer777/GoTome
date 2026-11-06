@@ -664,7 +664,11 @@ describe("libraries", () => {
 		server
 			.withAccount("Steve", "a long password")
 			.signedInAs("Steve")
-			.withLibrary("NAS", { mode: "external", writable: false, rootPath: "/books" })
+			.withLibrary("NAS", {
+				mode: "external",
+				writable: false,
+				rootPath: "/books",
+			})
 			.withLibrary("Shelf", {
 				mode: "external",
 				writable: true,
@@ -680,13 +684,17 @@ describe("libraries", () => {
 			nas.getByRole("checkbox", { name: "GOtome may change files here" }),
 		);
 		expect(
-			await nas.findByText("GOtome cannot write to /books: read-only file system."),
+			await nas.findByText(
+				"GOtome cannot write to /books: read-only file system.",
+			),
 		).toBeInTheDocument();
 		expect(server.libraries[0]?.writable).toBe(false);
 
 		const shelf = within(screen.getByRole("listitem", { name: "Shelf" }));
 		expect(
-			shelf.getByText(/GOtome cannot write to this folder: read-only file system/),
+			shelf.getByText(
+				/GOtome cannot write to this folder: read-only file system/,
+			),
 		).toBeInTheDocument();
 	});
 
@@ -1127,6 +1135,59 @@ describe("books", () => {
 		expect(
 			await screen.findByRole("region", { name: "Books" }),
 		).toBeInTheDocument();
+	});
+
+	it("lets long values on a book's page break anywhere, and lists each identifier on a line", async () => {
+		const word =
+			"Donaudampfschifffahrtsgesellschaftskapitänswitwenrentenversicherung";
+		const fileName = `Robin_Hobb_-_Rain_Wild_Chronicles_01_-_${word}.epub`;
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook(`Rain Wild Chronicles 01 - Drachenhüter ${word}`, {
+				contributors: [
+					...Array.from({ length: 6 }, (_, i) => ({
+						name: `Margaret Lindholm-${word}-${i}`,
+						role: "author" as const,
+					})),
+					{ name: `Uta ${word}`, role: "translator" as const },
+				],
+				series: `Die Regenwildnis-Chroniken ${word}`,
+				publisher: `Penhaligon-Verlag-${word}`,
+				tags: [word],
+				identifiers: [
+					{ type: "isbn", value: "9783764530605", fromFile: true },
+					{ type: "uuid", value: `urn:uuid:${word}`, fromFile: true },
+				],
+				files: [
+					{
+						id: "file-1",
+						kind: "ebook",
+						format: "epub",
+						name: fileName,
+						size: 1_400_000,
+						missing: false,
+						drm: false,
+						extractState: "done",
+					},
+				],
+			});
+		renderApp("/books/book-1");
+
+		const title = await screen.findByRole("heading", { level: 1 });
+		// jsdom lays nothing out: the browser test (book-layout.spec.ts)
+		// measures the boxes; here the rule they depend on is held.
+		expect(title.closest("article")).toHaveClass("wrap-anywhere");
+		const details = within(screen.getByRole("region", { name: "Details" }));
+		expect(details.getByText(`Penhaligon-Verlag-${word}`)).toBeInTheDocument();
+		expect(details.getByText(`Uta ${word}`)).toBeInTheDocument();
+		expect(details.getByText("ISBN 9783764530605")).toBeInTheDocument();
+		expect(details.getByText(`UUID urn:uuid:${word}`)).toBeInTheDocument();
+		expect(
+			within(screen.getByRole("region", { name: "Files" })).getByText(fileName),
+		).toBeInTheDocument();
+		expect(screen.getByText(word, { selector: "li" })).toBeInTheDocument();
 	});
 
 	it("says so when a book is not there", async () => {
@@ -5293,41 +5354,82 @@ describe("following authors and series", () => {
 		expect(await feeds.findByText("Publisher News")).toBeInTheDocument();
 		expect(feeds.getByText("Naming dragon")).toBeInTheDocument();
 		expect(
-			feeds.getByText("Stopped after 8 failures in a row: not an RSS or Atom feed: the document is <html>."),
+			feeds.getByText(
+				"Stopped after 8 failures in a row: not an RSS or Atom feed: the document is <html>.",
+			),
 		).toBeInTheDocument();
 		await person.click(feeds.getByRole("button", { name: "Try again" }));
-		await waitFor(() => expect(feeds.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument());
+		await waitFor(() =>
+			expect(
+				feeds.queryByRole("button", { name: "Try again" }),
+			).not.toBeInTheDocument(),
+		);
 
-		await person.type(feeds.getByRole("textbox", { name: "Feed address" }), "https://author.example/atom");
-		await person.type(feeds.getByRole("textbox", { name: "Words" }), "novel, , spring");
-		await person.type(feeds.getByRole("textbox", { name: "Authors" }), "Cornwell, Bernard; Liza Grimm");
+		await person.type(
+			feeds.getByRole("textbox", { name: "Feed address" }),
+			"https://author.example/atom",
+		);
+		await person.type(
+			feeds.getByRole("textbox", { name: "Words" }),
+			"novel, , spring",
+		);
+		await person.type(
+			feeds.getByRole("textbox", { name: "Authors" }),
+			"Cornwell, Bernard; Liza Grimm",
+		);
 		await person.click(feeds.getByRole("button", { name: "Follow the feed" }));
-		expect(await feeds.findByText("https://author.example/atom")).toBeInTheDocument();
-		expect(server.requests.find((r) => r.method === "POST" && r.path === "/feeds")?.body).toEqual({
+		expect(
+			await feeds.findByText("https://author.example/atom"),
+		).toBeInTheDocument();
+		expect(
+			server.requests.find((r) => r.method === "POST" && r.path === "/feeds")
+				?.body,
+		).toEqual({
 			url: "https://author.example/atom",
 			keywords: ["novel", "spring"],
 			authors: ["Cornwell, Bernard", "Liza Grimm"],
 		});
-		expect(feeds.getByText("Naming novel, spring · By Cornwell, Bernard; Liza Grimm")).toBeInTheDocument();
+		expect(
+			feeds.getByText(
+				"Naming novel, spring · By Cornwell, Bernard; Liza Grimm",
+			),
+		).toBeInTheDocument();
 
-		const items = within(screen.getByRole("region", { name: "From your feeds" }));
+		const items = within(
+			screen.getByRole("region", { name: "From your feeds" }),
+		);
 		const link = items.getByRole("link", { name: "Dragon Summer" });
-		expect(link).toHaveAttribute("href", "https://publisher.example/dragon-summer");
+		expect(link).toHaveAttribute(
+			"href",
+			"https://publisher.example/dragon-summer",
+		);
 		expect(link).toHaveAttribute("rel", "noopener noreferrer");
 
-		await person.click(feeds.getByRole("button", { name: "Stop following Publisher News" }));
-		await waitFor(() => expect(server.feeds.map((f) => f.id)).toEqual(["feed-2"]));
+		await person.click(
+			feeds.getByRole("button", { name: "Stop following Publisher News" }),
+		);
+		await waitFor(() =>
+			expect(server.feeds.map((f) => f.id)).toEqual(["feed-2"]),
+		);
 	});
 
 	it("words a new item of a feed by its title, and several by their count", async () => {
 		const person = userEvent.setup();
 		server
-			.notify({ kind: "feed.item", data: { title: "Dragon Summer", feed: "Publisher News" }, link: "/releases" })
+			.notify({
+				kind: "feed.item",
+				data: { title: "Dragon Summer", feed: "Publisher News" },
+				link: "/releases",
+			})
 			.notify({ kind: "feed.item", data: { count: 3 }, link: "/releases" });
 		renderApp("/");
-		await person.click(await screen.findByRole("button", { name: "Notifications, 2 unread" }));
+		await person.click(
+			await screen.findByRole("button", { name: "Notifications, 2 unread" }),
+		);
 		const panel = within(screen.getByRole("region", { name: "Notifications" }));
-		const told = panel.getAllByRole("button", { name: /^Unread: New in a feed you follow/ });
+		const told = panel.getAllByRole("button", {
+			name: /^Unread: New in a feed you follow/,
+		});
 		expect(told.map((b) => b.textContent)).toEqual([
 			expect.stringContaining("3 new items in the feeds you follow."),
 			expect.stringContaining("Dragon Summer, in Publisher News."),
@@ -5578,11 +5680,29 @@ describe("reviewing suggested genres", () => {
 	});
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);
-		server.withAccount("Rita", "a long password", "editor").signedInAs("Rita").withLibrary("Novels");
+		server
+			.withAccount("Rita", "a long password", "editor")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
 		server.genreSuggestions = [
-			{ book: book("book-1", "Death at La Fenice"), genre: "crime", method: "vector", score: 0.12 },
-			{ book: book("book-2", "Acqua Alta"), genre: "crime", method: "neighbours", score: 0.8 },
-			{ book: book("book-2", "Acqua Alta"), genre: "travel", method: "vector", score: 0.06 },
+			{
+				book: book("book-1", "Death at La Fenice"),
+				genre: "crime",
+				method: "vector",
+				score: 0.12,
+			},
+			{
+				book: book("book-2", "Acqua Alta"),
+				genre: "crime",
+				method: "neighbours",
+				score: 0.8,
+			},
+			{
+				book: book("book-2", "Acqua Alta"),
+				genre: "travel",
+				method: "vector",
+				score: 0.06,
+			},
 		];
 	});
 	afterEach(() => vi.unstubAllGlobals());
@@ -5591,34 +5711,58 @@ describe("reviewing suggested genres", () => {
 		const person = userEvent.setup();
 		const { router } = renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "Genres" }));
-		expect(await screen.findByRole("button", { name: "All: 3" })).toHaveAttribute("aria-pressed", "true");
-		await person.click(screen.getByRole("button", { name: "Crime & mystery: 2" }));
+		expect(
+			await screen.findByRole("button", { name: "All: 3" }),
+		).toHaveAttribute("aria-pressed", "true");
+		await person.click(
+			screen.getByRole("button", { name: "Crime & mystery: 2" }),
+		);
 		expect(router.state.location.search).toEqual({ genre: "crime" });
-		await waitFor(() => expect(screen.queryByText("Travel")).not.toBeInTheDocument());
-		expect(screen.getByRole("link", { name: "Death at La Fenice" })).toHaveAttribute("href", "/books/book-1");
+		await waitFor(() =>
+			expect(screen.queryByText("Travel")).not.toBeInTheDocument(),
+		);
+		expect(
+			screen.getByRole("link", { name: "Death at La Fenice" }),
+		).toHaveAttribute("href", "/books/book-1");
 		expect(screen.getByText("from the books most like it")).toBeInTheDocument();
 
-		await person.click(screen.getAllByRole("button", { name: "Accept Crime & mystery" })[0] as HTMLElement);
+		await person.click(
+			screen.getAllByRole("button", {
+				name: "Accept Crime & mystery",
+			})[0] as HTMLElement,
+		);
 		await waitFor(() =>
-			expect(server.requests.find((r) => r.path === "/books/book-1/genres/crime")?.body).toEqual({
+			expect(
+				server.requests.find((r) => r.path === "/books/book-1/genres/crime")
+					?.body,
+			).toEqual({
 				state: "accepted",
 			}),
 		);
 		await person.click(await screen.findByRole("button", { name: "Reject" }));
 		await waitFor(() =>
-			expect(server.requests.find((r) => r.path === "/books/book-2/genres/crime")?.body).toEqual({
+			expect(
+				server.requests.find((r) => r.path === "/books/book-2/genres/crime")
+					?.body,
+			).toEqual({
 				state: "rejected",
 			}),
 		);
 		await person.click(await screen.findByRole("button", { name: "All: 1" }));
-		expect(await screen.findByRole("button", { name: "Accept Travel" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("button", { name: "Accept Travel" }),
+		).toBeInTheDocument();
 	});
 
 	it("names the genres in German", async () => {
 		setLocale("de");
 		renderApp("/genres");
-		expect(await screen.findByRole("button", { name: "Krimi: 2" })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "Reisen: 1" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("button", { name: "Krimi: 2" }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Reisen: 1" }),
+		).toBeInTheDocument();
 	});
 });
 
@@ -6222,11 +6366,23 @@ describe("pausing the embedding", () => {
 
 	it("shows how far the passages are while they are on", async () => {
 		vi.stubGlobal("EventSource", undefined);
-		server.embedding.passages = { withText: 100, withPassages: 40, bytes: 3_000_000 };
+		server.embedding.passages = {
+			withText: 100,
+			withPassages: 40,
+			bytes: 3_000_000,
+		};
 		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
 		renderApp("/jobs");
-		const panel = within(await screen.findByRole("region", { name: "Working out what books are about" }));
-		expect(await panel.findByText(/^Passages: 40 of 100 books with text, 3 MB on disk\.$/)).toBeInTheDocument();
+		const panel = within(
+			await screen.findByRole("region", {
+				name: "Working out what books are about",
+			}),
+		);
+		expect(
+			await panel.findByText(
+				/^Passages: 40 of 100 books with text, 3 MB on disk\.$/,
+			),
+		).toBeInTheDocument();
 	});
 
 	it("shows an editor the progress without the button", async () => {
