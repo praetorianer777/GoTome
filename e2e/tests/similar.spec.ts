@@ -30,7 +30,7 @@ async function suggested(
 test("a book's page shows the books most like it, whose genres are suggested for it and reviewed", async ({
 	page,
 }, testInfo) => {
-	test.setTimeout(120_000);
+	test.setTimeout(240_000);
 	const stamp = `${testInfo.project.name}${Date.now()}`;
 	const text = `The keeper of the Moorland light ${stamp} walks the cliffs at dusk and counts the ships.`;
 	await openSignedIn(page);
@@ -54,6 +54,8 @@ test("a book's page shows the books most like it, whose genres are suggested for
 	for (const title of open) {
 		await page.goto(`/books/${books[title]}`);
 		const similar = page.getByRole("region", { name: "Similar books" });
+		// One worker embeds and suggests genres for the whole stack, and may
+		// be busy with the other projects' books for a while.
 		await expect(async () => {
 			await page.reload();
 			for (const other of tagged) {
@@ -61,7 +63,7 @@ test("a book's page shows the books most like it, whose genres are suggested for
 					timeout: 1_000,
 				});
 			}
-		}).toPass({ timeout: 60_000 });
+		}).toPass({ timeout: 120_000 });
 	}
 	await page
 		.getByRole("region", { name: "Similar books" })
@@ -84,7 +86,7 @@ test("a book's page shows the books most like it, whose genres are suggested for
 				"fantasy",
 			]);
 		}
-	}).toPass({ timeout: 60_000, intervals: [2_000] });
+	}).toPass({ timeout: 90_000, intervals: [2_000] });
 
 	await page.goto("/genres");
 	const suggestion = (title: string) =>
