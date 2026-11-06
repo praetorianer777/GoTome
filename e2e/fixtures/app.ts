@@ -67,6 +67,38 @@ export async function accountMenu(page: Page, username: string = ADMIN.username)
 }
 
 /**
+ * Makes a shared managed library holding one book per title, each from a
+ * PDF of that name, uploaded one after the other in the order given. It
+ * answers the library's ID and the books' IDs by title.
+ */
+export async function libraryOfBooks(
+	page: Page,
+	name: string,
+	titles: string[],
+): Promise<{ id: string; books: Record<string, string> }> {
+	const created = await page.request.post("/api/v1/libraries", {
+		data: { name, mode: "managed", visibility: "shared" },
+	});
+	expect(created.status()).toBe(201);
+	const { id } = (await created.json()) as { id: string };
+	const books: Record<string, string> = {};
+	for (const title of titles) {
+		const uploaded = await page.request.post(`/api/v1/libraries/${id}/uploads`, {
+			multipart: {
+				file: {
+					name: `${title}.pdf`,
+					mimeType: "application/pdf",
+					buffer: Buffer.from(`%PDF-1.4\n% ${title}\n`),
+				},
+			},
+		});
+		expect(uploaded.status()).toBe(200);
+		books[title] = ((await uploaded.json()) as { bookId: string }).bookId;
+	}
+	return { id, books };
+}
+
+/**
  * The frame the book's pages are in. foliate-js keeps them in a closed
  * shadow root, which locators do not reach; the frames of the page do.
  */

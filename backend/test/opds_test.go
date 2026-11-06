@@ -36,6 +36,7 @@ type feed struct {
 		ID      string     `xml:"id"`
 		Title   string     `xml:"title"`
 		Authors []string   `xml:"author>name"`
+		Content string     `xml:"content"`
 		Links   []feedLink `xml:"link"`
 	} `xml:"entry"`
 }
@@ -247,5 +248,109 @@ func TestTheKOReaderPluginIsToldWhereItCameFrom(t *testing.T) {
 	}
 	if status, _, _ := a.fetch(http.DefaultClient, httpapi.APIPrefix+"/koreader/plugin.zip"); status != 401 {
 		t.Errorf("signed out: %d", status)
+	}
+}
+
+func TestTheShelvesFeedsListWhatTheShelvesHold(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	shared := a.library(admin, "Shared", "shared")
+	hidden := a.library(admin, "Hidden", "private")
+	book := func(library, title string) string {
+		t.Helper()
+		status, up := a.upload(admin, library, title+".pdf", []byte("%PDF-1.4 "+title))
+		if status != 200 {
+			t.Fatalf("upload: %d %v", status, up)
+		}
+		id := up["bookId"].(string)
+		if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+id, map[string]any{"title": title}); status != 200 {
+			t.Fatalf("edit: %d %v", status, out)
+		}
+		return id
+	}
+	alpha, beta, gamma := book(shared, "Alpha"), book(shared, "Beta"), book(shared, "Gamma")
+	secret := book(hidden, "Secret")
+	collection := func(c *http.Client, name, visibility string, books ...string) string {
+		t.Helper()
+		status, col, _ := a.call(c, http.MethodPost, "/collections", map[string]any{"name": name, "visibility": visibility})
+		if status != 201 && status != 200 {
+			t.Fatalf("collection: %d %v", status, col)
+		}
+		id := col["id"].(string)
+		if status, out, _ := a.call(c, http.MethodPost, "/collections/"+id+"/books", map[string]any{"books": books}); status >= 300 {
+			t.Fatalf("add to the collection: %d %v", status, out)
+		}
+		return id
+	}
+	smartShelf := func(c *http.Client, name, visibility, filter string) string {
+		t.Helper()
+		status, shelf, _ := a.call(c, http.MethodPost, "/smart-shelves", map[string]any{"name": name, "filter": filter, "visibility": visibility})
+		if status != 201 && status != 200 {
+			t.Fatalf("smart shelf: %d %v", status, shelf)
+		}
+		return shelf["id"].(string)
+	}
+	own := collection(reader, "Holiday", "private", gamma, alpha)
+	others := collection(admin, "Staff picks", "shared", beta, secret)
+	collection(admin, "Admin's own", "private", alpha)
+	if status, out, _ := a.call(reader, http.MethodPut, "/books/"+beta+"/reading", map[string]any{"rating": 5}); status != 200 {
+		t.Fatalf("rating: %d %v", status, out)
+	}
+	if status, out, _ := a.call(admin, http.MethodPut, "/books/"+gamma+"/reading", map[string]any{"rating": 5}); status != 200 {
+		t.Fatalf("rating: %d %v", status, out)
+	}
+	favourites := smartShelf(reader, "Favourites", "private", `{"field":"rating","op":"in","values":["5"]}`)
+	smartShelf(admin, "Admin's favourites", "private", `{"field":"rating","op":"in","values":["5"]}`)
+	_, made, _ := a.call(reader, http.MethodPost, "/auth/devices", map[string]any{"name": "Kobo"})
+	device := deviceClient("reader", made["token"].(string))
+
+	shelves := a.feed(device, httpapi.APIPrefix+"/opds/shelves")
+	listed := map[string]string{}
+	links := map[string]string{}
+	for _, e := range shelves.Entries {
+		listed[e.Title] = e.Content
+		links[e.Title] = e.Links[0].Href
+	}
+	want := map[string]string{"Holiday": "2 books", "Staff picks": "1 book", "Favourites": "1 book"}
+	if len(listed) != len(want) {
+		t.Errorf("shelves: %v, want %v", listed, want)
+	}
+	for name, count := range want {
+		if listed[name] != count {
+			t.Errorf("%s: %q, want %q", name, listed[name], count)
+		}
+	}
+	if links["Holiday"] != httpapi.APIPrefix+"/opds/collections/"+own || links["Favourites"] != httpapi.APIPrefix+"/opds/smart-shelves/"+favourites {
+		t.Errorf("shelf links: %v", links)
+	}
+
+	titles := func(href string) []string {
+		t.Helper()
+		var out []string
+		for _, e := range a.feed(device, href).Entries {
+			out = append(out, e.Title)
+		}
+		return out
+	}
+	for href, want := range map[string]string{
+		httpapi.APIPrefix + "/opds/collections/" + own:          "Gamma Alpha",
+		httpapi.APIPrefix + "/opds/collections/" + others:       "Beta",
+		httpapi.APIPrefix + "/opds/smart-shelves/" + favourites: "Beta",
+	} {
+		if got := strings.Join(titles(href), " "); got != want {
+			t.Errorf("%s: %q, want %q", href, got, want)
+		}
+	}
+	f := a.feed(device, httpapi.APIPrefix+"/opds/collections/"+own)
+	if f.Title != "Holiday" || !strings.HasPrefix(f.Entries[0].Links[0].Href, httpapi.APIPrefix+"/files/") {
+		t.Errorf("the collection's feed: %+v", f)
+	}
+	if status, out, _ := a.call(reader, http.MethodPut, "/books/"+alpha+"/reading", map[string]any{"rating": 5}); status != 200 {
+		t.Fatalf("rating: %d %v", status, out)
+	}
+	if got := strings.Join(titles(httpapi.APIPrefix+"/opds/smart-shelves/"+favourites), " "); got != "Alpha Beta" {
+		t.Errorf("the smart shelf after a rating: %q", got)
 	}
 }
