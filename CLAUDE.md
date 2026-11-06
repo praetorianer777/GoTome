@@ -1079,6 +1079,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   whether embedding is on; the jobs page shows it (`jobs/embedding.tsx`)
   with a Pause / Start button for `settings:manage`, which sets
   `embedding.enabled` through the settings route.
+- A model not chosen goes (#357): `unused_embedding_models` holds since
+  when each of `embed.Specs` is not (`settings.Update` records a switch;
+  `similar.RemoveUnused` counts one found unused from then), and once
+  that is `embedding.removeUnusedAfterDays` ago, the hourly
+  `similar.remove_models` job (queue `embed`, so never beside a pass)
+  removes its files but those the chosen spec shares (`embed.Remove`),
+  its passages (`passages.Service.Remove`) and its `book_vectors` in
+  batches (`DeleteVectorsOfModel`), stopping if it is chosen again.
+  `POST /embedding/models/{modelName}/remove` queues it at once.
 - `GET /embedding/models` (`Service.Models`, `settings:manage`) lists
   `embed.Specs` for the settings page, which offers `embedding.model` as
   a choice from it: size on disk, `Spec.Memory` (an estimate on the CPU),

@@ -83,3 +83,8 @@ SELECT v.book_id, (1 - (v.embedding <=> sqlc.arg(query)::text::vector))::float8 
 FROM book_vectors v
 WHERE v.book_id = ANY(sqlc.arg(ids)::uuid[]) AND v.kind = 'metadata'
   AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text;
+
+-- name: DeletePassageFilesOfModel :exec
+-- The model's passages are gone from the store.
+DELETE FROM passage_files
+WHERE model = sqlc.arg(model)::text AND model_version = sqlc.arg(model_version)::text;

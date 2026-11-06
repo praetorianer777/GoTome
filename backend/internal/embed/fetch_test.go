@@ -211,3 +211,41 @@ func TestEverySpecSaysWhatItTakes(t *testing.T) {
 		t.Errorf("bge-m3 %d bytes, e5-small %d", BGEM3.DiskBytes(), E5Small.DiskBytes())
 	}
 }
+
+func TestRemoveKeepsTheFilesTheChosenModelShares(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, E5Small.Dir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"model.onnx": "fp32 weights", "tokenizer.json": "shared", E5Small.Weights.Name: "int8"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := StoredBytes(root, E5SmallFP32, E5Small); got != int64(len("fp32 weights")) {
+		t.Errorf("fp32 beside int8 takes %d bytes of its own", got)
+	}
+	if got := StoredBytes(root, E5SmallFP32, BGEM3); got != int64(len("fp32 weights")+len("shared")) {
+		t.Errorf("fp32 beside bge-m3 takes %d bytes", got)
+	}
+	freed, err := Remove(root, E5SmallFP32, E5Small)
+	if err != nil || freed != int64(len("fp32 weights")) {
+		t.Fatalf("removed %d bytes: %v", freed, err)
+	}
+	for name, want := range map[string]bool{"model.onnx": false, "tokenizer.json": true, E5Small.Weights.Name: true} {
+		if _, err := os.Stat(filepath.Join(dir, name)); (err == nil) != want {
+			t.Errorf("%s there: %v, want %v", name, err == nil, want)
+		}
+	}
+
+	if _, err := Remove(root, E5Small, BGEM3); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the emptied folder stays: %v", err)
+	}
+	if freed, err := Remove(root, Spec{Server: "x"}, E5Small); freed != 0 || err != nil {
+		t.Errorf("a server's model: %d, %v", freed, err)
+	}
+}

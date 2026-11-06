@@ -120,6 +120,19 @@ type ModelChoice struct {
 	// vector of it.
 	Metadata int `json:"metadata"`
 	Content  int `json:"content"`
+	// StoredBytes is what its files and passages take on disk now, of
+	// every library; for a model not chosen, what removing it frees, as
+	// files the chosen one shares stay.
+	StoredBytes int64 `json:"storedBytes"`
+	// DatabaseBytes is roughly what its vectors take in the database, of
+	// every library.
+	DatabaseBytes int64 `json:"databaseBytes"`
+	// UnusedSince is when it stopped being the chosen one, as far as is
+	// known; left out for the chosen one.
+	UnusedSince *time.Time `json:"unusedSince,omitempty"`
+	// RemoveAt is when its files and vectors are removed by themselves;
+	// left out for the chosen one.
+	RemoveAt *time.Time `json:"removeAt,omitempty"`
 }
 
 // ModelList is every model to choose from, the smallest first, with the
@@ -150,6 +163,28 @@ func (s *Service) Models(ctx context.Context, scope library.Scope) (ModelList, e
 	for _, r := range rows {
 		counts[key{r.Model, r.ModelVersion}] = r
 	}
+	sizes, err := sqlc.New(s.pool).SizeVectorsByModel(ctx)
+	if err != nil {
+		return ModelList{}, err
+	}
+	bytes := make(map[key]int64, len(sizes))
+	for _, r := range sizes {
+		bytes[key{r.Model, r.ModelVersion}] = r.Bytes
+	}
+	unused, err := sqlc.New(s.pool).ListUnusedModels(ctx)
+	if err != nil {
+		return ModelList{}, err
+	}
+	since := make(map[string]time.Time, len(unused))
+	for _, r := range unused {
+		since[r.Name] = r.Since
+	}
+	var keep time.Duration
+	if s.RemoveAfter != nil {
+		if keep, err = s.RemoveAfter(ctx); err != nil {
+			return ModelList{}, err
+		}
+	}
 	out := ModelList{Books: status.Books, WithText: status.WithText, Models: make([]ModelChoice, 0, len(embed.Specs))}
 	for name, sp := range embed.Specs {
 		c := counts[key{sp.Model.Name, Version(sp.Model)}]
@@ -161,6 +196,24 @@ func (s *Service) Models(ctx context.Context, scope library.Scope) (ModelList, e
 		}
 		if sp.Runs() {
 			m.MemoryBytes = sp.Memory
+		}
+		m.DatabaseBytes = bytes[key{sp.Model.Name, Version(sp.Model)}]
+		if s.ModelDir != "" {
+			if m.Chosen {
+				m.StoredBytes = embed.StoredBytes(s.ModelDir, sp, embed.Spec{})
+			} else {
+				m.StoredBytes = embed.StoredBytes(s.ModelDir, sp, spec)
+			}
+		}
+		if s.PassageBytes != nil {
+			m.StoredBytes += s.PassageBytes(sp.Model)
+		}
+		if t, ok := since[name]; ok && !m.Chosen {
+			m.UnusedSince = &t
+			if s.RemoveAfter != nil {
+				at := t.Add(keep)
+				m.RemoveAt = &at
+			}
 		}
 		if s.Probe != nil {
 			m.Readiness = s.Probe(ctx, sp)

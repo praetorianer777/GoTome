@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- An embedding model no longer in use has its downloaded files, its
+  vectors and its passage vectors removed once it has not been chosen for
+  a day (the new setting "Days an unused model is kept",
+  `embedding.removeUnusedAfterDays`). The model list on the settings page
+  shows what each model takes on disk and in the database, and "Remove
+  now" frees one not in use at once.
+
 ## [0.10.0] - 2026-11-06
 
 ### Changed

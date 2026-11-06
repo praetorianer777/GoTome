@@ -81,6 +81,22 @@ func (q *Queries) DeletePassageFiles(ctx context.Context) error {
 	return err
 }
 
+const deletePassageFilesOfModel = `-- name: DeletePassageFilesOfModel :exec
+DELETE FROM passage_files
+WHERE model = $1::text AND model_version = $2::text
+`
+
+type DeletePassageFilesOfModelParams struct {
+	Model        string
+	ModelVersion string
+}
+
+// The model's passages are gone from the store.
+func (q *Queries) DeletePassageFilesOfModel(ctx context.Context, arg DeletePassageFilesOfModelParams) error {
+	_, err := q.db.Exec(ctx, deletePassageFilesOfModel, arg.Model, arg.ModelVersion)
+	return err
+}
+
 const listLivePassages = `-- name: ListLivePassages :many
 SELECT c.id, c.library_id
 FROM passage_files p

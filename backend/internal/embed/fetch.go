@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/praetorianer777/gotome/backend/internal/outbound"
@@ -96,6 +97,63 @@ func Present(root string, spec Spec) bool {
 		}
 	}
 	return true
+}
+
+// own are the spec's files that keep does not have too: the same name in
+// the same folder, as the two weights of e5-small share their tokenizer.
+func own(spec, keep Spec) []File {
+	if !spec.Runs() {
+		return nil
+	}
+	var out []File
+	for _, f := range spec.Files() {
+		if spec.Dir == keep.Dir && keep.Runs() && slices.ContainsFunc(keep.Files(), func(k File) bool { return k.Name == f.Name }) {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// StoredBytes is what the spec's files take in root/spec.Dir now, of those
+// keep does not have too, whatever their state: a file half downloaded or
+// corrupted counts as it lies.
+func StoredBytes(root string, spec, keep Spec) int64 {
+	var n int64
+	for _, f := range own(spec, keep) {
+		if info, err := os.Stat(filepath.Join(root, spec.Dir, f.Name)); err == nil && info.Mode().IsRegular() {
+			n += info.Size()
+		}
+	}
+	return n
+}
+
+// Remove deletes the spec's files from root/spec.Dir, but those keep has
+// too, and the folder once nothing else is in it; it returns the bytes it
+// freed. A model only a server runs has none.
+func Remove(root string, spec, keep Spec) (int64, error) {
+	var freed int64
+	var errs []error
+	for _, f := range own(spec, keep) {
+		path := filepath.Join(root, spec.Dir, f.Name)
+		info, err := os.Lstat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err == nil {
+			err = os.Remove(path)
+		}
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		freed += info.Size()
+	}
+	if spec.Runs() {
+		// Fails while anything else is in it, such as the files of keep.
+		_ = os.Remove(filepath.Join(root, spec.Dir))
+	}
+	return freed, errors.Join(errs...)
 }
 
 // defaultClient is guarded like every other outbound request: the address

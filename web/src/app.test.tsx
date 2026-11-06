@@ -1763,6 +1763,50 @@ describe("settings", () => {
 		});
 	});
 
+	it("removes a model not in use once asked", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		const models = within(
+			await screen.findByRole("list", { name: "The models to choose from" }),
+		);
+		const bge = within(models.getByRole("listitem", { name: "bge-m3" }));
+		expect(
+			bge.getByText("Takes 2.3 GB on disk and about 1.1 MB in the database."),
+		).toBeInTheDocument();
+		expect(bge.getByText(/^Not in use since .*; its files and vectors are removed on /)).toBeInTheDocument();
+		const small = within(
+			models.getByRole("listitem", { name: "multilingual-e5-small" }),
+		);
+		expect(small.queryByRole("button", { name: /Remove/ })).not.toBeInTheDocument();
+		expect(
+			within(
+				models.getByRole("listitem", { name: "multilingual-e5-small-fp32" }),
+			).queryByRole("button", { name: /Remove/ }),
+		).not.toBeInTheDocument();
+
+		await person.click(bge.getByRole("button", { name: "Remove bge-m3 now" }));
+		let dialog = within(
+			await screen.findByRole("alertdialog", { name: "Remove bge-m3?" }),
+		);
+		expect(
+			dialog.getByText(/Switching back to it later means downloading it and embedding every book again/),
+		).toBeInTheDocument();
+		expect(dialog.getByRole("button", { name: "Keep it" })).toHaveFocus();
+		await person.click(dialog.getByRole("button", { name: "Keep it" }));
+		expect(server.removedModels).toEqual([]);
+
+		await person.click(bge.getByRole("button", { name: "Remove bge-m3 now" }));
+		dialog = within(await screen.findByRole("alertdialog"));
+		await person.click(dialog.getByRole("button", { name: "Remove" }));
+		expect(
+			await screen.findByText(/^Removal of bge-m3 is queued/),
+		).toBeInTheDocument();
+		expect(server.removedModels).toEqual(["bge-m3"]);
+		expect(server.requests.some((r) => r.method === "PATCH")).toBe(false);
+	});
+
 	it("keeps an editor out", async () => {
 		server
 			.withAccount("Edith", "a long password", "editor")
