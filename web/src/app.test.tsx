@@ -3131,7 +3131,12 @@ describe("the audiobook player", () => {
 			},
 			finishes: 0,
 		};
-		const { router } = renderApp("/books/book-1");
+		const { router, queryClient } = renderApp("/books/book-1");
+		// As the app keeps answers: the book page shown again must not rely
+		// on its answer being old already.
+		queryClient.setDefaultOptions({
+			queries: { retry: false, staleTime: 30_000 },
+		});
 		await person.click(await screen.findByRole("link", { name: "Listen" }));
 		expect(router.state.location.pathname).toBe("/books/book-1/listen");
 
@@ -3168,6 +3173,10 @@ describe("the audiobook player", () => {
 
 		// Elsewhere in the app the book plays on, in the bar along the bottom.
 		await person.click(screen.getByRole("link", { name: "Back to the book" }));
+		// Listening made it a book being read, which its page now says.
+		expect(
+			await screen.findByRole("combobox", { name: "Your status" }),
+		).toHaveValue("reading");
 		const bar = within(
 			await screen.findByRole("region", { name: "Now playing" }),
 		);

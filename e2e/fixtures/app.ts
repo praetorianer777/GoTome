@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Frame, type Locator, type Page } from "@playwright/test";
 import { ADMIN } from "./stack";
 
 /** Fills the sign-in form. The page must already be the sign-in page. */
@@ -64,4 +64,28 @@ export async function mainNav(page: Page): Promise<Locator> {
 export async function accountMenu(page: Page, username: string = ADMIN.username): Promise<Locator> {
 	await page.getByRole("button", { name: `Account: ${username}` }).click();
 	return page.getByRole("group", { name: "Account" });
+}
+
+/**
+ * The frame the book's pages are in. foliate-js keeps them in a closed
+ * shadow root, which locators do not reach; the frames of the page do.
+ */
+export async function bookFrame(page: Page, text: string): Promise<Frame> {
+	let found: Frame | undefined;
+	await expect(async () => {
+		for (const frame of page.frames()) {
+			if (frame === page.mainFrame()) continue;
+			if (
+				await frame
+					.getByText(text, { exact: false })
+					.count()
+					.catch(() => 0)
+			) {
+				found = frame;
+				return;
+			}
+		}
+		throw new Error(`no frame shows ${text}`);
+	}).toPass({ timeout: 20_000 });
+	return found as Frame;
 }
