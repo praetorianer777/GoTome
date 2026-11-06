@@ -18,10 +18,14 @@ test("a book the library lacks is looked up and wished for", async ({
 	const find = page.getByRole("region", { name: "Wish for a book" });
 	await find.getByRole("textbox", { name: "Title" }).fill(title);
 	await find.getByRole("button", { name: "Look it up" }).click();
-	await find
-		.getByRole("combobox", { name: "Library it is to go into" })
-		.selectOption({ label: name });
-	await find.getByRole("button", { name: `Wish for ${title}` }).click();
+	const wish = find.getByRole("button", { name: `Wish for ${title}` });
+	await expect(wish).toBeVisible();
+	// Offered only while there is more than one library to choose from.
+	const choice = find.getByRole("combobox", { name: "Library it is to go into" });
+	if (await choice.isVisible()) {
+		await choice.selectOption({ label: name });
+	}
+	await wish.click();
 
 	await expect(
 		page.getByRole("heading", { name: title, level: 1 }),
