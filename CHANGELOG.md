@@ -16,13 +16,6 @@ What changes for someone who runs or uses GOtome. The format follows
   write to, it merges the other book in with its files instead of
   trashing them.
 
-- More tags give genres: tags a store marks, such as "Science Fiction
-  (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
-  "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
-  are known spellings. `gotome genre-check` no longer lists tags that
-  rightly give no genre, such as "Roman", "eBook", publishers and
-  countries, among those to map.
-
 ### Fixed
 
 - Keeping one book of a pair, moving a file to the trash, restoring it
@@ -32,6 +25,24 @@ What changes for someone who runs or uses GOtome. The format follows
   cannot be written and why, right at the button, and marks the library
   as one whose folder cannot be written.
 
+## [0.10.0] - 2026-11-06
+
+### Changed
+
+- More tags give genres: tags a store marks, such as "Science Fiction
+  (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
+  "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
+  are known spellings. `gotome genre-check` no longer lists tags that
+  rightly give no genre, such as "Roman", "eBook", publishers and
+  countries, among those to map.
+
+### Fixed
+
+- A book's page keeps long titles, author lists, series, publishers,
+  identifiers, tags and file names inside their boxes at every width:
+  they wrap, and words too long for a line break, instead of running
+  over the details card and off the screen. The details card is a little
+  wider, and lists each identifier on a line of its own.
 - An author or series followed while GOtome was looking up the others is
   looked up right after, instead of only at the next hourly round.
 - A book's page shows the status reading gave it straight away: going
