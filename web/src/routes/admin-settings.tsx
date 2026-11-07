@@ -54,6 +54,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.embeddingModel",
 		hint: "settings.embeddingModel.hint",
 	},
+	"embedding.removeUnusedAfterDays": {
+		label: "settings.embeddingRemoveUnused",
+		hint: "settings.embeddingRemoveUnused.hint",
+	},
 	"embedding.server": {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",

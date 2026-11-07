@@ -193,8 +193,9 @@ takes too much from the machine:
 - **Another model**: on a CPU without int8 instructions (older x86, some
   ARM boards), `multilingual-e5-small-fp32` may be faster than the default
   int8 model, at four times the download and more memory. Measure it on the
-  Overview's pace ("in the last hour") before and after: going back costs
-  nothing, as each model's vectors are kept.
+  Overview's pace ("in the last hour") before and after: going back within
+  a day costs nothing, as the model before keeps its files and vectors for
+  `embedding.removeUnusedAfterDays`.
 - **A GPU elsewhere**: an Ollama server with a GPU runs `bge-m3`
   ([embedding-server.md](embedding-server.md)).
 - **No download**: with `GOTOME_OFFLINE=true` the model is not downloaded,

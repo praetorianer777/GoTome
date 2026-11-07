@@ -134,3 +134,17 @@ func (s *Server) listEmbeddingModels(w http.ResponseWriter, r *http.Request) err
 	writeJSON(w, r, http.StatusOK, models)
 	return nil
 }
+
+func (s *Server) removeEmbeddingModel(w http.ResponseWriter, r *http.Request) error {
+	err := s.Similar.RequestRemoval(r.Context(), pathName(r, "modelName"))
+	switch {
+	case errors.Is(err, similar.ErrNoSuchModel):
+		return ErrNotFound("There is no such model.")
+	case errors.Is(err, similar.ErrModelChosen):
+		return ErrConflict("The model is the one books are embedded with; choose another first.")
+	case err != nil:
+		return err
+	}
+	w.WriteHeader(http.StatusAccepted)
+	return nil
+}

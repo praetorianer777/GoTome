@@ -1050,6 +1050,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embedding/models/{modelName}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays */
+        post: operations["removeEmbeddingModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/embedding/status": {
         parameters: {
             query?: never;
@@ -3475,6 +3492,7 @@ export interface components {
         ModelChoice: {
             chosen: boolean;
             content: number;
+            databaseBytes: number;
             dimensions: number;
             diskBytes: number;
             memoryBytes: number;
@@ -3482,6 +3500,11 @@ export interface components {
             model: string;
             name: string;
             readiness: components["schemas"]["Readiness"];
+            /** Format: date-time */
+            removeAt?: string;
+            storedBytes: number;
+            /** Format: date-time */
+            unusedSince?: string;
             weights: string;
         };
         ModelList: {
@@ -6288,6 +6311,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ModelList"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeEmbeddingModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modelName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

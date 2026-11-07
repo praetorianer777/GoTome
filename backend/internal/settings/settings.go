@@ -63,6 +63,9 @@ const (
 	// models GOtome does not run itself, such as bge-m3 on a GPU: the
 	// models of embed.Specs with a Server. Unset, they are not available.
 	EmbeddingServer = "embedding.server"
+	// EmbeddingRemoveUnusedDays is how many days a model is no longer the
+	// chosen one before its files and vectors are removed (#357).
+	EmbeddingRemoveUnusedDays = "embedding.removeUnusedAfterDays"
 	// GenreSuggestions is how books are given genres of the fixed list
 	// (internal/genres): "off", the default, writes nothing; "tags" gives
 	// the genres their tags mean; "vector", "neighbours" and "combined"
@@ -136,6 +139,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
+	{Key: EmbeddingRemoveUnusedDays, Kind: KindText, Default: "1", Check: days},
 	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode},
 	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
@@ -438,6 +442,14 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 	}
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		_, choosing := values[EmbeddingModel]
+		var before string
+		if choosing {
+			var err error
+			if before, err = s.TextTx(ctx, tx, EmbeddingModel); err != nil {
+				return err
+			}
+		}
 		for _, p := range puts {
 			if p.remove {
 				if err := q.DeleteSetting(ctx, p.def.Key); err != nil {
@@ -459,12 +471,45 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 				return err
 			}
 		}
+		if choosing {
+			return recordChoice(ctx, s, tx, before)
+		}
 		return nil
 	})
 	if err == nil && s.OnChange != nil {
 		s.OnChange(ctx, slices.Sorted(maps.Keys(values)))
 	}
 	return err
+}
+
+// recordChoice notes when the model chosen before stopped being chosen,
+// which is when its files and vectors may go, and that the one chosen now
+// is not unused.
+func recordChoice(ctx context.Context, s *Store, tx pgx.Tx, before string) error {
+	after, err := s.TextTx(ctx, tx, EmbeddingModel)
+	if err != nil || after == before {
+		return err
+	}
+	q := sqlc.New(tx)
+	if err := q.MarkModelLeft(ctx, before); err != nil {
+		return err
+	}
+	return q.MarkModelChosen(ctx, after)
+}
+
+// RemoveUnusedAfter is how long a model is not chosen before its files and
+// vectors are removed.
+func (s *Store) RemoveUnusedAfter(ctx context.Context) (time.Duration, error) {
+	v, err := s.Text(ctx, EmbeddingRemoveUnusedDays)
+	if err != nil {
+		return 0, err
+	}
+	n, err := days(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s is %q: %w", EmbeddingRemoveUnusedDays, v, err)
+	}
+	d, _ := strconv.Atoi(n)
+	return time.Duration(d) * 24 * time.Hour, nil
 }
 
 // Text returns a text setting, or its default while unset.

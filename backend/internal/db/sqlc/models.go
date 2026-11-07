@@ -568,6 +568,11 @@ type Tracker struct {
 	CreatedAt time.Time
 }
 
+type UnusedEmbeddingModel struct {
+	Name  string
+	Since time.Time
+}
+
 type User struct {
 	ID           uuid.UUID
 	Username     string

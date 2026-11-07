@@ -26,9 +26,14 @@ GOtome refuses to reach addresses inside your network, but trusts the host
 and port named here: only that one, so the server cannot send it anywhere
 else inside by a redirect.
 
-Every book is then embedded again, four at a time. The vectors of the model
-before stay: choosing it again is at once, and `gotome similar-check`
-compares the two on the same library.
+Every book is then embedded again, four at a time. The files and vectors of
+the model before stay for a day (the setting **Days an unused model is
+kept**, `embedding.removeUnusedAfterDays`): choosing it again within that
+time is at once, and `gotome similar-check` compares the two on the same
+library. After it they are removed, and going back means downloading and
+embedding again; raise the setting to compare for longer. The model list on
+the settings page shows what each model takes on disk and in the database,
+and **Remove now** removes one not in use at once.
 
 Each time it opens the model, GOtome checks the server's vectors: their
 length, and that two sentences of one meaning in two languages lie nearer

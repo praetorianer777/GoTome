@@ -161,6 +161,10 @@ where it does not, watch that disk as well. Leave room for:
   table's or an index's new copy before removing the old one;
 - the full-text index under `/data/search`, which is built again beside
   the old one when its engine changes, and so needs its size again;
+- an embedding model no longer in use, whose files (2.3 GB for bge-m3)
+  and vectors stay for `embedding.removeUnusedAfterDays` (one day) before
+  they are removed; **Remove now** in the settings' model list frees them
+  at once;
 - new images: each update brings an app image of about 1 GB, and the old
   ones stay until they are removed:
 
