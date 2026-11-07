@@ -125,3 +125,73 @@ func TestEveryResponseCarriesThePolicyThatKeepsBookScriptsFromRunning(t *testing
 		}
 	}
 }
+
+func compressedBuild() fstest.MapFS {
+	files := built()
+	files["assets/index-abc.js.br"] = &fstest.MapFile{Data: []byte("br-bytes")}
+	files["assets/index-abc.js.gz"] = &fstest.MapFile{Data: []byte("gz-bytes")}
+	files["assets/index-abc.css.gz"] = &fstest.MapFile{Data: []byte("css-gz")}
+	files["index.html.br"] = &fstest.MapFile{Data: []byte("html-br")}
+	return files
+}
+
+func TestSendsTheBestCompressedCopyTheRequestAccepts(t *testing.T) {
+	h := New(compressedBuild())
+	cases := []struct {
+		target, accept, body, encoding string
+	}{
+		{"/assets/index-abc.js", "gzip, deflate, br", "br-bytes", "br"},
+		{"/assets/index-abc.js", "gzip", "gz-bytes", "gzip"},
+		{"/assets/index-abc.js", "br;q=0, gzip;q=0.5", "gz-bytes", "gzip"},
+		{"/assets/index-abc.js", "*", "br-bytes", "br"},
+		{"/assets/index-abc.js", "", "console.log(1)", ""},
+		{"/assets/index-abc.js", "identity", "console.log(1)", ""},
+		{"/assets/index-abc.js", "gzip;q=0, br;q=0", "console.log(1)", ""},
+		{"/assets/index-abc.css", "br, gzip", "css-gz", "gzip"},
+		{"/assets/index-abc.css", "br", "body{}", ""},
+		{"/books/42", "br", "html-br", "br"},
+		{"/books/42", "gzip", "<html>app</html>", ""},
+	}
+	for _, c := range cases {
+		req := httptest.NewRequest(http.MethodGet, c.target, nil)
+		if c.accept != "" {
+			req.Header.Set("Accept-Encoding", c.accept)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		what := c.target + " (" + c.accept + ")"
+		if rec.Code != http.StatusOK || rec.Body.String() != c.body {
+			t.Errorf("%s: status %d, body %q, want %q", what, rec.Code, rec.Body, c.body)
+		}
+		if got := rec.Header().Get("Content-Encoding"); got != c.encoding {
+			t.Errorf("%s: Content-Encoding %q, want %q", what, got, c.encoding)
+		}
+		if got := rec.Header().Values("Vary"); len(got) != 1 || got[0] != "Accept-Encoding" {
+			t.Errorf("%s: Vary %q", what, got)
+		}
+		// The type is the file's, not that of the compressed copy.
+		if got := rec.Header().Get("Content-Type"); !strings.Contains(got, "text/") {
+			t.Errorf("%s: Content-Type %q", what, got)
+		}
+		cache := forever
+		if !strings.HasPrefix(c.target, "/assets/") {
+			cache = revalidate
+		}
+		if got := rec.Header().Get("Cache-Control"); got != cache {
+			t.Errorf("%s: Cache-Control %q", what, got)
+		}
+		if rec.Header().Get("Content-Security-Policy") == "" {
+			t.Errorf("%s: no policy", what)
+		}
+	}
+}
+
+func TestAFileWithoutCopiesDoesNotVary(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/assets/art-abc.webp", nil)
+	req.Header.Set("Accept-Encoding", "br, gzip")
+	rec := httptest.NewRecorder()
+	New(compressedBuild()).ServeHTTP(rec, req)
+	if rec.Body.String() != "RIFF....WEBP" || rec.Header().Get("Content-Encoding") != "" || rec.Header().Get("Vary") != "" {
+		t.Errorf("body %q, headers %v", rec.Body, rec.Header())
+	}
+}

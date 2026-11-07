@@ -1,11 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
 	createRootRouteWithContext,
 	createRoute,
 	createRouter,
+	lazyRouteComponent,
 	Outlet,
 	type RouterHistory,
 	redirect,
+	type RouteComponent,
 	useRouteContext,
 } from "@tanstack/react-router";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
@@ -15,40 +18,53 @@ import type { BookSearch } from "@/books/book-browser";
 import { picksFrom } from "@/books/filters";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
-import { AdminLibraries } from "@/routes/admin-libraries";
-import { AdminSettings } from "@/routes/admin-settings";
-import { AdminUsers } from "@/routes/admin-users";
-import { AuthorPage } from "@/routes/author";
 import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
-import { BulkProgress } from "@/routes/bulk";
-import { Overview } from "@/routes/overview";
-import { Stats } from "@/routes/stats";
 import { ReaderRoute, readerSearch } from "@/routes/read";
-import { CollectionPage } from "@/routes/collection";
-import { DevicePage } from "@/routes/device";
-import { Collections } from "@/routes/collections";
-import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
-import { Wishlist } from "@/routes/wishlist";
-import { BookEditPage } from "@/routes/book-edit";
-import { FindDetails } from "@/routes/book-find";
-import { Cleanup } from "@/routes/cleanup";
-import { Genres } from "@/routes/genres";
-import { Review } from "@/routes/review";
-import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
-import { NamesPage } from "@/routes/names";
 import { NotFound } from "@/routes/not-found";
-import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
-import { SearchPage, type TextSearch } from "@/routes/search";
-import { SeriesPage } from "@/routes/series";
-import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
-import { Setup } from "@/routes/setup";
-import { Trash } from "@/routes/trash";
-import { Releases } from "@/routes/releases";
-import { Upload } from "@/routes/upload";
+import type { TextSearch } from "@/routes/search";
+import type { DuplicatesSearch } from "@/routes/duplicates";
+
+// Pages other than the library, a book and sign-in load with the first visit
+// to them, so the first load carries only what most visits show.
+const AdminLibraries = lazyRouteComponent(() => import("@/routes/admin-libraries"), "AdminLibraries");
+const AdminSettings = lazyRouteComponent(() => import("@/routes/admin-settings"), "AdminSettings");
+const AdminUsers = lazyRouteComponent(() => import("@/routes/admin-users"), "AdminUsers");
+const AuthorPage = lazyRouteComponent(() => import("@/routes/author"), "AuthorPage");
+const BulkProgress = lazyRouteComponent(() => import("@/routes/bulk"), "BulkProgress");
+const Overview = lazyRouteComponent(() => import("@/routes/overview"), "Overview");
+const Stats = lazyRouteComponent(() => import("@/routes/stats"), "Stats");
+const CollectionPage = lazyRouteComponent(() => import("@/routes/collection"), "CollectionPage");
+const DevicePage = lazyRouteComponent(() => import("@/routes/device"), "DevicePage");
+const Collections = lazyRouteComponent(() => import("@/routes/collections"), "Collections");
+const NewSmartShelf = lazyRouteComponent(() => import("@/routes/smart-shelf"), "NewSmartShelf");
+const SmartShelfPage = lazyRouteComponent(() => import("@/routes/smart-shelf"), "SmartShelfPage");
+const Wishlist = lazyRouteComponent(() => import("@/routes/wishlist"), "Wishlist");
+const BookEditPage = lazyRouteComponent(() => import("@/routes/book-edit"), "BookEditPage");
+const FindDetails = lazyRouteComponent(() => import("@/routes/book-find"), "FindDetails");
+const Cleanup = lazyRouteComponent(() => import("@/routes/cleanup"), "Cleanup");
+const Genres = lazyRouteComponent(() => import("@/routes/genres"), "Genres");
+const Review = lazyRouteComponent(() => import("@/routes/review"), "Review");
+const Jobs = lazyRouteComponent(() => import("@/routes/jobs"), "Jobs");
+const NamesPage = lazyRouteComponent(() => import("@/routes/names"), "NamesPage");
+const Profile = lazyRouteComponent(() => import("@/routes/profile"), "Profile");
+const SearchPage = lazyRouteComponent(() => import("@/routes/search"), "SearchPage");
+const SeriesPage = lazyRouteComponent(() => import("@/routes/series"), "SeriesPage");
+const Duplicates = lazyRouteComponent(() => import("@/routes/duplicates"), "Duplicates");
+const Setup = lazyRouteComponent(() => import("@/routes/setup"), "Setup");
+const Trash = lazyRouteComponent(() => import("@/routes/trash"), "Trash");
+const Releases = lazyRouteComponent(() => import("@/routes/releases"), "Releases");
+const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
+
+// The router waits for a route component's preload before it shows the
+// route, so a component that only hands a lazy page its props takes the
+// page's: otherwise the page would suspend after the route had been shown.
+function loads<P>(page: Pick<RouteComponent, "preload">, component: (props: P) => ReactNode) {
+	return Object.assign(component, { preload: page.preload });
+}
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -162,7 +178,7 @@ const searchRoute = createRoute({
 		library: typeof search.library === "string" ? search.library : undefined,
 		mode: search.mode === "description" ? "description" : undefined,
 	}),
-	component: function SearchRoute() {
+	component: loads(SearchPage, function SearchRoute() {
 		const navigate = searchRoute.useNavigate();
 		return (
 			<SearchPage
@@ -172,7 +188,7 @@ const searchRoute = createRoute({
 				}
 			/>
 		);
-	},
+	}),
 });
 
 const KINDS = ["sha256", "content", "isbn", "title_author", "overlap"] as const;
@@ -190,7 +206,7 @@ const duplicatesRoute = createRoute({
 			library: typeof search.library === "string" ? search.library : undefined,
 		};
 	},
-	component: function DuplicatesRoute() {
+	component: loads(Duplicates, function DuplicatesRoute() {
 		const navigate = duplicatesRoute.useNavigate();
 		return (
 			<Duplicates
@@ -199,19 +215,19 @@ const duplicatesRoute = createRoute({
 				onSearch={(change) => navigate({ search: (previous) => ({ ...previous, ...change }) })}
 			/>
 		);
-	},
+	}),
 });
 
 const authorsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/authors",
-	component: () => <NamesPage kind="authors" />,
+	component: loads(NamesPage, () => <NamesPage kind="authors" />),
 });
 
 const allSeriesRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/series",
-	component: () => <NamesPage kind="series" />,
+	component: loads(NamesPage, () => <NamesPage kind="series" />),
 });
 
 const authorRoute = createRoute({
@@ -222,7 +238,7 @@ const authorRoute = createRoute({
 		sort: oneOf(AUTHOR_SORTS, search.sort),
 		view: oneOf(VIEWS, search.view),
 	}),
-	component: function AuthorRoute() {
+	component: loads(AuthorPage, function AuthorRoute() {
 		const navigate = authorRoute.useNavigate();
 		return (
 			<AuthorPage
@@ -234,20 +250,20 @@ const authorRoute = createRoute({
 				}
 			/>
 		);
-	},
+	}),
 });
 
 const seriesRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/series/$seriesKey",
-	component: function SeriesRoute() {
+	component: loads(SeriesPage, function SeriesRoute() {
 		return (
 			<SeriesPage
 				user={useRouteContext({ from: "/app" }).user}
 				seriesKey={seriesRoute.useParams().seriesKey}
 			/>
 		);
-	},
+	}),
 });
 
 const bookRoute = createRoute({
@@ -266,9 +282,9 @@ const bookEditRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BookEditRoute() {
+	component: loads(BookEditPage, function BookEditRoute() {
 		return <BookEditPage id={bookEditRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const bookFindRoute = createRoute({
@@ -279,9 +295,9 @@ const bookFindRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BookFindRoute() {
+	component: loads(FindDetails, function BookFindRoute() {
 		return <FindDetails id={bookFindRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const uploadRoute = createRoute({
@@ -292,9 +308,9 @@ const uploadRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function UploadPage() {
+	component: loads(Upload, function UploadPage() {
 		return <Upload user={useRouteContext({ from: "/app" }).user} />;
-	},
+	}),
 });
 
 const adminLibrariesRoute = createRoute({
@@ -343,7 +359,7 @@ const cleanupRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function CleanupPage() {
+	component: loads(Cleanup, function CleanupPage() {
 		const navigate = cleanupRoute.useNavigate();
 		return (
 			<Cleanup
@@ -351,7 +367,7 @@ const cleanupRoute = createRoute({
 				onKind={(kind) => navigate({ search: { kind } })}
 			/>
 		);
-	},
+	}),
 });
 
 const genresRoute = createRoute({
@@ -365,7 +381,7 @@ const genresRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function GenresPage() {
+	component: loads(Genres, function GenresPage() {
 		const navigate = genresRoute.useNavigate();
 		return (
 			<Genres
@@ -373,7 +389,7 @@ const genresRoute = createRoute({
 				onGenre={(genre) => navigate({ search: { genre } })}
 			/>
 		);
-	},
+	}),
 });
 
 const readPdfRoute = createRoute({
@@ -444,9 +460,9 @@ const collectionsRoute = createRoute({
 const collectionRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/collections/$collectionId",
-	component: function CollectionRoute() {
+	component: loads(CollectionPage, function CollectionRoute() {
 		return <CollectionPage collectionId={collectionRoute.useParams().collectionId} />;
-	},
+	}),
 });
 
 const newSmartShelfRoute = createRoute({
@@ -463,9 +479,9 @@ const newSmartShelfRoute = createRoute({
 const smartShelfRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/smart-shelves/$shelfId",
-	component: function SmartShelfRoute() {
+	component: loads(SmartShelfPage, function SmartShelfRoute() {
 		return <SmartShelfPage shelfId={smartShelfRoute.useParams().shelfId} />;
-	},
+	}),
 });
 
 const bulkRoute = createRoute({
@@ -476,9 +492,9 @@ const bulkRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BulkRoute() {
+	component: loads(BulkProgress, function BulkRoute() {
 		return <BulkProgress id={bulkRoute.useParams().bulkId} />;
-	},
+	}),
 });
 
 const jobsRoute = createRoute({
@@ -500,9 +516,9 @@ const trashRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function TrashPage() {
+	component: loads(Trash, function TrashPage() {
 		return <Trash user={useRouteContext({ from: "/app" }).user} />;
-	},
+	}),
 });
 
 const adminUsersRoute = createRoute({
@@ -513,17 +529,17 @@ const adminUsersRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function AdminUsersPage() {
+	component: loads(AdminUsers, function AdminUsersPage() {
 		return <AdminUsers user={useRouteContext({ from: "/app" }).user} />;
-	},
+	}),
 });
 
 const deviceRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/devices/$deviceId",
-	component: function DeviceRoute() {
+	component: loads(DevicePage, function DeviceRoute() {
 		return <DevicePage deviceId={deviceRoute.useParams().deviceId} />;
-	},
+	}),
 });
 
 const profileRoute = createRoute({
@@ -531,14 +547,14 @@ const profileRoute = createRoute({
 	path: "/profile",
 	validateSearch: (search): { sso?: string } =>
 		typeof search.sso === "string" ? { sso: search.sso } : {},
-	component: function ProfilePage() {
+	component: loads(Profile, function ProfilePage() {
 		return (
 			<Profile
 				user={useRouteContext({ from: "/app" }).user}
 				sso={profileRoute.useSearch().sso}
 			/>
 		);
-	},
+	}),
 });
 
 const routeTree = rootRoute.addChildren([
