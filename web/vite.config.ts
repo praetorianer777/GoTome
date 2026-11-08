@@ -32,6 +32,23 @@ export default defineConfig({
 			"foliate-js": fileURLToPath(new URL("./vendor/foliate-js", import.meta.url)),
 		},
 	},
+	build: {
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					// The libraries every page needs, in one file that changes only
+					// with them; left to itself, the bundler cuts them into a file per
+					// hook the pages share, a request each on the first load.
+					groups: [
+						{
+							name: "libraries",
+							test: /node_modules[\\/](react|react-dom|scheduler|@tanstack|openapi-fetch)[\\/]/,
+						},
+					],
+				},
+			},
+		},
+	},
 	server: {
 		host: "0.0.0.0",
 		port: 5173,
