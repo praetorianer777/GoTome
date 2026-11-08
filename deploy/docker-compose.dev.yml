@@ -20,10 +20,30 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+      # Two copies of one book, for keeping one of them: once read-only, and
+      # once as a folder inside one GOtome may write to (the tmpfs below)
+      # whose trash it may not, as when the folder belongs to another user.
+      - ../e2e/fixtures/twins:/fixtures/twins-chromium:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-firefox:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-webkit:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-phone:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-chromium/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-firefox/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-webkit/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-phone/books:ro
       - ../e2e/fixtures/metadata.json:/fixtures/metadata.json:ro
       # What make stack-check has FFmpeg read.
       - ../backend/internal/ingest/testdata/audio:/fixtures/audio:ro
       - ../e2e/fixtures/audio:/fixtures/audio-e2e:ro
+    tmpfs:
+      - /fixtures/shelf-chromium:mode=1777
+      - /fixtures/shelf-firefox:mode=1777
+      - /fixtures/shelf-webkit:mode=1777
+      - /fixtures/shelf-phone:mode=1777
+      - /fixtures/shelf-chromium/.trash:mode=0555
+      - /fixtures/shelf-firefox/.trash:mode=0555
+      - /fixtures/shelf-webkit/.trash:mode=0555
+      - /fixtures/shelf-phone/.trash:mode=0555
 
   db:
     # What a stall in the tests is made of, in the logs CI keeps when they

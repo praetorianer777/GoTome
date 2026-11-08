@@ -424,6 +424,10 @@ func reason(err error) string {
 	if errors.As(err, &pathErr) {
 		return pathErr.Err.Error()
 	}
+	var link *os.LinkError
+	if errors.As(err, &link) {
+		return link.Err.Error()
+	}
 	return err.Error()
 }
 
