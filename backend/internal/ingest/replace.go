@@ -23,8 +23,12 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 	if err != nil {
 		return err
 	}
-	type move struct{ from, to string }
-	var moved []move
+	type move struct {
+		from, to string
+		library  uuid.UUID
+		root     string
+	}
+	var made []move
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{keep, gone}); err != nil {
@@ -58,8 +62,10 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 				return err
 			}
 			pending = append(pending, move{
-				from: filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath)),
-				to:   trashPath(f.RootPath, id, f.RelPath),
+				from:    filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath)),
+				to:      trashPath(f.RootPath, id, f.RelPath),
+				library: f.LibraryID,
+				root:    f.RootPath,
 			})
 		}
 		if err := s.mergeTx(ctx, tx, scope, keep, gone, fields); err != nil {
@@ -73,19 +79,20 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 		}
 		// Last, so that nothing after them can fail but the commit.
 		for _, m := range pending {
+			made = append(made, m)
 			if err := os.MkdirAll(filepath.Dir(m.to), 0o755); err != nil {
-				return err
+				return folderError(m.library, m.root, err)
 			}
 			if err := os.Rename(m.from, m.to); err != nil {
-				return err
+				return folderError(m.library, m.root, err)
 			}
-			moved = append(moved, m)
 		}
 		return nil
 	})
 	if err != nil {
-		for _, m := range moved {
+		for _, m := range made {
 			s.moveBack(m.to, m.from)
+			_ = os.Remove(filepath.Dir(m.to))
 		}
 	}
 	return s.noteUnwritable(ctx, err)

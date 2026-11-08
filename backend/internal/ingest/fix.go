@@ -90,7 +90,7 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 	_ = os.Remove(temp)
 	out, err := os.OpenFile(temp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
 	if err != nil {
-		return epub.Fixed{}, fmt.Errorf("write %s: %w", f.RelPath, err)
+		return epub.Fixed{}, s.noteUnwritable(ctx, folderError(f.LibraryID, f.RootPath, fmt.Errorf("write %s: %w", f.RelPath, err)))
 	}
 	placed := false
 	defer func() {
@@ -163,15 +163,16 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 
 		// Last, so that nothing after them can fail but the commit.
 		trashed := trashPath(f.RootPath, trashedID, relPath)
+		undo = append(undo, func() { _ = os.Remove(filepath.Dir(trashed)) })
 		if err := os.MkdirAll(filepath.Dir(trashed), 0o755); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
 		if err := os.Rename(path, trashed); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
 		undo = append(undo, func() { s.moveBack(trashed, path) })
 		if err := os.Rename(temp, path); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
 		placed = true
 		undo = append(undo, func() { _ = os.Rename(path, temp) })
@@ -195,7 +196,7 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 		if placed {
 			_ = os.Remove(temp)
 		}
-		return epub.Fixed{}, err
+		return epub.Fixed{}, s.noteUnwritable(ctx, err)
 	}
 	return fixed, nil
 }
