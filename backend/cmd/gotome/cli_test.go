@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
@@ -248,5 +249,88 @@ func TestTheSimilarAndGenreChecksMeasureTheLibrary(t *testing.T) {
 	}
 	if genreReport.Books != 6 || genreReport.Tagged != 6 || genreReport.Embedded != 6 || genreReport.Sample != 6 {
 		t.Errorf("genre-check: %+v", genreReport)
+	}
+}
+
+func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
+	pool := dbtest.New(t)
+	onDatabase(t, pool)
+	ctx := context.Background()
+	records := filepath.Join(t.TempDir(), "metadata.json")
+	// Der Process is found as itself, Dune as another edition of its work
+	// (the deluxe edition, which the search does not find, carries its
+	// ISBN), Emma first as an edition nobody says is hers and then as
+	// itself, and the last book not at all.
+	if err := os.WriteFile(records, []byte(`[
+		{"id": "process", "title": "Der Process", "authors": ["Franz Kafka"], "language": "de", "isbns": ["9783596294312"]},
+		{"id": "dune-2019", "work": "dune", "title": "Dune", "authors": ["Frank Herbert"], "language": "en", "isbns": ["9780593099322"]},
+		{"id": "dune-deluxe", "work": "dune", "title": "Dune Deluxe", "authors": ["Frank Herbert"], "isbns": ["9780441013593"]},
+		{"id": "emma-other", "title": "Emma", "authors": ["Jane Austen"], "language": "en", "isbns": ["9780306406157"]},
+		{"id": "emma", "title": "Emma", "language": "de", "isbns": ["9780141439587"]}
+	]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOTOME_TEST_METADATA", records)
+	accounts, err := auth.NewService(pool, auth.DefaultPasswordParams(), auth.DefaultSessionTTL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin, err := accounts.Setup(ctx, "root", "the-first-password", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lib, err := library.NewService(pool, t.TempDir()).Create(ctx, admin.ID, library.NewLibrary{Name: "Shelf", Mode: "managed", Visibility: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	books := []struct{ title, author, language, isbn string }{
+		{"Der Process", "Franz Kafka", "de", "9783596294312"},
+		{"Dune", "Frank Herbert", "en", "9780441013593"},
+		{"Emma", "Jane Austen", "en", "9780141439587"},
+		{"Nothing Like It", "Nobody Known", "en", "9780141199085"},
+		{"Emma", "Jane Austen", "en", ""},
+	}
+	for _, b := range books {
+		nb := catalog.NewBook{
+			LibraryID: lib.ID, Title: b.title, Language: b.language,
+			Contributors: []catalog.NewContributor{{Name: b.author}},
+		}
+		if b.isbn != "" {
+			nb.Identifiers = []catalog.Identifier{{Type: catalog.IDISBN, Value: b.isbn}}
+		}
+		if _, err := catalog.NewService(pool).CreateBook(ctx, nb); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	out, err := command(t, "", "match-check", "-json", "-n", "10")
+	if err != nil {
+		t.Fatalf("match-check: %v\n%s", err, out)
+	}
+	var r metadata.CheckReport
+	if err := json.Unmarshal([]byte(out), &r); err != nil {
+		t.Fatalf("match-check: %v\n%s", err, out)
+	}
+	all := r.All
+	if r.Books != 4 || r.Sample != 4 || all.Books != 4 || all.Right != 1 || all.SameWork != 1 || all.Wrong != 1 ||
+		all.None != 1 || all.Failed != 0 || all.Ranks[2] != 1 || all.Missing != 0 {
+		t.Errorf("match-check: %+v", r)
+	}
+	if len(r.PerProvider) != 1 || r.PerProvider[0].Name != "canned" || r.PerProvider[0].Right != 1 {
+		t.Errorf("per provider: %+v", r.PerProvider)
+	}
+	if len(r.PerLanguage) != 3 || r.PerLanguage[0].Books != 1 || r.PerLanguage[0].Right != 1 || r.PerLanguage[1].Books != 3 {
+		t.Errorf("per language: %+v", r.PerLanguage)
+	}
+	if r.Threshold != 0.95 || r.Thresholds[0].Taken != 3 {
+		t.Errorf("thresholds: %v %+v", r.Threshold, r.Thresholds)
+	}
+
+	out, err = command(t, "", "match-check", "-n", "2", "-providers", "canned")
+	if err != nil || !strings.Contains(out, "Looked up without it         2, at canned") {
+		t.Errorf("match-check as text: %v\n%s", err, out)
+	}
+	if _, err := command(t, "", "match-check", "-providers", "nobody"); err == nil || !strings.Contains(err.Error(), `no provider "nobody"`) {
+		t.Errorf("an unknown provider: %v", err)
 	}
 }

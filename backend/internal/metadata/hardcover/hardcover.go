@@ -218,6 +218,7 @@ func (b book) record() metadata.Record {
 	}
 	if b.ID != 0 {
 		r.ID = strconv.Itoa(b.ID)
+		r.Work = r.ID
 		r.Identifiers = []catalog.Identifier{{Type: catalog.IDHardcover, Value: r.ID}}
 	}
 	if b.Pages > 0 {
@@ -309,7 +310,7 @@ func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Quer
 			continue
 		}
 		r := metadata.Record{
-			ID: d.ID.String(), Title: d.Title, Subtitle: d.Subtitle, Rating: d.Rating,
+			ID: d.ID.String(), Work: d.ID.String(), Title: d.Title, Subtitle: d.Subtitle, Rating: d.Rating,
 			Description: strings.TrimSpace(d.Description), Tags: d.Genres[:min(len(d.Genres), maxTags)],
 		}
 		for i, name := range d.AuthorNames {

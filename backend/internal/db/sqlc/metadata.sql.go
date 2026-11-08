@@ -12,6 +12,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const countMatchCheckBooks = `-- name: CountMatchCheckBooks :one
+SELECT count(*)
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+`
+
+// The books a match-check may ask about: those with an ISBN.
+func (q *Queries) CountMatchCheckBooks(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countMatchCheckBooks)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countReviewBooks = `-- name: CountReviewBooks :one
 SELECT count(DISTINCT b.id)
 FROM metadata_matches m
@@ -102,6 +117,67 @@ func (q *Queries) GetVisibleMatch(ctx context.Context, arg GetVisibleMatchParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listMatchCheckBooks = `-- name: ListMatchCheckBooks :many
+WITH sample AS (
+    SELECT b.id
+    FROM books b
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+    ORDER BY md5(b.id::text), b.id
+    LIMIT $1
+)
+SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
+       ARRAY(SELECT DISTINCT i.value FROM book_identifiers i
+             WHERE i.book_id = b.id AND i.type = 'isbn' ORDER BY i.value)::text[] AS isbns,
+       ARRAY(SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+             WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position)::text[] AS authors
+FROM sample s
+JOIN books b ON b.id = s.id
+ORDER BY md5(b.id::text), b.id
+`
+
+type ListMatchCheckBooksRow struct {
+	ID                 uuid.UUID
+	Title              string
+	Subtitle           *string
+	Language           *string
+	PublishedOn        *time.Time
+	PublishedPrecision *string
+	Isbns              []string
+	Authors            []string
+}
+
+// A match-check's sample, picked by a hash of the ID so that a library
+// gives the same one each time; the names and ISBNs are read for it alone.
+func (q *Queries) ListMatchCheckBooks(ctx context.Context, maxBooks int32) ([]ListMatchCheckBooksRow, error) {
+	rows, err := q.db.Query(ctx, listMatchCheckBooks, maxBooks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchCheckBooksRow{}
+	for rows.Next() {
+		var i ListMatchCheckBooksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Subtitle,
+			&i.Language,
+			&i.PublishedOn,
+			&i.PublishedPrecision,
+			&i.Isbns,
+			&i.Authors,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPendingMatches = `-- name: ListPendingMatches :many

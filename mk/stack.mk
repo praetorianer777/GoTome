@@ -104,6 +104,10 @@ similar-check: ## Measure the similar books of the running stack's library: make
 genre-check: ## Measure how well genres are found again for the running stack's tagged books: make genre-check ARGS="-n 300"
 	docker compose exec -T app gotome genre-check $(ARGS)
 
+.PHONY: match-check
+match-check: ## Measure how often a lookup by title and author finds the running stack's books: make match-check ARGS="-n 100"
+	docker compose exec -T app gotome match-check $(ARGS)
+
 .PHONY: stack-up
 # Its database is thrown away after the run, so it need not survive a crash.
 stack-up: export GOTOME_DB_DURABLE := off

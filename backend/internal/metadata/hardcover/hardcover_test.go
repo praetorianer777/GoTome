@@ -200,3 +200,16 @@ func TestTheBooksOfNobody(t *testing.T) {
 		t.Errorf("without a token: %+v, %v", got, err)
 	}
 }
+
+func TestTheEditionNamesTheBookTheSearchFinds(t *testing.T) {
+	edition, err := provider().Lookup(context.Background(), web(), fellowship)
+	if err != nil || len(edition) != 1 || edition[0].Work == "" {
+		t.Fatalf("Lookup: %+v, %v", edition, err)
+	}
+	found, err := provider().Search(context.Background(), web(), metadata.Query{
+		Title: "The Fellowship of the Ring", Authors: []string{"J.R.R. Tolkien"},
+	})
+	if err != nil || !slices.ContainsFunc(found, func(r metadata.Record) bool { return r.Work == edition[0].Work }) {
+		t.Errorf("the edition's book %q is not among %d results: %v", edition[0].Work, len(found), err)
+	}
+}

@@ -779,6 +779,14 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   locked fields and locks nothing. A candidate's cover reaches the browser
   only through `GET /metadata/covers/{token}`: tokens are HMACs the process
   signs, so the server never fetches an address a client made up.
+- `gotome match-check` (`metadata.Service.Check`, `make match-check`)
+  looks a sample of books with an ISBN (by a hash of the ID, at most
+  `-n`) up by title, authors and language alone, through the providers'
+  Webs, and counts the first candidate as right (one of its ISBNs), of
+  the same work (`Record.Work`, which the provider's lookup by the ISBN
+  names too), wrong or none, per provider and language, with the scores
+  of right and wrong ones (`docs/metadata.md`). #367 and any change to
+  ranking are measured with it.
 
 ## Reading state
 

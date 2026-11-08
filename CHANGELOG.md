@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- `gotome match-check` measures how often a lookup by title and author
+  alone finds the right book, on a sample of your books that have an
+  ISBN: per source and language, with the scores of right and wrong
+  first candidates, to choose `metadata.matchThreshold` by
+  ([metadata.md](docs/metadata.md)).
 - An embedding model no longer in use has its downloaded files, its
   vectors and its passage vectors removed once it has not been chosen for
   a day (the new setting "Days an unused model is kept",

@@ -26,8 +26,12 @@ import (
 type Record struct {
 	// Provider is the Name of the provider that said it, and ID what that
 	// provider calls the book.
-	Provider     string
-	ID           string
+	Provider string
+	ID       string
+	// Work is what the provider calls the work the record is an edition
+	// of, where it says so: the same for every edition, so that two
+	// records of one work can be told apart from two books.
+	Work         string
 	Title        string
 	Subtitle     string
 	Contributors []catalog.NewContributor
