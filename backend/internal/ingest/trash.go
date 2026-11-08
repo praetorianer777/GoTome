@@ -85,12 +85,13 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 		from = filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath))
 		to = trashPath(f.RootPath, fileID, f.RelPath)
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
-		return os.Rename(from, to)
+		return folderError(f.LibraryID, f.RootPath, os.Rename(from, to))
 	})
 	if err != nil && to != "" {
 		s.moveBack(to, from)
+		_ = os.Remove(filepath.Dir(to))
 	}
 	return s.noteUnwritable(ctx, err)
 }
@@ -125,7 +126,7 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 		if _, err := os.Lstat(to); err == nil {
 			return ErrPathTaken
 		} else if !errors.Is(err, fs.ErrNotExist) {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
 		if err := q.SetFileRestored(ctx, fileID); err != nil {
 			return err
@@ -146,9 +147,9 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 		}
 		from = trashPath(f.RootPath, fileID, f.RelPath)
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
-		return os.Rename(from, to)
+		return folderError(f.LibraryID, f.RootPath, os.Rename(from, to))
 	})
 	if err != nil && from != "" {
 		s.moveBack(to, from)
