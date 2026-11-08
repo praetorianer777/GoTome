@@ -5,7 +5,7 @@ import {
 	signedIn,
 	uploadFile,
 } from "../fixtures/accounts";
-import { openSignedIn } from "../fixtures/app";
+import { chooseLibraryIn, openSignedIn } from "../fixtures/app";
 import { makePdf, proseOnEveryPage } from "../fixtures/pdf";
 
 /** The value the overview shows under a label. */
@@ -143,9 +143,7 @@ test("the overview counts what a library holds, and shows the background work on
 	await expect(
 		page.getByRole("heading", { name: "Background work" }),
 	).toBeVisible();
-	await page
-		.getByRole("combobox", { name: "Library", exact: true })
-		.selectOption({ label: name });
+	await chooseLibraryIn(page, page.getByRole("combobox", { name: "Library", exact: true }), name);
 	await expect(figure(page, "Books")).toHaveText("2");
 	await expect(figure(page, "Files")).toHaveText("2");
 	await expect(figure(page, "Pages")).toHaveText("5");

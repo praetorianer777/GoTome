@@ -77,7 +77,14 @@ test("an author followed by name has their announced book listed as coming", asy
 	}).toPass({ timeout: 40_000 });
 	await expect(book).toContainText(`Through ${author}`);
 	await expect(book).toContainText("Listed by canned");
-	await expect(following.getByText(/^Author · Looked up /)).toBeVisible();
+	// Of this author: the browser projects share the account, and with it
+	// what is followed.
+	await expect(
+		following
+			.getByRole("listitem")
+			.filter({ hasText: author })
+			.getByText(/^Author · Looked up /),
+	).toBeVisible();
 
 	await following
 		.getByRole("button", { name: `Stop following ${author}` })
