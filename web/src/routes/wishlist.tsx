@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { booksQuery } from "@/books/api";
+import { type BookSummary, booksQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { candidateCoverUrl } from "@/books/edit";
 import { type WishSearch, useWish, wishSearchQuery } from "@/books/wishes";
@@ -16,7 +16,10 @@ const control =
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
 
-/** The books the person wishes for, those the library holds and those it does not yet. */
+/**
+ * The books of status wishlist: those the library holds, which the person
+ * wants to read, and those it does not hold yet, which they want to have.
+ */
 export function Wishlist() {
 	const books = useInfiniteQuery(
 		booksQuery({ filter: WISHED, sort: "added", order: "desc", placeholders: "include" }),
@@ -26,46 +29,61 @@ export function Wishlist() {
 		<div className="flex flex-col gap-6">
 			<h1 className="text-2xl font-semibold">{t("wishlist.title")}</h1>
 			<WishFinder />
-			<section aria-labelledby="wished" className="flex flex-col gap-3">
-				<h2 id="wished" className="text-lg font-medium">
-					{t("wishlist.wished")}
-				</h2>
-				<FormError error={books.error} />
-				{books.isSuccess && shown.length === 0 && (
-					<p className="text-slate-600 dark:text-slate-400">{t("wishlist.none")}</p>
-				)}
-				<ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-					{shown.map((book) => (
-						<li key={book.id}>
-							<Link to="/books/$bookId" params={{ bookId: book.id }} className="flex flex-col gap-2">
-								<Cover book={book} size="small" />
-								<span className="flex flex-col">
-									<span className="line-clamp-2 font-medium leading-snug">{book.title}</span>
-									{book.authors.length > 0 && (
-										<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
-											{book.authors.join(", ")}
-										</span>
-									)}
-									<span className="text-sm text-slate-500">
-										{book.placeholder ? t("wishlist.missing") : t("wishlist.held")}
-									</span>
-								</span>
-							</Link>
-						</li>
-					))}
-				</ul>
-				{books.hasNextPage && (
-					<button
-						type="button"
-						className={`${button} self-center`}
-						disabled={books.isFetchingNextPage}
-						onClick={() => books.fetchNextPage()}
-					>
-						{t("library.more")}
-					</button>
-				)}
-			</section>
+			<FormError error={books.error} />
+			{books.isSuccess && shown.length === 0 && (
+				<p className="text-slate-600 dark:text-slate-400">{t("wishlist.none")}</p>
+			)}
+			<WishedBooks
+				id="wished-held"
+				heading={t("wishlist.wantToRead")}
+				books={shown.filter((b) => !b.placeholder)}
+			/>
+			<WishedBooks
+				id="wished-missing"
+				heading={t("wishlist.missing")}
+				books={shown.filter((b) => b.placeholder)}
+			/>
+			{books.hasNextPage && (
+				<button
+					type="button"
+					className={`${button} self-center`}
+					disabled={books.isFetchingNextPage}
+					onClick={() => books.fetchNextPage()}
+				>
+					{t("library.more")}
+				</button>
+			)}
 		</div>
+	);
+}
+
+function WishedBooks({ id, heading, books }: { id: string; heading: string; books: BookSummary[] }) {
+	if (books.length === 0) {
+		return null;
+	}
+	return (
+		<section aria-labelledby={id} className="flex flex-col gap-3">
+			<h2 id={id} className="text-lg font-medium">
+				{heading}
+			</h2>
+			<ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+				{books.map((book) => (
+					<li key={book.id}>
+						<Link to="/books/$bookId" params={{ bookId: book.id }} className="flex flex-col gap-2">
+							<Cover book={book} size="small" />
+							<span className="flex flex-col">
+								<span className="line-clamp-2 font-medium leading-snug">{book.title}</span>
+								{book.authors.length > 0 && (
+									<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
+										{book.authors.join(", ")}
+									</span>
+								)}
+							</span>
+						</Link>
+					</li>
+				))}
+			</ul>
+		</section>
 	);
 }
 

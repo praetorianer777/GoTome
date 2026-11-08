@@ -2838,6 +2838,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
@@ -2863,18 +2866,19 @@ export interface components {
         };
         CleanupApplyRequest: {
             /** @enum {string} */
-            kind: "authors" | "placeholders" | "clashes" | "titles";
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
             picks?: components["schemas"]["CleanupPick"][];
         };
         CleanupCounts: {
             authors: number;
             clashes: number;
             placeholders: number;
+            series: number;
             titles: number;
         };
         CleanupDismissRequest: {
             /** @enum {string} */
-            kind: "authors" | "placeholders" | "clashes" | "titles";
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
             subject: string;
         };
         CleanupList: {
@@ -2883,8 +2887,12 @@ export interface components {
             suggestions: components["schemas"]["CleanupSuggestion"][];
         };
         CleanupName: {
+            /** Format: uuid */
+            book?: string;
             books: number;
             name: string;
+            position?: number;
+            title?: string;
         };
         CleanupPick: {
             subject: string;
@@ -2895,10 +2903,10 @@ export interface components {
             book?: string;
             books: number;
             /** @enum {string} */
-            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle";
+            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle" | "setSeries";
             found: components["schemas"]["CleanupName"][];
             /** @enum {string} */
-            kind: "authors" | "placeholders" | "clashes" | "titles";
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
             subject: string;
             suggested?: string;
         };
@@ -3211,6 +3219,11 @@ export interface components {
             /** @enum {string} */
             source?: "file" | "filename" | "manual" | "provider";
         };
+        FieldSuggestion: {
+            /** @enum {string} */
+            reason: "empty" | "filename" | "sameEdition" | "adds" | "locked" | "manual" | "language" | "file" | "other";
+            suggested: boolean;
+        };
         Figures: {
             audioHours: number;
             audiobooks: number;
@@ -3430,6 +3443,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
@@ -3789,10 +3805,12 @@ export interface components {
             settings: components["schemas"]["SettingView"][];
         };
         SettingView: {
+            choices?: string[];
             isSet: boolean;
             key: string;
             /** @enum {string} */
             kind: "text" | "secret";
+            multiple?: boolean;
             /** Format: date-time */
             updatedAt?: string;
             value?: string;
@@ -5487,8 +5505,8 @@ export interface operations {
     listCleanup: {
         parameters: {
             query?: {
-                /** @description Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series) or titles (what a shop added to a title). */
-                kind?: "authors" | "placeholders" | "clashes" | "titles";
+                /** @description Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series), titles (what a shop added to a title) or series (a series written into the titles of books without one). */
+                kind?: "authors" | "placeholders" | "clashes" | "titles" | "series";
                 /** @description Where the page before ended, as its nextCursor says; suggestions about the most books come first. */
                 cursor?: string;
                 /** @description How many suggestions a page holds, at most 200; 50 when left out. */

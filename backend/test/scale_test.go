@@ -59,6 +59,7 @@ var wholeByDesign = map[string]string{
 	// grouped by person, every title matched, and each kind counted.
 	"clean-up: authors": "reads every credit and title",
 	"clean-up: titles":  "reads every credit and title",
+	"clean-up: series":  "reads every credit and title",
 	// The overview counts what the books hold and how far the work on
 	// them is.
 	"overview":              "counts every book and file",
@@ -229,8 +230,9 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			UNION ALL
 			SELECT b.id, a.id, 'author', 1 FROM scale_books b JOIN scale_authors a ON a.n = (b.n * 29 + 5) % 12000
 			WHERE b.n % 7 = 0 AND (b.n * 29 + 5) % 12000 <> b.n * 17 % 12000`},
-		// Some authors under their name the other way round too, and some
-		// titles with what a shop added, for the clean-up to find.
+		// Some authors under their name the other way round too, some
+		// titles with what a shop added, and some with a series in them,
+		// for the clean-up to find.
 		{sql: `INSERT INTO authors (name, sort_name, name_key)
 			SELECT split_part(name_key, ' ', 2) || ', ' || split_part(name_key, ' ', 1), sort_name,
 			       split_part(name_key, ' ', 2) || ' ' || split_part(name_key, ' ', 1)
@@ -241,6 +243,9 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			WHERE c.book_id = b.id AND b.n % 9 = 4 AND c.position = 0 AND a.id = c.author_id
 			  AND r.name_key = split_part(a.name_key, ' ', 2) || ' ' || split_part(a.name_key, ' ', 1) AND r.id <> a.id`},
 		{sql: `UPDATE books b SET title = b.title || ' (German Edition)' FROM scale_books s WHERE s.id = b.id AND s.n % 5 = 0`},
+		{sql: `UPDATE books b SET title = r.name || ' ' || (1 + s.n % 12) || ' - ' || b.title
+			FROM scale_books s, scale_series n, series r
+			WHERE s.id = b.id AND s.n % 10 = 7 AND n.n = s.n % 2500 AND r.id = n.id`},
 		{sql: `UPDATE books b SET author_sort = a.sort_name
 			FROM book_contributors c JOIN authors a ON a.id = c.author_id
 			WHERE c.book_id = b.id AND c.position = 0`},
@@ -450,6 +455,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "search by description", path: "/search/similar?q=" + url.QueryEscape("a detective story set in Venice")},
 		{name: "clean-up: authors", path: "/cleanup?kind=authors"},
 		{name: "clean-up: titles", path: "/cleanup?kind=titles"},
+		{name: "clean-up: series", path: "/cleanup?kind=series"},
 		{name: "trash", path: "/trash"},
 		{name: "jobs", path: "/jobs"},
 		{name: "libraries", path: "/libraries"},

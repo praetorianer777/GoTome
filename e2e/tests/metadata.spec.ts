@@ -13,6 +13,13 @@ import {
 // (GOTOME_TEST_METADATA), whose titles each name a browser project: a
 // book is found by a search when its title holds every word of a record's.
 
+/** Expects a field's box on the comparison to be ticked or not. */
+async function ticked(page: Page, field: string, wanted: boolean) {
+	await expect(
+		page.getByRole("checkbox", { name: `Take ${field}` }),
+	).toBeChecked({ checked: wanted });
+}
+
 /** Ticks a field's box on the comparison, or takes the tick off. */
 async function take(page: Page, field: string, wanted: boolean) {
 	const box = page.getByRole("checkbox", { name: `Take ${field}` });
@@ -22,7 +29,7 @@ async function take(page: Page, field: string, wanted: boolean) {
 	await expect(box).toBeChecked({ checked: wanted });
 }
 
-test("details found online are compared with the book's and taken as ticked", async ({
+test("details found online are compared with the book's, the fields worth taking ticked", async ({
 	page,
 }, testInfo) => {
 	test.setTimeout(60_000);
@@ -50,9 +57,11 @@ test("details found online are compared with the book's and taken as ticked", as
 		.click();
 	const compare = page.getByRole("region", { name: "What would change" });
 	await expect(compare).toContainText("A harbour town waits out the winter.");
-	await take(page, "Title", false);
-	await take(page, "Description", true);
-	await take(page, "Publisher", true);
+	// The title the file gives stays; what the book lacks is taken.
+	await ticked(page, "Title", false);
+	await expect(compare).toContainText("Would replace what the file says");
+	await ticked(page, "Description", true);
+	await ticked(page, "Publisher", true);
 	await page.getByRole("button", { name: "Take what is ticked" }).click();
 
 	await expect(page).toHaveURL(new RegExp(`/books/${book}$`));
@@ -140,8 +149,9 @@ test("details fetched for many books wait for review, where one is taken and one
 	await expect(
 		page.getByRole("button", { name: new RegExp(`^1\\. Amber Road ${word}`) }),
 	).toHaveAttribute("aria-pressed", "true");
-	await take(page, "Title", false);
-	await take(page, "Description", true);
+	await ticked(page, "Title", false);
+	await ticked(page, "Description", true);
+	await take(page, "Published", false);
 	await page.getByRole("button", { name: "Take what is ticked" }).click();
 	await expect(
 		page.getByRole("heading", { name: amber, level: 2 }),
@@ -158,6 +168,7 @@ test("details fetched for many books wait for review, where one is taken and one
 	).json();
 	expect(taken.title).toBe(amber);
 	expect(taken.description).toBe("Traders cross the steppe with amber.");
+	expect(taken.published ?? "").toBe("");
 	const rejected = await (
 		await page.request.get(`/api/v1/books/${books[fen]}`)
 	).json();

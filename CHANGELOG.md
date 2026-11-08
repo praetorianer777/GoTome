@@ -13,9 +13,29 @@ What changes for someone who runs or uses GOtome. The format follows
   ISBN: per source and language, with the scores of right and wrong
   first candidates, to choose `metadata.matchThreshold` by
   ([metadata.md](docs/metadata.md)).
+- Clean up suggests a series for books without one whose titles name it,
+  such as "Rain Wild Chronicles 01 - Drachenhüter" or "Drachenhüter (Rain
+  Wild Chronicles #1)", where two books of a library name it or it is a
+  series already. Applying it puts the books into the series at the
+  places their titles say and takes the series off their titles.
 
 ### Changed
 
+- The settings page is grouped in sections (sign-in, book details,
+  similar books and search, genres, trash) with a list to jump to each,
+  two columns where the screen is wide enough, and shorter
+  descriptions. A setting of a few values is chosen rather than typed:
+  on and off is a switch, the genre mode and the role of everyone else
+  are lists, and the sources to ask a box each. The server refuses a
+  value that is not one of them, such as an unknown source.
+- Smart shelf rules pick formats and stars from a list instead of
+  taking them typed.
+- **Review** and **Find details online** tick the fields worth taking:
+  those the book lacks, a title from the file name, and, from a candidate
+  of the same ISBN, those no person set. A field whose value would
+  replace your edit, the file's, or text in another language starts
+  unticked, each says why, and values that would be replaced are
+  highlighted. Accepting a match takes what is ticked.
 - The duplicates page shows the two books of a pair side by side as
   cards, with their covers, files with size and pages, e-reader
   findings, your reading, library and added date, and what differs
@@ -48,6 +68,10 @@ What changes for someone who runs or uses GOtome. The format follows
   are known spellings. `gotome genre-check` no longer lists tags that
   rightly give no genre, such as "Roman", "eBook", publishers and
   countries, among those to map.
+- The reading status "Wishlist" is called "Want to read" for a book the
+  library holds, and stays "Wishlist" for one it does not hold yet. The
+  Wishlist page lists the two apart, as "Want to read" and "Not in the
+  library yet".
 
 ### Fixed
 
