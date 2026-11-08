@@ -1137,7 +1137,7 @@ export const de: Record<MessageKey, string> = {
 
 	"find.title": "Angaben zu {title} suchen",
 	"find.intro":
-		"Was diese Quellen über das Buch wissen, das Passendste zuerst. Ein Ergebnis wählen, ankreuzen, was übernommen werden soll, und übernehmen. Gesperrte Felder bleiben, wie sie sind.",
+		"Was diese Quellen über das Buch wissen, das Passendste zuerst. Ein Ergebnis wählen, ankreuzen, was übernommen werden soll, und übernehmen. Was sich zu übernehmen lohnt, ist schon angekreuzt; gesperrte Felder bleiben, wie sie sind.",
 	"find.searching": "Die Quellen werden gefragt …",
 	"find.none": "Keine Quelle kennt dieses Buch.",
 	"find.failed": "{provider} hat nicht geantwortet: {message}",
@@ -1151,12 +1151,20 @@ export const de: Record<MessageKey, string> = {
 	"find.current": "Jetzt",
 	"find.theirs": "Laut {provider}",
 	"find.take": "{field} übernehmen",
-	"find.locked": "Gesperrt",
 	"find.empty": "—",
 	"find.apply": "Angekreuztes übernehmen",
 	"find.nothing": "Nichts weicht von dem ab, was das Buch hat.",
 	"find.back": "Zurück zum Buch",
 	"find.addIdentifiers": "Hinzufügen",
+	"find.reason.empty": "Bisher leer",
+	"find.reason.filename": "Aus dem Dateinamen",
+	"find.reason.sameEdition": "Gleiche Ausgabe",
+	"find.reason.adds": "Zu den vorhandenen hinzu",
+	"find.reason.locked": "Gesperrt",
+	"find.reason.manual": "Würde Ihre Änderung ersetzen",
+	"find.reason.language": "Andere Sprache",
+	"find.reason.file": "Würde ersetzen, was die Datei sagt",
+	"find.reason.other": "Würde den Wert einer anderen Quelle ersetzen",
 
 	"cleanup.title": "Aufräumen",
 	"cleanup.intro":
@@ -1197,7 +1205,7 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.more": "Mehr anzeigen",
 	"review.title": "Treffer prüfen",
 	"review.intro":
-		"Bücher, die von selbst nachgeschlagen wurden und nur unsichere Treffer fanden. Übernehmen, was passt, ablehnen, was nicht passt; ein abgelehnter Treffer wird nicht wieder vorgeschlagen.",
+		"Bücher, die von selbst nachgeschlagen wurden und nur unsichere Treffer fanden. Was sich zu übernehmen lohnt, ist angekreuzt; die Häkchen ändern, übernehmen, was passt, ablehnen, was nicht passt; ein abgelehnter Treffer wird nicht wieder vorgeschlagen.",
 	"review.waiting": "{count} Bücher warten.",
 	"review.none": "Nichts wartet auf Prüfung.",
 	"review.position": "Buch {number} von {count}",

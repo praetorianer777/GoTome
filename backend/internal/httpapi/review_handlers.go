@@ -64,7 +64,7 @@ func (s *Server) listReview(w http.ResponseWriter, r *http.Request) error {
 		for _, m := range wb.Matches {
 			item.Matches = append(item.Matches, matchView{
 				MatchID:       m.ID,
-				candidateView: s.candidateViewOf(metadata.Candidate{Record: m.Record, Score: m.Score}),
+				candidateView: s.candidateViewOf(b, metadata.Candidate{Record: m.Record, Score: m.Score}),
 			})
 		}
 		out.Books = append(out.Books, item)

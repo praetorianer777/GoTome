@@ -2838,6 +2838,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
@@ -3211,6 +3214,11 @@ export interface components {
             /** @enum {string} */
             source?: "file" | "filename" | "manual" | "provider";
         };
+        FieldSuggestion: {
+            /** @enum {string} */
+            reason: "empty" | "filename" | "sameEdition" | "adds" | "locked" | "manual" | "language" | "file" | "other";
+            suggested: boolean;
+        };
         Figures: {
             audioHours: number;
             audiobooks: number;
@@ -3430,6 +3438,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
