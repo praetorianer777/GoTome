@@ -18,6 +18,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The web app opens faster, the first time and after a hard refresh: its
+  files are sent compressed (brotli or gzip), pages other than the
+  library, a book and sign-in load when first visited, and large API
+  answers are compressed as well. The first load moves about 170 KB
+  instead of 800 KB.
 - More tags give genres: tags a store marks, such as "Science Fiction
   (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
   "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
@@ -27,6 +32,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- A book's page keeps long titles, author lists, series, publishers,
+  identifiers, tags and file names inside their boxes at every width:
+  they wrap, and words too long for a line break, instead of running
+  over the details card and off the screen. The details card is a little
+  wider, and lists each identifier on a line of its own.
 - An author or series followed while GOtome was looking up the others is
   looked up right after, instead of only at the next hourly round.
 - A book's page shows the status reading gave it straight away: going

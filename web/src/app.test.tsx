@@ -1137,6 +1137,59 @@ describe("books", () => {
 		).toBeInTheDocument();
 	});
 
+	it("lets long values on a book's page break anywhere, and lists each identifier on a line", async () => {
+		const word =
+			"Donaudampfschifffahrtsgesellschaftskapitänswitwenrentenversicherung";
+		const fileName = `Robin_Hobb_-_Rain_Wild_Chronicles_01_-_${word}.epub`;
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook(`Rain Wild Chronicles 01 - Drachenhüter ${word}`, {
+				contributors: [
+					...Array.from({ length: 6 }, (_, i) => ({
+						name: `Margaret Lindholm-${word}-${i}`,
+						role: "author" as const,
+					})),
+					{ name: `Uta ${word}`, role: "translator" as const },
+				],
+				series: `Die Regenwildnis-Chroniken ${word}`,
+				publisher: `Penhaligon-Verlag-${word}`,
+				tags: [word],
+				identifiers: [
+					{ type: "isbn", value: "9783764530605", fromFile: true },
+					{ type: "uuid", value: `urn:uuid:${word}`, fromFile: true },
+				],
+				files: [
+					{
+						id: "file-1",
+						kind: "ebook",
+						format: "epub",
+						name: fileName,
+						size: 1_400_000,
+						missing: false,
+						drm: false,
+						extractState: "done",
+					},
+				],
+			});
+		renderApp("/books/book-1");
+
+		const title = await screen.findByRole("heading", { level: 1 });
+		// jsdom lays nothing out: the browser test (book-layout.spec.ts)
+		// measures the boxes; here the rule they depend on is held.
+		expect(title.closest("article")).toHaveClass("wrap-anywhere");
+		const details = within(screen.getByRole("region", { name: "Details" }));
+		expect(details.getByText(`Penhaligon-Verlag-${word}`)).toBeInTheDocument();
+		expect(details.getByText(`Uta ${word}`)).toBeInTheDocument();
+		expect(details.getByText("ISBN 9783764530605")).toBeInTheDocument();
+		expect(details.getByText(`UUID urn:uuid:${word}`)).toBeInTheDocument();
+		expect(
+			within(screen.getByRole("region", { name: "Files" })).getByText(fileName),
+		).toBeInTheDocument();
+		expect(screen.getByText(word, { selector: "li" })).toBeInTheDocument();
+	});
+
 	it("says so when a book is not there", async () => {
 		withShelf();
 		renderApp("/books/book-99");

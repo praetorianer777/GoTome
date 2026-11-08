@@ -115,7 +115,7 @@ function BookPage({ book }: { book: BookDetail }) {
 	const authors = names(book, "author");
 	const narrators = names(book, "narrator");
 	const others = book.contributors.filter((c) => ROLES[c.role]);
-	const details: [MessageKey, string][] = [];
+	const details: [MessageKey, string | string[]][] = [];
 	if (book.publisher) details.push(["book.publisher", book.publisher]);
 	if (book.published) details.push(["book.published", book.published]);
 	if (book.language)
@@ -130,9 +130,7 @@ function BookPage({ book }: { book: BookDetail }) {
 	if (book.identifiers.length > 0) {
 		details.push([
 			"book.identifiers",
-			book.identifiers
-				.map((i) => `${i.type.toUpperCase()} ${i.value}`)
-				.join(", "),
+			book.identifiers.map((i) => `${i.type.toUpperCase()} ${i.value}`),
 		]);
 	}
 
@@ -141,9 +139,12 @@ function BookPage({ book }: { book: BookDetail }) {
 	const personal = can(user, "personal:manage");
 
 	return (
-		<article className="flex flex-col gap-8">
+		// Names, file names and identifiers may be words longer than a line:
+		// "anywhere" lets grid and flex items shrink below them, which
+		// "break-word" does not.
+		<article className="flex flex-col gap-8 wrap-anywhere">
 			{back}
-			<div className="grid gap-6 sm:grid-cols-[14rem_1fr] sm:gap-10">
+			<div className="grid gap-6 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-10">
 				<div className="mx-auto w-44 sm:w-full">
 					<Cover
 						book={book}
@@ -265,7 +266,7 @@ function BookPage({ book }: { book: BookDetail }) {
 				</div>
 			</div>
 
-			<div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
 				<div className="flex min-w-0 flex-col gap-6">
 					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
 					{personal && <CollectionPicker bookId={book.id} />}
@@ -282,13 +283,21 @@ function BookPage({ book }: { book: BookDetail }) {
 						<h2 id="book-details" className="mb-3 text-lg font-medium">
 							{t("book.details")}
 						</h2>
-						<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+						<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
 							{details.map(([label, value]) => (
 								<div key={`${label}${value}`} className="contents">
 									<dt className="text-slate-600 dark:text-slate-400">
 										{t(label)}
 									</dt>
-									<dd className="break-words">{value}</dd>
+									<dd className="min-w-0">
+										{Array.isArray(value)
+											? value.map((v) => (
+													<span key={v} className="block">
+														{v}
+													</span>
+												))
+											: value}
+									</dd>
 								</div>
 							))}
 						</dl>
@@ -349,7 +358,7 @@ function Files({
 						<span className="w-14 rounded bg-slate-100 py-0.5 text-center text-xs font-semibold tracking-wide uppercase dark:bg-slate-800">
 							{file.format}
 						</span>
-						<span className="min-w-[10rem] flex-1 break-words">
+						<span className="min-w-[10rem] flex-1">
 							{file.name}
 							{fileNotes(file).length > 0 && (
 								<span className="block text-slate-500 dark:text-slate-400">

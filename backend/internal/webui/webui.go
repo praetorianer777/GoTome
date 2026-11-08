@@ -3,12 +3,16 @@
 package webui
 
 import (
+	"cmp"
 	"embed"
+	"io"
 	"io/fs"
 	"mime"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // dist is filled by the image build, and by make web-embed in a checkout.
@@ -45,8 +49,9 @@ func Handler() http.Handler {
 	return New(dist)
 }
 
-// New serves a built web app from dist. Files are served as they are; every
-// other path gets index.html, because the app routes in the browser and a
+// New serves a built web app from dist. Files are served as they are, or as
+// the compressed copy beside them that the request accepts; every other path
+// gets index.html, because the app routes in the browser and a
 // reload of /books/42 must load the app, not a 404.
 func New(dist fs.FS) http.Handler {
 	files := http.FileServerFS(dist)
@@ -67,7 +72,9 @@ func New(dist fs.FS) http.Handler {
 			} else {
 				w.Header().Set("Cache-Control", "no-cache")
 			}
-			files.ServeHTTP(w, r)
+			if !serveEncoded(w, r, dist, name) {
+				files.ServeHTTP(w, r)
+			}
 			return
 		}
 
@@ -86,12 +93,81 @@ func New(dist fs.FS) http.Handler {
 		}
 		// The page names the current build's assets, so it must be revalidated.
 		w.Header().Set("Cache-Control", "no-cache")
+		if serveEncoded(w, r, dist, "index.html") {
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if r.Method == http.MethodHead {
 			return
 		}
 		_, _ = w.Write(index)
 	})
+}
+
+// encodings are the compressed copies the build leaves beside a file, the
+// best first (web/scripts/compress.mjs).
+var encodings = []struct{ coding, suffix string }{{"br", ".br"}, {"gzip", ".gz"}}
+
+// serveEncoded sends the best compressed copy of name the request accepts,
+// and says whether there was one. A copy is a representation of its own, so
+// a range and a cache are of its bytes; Vary keeps caches from handing one
+// to a client that did not ask for it.
+func serveEncoded(w http.ResponseWriter, r *http.Request, dist fs.FS, name string) bool {
+	accept := r.Header.Get("Accept-Encoding")
+	varies := false
+	for _, e := range encodings {
+		if !isFile(dist, name+e.suffix) {
+			continue
+		}
+		if !varies {
+			w.Header().Add("Vary", "Accept-Encoding")
+			varies = true
+		}
+		if !Accepts(accept, e.coding) {
+			continue
+		}
+		f, err := dist.Open(name + e.suffix)
+		if err != nil {
+			return false
+		}
+		defer f.Close()
+		content, ok := f.(io.ReadSeeker)
+		if !ok {
+			return false
+		}
+		h := w.Header()
+		h.Set("Content-Type", cmp.Or(mime.TypeByExtension(path.Ext(name)), "application/octet-stream"))
+		h.Set("Content-Encoding", e.coding)
+		http.ServeContent(w, r, "", time.Time{}, content)
+		return true
+	}
+	return false
+}
+
+// Accepts says whether an Accept-Encoding header allows a content
+// coding: named, or matched by *, with a weight above zero.
+func Accepts(header, coding string) bool {
+	star := false
+	for _, part := range strings.Split(header, ",") {
+		name, params, _ := strings.Cut(part, ";")
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name != coding && name != "*" {
+			continue
+		}
+		weight := 1.0
+		for _, p := range strings.Split(params, ";") {
+			if k, v, ok := strings.Cut(strings.TrimSpace(p), "="); ok && strings.EqualFold(k, "q") {
+				if q, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+					weight = q
+				}
+			}
+		}
+		if name == coding {
+			return weight > 0
+		}
+		star = weight > 0
+	}
+	return star
 }
 
 func isFile(dist fs.FS, name string) bool {

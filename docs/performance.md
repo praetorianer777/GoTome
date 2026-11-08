@@ -119,6 +119,34 @@ the facets took 600 ms, and a smart shelf 1.7 s:
   looking 2,000 up. GOtome's tables are mostly in memory, and a NAS with an
   SSD reads at random almost as fast as in order.
 
+## The first load
+
+What a browser downloads to open the app, on a first visit or a hard
+refresh (#353). Measured with `make web-build`: the JavaScript `index.html`
+loads, and what of it goes over the wire.
+
+| | Files | JavaScript | Sent |
+| --- | --- | --- | --- |
+| Before | 1 | 798 KB | 798 KB, uncompressed |
+| After | 7 | 635 KB | 194 KB gzip, 166 KB brotli |
+
+- **Compressed at build.** `npm run build` ends with
+  `web/scripts/compress.mjs`, which leaves a `.br` and a `.gz` beside every
+  text file of at least 1 KiB in `dist` (when it saves a tenth). `webui`
+  sends the best one the request's `Accept-Encoding` allows, with
+  `Content-Encoding` and `Vary: Accept-Encoding`, and the file as it is
+  otherwise; nothing is compressed while answering. The PDF.js worker
+  (1.2 MB) goes as 300 KB.
+- **Pages on demand.** The library, a book's page and sign-in are in the
+  first load; every other page is a chunk of its own that loads on its
+  first visit (`lazyRouteComponent` in `web/src/router.tsx`), as the
+  readers did before. The entry chunk went from 798 KB to 134 KB; React,
+  TanStack and openapi-fetch are one `libraries` chunk (362 KB) that
+  changes only with them.
+- **API answers.** A JSON answer of at least 1 KiB is gzipped for a client
+  that accepts it (`httpapi/compress.go`); files, covers, the OPDS feeds
+  and the notification stream are sent as they are.
+
 ## Memory
 
 - **The app.** When the container has a memory limit, `gotome serve` sets

@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
+import { VIEWS } from "../fixtures/views";
 
 // axe-core checks each main view for what a screen reader or a keyboard
 // cannot get past. @axe-core/playwright is not among the suite's packages
@@ -43,23 +44,6 @@ async function seriousViolations(page: Page, Axe: AxeBuilderClass) {
 				`${v.id}: ${v.help} (${v.nodes.map((n) => JSON.stringify(n.target)).join(", ")})`,
 		);
 }
-
-const VIEWS: { path: string; heading: string }[] = [
-	{ path: "/", heading: "Library" },
-	{ path: "/search", heading: "Search the text" },
-	{ path: "/duplicates", heading: "Duplicates" },
-	{ path: "/collections", heading: "Collections" },
-	{ path: "/wishlist", heading: "Wishlist" },
-	{ path: "/releases", heading: "New books" },
-	{ path: "/stats", heading: "Your reading" },
-	{ path: "/overview", heading: "Overview" },
-	{ path: "/jobs", heading: "Background jobs" },
-	{ path: "/trash", heading: "Trash" },
-	{ path: "/profile", heading: "Your account" },
-	{ path: "/admin/libraries", heading: "Libraries" },
-	{ path: "/admin/users", heading: "Users" },
-	{ path: "/admin/settings", heading: "Settings" },
-];
 
 test("the sign-in page has no serious accessibility violations", async ({
 	page,
