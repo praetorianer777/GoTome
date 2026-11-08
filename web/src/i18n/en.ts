@@ -1164,6 +1164,7 @@ export const en = {
 	"cleanup.kind.placeholders": "Placeholder authors: {count}",
 	"cleanup.kind.clashes": "Authors that are series: {count}",
 	"cleanup.kind.titles": "Title additions: {count}",
+	"cleanup.kind.series": "Series in titles: {count}",
 	"cleanup.about.authors":
 		"One author under several spellings. Choose the spelling to keep: the books under the others take it.",
 	"cleanup.about.placeholders":
@@ -1172,6 +1173,8 @@ export const en = {
 		"An author with the same name as the series of their books, so one of the two is wrong. Where every book is in the series, the name is the series; where only some are, it is the author.",
 	"cleanup.about.titles":
 		"What a shop added to a title: the edition it sold, or the genre after a colon or a dash.",
+	"cleanup.about.series":
+		"Books without a series whose titles name one, as in “Rain Wild Chronicles 01 - Dragon Keeper” or “Dragon Keeper (Rain Wild Chronicles #1)”. A series is suggested where two books of a library name it, or where it is a series already. Applying puts the books into it at the places their titles say, and takes the series off their titles.",
 	"cleanup.none": "Nothing to suggest here.",
 	"cleanup.books": "Books: {count}",
 	"cleanup.keep": "Spelling to keep",
@@ -1181,10 +1184,13 @@ export const en = {
 	"cleanup.removeAuthor": "{name} is the series of these books, not their author.",
 	"cleanup.clearSeries": "{name} is the author; some of their books have the name as their series too.",
 	"cleanup.retitle": "becomes",
+	"cleanup.series": "Series “{name}”",
+	"cleanup.seriesPlace": "{position}: {title}",
 	"cleanup.apply.merge": "Use this spelling",
 	"cleanup.apply.removeAuthor": "Remove the author",
 	"cleanup.apply.clearSeries": "Take them out of the series",
 	"cleanup.apply.retitle": "Change the title",
+	"cleanup.apply.setSeries": "Put them into the series",
 	"cleanup.dismiss": "Leave it",
 	"cleanup.applyAll": "Apply all {count}",
 	"cleanup.applyAllSure": "Apply all {count} as suggested?",

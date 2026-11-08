@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Clean up suggests a series for books without one whose titles name it,
+  such as "Rain Wild Chronicles 01 - Drachenhüter" or "Drachenhüter (Rain
+  Wild Chronicles #1)", where two books of a library name it or it is a
+  series already. Applying it puts the books into the series at the
+  places their titles say and takes the series off their titles.
+
 ### Changed
 
 - **Review** and **Find details online** tick the fields worth taking:

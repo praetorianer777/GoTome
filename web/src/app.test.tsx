@@ -5976,6 +5976,59 @@ describe("cleaning up how books are described", () => {
 		).toEqual({ kind: "placeholders" });
 	});
 
+	it("puts the books whose titles name a series into it", async () => {
+		server.cleanup.push({
+			kind: "series",
+			subject: "rain wild chronicles",
+			found: [
+				{
+					name: "Rain Wild Chronicles 01 - Drachenhüter",
+					books: 1,
+					book: "book-1",
+					position: 1,
+					title: "Drachenhüter",
+				},
+				{
+					name: "Drachenkämpfer (Rain Wild Chronicles #2.5)",
+					books: 1,
+					book: "book-2",
+					position: 2.5,
+					title: "Drachenkämpfer",
+				},
+			],
+			fix: "setSeries",
+			suggested: "Rain Wild Chronicles",
+			books: 2,
+		});
+		const person = userEvent.setup();
+		renderApp("/cleanup?kind=series");
+		expect(
+			await screen.findByText("Series “Rain Wild Chronicles”"),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Series in titles: 1" }),
+		).toHaveAttribute("aria-pressed", "true");
+		expect(
+			screen.getByRole("link", {
+				name: "Rain Wild Chronicles 01 - Drachenhüter",
+			}),
+		).toHaveAttribute("href", "/books/book-1");
+		expect(screen.getByText("1: Drachenhüter")).toBeInTheDocument();
+		expect(screen.getByText("2.5: Drachenkämpfer")).toBeInTheDocument();
+		await person.click(
+			screen.getByRole("button", { name: "Put them into the series" }),
+		);
+		expect(await screen.findByRole("status")).toHaveTextContent(
+			"Being applied to 2 books.",
+		);
+		expect(
+			server.requests.find((r) => r.path === "/cleanup/apply")?.body,
+		).toEqual({
+			kind: "series",
+			picks: [{ subject: "rain wild chronicles" }],
+		});
+	});
+
 	it("is not offered to a reader", async () => {
 		server.withAccount("Rob", "a long password", "reader").signedInAs("Rob");
 		const { router } = renderApp("/cleanup");

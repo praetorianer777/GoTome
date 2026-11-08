@@ -68,6 +68,9 @@ type Change struct {
 	// Series names the series; each book keeps its position. "" takes the
 	// books out of their series.
 	Series *string `json:"series,omitempty"`
+	// SeriesIndex is the position in Series instead of the book's own; it
+	// is set on one book at a time, as a clean-up does.
+	SeriesIndex *float64 `json:"seriesIndex,omitempty"`
 	// Authors replace the authors; narrators and the other contributors
 	// stay.
 	Authors       *[]string `json:"authors,omitempty"`
@@ -117,6 +120,12 @@ func (c *Change) Check() error {
 		return EditError{"change": "Say what to change."}
 	}
 	probe := Edit{Title: c.Title, Language: c.Language, Published: c.Published, Locks: c.Locks}
+	if c.SeriesIndex != nil {
+		if c.Series == nil {
+			return EditError{FieldSeries: "Name the series of the position."}
+		}
+		probe.Series = &SeriesPlace{Name: *c.Series, Index: c.SeriesIndex}
+	}
 	if err := probe.check(); err != nil {
 		return err
 	}
@@ -179,8 +188,14 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 	if c.Publisher != nil && use(FieldPublisher) && Key(*c.Publisher) != Key(book.Publisher) {
 		e.Publisher = c.Publisher
 	}
-	if c.Series != nil && use(FieldSeries) && Key(*c.Series) != Key(book.Series) {
-		e.Series = &SeriesPlace{Name: *c.Series, Index: book.SeriesIndex}
+	if c.Series != nil && use(FieldSeries) {
+		index := book.SeriesIndex
+		if c.SeriesIndex != nil {
+			index = c.SeriesIndex
+		}
+		if Key(*c.Series) != Key(book.Series) || !sameIndex(index, book.SeriesIndex) {
+			e.Series = &SeriesPlace{Name: *c.Series, Index: index}
+		}
 	}
 	if use(FieldContributors) {
 		var authors, others []NewContributor
@@ -235,6 +250,10 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 		return out, nil
 	}
 	return out, EditTx(ctx, tx, scope, id, e)
+}
+
+func sameIndex(a, b *float64) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
 
 // revise is a list of names replaced by set when it is given, then with
