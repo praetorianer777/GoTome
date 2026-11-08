@@ -68,6 +68,25 @@ body {
 	@apply bg-slate-50 text-slate-900 antialiased dark:bg-ink dark:text-slate-100;
 }
 
+/* The backdrop is only ever seen between and around the panels, which carry
+   all text (docs/design.md); the image is dimmed to stay far darker than them.
+   Only the bars blur what is behind them: a blur under the whole content
+   would be redrawn on every scroll. */
+body {
+	@variant dark {
+		background-image: url("../assets/backdrop.webp");
+		background-size: cover;
+		background-position: center;
+		background-attachment: fixed;
+	}
+}
+
+/* The frame's surfaces: top bar, sidebar, content. At least 90 % opaque, so
+   what is behind never lowers the contrast of text on them. */
+@utility panel {
+	@apply border border-slate-200 bg-white/90 shadow-sm dark:border-slate-700/60 dark:bg-slate-900/90 dark:shadow-none;
+}
+
 /* Bars, boxes and sliders the browser draws take the accent. */
 progress,
 input[type="checkbox"],

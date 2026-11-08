@@ -300,9 +300,19 @@ describe("signed in", () => {
 		expect(
 			await screen.findByRole("heading", { name: "Library" }),
 		).toBeInTheDocument();
-		expect(screen.getByRole("navigation", { name: "Main" })).toContainElement(
+		expect(screen.getByRole("navigation", { name: "Areas" })).toContainElement(
 			screen.getByRole("link", { name: "Library" }),
 		);
+		const main = screen.getByRole("navigation", { name: "Main" });
+		expect(main).toContainElement(screen.getByRole("link", { name: "All ebooks" }));
+		expect(main).toContainElement(
+			screen.getByRole("link", { name: "All audiobooks" }),
+		);
+		expect(
+			decodeURIComponent(
+				screen.getByRole("link", { name: "All audiobooks" }).getAttribute("href") ?? "",
+			),
+		).toContain('format=["m4b"');
 		expect(
 			screen.getByRole("link", { name: "Skip to the content" }),
 		).toHaveAttribute("href", "#content");
@@ -2085,6 +2095,9 @@ describe("profile", () => {
 		expect(document.documentElement.lang).toBe("de");
 		expect(
 			screen.getByRole("navigation", { name: "Hauptnavigation" }),
+		).toContainElement(screen.getByRole("link", { name: "Alle E-Books" }));
+		expect(
+			screen.getByRole("navigation", { name: "Bereiche" }),
 		).toContainElement(screen.getByRole("link", { name: "Bibliothek" }));
 
 		first.unmount();

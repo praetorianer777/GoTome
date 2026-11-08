@@ -61,7 +61,7 @@ export function Bell() {
 				aria-controls="notifications"
 				aria-label={t("notifications.bell", { count: unread })}
 				onClick={() => setOpen(!open)}
-				className="relative rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+				className="relative rounded-full border border-slate-300 p-2 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
 			>
 				<svg
 					aria-hidden="true"
@@ -84,7 +84,7 @@ export function Bell() {
 				<section
 					id="notifications"
 					aria-label={t("notifications.title")}
-					className="absolute right-0 z-20 mt-2 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+					className="absolute right-0 z-20 mt-2 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
 				>
 					<NotificationList
 						items={notifications.data?.notifications ?? []}

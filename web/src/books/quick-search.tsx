@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { type NameHit, type SearchHit, searchQuery } from "@/books/api";
+import mark from "@/assets/mark.webp";
 import { t } from "@/i18n";
 import { bookCount } from "@/lib/format";
 
@@ -136,7 +137,7 @@ export function QuickSearch() {
 	}
 
 	return (
-		<div className="relative w-full sm:w-64">
+		<div className="relative w-full sm:w-64 lg:w-72">
 			<input
 				ref={input}
 				type="search"
@@ -158,11 +159,19 @@ export function QuickSearch() {
 				onFocus={() => setOpen(true)}
 				onBlur={() => setOpen(false)}
 				onKeyDown={onKeyDown}
-				className="w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+				className="w-full rounded-full border border-slate-300 bg-white py-1.5 pr-10 pl-4 text-sm text-slate-900 placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+			/>
+			{/* Decorative: Enter in the field is what searches. */}
+			<img
+				src={mark}
+				alt=""
+				width={24}
+				height={24}
+				className="pointer-events-none absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 rounded-full"
 			/>
 			<div
 				hidden={!shown}
-				className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-md border sm:right-auto sm:w-[28rem] lg:w-[36rem] border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+				className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border sm:right-auto sm:w-[28rem] lg:w-[36rem] border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
 			>
 				{search.isSuccess && options === 0 && (
 					<p

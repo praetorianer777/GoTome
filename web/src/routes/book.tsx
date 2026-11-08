@@ -237,7 +237,7 @@ function BookPage({ book }: { book: BookDetail }) {
 
 					{book.description && (
 						<section aria-label={t("book.description")}>
-							<p className="max-w-prose leading-relaxed whitespace-pre-line">
+							<p className="max-w-prose leading-normal whitespace-pre-line">
 								{book.description}
 							</p>
 						</section>

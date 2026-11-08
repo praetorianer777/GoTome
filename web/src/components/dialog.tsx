@@ -80,7 +80,7 @@ export function Dialog({
 				aria-labelledby={id}
 				aria-describedby={describedBy}
 				tabIndex={-1}
-				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r dark:bg-slate-950" : "max-w-lg rounded-lg border"}`}
+				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r dark:bg-slate-950" : "max-w-lg rounded-2xl border"}`}
 			>
 				<div className="flex items-center gap-2">
 					<h2 id={id} className="mr-auto text-lg font-medium">

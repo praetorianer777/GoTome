@@ -32,6 +32,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The app has a new look, after the owner's draft
+  ([design.md](docs/design.md)): the top bar carries the wordmark, the
+  sections (Library, Wishlist, New books, Statistics), a rounded search and
+  the bell and account menu; the sidebar is a panel grouped as Ebooks and
+  Audiobooks, with "All ebooks" and "All audiobooks" opening the library
+  filtered to one medium; pages sit on rounded panels over a dimmed
+  backdrop in the dark theme, and the light theme has the same layout.
+  Below 1024 px the menu button opens all of it as the drawer.
 - The settings page is grouped in sections (sign-in, book details,
   similar books and search, genres, trash) with a list to jump to each,
   two columns where the screen is wide enough, and shorter

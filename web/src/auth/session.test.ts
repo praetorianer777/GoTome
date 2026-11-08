@@ -32,10 +32,10 @@ describe("permissions", () => {
 
 	it("decide which navigation entries are offered", () => {
 		const items: NavItem[] = [
-			{ to: "/", label: "nav.library", permission: "library:read", group: "library", icon: "library" },
+			{ to: "/", label: "nav.library", permission: "library:read", group: "sections", icon: "library" },
 			{ to: "/", label: "nav.main", permission: "books:upload", group: "catalogue", icon: "upload" },
 			{ to: "/", label: "nav.skip", permission: "users:manage", group: "admin", icon: "people" },
-			{ to: "/profile", label: "nav.profile", group: "library", icon: "person" },
+			{ to: "/profile", label: "nav.profile", group: "sections", icon: "person" },
 		];
 		const labels = (role: "reader" | "editor" | "admin") =>
 			visibleNavItems(items, user("x", role)).map((item) => item.label);
