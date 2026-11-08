@@ -17,6 +17,22 @@ What changes for someone who runs or uses GOtome. The format follows
   value that is not one of them, such as an unknown source.
 - Smart shelf rules pick formats and stars from a list instead of
   taking them typed.
+- The duplicates page shows the two books of a pair side by side as
+  cards, with their covers, files with size and pages, e-reader
+  findings, your reading, library and added date, and what differs
+  marked; stacked on a phone. Each card has one **Keep this one**, which
+  says what happens to the other book. In a library GOtome does not
+  write to, it merges the other book in with its files instead of
+  trashing them.
+
+### Fixed
+
+- Keeping one book of a pair, moving a file to the trash, restoring it
+  or fixing it in a folder GOtome may not write to (a `.trash` or an
+  author's folder owned by another user, a read-only mount) failed with
+  a server error and did nothing visible. It now says which folder
+  cannot be written and why, right at the button, and marks the library
+  as one whose folder cannot be written.
 
 ## [0.10.0] - 2026-11-06
 

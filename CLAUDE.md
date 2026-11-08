@@ -431,7 +431,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   writable library (managed, or external with `writable`) to
   `<library>/.trash/<file id>/<name>` by a rename, last in the transaction
   that sets `trashed_at` and `trashed_by`, under `LockLibraryFiles`; a
-  failed commit moves it back. The record keeps its `rel_path`, which stays
+  failed commit moves it back. A write the system refuses there (EACCES,
+  EPERM, EROFS on a mkdir or rename, `folderError`) is
+  `ErrFolderReadOnly`, a 409 naming the folder, and marks the library as
+  a failed probe does. The record keeps its `rel_path`, which stays
   taken; the scan passes by both the dot folder and the trashed record.
   The file's chunks and signature go and the book's text is chosen again
   (`textGoneTx`); `OnFilesChanged` queues its duplicate check.

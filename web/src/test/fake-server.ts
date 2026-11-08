@@ -311,6 +311,8 @@ export class FakeServer {
 	pairs: DuplicatePair[] = [];
 	/** Books merged away, and the book each lives on as. */
 	mergedInto: Record<string, string> = {};
+	/** Set to refuse replacing, as a folder GOtome cannot write to does. */
+	replaceRefused?: string;
 
 	/** Adds an open pair of two of the books, with its evidence. */
 	withPair(id: string, a: string, b: string, evidence: DuplicatePair["evidence"]): this {
@@ -547,6 +549,9 @@ export class FakeServer {
 				const gone = this.books.find((b) => b.id === goneID);
 				if (!pair || !keep || !gone) {
 					return Response.json({ error: { code: "not_found", message: "There is no such pair." } }, { status: 404 });
+				}
+				if (this.replaceRefused) {
+					return Response.json({ error: { code: "conflict", message: this.replaceRefused } }, { status: 409 });
 				}
 				for (const file of gone.files) {
 					this.trashed.push({
