@@ -2818,6 +2818,11 @@ function matches(b: BookDetail, r: Rule): boolean {
 }
 
 /** Renders the whole app at an address, against the fake server. */
+// Pages load on demand (router.tsx). Loading every one before the tests keeps
+// a test's first visit to a page from waiting on its module being compiled,
+// which on a busy machine takes longer than a query waits.
+import.meta.glob("../routes/*.tsx", { eager: true });
+
 export function renderApp(path: string) {
 	// No retries: a test that expects a failure should not wait for three.
 	const queryClient = new QueryClient({
