@@ -107,6 +107,13 @@ On the Libraries page, the library's line says what its last scan found.
   GOtome without reaching the files, and trash and fixes are refused,
   until the folder is writable again; then **Scan now** clears it and
   writes the edits made meanwhile into the files.
+- **"GOtome cannot write to /books/.trash now (permission denied)"** at
+  **Keep this one**, **Move to trash**, **Restore** or **Fix**: the
+  library's folder can be written, but a folder inside it cannot, often
+  `.trash` or an author's folder made by another user. Give the app's
+  user 10001 write access to the folder named (`chown -R 10001:10001` on
+  the host), then try again. The library is marked as above until the
+  next scan.
 
 ## Files that cannot be read
 

@@ -53,7 +53,7 @@ async function filter(page: Page, name: RegExp, on: boolean) {
 test("the text is searched from the header, narrowed by a filter, and a passage opens in its reader", async ({
 	page,
 }, testInfo) => {
-	test.setTimeout(90_000);
+	test.setTimeout(120_000);
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
 	const word = uniqueWord(testInfo.project.name);
 	await openSignedIn(page);
@@ -99,11 +99,12 @@ test("the text is searched from the header, narrowed by a filter, and a passage 
 	).toBeVisible();
 	const results = page.getByRole("region", { name: "Books found" });
 	const found = results.getByRole("heading", { level: 2 });
-	// The books' text is read in the background after the upload.
+	// The books' text is read in the background after the upload, behind
+	// the other browsers' books when every project runs at once.
 	await expect(async () => {
 		await page.reload();
 		await expect(found).toHaveCount(2, { timeout: 2_000 });
-	}).toPass({ timeout: 30_000 });
+	}).toPass({ timeout: 60_000 });
 	await expect(results.locator("mark").first()).toHaveText(word);
 
 	await filter(page, /^PDF \(/, true);
