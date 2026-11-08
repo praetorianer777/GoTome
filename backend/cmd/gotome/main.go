@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -106,6 +107,7 @@ Commands:
   reset-password Set a new password for an account, read from the terminal (-h for options)
   similar-check  Measure the similar books of a sample of the library (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
+  match-check    Measure how often a lookup by title and author finds the book (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
 `
@@ -143,6 +145,8 @@ func run(args []string) error {
 		return similarCheck(args[1:])
 	case "genre-check":
 		return genreCheck(args[1:])
+	case "match-check":
+		return matchCheck(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
@@ -200,43 +204,10 @@ func serve() error {
 	coverStore := covers.NewStore(cfg.DataDir)
 	scans := ingest.NewService(pool, libraries, coverStore, log)
 	scans.UploadLimit = cfg.UploadLimit
-	providers := []metadata.Provider{
-		openlibrary.New(),
-		crossref.New(func(ctx context.Context) string {
-			contact, _ := settingStore.Text(ctx, settings.ContactEmail)
-			return contact
-		}),
-		hardcover.New(func(ctx context.Context) string {
-			token, _, err := settingStore.Secret(ctx, settings.HardcoverToken)
-			if err != nil {
-				log.Warn("the Hardcover token cannot be read", "error", err)
-			}
-			return token
-		}),
+	meta, err := metadataService(cfg, pool, settingStore, log)
+	if err != nil {
+		return err
 	}
-	if cfg.Offline {
-		providers = nil
-	}
-	metaOptions := metadata.Options{
-		Language: func(ctx context.Context) string {
-			lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
-			return lang
-		},
-		Enabled: func(ctx context.Context) []string {
-			names, _ := settingStore.Text(ctx, settings.Providers)
-			return strings.Split(names, ",")
-		},
-	}
-	if cfg.TestMetadata != "" {
-		recorded, err := canned.Open(cfg.TestMetadata)
-		if err != nil {
-			return fmt.Errorf("GOTOME_TEST_METADATA: %w", err)
-		}
-		log.Warn("metadata comes from the test records of GOTOME_TEST_METADATA alone", "file", cfg.TestMetadata)
-		// It stands in for every provider, whichever the setting names.
-		providers, metaOptions.Enabled = []metadata.Provider{recorded}, nil
-	}
-	meta := metadata.NewService(pool, providers, metaOptions)
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
 	books := catalog.NewService(pool)
 	duplicates := dedupe.NewService(pool, books, log)
@@ -642,6 +613,117 @@ func genreCheck(args []string) error {
 	}
 	genres.PrintCheck(os.Stdout, r, *precision)
 	return nil
+}
+
+// matchCheck looks a sample of the books with an ISBN up by title and
+// authors alone and measures how often the first candidate is the book.
+// It asks the providers, at their pace and through the answer cache.
+func matchCheck(args []string) error {
+	flags := flag.NewFlagSet("match-check", flag.ContinueOnError)
+	n := flags.Int("n", 100, "how many books with an ISBN to look up at most")
+	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
+	asJSON := flags.Bool("json", false, "print the report as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := cfg.RequireSecretKey(); err != nil {
+		return err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	store, err := settings.Open(ctx, pool, box)
+	if err != nil {
+		return err
+	}
+	meta, err := metadataService(cfg, pool, store, log)
+	if err != nil {
+		return err
+	}
+	opts := metadata.CheckOptions{
+		Books: *n,
+		Start: func(books int, estimate time.Duration) {
+			fmt.Fprintf(os.Stderr, "Looking up %d books; about %s at the providers' pace, less for answers in the cache.\n",
+				books, estimate.Round(time.Second))
+		},
+		Progress: func(done, of int) {
+			if done%10 == 0 || done == of {
+				fmt.Fprintf(os.Stderr, "%d of %d\n", done, of)
+			}
+		},
+	}
+	if *providers != "" {
+		opts.Providers = strings.Split(*providers, ",")
+	}
+	if v, err := store.Text(ctx, settings.MatchThreshold); err == nil {
+		opts.Threshold, _ = strconv.ParseFloat(v, 64)
+	}
+	r, err := meta.Check(ctx, opts)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	metadata.PrintCheck(os.Stdout, r)
+	return nil
+}
+
+// metadataService asks the providers the configuration and the settings
+// name, as the server and the match-check do.
+func metadataService(cfg config.Config, pool *pgxpool.Pool, settingStore *settings.Store, log *slog.Logger) (*metadata.Service, error) {
+	providers := []metadata.Provider{
+		openlibrary.New(),
+		crossref.New(func(ctx context.Context) string {
+			contact, _ := settingStore.Text(ctx, settings.ContactEmail)
+			return contact
+		}),
+		hardcover.New(func(ctx context.Context) string {
+			token, _, err := settingStore.Secret(ctx, settings.HardcoverToken)
+			if err != nil {
+				log.Warn("the Hardcover token cannot be read", "error", err)
+			}
+			return token
+		}),
+	}
+	if cfg.Offline {
+		providers = nil
+	}
+	metaOptions := metadata.Options{
+		Language: func(ctx context.Context) string {
+			lang, _ := settingStore.Text(ctx, settings.MetadataLanguage)
+			return lang
+		},
+		Enabled: func(ctx context.Context) []string {
+			names, _ := settingStore.Text(ctx, settings.Providers)
+			return strings.Split(names, ",")
+		},
+	}
+	if cfg.TestMetadata != "" {
+		recorded, err := canned.Open(cfg.TestMetadata)
+		if err != nil {
+			return nil, fmt.Errorf("GOTOME_TEST_METADATA: %w", err)
+		}
+		log.Warn("metadata comes from the test records of GOTOME_TEST_METADATA alone", "file", cfg.TestMetadata)
+		// It stands in for every provider, whichever the setting names.
+		providers, metaOptions.Enabled = []metadata.Provider{recorded}, nil
+	}
+	return metadata.NewService(pool, providers, metaOptions), nil
 }
 
 // localOpener runs the models the checks embed with. Tests give them one

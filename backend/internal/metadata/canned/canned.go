@@ -22,6 +22,7 @@ const Name = "canned"
 // entry is one record as the file writes it.
 type entry struct {
 	ID          string   `json:"id"`
+	Work        string   `json:"work"`
 	Title       string   `json:"title"`
 	Subtitle    string   `json:"subtitle"`
 	Authors     []string `json:"authors"`
@@ -55,7 +56,7 @@ func Open(path string) (*Provider, error) {
 	p := &Provider{}
 	for _, e := range entries {
 		r := metadata.Record{
-			ID: e.ID, Title: e.Title, Subtitle: e.Subtitle, Description: e.Description, Language: e.Language,
+			ID: e.ID, Work: e.Work, Title: e.Title, Subtitle: e.Subtitle, Description: e.Description, Language: e.Language,
 			Published: e.Published, Publisher: e.Publisher, Series: e.Series, SeriesIndex: e.SeriesIndex,
 			PageCount: e.PageCount, Tags: e.Tags,
 		}

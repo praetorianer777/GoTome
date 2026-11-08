@@ -82,6 +82,7 @@ type Options struct {
 
 // Service asks the providers and ranks what they say.
 type Service struct {
+	pool      *pgxpool.Pool
 	providers []Provider
 	webs      map[string]Web
 	language  func(context.Context) string
@@ -95,7 +96,7 @@ type Service struct {
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
+	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
 	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)

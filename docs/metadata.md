@@ -43,6 +43,50 @@ On a book's page, **Find details online** asks the sources there and then,
 whether or not the book was looked up before, and lets you pick a
 candidate and the fields to take from it.
 
+## Measuring how well a lookup finds a book
+
+A book with an ISBN is found by it; one without is found by title,
+author and language alone, and the score decides which candidate is
+taken. `gotome match-check` measures how often that finds the right book
+on your own library: it takes a sample of books that have an ISBN
+(chosen by a hash of each book's ID, so the same one each run), looks
+each up as if it had none, and checks the ranking against the ISBN.
+
+```
+docker compose exec app gotome match-check -n 100
+```
+
+(`make match-check ARGS="-n 100"` for a development stack.) Options: `-n`
+books in the sample (100), `-providers openlibrary,hardcover` to ask
+only those (by default those `metadata.providers` names), `-json` for
+the whole report. It asks the sources at their usual pace and through
+the same 30-day cache as every lookup, so it first prints about how long
+it will take, and a second run within the month asks almost nobody. It
+changes no book. A source that is not set up (Hardcover without its
+token) finds nothing for every book.
+
+The report counts, for every source together (`all`, as a lookup ranks
+them), for each source and for German, English and other books, what the
+first candidate is:
+
+- **right**: it carries one of the book's ISBNs. Open Library and
+  Hardcover list works, not editions, without an ISBN, so their right
+  answers mostly show as the next column.
+- **same work**: another edition of the book: looked up by the book's
+  ISBN, the source names the same work (Open Library's work, Hardcover's
+  book). Taking it fills gaps with what that edition says.
+- **wrong**: another book, or an edition the source does not tie to the
+  book's ISBN.
+- **nothing** found, or **failed** (the source did not answer; counted
+  nowhere else).
+
+Then where the book stood in the ranking when a wrong one was first, the
+first candidate's score in bands for right and wrong ones, and at each
+threshold how many first candidates a lookup would take and how many of
+them are right: the line marked `*` is `metadata.matchThreshold` now.
+Raise the threshold until wrong ones are rare among those taken; what
+falls below it waits on the Review page.
+
 ## Who wins
 
 A field has a source: the file, a metadata source, or a person.

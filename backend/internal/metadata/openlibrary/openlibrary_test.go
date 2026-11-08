@@ -178,3 +178,14 @@ func TestTheWorksOfNobody(t *testing.T) {
 		t.Errorf("an unknown author: %+v, %v", got, err)
 	}
 }
+
+func TestTheEditionNamesTheWorkTheSearchFinds(t *testing.T) {
+	edition, err := New().Lookup(context.Background(), web(), emmaISBN)
+	if err != nil || len(edition) != 1 || edition[0].Work == "" {
+		t.Fatalf("Lookup: %+v, %v", edition, err)
+	}
+	found, err := New().Search(context.Background(), web(), metadata.Query{Title: "Emma", Authors: []string{"Jane Austen"}, Language: "en"})
+	if err != nil || len(found) == 0 || found[0].Work != edition[0].Work {
+		t.Errorf("the edition's work %q, the search's first %+v, %v", edition[0].Work, found, err)
+	}
+}

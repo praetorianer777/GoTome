@@ -140,6 +140,7 @@ func (p *Provider) Lookup(ctx context.Context, web metadata.Web, id catalog.Iden
 
 	authors := ed.Authors
 	if len(ed.Works) > 0 {
+		r.Work = strings.TrimPrefix(ed.Works[0].Key, "/works/")
 		var w work
 		err := getJSON(ctx, web, site+ed.Works[0].Key+".json", &w)
 		if err != nil && !errors.Is(err, metadata.ErrNotFound) {
@@ -219,7 +220,7 @@ func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Quer
 			continue
 		}
 		id := strings.TrimPrefix(d.Key, "/works/")
-		r := metadata.Record{ID: id, Title: d.Title, Subtitle: d.Subtitle, Tags: firstTags(d.Subject)}
+		r := metadata.Record{ID: id, Work: id, Title: d.Title, Subtitle: d.Subtitle, Tags: firstTags(d.Subject)}
 		for i, name := range d.AuthorName {
 			if i == maxAuthors {
 				break
