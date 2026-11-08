@@ -777,7 +777,7 @@ export const en = {
 		"Reads every book in the background, a book at a time, to suggest similar ones. Off pauses it; on again goes on where it stopped.",
 	"settings.embeddingModel": "Language model",
 	"settings.embeddingModel.hint":
-		"Another model reads every book again; the vectors of the one before stay, so going back to it costs nothing. bge-m3 runs on the embedding server when one is set, otherwise here on the CPU.",
+		"Another model reads every book again; the files and vectors of the one before stay for the days set below, so going back to it within them costs nothing. bge-m3 runs on the embedding server when one is set, otherwise here on the CPU.",
 	"embeddingModel.list": "The models to choose from",
 	"embeddingModel.inUse": "{name} (in use)",
 	"embeddingModel.dimensions": "{dimensions} dimensions",
@@ -793,9 +793,24 @@ export const en = {
 	"embeddingModel.state.serverDown": "The embedding server does not answer with this model.",
 	"embeddingModel.confirm.title": "Switch to {model}?",
 	"embeddingModel.confirm.body":
-		"{model} has vectors for {metadata} of {books} books. Every other book is embedded again, which takes hours on a large library. The vectors of the model in use stay, so going back to it costs nothing.",
+		"{model} has vectors for {metadata} of {books} books. Every other book is embedded again, which takes hours on a large library. The files and vectors of the model in use stay for the days set under \"Days an unused model is kept\", so going back to it within them costs nothing.",
 	"embeddingModel.confirm.switch": "Switch and embed again",
+	"embeddingModel.stored": "Takes {disk} on disk and about {database} in the database.",
+	"embeddingModel.removeAt": "Not in use since {since}; its files and vectors are removed on {at}.",
+	"embeddingModel.unusedSince": "Not in use since {since}.",
+	"embeddingModel.remove": "Remove now",
+	"embeddingModel.removeNamed": "Remove {name} now",
+	"embeddingModel.removeQueued": "Removal of {name} is queued; it runs once the current embedding pass pauses. Reload the page to see the space it freed.",
+	"embeddingModel.removeFailed": "{name} could not be removed: {error}",
+	"embeddingModel.removeConfirm.title": "Remove {name}?",
+	"embeddingModel.removeConfirm.body":
+		"This deletes {name}'s files ({disk}) and its vectors (about {database}). Switching back to it later means downloading it and embedding every book again, which takes hours on a large library.",
+	"embeddingModel.removeConfirm.remove": "Remove",
+	"embeddingModel.removeConfirm.cancel": "Keep it",
 	"embeddingModel.confirm.cancel": "Keep the model in use",
+	"settings.embeddingRemoveUnused": "Days an unused model is kept",
+	"settings.embeddingRemoveUnused.hint":
+		"A model that has not been the one in use for this many days has its downloaded files and its vectors removed. From 1 to 3650; 1 unless set.",
 	"settings.embeddingServer": "Embedding server",
 	"settings.embeddingServer.hint":
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",

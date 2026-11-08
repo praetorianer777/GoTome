@@ -191,6 +191,10 @@ export class FakeServer {
 				chosen: true,
 				metadata: 80,
 				content: 60,
+				storedBytes: 135_429_554,
+				databaseBytes: 260_000,
+				unusedSince: undefined as string | undefined,
+				removeAt: undefined as string | undefined,
 			},
 			{
 				name: "multilingual-e5-small-fp32",
@@ -203,6 +207,10 @@ export class FakeServer {
 				chosen: false,
 				metadata: 0,
 				content: 0,
+				storedBytes: 0,
+				databaseBytes: 0,
+				unusedSince: undefined as string | undefined,
+				removeAt: undefined as string | undefined,
 			},
 			{
 				name: "bge-m3",
@@ -215,9 +223,15 @@ export class FakeServer {
 				chosen: false,
 				metadata: 110,
 				content: 95,
+				storedBytes: 2_284_693_904,
+				databaseBytes: 1_100_000,
+				unusedSince: "2026-10-05T08:00:00Z" as string | undefined,
+				removeAt: "2026-10-06T08:00:00Z" as string | undefined,
 			},
 		],
 	};
+	/** The models whose removal was asked for, in order. */
+	removedModels: string[] = [];
 	/** What the overview page counts. */
 	figures = {
 		books: 1200,
@@ -609,6 +623,25 @@ export class FakeServer {
 			}
 			if (path === "/embedding/status") {
 				return Response.json(this.embedding);
+			}
+			const removeModel = /^\/embedding\/models\/([^/]+)\/remove$/.exec(path);
+			if (removeModel && request.method === "POST") {
+				const name = decodeURIComponent(removeModel[1] ?? "");
+				const model = this.embeddingModels.models.find((m) => m.name === name);
+				if (!model) {
+					return Response.json(
+						{ error: { code: "not_found", message: "There is no such model." } },
+						{ status: 404 },
+					);
+				}
+				if (model.chosen) {
+					return Response.json(
+						{ error: { code: "conflict", message: "The model is the one books are embedded with; choose another first." } },
+						{ status: 409 },
+					);
+				}
+				this.removedModels.push(name);
+				return new Response(null, { status: 202 });
 			}
 			if (path === "/embedding/models") {
 				if (!this.session?.permissions.includes("settings:manage")) {

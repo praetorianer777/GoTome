@@ -193,6 +193,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
 		func(context.Context, embed.Spec) (embed.Embedder, error) { return &embed.Fake{}, nil }, quiet)
 	a.server.Similar.Passages = a.scans.Passages
+	a.server.Similar.Queue = queue
 	a.server.Genres = genres.NewService(a.pool, a.server.Similar, func(ctx context.Context) (string, error) {
 		return a.settings.Text(ctx, settings.GenreSuggestions)
 	}, quiet)

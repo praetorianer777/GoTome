@@ -152,6 +152,55 @@ func (q *Queries) DeleteVectorsOfGoneBooks(ctx context.Context) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const deleteVectorsOfModel = `-- name: DeleteVectorsOfModel :many
+WITH doomed AS (
+    SELECT book_id, kind FROM book_vectors
+    WHERE model = $1::text AND model_version = $2::text
+      AND book_id >= $3::uuid
+    ORDER BY book_id, kind
+    LIMIT $4::int
+)
+DELETE FROM book_vectors v USING doomed d
+WHERE v.book_id = d.book_id AND v.kind = d.kind AND v.model = $1::text
+RETURNING v.book_id
+`
+
+type DeleteVectorsOfModelParams struct {
+	Model        string
+	ModelVersion string
+	After        uuid.UUID
+	Batch        int32
+}
+
+// A batch of a model's vectors, from the book given on in ID order, so
+// that no statement holds its locks long; the books whose vectors went.
+// From the book given, not after it: a book's other kind may be left of
+// the batch before.
+func (q *Queries) DeleteVectorsOfModel(ctx context.Context, arg DeleteVectorsOfModelParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteVectorsOfModel,
+		arg.Model,
+		arg.ModelVersion,
+		arg.After,
+		arg.Batch,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var book_id uuid.UUID
+		if err := rows.Scan(&book_id); err != nil {
+			return nil, err
+		}
+		items = append(items, book_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getBookMetadataText = `-- name: GetBookMetadataText :one
 SELECT coalesce(book_metadata_text($1::uuid), '')::text
 `
@@ -602,6 +651,61 @@ func (q *Queries) ListStoredMetadataVectors(ctx context.Context, arg ListStoredM
 	return items, nil
 }
 
+const listUnusedModels = `-- name: ListUnusedModels :many
+SELECT name, since FROM unused_embedding_models
+`
+
+func (q *Queries) ListUnusedModels(ctx context.Context) ([]UnusedEmbeddingModel, error) {
+	rows, err := q.db.Query(ctx, listUnusedModels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UnusedEmbeddingModel{}
+	for rows.Next() {
+		var i UnusedEmbeddingModel
+		if err := rows.Scan(&i.Name, &i.Since); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markModelChosen = `-- name: MarkModelChosen :exec
+DELETE FROM unused_embedding_models WHERE name = $1
+`
+
+func (q *Queries) MarkModelChosen(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelChosen, name)
+	return err
+}
+
+const markModelLeft = `-- name: MarkModelLeft :exec
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET since = now()
+`
+
+// Another model was chosen in its place just now.
+func (q *Queries) MarkModelLeft(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelLeft, name)
+	return err
+}
+
+const markModelUnused = `-- name: MarkModelUnused :exec
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO NOTHING
+`
+
+// Found unused now, unless it was before.
+func (q *Queries) MarkModelUnused(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelUnused, name)
+	return err
+}
+
 const putBookVector = `-- name: PutBookVector :exec
 INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
 SELECT b.id, $1::text, $2::text, $3::text,
@@ -632,4 +736,40 @@ func (q *Queries) PutBookVector(ctx context.Context, arg PutBookVectorParams) er
 		arg.BookID,
 	)
 	return err
+}
+
+const sizeVectorsByModel = `-- name: SizeVectorsByModel :many
+SELECT v.model, v.model_version,
+       sum(pg_column_size(v.embedding) + pg_column_size(v.source_hash) + 80)::bigint AS bytes
+FROM book_vectors v
+GROUP BY v.model, v.model_version
+`
+
+type SizeVectorsByModelRow struct {
+	Model        string
+	ModelVersion string
+	Bytes        int64
+}
+
+// What the vectors of each model and version take in the database, of
+// every book: the vectors as stored, compressed or not, the hashes, and
+// roughly a row's header and other columns.
+func (q *Queries) SizeVectorsByModel(ctx context.Context) ([]SizeVectorsByModelRow, error) {
+	rows, err := q.db.Query(ctx, sizeVectorsByModel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SizeVectorsByModelRow{}
+	for rows.Next() {
+		var i SizeVectorsByModelRow
+		if err := rows.Scan(&i.Model, &i.ModelVersion, &i.Bytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

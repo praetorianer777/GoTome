@@ -8,12 +8,17 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- An embedding model no longer in use has its downloaded files, its
+  vectors and its passage vectors removed once it has not been chosen for
+  a day (the new setting "Days an unused model is kept",
+  `embedding.removeUnusedAfterDays`). The model list on the settings page
+  shows what each model takes on disk and in the database, and "Remove
+  now" frees one not in use at once.
 - Enter in the header's search, with no suggestion chosen, lists every
   book the words find, like the library: sorting, covers or a list,
   filters, selection and bulk changes. Its address keeps the words, so
   back and reload return to it. A suggestion chosen with the arrow keys
   still opens that book, author or series.
-
 - Clean up suggests a series for books without one whose titles name it,
   such as "Rain Wild Chronicles 01 - Drachenhüter" or "Drachenhüter (Rain
   Wild Chronicles #1)", where two books of a library name it or it is a

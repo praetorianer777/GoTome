@@ -3477,6 +3477,46 @@
         "x-permission": "settings:manage"
       }
     },
+    "/embedding/models/{modelName}/remove": {
+      "post": {
+        "operationId": "removeEmbeddingModel",
+        "summary": "Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays",
+        "tags": [
+          "settings"
+        ],
+        "parameters": [
+          {
+            "name": "modelName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/embedding/status": {
       "get": {
         "operationId": "embeddingStatus",
@@ -11727,6 +11767,9 @@
           "content": {
             "type": "integer"
           },
+          "databaseBytes": {
+            "type": "integer"
+          },
           "dimensions": {
             "type": "integer"
           },
@@ -11748,6 +11791,17 @@
           "readiness": {
             "$ref": "#/components/schemas/Readiness"
           },
+          "removeAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "storedBytes": {
+            "type": "integer"
+          },
+          "unusedSince": {
+            "type": "string",
+            "format": "date-time"
+          },
           "weights": {
             "type": "string"
           }
@@ -11762,7 +11816,9 @@
           "readiness",
           "chosen",
           "metadata",
-          "content"
+          "content",
+          "storedBytes",
+          "databaseBytes"
         ]
       },
       "ModelList": {

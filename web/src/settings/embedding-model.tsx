@@ -1,10 +1,16 @@
-import { queryOptions } from "@tanstack/react-query";
-import { useEffect, useId, useRef } from "react";
+import {
+	queryOptions,
+	useMutation,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { Dialog } from "@/components/dialog";
+import { errorMessage } from "@/components/form";
+import { button } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
-import { formatSize } from "@/lib/format";
+import { formatDateTime, formatSize } from "@/lib/format";
 
 export type ModelList = components["schemas"]["ModelList"];
 type ModelChoice = components["schemas"]["ModelChoice"];
@@ -42,6 +48,34 @@ function readiness(m: ModelChoice): string {
 	return t(STATES[m.readiness.state]);
 }
 
+/** Whether a model not in use has anything for "Remove now" to take away. */
+function removable(m: ModelChoice): boolean {
+	return !m.chosen && (m.storedBytes > 0 || m.databaseBytes > 0);
+}
+
+function unused(m: ModelChoice): string | null {
+	if (m.chosen || !m.unusedSince) {
+		return null;
+	}
+	const since = formatDateTime(m.unusedSince);
+	return m.removeAt && removable(m)
+		? t("embeddingModel.removeAt", { since, at: formatDateTime(m.removeAt) })
+		: t("embeddingModel.unusedSince", { since });
+}
+
+/** Queues the removal of a model's files and vectors. */
+function useRemoveModel() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (name: string) =>
+			api.POST("/embedding/models/{modelName}/remove", {
+				params: { path: { modelName: name } },
+			}),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: embeddingModelsQuery.queryKey }),
+	});
+}
+
 /** The model to embed with, chosen from the list, with each one's facts. */
 export function EmbeddingModelField({
 	label,
@@ -59,6 +93,8 @@ export function EmbeddingModelField({
 	onChange: (name: string) => void;
 }) {
 	const id = useId();
+	const [confirming, setConfirming] = useState<ModelChoice | null>(null);
+	const remove = useRemoveModel();
 	const described =
 		[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") ||
 		undefined;
@@ -135,10 +171,107 @@ export function EmbeddingModelField({
 								withText: list.withText,
 							})}
 						</p>
+						{(m.storedBytes > 0 || m.databaseBytes > 0) && (
+							<p className="text-slate-600 dark:text-slate-400">
+								{t("embeddingModel.stored", {
+									disk: formatSize(m.storedBytes),
+									database: formatSize(m.databaseBytes),
+								})}
+							</p>
+						)}
+						{unused(m) && (
+							<p className="text-slate-600 dark:text-slate-400">{unused(m)}</p>
+						)}
+						{removable(m) && (
+							<button
+								type="button"
+								aria-label={t("embeddingModel.removeNamed", { name: m.name })}
+								disabled={remove.isPending}
+								onClick={() => setConfirming(m)}
+								className={`mt-1 ${button("danger")}`}
+							>
+								{t("embeddingModel.remove")}
+							</button>
+						)}
 					</li>
 				))}
 			</ul>
+			{remove.isSuccess && remove.variables && (
+				<p role="status" className="text-sm text-green-800 dark:text-green-300">
+					{t("embeddingModel.removeQueued", { name: remove.variables })}
+				</p>
+			)}
+			{remove.isError && remove.variables && (
+				<p role="alert" className="text-sm text-red-700 dark:text-red-300">
+					{t("embeddingModel.removeFailed", {
+						name: remove.variables,
+						error: errorMessage(remove.error),
+					})}
+				</p>
+			)}
+			{confirming && (
+				<RemoveModelDialog
+					model={confirming}
+					onConfirm={() => {
+						setConfirming(null);
+						remove.mutate(confirming.name);
+					}}
+					onCancel={() => setConfirming(null)}
+				/>
+			)}
 		</div>
+	);
+}
+
+/** Asks before a model's files and vectors are removed. */
+function RemoveModelDialog({
+	model,
+	onConfirm,
+	onCancel,
+}: {
+	model: ModelChoice;
+	onConfirm: () => void;
+	onCancel: () => void;
+}) {
+	const id = useId();
+	const cancel = useRef<HTMLButtonElement>(null);
+	// The safe answer is the one a stray Enter gives.
+	useEffect(() => cancel.current?.focus(), []);
+	return (
+		<Dialog
+			alert
+			title={t("embeddingModel.removeConfirm.title", { name: model.name })}
+			describedBy={`${id}-body`}
+			onClose={onCancel}
+		>
+			<p
+				id={`${id}-body`}
+				className="text-sm text-slate-700 dark:text-slate-300"
+			>
+				{t("embeddingModel.removeConfirm.body", {
+					name: model.name,
+					disk: formatSize(model.storedBytes),
+					database: formatSize(model.databaseBytes),
+				})}
+			</p>
+			<div className="flex flex-wrap justify-end gap-2">
+				<button
+					ref={cancel}
+					type="button"
+					onClick={onCancel}
+					className={button("secondary", "md")}
+				>
+					{t("embeddingModel.removeConfirm.cancel")}
+				</button>
+				<button
+					type="button"
+					onClick={onConfirm}
+					className={button("danger", "md")}
+				>
+					{t("embeddingModel.removeConfirm.remove")}
+				</button>
+			</div>
+		</Dialog>
 	);
 }
 
