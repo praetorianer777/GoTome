@@ -1050,6 +1050,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embedding/models/{modelName}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays */
+        post: operations["removeEmbeddingModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/embedding/status": {
         parameters: {
             query?: never;
@@ -3491,6 +3508,7 @@ export interface components {
         ModelChoice: {
             chosen: boolean;
             content: number;
+            databaseBytes: number;
             dimensions: number;
             diskBytes: number;
             memoryBytes: number;
@@ -3498,6 +3516,11 @@ export interface components {
             model: string;
             name: string;
             readiness: components["schemas"]["Readiness"];
+            /** Format: date-time */
+            removeAt?: string;
+            storedBytes: number;
+            /** Format: date-time */
+            unusedSince?: string;
             weights: string;
         };
         ModelList: {
@@ -4698,7 +4721,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit. Every field but person, format, files, ereader and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
                 sort?: "title" | "author" | "added" | "series";
@@ -6306,6 +6329,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ModelList"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeEmbeddingModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modelName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

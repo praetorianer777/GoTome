@@ -412,6 +412,7 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 	byAuthor := fmt.Sprintf(`{"field": "author", "op": "in", "values": [%q]}`, author)
 	byPerson := fmt.Sprintf(`{"field": "person", "op": "in", "values": [%q]}`, author)
 	bySeries := fmt.Sprintf(`{"field": "series", "op": "in", "values": [%q]}`, series)
+	byWords := fmt.Sprintf(`{"field": "words", "op": "like", "values": [%q]}`, quick)
 	tagAndLanguage := fmt.Sprintf(`{"all": [{"field": "tag", "op": "in", "values": [%q]}, {"field": "language", "op": "in", "values": ["de"]}]}`, tag)
 	return []scaleView{
 		{name: "library by title", path: "/books?limit=50"},
@@ -437,6 +438,9 @@ func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
 		{name: "facets of a filter", path: "/books/facets?" + filter(tagAndLanguage)},
 		{name: "count of a filter", path: "/books/count?" + filter(tagAndLanguage)},
 		{name: "quick search", path: "/books/search?q=" + quick},
+		{name: "every quick search match", path: "/books?limit=50&" + filter(byWords)},
+		{name: "every quick search match by author", path: "/books?limit=50&sort=author&" + filter(byWords)},
+		{name: "facets of every quick search match", path: "/books/facets?" + filter(byWords)},
 		{name: "author names", path: "/books/names?kind=author&q=" + quick[:3]},
 		{name: "full-text search", path: "/search?q=" + word},
 		{name: "book", path: "/books/" + book},

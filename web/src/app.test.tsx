@@ -1610,11 +1610,15 @@ describe("quick search", () => {
 		await person.type(box, "Sandersen");
 
 		const results = await screen.findByRole("listbox", { name: "Books found" });
-		// Two books, and last the search of their text.
+		// Two books, the list of every book found, and last the search of
+		// their text.
 		await waitFor(() =>
-			expect(within(results).getAllByRole("option")).toHaveLength(3),
+			expect(within(results).getAllByRole("option")).toHaveLength(4),
 		);
 		expect(within(results).getAllByRole("option")[2]).toHaveTextContent(
+			"Every book like “Sandersen”",
+		);
+		expect(within(results).getAllByRole("option")[3]).toHaveTextContent(
 			"Search the text of the books for “Sandersen”",
 		);
 		expect(box).toHaveAttribute("aria-expanded", "true");
@@ -1633,6 +1637,49 @@ describe("quick search", () => {
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/books/book-2");
 		expect(box).toHaveValue("");
+	});
+
+	it("lists every book found on Enter, as the library does", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		const box = await screen.findByRole("combobox", { name: "Search books" });
+		await person.type(box, "Sandersen");
+		const results = await screen.findByRole("listbox", { name: "Books found" });
+		await waitFor(() =>
+			expect(
+				within(results).getByRole("option", { name: "Every book like “Sandersen”" }),
+			).toBeInTheDocument(),
+		);
+
+		// Nothing chosen: Enter is the list, not the first book.
+		await person.keyboard("{Enter}");
+		expect(
+			await screen.findByRole("heading", {
+				name: "Books like “Sandersen”",
+				level: 1,
+			}),
+		).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ q: "Sandersen" });
+		const list = screen.getByRole("region", { name: "Books" });
+		await waitFor(() =>
+			expect(within(list).getAllByRole("link", { name: /Way of Kings|Mistborn/ })).toHaveLength(2),
+		);
+		expect(within(list).queryByRole("link", { name: /Emma/ })).not.toBeInTheDocument();
+		const asked = server.requests.find(
+			(r) => r.path.startsWith("/books?") && r.path.includes("words"),
+		);
+		expect(asked?.path).toContain("like");
+		// The library's own controls work on it: the selection is there.
+		expect(screen.getByRole("button", { name: "Select books" })).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Show the whole library" }));
+		expect(
+			await screen.findByRole("heading", { name: "Library", level: 1 }),
+		).toBeInTheDocument();
+		await waitFor(() =>
+			expect(within(screen.getByRole("region", { name: "Books" })).getAllByRole("link", { name: /Emma/ }).length).toBeGreaterThan(0),
+		);
 	});
 
 	it("waits for three letters, says when nothing is found, and closes on Escape", async () => {
@@ -1889,6 +1936,50 @@ describe("settings", () => {
 		expect(server.requests.find((r) => r.method === "PATCH")?.body).toEqual({
 			values: { "embedding.model": "bge-m3" },
 		});
+	});
+
+	it("removes a model not in use once asked", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		const models = within(
+			await screen.findByRole("list", { name: "The models to choose from" }),
+		);
+		const bge = within(models.getByRole("listitem", { name: "bge-m3" }));
+		expect(
+			bge.getByText("Takes 2.3 GB on disk and about 1.1 MB in the database."),
+		).toBeInTheDocument();
+		expect(bge.getByText(/^Not in use since .*; its files and vectors are removed on /)).toBeInTheDocument();
+		const small = within(
+			models.getByRole("listitem", { name: "multilingual-e5-small" }),
+		);
+		expect(small.queryByRole("button", { name: /Remove/ })).not.toBeInTheDocument();
+		expect(
+			within(
+				models.getByRole("listitem", { name: "multilingual-e5-small-fp32" }),
+			).queryByRole("button", { name: /Remove/ }),
+		).not.toBeInTheDocument();
+
+		await person.click(bge.getByRole("button", { name: "Remove bge-m3 now" }));
+		let dialog = within(
+			await screen.findByRole("alertdialog", { name: "Remove bge-m3?" }),
+		);
+		expect(
+			dialog.getByText(/Switching back to it later means downloading it and embedding every book again/),
+		).toBeInTheDocument();
+		expect(dialog.getByRole("button", { name: "Keep it" })).toHaveFocus();
+		await person.click(dialog.getByRole("button", { name: "Keep it" }));
+		expect(server.removedModels).toEqual([]);
+
+		await person.click(bge.getByRole("button", { name: "Remove bge-m3 now" }));
+		dialog = within(await screen.findByRole("alertdialog"));
+		await person.click(dialog.getByRole("button", { name: "Remove" }));
+		expect(
+			await screen.findByText(/^Removal of bge-m3 is queued/),
+		).toBeInTheDocument();
+		expect(server.removedModels).toEqual(["bge-m3"]);
+		expect(server.requests.some((r) => r.method === "PATCH")).toBe(false);
 	});
 
 	it("keeps an editor out", async () => {
@@ -5852,7 +5943,7 @@ describe("links to authors and series", () => {
 		const box = screen.getByRole("combobox", { name: "Search books" });
 		await person.type(box, "gotter");
 		await screen.findByRole("option", { name: /Die Götter/ });
-		await person.keyboard("{Enter}");
+		await person.keyboard("{ArrowDown}{Enter}");
 		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
 	});
 });

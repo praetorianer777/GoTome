@@ -282,6 +282,24 @@ func (s *Store) Begin(model, version string, centre []float32) error {
 	return s.switchTo(&Meta{Model: model, Version: version, Dim: len(centre), Centre: slices.Clone(centre), CompactedAt: time.Now(), Generation: gen})
 }
 
+// Clear empties the store and leaves it not begun, its files removed.
+func (s *Store) Clear() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.meta == nil {
+		return nil
+	}
+	if err := os.Remove(filepath.Join(s.dir, metaFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := syncDir(s.dir); err != nil {
+		return err
+	}
+	old := s.meta
+	s.meta = nil
+	return errors.Join(s.closeFiles(), s.removeGeneration(old.Generation))
+}
+
 // switchTo makes m, whose data files are written and synced, the store's:
 // meta.json names them once it is replaced, and the files before are
 // removed. If it cannot be replaced, the store stays as it was. The caller

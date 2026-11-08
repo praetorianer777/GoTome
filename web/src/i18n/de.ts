@@ -25,6 +25,7 @@ export const de: Record<MessageKey, string> = {
 	"search.results": "Gefundene Bücher",
 	"search.none": "Kein Titel, kein Autor und keine Reihe sieht so aus.",
 	"search.fullText": "Im Text der Bücher nach „{words}“ suchen",
+	"search.all": "Alle Bücher wie „{words}“",
 
 	"nav.search": "Suche",
 	"nav.duplicates": "Duplikate",
@@ -246,6 +247,13 @@ export const de: Record<MessageKey, string> = {
 
 	"library.filtered.title": "Kein Buch passt",
 	"library.filtered.body": "Keines der Bücher hier erfüllt alle Filter.",
+	"library.matching.title": "Bücher wie „{words}“",
+	"library.matching.intro":
+		"Jedes Buch, dessen Titel, Autor oder Reihe diesen Wörtern ähnelt, auch falsch geschrieben oder nur angefangen.",
+	"library.matching.clear": "Die ganze Bibliothek zeigen",
+	"library.matching.none": "Kein Buch sieht so aus",
+	"library.matching.noneBody":
+		"Kein Titel, kein Autor und keine Reihe in den Bibliotheken, die Sie sehen, ähnelt diesen Wörtern.",
 
 	"filter.title": "Filter",
 	"filter.toggle": "Filter",
@@ -785,7 +793,7 @@ export const de: Record<MessageKey, string> = {
 		"Liest jedes Buch im Hintergrund, eines nach dem anderen, um ähnliche vorzuschlagen. Aus pausiert; wieder an geht es dort weiter, wo es aufgehört hat.",
 	"settings.embeddingModel": "Sprachmodell",
 	"settings.embeddingModel.hint":
-		"Ein anderes Modell liest jedes Buch erneut; die Vektoren des vorigen bleiben, sodass der Wechsel zurück nichts kostet. bge-m3 läuft auf dem Embedding-Server, wenn einer gesetzt ist, sonst hier auf der CPU.",
+		"Ein anderes Modell liest jedes Buch erneut; die Dateien und Vektoren des vorigen bleiben für die unten eingestellten Tage, sodass der Wechsel zurück in dieser Zeit nichts kostet. bge-m3 läuft auf dem Embedding-Server, wenn einer gesetzt ist, sonst hier auf der CPU.",
 	"embeddingModel.list": "Die Modelle zur Auswahl",
 	"embeddingModel.inUse": "{name} (in Verwendung)",
 	"embeddingModel.dimensions": "{dimensions} Dimensionen",
@@ -803,9 +811,24 @@ export const de: Record<MessageKey, string> = {
 	"embeddingModel.state.serverDown": "Der Embedding-Server antwortet mit diesem Modell nicht.",
 	"embeddingModel.confirm.title": "Zu {model} wechseln?",
 	"embeddingModel.confirm.body":
-		"{model} hat Vektoren für {metadata} von {books} Büchern. Jedes andere Buch wird neu eingebettet, was bei einer großen Bibliothek Stunden dauert. Die Vektoren des Modells in Verwendung bleiben, sodass der Wechsel zurück nichts kostet.",
+		"{model} hat Vektoren für {metadata} von {books} Büchern. Jedes andere Buch wird neu eingebettet, was bei einer großen Bibliothek Stunden dauert. Die Dateien und Vektoren des Modells in Verwendung bleiben für die unter „Tage, die ein ungenutztes Modell bleibt“ eingestellten Tage, sodass der Wechsel zurück in dieser Zeit nichts kostet.",
 	"embeddingModel.confirm.switch": "Wechseln und neu einbetten",
+	"embeddingModel.stored": "Belegt {disk} auf der Festplatte und etwa {database} in der Datenbank.",
+	"embeddingModel.removeAt": "Nicht in Verwendung seit {since}; seine Dateien und Vektoren werden am {at} entfernt.",
+	"embeddingModel.unusedSince": "Nicht in Verwendung seit {since}.",
+	"embeddingModel.remove": "Jetzt entfernen",
+	"embeddingModel.removeNamed": "{name} jetzt entfernen",
+	"embeddingModel.removeQueued": "Das Entfernen von {name} ist eingereiht; es läuft, sobald der laufende Einbettungsdurchgang pausiert. Laden Sie die Seite neu, um den freigegebenen Platz zu sehen.",
+	"embeddingModel.removeFailed": "{name} konnte nicht entfernt werden: {error}",
+	"embeddingModel.removeConfirm.title": "{name} entfernen?",
+	"embeddingModel.removeConfirm.body":
+		"Das löscht die Dateien von {name} ({disk}) und seine Vektoren (etwa {database}). Wer später zu ihm zurückwechselt, muss es erneut herunterladen und jedes Buch neu einbetten, was bei einer großen Bibliothek Stunden dauert.",
+	"embeddingModel.removeConfirm.remove": "Entfernen",
+	"embeddingModel.removeConfirm.cancel": "Behalten",
 	"embeddingModel.confirm.cancel": "Modell in Verwendung behalten",
+	"settings.embeddingRemoveUnused": "Tage, die ein ungenutztes Modell bleibt",
+	"settings.embeddingRemoveUnused.hint":
+		"Ein Modell, das so viele Tage nicht in Verwendung war, verliert seine heruntergeladenen Dateien und seine Vektoren. Von 1 bis 3650; 1, wenn nicht gesetzt.",
 	"settings.embeddingServer": "Embedding-Server",
 	"settings.embeddingServer.hint":
 		"Die Adresse eines Ollama-Servers für bge-m3, etwa http://host.docker.internal:11434, auf dem das Modell geladen ist (ollama pull bge-m3). Leer führt GOtome bge-m3 selbst auf der CPU aus; die Vektoren sind in beiden Fällen dieselben.",

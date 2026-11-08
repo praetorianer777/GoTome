@@ -210,3 +210,44 @@ FROM book_vectors v
 WHERE v.kind = 'metadata' AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
 ORDER BY md5(v.book_id::text)
 LIMIT sqlc.arg(max)::int;
+
+-- name: SizeVectorsByModel :many
+-- What the vectors of each model and version take in the database, of
+-- every book: the vectors as stored, compressed or not, the hashes, and
+-- roughly a row's header and other columns.
+SELECT v.model, v.model_version,
+       sum(pg_column_size(v.embedding) + pg_column_size(v.source_hash) + 80)::bigint AS bytes
+FROM book_vectors v
+GROUP BY v.model, v.model_version;
+
+-- name: DeleteVectorsOfModel :many
+-- A batch of a model's vectors, from the book given on in ID order, so
+-- that no statement holds its locks long; the books whose vectors went.
+-- From the book given, not after it: a book's other kind may be left of
+-- the batch before.
+WITH doomed AS (
+    SELECT book_id, kind FROM book_vectors
+    WHERE model = sqlc.arg(model)::text AND model_version = sqlc.arg(model_version)::text
+      AND book_id >= sqlc.arg(after)::uuid
+    ORDER BY book_id, kind
+    LIMIT sqlc.arg(batch)::int
+)
+DELETE FROM book_vectors v USING doomed d
+WHERE v.book_id = d.book_id AND v.kind = d.kind AND v.model = sqlc.arg(model)::text
+RETURNING v.book_id;
+
+-- name: ListUnusedModels :many
+SELECT name, since FROM unused_embedding_models;
+
+-- name: MarkModelUnused :exec
+-- Found unused now, unless it was before.
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO NOTHING;
+
+-- name: MarkModelChosen :exec
+DELETE FROM unused_embedding_models WHERE name = $1;
+
+-- name: MarkModelLeft :exec
+-- Another model was chosen in its place just now.
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET since = now();

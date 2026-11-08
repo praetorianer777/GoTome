@@ -191,6 +191,10 @@ export class FakeServer {
 				chosen: true,
 				metadata: 80,
 				content: 60,
+				storedBytes: 135_429_554,
+				databaseBytes: 260_000,
+				unusedSince: undefined as string | undefined,
+				removeAt: undefined as string | undefined,
 			},
 			{
 				name: "multilingual-e5-small-fp32",
@@ -203,6 +207,10 @@ export class FakeServer {
 				chosen: false,
 				metadata: 0,
 				content: 0,
+				storedBytes: 0,
+				databaseBytes: 0,
+				unusedSince: undefined as string | undefined,
+				removeAt: undefined as string | undefined,
 			},
 			{
 				name: "bge-m3",
@@ -215,9 +223,15 @@ export class FakeServer {
 				chosen: false,
 				metadata: 110,
 				content: 95,
+				storedBytes: 2_284_693_904,
+				databaseBytes: 1_100_000,
+				unusedSince: "2026-10-05T08:00:00Z" as string | undefined,
+				removeAt: "2026-10-06T08:00:00Z" as string | undefined,
 			},
 		],
 	};
+	/** The models whose removal was asked for, in order. */
+	removedModels: string[] = [];
 	/** What the overview page counts. */
 	figures = {
 		books: 1200,
@@ -609,6 +623,25 @@ export class FakeServer {
 			}
 			if (path === "/embedding/status") {
 				return Response.json(this.embedding);
+			}
+			const removeModel = /^\/embedding\/models\/([^/]+)\/remove$/.exec(path);
+			if (removeModel && request.method === "POST") {
+				const name = decodeURIComponent(removeModel[1] ?? "");
+				const model = this.embeddingModels.models.find((m) => m.name === name);
+				if (!model) {
+					return Response.json(
+						{ error: { code: "not_found", message: "There is no such model." } },
+						{ status: 404 },
+					);
+				}
+				if (model.chosen) {
+					return Response.json(
+						{ error: { code: "conflict", message: "The model is the one books are embedded with; choose another first." } },
+						{ status: 409 },
+					);
+				}
+				this.removedModels.push(name);
+				return new Response(null, { status: 202 });
 			}
 			if (path === "/embedding/models") {
 				if (!this.session?.permissions.includes("settings:manage")) {
@@ -1268,7 +1301,9 @@ export class FakeServer {
 		}
 		if (path === "/books/count") {
 			const tree = JSON.parse(query.get("filter") || "{}") as Rule;
-			const unknown = fieldsOf(tree).find((f) => !FIELDS.includes(f as Field));
+			const unknown = fieldsOf(tree).find(
+				(f) => f !== "words" && !FIELDS.includes(f as Field),
+			);
 			if (unknown) {
 				return Response.json(
 					{
@@ -2347,20 +2382,8 @@ export class FakeServer {
 	}
 
 	private search(words: string) {
-		const q = nameKey(words);
-		if (q.replace(/ /g, "").length < 3) {
-			return [];
-		}
-		const near = (text: string) =>
-			nameKey(text).includes(q) ||
-			nameKey(text)
-				.split(" ")
-				.some((w) => oneOff(w, q));
 		return this.books.flatMap((b) => {
-			const author = b.contributors.find(
-				(c) => c.role === "author" && near(c.name),
-			);
-			const match = near(b.title) ? "title" : author ? "author" : undefined;
+			const match = quickMatch(b, words);
 			return match
 				? [
 						{
@@ -2642,7 +2665,8 @@ type Field =
 	| "rating"
 	| "format"
 	| "files"
-	| "ereader";
+	| "ereader"
+	| "words";
 const FIELDS: Field[] = [
 	"author",
 	"series",
@@ -2766,6 +2790,8 @@ function valuesOf(b: BookDetail, field: Field): [string, string][] {
 			const found = new Set(b.files.flatMap((f) => f.ereader?.findings ?? []));
 			return [...found].map((v) => [v, v]);
 		}
+		case "words":
+			return [];
 	}
 }
 
@@ -2780,6 +2806,25 @@ function fieldsOf(r: Rule): string[] {
 	].filter(Boolean);
 }
 
+/** What of the book the quick search finds the words in, near enough for the tests. */
+function quickMatch(b: BookDetail, words: string): "title" | "author" | undefined {
+	const q = nameKey(words);
+	if (q.replace(/ /g, "").length < 3) {
+		return undefined;
+	}
+	const near = (text: string) =>
+		nameKey(text).includes(q) ||
+		nameKey(text)
+			.split(" ")
+			.some((w) => oneOff(w, q));
+	if (near(b.title)) {
+		return "title";
+	}
+	return b.contributors.some((c) => c.role === "author" && near(c.name))
+		? "author"
+		: undefined;
+}
+
 function matches(b: BookDetail, r: Rule): boolean {
 	if (r.all) {
 		return r.all.every((c) => matches(b, c));
@@ -2792,6 +2837,9 @@ function matches(b: BookDetail, r: Rule): boolean {
 	}
 	if (!r.field) {
 		return true;
+	}
+	if (r.field === "words") {
+		return quickMatch(b, r.values?.[0] ?? "") !== undefined;
 	}
 	const have = valuesOf(b, r.field).map(([v]) => v);
 	if (r.op === "empty") {

@@ -146,6 +146,16 @@ type Service struct {
 	// PassageStatus, when set, says how far the passages are embedded,
 	// nil while they are not (passages.Service.Status).
 	PassageStatus func(ctx context.Context, scope library.Scope, libraryID *uuid.UUID) (*PassageStatus, error)
+	// ModelDir is where the models' files are (GOTOME_MODEL_DIR); empty,
+	// Models counts none and removing a model removes no file.
+	ModelDir string
+	// RemoveAfter is how long a model is not chosen before RemoveUnused
+	// removes it; nil, it removes none.
+	RemoveAfter func(ctx context.Context) (time.Duration, error)
+	// PassageBytes and RemovePassages, when set, measure and remove a
+	// model's passages (passages.Service.Bytes and Remove).
+	PassageBytes   func(m embed.Model) int64
+	RemovePassages func(ctx context.Context, m embed.Model) (int64, error)
 }
 
 // NewService returns the Service; Queue is set once the runner exists.

@@ -434,3 +434,35 @@ func BenchmarkSearch(b *testing.B) {
 		}
 	}
 }
+
+func TestAClearedStoreIsEmptyAndStaysSoWhenOpenedAgain(t *testing.T) {
+	dir := t.TempDir()
+	a := uuid.New()
+	vecs := stored(t, dir, a)
+	s, err := OpenStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	if s.Meta() != nil || s.Len() != 0 || s.Size() != 0 {
+		t.Errorf("cleared: %v, %d records, %d bytes", s.Meta(), s.Len(), s.Size())
+	}
+	if hits, err := s.Search(vecs[0], "m", "v", []uuid.UUID{a}, 10, 10); err != nil || len(hits) != 0 {
+		t.Errorf("a cleared store finds %v: %v", hits, err)
+	}
+	s.Close()
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 0 {
+		t.Errorf("files left: %v", entries)
+	}
+	s, err = OpenStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if s.Meta() != nil || s.StartedOver() {
+		t.Errorf("opened again: %v, started over %v", s.Meta(), s.StartedOver())
+	}
+}

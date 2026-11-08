@@ -354,6 +354,35 @@ func (s *Service) Status(ctx context.Context, scope library.Scope, libraryID *uu
 	return &similar.PassageStatus{WithText: int(c.WithText), WithPassages: int(c.WithPassages), Bytes: s.store.Size()}, nil
 }
 
+// Bytes is what the store takes on disk while it holds the model's
+// passages, else 0.
+func (s *Service) Bytes(m embed.Model) int64 {
+	if !s.holds(m) {
+		return 0
+	}
+	return s.store.Size()
+}
+
+func (s *Service) holds(m embed.Model) bool {
+	meta := s.store.Meta()
+	return meta != nil && meta.Model == m.Name && meta.Version == similar.Version(m)
+}
+
+// Remove takes the model's passages away, the store while it holds them
+// and the record of which files have them, and returns the bytes freed.
+func (s *Service) Remove(ctx context.Context, m embed.Model) (int64, error) {
+	var freed int64
+	if s.holds(m) {
+		freed = s.store.Size()
+		if err := s.store.Clear(); err != nil {
+			return 0, err
+		}
+	}
+	return freed, sqlc.New(s.pool).DeletePassageFilesOfModel(ctx, sqlc.DeletePassageFilesOfModelParams{
+		Model: m.Name, ModelVersion: similar.Version(m),
+	})
+}
+
 // passBudget is how long one run embeds before it snoozes and the next run
 // goes on.
 const passBudget = 5 * time.Minute

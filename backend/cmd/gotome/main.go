@@ -80,6 +80,9 @@ const (
 	sessionSweepInterval = time.Hour
 	trashPurgeInterval   = 6 * time.Hour
 	embedInterval        = time.Hour
+	// Hourly, so that a model goes within an hour of its time; a look
+	// that finds none due is two small queries.
+	removeModelsInterval = time.Hour
 	genreInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
@@ -237,6 +240,8 @@ func serve() error {
 	vectors := similar.NewService(pool, settingStore.Embedding, opener, log)
 	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
 	vectors.Passages = scans.Passages
+	vectors.ModelDir = cfg.ModelDir
+	vectors.RemoveAfter = settingStore.RemoveUnusedAfter
 	passageStore, err := passages.OpenStore(passages.Dir(cfg.DataDir))
 	if err != nil {
 		return err
@@ -250,6 +255,8 @@ func serve() error {
 	passageVectors.Chunks = scans.FileChunks
 	vectors.NearPassages = passageVectors.Near
 	vectors.PassageStatus = passageVectors.Status
+	vectors.PassageBytes = passageVectors.Bytes
+	vectors.RemovePassages = passageVectors.Remove
 	duplicates.Texts = scans.FileTexts
 	scans.OnChunked = func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error {
 		if err := duplicates.ChunkedTx(ctx, tx, bookID, fileID, texts); err != nil {

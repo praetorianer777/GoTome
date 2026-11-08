@@ -474,6 +474,11 @@ func (s *Server) routes() []Route {
 			Response: similar.ModelList{}, Reads: ReadsLibraries, Permission: auth.SettingsManage, Handler: s.listEmbeddingModels,
 		},
 		{
+			Method: http.MethodPost, Path: "/embedding/models/{modelName}/remove", ID: "removeEmbeddingModel",
+			Summary: "Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays", Tag: "settings",
+			Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.removeEmbeddingModel,
+		},
+		{
 			Method: http.MethodPost, Path: "/search/reread", ID: "rereadText",
 			Summary: "Read the text of a book, a library or every visible book again; search keeps the old text until then", Tag: "books",
 			Request: textRereadRequest{}, Response: textRereadResult{}, Status: http.StatusAccepted,
