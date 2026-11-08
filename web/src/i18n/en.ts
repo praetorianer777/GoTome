@@ -1147,7 +1147,7 @@ export const en = {
 
 	"find.title": "Find details for {title}",
 	"find.intro":
-		"What these sources know about the book, the best fit first. Pick one, tick what to take from it, and take it. Locked fields stay as they are.",
+		"What these sources know about the book, the best fit first. Pick one, tick what to take from it, and take it. What is worth taking is ticked already; locked fields stay as they are.",
 	"find.searching": "Asking the sources…",
 	"find.none": "No source knows this book.",
 	"find.failed": "{provider} did not answer: {message}",
@@ -1161,12 +1161,20 @@ export const en = {
 	"find.current": "Now",
 	"find.theirs": "{provider} says",
 	"find.take": "Take {field}",
-	"find.locked": "Locked",
 	"find.empty": "—",
 	"find.apply": "Take what is ticked",
 	"find.nothing": "Nothing differs from what the book has.",
 	"find.back": "Back to the book",
 	"find.addIdentifiers": "Add",
+	"find.reason.empty": "Empty now",
+	"find.reason.filename": "From the file name",
+	"find.reason.sameEdition": "Same edition",
+	"find.reason.adds": "Added to the book's",
+	"find.reason.locked": "Locked",
+	"find.reason.manual": "Would replace your edit",
+	"find.reason.language": "Other language",
+	"find.reason.file": "Would replace what the file says",
+	"find.reason.other": "Would replace another source's value",
 
 	"cleanup.title": "Clean up",
 	"cleanup.intro":
@@ -1207,7 +1215,7 @@ export const en = {
 	"cleanup.more": "Show more",
 	"review.title": "Review matches",
 	"review.intro":
-		"Books that were looked up by themselves and found only doubtful matches. Take what fits, reject what does not; a rejected match is not proposed again.",
+		"Books that were looked up by themselves and found only doubtful matches. What is worth taking is ticked; change the ticks, take what fits, reject what does not; a rejected match is not proposed again.",
 	"review.waiting": "{count} books wait.",
 	"review.none": "Nothing waits for review.",
 	"review.position": "Book {number} of {count}",

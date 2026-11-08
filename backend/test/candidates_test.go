@@ -71,6 +71,18 @@ func TestCandidatesAreFoundAndChosenFieldsTaken(t *testing.T) {
 		t.Errorf("candidate %v", c)
 	}
 	token := c["coverToken"].(string)
+	// The person's title stays unticked, what the book lacks is ticked.
+	fields, _ := c["fields"].(map[string]any)
+	for name, want := range map[string]map[string]any{
+		"title":       {"suggested": false, "reason": "locked"},
+		"description": {"suggested": true, "reason": "empty"},
+		"cover":       {"suggested": true, "reason": "empty"},
+	} {
+		got, _ := fields[name].(map[string]any)
+		if got["suggested"] != want["suggested"] || got["reason"] != want["reason"] {
+			t.Errorf("the suggestion for %s: %v, want %v", name, got, want)
+		}
+	}
 
 	resp, err := editor.Get(a.url + httpapi.APIPrefix + "/metadata/covers/" + token)
 	if err != nil {

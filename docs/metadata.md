@@ -43,6 +43,15 @@ On a book's page, **Find details online** asks the sources there and then,
 whether or not the book was looked up before, and lets you pick a
 candidate and the fields to take from it.
 
+In both, the fields worth taking are ticked to begin with, and each says
+why: ticked where the book has nothing, only a guess from the file name,
+or where the candidate shares an ISBN with the book (the same edition)
+and no person set the field; unticked where taking it would replace your
+edit or what the file says, where the candidate's title, subtitle or
+description is in another language than the book, and where the field is
+locked. Rows that would replace a value the book has are highlighted.
+Change the ticks before taking.
+
 ## Who wins
 
 A field has a source: the file, a metadata source, or a person.

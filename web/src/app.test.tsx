@@ -2539,7 +2539,7 @@ describe("editing a book", () => {
 });
 
 describe("finding details online", () => {
-	it("compares a result with the book and takes the ticked, unlocked fields", async () => {
+	it("compares a result with the book, ticks what is worth taking, and takes the ticked fields", async () => {
 		const person = userEvent.setup();
 		server
 			.withAccount("Edith", "a long password", "editor")
@@ -2568,6 +2568,14 @@ describe("finding details online", () => {
 						{ type: "isbn", value: "9780141439587" },
 						{ type: "openlibrary", value: "OL1M" },
 					],
+					fields: {
+						title: { suggested: false, reason: "locked" },
+						publisher: { suggested: true, reason: "sameEdition" },
+						published: { suggested: true, reason: "empty" },
+						description: { suggested: false, reason: "language" },
+						contributors: { suggested: false, reason: "file" },
+						identifiers: { suggested: true, reason: "adds" },
+					},
 				},
 				{
 					provider: "openlibrary",
@@ -2606,6 +2614,9 @@ describe("finding details online", () => {
 			screen.getByRole("checkbox", { name: `Take ${field}` });
 		expect(take("Title")).toBeDisabled();
 		expect(take("Publisher")).toBeChecked();
+		expect(screen.getByText("Same edition")).toBeInTheDocument();
+		expect(take("Description")).not.toBeChecked();
+		expect(screen.getByText("Other language")).toBeInTheDocument();
 		await person.click(take("Description"));
 		await person.click(
 			screen.getByRole("button", { name: "Take what is ticked" }),
@@ -2619,6 +2630,7 @@ describe("finding details online", () => {
 			provider: "openlibrary",
 			publisher: "Penguin",
 			published: "2003",
+			description: "A comedy of manners.",
 			identifiers: [
 				{ type: "isbn", value: "9780141439587" },
 				{ type: "openlibrary", value: "OL1M" },
@@ -2651,6 +2663,10 @@ describe("reviewing matches", () => {
 			contributors: [{ name: "Jane Austen", role: "author" as const }],
 			tags: [],
 			identifiers: [],
+			fields: {
+				publisher: { suggested: true, reason: "empty" as const },
+				contributors: { suggested: false, reason: "file" as const },
+			},
 		});
 		server.review = [
 			{
@@ -2677,6 +2693,15 @@ describe("reviewing matches", () => {
 			"aria-pressed",
 			"true",
 		);
+		expect(
+			screen.getByRole("checkbox", { name: "Take Publisher" }),
+		).toBeChecked();
+		expect(
+			screen.getByRole("checkbox", { name: "Take People" }),
+		).not.toBeChecked();
+		expect(
+			screen.getByText("Would replace what the file says"),
+		).toBeInTheDocument();
 		await person.keyboard("a");
 
 		expect(
@@ -2688,6 +2713,9 @@ describe("reviewing matches", () => {
 		expect(
 			server.requests.find((r) => r.path === "/matches/m2/accept")?.body,
 		).not.toHaveProperty("provider");
+		expect(
+			server.requests.find((r) => r.path === "/matches/m2/accept")?.body,
+		).not.toHaveProperty("contributors");
 		await person.keyboard("r");
 		expect(
 			await screen.findByText("Nothing waits for review."),

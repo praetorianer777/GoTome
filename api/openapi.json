@@ -9252,6 +9252,12 @@
           "description": {
             "type": "string"
           },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSuggestion"
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -10666,6 +10672,32 @@
           "locked"
         ]
       },
+      "FieldSuggestion": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "filename",
+              "sameEdition",
+              "adds",
+              "locked",
+              "manual",
+              "language",
+              "file",
+              "other"
+            ]
+          },
+          "suggested": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "suggested",
+          "reason"
+        ]
+      },
       "Figures": {
         "type": "object",
         "properties": {
@@ -11502,6 +11534,12 @@
           },
           "description": {
             "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSuggestion"
+            }
           },
           "id": {
             "type": "string"
