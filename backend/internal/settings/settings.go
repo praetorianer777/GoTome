@@ -124,6 +124,35 @@ type Definition struct {
 	// Check refuses a value with a reason for the person who typed it, or
 	// returns it as it is kept. Nil keeps it as typed, trimmed.
 	Check func(string) (string, error)
+	// Choices, when set, are the only values the setting takes, after
+	// Check; a page offers them to choose from.
+	Choices []string
+	// Multiple says that the value is a comma-separated list of Choices.
+	Multiple bool
+}
+
+// clean checks a value as typed and returns it as it is kept.
+func (d Definition) clean(value string) (string, error) {
+	if d.Check != nil {
+		checked, err := d.Check(value)
+		if err != nil {
+			return "", err
+		}
+		value = checked
+	}
+	if d.Choices == nil {
+		return value, nil
+	}
+	items := []string{value}
+	if d.Multiple {
+		items = strings.Split(value, ",")
+	}
+	for _, item := range items {
+		if !slices.Contains(d.Choices, item) {
+			return "", fmt.Errorf("Choose from %s.", strings.Join(d.Choices, ", "))
+		}
+	}
+	return value, nil
 }
 
 // Definitions are every setting there is, in the order a page lists them.
@@ -131,18 +160,18 @@ var Definitions = []Definition{
 	{Key: MetadataLanguage, Kind: KindText, Default: "en", Check: languageCode},
 	{Key: GoogleBooksKey, Kind: KindSecret},
 	{Key: HardcoverToken, Kind: KindSecret},
-	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff},
+	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names},
+	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
-	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff},
-	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel},
+	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
+	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel, Choices: slices.Sorted(maps.Keys(embed.Specs))},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
 	{Key: EmbeddingRemoveUnusedDays, Kind: KindText, Default: "1", Check: days},
-	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode},
-	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff},
-	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff},
+	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode, Choices: GenreModes},
+	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
+	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
 	{Key: OIDCClientSecret, Kind: KindSecret},
@@ -152,10 +181,20 @@ var Definitions = []Definition{
 	{Key: OIDCAdminGroups, Kind: KindText, Check: list},
 	{Key: OIDCEditorGroups, Kind: KindText, Check: list},
 	{Key: OIDCReaderGroups, Kind: KindText, Check: list},
-	{Key: OIDCDefaultRole, Kind: KindText, Default: "reader", Check: role},
-	{Key: OIDCSignup, Kind: KindText, Default: "on", Check: onOff},
-	{Key: OIDCLinkByEmail, Kind: KindText, Default: "off", Check: onOff},
+	{Key: OIDCDefaultRole, Kind: KindText, Default: "reader", Check: role, Choices: Roles},
+	{Key: OIDCSignup, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
+	{Key: OIDCLinkByEmail, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 }
+
+// OnOff are the choices of a setting that is on or off.
+var OnOff = []string{"on", "off"}
+
+// ProviderNames are the metadata providers Providers may name, as each
+// provider's Name says.
+var ProviderNames = []string{"openlibrary", "crossref", "hardcover"}
+
+// Roles are the values of OIDCDefaultRole: a role, or none to refuse.
+var Roles = []string{"admin", "editor", "reader", "none"}
 
 func definition(key string) (Definition, bool) {
 	i := slices.IndexFunc(Definitions, func(d Definition) bool { return d.Key == key })
@@ -174,8 +213,7 @@ func languageCode(v string) (string, error) {
 }
 
 func onOff(v string) (string, error) {
-	switch v = strings.ToLower(strings.TrimSpace(v)); v {
-	case "on", "off":
+	if v = strings.ToLower(strings.TrimSpace(v)); slices.Contains(OnOff, v) {
 		return v, nil
 	}
 	return "", errors.New("Say on or off.")
@@ -250,8 +288,7 @@ func list(v string) (string, error) {
 }
 
 func role(v string) (string, error) {
-	switch v = strings.ToLower(strings.TrimSpace(v)); v {
-	case "admin", "editor", "reader", "none":
+	if v = strings.ToLower(strings.TrimSpace(v)); slices.Contains(Roles, v) {
 		return v, nil
 	}
 	return "", errors.New("Say admin, editor, reader or none.")
@@ -297,9 +334,7 @@ func embeddingModel(v string) (string, error) {
 	return v, nil
 }
 
-// names keeps a list of provider names in one spelling: "openlibrary,google".
-// Which names exist is the metadata package's to know; an unknown one is
-// asked nothing.
+// names keeps a list of provider names in one spelling: "openlibrary,crossref".
 func names(v string) (string, error) {
 	var out []string
 	for name := range strings.SplitSeq(strings.ToLower(v), ",") {
@@ -308,7 +343,7 @@ func names(v string) (string, error) {
 			continue
 		}
 		if strings.IndexFunc(name, func(r rune) bool { return (r < 'a' || r > 'z') && (r < '0' || r > '9') }) >= 0 {
-			return "", errors.New("List the sources by name, separated by commas, such as openlibrary,google.")
+			return "", errors.New("List the sources by name, separated by commas, such as openlibrary,crossref.")
 		}
 		if !slices.Contains(out, name) {
 			out = append(out, name)
@@ -336,8 +371,10 @@ func (e *ValidationError) Error() string { return "invalid settings" }
 // Setting is one setting as an administrator sees it. A secret's value is
 // never in it, only whether there is one.
 type Setting struct {
-	Key  string
-	Kind string
+	Key      string
+	Kind     string
+	Choices  []string
+	Multiple bool
 	// Value is a text setting's value, or its default when unset.
 	Value     string
 	IsSet     bool
@@ -386,7 +423,7 @@ func (s *Store) List(ctx context.Context) ([]Setting, error) {
 	}
 	out := make([]Setting, len(Definitions))
 	for i, d := range Definitions {
-		st := Setting{Key: d.Key, Kind: d.Kind, Value: d.Default}
+		st := Setting{Key: d.Key, Kind: d.Kind, Choices: d.Choices, Multiple: d.Multiple, Value: d.Default}
 		if row, ok := stored[d.Key]; ok {
 			st.IsSet = true
 			st.UpdatedAt = &row.UpdatedAt
@@ -427,13 +464,10 @@ func (s *Store) Update(ctx context.Context, by uuid.UUID, values map[string]*str
 			fields[key] = fmt.Sprintf("A value is at most %d characters.", maxValueLen)
 			continue
 		}
-		if d.Check != nil {
-			checked, err := d.Check(value)
-			if err != nil {
-				fields[key] = err.Error()
-				continue
-			}
-			value = checked
+		value, err := d.clean(value)
+		if err != nil {
+			fields[key] = err.Error()
+			continue
 		}
 		puts = append(puts, put{def: d, value: value})
 	}

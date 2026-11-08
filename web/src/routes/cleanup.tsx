@@ -12,6 +12,7 @@ import {
 import { FormError } from "@/components/form";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
+import { formatCount } from "@/lib/format";
 
 const button =
 	"rounded-md bg-brand-strong px-3 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60 dark:bg-brand dark:text-ink dark:hover:bg-sky-300";
@@ -263,6 +264,46 @@ function Suggestion({
 						</span>{" "}
 						<span className="font-medium">{s.suggested}</span>
 					</p>
+				</div>
+			)}
+			{s.fix === "setSeries" && (
+				<div className="flex flex-col gap-2">
+					<p className="font-medium">
+						{t("cleanup.series", { name: s.suggested ?? "" })}{" "}
+						<span className="text-sm font-normal text-slate-500">
+							{t("cleanup.books", { count: s.books })}
+						</span>
+					</p>
+					<ul className="flex flex-col gap-1">
+						{s.found.map((f) => (
+							<li key={f.book ?? f.name}>
+								{f.book ? (
+									<Link
+										to="/books/$bookId"
+										params={{ bookId: f.book }}
+										className="hover:underline"
+									>
+										{f.name}
+									</Link>
+								) : (
+									<span>{f.name}</span>
+								)}{" "}
+								{f.position !== undefined && (
+									<>
+										<span className="text-sm text-slate-500">
+											{t("cleanup.retitle")}
+										</span>{" "}
+										<span className="font-medium">
+											{t("cleanup.seriesPlace", {
+												position: formatCount(f.position, 2),
+												title: f.title ?? "",
+											})}
+										</span>
+									</>
+								)}
+							</li>
+						))}
+					</ul>
 				</div>
 			)}
 			<FormError error={apply.error ?? dismiss.error} />

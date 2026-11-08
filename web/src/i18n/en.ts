@@ -316,6 +316,7 @@ export const en = {
 	"status.reading": "Reading",
 	"status.completed": "Completed",
 	"status.abandoned": "Abandoned",
+	"status.wantToRead": "Want to read",
 	"status.wishlist": "Wishlist",
 	"reading.title": "Your reading",
 	"reading.status": "Your status",
@@ -630,7 +631,7 @@ export const en = {
 	"rules.op.empty": "is empty",
 	"rules.values": "Values",
 	"rules.values.hint": "Separate several with commas",
-	"rules.values.stars": "Stars, such as 4, 5",
+	"rules.values.anyStars": "Any",
 	"rules.from": "From",
 	"rules.to": "To",
 	"rules.and": "and",
@@ -691,10 +692,9 @@ export const en = {
 	"wishlist.library": "Library it is to go into",
 	"wishlist.wish": "Wish for it",
 	"wishlist.wishNamed": "Wish for {title}",
-	"wishlist.wished": "Wished for",
-	"wishlist.none": "You wish for nothing yet.",
+	"wishlist.wantToRead": "Want to read",
+	"wishlist.none": "Nothing on your list yet.",
 	"wishlist.missing": "Not in the library yet",
-	"wishlist.held": "In the library",
 	"book.placeholder": "Not in the library yet. It is wished for; when a file of this book is added, it joins this entry.",
 	"stats.title": "Your reading",
 	"stats.window": "Over the last",
@@ -766,10 +766,10 @@ export const en = {
 	"settings.trashRetention.hint": "After this many days, a trashed file is deleted for good. From 1 to 3650.",
 	"settings.embeddingEnabled": "Work out what books are about",
 	"settings.embeddingEnabled.hint":
-		"on or off. When on, every book is read in the background, a book at a time, so that similar books can be suggested. Off pauses it; on again goes on where it stopped.",
+		"Reads every book in the background, a book at a time, to suggest similar ones. Off pauses it; on again goes on where it stopped.",
 	"settings.embeddingModel": "Language model",
 	"settings.embeddingModel.hint":
-		"Which model works out what books are about. Another model reads every book again; the files and vectors of the one before stay for the days set below, so going back to it within them costs nothing. bge-m3 runs on the embedding server below when one is set, otherwise here on the CPU.",
+		"Another model reads every book again; the files and vectors of the one before stay for the days set below, so going back to it within them costs nothing. bge-m3 runs on the embedding server when one is set, otherwise here on the CPU.",
 	"embeddingModel.list": "The models to choose from",
 	"embeddingModel.inUse": "{name} (in use)",
 	"embeddingModel.dimensions": "{dimensions} dimensions",
@@ -808,10 +808,10 @@ export const en = {
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",
 	"settings.embeddingPassages": "A vector for every passage",
 	"settings.embeddingPassages.hint":
-		"on or off, off unless set. When on, and books are embedded, every passage of a book's text gets a vector of its own, and the search by description finds books by the passage nearest it: a scene, not only what a book is about as a whole. It reads every book again, which takes days of the CPU on a large library, and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups.",
+		"Gives every passage of a book's text a vector of its own, so that the search by description finds a scene, not only what a book is about. Reads every book again (days of the CPU on a large library) and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups.",
 	"settings.passwords": "Sign in with a password",
 	"settings.passwords.hint":
-		"on or off. Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account at the identity provider. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true to sign in with a password again.",
+		"Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account there. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true.",
 	"settings.oidcIssuer": "Identity provider: issuer URL",
 	"settings.oidcIssuer.hint":
 		"Single sign-on through OpenID Connect, such as Authentik, Authelia or Keycloak; empty for none. Register GOtome there with the redirect URI {callback}.",
@@ -835,13 +835,13 @@ export const en = {
 	"settings.oidcReaderGroups.hint": "Separated by commas.",
 	"settings.oidcDefaultRole": "Role of everyone else",
 	"settings.oidcDefaultRole.hint":
-		"admin, editor, reader, or none to let in only the groups above. Also the role of a new account while no groups are set.",
+		"For someone in none of the groups above, and for a new account while no groups are set.",
 	"settings.oidcSignup": "Make accounts at first sign-in",
 	"settings.oidcSignup.hint":
-		"on or off. Off lets in only accounts already linked, or linked by their address.",
+		"Off lets in only accounts already linked, or linked by their address.",
 	"settings.oidcLinkByEmail": "Find accounts by e-mail address",
 	"settings.oidcLinkByEmail.hint":
-		"on or off. On, a first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
+		"A first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.applyIndex": "Bring the search index up to date",
 	"jobs.kind.indexFiles": "Read the books' text into the search index",
@@ -998,7 +998,7 @@ export const en = {
 		"What GOtome uses while it runs. Keys and tokens are stored encrypted and are never shown again once saved: to change one, type the new one.",
 	"settings.metadataLanguage": "Language for book details",
 	"settings.metadataLanguage.hint":
-		"The language that descriptions and other details are asked for from metadata services, as a two-letter code such as en or de.",
+		"The language descriptions are asked for in, as a two-letter code such as en or de.",
 	"settings.googleBooksKey": "Google Books API key",
 	"settings.googleBooksKey.hint":
 		"Optional. Without one, Google Books answers fewer requests a day.",
@@ -1007,7 +1007,7 @@ export const en = {
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
 	"settings.autoMatch": "Look up new books by themselves",
 	"settings.autoMatch.hint":
-		"on or off. When on, every book that arrives is looked up with the sources below; a sure match fills in what the book is missing, anything less waits for review.",
+		"Every book that arrives is looked up with the sources below; a sure match fills in what it lacks, anything less waits for review.",
 	"settings.matchThreshold": "Sure enough to take without asking",
 	"settings.matchThreshold.hint":
 		"A score from 0.5 to 1. A match with the same ISBN scores 1; title, author and year alone at most 0.99.",
@@ -1015,7 +1015,8 @@ export const en = {
 	"settings.contactEmail.hint":
 		"Optional. Given to sources that ask whom to write to about the requests they get; CrossRef answers faster with one.",
 	"settings.providers": "Sources to ask",
-	"settings.providers.hint": "Their names, separated by commas: openlibrary, crossref, hardcover.",
+	"settings.providers.hint":
+		"The sources books are looked up with.",
 	"settings.secret.set": "Saved on {date}.",
 	"settings.secret.unset": "Not set.",
 	"settings.secret.new": "Paste it here",
@@ -1024,6 +1025,25 @@ export const en = {
 	"settings.save": "Save",
 	"settings.saving": "Saving…",
 	"settings.saved": "Saved.",
+	"settings.sections": "Sections",
+	"settings.section.signIn": "Sign-in",
+	"settings.section.metadata": "Book details",
+	"settings.section.embedding": "Similar books and search",
+	"settings.section.genres": "Genres",
+	"settings.section.trash": "Trash",
+	"settings.section.other": "Other",
+	"settingChoice.genres.suggest.off": "Off: write nothing",
+	"settingChoice.genres.suggest.tags": "Tags only (tags)",
+	"settingChoice.genres.suggest.vector": "Tags and what books are about (vector)",
+	"settingChoice.genres.suggest.neighbours": "Tags and the books most like them (neighbours)",
+	"settingChoice.genres.suggest.combined": "Tags, the books most like them, else what they are about (combined)",
+	"settingChoice.metadata.providers.openlibrary": "Open Library",
+	"settingChoice.metadata.providers.crossref": "Crossref",
+	"settingChoice.metadata.providers.hardcover": "Hardcover",
+	"settingChoice.oidc.defaultRole.admin": "Administrator",
+	"settingChoice.oidc.defaultRole.editor": "Editor",
+	"settingChoice.oidc.defaultRole.reader": "Reader",
+	"settingChoice.oidc.defaultRole.none": "None: only the groups above get in",
 	"libraries.title": "Libraries",
 	"libraries.existing": "Existing libraries",
 	"libraries.none": "There is no library yet.",
@@ -1142,7 +1162,7 @@ export const en = {
 
 	"find.title": "Find details for {title}",
 	"find.intro":
-		"What these sources know about the book, the best fit first. Pick one, tick what to take from it, and take it. Locked fields stay as they are.",
+		"What these sources know about the book, the best fit first. Pick one, tick what to take from it, and take it. What is worth taking is ticked already; locked fields stay as they are.",
 	"find.searching": "Asking the sources…",
 	"find.none": "No source knows this book.",
 	"find.failed": "{provider} did not answer: {message}",
@@ -1156,12 +1176,20 @@ export const en = {
 	"find.current": "Now",
 	"find.theirs": "{provider} says",
 	"find.take": "Take {field}",
-	"find.locked": "Locked",
 	"find.empty": "—",
 	"find.apply": "Take what is ticked",
 	"find.nothing": "Nothing differs from what the book has.",
 	"find.back": "Back to the book",
 	"find.addIdentifiers": "Add",
+	"find.reason.empty": "Empty now",
+	"find.reason.filename": "From the file name",
+	"find.reason.sameEdition": "Same edition",
+	"find.reason.adds": "Added to the book's",
+	"find.reason.locked": "Locked",
+	"find.reason.manual": "Would replace your edit",
+	"find.reason.language": "Other language",
+	"find.reason.file": "Would replace what the file says",
+	"find.reason.other": "Would replace another source's value",
 
 	"cleanup.title": "Clean up",
 	"cleanup.intro":
@@ -1171,6 +1199,7 @@ export const en = {
 	"cleanup.kind.placeholders": "Placeholder authors: {count}",
 	"cleanup.kind.clashes": "Authors that are series: {count}",
 	"cleanup.kind.titles": "Title additions: {count}",
+	"cleanup.kind.series": "Series in titles: {count}",
 	"cleanup.about.authors":
 		"One author under several spellings. Choose the spelling to keep: the books under the others take it.",
 	"cleanup.about.placeholders":
@@ -1179,6 +1208,8 @@ export const en = {
 		"An author with the same name as the series of their books, so one of the two is wrong. Where every book is in the series, the name is the series; where only some are, it is the author.",
 	"cleanup.about.titles":
 		"What a shop added to a title: the edition it sold, or the genre after a colon or a dash.",
+	"cleanup.about.series":
+		"Books without a series whose titles name one, as in “Rain Wild Chronicles 01 - Dragon Keeper” or “Dragon Keeper (Rain Wild Chronicles #1)”. A series is suggested where two books of a library name it, or where it is a series already. Applying puts the books into it at the places their titles say, and takes the series off their titles.",
 	"cleanup.none": "Nothing to suggest here.",
 	"cleanup.books": "Books: {count}",
 	"cleanup.keep": "Spelling to keep",
@@ -1188,10 +1219,13 @@ export const en = {
 	"cleanup.removeAuthor": "{name} is the series of these books, not their author.",
 	"cleanup.clearSeries": "{name} is the author; some of their books have the name as their series too.",
 	"cleanup.retitle": "becomes",
+	"cleanup.series": "Series “{name}”",
+	"cleanup.seriesPlace": "{position}: {title}",
 	"cleanup.apply.merge": "Use this spelling",
 	"cleanup.apply.removeAuthor": "Remove the author",
 	"cleanup.apply.clearSeries": "Take them out of the series",
 	"cleanup.apply.retitle": "Change the title",
+	"cleanup.apply.setSeries": "Put them into the series",
 	"cleanup.dismiss": "Leave it",
 	"cleanup.applyAll": "Apply all {count}",
 	"cleanup.applyAllSure": "Apply all {count} as suggested?",
@@ -1202,7 +1236,7 @@ export const en = {
 	"cleanup.more": "Show more",
 	"review.title": "Review matches",
 	"review.intro":
-		"Books that were looked up by themselves and found only doubtful matches. Take what fits, reject what does not; a rejected match is not proposed again.",
+		"Books that were looked up by themselves and found only doubtful matches. What is worth taking is ticked; change the ticks, take what fits, reject what does not; a rejected match is not proposed again.",
 	"review.waiting": "{count} books wait.",
 	"review.none": "Nothing waits for review.",
 	"review.position": "Book {number} of {count}",
@@ -1353,7 +1387,7 @@ export const en = {
 	"genres.more": "Show more",
 	"settings.genreSuggestions": "Genres for books",
 	"settings.genreSuggestions.hint":
-		"off, tags, vector, neighbours or combined. off writes nothing. tags gives books the genres their tags mean. vector, neighbours and combined also suggest genres from what books are about, or from the books most like them, for review under Genres; measure them with gotome genre-check first.",
+		"Tags gives books the genres their tags mean. The others also suggest genres from what books are about, or from the books most like them, for review under Genres; measure them with gotome genre-check first.",
 	loading: "Loading…",
 } as const;
 

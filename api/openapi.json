@@ -2237,14 +2237,15 @@
           {
             "name": "kind",
             "in": "query",
-            "description": "Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series) or titles (what a shop added to a title).",
+            "description": "Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series), titles (what a shop added to a title) or series (a series written into the titles of books without one).",
             "schema": {
               "type": "string",
               "enum": [
                 "authors",
                 "placeholders",
                 "clashes",
-                "titles"
+                "titles",
+                "series"
               ]
             }
           },
@@ -9292,6 +9293,12 @@
           "description": {
             "type": "string"
           },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSuggestion"
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -9388,7 +9395,8 @@
               "authors",
               "placeholders",
               "clashes",
-              "titles"
+              "titles",
+              "series"
             ]
           },
           "picks": {
@@ -9414,6 +9422,9 @@
           "placeholders": {
             "type": "integer"
           },
+          "series": {
+            "type": "integer"
+          },
           "titles": {
             "type": "integer"
           }
@@ -9422,7 +9433,8 @@
           "authors",
           "placeholders",
           "clashes",
-          "titles"
+          "titles",
+          "series"
         ]
       },
       "CleanupDismissRequest": {
@@ -9434,7 +9446,8 @@
               "authors",
               "placeholders",
               "clashes",
-              "titles"
+              "titles",
+              "series"
             ]
           },
           "subject": {
@@ -9470,10 +9483,20 @@
       "CleanupName": {
         "type": "object",
         "properties": {
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          },
           "books": {
             "type": "integer"
           },
           "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number"
+          },
+          "title": {
             "type": "string"
           }
         },
@@ -9512,7 +9535,8 @@
               "merge",
               "removeAuthor",
               "clearSeries",
-              "retitle"
+              "retitle",
+              "setSeries"
             ]
           },
           "found": {
@@ -9527,7 +9551,8 @@
               "authors",
               "placeholders",
               "clashes",
-              "titles"
+              "titles",
+              "series"
             ]
           },
           "subject": {
@@ -10706,6 +10731,32 @@
           "locked"
         ]
       },
+      "FieldSuggestion": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "empty",
+              "filename",
+              "sameEdition",
+              "adds",
+              "locked",
+              "manual",
+              "language",
+              "file",
+              "other"
+            ]
+          },
+          "suggested": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "suggested",
+          "reason"
+        ]
+      },
       "Figures": {
         "type": "object",
         "properties": {
@@ -11542,6 +11593,12 @@
           },
           "description": {
             "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSuggestion"
+            }
           },
           "id": {
             "type": "string"
@@ -12926,6 +12983,12 @@
       "SettingView": {
         "type": "object",
         "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "isSet": {
             "type": "boolean"
           },
@@ -12938,6 +13001,9 @@
               "text",
               "secret"
             ]
+          },
+          "multiple": {
+            "type": "boolean"
           },
           "updatedAt": {
             "type": "string",

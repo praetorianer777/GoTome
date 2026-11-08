@@ -54,6 +54,7 @@ type Book struct {
 	AuthorSort         string
 	Placeholder        bool
 	TitleAddition      bool
+	TitleSeries        *string
 }
 
 type BookChunk struct {

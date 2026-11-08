@@ -45,6 +45,18 @@ type candidateView struct {
 	// CoverToken names the provider's cover for getCandidateCover and for
 	// applying it; left out when there is none.
 	CoverToken string `json:"coverToken,omitempty"`
+	// Fields says, for each field the record has a value in, whether taking
+	// it is worth it (metadata.Suggest); left out of a search, which is
+	// about no book.
+	Fields map[string]fieldSuggestion `json:"fields,omitempty"`
+}
+
+type fieldSuggestion struct {
+	Suggested bool `json:"suggested"`
+	// Reason is why: the book lacks the field or has a file name's guess,
+	// the record is of the same edition, or the value is a person's, a
+	// file's, locked, of another language, or from elsewhere.
+	Reason string `json:"reason"`
 }
 
 type providerFailure struct {
@@ -64,12 +76,13 @@ func (s *Server) listCandidates(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return s.writeCandidates(w, r, book)
+	return s.writeCandidates(w, r, book, true)
 }
 
 // writeCandidates answers with what the providers know about the book, and
-// which of them did not answer.
-func (s *Server) writeCandidates(w http.ResponseWriter, r *http.Request, book catalog.Book) error {
+// which of them did not answer; with suggest, which fields of each are worth
+// taking.
+func (s *Server) writeCandidates(w http.ResponseWriter, r *http.Request, book catalog.Book, suggest bool) error {
 	found, err := s.Metadata.Candidates(r.Context(), book)
 	out := candidateList{Candidates: []candidateView{}, Failures: []providerFailure{}}
 	if err != nil {
@@ -91,18 +104,26 @@ func (s *Server) writeCandidates(w http.ResponseWriter, r *http.Request, book ca
 		}
 	}
 	for _, c := range found {
-		out.Candidates = append(out.Candidates, s.candidateViewOf(c))
+		v := s.candidateViewOf(book, c)
+		if !suggest {
+			v.Fields = nil
+		}
+		out.Candidates = append(out.Candidates, v)
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
 }
 
-func (s *Server) candidateViewOf(c metadata.Candidate) candidateView {
+func (s *Server) candidateViewOf(book catalog.Book, c metadata.Candidate) candidateView {
 	v := candidateView{
 		Provider: c.Provider, ID: c.ID, Score: c.Score, Title: c.Title, Subtitle: c.Subtitle,
 		Description: c.Description, Language: c.Language, Published: c.Published, Publisher: c.Publisher,
 		Series: c.Series, SeriesIndex: c.SeriesIndex, PageCount: c.PageCount,
 		Contributors: []contributor{}, Tags: append([]string{}, c.Tags...), Identifiers: []identifier{},
+		Fields: map[string]fieldSuggestion{},
+	}
+	for field, sg := range metadata.Suggest(book, c.Record) {
+		v.Fields[field] = fieldSuggestion{Suggested: sg.Suggested, Reason: sg.Reason}
 	}
 	for _, p := range c.Contributors {
 		v.Contributors = append(v.Contributors, contributor{Name: p.Name, Role: cmp.Or(p.Role, catalog.RoleAuthor)})

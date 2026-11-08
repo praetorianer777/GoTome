@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
@@ -95,6 +96,7 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["FieldState.source"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider,
 	}}
+	b.FieldOverrides["FieldSuggestion.reason"] = &openapi.Schema{Type: "string", Enum: metadata.Reasons}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},
 	}

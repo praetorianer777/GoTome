@@ -112,9 +112,16 @@ the development stack, never by an installation.
 
 Administrators change these on the **Settings** page (Administration,
 Settings). The key is what the API calls a setting
-(`GET`/`PATCH /api/v1/settings`); the page shows the name beside it. A
-value the page refuses is explained under its field. Emptying a field
-takes the setting back to its default.
+(`GET`/`PATCH /api/v1/settings`); the page shows the name beside it, in
+sections as the headings below have them. A value the page refuses is
+explained under its field. Emptying a field takes the setting back to its
+default.
+
+A setting of a few values is chosen, not typed: `on` or `off` is a
+switch, one of several a list, and `metadata.providers` a box per
+source. The API names those values as the setting's `choices`, with
+`multiple` where the value is several of them separated by commas, and
+refuses any other.
 
 A secret is stored encrypted with the secret key. Once saved it is never
 shown again, not even to administrators: the page says only when it was
@@ -131,7 +138,7 @@ See [metadata.md](metadata.md).
 | `metadata.hardcoverToken` | Hardcover API token | none (secret) | The API token of your Hardcover account (hardcover.app, account settings, API). Without one Hardcover is not asked. |
 | `metadata.autoMatch` | Look up new books by themselves | `on` | `on` looks every book up once its file is read; a match sure enough fills in what the book lacks, any other waits on the **Review** page. `off` leaves lookups to the book page and bulk changes. |
 | `metadata.matchThreshold` | Sure enough to take without asking | `0.95` | The score, from 0.5 to 1, from which a match found by itself is taken without review. A shared ISBN or DOI scores 1; title, author and year alone at most 0.99. |
-| `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked, by name, separated by commas. Leave one out to stop asking it. |
+| `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked: `openlibrary`, `crossref` and `hardcover`, separated by commas (a box each on the page). Leave one out to stop asking it; at least one stays. |
 | `metadata.contactEmail` | Contact address for sources | none | An e-mail address given to sources that ask whom to write to about the requests they get. CrossRef serves requests with one faster. It is not stored with the answers. |
 
 ### Trash

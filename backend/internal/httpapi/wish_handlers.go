@@ -40,7 +40,7 @@ func (s *Server) searchMetadata(w http.ResponseWriter, r *http.Request) error {
 	if book.Title == "" && len(book.Identifiers) == 0 {
 		return ErrValidation(map[string]string{"title": "Give a title or an ISBN to look for."})
 	}
-	return s.writeCandidates(w, r, book)
+	return s.writeCandidates(w, r, book, false)
 }
 
 // wishRequest makes a book the library does not hold yet from a provider's
