@@ -157,6 +157,7 @@ const libraryRoute = createRoute({
 	validateSearch: (search): LibrarySearch => ({
 		...picksFrom(search),
 		library: typeof search.library === "string" ? search.library : undefined,
+		q: typeof search.q === "string" && search.q.trim() ? search.q : undefined,
 		sort: oneOf(SORTS, search.sort),
 		view: oneOf(VIEWS, search.view),
 	}),

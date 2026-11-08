@@ -50,6 +50,9 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | facets of a filter | 38 ms | 37 ms |  |
 | count of a filter | 2 ms | 2 ms |  |
 | quick search | 31 ms | 30 ms |  |
+| every quick search match | 40 ms | 33 ms |  |
+| every quick search match by author | 58 ms | 31 ms |  |
+| facets of every quick search match | 163 ms | 90 ms |  |
 | author names | 17 ms | 17 ms |  |
 | full-text search | 15 ms | 12 ms |  |
 | book | 2 ms | 2 ms |  |

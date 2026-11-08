@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Enter in the header's search, with no suggestion chosen, lists every
+  book the words find, like the library: sorting, covers or a list,
+  filters, selection and bulk changes. Its address keeps the words, so
+  back and reload return to it. A suggestion chosen with the arrow keys
+  still opens that book, author or series.
+
 - Clean up suggests a series for books without one whose titles name it,
   such as "Rain Wild Chronicles 01 - Drachenhüter" or "Drachenhüter (Rain
   Wild Chronicles #1)", where two books of a library name it or it is a
@@ -31,6 +37,8 @@ What changes for someone who runs or uses GOtome. The format follows
   replace your edit, the file's, or text in another language starts
   unticked, each says why, and values that would be replaced are
   highlighted. Accepting a match takes what is ticked.
+- The header's search suggestions are wider than the box where there is
+  room, and show a title over two lines instead of cutting it.
 - The duplicates page shows the two books of a pair side by side as
   cards, with their covers, files with size and pages, e-reader
   findings, your reading, library and added date, and what differs
