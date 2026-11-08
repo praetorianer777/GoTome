@@ -4585,10 +4585,20 @@ describe("the duplicates page", () => {
 			"90%",
 		]);
 
-		await person.click(emma.getByRole("button", { name: "Compare" }));
-		const files = await emma.findByRole("row", { name: /^Files/ });
-		expect(files).toHaveTextContent("EPUB Emma.epub");
-		expect(files).toHaveTextContent("PDF Emma.pdf");
+		const epub = within(emma.getByRole("article", { name: "Emma (EPUB)" }));
+		const pdf = within(emma.getByRole("article", { name: "Emma (print) (PDF)" }));
+		expect(
+			await epub.findByText("EPUB · 300 KB — Emma.epub"),
+		).toBeInTheDocument();
+		expect(
+			await pdf.findByText("PDF · 2 MB — Emma.pdf"),
+		).toBeInTheDocument();
+		expect(epub.getAllByText("(differs from the other book)").length).toBeGreaterThan(0);
+		expect(
+			epub.getByRole("button", { name: "Keep this one: Emma (EPUB)" }),
+		).toHaveAccessibleDescription(
+			"Emma (print) (PDF) goes: its files to the trash, from where they can be restored; everyone's status, places read and shelves move to this book.",
+		);
 
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Evidence" }),
@@ -4646,10 +4656,13 @@ describe("the duplicates page", () => {
 		renderApp("/duplicates");
 		const list = within(await screen.findByRole("region", { name: "Pairs" }));
 		expect(
-			await list.findAllByRole("button", { name: "Compare" }),
-		).toHaveLength(1);
+			await list.findAllByRole("article", { name: /^Emma/ }),
+		).toHaveLength(2);
 		expect(
 			list.queryByRole("button", { name: "Keep both" }),
+		).not.toBeInTheDocument();
+		expect(
+			list.queryByRole("button", { name: /^Keep this one/ }),
 		).not.toBeInTheDocument();
 	});
 });
@@ -5014,9 +5027,8 @@ describe("replacing and keeping both", () => {
 		withEmmas();
 		renderApp("/duplicates");
 		const pair = await pairItem();
-		await person.click(pair.getByRole("button", { name: "Replace…" }));
 		await person.click(
-			pair.getByRole("button", { name: "Keep Emma (EPUB), trash Emma (scan)" }),
+			pair.getByRole("button", { name: "Keep this one: Emma (EPUB)" }),
 		);
 		await waitFor(() =>
 			expect(
@@ -5038,6 +5050,53 @@ describe("replacing and keeping both", () => {
 			"href",
 			"/books/book-1",
 		);
+	});
+
+	it("says at the button why keeping one failed, and lets it be tried again", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		const refusal =
+			"GOtome cannot write to /books/.trash now (permission denied). If its mount was made read-only, mount it writable again; otherwise the app's user 10001 needs write access to it. The Libraries page says more.";
+		server.replaceRefused = refusal;
+		renderApp("/duplicates");
+		const pair = await pairItem();
+		const scan = within(pair.getByRole("article", { name: "Emma (scan) (PDF)" }));
+		const keep = scan.getByRole("button", {
+			name: "Keep this one: Emma (scan) (PDF)",
+		});
+		await person.click(keep);
+		expect(await scan.findByRole("alert")).toHaveTextContent(refusal);
+		expect(keep).toBeEnabled();
+		expect(server.pairs[0]?.state).toBe("open");
+
+		server.replaceRefused = undefined;
+		await person.click(keep);
+		await waitFor(() => expect(server.pairs[0]?.state).toBe("replaced"));
+	});
+
+	it("merges without trashing where GOtome does not write to the library", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Shelf", { mode: "external", writable: false })
+			.withBook("Emma", { files: [file("f1", "epub", "Emma.epub")] })
+			.withBook("Emma (scan)", { files: [file("f2", "pdf", "Emma.pdf")] })
+			.withPair("pair-1", "book-1", "book-2", [
+				{ kind: "title_author", detail: "emma / austen", score: 0.75 },
+			]);
+		renderApp("/duplicates");
+		const pair = await pairItem();
+		const keep = pair.getByRole("button", { name: "Keep this one: Emma (EPUB)" });
+		expect(keep).toHaveAccessibleDescription(/^GOtome does not move files in this library/);
+		await person.click(keep);
+		await waitFor(() => expect(server.pairs[0]?.state).toBe("merged"));
+		expect(
+			server.requests.find((r) => r.path === "/books/book-1/merge")?.body,
+		).toEqual({ from: "book-2", take: [] });
+		expect(
+			server.requests.some((r) => r.path === "/duplicates/pair-1/replace"),
+		).toBe(false);
 	});
 
 	it("keeps both as another edition", async () => {

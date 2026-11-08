@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
@@ -49,11 +49,8 @@ test("a copy is replaced by the one kept, the place read carries over, and the t
 		});
 	}).toPass({ timeout: 30_000 });
 	const pair = pairs.getByRole("listitem", { name: said });
-	await pair.getByRole("button", { name: "Replace…" }).click();
 	await pair
-		.getByRole("button", {
-			name: `Keep Better ${stamp} (EPUB), trash Worse ${stamp}`,
-		})
+		.getByRole("button", { name: `Keep this one: Better ${stamp} (EPUB)` })
 		.click();
 	await expect(pairs.getByRole("listitem", { name: said })).toBeHidden();
 
@@ -80,6 +77,106 @@ test("a copy is replaced by the one kept, the place read carries over, and the t
 	await expect(page.getByRole("link", { name: /^Read .*\.epub$/ })).toHaveCount(
 		2,
 	);
+
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
+	).toBe(204);
+});
+
+/**
+ * Adds one of the folders of e2e/fixtures/twins as an external library and
+ * waits for the pair of its two books; a pair with a book of another
+ * library, such as another browser project's, offers no "Keep this one".
+ */
+async function twins(
+	page: Page,
+	folder: string,
+	writable: boolean,
+): Promise<{ library: string; pair: Locator }> {
+	const { libraries } = await (await page.request.get("/api/v1/libraries")).json();
+	for (const old of libraries as { id: string; rootPath?: string }[]) {
+		if (old.rootPath === folder) {
+			await page.request.delete(`/api/v1/libraries/${old.id}`);
+		}
+	}
+	const created = await page.request.post("/api/v1/libraries", {
+		data: {
+			name: `Twins ${folder} ${Date.now()}`,
+			mode: "external",
+			rootPath: folder,
+			visibility: "private",
+			writable,
+		},
+	});
+	expect(created.status()).toBe(201);
+	const library = (await created.json()).id as string;
+	const pair = page
+		.getByRole("region", { name: "Pairs" })
+		.getByRole("listitem", {
+			name: "Lady Susan and Lady Susan are the same file.",
+		})
+		.filter({ has: page.getByRole("button", { name: /^Keep this one/ }) });
+	await expect(async () => {
+		await page.goto(`/duplicates?library=${library}`);
+		await expect(pair).toBeVisible({ timeout: 2_000 });
+	}).toPass({ timeout: 45_000 });
+	return { library, pair };
+}
+
+test("keeping one of two books whose library's trash cannot be written says why, at the button", async ({
+	page,
+}, testInfo) => {
+	test.setTimeout(90_000);
+	await openSignedIn(page);
+	const folder = `/fixtures/shelf-${testInfo.project.name}`;
+	const { library, pair } = await twins(page, folder, true);
+
+	const card = pair.getByRole("article").first();
+	const keep = card.getByRole("button", { name: /^Keep this one/ });
+	await keep.click();
+	await expect(card.getByRole("alert")).toHaveText(
+		`GOtome cannot write to ${folder}/.trash now (permission denied). If its mount was made read-only, mount it writable again; otherwise the app's user 10001 needs write access to it. The Libraries page says more.`,
+	);
+	await expect(keep).toBeEnabled();
+	await expect(pair).toBeVisible();
+	const after = await (
+		await page.request.get(`/api/v1/libraries/${library}`)
+	).json();
+	expect(after.unwritableReason).toBe(`permission denied (${folder}/.trash)`);
+
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
+	).toBe(204);
+});
+
+test("keeping one of two books of a read-only library merges them, files and all", async ({
+	page,
+}, testInfo) => {
+	test.setTimeout(90_000);
+	await openSignedIn(page);
+	const { library, pair } = await twins(
+		page,
+		`/fixtures/twins-${testInfo.project.name}`,
+		false,
+	);
+
+	const card = pair.getByRole("article").first();
+	const keep = card.getByRole("button", { name: /^Keep this one/ });
+	await expect(keep).toHaveAccessibleDescription(
+		/^GOtome does not move files in this library/,
+	);
+	await keep.click();
+	await expect(pair).toBeHidden();
+	const books = await (
+		await page.request.get(`/api/v1/books?library=${library}`)
+	).json();
+	expect(books.books).toHaveLength(1);
+	await page.goto(`/books/${books.books[0].id}`);
+	await expect(
+		page.getByRole("region", { name: "Files" }).getByRole("link", {
+			name: "Download Lady Susan.epub",
+		}),
+	).toHaveCount(2);
 
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
