@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { openSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
-test("a book uploaded twice with other details shows as a pair, is compared, and kept as two", async ({
+test("a book uploaded twice with other details shows as a pair of cards, and is kept as two", async ({
 	page,
 }, testInfo) => {
 	test.setTimeout(60_000);
@@ -48,11 +48,17 @@ test("a book uploaded twice with other details shows as a pair, is compared, and
 	expect(overflow).toBeLessThanOrEqual(0);
 	await expect(pair.getByText("Score 99%")).toBeVisible();
 
-	await pair.getByRole("button", { name: "Compare" }).click();
-	await expect(pair.getByRole("row", { name: /^Title/ })).toContainText(
-		`First ${stamp}`,
-	);
-	await expect(pair.getByRole("row", { name: /^Files/ })).toContainText("EPUB");
+	// The two side by side, as cards; stacked on a phone.
+	const first = pair.getByRole("article", { name: `First ${stamp} (EPUB)` });
+	const second = pair.getByRole("article", { name: `Second ${stamp} (EPUB)` });
+	await expect(first).toContainText(`First ${stamp}.epub`);
+	await expect(second).toContainText(`Second ${stamp}.epub`);
+	const [a, b] = [await first.boundingBox(), await second.boundingBox()];
+	if (testInfo.project.name === "phone") {
+		expect(b?.y ?? 0).toBeGreaterThanOrEqual((a?.y ?? 0) + (a?.height ?? 0));
+	} else {
+		expect(b?.y).toBe(a?.y);
+	}
 
 	await pair.getByRole("button", { name: "Keep both" }).click();
 	await expect(pairs.getByRole("listitem", { name: said })).toBeHidden();
