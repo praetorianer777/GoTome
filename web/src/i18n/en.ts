@@ -631,7 +631,7 @@ export const en = {
 	"rules.op.empty": "is empty",
 	"rules.values": "Values",
 	"rules.values.hint": "Separate several with commas",
-	"rules.values.stars": "Stars, such as 4, 5",
+	"rules.values.anyStars": "Any",
 	"rules.from": "From",
 	"rules.to": "To",
 	"rules.and": "and",
@@ -766,10 +766,10 @@ export const en = {
 	"settings.trashRetention.hint": "After this many days, a trashed file is deleted for good. From 1 to 3650.",
 	"settings.embeddingEnabled": "Work out what books are about",
 	"settings.embeddingEnabled.hint":
-		"on or off. When on, every book is read in the background, a book at a time, so that similar books can be suggested. Off pauses it; on again goes on where it stopped.",
+		"Reads every book in the background, a book at a time, to suggest similar ones. Off pauses it; on again goes on where it stopped.",
 	"settings.embeddingModel": "Language model",
 	"settings.embeddingModel.hint":
-		"Which model works out what books are about. Another model reads every book again; the vectors of the one before stay, so going back to it costs nothing. bge-m3 runs on the embedding server below when one is set, otherwise here on the CPU.",
+		"Another model reads every book again; the vectors of the one before stay, so going back to it costs nothing. bge-m3 runs on the embedding server when one is set, otherwise here on the CPU.",
 	"embeddingModel.list": "The models to choose from",
 	"embeddingModel.inUse": "{name} (in use)",
 	"embeddingModel.dimensions": "{dimensions} dimensions",
@@ -793,10 +793,10 @@ export const en = {
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",
 	"settings.embeddingPassages": "A vector for every passage",
 	"settings.embeddingPassages.hint":
-		"on or off, off unless set. When on, and books are embedded, every passage of a book's text gets a vector of its own, and the search by description finds books by the passage nearest it: a scene, not only what a book is about as a whole. It reads every book again, which takes days of the CPU on a large library, and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups.",
+		"Gives every passage of a book's text a vector of its own, so that the search by description finds a scene, not only what a book is about. Reads every book again (days of the CPU on a large library) and keeps about 1.5 GB per 50,000 books on the data volume, outside the database and the backups.",
 	"settings.passwords": "Sign in with a password",
 	"settings.passwords.hint":
-		"on or off. Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account at the identity provider. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true to sign in with a password again.",
+		"Off, while an identity provider is set up, leaves single sign-on as the only way in, except for administrators while none of them has linked an account there. If the provider is gone, start GOtome with GOTOME_FORCE_PASSWORD_LOGIN=true.",
 	"settings.oidcIssuer": "Identity provider: issuer URL",
 	"settings.oidcIssuer.hint":
 		"Single sign-on through OpenID Connect, such as Authentik, Authelia or Keycloak; empty for none. Register GOtome there with the redirect URI {callback}.",
@@ -820,13 +820,13 @@ export const en = {
 	"settings.oidcReaderGroups.hint": "Separated by commas.",
 	"settings.oidcDefaultRole": "Role of everyone else",
 	"settings.oidcDefaultRole.hint":
-		"admin, editor, reader, or none to let in only the groups above. Also the role of a new account while no groups are set.",
+		"For someone in none of the groups above, and for a new account while no groups are set.",
 	"settings.oidcSignup": "Make accounts at first sign-in",
 	"settings.oidcSignup.hint":
-		"on or off. Off lets in only accounts already linked, or linked by their address.",
+		"Off lets in only accounts already linked, or linked by their address.",
 	"settings.oidcLinkByEmail": "Find accounts by e-mail address",
 	"settings.oidcLinkByEmail.hint":
-		"on or off. On, a first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
+		"A first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.applyIndex": "Bring the search index up to date",
 	"jobs.kind.indexFiles": "Read the books' text into the search index",
@@ -983,7 +983,7 @@ export const en = {
 		"What GOtome uses while it runs. Keys and tokens are stored encrypted and are never shown again once saved: to change one, type the new one.",
 	"settings.metadataLanguage": "Language for book details",
 	"settings.metadataLanguage.hint":
-		"The language that descriptions and other details are asked for from metadata services, as a two-letter code such as en or de.",
+		"The language descriptions are asked for in, as a two-letter code such as en or de.",
 	"settings.googleBooksKey": "Google Books API key",
 	"settings.googleBooksKey.hint":
 		"Optional. Without one, Google Books answers fewer requests a day.",
@@ -992,7 +992,7 @@ export const en = {
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
 	"settings.autoMatch": "Look up new books by themselves",
 	"settings.autoMatch.hint":
-		"on or off. When on, every book that arrives is looked up with the sources below; a sure match fills in what the book is missing, anything less waits for review.",
+		"Every book that arrives is looked up with the sources below; a sure match fills in what it lacks, anything less waits for review.",
 	"settings.matchThreshold": "Sure enough to take without asking",
 	"settings.matchThreshold.hint":
 		"A score from 0.5 to 1. A match with the same ISBN scores 1; title, author and year alone at most 0.99.",
@@ -1000,7 +1000,8 @@ export const en = {
 	"settings.contactEmail.hint":
 		"Optional. Given to sources that ask whom to write to about the requests they get; CrossRef answers faster with one.",
 	"settings.providers": "Sources to ask",
-	"settings.providers.hint": "Their names, separated by commas: openlibrary, crossref, hardcover.",
+	"settings.providers.hint":
+		"The sources books are looked up with.",
 	"settings.secret.set": "Saved on {date}.",
 	"settings.secret.unset": "Not set.",
 	"settings.secret.new": "Paste it here",
@@ -1009,6 +1010,25 @@ export const en = {
 	"settings.save": "Save",
 	"settings.saving": "Saving…",
 	"settings.saved": "Saved.",
+	"settings.sections": "Sections",
+	"settings.section.signIn": "Sign-in",
+	"settings.section.metadata": "Book details",
+	"settings.section.embedding": "Similar books and search",
+	"settings.section.genres": "Genres",
+	"settings.section.trash": "Trash",
+	"settings.section.other": "Other",
+	"settingChoice.genres.suggest.off": "Off: write nothing",
+	"settingChoice.genres.suggest.tags": "Tags only (tags)",
+	"settingChoice.genres.suggest.vector": "Tags and what books are about (vector)",
+	"settingChoice.genres.suggest.neighbours": "Tags and the books most like them (neighbours)",
+	"settingChoice.genres.suggest.combined": "Tags, the books most like them, else what they are about (combined)",
+	"settingChoice.metadata.providers.openlibrary": "Open Library",
+	"settingChoice.metadata.providers.crossref": "Crossref",
+	"settingChoice.metadata.providers.hardcover": "Hardcover",
+	"settingChoice.oidc.defaultRole.admin": "Administrator",
+	"settingChoice.oidc.defaultRole.editor": "Editor",
+	"settingChoice.oidc.defaultRole.reader": "Reader",
+	"settingChoice.oidc.defaultRole.none": "None: only the groups above get in",
 	"libraries.title": "Libraries",
 	"libraries.existing": "Existing libraries",
 	"libraries.none": "There is no library yet.",
@@ -1352,7 +1372,7 @@ export const en = {
 	"genres.more": "Show more",
 	"settings.genreSuggestions": "Genres for books",
 	"settings.genreSuggestions.hint":
-		"off, tags, vector, neighbours or combined. off writes nothing. tags gives books the genres their tags mean. vector, neighbours and combined also suggest genres from what books are about, or from the books most like them, for review under Genres; measure them with gotome genre-check first.",
+		"Tags gives books the genres their tags mean. The others also suggest genres from what books are about, or from the books most like them, for review under Genres; measure them with gotome genre-check first.",
 	loading: "Loading…",
 } as const;
 

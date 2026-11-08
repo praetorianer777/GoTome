@@ -374,7 +374,35 @@ export class FakeServer {
 		{ key: "metadata.language", kind: "text", value: "en", isSet: false },
 		{ key: "metadata.googleBooksKey", kind: "secret", isSet: false },
 		{ key: "metadata.hardcoverToken", kind: "secret", isSet: false },
-		{ key: "embedding.model", kind: "text", value: "multilingual-e5-small", isSet: false },
+		{
+			key: "metadata.providers",
+			kind: "text",
+			value: "openlibrary,crossref,hardcover",
+			isSet: false,
+			choices: ["openlibrary", "crossref", "hardcover"],
+			multiple: true,
+		},
+		{
+			key: "embedding.model",
+			kind: "text",
+			value: "multilingual-e5-small",
+			isSet: false,
+			choices: ["bge-m3", "multilingual-e5-small", "multilingual-e5-small-fp32"],
+		},
+		{
+			key: "genres.suggest",
+			kind: "text",
+			value: "off",
+			isSet: false,
+			choices: ["off", "tags", "vector", "neighbours", "combined"],
+		},
+		{
+			key: "auth.passwords",
+			kind: "text",
+			value: "on",
+			isSet: false,
+			choices: ["on", "off"],
+		},
 	];
 	/** What was uploaded, by content, to find a file sent twice. */
 	private uploaded = new Map<string, Uploaded>();

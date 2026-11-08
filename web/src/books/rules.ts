@@ -30,13 +30,33 @@ export const EREADER_FINDINGS = [
 	"broken-toc",
 ] as const;
 
+/** The formats GOtome knows, as the format field compares them (catalog.kindOf). */
+export const FORMATS = [
+	"epub",
+	"pdf",
+	"mobi",
+	"azw3",
+	"azw",
+	"m4b",
+	"m4a",
+	"mp3",
+	"flac",
+	"ogg",
+	"opus",
+] as const;
+
+/** The stars a person may give, as the rating field compares them. */
+export const RATINGS = ["1", "2", "3", "4", "5"] as const;
+
 /** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
 export function picksValues(field: FacetField): boolean {
 	return (
 		field === "status" ||
 		field === "files" ||
 		field === "ereader" ||
-		field === "genre"
+		field === "genre" ||
+		field === "format" ||
+		field === "rating"
 	);
 }
 
@@ -44,7 +64,7 @@ export const RULE_FIELDS = FACET_FIELDS;
 
 /**
  * One rule as the builder edits it. Values of in are typed as one text,
- * split at commas when the tree is made, except for status, files, ereader and genre, which are
+ * split at commas when the tree is made, except for the fields of picksValues, which are
  * picked; between keeps its lower and upper bound.
  */
 export interface RuleItem {
@@ -152,7 +172,11 @@ function fromNode(node: Node, negate: boolean): RuleItem | RuleGroup {
 			negate,
 			op,
 			text: op === "in" && !picksValues(field) ? values.join(", ") : "",
-			picked: picksValues(field) ? values : [],
+			picked: !picksValues(field)
+				? []
+				: field === "format"
+					? values.map((v) => v.trim().toLowerCase().replace(/^\./, ""))
+					: values,
 			from: op === "between" ? (values[0] ?? "") : "",
 			to: op === "between" ? (values[1] ?? "") : "",
 		};

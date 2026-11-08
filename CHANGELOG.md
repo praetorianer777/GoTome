@@ -16,6 +16,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The settings page is grouped in sections (sign-in, book details,
+  similar books and search, genres, trash) with a list to jump to each,
+  two columns where the screen is wide enough, and shorter
+  descriptions. A setting of a few values is chosen rather than typed:
+  on and off is a switch, the genre mode and the role of everyone else
+  are lists, and the sources to ask a box each. The server refuses a
+  value that is not one of them, such as an unknown source.
+- Smart shelf rules pick formats and stars from a list instead of
+  taking them typed.
 - **Review** and **Find details online** tick the fields worth taking:
   those the book lacks, a title from the file name, and, from a candidate
   of the same ISBN, those no person set. A field whose value would

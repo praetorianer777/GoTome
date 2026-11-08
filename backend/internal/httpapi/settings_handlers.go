@@ -18,6 +18,10 @@ type settingView struct {
 	// Kind is text or secret. A secret is never sent back: only isSet says
 	// that there is one.
 	Kind string `json:"kind"`
+	// Choices, when there are any, are the only values the setting takes.
+	Choices []string `json:"choices,omitempty"`
+	// Multiple says that the value is a comma-separated list of choices.
+	Multiple bool `json:"multiple,omitempty"`
 	// Value is a text setting's value, or its default while it is unset.
 	Value     string     `json:"value,omitempty"`
 	IsSet     bool       `json:"isSet"`
@@ -57,7 +61,7 @@ func (s *Server) writeSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := settingList{Settings: make([]settingView, len(list))}
 	for i, st := range list {
-		out.Settings[i] = settingView{Key: st.Key, Kind: st.Kind, Value: st.Value, IsSet: st.IsSet, UpdatedAt: st.UpdatedAt}
+		out.Settings[i] = settingView{Key: st.Key, Kind: st.Kind, Choices: st.Choices, Multiple: st.Multiple, Value: st.Value, IsSet: st.IsSet, UpdatedAt: st.UpdatedAt}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

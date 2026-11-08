@@ -644,7 +644,7 @@ export const de: Record<MessageKey, string> = {
 	"rules.op.empty": "ist leer",
 	"rules.values": "Werte",
 	"rules.values.hint": "Mehrere durch Kommas trennen",
-	"rules.values.stars": "Sterne, etwa 4, 5",
+	"rules.values.anyStars": "Beliebig",
 	"rules.from": "Von",
 	"rules.to": "Bis",
 	"rules.and": "und",
@@ -782,10 +782,10 @@ export const de: Record<MessageKey, string> = {
 		"Nach so vielen Tagen wird eine Datei im Papierkorb endgültig gelöscht. Von 1 bis 3650.",
 	"settings.embeddingEnabled": "Erfassen, worum es in Büchern geht",
 	"settings.embeddingEnabled.hint":
-		"on oder off. Mit on wird jedes Buch im Hintergrund gelesen, eines nach dem anderen, damit sich ähnliche Bücher vorschlagen lassen. off pausiert; mit on geht es dort weiter, wo es aufgehört hat.",
+		"Liest jedes Buch im Hintergrund, eines nach dem anderen, um ähnliche vorzuschlagen. Aus pausiert; wieder an geht es dort weiter, wo es aufgehört hat.",
 	"settings.embeddingModel": "Sprachmodell",
 	"settings.embeddingModel.hint":
-		"Welches Modell erfasst, worum es in Büchern geht. Ein anderes Modell liest jedes Buch erneut; die Vektoren des vorigen bleiben, sodass der Wechsel zurück nichts kostet. bge-m3 läuft auf dem Embedding-Server unten, wenn einer gesetzt ist, sonst hier auf der CPU.",
+		"Ein anderes Modell liest jedes Buch erneut; die Vektoren des vorigen bleiben, sodass der Wechsel zurück nichts kostet. bge-m3 läuft auf dem Embedding-Server, wenn einer gesetzt ist, sonst hier auf der CPU.",
 	"embeddingModel.list": "Die Modelle zur Auswahl",
 	"embeddingModel.inUse": "{name} (in Verwendung)",
 	"embeddingModel.dimensions": "{dimensions} Dimensionen",
@@ -811,10 +811,10 @@ export const de: Record<MessageKey, string> = {
 		"Die Adresse eines Ollama-Servers für bge-m3, etwa http://host.docker.internal:11434, auf dem das Modell geladen ist (ollama pull bge-m3). Leer führt GOtome bge-m3 selbst auf der CPU aus; die Vektoren sind in beiden Fällen dieselben.",
 	"settings.embeddingPassages": "Ein Vektor für jede Textstelle",
 	"settings.embeddingPassages.hint":
-		"on oder off, ohne Angabe off. Ist es an und werden Bücher erfasst, bekommt jede Textstelle eines Buchs einen eigenen Vektor, und die Suche nach einer Beschreibung findet Bücher über die Stelle, die ihr am nächsten ist: eine Szene, nicht nur, worum es in einem Buch als Ganzem geht. Dafür wird jedes Buch noch einmal gelesen, was bei einer großen Bibliothek Tage der CPU braucht, und es belegt etwa 1,5 GB je 50.000 Bücher auf dem Datenvolume, außerhalb der Datenbank und der Sicherungen.",
+		"Gibt jeder Textstelle eines Buchs einen eigenen Vektor, sodass die Suche nach einer Beschreibung eine Szene findet, nicht nur, worum es in einem Buch geht. Liest jedes Buch noch einmal (Tage der CPU bei einer großen Bibliothek) und belegt etwa 1,5 GB je 50.000 Bücher auf dem Datenvolume, außerhalb der Datenbank und der Sicherungen.",
 	"settings.passwords": "Anmeldung mit Passwort",
 	"settings.passwords.hint":
-		"on oder off. off lässt, solange ein Identitätsanbieter eingerichtet ist, nur Single Sign-on zu, außer für Administratoren, solange keiner von ihnen ein Konto beim Identitätsanbieter verknüpft hat. Fällt der Anbieter weg, GOtome mit GOTOME_FORCE_PASSWORD_LOGIN=true starten, um sich wieder mit Passwort anzumelden.",
+		"Aus lässt, solange ein Identitätsanbieter eingerichtet ist, nur Single Sign-on zu, außer für Administratoren, solange keiner von ihnen dort ein Konto verknüpft hat. Fällt der Anbieter weg, GOtome mit GOTOME_FORCE_PASSWORD_LOGIN=true starten.",
 	"settings.oidcIssuer": "Identitätsanbieter: Issuer-URL",
 	"settings.oidcIssuer.hint":
 		"Single Sign-on über OpenID Connect, etwa Authentik, Authelia oder Keycloak; leer für keinen. GOtome dort mit der Redirect-URI {callback} registrieren.",
@@ -838,13 +838,13 @@ export const de: Record<MessageKey, string> = {
 	"settings.oidcReaderGroups.hint": "Durch Kommas getrennt.",
 	"settings.oidcDefaultRole": "Rolle aller anderen",
 	"settings.oidcDefaultRole.hint":
-		"admin, editor, reader oder none, um nur die Gruppen oben einzulassen. Auch die Rolle eines neuen Kontos, solange keine Gruppen gesetzt sind.",
+		"Für jemanden in keiner der Gruppen oben, und für ein neues Konto, solange keine Gruppen gesetzt sind.",
 	"settings.oidcSignup": "Konten bei der ersten Anmeldung anlegen",
 	"settings.oidcSignup.hint":
-		"on oder off. off lässt nur Konten ein, die schon verknüpft sind oder über ihre Adresse verknüpft werden.",
+		"Aus lässt nur Konten ein, die schon verknüpft sind oder über ihre Adresse verknüpft werden.",
 	"settings.oidcLinkByEmail": "Konten über die E-Mail-Adresse finden",
 	"settings.oidcLinkByEmail.hint":
-		"on oder off. Mit on übernimmt eine erste Anmeldung das Konto mit der Adresse, die der Identitätsanbieter als bestätigt meldet. Nur für einen Anbieter, der Adressen bestätigt.",
+		"Eine erste Anmeldung übernimmt das Konto mit der Adresse, die der Identitätsanbieter als bestätigt meldet. Nur für einen Anbieter, der Adressen bestätigt.",
 	"jobs.kind.rebuildIndex": "Suchindex neu aufbauen",
 	"jobs.kind.applyIndex": "Suchindex auf den neuesten Stand bringen",
 	"jobs.kind.indexFiles": "Text der Bücher in den Suchindex lesen",
@@ -1003,7 +1003,7 @@ export const de: Record<MessageKey, string> = {
 		"Was GOtome im Betrieb verwendet. Schlüssel und Tokens werden verschlüsselt gespeichert und nach dem Speichern nie wieder angezeigt: Zum Ändern den neuen eingeben.",
 	"settings.metadataLanguage": "Sprache für Buchangaben",
 	"settings.metadataLanguage.hint":
-		"Die Sprache, in der Beschreibungen und andere Angaben bei Metadatendiensten angefragt werden, als Code aus zwei Buchstaben wie en oder de.",
+		"Die Sprache, in der Beschreibungen angefragt werden, als Code aus zwei Buchstaben wie en oder de.",
 	"settings.googleBooksKey": "Google-Books-API-Schlüssel",
 	"settings.googleBooksKey.hint": "Optional. Ohne ihn beantwortet Google Books weniger Anfragen am Tag.",
 	"settings.hardcoverToken": "Hardcover-API-Token",
@@ -1011,7 +1011,7 @@ export const de: Record<MessageKey, string> = {
 		"Aus den Kontoeinstellungen bei Hardcover. Nötig, um Bücher bei Hardcover nachzuschlagen.",
 	"settings.autoMatch": "Neue Bücher von selbst nachschlagen",
 	"settings.autoMatch.hint":
-		"on oder off. Mit on wird jedes eintreffende Buch bei den Quellen unten nachgeschlagen; ein sicherer Treffer ergänzt, was dem Buch fehlt, alles Unsicherere wartet auf Prüfung.",
+		"Jedes eintreffende Buch wird bei den Quellen unten nachgeschlagen; ein sicherer Treffer ergänzt, was ihm fehlt, alles Unsicherere wartet auf Prüfung.",
 	"settings.matchThreshold": "Sicher genug, um ohne Rückfrage zu übernehmen",
 	"settings.matchThreshold.hint":
 		"Ein Wert von 0.5 bis 1. Ein Treffer mit derselben ISBN erreicht 1; Titel, Autor und Jahr allein höchstens 0.99.",
@@ -1019,7 +1019,8 @@ export const de: Record<MessageKey, string> = {
 	"settings.contactEmail.hint":
 		"Optional. Wird Quellen mitgeteilt, die wissen wollen, an wen sie sich wegen der Anfragen wenden können; CrossRef antwortet damit schneller.",
 	"settings.providers": "Abzufragende Quellen",
-	"settings.providers.hint": "Ihre Namen, durch Kommas getrennt: openlibrary, crossref, hardcover.",
+	"settings.providers.hint":
+		"Die Quellen, bei denen Bücher nachgeschlagen werden.",
 	"settings.secret.set": "Gespeichert am {date}.",
 	"settings.secret.unset": "Nicht gesetzt.",
 	"settings.secret.new": "Hier einfügen",
@@ -1028,6 +1029,25 @@ export const de: Record<MessageKey, string> = {
 	"settings.save": "Speichern",
 	"settings.saving": "Wird gespeichert …",
 	"settings.saved": "Gespeichert.",
+	"settings.sections": "Abschnitte",
+	"settings.section.signIn": "Anmeldung",
+	"settings.section.metadata": "Buchangaben",
+	"settings.section.embedding": "Ähnliche Bücher und Suche",
+	"settings.section.genres": "Genres",
+	"settings.section.trash": "Papierkorb",
+	"settings.section.other": "Weiteres",
+	"settingChoice.genres.suggest.off": "Aus: nichts schreiben",
+	"settingChoice.genres.suggest.tags": "Nur Schlagwörter (tags)",
+	"settingChoice.genres.suggest.vector": "Schlagwörter und Inhalt der Bücher (vector)",
+	"settingChoice.genres.suggest.neighbours": "Schlagwörter und die ähnlichsten Bücher (neighbours)",
+	"settingChoice.genres.suggest.combined": "Schlagwörter, die ähnlichsten Bücher, sonst der Inhalt (combined)",
+	"settingChoice.metadata.providers.openlibrary": "Open Library",
+	"settingChoice.metadata.providers.crossref": "Crossref",
+	"settingChoice.metadata.providers.hardcover": "Hardcover",
+	"settingChoice.oidc.defaultRole.admin": "Administrator",
+	"settingChoice.oidc.defaultRole.editor": "Redakteur",
+	"settingChoice.oidc.defaultRole.reader": "Leser",
+	"settingChoice.oidc.defaultRole.none": "Keine: nur die Gruppen oben kommen herein",
 	"libraries.title": "Bibliotheken",
 	"libraries.existing": "Vorhandene Bibliotheken",
 	"libraries.none": "Es gibt noch keine Bibliothek.",
@@ -1371,6 +1391,6 @@ export const de: Record<MessageKey, string> = {
 	"genres.more": "Mehr zeigen",
 	"settings.genreSuggestions": "Genres für Bücher",
 	"settings.genreSuggestions.hint":
-		"off, tags, vector, neighbours oder combined. off schreibt nichts. tags gibt Büchern die Genres, die ihre Schlagwörter meinen. vector, neighbours und combined schlagen außerdem Genres nach dem Inhalt der Bücher oder nach den ähnlichsten Büchern vor, zum Prüfen unter Genres; miss sie vorher mit gotome genre-check.",
+		"Schlagwörter gibt Büchern die Genres, die ihre Schlagwörter meinen. Die anderen schlagen außerdem Genres nach dem Inhalt der Bücher oder nach den ähnlichsten Büchern vor, zum Prüfen unter Genres; miss sie vorher mit gotome genre-check.",
 	loading: "Wird geladen …",
 };

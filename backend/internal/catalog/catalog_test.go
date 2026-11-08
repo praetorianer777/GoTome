@@ -2,10 +2,25 @@ package catalog
 
 import (
 	"math"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
+
+// The rule builder offers the formats to pick from: every one GOtome knows.
+func TestTheRuleBuilderOffersEveryFormat(t *testing.T) {
+	b, err := os.ReadFile("../../../web/src/books/rules.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range Formats() {
+		if !strings.Contains(string(b), `"`+f+`"`) {
+			t.Errorf("books/rules.ts lacks %q", f)
+		}
+	}
+}
 
 func TestKey(t *testing.T) {
 	same := [][]string{
