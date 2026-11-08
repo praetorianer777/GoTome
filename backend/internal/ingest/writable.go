@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -19,9 +23,11 @@ import (
 var ErrFolderReadOnly = errors.New("the library's folder cannot be written to")
 
 // unwritableError is ErrFolderReadOnly for one library, with the system's
-// reason.
+// reason and the folder it refused to write into.
 type unwritableError struct {
 	library uuid.UUID
+	root    string
+	folder  string
 	reason  string
 }
 
@@ -39,6 +45,55 @@ func FolderReason(err error) string {
 	return ""
 }
 
+// FolderOf is the folder an ErrFolderReadOnly could not write into: the
+// library's own or one inside it. It is "" for any other error.
+func FolderOf(err error) string {
+	var unwritable *unwritableError
+	if errors.As(err, &unwritable) {
+		return unwritable.folder
+	}
+	return ""
+}
+
+// folderError is err as ErrFolderReadOnly when the system refused to write
+// into a folder of the library: no permission (EACCES, EPERM) or a
+// read-only file system (EROFS). The probe of the library's folder passes
+// where a folder inside it, such as the trash or an author's, is owned by
+// someone else; that answers like a folder that cannot be written, not as a
+// failure of the server's own. Any other error is returned as it is.
+func folderError(libraryID uuid.UUID, root string, err error) error {
+	if err == nil || !refused(err) {
+		return err
+	}
+	var unwritable *unwritableError
+	if errors.As(err, &unwritable) {
+		return err
+	}
+	return &unwritableError{library: libraryID, root: root, folder: refusedFolder(err), reason: library.UnwritableReason(err)}
+}
+
+func refused(err error) bool {
+	return errors.Is(err, fs.ErrPermission) || errors.Is(err, syscall.EROFS)
+}
+
+// refusedFolder is the folder an error refused to write into: the one a
+// mkdir or a new file goes into, and of a rename's two the one that cannot
+// be written, as the error does not say which.
+func refusedFolder(err error) string {
+	var link *os.LinkError
+	if errors.As(err, &link) {
+		if library.ProbeWritable(filepath.Dir(link.Old)) != nil {
+			return filepath.Dir(link.Old)
+		}
+		return filepath.Dir(link.New)
+	}
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		return filepath.Dir(pathErr.Path)
+	}
+	return ""
+}
+
 // probeFolder checks, before anything is written into a writable
 // library's folder, that it can be written at all; a folder that cannot
 // would otherwise fail every file on its own. It touches no database, so
@@ -46,7 +101,7 @@ func FolderReason(err error) string {
 // once that is over.
 func probeFolder(libraryID uuid.UUID, root string) error {
 	if err := library.ProbeWritable(root); err != nil {
-		return &unwritableError{library: libraryID, reason: library.UnwritableReason(err)}
+		return &unwritableError{library: libraryID, root: root, folder: root, reason: library.UnwritableReason(err)}
 	}
 	return nil
 }
@@ -62,6 +117,9 @@ func (s *Service) noteUnwritable(ctx context.Context, err error) error {
 	record := context.WithoutCancel(ctx)
 	if markErr := db.InTx(record, s.pool, func(tx pgx.Tx) error {
 		reason := unwritable.reason
+		if unwritable.folder != "" && unwritable.folder != unwritable.root {
+			reason += " (" + unwritable.folder + ")"
+		}
 		name, err := sqlc.New(tx).MarkLibraryUnwritable(record, sqlc.MarkLibraryUnwritableParams{ID: unwritable.library, Reason: &reason})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
