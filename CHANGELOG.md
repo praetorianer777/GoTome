@@ -19,6 +19,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The web app opens faster, the first time and after a hard refresh: its
+  files are sent compressed (brotli or gzip), pages other than the
+  library, a book and sign-in load when first visited, and large API
+  answers are compressed as well. The first load moves about 170 KB
+  instead of 800 KB.
 - More tags give genres: tags a store marks, such as "Science Fiction
   (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
   "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"

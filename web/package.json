@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node scripts/compress.mjs",
     "lint": "eslint --max-warnings 0 .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
