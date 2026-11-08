@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- **Review** and **Find details online** tick the fields worth taking:
+  those the book lacks, a title from the file name, and, from a candidate
+  of the same ISBN, those no person set. A field whose value would
+  replace your edit, the file's, or text in another language starts
+  unticked, each says why, and values that would be replaced are
+  highlighted. Accepting a match takes what is ticked.
 - The duplicates page shows the two books of a pair side by side as
   cards, with their covers, files with size and pages, e-reader
   findings, your reading, library and added date, and what differs

@@ -7,6 +7,7 @@ import { Cover } from "@/books/cover";
 import {
 	type Candidate,
 	type CandidateApply,
+	type FieldSuggestion,
 	type Lockable,
 	candidateCoverUrl,
 	candidatesQuery,
@@ -52,7 +53,21 @@ interface Change {
 	mine: ReactNode;
 	theirs: ReactNode;
 	take: CandidateApply;
+	/** The book has a value here that taking would replace. */
+	replaces: boolean;
 }
+
+const REASONS: Record<FieldSuggestion["reason"], MessageKey> = {
+	empty: "find.reason.empty",
+	filename: "find.reason.filename",
+	sameEdition: "find.reason.sameEdition",
+	adds: "find.reason.adds",
+	locked: "find.reason.locked",
+	manual: "find.reason.manual",
+	language: "find.reason.language",
+	file: "find.reason.file",
+	other: "find.reason.other",
+};
 
 /** What taking the candidate would change, field by field. */
 function changes(book: BookDetail, c: Candidate): Change[] {
@@ -72,6 +87,7 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 				mine: mine ? shown(mine) : t("find.empty"),
 				theirs: shown(theirs),
 				take,
+				replaces: mine !== "",
 			});
 		}
 	};
@@ -158,6 +174,7 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 					.join(", ") || t("find.empty"),
 			theirs: `${t("find.addIdentifiers")}: ${added.map((i) => `${i.type.toUpperCase()} ${i.value}`).join(", ")}`,
 			take: { provider: c.provider, identifiers: [...own, ...added] },
+			replaces: false,
 		});
 	}
 	text(
@@ -188,6 +205,7 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 				/>
 			),
 			take: { provider: c.provider, coverToken: c.coverToken },
+			replaces: Boolean(book.coverKey),
 		});
 	}
 	return out;
@@ -295,8 +313,9 @@ function FindPage({ book }: { book: BookDetail }) {
 
 /**
  * What taking a candidate would change, a tick per field, and the button
- * that takes the ticked ones. Locked fields cannot be ticked. With keys set,
- * "a" takes too, unless a text field has the focus.
+ * that takes the ticked ones. The fields the server suggests are ticked to
+ * begin with, and each says why; locked fields cannot be ticked. With keys
+ * set, "a" takes too, unless a text field has the focus.
  */
 export function Compare({
 	book,
@@ -317,8 +336,14 @@ export function Compare({
 }) {
 	const rows = changes(book, candidate);
 	const locked = (field: Lockable) => book.fields[field]?.locked ?? false;
+	const suggestion = (field: Lockable) => candidate.fields?.[field];
 	const [take, setTake] = useState(
-		() => new Set(rows.filter((r) => !locked(r.field)).map((r) => r.field)),
+		() =>
+			new Set(
+				rows
+					.filter((r) => !locked(r.field) && suggestion(r.field)?.suggested)
+					.map((r) => r.field),
+			),
 	);
 	function submit() {
 		const body: CandidateApply = { provider: candidate.provider };
@@ -364,42 +389,47 @@ export function Compare({
 					</tr>
 				</thead>
 				<tbody>
-					{rows.map((row) => (
-						<tr
-							key={row.field}
-							className="border-b border-slate-100 align-top dark:border-slate-800/60"
-						>
-							<th scope="row" className="py-2 pr-2 font-normal">
-								<label className="flex items-start gap-2">
-									<input
-										type="checkbox"
-										checked={take.has(row.field)}
-										disabled={locked(row.field)}
-										onChange={(e) => {
-											const next = new Set(take);
-											if (e.target.checked) next.add(row.field);
-											else next.delete(row.field);
-											setTake(next);
-										}}
-										aria-label={t("find.take", { field: t(row.label) })}
-										className="mt-0.5"
-									/>
-									<span>
-										{t(row.label)}
-										{locked(row.field) && (
-											<span className="block text-xs text-slate-500">
-												{t("find.locked")}
-											</span>
-										)}
-									</span>
-								</label>
-							</th>
-							<td className="break-words py-2 pr-2 text-slate-600 dark:text-slate-400">
-								{row.mine}
-							</td>
-							<td className="break-words py-2">{row.theirs}</td>
-						</tr>
-					))}
+					{rows.map((row) => {
+						const reason = locked(row.field)
+							? "locked"
+							: suggestion(row.field)?.reason;
+						return (
+							<tr
+								key={row.field}
+								className={`border-b border-slate-100 align-top dark:border-slate-800/60 ${row.replaces ? "bg-amber-50 dark:bg-amber-950" : ""}`}
+							>
+								<th scope="row" className="py-2 pr-2 font-normal">
+									<label className="flex items-start gap-2">
+										<input
+											type="checkbox"
+											checked={take.has(row.field)}
+											disabled={locked(row.field)}
+											onChange={(e) => {
+												const next = new Set(take);
+												if (e.target.checked) next.add(row.field);
+												else next.delete(row.field);
+												setTake(next);
+											}}
+											aria-label={t("find.take", { field: t(row.label) })}
+											className="mt-0.5"
+										/>
+										<span>
+											{t(row.label)}
+											{reason && (
+												<span className="block text-xs text-slate-500 dark:text-slate-400">
+													{t(REASONS[reason])}
+												</span>
+											)}
+										</span>
+									</label>
+								</th>
+								<td className="break-words py-2 pr-2 text-slate-600 dark:text-slate-400">
+									{row.mine}
+								</td>
+								<td className="break-words py-2">{row.theirs}</td>
+							</tr>
+						);
+					})}
 				</tbody>
 			</table>
 			<FormError error={error} />
