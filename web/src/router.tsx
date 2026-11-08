@@ -62,8 +62,13 @@ const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
 // The router waits for a route component's preload before it shows the
 // route, so a component that only hands a lazy page its props takes the
 // page's: otherwise the page would suspend after the route had been shown.
+// It is read through, not copied: a lazy page drops its preload once loaded,
+// and a copy would import the module again on every navigation, which makes
+// even a change of the address's search wait a turn, so a ticked filter
+// showed its old state until then (#370).
 function loads<P>(page: Pick<RouteComponent, "preload">, component: (props: P) => ReactNode) {
-	return Object.assign(component, { preload: page.preload });
+	return Object.defineProperty(component, "preload", { get: () => page.preload }) as
+		((props: P) => ReactNode) & Pick<RouteComponent, "preload">;
 }
 
 interface RouterContext {
