@@ -43,6 +43,15 @@ On a book's page, **Find details online** asks the sources there and then,
 whether or not the book was looked up before, and lets you pick a
 candidate and the fields to take from it.
 
+In both, the fields worth taking are ticked to begin with, and each says
+why: ticked where the book has nothing, only a guess from the file name,
+or where the candidate shares an ISBN with the book (the same edition)
+and no person set the field; unticked where taking it would replace your
+edit or what the file says, where the candidate's title, subtitle or
+description is in another language than the book, and where the field is
+locked. Rows that would replace a value the book has are highlighted.
+Change the ticks before taking.
+
 ## Who wins
 
 A field has a source: the file, a metadata source, or a person.
@@ -65,7 +74,12 @@ the book's EPUB files as well ([users-and-libraries.md](users-and-libraries.md))
 **Clean up** (editors) suggests fixes GOtome finds across the library: one
 person under several spellings ("Tolkien, J.R.R." and "J. R. R. Tolkien"),
 placeholders a tool left as an author ("Unknown"), an author who is
-really a series, and shop additions in titles ("(German Edition)").
+really a series, shop additions in titles ("(German Edition)"), and a
+series written into the titles of books that have none ("Rain Wild
+Chronicles 01 - Drachenhüter", "Drachenhüter (Rain Wild Chronicles
+#1)"). A series is suggested only where two books of a library name it
+or a book is in it already; applying one puts the books into it at the
+places their titles say and takes it off their titles.
 Applying one is an edit like any other; dismissing one keeps it away until
 what it was about changes.
 
@@ -75,3 +89,8 @@ what it was about changes.
 and keeps it as a wish: a book without files. When a file of that book
 arrives in the library chosen for it (by ISBN, or title and author), the
 wish is fulfilled and the wisher is told.
+
+A wish has the reading status "Wishlist". The same status on a book the
+library already holds is called "Want to read": the page lists those
+books apart from the wishes, under "Want to read" and "Not in the
+library yet".

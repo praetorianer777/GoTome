@@ -14,7 +14,7 @@ import (
 )
 
 type cleanupQuery struct {
-	Kind   string `query:"kind" enum:"authors,placeholders,clashes,titles" doc:"Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series) or titles (what a shop added to a title)."`
+	Kind   string `query:"kind" enum:"authors,placeholders,clashes,titles,series" doc:"Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series), titles (what a shop added to a title) or series (a series written into the titles of books without one)."`
 	Cursor string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; suggestions about the most books come first."`
 	Limit  int    `query:"limit" doc:"How many suggestions a page holds, at most 200; 50 when left out."`
 }
@@ -23,6 +23,12 @@ type cleanupName struct {
 	Name string `json:"name"`
 	// Books is how many books the caller sees carry it.
 	Books int `json:"books"`
+	// Book is, for a series in titles, the book of the title.
+	Book *uuid.UUID `json:"book,omitempty"`
+	// Position and Title are, for a series in titles, the book's place in
+	// the series and its title without the series.
+	Position *float64 `json:"position,omitempty"`
+	Title    string   `json:"title,omitempty"`
 }
 
 // cleanupSuggestion is one thing found about the books the caller sees, and
@@ -32,11 +38,14 @@ type cleanupSuggestion struct {
 	// Subject names the suggestion to apply or dismiss.
 	Subject string `json:"subject"`
 	// Found are the names found: an author's spellings, most used first,
-	// or the one author or title.
+	// the one author or title, or the titles that hold a series, in the
+	// order of their places in it.
 	Found []cleanupName `json:"found"`
 	// Fix is what applying it does: merge the spellings into Suggested,
 	// remove the author from the books, take the books out of the series of
-	// the author's name, or retitle the book to Suggested.
+	// the author's name, retitle the book to Suggested, or put the books
+	// into the series Suggested at the places their titles say, under the
+	// titles without the series.
 	Fix       string `json:"fix"`
 	Suggested string `json:"suggested,omitempty"`
 	// Books is how many books it is about.
@@ -50,6 +59,7 @@ type cleanupCounts struct {
 	Placeholders int `json:"placeholders"`
 	Clashes      int `json:"clashes"`
 	Titles       int `json:"titles"`
+	Series       int `json:"series"`
 }
 
 type cleanupList struct {
@@ -128,6 +138,7 @@ func (s *Server) listCleanup(w http.ResponseWriter, r *http.Request) error {
 		Counts: cleanupCounts{
 			Authors: counts[cleanup.KindAuthors], Placeholders: counts[cleanup.KindPlaceholders],
 			Clashes: counts[cleanup.KindClashes], Titles: counts[cleanup.KindTitles],
+			Series: counts[cleanup.KindSeries],
 		},
 	}
 	if page.Next != nil {
@@ -139,7 +150,10 @@ func (s *Server) listCleanup(w http.ResponseWriter, r *http.Request) error {
 			Books: sg.Books, Book: sg.BookID, Found: make([]cleanupName, len(sg.Found)),
 		}
 		for j, n := range sg.Found {
-			cs.Found[j] = cleanupName{Name: n.Name, Books: n.Books}
+			cs.Found[j] = cleanupName{Name: n.Name, Books: n.Books, Book: n.Book}
+			if n.Place != nil {
+				cs.Found[j].Position, cs.Found[j].Title = &n.Place.Position, n.Place.Title
+			}
 		}
 		out.Suggestions[i] = cs
 	}
@@ -165,7 +179,7 @@ func (s *Server) applyCleanup(w http.ResponseWriter, r *http.Request) error {
 	case errors.Is(err, cleanup.ErrNotFound):
 		return ErrNotFound("There is no such suggestion; it may have been dealt with.")
 	case errors.Is(err, cleanup.ErrKind):
-		return ErrValidation(map[string]string{"kind": "Use authors, placeholders, clashes or titles."})
+		return ErrValidation(map[string]string{"kind": "Use authors, placeholders, clashes, titles or series."})
 	case errors.As(err, &invalid):
 		return ErrValidation(invalid)
 	case err != nil:
@@ -185,7 +199,7 @@ func (s *Server) dismissCleanup(w http.ResponseWriter, r *http.Request) error {
 	case errors.Is(err, cleanup.ErrNotFound):
 		return ErrNotFound("There is no such suggestion; it may have been dealt with.")
 	case errors.Is(err, cleanup.ErrKind):
-		return ErrValidation(map[string]string{"kind": "Use authors, placeholders, clashes or titles."})
+		return ErrValidation(map[string]string{"kind": "Use authors, placeholders, clashes, titles or series."})
 	case err != nil:
 		return err
 	}

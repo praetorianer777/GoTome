@@ -65,6 +65,25 @@ test("a book's page keeps every long value inside its box, on a phone and on a w
 		const real = await (await route.fetch()).json();
 		await route.fulfill({ json: { ...real, ...LONG } });
 	});
+	// A full row of similar books, as a shared stack's other projects give
+	// it: it scrolls sideways, so its covers lie beyond the page.
+	await page.route(new RegExp(`/api/v1/books/${bookId}/similar$`), (route) =>
+		route.fulfill({
+			json: {
+				books: Array.from({ length: 12 }, (_, k) => ({
+					id: `00000000-0000-7000-8000-${String(k).padStart(12, "0")}`,
+					libraryId: id,
+					title: `Ledger ${testInfo.project.name} ${WORD} ${k}`,
+					authors: [`A. Writer-${WORD}`],
+					authorKeys: ["a writer"],
+					formats: ["epub"],
+					addedAt: "2026-01-01T00:00:00Z",
+					status: "unread",
+					placeholder: false,
+				})),
+			},
+		}),
+	);
 
 	for (const width of [360, 768, 1024, 1440]) {
 		await page.setViewportSize({ width, height: 900 });
@@ -78,6 +97,9 @@ test("a book's page keeps every long value inside its box, on a phone and on a w
 		await expect(page.getByRole("region", { name: "Files" })).toContainText(
 			fileName,
 		);
+		await expect(
+			page.getByRole("region", { name: "Similar books" }).getByRole("listitem"),
+		).toHaveCount(12);
 
 		const overflowing = await page.evaluate(() => {
 			const describe = (el: Element) =>
@@ -86,12 +108,28 @@ test("a book's page keeps every long value inside its box, on a phone and on a w
 			const article = document.querySelector("article");
 			if (!article) return ["no article"];
 			const box = article.getBoundingClientRect();
+			const scrolls = (el: Element) => {
+				const x = getComputedStyle(el).overflowX;
+				return x === "auto" || x === "scroll";
+			};
 			for (const el of article.querySelectorAll("*")) {
+				// What a sideways rail holds lies beyond the page by design,
+				// and on a shared stack the similar books are other projects'.
+				let inRail = false;
+				for (let up = el.parentElement; up && up !== article; up = up.parentElement) {
+					if (scrolls(up)) inRail = true;
+				}
+				if (inRail) continue;
 				const style = getComputedStyle(el);
 				if (style.display === "inline" || style.display === "contents")
 					continue;
-				if (style.overflowX === "auto" || style.overflowX === "scroll")
+				const rect = el.getBoundingClientRect();
+				if (scrolls(el)) {
+					if (rect.left < box.left - 1 || rect.right > box.right + 1) {
+						found.push(`${describe(el)} leaves the page`);
+					}
 					continue;
+				}
 				// Text for screen readers only is a box of one pixel.
 				if (el.clientWidth <= 1) continue;
 				// A clamped text ends in an ellipsis, and what it cuts off may
@@ -103,7 +141,6 @@ test("a book's page keeps every long value inside its box, on a phone and on a w
 						`${describe(el)} is ${el.scrollWidth - el.clientWidth}px too wide`,
 					);
 				}
-				const rect = el.getBoundingClientRect();
 				if (rect.left < box.left - 1 || rect.right > box.right + 1) {
 					found.push(`${describe(el)} leaves the page`);
 				}

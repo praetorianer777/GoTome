@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BookSummary } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { AuthorLinks, SeriesLine } from "@/books/name-links";
-import { STATUS_LABELS } from "@/books/reading";
+import { statusLabel } from "@/books/reading";
 import { useColumns, useWindowRows, VIRTUAL_FROM } from "@/books/virtual";
 import { button, Skeleton } from "@/components/ui";
 import { t } from "@/i18n";
@@ -36,7 +36,7 @@ function Standing({ book }: { book: BookSummary }) {
 							: undefined
 					}
 				>
-					{t(STATUS_LABELS[book.status])}
+					{t(statusLabel(book.status, book.placeholder))}
 				</span>
 			)}
 			{book.rating ? <Stars rating={book.rating} /> : null}
@@ -367,7 +367,7 @@ function BookRow({
 				{formatDate(book.addedAt)}
 			</td>
 			<td className="hidden px-3 py-2 lg:table-cell">
-				{t(STATUS_LABELS[book.status])}
+				{t(statusLabel(book.status, book.placeholder))}
 			</td>
 			<td className="hidden px-3 py-2 lg:table-cell">
 				{book.rating ? <Stars rating={book.rating} /> : null}

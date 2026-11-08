@@ -133,3 +133,34 @@ func TestSingleSignOnSettingsAreChecked(t *testing.T) {
 		t.Errorf("kept as: %d %v", status, body)
 	}
 }
+
+func TestASettingOfChoicesSaysThemAndTakesNoOther(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+
+	status, body, _ := a.call(admin, http.MethodGet, "/settings", nil)
+	providers := setting(t, body, settings.Providers)
+	if status != 200 || providers["multiple"] != true || len(providers["choices"].([]any)) != len(settings.ProviderNames) {
+		t.Fatalf("the providers: %d %v", status, providers)
+	}
+	if g := setting(t, body, settings.GenreSuggestions); g["multiple"] != nil || len(g["choices"].([]any)) != len(settings.GenreModes) {
+		t.Errorf("the genre modes: %v", g)
+	}
+	if l := setting(t, body, settings.MetadataLanguage); l["choices"] != nil {
+		t.Errorf("a language is typed: %v", l)
+	}
+
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.Providers: "openlibrary,google", settings.AutoMatch: "sometimes",
+	}})
+	if status != 422 || fieldError(body, settings.Providers) == "" || fieldError(body, settings.AutoMatch) == "" {
+		t.Errorf("refused: %d %v", status, body)
+	}
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.Providers: "Crossref", settings.GenreSuggestions: "tags",
+	}})
+	if status != 200 || setting(t, body, settings.Providers)["value"] != "crossref" || setting(t, body, settings.GenreSuggestions)["value"] != "tags" {
+		t.Errorf("taken: %d %v", status, body)
+	}
+}

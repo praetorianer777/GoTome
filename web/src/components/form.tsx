@@ -11,9 +11,6 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export function Field({ label, hint, error, optional, ...input }: FieldProps) {
 	const id = useId();
-	const described =
-		[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") ||
-		undefined;
 	return (
 		<div className="flex flex-col gap-1">
 			<label htmlFor={id} className="text-sm font-medium">
@@ -27,11 +24,27 @@ export function Field({ label, hint, error, optional, ...input }: FieldProps) {
 			</label>
 			<input
 				id={id}
-				aria-describedby={described}
+				aria-describedby={describedBy(id, hint, error)}
 				aria-invalid={error ? true : undefined}
 				className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 aria-invalid:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:aria-invalid:border-red-400"
 				{...input}
 			/>
+			<Described id={id} hint={hint} error={error} />
+		</div>
+	);
+}
+
+function Described({
+	id,
+	hint,
+	error,
+}: {
+	id: string;
+	hint?: string;
+	error?: string;
+}) {
+	return (
+		<>
 			{hint && !error && (
 				<p
 					id={`${id}-hint`}
@@ -48,7 +61,155 @@ export function Field({ label, hint, error, optional, ...input }: FieldProps) {
 					{error}
 				</p>
 			)}
+		</>
+	);
+}
+
+function describedBy(id: string, hint?: string, error?: string) {
+	return (
+		[hint && !error && `${id}-hint`, error && `${id}-error`]
+			.filter(Boolean)
+			.join(" ") || undefined
+	);
+}
+
+export interface Choice {
+	value: string;
+	label: string;
+}
+
+/** One of a few values, chosen from a list. */
+export function SelectField({
+	label,
+	hint,
+	error,
+	value,
+	choices,
+	onChange,
+}: {
+	label: string;
+	hint?: string;
+	error?: string;
+	value: string;
+	choices: Choice[];
+	onChange: (value: string) => void;
+}) {
+	const id = useId();
+	return (
+		<div className="flex flex-col gap-1">
+			<label htmlFor={id} className="text-sm font-medium">
+				{label}
+			</label>
+			<select
+				id={id}
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+				aria-describedby={describedBy(id, hint, error)}
+				aria-invalid={error ? true : undefined}
+				className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 aria-invalid:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:aria-invalid:border-red-400"
+			>
+				{choices.map((c) => (
+					<option key={c.value} value={c.value}>
+						{c.label}
+					</option>
+				))}
+			</select>
+			<Described id={id} hint={hint} error={error} />
 		</div>
+	);
+}
+
+/** Something that is on or off. */
+export function Switch({
+	label,
+	hint,
+	error,
+	checked,
+	onChange,
+}: {
+	label: string;
+	hint?: string;
+	error?: string;
+	checked: boolean;
+	onChange: (checked: boolean) => void;
+}) {
+	const id = useId();
+	return (
+		<div className="flex flex-col gap-1">
+			<div className="flex items-center justify-between gap-3">
+				<label htmlFor={id} className="text-sm font-medium">
+					{label}
+				</label>
+				<button
+					id={id}
+					type="button"
+					role="switch"
+					aria-checked={checked}
+					aria-describedby={describedBy(id, hint, error)}
+					aria-invalid={error ? true : undefined}
+					onClick={() => onChange(!checked)}
+					className="group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-slate-600 bg-slate-200 aria-checked:border-brand-strong aria-checked:bg-brand-strong dark:border-slate-600 dark:bg-slate-800 dark:aria-checked:border-brand dark:aria-checked:bg-brand"
+				>
+					<span
+						aria-hidden="true"
+						className="inline-block size-4 translate-x-1 rounded-full bg-slate-600 transition-transform group-aria-checked:translate-x-6 group-aria-checked:bg-white dark:bg-slate-300 dark:group-aria-checked:bg-ink"
+					/>
+				</button>
+			</div>
+			<Described id={id} hint={hint} error={error} />
+		</div>
+	);
+}
+
+/** Any of a few values, each ticked or not; at least one stays ticked. */
+export function ChoicesField({
+	label,
+	hint,
+	error,
+	value,
+	choices,
+	onChange,
+}: {
+	label: string;
+	hint?: string;
+	error?: string;
+	value: string[];
+	choices: Choice[];
+	onChange: (value: string[]) => void;
+}) {
+	const id = useId();
+	return (
+		<fieldset
+			aria-describedby={describedBy(id, hint, error)}
+			className="flex flex-col gap-1"
+		>
+			<legend className="mb-1 text-sm font-medium">{label}</legend>
+			<div className="flex flex-wrap gap-x-4 gap-y-1">
+				{choices.map((c) => {
+					const checked = value.includes(c.value);
+					return (
+						<label key={c.value} className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								checked={checked}
+								disabled={checked && value.length === 1}
+								onChange={(e) =>
+									onChange(
+										choices
+											.map((o) => o.value)
+											.filter((v) =>
+												v === c.value ? e.target.checked : value.includes(v),
+											),
+									)
+								}
+							/>
+							{c.label}
+						</label>
+					);
+				})}
+			</div>
+			<Described id={id} hint={hint} error={error} />
+		</fieldset>
 	);
 }
 

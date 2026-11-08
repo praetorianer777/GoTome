@@ -4,7 +4,9 @@ import { STATUS_LABELS, STATUSES } from "@/books/reading";
 import {
 	EREADER_FINDINGS,
 	FILE_STATES,
+	FORMATS,
 	picksValues,
+	RATINGS,
 	RULE_FIELDS,
 	RULE_OPS,
 	type RuleGroup,
@@ -39,9 +41,20 @@ function choices(field: FacetField): { value: string; label: string }[] {
 			}));
 		case "genre":
 			return GENRES.map((value) => ({ value, label: t(`genre.${value}`) }));
+		case "format":
+			return FORMATS.map((value) => ({ value, label: value.toUpperCase() }));
+		case "rating":
+			return stars();
 		default:
 			return STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
 	}
+}
+
+function stars() {
+	return RATINGS.map((value) => ({
+		value,
+		label: t("reading.stars", { count: Number(value) }),
+	}));
 }
 
 /**
@@ -240,17 +253,44 @@ function Rule({
 			{rule.op === "in" && !picksValues(rule.field) && (
 				<input
 					aria-label={t("rules.values")}
-					placeholder={t(
-						rule.field === "rating"
-							? "rules.values.stars"
-							: "rules.values.hint",
-					)}
+					placeholder={t("rules.values.hint")}
 					value={rule.text}
 					onChange={(e) => onChange({ ...rule, text: e.target.value })}
 					className={`${control} min-w-48 flex-1`}
 				/>
 			)}
-			{rule.op === "between" && (
+			{rule.op === "between" && rule.field === "rating" && (
+				<>
+					<select
+						aria-label={t("rules.from")}
+						value={rule.from}
+						onChange={(e) => onChange({ ...rule, from: e.target.value })}
+						className={control}
+					>
+						<option value="">{t("rules.values.anyStars")}</option>
+						{stars().map(({ value, label }) => (
+							<option key={value} value={value}>
+								{label}
+							</option>
+						))}
+					</select>
+					<span>{t("rules.and")}</span>
+					<select
+						aria-label={t("rules.to")}
+						value={rule.to}
+						onChange={(e) => onChange({ ...rule, to: e.target.value })}
+						className={control}
+					>
+						<option value="">{t("rules.values.anyStars")}</option>
+						{stars().map(({ value, label }) => (
+							<option key={value} value={value}>
+								{label}
+							</option>
+						))}
+					</select>
+				</>
+			)}
+			{rule.op === "between" && rule.field !== "rating" && (
 				<>
 					<input
 						aria-label={t("rules.from")}

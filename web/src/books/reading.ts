@@ -22,8 +22,21 @@ export const STATUS_LABELS: Record<ReadingStatus, MessageKey> = {
 	reading: "status.reading",
 	completed: "status.completed",
 	abandoned: "status.abandoned",
-	wishlist: "status.wishlist",
+	wishlist: "status.wantToRead",
 };
+
+/**
+ * The status as said of one book: `wishlist` is wanting to read a book one
+ * has, and wanting to have one the library does not hold yet.
+ */
+export function statusLabel(
+	status: ReadingStatus,
+	placeholder: boolean,
+): MessageKey {
+	return placeholder && status === "wishlist"
+		? "status.wishlist"
+		: STATUS_LABELS[status];
+}
 
 export const MAX_RATING = 5;
 

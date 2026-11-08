@@ -4,8 +4,8 @@ import { type ProgressState, progressQuery } from "@/books/progress";
 import {
 	MAX_RATING,
 	type ReadingStatus,
-	STATUS_LABELS,
 	STATUSES,
+	statusLabel,
 	useSetReading,
 } from "@/books/reading";
 import { FormError } from "@/components/form";
@@ -41,7 +41,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 					>
 						{STATUSES.map((s) => (
 							<option key={s} value={s}>
-								{t(STATUS_LABELS[s])}
+								{t(statusLabel(s, book.placeholder))}
 							</option>
 						))}
 					</select>
