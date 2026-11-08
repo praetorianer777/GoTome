@@ -49,6 +49,10 @@ What changes for someone who runs or uses GOtome. The format follows
   are known spellings. `gotome genre-check` no longer lists tags that
   rightly give no genre, such as "Roman", "eBook", publishers and
   countries, among those to map.
+- The reading status "Wishlist" is called "Want to read" for a book the
+  library holds, and stays "Wishlist" for one it does not hold yet. The
+  Wishlist page lists the two apart, as "Want to read" and "Not in the
+  library yet".
 
 ### Fixed
 

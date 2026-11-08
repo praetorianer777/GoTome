@@ -75,7 +75,7 @@ test("an author and a series have pages, lists and quick-search hits, and a miss
 	await page.goto("/wishlist");
 	await expect(
 		page
-			.getByRole("region", { name: "Wished for" })
+			.getByRole("region", { name: "Not in the library yet" })
 			.getByRole("link", { name: new RegExp(`The Second Lantern ${word}`) }),
 	).toBeVisible();
 

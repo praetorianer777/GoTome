@@ -2850,7 +2850,7 @@ describe("changing many books", () => {
 		).not.toBeInTheDocument();
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Set my status" }),
-			"Wishlist",
+			"Want to read",
 		);
 
 		expect(
@@ -3487,7 +3487,7 @@ describe("the wishlist", () => {
 		const { router } = renderApp("/");
 		await person.click(await screen.findByRole("link", { name: "Wishlist" }));
 		expect(
-			await screen.findByText("You wish for nothing yet."),
+			await screen.findByText("Nothing on your list yet."),
 		).toBeInTheDocument();
 
 		await person.type(screen.getByRole("textbox", { name: "Title" }), "Emma");
@@ -3501,6 +3501,10 @@ describe("the wishlist", () => {
 			await screen.findByText(/^Not in the library yet\. It is wished for/),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/books/book-2");
+		// Wanting a book the library lacks is wanting to have it.
+		expect(
+			screen.getByRole("combobox", { name: "Your status" }),
+		).toHaveDisplayValue("Wishlist");
 		expect(
 			server.requests.find((r) => r.path === "/books/wishes")?.body,
 		).toMatchObject({
@@ -3518,13 +3522,25 @@ describe("the wishlist", () => {
 		expect(
 			screen.queryByRole("link", { name: /^Emma/ }),
 		).not.toBeInTheDocument();
+		const persuasion = server.books.find((b) => b.title === "Persuasion");
+		if (persuasion) {
+			persuasion.reading = { status: "wishlist" };
+		}
 		await person.click(screen.getByRole("link", { name: "Wishlist" }));
-		const wished = within(
-			await screen.findByRole("region", { name: "Wished for" }),
+		const missing = within(
+			await screen.findByRole("region", { name: "Not in the library yet" }),
 		);
+		expect(missing.getByRole("link", { name: /^Emma/ })).toBeInTheDocument();
 		expect(
-			await wished.findByText("Not in the library yet"),
-		).toBeInTheDocument();
+			missing.queryByRole("link", { name: /^Persuasion/ }),
+		).not.toBeInTheDocument();
+		const held = within(screen.getByRole("region", { name: "Want to read" }));
+		expect(held.getByRole("link", { name: /^Persuasion/ })).toBeInTheDocument();
+
+		await person.click(held.getByRole("link", { name: /^Persuasion/ }));
+		expect(
+			await screen.findByRole("combobox", { name: "Your status" }),
+		).toHaveDisplayValue("Want to read");
 	});
 });
 
