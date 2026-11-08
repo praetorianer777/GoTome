@@ -1610,11 +1610,15 @@ describe("quick search", () => {
 		await person.type(box, "Sandersen");
 
 		const results = await screen.findByRole("listbox", { name: "Books found" });
-		// Two books, and last the search of their text.
+		// Two books, the list of every book found, and last the search of
+		// their text.
 		await waitFor(() =>
-			expect(within(results).getAllByRole("option")).toHaveLength(3),
+			expect(within(results).getAllByRole("option")).toHaveLength(4),
 		);
 		expect(within(results).getAllByRole("option")[2]).toHaveTextContent(
+			"Every book like “Sandersen”",
+		);
+		expect(within(results).getAllByRole("option")[3]).toHaveTextContent(
 			"Search the text of the books for “Sandersen”",
 		);
 		expect(box).toHaveAttribute("aria-expanded", "true");
@@ -1633,6 +1637,49 @@ describe("quick search", () => {
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/books/book-2");
 		expect(box).toHaveValue("");
+	});
+
+	it("lists every book found on Enter, as the library does", async () => {
+		const person = userEvent.setup();
+		withShelf();
+		const { router } = renderApp("/");
+		const box = await screen.findByRole("combobox", { name: "Search books" });
+		await person.type(box, "Sandersen");
+		const results = await screen.findByRole("listbox", { name: "Books found" });
+		await waitFor(() =>
+			expect(
+				within(results).getByRole("option", { name: "Every book like “Sandersen”" }),
+			).toBeInTheDocument(),
+		);
+
+		// Nothing chosen: Enter is the list, not the first book.
+		await person.keyboard("{Enter}");
+		expect(
+			await screen.findByRole("heading", {
+				name: "Books like “Sandersen”",
+				level: 1,
+			}),
+		).toBeInTheDocument();
+		expect(router.state.location.search).toMatchObject({ q: "Sandersen" });
+		const list = screen.getByRole("region", { name: "Books" });
+		await waitFor(() =>
+			expect(within(list).getAllByRole("link", { name: /Way of Kings|Mistborn/ })).toHaveLength(2),
+		);
+		expect(within(list).queryByRole("link", { name: /Emma/ })).not.toBeInTheDocument();
+		const asked = server.requests.find(
+			(r) => r.path.startsWith("/books?") && r.path.includes("words"),
+		);
+		expect(asked?.path).toContain("like");
+		// The library's own controls work on it: the selection is there.
+		expect(screen.getByRole("button", { name: "Select books" })).toBeInTheDocument();
+
+		await person.click(screen.getByRole("button", { name: "Show the whole library" }));
+		expect(
+			await screen.findByRole("heading", { name: "Library", level: 1 }),
+		).toBeInTheDocument();
+		await waitFor(() =>
+			expect(within(screen.getByRole("region", { name: "Books" })).getAllByRole("link", { name: /Emma/ }).length).toBeGreaterThan(0),
+		);
 	});
 
 	it("waits for three letters, says when nothing is found, and closes on Escape", async () => {
@@ -5896,7 +5943,7 @@ describe("links to authors and series", () => {
 		const box = screen.getByRole("combobox", { name: "Search books" });
 		await person.type(box, "gotter");
 		await screen.findByRole("option", { name: /Die Götter/ });
-		await person.keyboard("{Enter}");
+		await person.keyboard("{ArrowDown}{Enter}");
 		await screen.findByRole("heading", { level: 1, name: "Die Götter" });
 	});
 });

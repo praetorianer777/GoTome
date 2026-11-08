@@ -23,6 +23,7 @@ export const en = {
 	"search.results": "Books found",
 	"search.none": "No title, author or series looks like that.",
 	"search.fullText": "Search the text of the books for “{words}”",
+	"search.all": "Every book like “{words}”",
 
 	"nav.search": "Search",
 	"nav.duplicates": "Duplicates",
@@ -240,6 +241,13 @@ export const en = {
 	"library.filtered.title": "No book matches",
 	"library.filtered.body":
 		"None of the books here has all of what the filters ask for.",
+	"library.matching.title": "Books like “{words}”",
+	"library.matching.intro":
+		"Every book whose title, author or series looks like these words, misspelt or only begun.",
+	"library.matching.clear": "Show the whole library",
+	"library.matching.none": "No book looks like that",
+	"library.matching.noneBody":
+		"No title, author or series in the libraries you see looks like these words.",
 
 	"filter.title": "Filters",
 	"filter.toggle": "Filters",

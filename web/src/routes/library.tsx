@@ -12,6 +12,8 @@ import { ScanStatus } from "@/libraries/scan";
 /** What the library page shows, as the address carries it. */
 export interface LibrarySearch extends BookSearch {
 	library?: string;
+	/** Words the quick search matches: the list is every book they find. */
+	q?: string;
 }
 
 const SORTS: SortChoice[] = [
@@ -36,10 +38,25 @@ export function Library({
 		list.find((l) => l.id === search.library) ??
 		(list.length === 1 ? list[0] : undefined);
 	const busy = (selected ? [selected] : list).some(libraryIsBusy);
+	const words = search.q?.trim() || undefined;
 
 	return (
 		<div className="flex flex-col gap-6">
-			<PageHeader title={t("library.title")} />
+			<PageHeader
+				title={words ? t("library.matching.title", { words }) : t("library.title")}
+				intro={words && t("library.matching.intro")}
+				actions={
+					words && (
+						<button
+							type="button"
+							onClick={() => onSearch({ q: undefined })}
+							className={button()}
+						>
+							{t("library.matching.clear")}
+						</button>
+					)
+				}
+			/>
 			{libraries.isPending && <GridSkeleton />}
 			<FormError error={libraries.error} />
 
@@ -69,6 +86,7 @@ export function Library({
 					onSearch={onSearch}
 					sorts={SORTS}
 					defaultSort="title"
+					base={words ? { field: "words", op: "like", values: [words] } : undefined}
 					library={selected?.id}
 					busy={busy}
 					tools={
@@ -109,7 +127,11 @@ export function Library({
 						)
 					}
 					empty={
-						busy ? (
+						words ? (
+							<EmptyState title={t("library.matching.none")}>
+								{t("library.matching.noneBody")}
+							</EmptyState>
+						) : busy ? (
 							<EmptyState>{t("library.adding")}</EmptyState>
 						) : (
 							<EmptyState title={t("library.empty.title")}>

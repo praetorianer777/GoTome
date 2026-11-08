@@ -6,12 +6,14 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -85,6 +87,35 @@ func TestQuickSearch(t *testing.T) {
 	if titles, _ := a.search(admin, "sanderson"); len(titles) != 3 {
 		t.Errorf("the administrator finds %v", titles)
 	}
+
+	// Every match is a filter of the library's list, in its order.
+	list := func(c *http.Client, words string) (int, []string) {
+		t.Helper()
+		tree := `{"field": "words", "op": "like", "values": [` + strconv.Quote(words) + `]}`
+		status, body, _ := a.call(c, http.MethodGet, "/books?"+url.Values{"filter": {tree}, "sort": {"title"}}.Encode(), nil)
+		var titles []string
+		if status == 200 {
+			for _, b := range body["books"].([]any) {
+				titles = append(titles, b.(map[string]any)["title"].(string))
+			}
+		}
+		return status, titles
+	}
+	// The cases' books of equal score are in the order of their titles.
+	for _, c := range cases[:len(cases)-2] {
+		if status, titles := list(reader, c.words); status != 200 || !equalStrings(titles, c.titles) {
+			t.Errorf("listing %q: %d %v, want %v", c.words, status, titles, c.titles)
+		}
+	}
+	if status, titles := list(reader, "xyzzy plugh"); status != 200 || len(titles) != 0 {
+		t.Errorf("listing nonsense: %d %v", status, titles)
+	}
+	if _, titles := list(admin, "sanderson"); !equalStrings(titles, []string{"Elantris", "Mistborn", "The Way of Kings"}) {
+		t.Errorf("the administrator lists %v", titles)
+	}
+	if status, _ := list(reader, "ab"); status != 422 {
+		t.Errorf("listing two letters: %d, want 422", status)
+	}
 }
 
 func equalStrings(a, b []string) bool {
@@ -155,6 +186,26 @@ func TestQuickSearchIsQuickOnALargeLibrary(t *testing.T) {
 		}
 		if best > 300*time.Millisecond {
 			t.Errorf("%q took %s, want an answer while the person types", words, best)
+		}
+
+		// Every match, as Enter lists them, in the library's order.
+		tree := filter.Node{Field: catalog.FieldWords, Op: catalog.OpLike, Values: []string{words}}
+		best = time.Hour
+		for range 3 {
+			started := time.Now()
+			page, err := books.List(ctx, scope, catalog.ListParams{Filter: tree, Order: catalog.OrderTitle, Limit: 50})
+			if err != nil {
+				t.Fatal(err)
+			}
+			found = len(page.Books)
+			best = min(best, time.Since(started))
+		}
+		t.Logf("listing %q: %d books in %s", words, found, best)
+		if found == 0 {
+			t.Errorf("listing %q found nothing among 50,000 books", words)
+		}
+		if best > 500*time.Millisecond {
+			t.Errorf("listing %q took %s", words, best)
 		}
 	}
 }
