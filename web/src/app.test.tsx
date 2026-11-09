@@ -182,12 +182,11 @@ describe("a fresh installation", () => {
 	it("names the app as text beside the hero, in a frame of fixed height", async () => {
 		renderApp("/setup");
 		await screen.findByRole("heading", { name: /Welcome/ });
-		const name = await screen.findByText(
-			(_, el) => el?.tagName === "SPAN" && el.textContent === "GOtome",
-		);
+		// One image for each theme; the stylesheet shows one.
+		const [name] = await screen.findAllByRole("img", { name: "GOtome" });
 		// The art is a background of a box that has its height, so the form
 		// does not jump when it loads.
-		expect(name.closest(".hero-art")).toHaveClass("h-40");
+		expect(name?.closest(".hero-art")).toHaveClass("h-40");
 	});
 
 	it("sends the sign-in page to setup", async () => {

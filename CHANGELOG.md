@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- The name in the top bar and on the sign-in and setup pages is a new
+  wordmark: an illuminated "GO" and "tome" in gold lettering, one for each
+  colour theme.
+
 - Books in the library's grid, on author and series pages and in "similar
   books" are shown as rounded cards, with a round badge on the cover's
   corner saying whether the book is an ebook, an audiobook or both.

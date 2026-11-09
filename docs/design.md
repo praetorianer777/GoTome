@@ -140,7 +140,15 @@ text's colour.
 
 ## Type
 
-- **Headings and the wordmark**: a serif, the "tome" of the artwork. Only
+- **The wordmark** is an image, made by `web/scripts/branding.sh` from the
+  owner's illuminated "GO" and "tome" set in UnifrakturCook Bold (SIL OFL,
+  `assets/branding/fonts`, a build source: the app loads no font), one for
+  each theme (cyan and bright gold on dark, teal and darker gold on light).
+  It has the accessible name "GOtome". A logo is exempt from the text
+  contrast rules, but it is kept legible: on a panel, at 36 px high in the
+  top bar and about 280 px wide on the sign-in and setup pages.
+
+- **Headings**: a serif. Only
   what the system has (`--font-serif`: Iowan Old Style, Palatino, Book
   Antiqua, Georgia): no web fonts, as the Content Security Policy allows no
   other origin and the app carries no font files.
@@ -149,7 +157,7 @@ text's colour.
   serif medium; body `text-base`; controls, tables and secondary text
   `text-sm`; footnotes and badges `text-xs`. No other sizes, except these
   deliberate ones: the book title (`text-3xl`, `sm:text-4xl`, one per page),
-  the 404 heading (`text-3xl`), the wordmark and the stars of a rating
+  the 404 heading (`text-3xl`), the stars of a rating
   (`text-xl`), and the figures of the overview (`text-xl`). The review
   heading's `text-xl` is not one of them: it becomes `text-lg`.
 - **Line length**: running text (descriptions, introductions, help, notes)
@@ -182,7 +190,7 @@ text's colour.
 - **Desktop (≥ 1024 px)**: a top bar and, under it, the sidebar panel and the
   content panel side by side, over the backdrop.
   - The **top bar** (a panel across the width, sticky) holds the wordmark
-    (icon, "GO" in cyan sans, "tome" in cream serif) at the left, the
+    (the icon and the wordmark image, 36 px high) at the left, the
     **section tabs** (a `nav` named "Sections": Library, Wishlist, New
     books, Statistics; the current one in a rounded pill, `aria-current`),
     then the rounded quick search (with the gopher's mark inside its right

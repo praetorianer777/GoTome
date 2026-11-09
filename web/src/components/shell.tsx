@@ -18,6 +18,7 @@ import mascotSidebar from "@/assets/mascot-sidebar.webp";
 import { QuickSearch } from "@/books/quick-search";
 import { Dialog } from "@/components/dialog";
 import { Celebration } from "@/components/gopher";
+import { Wordmark } from "@/components/wordmark";
 import { panel } from "@/components/ui";
 import { LanguageSelect, ThemeSelect } from "@/components/preferences";
 import { useServerVersion, VersionFooter } from "@/components/version-footer";
@@ -293,7 +294,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 						>
 							<Icon name="menu" className="h-6 w-6" />
 						</button>
-						<Wordmark />
+						<HomeLink />
 						<Sections user={user} />
 						<div className="ml-auto flex items-center gap-2 lg:order-last">
 							<Bell />
@@ -382,26 +383,13 @@ function Sections({ user }: { user: CurrentUser }) {
 	);
 }
 
-/** The icon and the name as the artwork writes it: "GO" in cyan, "tome" in cream serif. */
-function Wordmark() {
+/** The icon and the name, which lead to the library. */
+function HomeLink() {
 	return (
 		<Link to="/" className="flex items-center gap-2 rounded-lg px-1">
-			{/* Decorative: the name beside it is the link's text. */}
-			<img
-				src={mark}
-				width={32}
-				height={32}
-				alt=""
-				className="rounded-md"
-			/>
-			<span className="text-xl tracking-tight">
-				<span className="font-sans font-extrabold text-brand-strong dark:text-brand">
-					GO
-				</span>
-				<span className="font-serif font-semibold text-leather dark:text-cream">
-					tome
-				</span>
-			</span>
+			{/* Decorative: the wordmark beside it is the link's name. */}
+			<img src={mark} width={32} height={32} alt="" className="rounded-md" />
+			<Wordmark />
 		</Link>
 	);
 }

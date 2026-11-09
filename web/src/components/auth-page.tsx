@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Wordmark } from "@/components/wordmark";
 
 /**
  * The frame the setup and sign-in pages share: the hero, the name as text, a
@@ -16,16 +17,9 @@ export function AuthPage({
 }) {
 	return (
 		<main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 px-4 py-8">
-			<div
-				className="hero-art relative h-40 overflow-hidden rounded-2xl border border-slate-200 sm:h-56 dark:border-slate-700"
-			>
-				<span className="panel absolute right-3 bottom-3 rounded-xl px-3 py-1 text-xl tracking-tight sm:top-1/2 sm:right-4 sm:bottom-auto sm:-translate-y-1/2 sm:px-5 sm:py-3 sm:text-3xl">
-					<span className="font-sans font-extrabold text-brand-strong dark:text-brand">
-						GO
-					</span>
-					<span className="font-serif font-semibold text-leather dark:text-cream">
-						tome
-					</span>
+			<div className="hero-art relative h-40 overflow-hidden rounded-2xl border border-slate-200 sm:h-56 dark:border-slate-700">
+				<span className="panel absolute right-3 bottom-3 rounded-xl px-3 py-2 sm:top-1/2 sm:right-4 sm:bottom-auto sm:-translate-y-1/2 sm:px-5 sm:py-3">
+					<Wordmark size="large" className="w-28 sm:w-48" />
 				</span>
 			</div>
 			<div className="panel flex flex-col gap-6 rounded-2xl p-6">
