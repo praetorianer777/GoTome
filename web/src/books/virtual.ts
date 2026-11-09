@@ -83,11 +83,23 @@ export function useWindowRows(
 	const entry = (window.history.state as { __TSR_key?: string } | null)?.__TSR_key ?? "";
 	const place = `${entry}|${key}`;
 	const [start, setStart] = useState(0);
+	// What stands above the list can change height after it was laid out, as
+	// the strip over the library does when its books arrive or it is folded,
+	// so the start is measured again whenever the page's height changes.
 	useLayoutEffect(() => {
-		const element = list.current;
-		if (element) {
-			setStart(element.getBoundingClientRect().top + window.scrollY);
+		const measure = () => {
+			const element = list.current;
+			if (element) {
+				setStart(element.getBoundingClientRect().top + window.scrollY);
+			}
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") {
+			return;
 		}
+		const watch = new ResizeObserver(measure);
+		watch.observe(document.body);
+		return () => watch.disconnect();
 	}, [list]);
 	const rows = useWindowVirtualizer({
 		count,
