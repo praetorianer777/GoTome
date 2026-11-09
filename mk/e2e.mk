@@ -8,7 +8,10 @@ PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v$(PLAYWRIGHT_VERSION)-noble
 # FULL=1 runs every test in every browser, as CI does. Without it the run is
 # the push gate's: the tests tagged @smoke, in Chromium.
 FULL ?=
-E2E_SELECTION = $(if $(FULL),,--project=chromium --grep @smoke)
+# E2E_PROJECT narrows a full run to one Playwright project: CI runs one job
+# per project, each against a stack of its own.
+E2E_PROJECT ?=
+E2E_SELECTION = $(if $(FULL),$(if $(E2E_PROJECT),--project=$(E2E_PROJECT)),--project=chromium --grep @smoke)
 WORKERS ?= 4
 # Narrows a run to tests whose title matches: make test-e2e FULL=1 ONLY=colours
 ONLY ?=

@@ -10,6 +10,8 @@ export default defineConfig({
 	forbidOnly: Boolean(process.env.CI),
 	retries: 0,
 	timeout: 20_000,
+	// The slowest test files of each run, in the log (#403).
+	reportSlowTests: { max: 20, threshold: 8_000 },
 	expect: { timeout: 5_000 },
 	reporter: [
 		["list"],
