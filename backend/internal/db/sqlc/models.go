@@ -587,6 +587,18 @@ type UnusedEmbeddingModel struct {
 	Since time.Time
 }
 
+type UpdateCheck struct {
+	ID              bool
+	LatestVersion   *string
+	Url             *string
+	PublishedAt     *time.Time
+	Security        bool
+	CheckedAt       *time.Time
+	AttemptedAt     *time.Time
+	Error           *string
+	NotifiedVersion *string
+}
+
 type User struct {
 	ID           uuid.UUID
 	Username     string

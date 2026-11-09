@@ -141,6 +141,12 @@ See [metadata.md](metadata.md).
 | `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked: `openlibrary`, `crossref` and `hardcover`, separated by commas (a box each on the page). Leave one out to stop asking it; at least one stays. |
 | `metadata.contactEmail` | Contact address for sources | none | An e-mail address given to sources that ask whom to write to about the requests they get. CrossRef serves requests with one faster. It is not stored with the answers. |
 
+### Updates
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `updates.check` | Check for new releases | `on` | Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one (footer, overview, a notification). GitHub learns that an instance exists at this address and nothing else; nothing is downloaded or installed. `GOTOME_OFFLINE=true` asks nothing whatever this says. |
+
 ### Trash
 
 | Key | On the page | Default | What it does |

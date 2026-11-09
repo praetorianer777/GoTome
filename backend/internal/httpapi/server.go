@@ -37,6 +37,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -109,6 +110,8 @@ type Server struct {
 	// Resources checks the machine's memory and disk against what
 	// Postgres, the app and the embedding model are set to take.
 	Resources *resources.Service
+	// Updates is what is known of the latest release.
+	Updates *updates.Service
 	// Checks gathers how each part of GOtome is doing, for administrators.
 	Checks *syscheck.Collector
 	// Releases follows authors and series for their new books.

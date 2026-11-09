@@ -35,6 +35,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.hardcoverToken",
 		hint: "settings.hardcoverToken.hint",
 	},
+	"updates.check": {
+		label: "settings.updatesCheck",
+		hint: "settings.updatesCheck.hint",
+	},
 	"metadata.autoMatch": {
 		label: "settings.autoMatch",
 		hint: "settings.autoMatch.hint",

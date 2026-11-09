@@ -3,8 +3,9 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
-import { formatCount, formatSize } from "@/lib/format";
+import { formatCount, formatDate, formatDateTime, formatSize } from "@/lib/format";
 import { ChecksList } from "@/system/checks";
+import { updateQuery } from "@/system/update";
 
 export type Health = components["schemas"]["Health"];
 type Warning = components["schemas"]["Warning"];
@@ -75,6 +76,60 @@ function Row({ label, value }: { label: MessageKey; value: string }) {
 	);
 }
 
+const UPGRADE_GUIDE =
+	"https://github.com/praetorianer777/GoTome/blob/main/docs/backup-and-upgrade.md";
+
+/** The running version, the latest release GitHub named, and how to upgrade. */
+function UpdateNote() {
+	const { data: u } = useQuery(updateQuery);
+	if (!u) return null;
+	return (
+		<div className="flex flex-col gap-1">
+			<h3 className="text-sm font-medium">{t("update.title")}</h3>
+			<p>
+				{t("update.running")}: {u.current}
+				{u.latest &&
+					` · ${t("update.latest")}: ${t("update.latestValue", {
+						version: u.latest,
+						date: u.publishedAt ? formatDate(u.publishedAt) : "",
+					})}`}
+			</p>
+			{!u.enabled ? (
+				<p className="text-sm text-slate-600 dark:text-slate-400">
+					{t("update.off")}
+				</p>
+			) : (
+				<p className="text-sm text-slate-600 dark:text-slate-400">
+					{u.checkedAt
+						? t("update.checked", { when: formatDateTime(u.checkedAt) })
+						: t("update.notChecked")}
+				</p>
+			)}
+			{u.available && (
+				<p>
+					<strong>{t("update.available", { version: u.latest ?? "" })}</strong>
+					{u.security && ` ${t("update.security")}`}{" "}
+					<a href={u.url} target="_blank" rel="noreferrer" className="underline">
+						{t("update.notes")}
+					</a>
+					{" · "}
+					<a href={UPGRADE_GUIDE} target="_blank" rel="noreferrer" className="underline">
+						{t("update.howTo")}
+					</a>
+				</p>
+			)}
+			{!u.available && u.latest && (
+				<p>
+					{t("update.upToDate")}{" "}
+					<a href={UPGRADE_GUIDE} target="_blank" rel="noreferrer" className="underline">
+						{t("update.howTo")}
+					</a>
+				</p>
+			)}
+		</div>
+	);
+}
+
 /**
  * The machine's memory and disk against what Postgres, the app and the
  * embedding model are set to take, with what to do where they do not fit.
@@ -93,6 +148,7 @@ export function HealthPanel() {
 				{t("health.title")}
 			</h2>
 			<FormError error={health.error} />
+			<UpdateNote />
 			<ChecksList />
 			{h && (
 				<>

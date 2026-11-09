@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -113,6 +114,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
 			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
 			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/update", ID: "getSystemUpdate",
+			Summary: "The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version", Tag: "system",
+			Response: updates.ReleaseStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemUpdate,
 		},
 		{
 			Method: http.MethodGet, Path: "/system/checks", ID: "getSystemChecks",
@@ -879,6 +885,15 @@ func (s *Server) getSystemChecks(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	writeJSON(w, r, http.StatusOK, s.Checks.Collect(r.Context()))
+	return nil
+}
+
+func (s *Server) getSystemUpdate(w http.ResponseWriter, r *http.Request) error {
+	status, err := s.Updates.Status(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, status)
 	return nil
 }
 

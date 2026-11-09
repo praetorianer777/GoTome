@@ -34,6 +34,7 @@ import type { LinkedIdentity } from "@/users/api";
 import type { Feed, FeedItem, Release, Tracker } from "@/releases/api";
 import type { SystemCheck } from "@/system/checks";
 import type { Health } from "@/system/health";
+import type { ReleaseStatus } from "@/system/update";
 
 const PERMISSIONS = {
 	reader: ["library:read", "personal:manage"],
@@ -271,6 +272,12 @@ export class FakeServer {
 		{ name: "outbox", status: "degraded", message: "12 changes wait for the search index, the oldest for 15m0s", value: 900, unit: "s", checkedAt: "2026-11-09T10:00:00Z" },
 		{ name: "provider:openlibrary", status: "ok", message: "", checkedAt: "2026-11-09T10:00:00Z" },
 	];
+	update: ReleaseStatus = {
+		current: "0.5.0",
+		enabled: true,
+		security: false,
+		available: false,
+	};
 	health: Health = {
 		memory: {
 			machineBytes: 8_000_000_000,
@@ -671,6 +678,15 @@ export class FakeServer {
 				);
 			}
 			return Response.json({ checks: this.checks });
+		}
+		if (path === "/system/update") {
+			if (!this.session?.permissions.includes("settings:manage")) {
+				return Response.json(
+					{ error: { code: "forbidden", message: "You do not have permission to do that." } },
+					{ status: 403 },
+				);
+			}
+			return Response.json(this.update);
 		}
 		if (path === "/system/health") {
 			if (!this.session?.permissions.includes("settings:manage")) {

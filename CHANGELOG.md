@@ -14,6 +14,12 @@ What changes for someone who runs or uses GOtome. The format follows
   and an optional expiry. It is shown once, sent as `Authorization:
   Bearer`, and never does more than your role allows. The list shows when
   each was last used; revoking one stops it at once. See `docs/api.md`.
+- Administrators are told when a new GOtome release is out: a line in the
+  footer, a notification once per version (you can switch it off on the
+  profile), and the latest version on the overview page with a link to the
+  upgrade guide. GOtome asks GitHub once a day, with no account and no
+  token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
+  turn it off. It never updates itself.
 - `gotome perf-check` times the main views on your own library and prints a
   table that names none of its books, with the memory in use. It only reads.
 

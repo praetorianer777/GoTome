@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 )
 
 // background is what the workers of serve work with.
@@ -37,6 +38,7 @@ type background struct {
 	events      *notify.Events
 	follows     *releases.Service
 	sync        *kosync.Service
+	updates     *updates.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -76,6 +78,7 @@ func (b background) registrations() []registration {
 		worker(&notify.FlushWorker{Events: b.events}),
 		worker(&releases.PollWorker{Service: b.follows}),
 		worker(&releases.FetchFeedsWorker{Service: b.follows}),
+		worker(&updates.CheckWorker{Service: b.updates}),
 		worker(&kosync.HashWorker{Service: b.sync}),
 		worker(&ingest.MeasureWorker{Service: b.scans}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
@@ -102,6 +105,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		releases.FeedsPeriodic(feedFetchInterval),
+		updates.Periodic(updateCheckInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		fulltext.Periodic(outboxInterval),
