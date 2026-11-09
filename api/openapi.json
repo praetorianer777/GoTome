@@ -8487,6 +8487,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
