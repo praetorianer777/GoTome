@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-09
+
 ### Added
 
 - API keys on the profile, for scripts and other programs that use GOtome
