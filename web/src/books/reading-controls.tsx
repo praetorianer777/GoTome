@@ -46,7 +46,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 						))}
 					</select>
 				</label>
-				<fieldset className="flex items-center gap-1">
+				<fieldset className="flex items-center gap-2">
 					<legend className="float-left mr-2">{t("reading.rating")}</legend>
 					{Array.from({ length: MAX_RATING }, (_, i) => i + 1).map((n) => (
 						<button

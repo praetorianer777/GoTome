@@ -344,7 +344,7 @@ export function Overview() {
 			<div className="flex flex-wrap items-end justify-between gap-4">
 				<h1 className="text-2xl font-semibold">{t("overview.title")}</h1>
 				{(libraries.data?.length ?? 0) > 1 && (
-					<label className="flex flex-col gap-1 text-sm">
+					<label className="flex max-w-full min-w-0 flex-col gap-1 text-sm">
 						{t("overview.which")}
 						<select
 							value={library}

@@ -353,7 +353,7 @@ function Files({
 				{files.map((file) => (
 					<li
 						key={file.id}
-						className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm"
+						className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 text-sm"
 					>
 						<span className="w-14 rounded bg-slate-100 py-0.5 text-center text-xs font-semibold tracking-wide uppercase dark:bg-slate-800">
 							{file.format}

@@ -119,8 +119,8 @@ export function Jobs() {
 							aria-label={describe(job)}
 							className="flex flex-col gap-1 px-4 py-3 text-sm"
 						>
-							<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-								<span className="min-w-0 flex-1 break-all font-medium">
+							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+								<span className="min-w-40 flex-1 break-all font-medium">
 									{job.bookId ? (
 										<Link
 											to="/books/$bookId"

@@ -148,6 +148,64 @@ select {
 	max-width: 100%;
 }
 
+/* viewport-fit=cover (index.html) lets the page run under a notch and the
+   home indicator, so what sits at an edge keeps clear of them (#390): the
+   sides on every page, the top bar and the bars at the foot through these
+   utilities, which add the inset to the padding the bar already has. */
+@utility pt-safe {
+	padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pt-safe-4 {
+	padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+}
+@utility pb-safe-2 {
+	padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pb-safe-3 {
+	padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pb-safe-4 {
+	padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pl-safe-4 {
+	padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+}
+@utility bottom-safe-2 {
+	bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+@utility bottom-safe-4 {
+	bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+body {
+	padding-right: env(safe-area-inset-right, 0px);
+	padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* A thumb is not a pointer (#390, docs/design.md "Phone, tablet, desktop"):
+   on a touch screen every button, field and block link is 44 pixels high,
+   a choice's label as well, and fields are set at 16 pixels, below which iOS
+   zooms into one. It is not layered, so no utility of a page undoes it; a
+   link inside a sentence is inline, which a minimum height does not touch. */
+@media (pointer: coarse) {
+	button:not([role="switch"]),
+	summary,
+	select,
+	textarea,
+	a,
+	input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]),
+	label:has(> input[type="checkbox"], > input[type="radio"]) {
+		min-height: 2.75rem;
+	}
+	button:not([role="switch"]) {
+		min-width: 2.75rem;
+	}
+	input,
+	select,
+	textarea {
+		font-size: 1rem;
+	}
+}
+
 h1,
 h2 {
 	font-family: var(--font-serif);

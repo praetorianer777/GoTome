@@ -354,6 +354,39 @@ main view). A primary button, one per view, is what `bg-brand-strong` marks;
 `layout.spec.ts` counts those in view. A page with several forms (the
 profile) makes their buttons secondary.
 
+### The phone's rules (#390)
+
+Audited on every main view at 320, 360 and 390 pixels in the phone project,
+both themes (`e2e/tests/phone.spec.ts`, `layout.spec.ts`). They are met by
+rules in `styles/index.css` rather than by page, so a new page has them:
+
+- **Targets**: on a touch screen (`pointer: coarse`) every button, field,
+  summary and block link is 44 pixels high, a button 44 wide, a choice's
+  label 44 high, and neighbouring controls are 8 pixels apart (the two halves
+  of a joined choice, Covers and List, and bars that stick, are not
+  neighbours). A link of words is as wide as its words. The switch is a 44
+  by 56 pixel button around its track.
+- **Reflow**: nothing wider than the window at 320, 360 and 390 pixels.
+- **Fields** are set at 16 pixels on a touch screen, so iOS does not zoom
+  into one; names are `autocomplete="off"`, passwords and user names carry
+  their `autocomplete`, numbers their `inputmode`.
+- **Safe areas**: `viewport-fit=cover`, the sides on the body, the top bar,
+  the drawer, the footer, the mini player, the settings' save bar and the
+  toast through the `pt-safe`, `pb-safe-*`, `bottom-safe-*` utilities.
+- **Above the fold** (390 by 844): the book page's cover, title and Read end
+  inside the first screen, Read in its lower two thirds.
+- **Blur**: the mini player blurs only from 1024 px, as the panels do.
+- **Gestures**: the app has none of its own; the readers' swipes have
+  buttons too ("Page left", "Page right").
+
+Waived, with reasons: no bottom navigation bar. The screenshots showed the
+filters, sort and selection already in the lower two thirds and the book's
+Read at two thirds down; a second bar of the same sections would double every
+link's name for screen readers and tests. The menu button stays at the top
+left, the one exception to "nothing important only at the top". The strip
+over the library starts folded on a phone, so "Continue reading" is one tap
+from the first screen, not in it: the grid is what people come for.
+
 ## Open for the owner
 
 - The artwork the draft shows and GOtome does not have yet (hero, corner

@@ -27,6 +27,7 @@ export function Field({ label, hint, error, optional, ...input }: FieldProps) {
 				id={id}
 				aria-describedby={describedBy(id, hint, error)}
 				aria-invalid={error ? true : undefined}
+				autoComplete="off"
 				className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 aria-invalid:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:aria-invalid:border-red-400"
 				{...input}
 			/>
@@ -149,12 +150,14 @@ export function Switch({
 					aria-describedby={describedBy(id, hint, error)}
 					aria-invalid={error ? true : undefined}
 					onClick={() => onChange(!checked)}
-					className="group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-slate-600 bg-slate-200 aria-checked:border-brand-strong aria-checked:bg-brand-strong dark:border-slate-600 dark:bg-slate-800 dark:aria-checked:border-brand dark:aria-checked:bg-brand"
+					className="group relative flex h-11 w-14 shrink-0 items-center justify-center"
 				>
 					<span
 						aria-hidden="true"
-						className="inline-block size-4 translate-x-1 rounded-full bg-slate-600 transition-transform group-aria-checked:translate-x-6 group-aria-checked:bg-white dark:bg-slate-300 dark:group-aria-checked:bg-ink"
-					/>
+						className="flex h-6 w-11 items-center rounded-full border border-slate-600 bg-slate-200 group-aria-checked:border-brand-strong group-aria-checked:bg-brand-strong dark:border-slate-600 dark:bg-slate-800 dark:group-aria-checked:border-brand dark:group-aria-checked:bg-brand"
+					>
+						<span className="inline-block size-4 translate-x-1 rounded-full bg-slate-600 transition-transform group-aria-checked:translate-x-6 group-aria-checked:bg-white dark:bg-slate-300 dark:group-aria-checked:bg-ink" />
+					</span>
 				</button>
 			</div>
 			<Described id={id} hint={hint} error={error} />

@@ -157,12 +157,84 @@ export async function smallTargets(page: Page, min: number): Promise<string[]> {
 				if (r.width >= min && r.height >= min) continue;
 			}
 			const r = el.getBoundingClientRect();
-			if (r.width < min - 0.5 || r.height < min - 0.5) {
+			// A link of words is as wide as they are; its height is the target's.
+			const words = el.tagName === "A" && (el.textContent || "").trim().length > 0;
+			if ((r.width < (words ? Math.min(min, 24) : min) - 0.5) || r.height < min - 0.5) {
 				found.push(describe(el) + " is " + Math.round(r.width) + "x" + Math.round(r.height));
 			}
 		}
 		return found;
 	})(${min})`) as Promise<string[]>;
+}
+
+/**
+ * Fields set in under 16 pixels, which iOS zooms into when they take focus
+ * (#390). Checkboxes, radios and file fields have no text to type.
+ */
+export async function smallFields(page: Page, min = 16): Promise<string[]> {
+	return page.evaluate(`((min) => {
+		const describe = ${DESCRIBE};
+		const seen = ${SEEN};
+		return [...document.querySelectorAll("input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]):not([type=range]), select, textarea")]
+			.filter((el) => seen(el) && parseFloat(getComputedStyle(el).fontSize) < min)
+			.map((el) => describe(el) + " is set in " + getComputedStyle(el).fontSize);
+	})(${min})`) as Promise<string[]>;
+}
+
+/**
+ * Controls closer to each other than `gap` pixels (WCAG 2.5.8 asks for room
+ * around a small target; a phone's thumb for 8 pixels around every one).
+ * Controls that hold each other, and those of one joined group, are not
+ * neighbours.
+ */
+export async function crowdedTargets(page: Page, gap: number): Promise<string[]> {
+	return page.evaluate(`((gap) => {
+		const describe = ${DESCRIBE};
+		const seen = ${SEEN};
+		const sel = "a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [role=menuitem], [role=switch]";
+		const inline = (el) => el.tagName === "A" && getComputedStyle(el).display === "inline";
+		const all = [...document.querySelectorAll(sel)].filter((el) => seen(el) && !inline(el) && !el.matches(".sr-only, [tabindex='-1']"));
+		const found = [];
+		for (const [i, a] of all.entries()) {
+			const ra = a.getBoundingClientRect();
+			for (const b of all.slice(i + 1)) {
+				if (a.contains(b) || b.contains(a)) continue;
+				if (a.closest("label") && a.closest("label") === b.closest("label")) continue;
+				// A bar that sticks passes over the fields as the page scrolls.
+				const sticks = (el) => { for (let e = el; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === "fixed" || p === "sticky") return true; } return false; };
+				if (sticks(a) || sticks(b)) continue;
+				const rb = b.getBoundingClientRect();
+				// The two halves of a joined choice (Covers, List) touch by design.
+				if (a.hasAttribute("aria-pressed") && b.hasAttribute("aria-pressed") && a.parentElement === b.parentElement && getComputedStyle(b).marginLeft === "-1px") continue;
+				const dx = Math.max(ra.left - rb.right, rb.left - ra.right, 0);
+				const dy = Math.max(ra.top - rb.bottom, rb.top - ra.bottom, 0);
+				if (Math.hypot(dx, dy) < gap - 0.5) {
+					found.push(describe(a) + " is " + Math.round(Math.hypot(dx, dy)) + "px from " + describe(b));
+				}
+			}
+		}
+		return found;
+	})(${gap})`) as Promise<string[]>;
+}
+
+/** Where the book page's cover, title and primary action end, in a window of this height. */
+export async function bookFold(page: Page): Promise<{
+	height: number;
+	cover: number;
+	title: number;
+	action: { top: number; bottom: number };
+}> {
+	return page.evaluate(`(() => {
+		const bottom = (el) => (el ? el.getBoundingClientRect().bottom : Infinity);
+		const action = document.querySelector("article a.bg-brand-strong, article button.bg-brand-strong, main a.bg-brand-strong");
+		const r = action ? action.getBoundingClientRect() : { top: Infinity, bottom: Infinity };
+		return {
+			height: window.innerHeight,
+			cover: bottom(document.querySelector("article img, article [class*=aspect-]")),
+			title: bottom(document.querySelector("h1")),
+			action: { top: r.top, bottom: r.bottom },
+		};
+	})()`) as Promise<{ height: number; cover: number; title: number; action: { top: number; bottom: number } }>;
 }
 
 /** Tabs through the page: every control that takes focus shows where it is. */
