@@ -8,6 +8,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- "For you": a row in the library's strip, and a page with more, recommend
+  unread books of the libraries you see that are near what you finished or
+  rated well, each with the books it is "because you liked". Someone who
+  reads crime and fantasy gets both. "Not interested" leaves a book out
+  for good. It needs three finished or rated books and the embedding of
+  similar books; nothing is sent anywhere. `gotome similar-check -recommend`
+  measures it on your ratings (`docs/similarity.md`).
 - Your reading history now includes books the library does not hold: on
   Wishlist, "Add as read" (with stars and the day you finished it) and
   "Currently reading" sit beside "Wish for it", and "Your reading" lists

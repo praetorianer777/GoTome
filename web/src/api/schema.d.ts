@@ -2044,6 +2044,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unread books of the libraries the caller sees that are near what they liked, with why */
+        get: operations["listRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/recommendations/{bookId}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say the caller is not interested in a book: it is left out of their recommendations */
+        post: operations["dismissRecommendation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/stats": {
         parameters: {
             query?: never;
@@ -3944,6 +3978,19 @@ export interface components {
         };
         RebuildResult: {
             queued: boolean;
+        };
+        Recommendation: {
+            because: components["schemas"]["RecommendationBecause"][];
+            book: components["schemas"]["BookSummary"];
+        };
+        RecommendationBecause: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        RecommendationList: {
+            books: components["schemas"]["Recommendation"][];
+            hasProfile: boolean;
         };
         Release: {
             authors: string[];
@@ -8642,6 +8689,67 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReadingImport"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listRecommendations: {
+        parameters: {
+            query?: {
+                /** @description How many books to return, at most 50; 12 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissRecommendation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

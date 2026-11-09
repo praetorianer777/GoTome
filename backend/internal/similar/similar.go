@@ -458,6 +458,12 @@ func traitsOf(ctx context.Context, q *sqlc.Queries, ids []uuid.UUID) (map[uuid.U
 // pick takes from the nearest books, in order, up to limit that are no copy
 // of the book or of one taken, within the caps per author and series.
 func pick(book traits, near []traits, limit int) []uuid.UUID {
+	return pickAmong([]traits{book}, near, limit)
+}
+
+// pickAmong is pick for several books at once: a copy of any of them is
+// left out.
+func pickAmong(books []traits, near []traits, limit int) []uuid.UUID {
 	var taken []traits
 	byAuthor := map[string]int{}
 	bySeries := map[uuid.UUID]int{}
@@ -465,7 +471,7 @@ func pick(book traits, near []traits, limit int) []uuid.UUID {
 		if len(taken) == limit {
 			break
 		}
-		if isCopy(book, t) || slices.ContainsFunc(taken, func(o traits) bool { return isCopy(o, t) }) {
+		if slices.ContainsFunc(books, func(b traits) bool { return isCopy(b, t) }) || slices.ContainsFunc(taken, func(o traits) bool { return isCopy(o, t) }) {
 			continue
 		}
 		if len(t.people) > 0 && byAuthor[t.people[0]] >= perAuthor {

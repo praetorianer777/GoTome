@@ -99,3 +99,45 @@ books' language, as an English description of a German library; e5 does
 so poorly. A name in the metadata vector still draws Cornwell to Cornwall
 with both (#184). bge-m3 is the model to use where an embedding server can
 run it; e5 stays the one that needs none.
+
+## Recommendations
+
+"For you" (the library's strip, and `/recommendations`) suggests unread books
+of the libraries a person sees from what they liked (#392). It uses the
+vectors above and nothing else: no provider, no network, nothing stored but
+the books a person said they are not interested in.
+
+- **Taste.** The books they finished or rated, up to 300 of the best rated
+  and latest. Weights: 5 stars 1.0, 4 stars 0.7, 3 stars 0.3, finished
+  without stars 0.4. Books of one or two stars are left out (weight 0). With
+  fewer than three such books there is no profile and nothing is shown.
+  Books read but not owned have no vectors and so cannot take part.
+- **Centres, not one mean.** The books they liked are cut into at most four
+  groups by the cosine of their metadata vectors (centres that are one taste
+  are joined, and a centre needs two books), so someone who reads crime and
+  fantasy gets both. A candidate is scored against each centre as similar
+  books are (content 0.6, metadata 0.4) and keeps its best, and the books of
+  that centre it is nearest are named as the reason.
+- **Candidates.** Visible books with vectors of the chosen model, not
+  placeholders, not read, being read or given up by the person, not
+  dismissed. Of a series they read, only the next unread volume. Then the
+  caps of similar books: two per author and per series, no copies of a book
+  they liked.
+
+### Measuring
+
+```sh
+gotome similar-check -recommend [-min-rated 10] [-json]
+```
+
+For every person with at least `-min-rated` books of 4 or 5 stars it hides
+about a fifth of them (chosen by a hash of person and book, so the split is
+the same each time), builds the profile from the rest and counts how many
+hidden books come back among the first 10 and 20 recommendations. It tries
+one to four centres, with books of one or two stars left out and with them
+counting against (weight -0.3), and prints recall@10 and recall@20 for each.
+It changes nothing.
+
+The defaults above are the issue's starting point. The numbers for a real
+library are for its owner to run and write down here; the check was made on
+no library of real readers.

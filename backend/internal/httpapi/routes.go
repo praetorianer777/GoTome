@@ -702,6 +702,16 @@ func (s *Server) routes() []Route {
 			Request: noteRequest{}, Permission: auth.PersonalManage, Handler: s.setNote,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/recommendations", ID: "listRecommendations",
+			Summary: "Unread books of the libraries the caller sees that are near what they liked, with why", Tag: "books",
+			Query: recommendationsQuery{}, Response: recommendationList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listRecommendations,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/recommendations/{bookId}/dismiss", ID: "dismissRecommendation",
+			Summary: "Say the caller is not interested in a book: it is left out of their recommendations", Tag: "books",
+			Permission: auth.PersonalManage, Handler: s.dismissRecommendation,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
 			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
 			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,

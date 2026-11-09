@@ -3943,6 +3943,66 @@ describe("importing a reading history", () => {
 	});
 });
 
+describe("recommendations", () => {
+	function recommended() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma")
+			.withBook("Mort");
+		const summary = (id: string, title: string) => ({
+			id,
+			libraryId: "lib-1",
+			title,
+			authors: [],
+			authorKeys: [],
+			formats: [],
+			addedAt: "2026-01-01T00:00:00Z",
+			status: "unread" as const,
+			placeholder: false,
+			filesMissing: false,
+		});
+		server.recommendations = {
+			hasProfile: true,
+			books: [
+				{ book: summary("book-1", "Emma"), because: [{ id: "x-1", title: "Persuasion" }, { id: "x-2", title: "Sanditon" }] },
+				{ book: summary("book-2", "Mort"), because: [{ id: "x-3", title: "Eric" }] },
+			],
+		};
+	}
+
+	it("shows a For you row in the strip with why, and a page with more", async () => {
+		const person = userEvent.setup();
+		localStorage.removeItem("gotome.strip.folded");
+		recommended();
+		const { router } = renderApp("/");
+		const row = within(await screen.findByRole("region", { name: "For you" }));
+		expect(row.getByRole("link", { name: /^Emma/ })).toBeInTheDocument();
+		expect(row.getByText("Because you liked Persuasion, Sanditon")).toBeInTheDocument();
+		await person.click(row.getByRole("link", { name: "More for you" }));
+		expect(router.state.location.pathname).toBe("/recommendations");
+		expect(await screen.findByRole("heading", { name: "For you", level: 1 })).toBeInTheDocument();
+		expect(screen.getByText("Because you liked Eric")).toBeInTheDocument();
+	});
+
+	it("leaves a book out for good when the person is not interested", async () => {
+		const person = userEvent.setup();
+		recommended();
+		renderApp("/recommendations");
+		await person.click(await screen.findByRole("button", { name: "Not interested in Emma" }));
+		await waitFor(() => expect(screen.queryByRole("link", { name: /^Emma/ })).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.path === "/me/recommendations/book-1/dismiss")).toBe(true);
+		expect(screen.getByRole("link", { name: /^Mort/ })).toBeInTheDocument();
+	});
+
+	it("says what it needs while there is no profile, and shows no row", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Emma");
+		renderApp("/recommendations");
+		expect(await screen.findByText(/Finish or rate at least three books/)).toBeInTheDocument();
+	});
+});
+
 describe("collections", () => {
 	function withShelf() {
 		server

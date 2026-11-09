@@ -16,6 +16,7 @@ import type { GenreSuggestion } from "@/books/genres";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
+import type { RecommendationList } from "@/books/recommendations";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange, ReadingStatus } from "@/books/reading";
@@ -363,6 +364,8 @@ export class FakeServer {
 	stats?: ReadingStats;
 	/** What a Goodreads or StoryGraph export would do, as the preview of an import says it. */
 	importPreview?: ReadingImport;
+	/** What the person is recommended; none, with no profile, unless a test says. */
+	recommendations?: RecommendationList;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
@@ -711,6 +714,17 @@ export class FakeServer {
 			return Response.json(
 				this.candidates.search ?? { candidates: [], failures: [] },
 			);
+		}
+		if (path === "/me/recommendations") {
+			return Response.json(this.recommendations ?? { hasProfile: false, books: [] });
+		}
+		const dismissed = /^\/me\/recommendations\/([^/]+)\/dismiss$/.exec(path);
+		if (dismissed && this.recommendations) {
+			this.recommendations = {
+				...this.recommendations,
+				books: this.recommendations.books.filter((r) => r.book.id !== dismissed[1]),
+			};
+			return new Response(null, { status: 204 });
 		}
 		if (path === "/me/reading") {
 			return this.answerHistory(url.searchParams);

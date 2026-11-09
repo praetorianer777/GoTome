@@ -45,6 +45,7 @@ const Collections = lazyRouteComponent(() => import("@/routes/collections"), "Co
 const NewSmartShelf = lazyRouteComponent(() => import("@/routes/smart-shelf"), "NewSmartShelf");
 const SmartShelfPage = lazyRouteComponent(() => import("@/routes/smart-shelf"), "SmartShelfPage");
 const Wishlist = lazyRouteComponent(() => import("@/routes/wishlist"), "Wishlist");
+const Recommendations = lazyRouteComponent(() => import("@/routes/recommendations"), "Recommendations");
 const BookEditPage = lazyRouteComponent(() => import("@/routes/book-edit"), "BookEditPage");
 const FindDetails = lazyRouteComponent(() => import("@/routes/book-find"), "FindDetails");
 const Cleanup = lazyRouteComponent(() => import("@/routes/cleanup"), "Cleanup");
@@ -429,6 +430,17 @@ const wishlistRoute = createRoute({
 	component: Wishlist,
 });
 
+const recommendationsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/recommendations",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Recommendations,
+});
+
 const releasesRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/releases",
@@ -571,7 +583,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

@@ -521,6 +521,12 @@ type ReadingSession struct {
 	ToFraction   float64
 }
 
+type RecommendationDismissal struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	CreatedAt time.Time
+}
+
 type Release struct {
 	ID          uuid.UUID
 	SubjectID   uuid.UUID

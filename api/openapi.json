@@ -6890,6 +6890,99 @@
         "x-permission": "personal:manage"
       }
     },
+    "/me/recommendations": {
+      "get": {
+        "operationId": "listRecommendations",
+        "summary": "Unread books of the libraries the caller sees that are near what they liked, with why",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books to return, at most 50; 12 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/recommendations/{bookId}/dismiss": {
+      "post": {
+        "operationId": "dismissRecommendation",
+        "summary": "Say the caller is not interested in a book: it is left out of their recommendations",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/me/stats": {
       "get": {
         "operationId": "getStats",
@@ -13784,6 +13877,58 @@
         },
         "required": [
           "queued"
+        ]
+      },
+      "Recommendation": {
+        "type": "object",
+        "properties": {
+          "because": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecommendationBecause"
+            }
+          },
+          "book": {
+            "$ref": "#/components/schemas/BookSummary"
+          }
+        },
+        "required": [
+          "book",
+          "because"
+        ]
+      },
+      "RecommendationBecause": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "RecommendationList": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            }
+          },
+          "hasProfile": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hasProfile",
+          "books"
         ]
       },
       "Release": {
