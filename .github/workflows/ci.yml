@@ -156,11 +156,33 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  # Formatting, vet, the race-checked tests, the generated files, and the
-  # full-text engine the tests load.
+  # The full-text engine's tests, and its library, which the Go tests of the
+  # jobs below load (GOTOME_TEST_FULLTEXT, mk/go.mk): handed on as an artifact.
+  engine:
+    name: full-text engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the engine's crates
+        uses: actions/cache@v4
+        with:
+          path: engine/vendor
+          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
+
+      - run: ./run-tests.sh --full --only engine
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine/libgotome_fulltext.so
+          retention-days: 1
+
+  # Formatting, vet, the race-checked tests and the generated files.
   go:
-    name: engine and backend
-    needs: toolchain
+    name: backend
+    needs: [toolchain, engine]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -173,17 +195,16 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Cache the engine's crates
-        uses: actions/cache@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: engine/vendor
-          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
+          name: engine-lib
+          path: .cache/engine
 
       - uses: ./.github/actions/load-images
         with:
           pattern: images-toolchain
 
-      - run: ./run-tests.sh --full --only engine,go
+      - run: ./run-tests.sh --full --only go
 
   # The KOReader plugin's tests in LuaJIT, and the parsers' fuzz targets.
   plugin-and-fuzz:
@@ -211,11 +232,16 @@ jobs:
   # and the app image's embedding model against the reference vectors.
   integration:
     name: integration tests
-    needs: [toolchain, image]
+    needs: [toolchain, image, engine]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine
 
       - name: Cache the Go module and build caches
         uses: actions/cache@v4
@@ -250,11 +276,16 @@ jobs:
   # The main views at 50,000 books: minutes of seeding, so a job of its own.
   scale:
     name: views at 50,000 books
-    needs: [toolchain, image]
+    needs: [toolchain, image, engine]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine
 
       - name: Cache the Go module and build caches
         uses: actions/cache@v4
@@ -304,6 +335,13 @@ jobs:
           path: .cache/npm
           key: npm-e2e-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
           restore-keys: npm-e2e-${{ runner.os }}-
+
+      # The npm cache is mounted into the Playwright container, which runs as
+      # this user: it must be this user's, whatever the restore made of it.
+      - name: Own the npm cache
+        run: |
+          mkdir -p .cache/npm
+          sudo chown -R "$(id -u):$(id -g)" .cache
 
       - uses: ./.github/actions/load-images
         with:
@@ -408,7 +446,7 @@ jobs:
   tests:
     name: tests
     if: always()
-    needs: [shell, web, android, toolchain, image, go, plugin-and-fuzz, integration, scale, e2e, upgrade, arm64]
+    needs: [shell, web, android, toolchain, image, engine, go, plugin-and-fuzz, integration, scale, e2e, upgrade, arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Every job succeeded
