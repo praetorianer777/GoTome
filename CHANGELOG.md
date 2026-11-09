@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-09
+
 ### Added
 
 - A strip at the top of the library: "Continue reading" with the books you
