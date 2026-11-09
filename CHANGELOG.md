@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A strip at the top of the library: "Continue reading" with the books you
+  are in the middle of, their progress and one tap to where you were, and
+  "New in the library" with the newest books. It folds away and stays
+  folded, starts folded on a phone, and is left out when you search or
+  filter.
+
 ### Changed
 
 - Books in the library's grid, on author and series pages and in "similar

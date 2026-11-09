@@ -47,7 +47,7 @@ image generator; the layout and the look are what count.
 | The one focus ring and its glow | "Subtle, not kitsch" becomes: art in the margins, a hero on the home page, badges on covers |
 | Serif headings, system fonts, no web fonts | The sidebar is a panel grouped by medium; the top bar carries the sections |
 | `NAV_ITEMS` with permissions; the drawer below 1024 px | Corners: `rounded-lg` controls, `rounded-xl` cards, `rounded-2xl` panels, `rounded-full` the search field and avatars |
-| Keyboard shortcuts, landmarks, skip link | The library list is no longer the start page (the home page is, #359 step 3) |
+| Keyboard shortcuts, landmarks, skip link | The library stays the start page, with the strip over it (#380) |
 
 A backdrop or panel may never lower a text's contrast under the ratios
 below: panels are at least 90 % opaque over a backdrop dimmed to a
@@ -244,6 +244,14 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
   read.
 - **Dialogs** (`components/dialog.tsx`) and popovers (notifications, the
   account menu) are panels with a shadow.
+- **The strip over the library** (#380): on the unfiltered library (no words,
+  no picked filter) a card with "Continue reading" (up to three books being
+  read, the latest first, each with its cover, progress and one link to its
+  place in the reader or the player) and "New in the library" (one scrolling
+  row of the newest books, with a link to the list newest first). A part with
+  nothing in it is not there, and neither is the strip when both are empty.
+  It folds to one line, remembered per browser (`gotome.strip.folded`); on a
+  phone it starts folded so the grid stays in the first screen.
 - **Sign-in and setup**: the hero (night or day by theme) in a rounded
   frame, the name as text in a panel at its right, then the form on a panel.
   The art is decoration; on a phone it shows the gopher only.

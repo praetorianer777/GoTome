@@ -132,6 +132,108 @@ beforeEach(() => {
 	server = new FakeServer().install();
 });
 
+/** The library's own list of books, not the strip above it. */
+const inBooks = () => ({
+	findByRole: async (...args: Parameters<typeof screen.findByRole>) =>
+		within(await screen.findByRole("region", { name: "Books" })).findByRole(
+			...args,
+		),
+});
+
+describe("the strip over the library", () => {
+	beforeEach(() => localStorage.removeItem("gotome.strip.folded"));
+
+	function reader() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma")
+			.withBook("Persuasion", { reading: { status: "reading" } })
+			.withBook("Dune", { reading: { status: "reading" } });
+		server.progress["book-2"] = {
+			ebook: {
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+				locator: "epubcfi(/6/8)",
+				fraction: 0.25,
+				fileId: "file-9",
+			},
+			finishes: 0,
+		};
+		server.progress["book-3"] = {
+			ebook: {
+				clientId: "phone",
+				updatedAt: "2026-01-04T00:00:00Z",
+				locator: "epubcfi(/6/2)",
+				fraction: 0.6,
+				fileId: "file-8",
+			},
+			finishes: 0,
+		};
+	}
+
+	it("lists the books being read, the latest first, and the newest books", async () => {
+		reader();
+		renderApp("/");
+		const strip = within(
+			await screen.findByRole("region", { name: "Reading and new books" }),
+		);
+		const going = within(
+			await strip.findByRole("region", { name: "Continue reading" }),
+		);
+		const links = going.getAllByRole("link");
+		expect(links.map((l) => l.getAttribute("href"))).toEqual([
+			"/books/book-3/read/file-8",
+			"/books/book-2/read/file-9",
+		]);
+		expect(links[0]).toHaveTextContent("60 % read");
+		const fresh = within(
+			strip.getByRole("region", { name: "New in the library" }),
+		);
+		expect(fresh.getAllByRole("link").map((l) => l.getAttribute("href"))).toContain(
+			"/books/book-1",
+		);
+	});
+
+	it("folds away, remembers it, and is not there for a filtered list", async () => {
+		const person = userEvent.setup();
+		reader();
+		const { unmount } = renderApp("/");
+		const toggle = await screen.findByRole("button", {
+			name: "Reading and new books",
+		});
+		expect(toggle).toHaveAttribute("aria-expanded", "true");
+		await person.click(toggle);
+		expect(toggle).toHaveAttribute("aria-expanded", "false");
+		expect(localStorage.getItem("gotome.strip.folded")).toBe("1");
+		unmount();
+
+		const again = renderApp("/");
+		expect(
+			await screen.findByRole("button", { name: "Reading and new books" }),
+		).toHaveAttribute("aria-expanded", "false");
+		again.unmount();
+		renderApp("/?status=unread");
+		await screen.findByRole("region", { name: "Books" });
+		expect(
+			screen.queryByRole("button", { name: "Reading and new books" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("shows nothing for a library with nothing in it", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
+		renderApp("/");
+		expect(await screen.findByText("No books yet")).toBeInTheDocument();
+		expect(
+			screen.queryByRole("region", { name: "Reading and new books" }),
+		).not.toBeInTheDocument();
+	});
+});
+
 describe("a fresh installation", () => {
 	it("leads from any address through setup into the empty library", async () => {
 		const person = userEvent.setup();
@@ -1277,7 +1379,7 @@ describe("uploads", () => {
 
 		await person.click(screen.getByRole("link", { name: "Library" }));
 		expect(
-			await screen.findByRole("link", { name: /^Emma/ }),
+			await inBooks().findByRole("link", { name: /^Emma/ }),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/");
 	});
@@ -2465,7 +2567,7 @@ describe("jobs", () => {
 		await person.click(screen.getByRole("button", { name: "Read them again" }));
 		await waitFor(() => expect(server.reread).toContain("lib-1"));
 
-		await person.click(await screen.findByRole("link", { name: /^Broken/ }));
+		await person.click(await inBooks().findByRole("link", { name: /^Broken/ }));
 		expect(
 			await screen.findByText("Could not be read: not a zip file"),
 		).toBeInTheDocument();
@@ -3039,7 +3141,7 @@ describe("reading state", () => {
 		await person.click(
 			screen.getByRole("link", { name: "Back to the library" }),
 		);
-		const emma = (await screen.findByRole("link", { name: /^Emma/ }))
+		const emma = (await inBooks().findByRole("link", { name: /^Emma/ }))
 			.parentElement as HTMLElement;
 		expect(within(emma).getByText("Reading")).toBeInTheDocument();
 		expect(
@@ -3652,7 +3754,7 @@ describe("the wishlist", () => {
 
 		await person.click(screen.getByRole("link", { name: "Library" }));
 		expect(
-			await screen.findByRole("link", { name: /^Persuasion/ }),
+			await inBooks().findByRole("link", { name: /^Persuasion/ }),
 		).toBeInTheDocument();
 		expect(
 			screen.queryByRole("link", { name: /^Emma/ }),

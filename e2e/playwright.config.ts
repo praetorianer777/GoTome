@@ -17,6 +17,18 @@ export default defineConfig({
 	],
 	use: {
 		baseURL: BASE_URL,
+		// The strip over the library lists books a second time, which the
+		// tests that look for a book's link on that page do not expect; it
+		// starts folded, and strip.spec.ts opens it.
+		storageState: {
+			cookies: [],
+			origins: [
+				{
+					origin: new URL(BASE_URL).origin,
+					localStorage: [{ name: "gotome.strip.folded", value: "1" }],
+				},
+			],
+		},
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 		actionTimeout: 5_000,
