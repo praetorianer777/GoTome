@@ -697,6 +697,38 @@ func (s *Server) routes() []Route {
 			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,
 		},
 		{
+			Method: http.MethodPut, Path: "/books/{bookId}/note", ID: "setNote",
+			Summary: "Write the caller's private note or review of a book; an empty note removes it", Tag: "books",
+			Request: noteRequest{}, Permission: auth.PersonalManage, Handler: s.setNote,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
+			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
+			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports", ID: "createReadingImport",
+			Summary: "Read a Goodreads or StoryGraph export and preview what importing it would do", Tag: "books",
+			Consumes: "multipart/form-data", Request: importForm{}, Response: readingImport{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading-imports/{importId}", ID: "getReadingImport",
+			Summary: "An import of a reading history: its preview, then what it came to", Tag: "books",
+			Response: readingImport{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getImport,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/reading-imports/{importId}/rows/{row}", ID: "chooseReadingImportRow",
+			Summary: "Pick the book an ambiguous row of an import is, or skip the row", Tag: "books",
+			Request: importChoice{}, Permission: auth.PersonalManage, Handler: s.chooseImportRow,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports/{importId}/start", ID: "startReadingImport",
+			Summary: "Write a previewed import; a job sets the books one at a time", Tag: "books",
+			Request: importStart{}, Response: readingImport{}, Status: http.StatusAccepted,
+			Permission: auth.PersonalManage, Handler: s.startImport,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
 			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Handler: s.getProgress,

@@ -450,6 +450,12 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
 		return Book{}, err
 	}
+	switch note, err := q.GetBookNote(ctx, sqlc.GetBookNoteParams{UserID: scope.Viewer, BookID: id}); {
+	case err == nil:
+		book.Reading.Note = note
+	case !errors.Is(err, pgx.ErrNoRows):
+		return Book{}, err
+	}
 	files, err := q.ListBookFiles(ctx, id)
 	if err != nil {
 		return Book{}, err

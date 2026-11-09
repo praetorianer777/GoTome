@@ -31,6 +31,7 @@ import {
 } from "@/users/api";
 import { ApiKeys } from "@/users/api-keys";
 import { Devices } from "@/users/devices";
+import { ReadingImport } from "@/users/reading-import";
 import { StorageUse } from "@/users/storage";
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -92,6 +93,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 			<SingleSignOn sso={sso} />
 			<ChangePassword />
 			<Sessions />
+			<ReadingImport />
 			<Devices username={user.username} />
 			<ApiKeys />
 		</div>

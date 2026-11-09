@@ -52,6 +52,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -337,6 +338,7 @@ func serve() error {
 	follows.Events = events
 	follows.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
+	histories := readimport.NewService(pool, books, log)
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
@@ -353,7 +355,7 @@ func serve() error {
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
-		events: events, follows: follows, sync: progressSync,
+		events: events, follows: follows, sync: progressSync, imports: histories,
 		trashRetention: settingStore.TrashRetention,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
@@ -363,6 +365,7 @@ func serve() error {
 	scans.Queue = runner
 	matches.Queue = runner
 	changes.Queue = runner
+	histories.Queue = runner
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
@@ -443,6 +446,7 @@ func serve() error {
 		Matches:    matches,
 		Bulk:       changes,
 		Reading:    readingService,
+		Imports:    histories,
 		Shelves:    shelves.NewService(pool, books),
 		Search:     search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates: duplicates,

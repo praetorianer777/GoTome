@@ -39,6 +39,8 @@ type Reading struct {
 	Rating     *int16
 	StartedOn  *time.Time
 	FinishedOn *time.Time
+	// Note is the person's private note or review of the book.
+	Note string
 }
 
 // ReadingChange changes where a person stands with books. A nil field is
@@ -161,4 +163,112 @@ func readingTx(ctx context.Context, q *sqlc.Queries, user, book uuid.UUID) (Read
 		return Reading{}, err
 	}
 	return Reading{Status: row.Status, Rating: row.Rating, StartedOn: row.StartedOn, FinishedOn: row.FinishedOn}, nil
+}
+
+// ImportedReading is what an import says of where a person stands with a
+// book.
+type ImportedReading struct {
+	// Status is reading, completed, abandoned or wishlist; empty leaves it.
+	Status string
+	// Rating is 1 to MaxRating stars, 0 for none.
+	Rating int16
+	// FinishedOn is the day the book was finished, if the import knows it.
+	FinishedOn *time.Time
+	Note       string
+	// Overwrite replaces what the person already set; without it an import
+	// only fills what they left open.
+	Overwrite bool
+}
+
+// ImportReadingTx puts what an import says into where the user stands with
+// a book they may see, and reports whether anything changed. What the
+// person set already stays unless Overwrite: a status other than unread
+// and wishlist, a rating, a finish date, a note. A finish is recorded only
+// when the import itself made the book completed, so that running it again
+// changes nothing.
+func ImportReadingTx(ctx context.Context, tx pgx.Tx, user, book uuid.UUID, in ImportedReading) (bool, error) {
+	q := sqlc.New(tx)
+	cur, err := readingTx(ctx, q, user, book)
+	if err != nil {
+		return false, err
+	}
+	next := cur
+	open := cur.Status == StatusUnread || cur.Status == StatusWishlist
+	madeCompleted := false
+	switch {
+	case in.Status == "" || in.Status == cur.Status:
+	case in.Status == StatusWishlist:
+		if cur.Status == StatusUnread {
+			next.Status = StatusWishlist
+		}
+	case open || in.Overwrite:
+		next.Status = in.Status
+		madeCompleted = in.Status == StatusCompleted
+	}
+	if in.Rating > 0 && (cur.Rating == nil || in.Overwrite) {
+		rating := in.Rating
+		next.Rating = &rating
+	}
+	if in.FinishedOn != nil && next.Status == StatusCompleted && (cur.FinishedOn == nil || in.Overwrite) {
+		next.FinishedOn = in.FinishedOn
+	}
+	changed := false
+	if next.Status != cur.Status || !sameRating(next.Rating, cur.Rating) || !sameDay(next.FinishedOn, cur.FinishedOn) {
+		err := q.PutUserBook(ctx, sqlc.PutUserBookParams{
+			UserID: user, BookID: book, Status: next.Status, Rating: next.Rating,
+			StartedOn: next.StartedOn, FinishedOn: next.FinishedOn,
+		})
+		if err != nil {
+			return false, err
+		}
+		changed = true
+	}
+	if in.FinishedOn != nil && next.Status == StatusCompleted && (madeCompleted || in.Overwrite) {
+		n, err := q.AddFinishOn(ctx, sqlc.AddFinishOnParams{UserID: user, BookID: book, Day: *in.FinishedOn})
+		if err != nil {
+			return false, err
+		}
+		changed = changed || n > 0
+	}
+	if note := strings.TrimSpace(in.Note); note != "" {
+		old, err := q.GetBookNote(ctx, sqlc.GetBookNoteParams{UserID: user, BookID: book})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return false, err
+		}
+		if errors.Is(err, pgx.ErrNoRows) || in.Overwrite && old != note {
+			if err := q.PutBookNote(ctx, sqlc.PutBookNoteParams{UserID: user, BookID: book, Body: note}); err != nil {
+				return false, err
+			}
+			changed = true
+		}
+	}
+	return changed, nil
+}
+
+func sameRating(a, b *int16) bool {
+	return a == nil && b == nil || a != nil && b != nil && *a == *b
+}
+
+func sameDay(a, b *time.Time) bool {
+	return a == nil && b == nil || a != nil && b != nil && a.Format(time.DateOnly) == b.Format(time.DateOnly)
+}
+
+// SetNote sets the scope's user's private note on a book they may see; an
+// empty note removes it. It returns ErrNotFound for a book they may not see.
+func (s *Service) SetNote(ctx context.Context, scope library.Scope, id uuid.UUID, note string) error {
+	note = strings.TrimSpace(note)
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		visible, err := q.LockVisibleBookIDs(ctx, sqlc.LockVisibleBookIDsParams{Ids: []uuid.UUID{id}, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		if err != nil {
+			return err
+		}
+		if len(visible) == 0 {
+			return ErrNotFound
+		}
+		if note == "" {
+			return q.DeleteBookNote(ctx, sqlc.DeleteBookNoteParams{UserID: scope.Viewer, BookID: id})
+		}
+		return q.PutBookNote(ctx, sqlc.PutBookNoteParams{UserID: scope.Viewer, BookID: id, Body: note})
+	})
 }

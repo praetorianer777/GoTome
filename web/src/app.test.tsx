@@ -3716,7 +3716,9 @@ describe("reading statistics", () => {
 
 		await person.click(screen.getByRole("button", { name: "7 days" }));
 		await waitFor(() =>
-			expect(server.requests.at(-1)?.path).toMatch(/^\/me\/stats\?days=7&tz=/),
+			expect(server.requests.filter((r) => r.path.startsWith("/me/stats")).at(-1)?.path).toMatch(
+				/^\/me\/stats\?days=7&tz=/,
+			),
 		);
 	});
 });
@@ -3769,7 +3771,7 @@ describe("the wishlist", () => {
 		expect(
 			server.requests.find((r) => r.path === "/books/wishes")?.body,
 		).toMatchObject({
-			library: "lib-1",
+			status: "wishlist",
 			provider: "openlibrary",
 			title: "Emma",
 			publisher: "John Murray",
@@ -3802,6 +3804,142 @@ describe("the wishlist", () => {
 		expect(
 			await screen.findByRole("combobox", { name: "Your status" }),
 		).toHaveDisplayValue("Want to read");
+	});
+});
+
+describe("reading history", () => {
+	it("adds a book the library lacks as read, with stars and the day it was finished", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.candidates.search = {
+			candidates: [
+				{
+					provider: "openlibrary",
+					id: "OL1",
+					score: 0.9,
+					title: "Emma",
+					contributors: [{ name: "Jane Austen", role: "author" }],
+					tags: [],
+					identifiers: [],
+				},
+			],
+			failures: [],
+		};
+		renderApp("/wishlist");
+		await person.type(await screen.findByRole("textbox", { name: "Title" }), "Emma");
+		await person.click(screen.getByRole("button", { name: "Look it up" }));
+		await person.click(await screen.findByRole("button", { name: "Add Emma as read" }));
+		await person.selectOptions(screen.getByRole("combobox", { name: "Your rating" }), "4");
+		fireEvent.change(screen.getByLabelText("Finished on"), { target: { value: "2017-05-06" } });
+		await person.click(screen.getByRole("button", { name: "Add to my reading" }));
+
+		expect(await screen.findByRole("combobox", { name: "Your status" })).toHaveDisplayValue("Completed");
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toMatchObject({
+			status: "completed",
+			rating: 4,
+			finishedOn: "2017-05-06",
+			title: "Emma",
+		});
+	});
+
+	it("lists what the person read, owned or not, and narrows it by year and a search", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Dune", { reading: { status: "completed", rating: 5, finishedOn: "2021-03-14" } })
+			.withBook("Foundation", {
+				placeholder: true,
+				reading: { status: "completed", rating: 4, finishedOn: "2019-07-02" },
+			});
+		renderApp("/stats");
+		const history = within(await screen.findByRole("region", { name: "Everything you read" }));
+		expect(await history.findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
+		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		expect(history.getByText(/Not in the library/)).toBeInTheDocument();
+
+		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "2019");
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Dune/ })).not.toBeInTheDocument());
+		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "");
+		await person.type(history.getByRole("searchbox", { name: "Title or author" }), "dune");
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Foundation/ })).not.toBeInTheDocument());
+	});
+
+	it("keeps a private note on a book", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Dune");
+		renderApp("/books/book-1");
+		await person.type(await screen.findByRole("textbox", { name: "Private note" }), "Spice.");
+		await person.click(screen.getByRole("button", { name: "Save note" }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/books/book-1/note")?.body).toEqual({ note: "Spice." }),
+		);
+	});
+});
+
+describe("importing a reading history", () => {
+	const preview = {
+		id: "imp-1",
+		source: "goodreads",
+		state: "preview",
+		library: "lib-1",
+		overwrite: false,
+		total: 6,
+		matched: 1,
+		new: 3,
+		ambiguous: 1,
+		skipped: 1,
+		roundedRatings: 2,
+		ambiguities: [
+			{
+				row: 3,
+				title: "Emma",
+				authors: ["Jane Austen"],
+				candidates: [
+					{ id: "b-1", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+					{ id: "b-2", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+				],
+				skip: false,
+			},
+		],
+		skippedRows: [{ row: 6, title: "Odd One", message: "The row's shelf is none GOtome knows." }],
+		outcomes: {},
+	} as const;
+
+	it("previews an export, takes a choice for the ambiguous row, and imports", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.importPreview = structuredClone(preview) as unknown as typeof server.importPreview;
+		renderApp("/profile");
+		const section = within(await screen.findByRole("region", { name: "Import reading history" }));
+		await person.upload(
+			section.getByLabelText("Export file (CSV)"),
+			new File(["Title,Exclusive Shelf\n"], "goodreads.csv", { type: "text/csv" }),
+		);
+		await person.click(section.getByRole("button", { name: "Preview" }));
+
+		expect(await section.findByText("Goodreads export")).toBeInTheDocument();
+		expect(section.getByText("1 books already in your libraries")).toBeInTheDocument();
+		expect(section.getByText("3 books it does not hold, to be added as books you read")).toBeInTheDocument();
+		expect(section.getByText("2 ratings were in fractions of a star and are rounded to whole stars.")).toBeInTheDocument();
+		expect(section.getByText(/Row 6: Odd One/)).toBeInTheDocument();
+
+		const which = within(section.getByRole("group", { name: "Which book is Emma?" }));
+		await person.click(which.getAllByRole("radio")[1] as HTMLElement);
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/me/reading-imports/imp-1/rows/3")?.body).toEqual({
+				book: "b-2",
+			}),
+		);
+		await person.click(section.getByRole("button", { name: "Import" }));
+		expect(await section.findByText("Done.")).toBeInTheDocument();
+		expect(section.getByText("3 books added")).toBeInTheDocument();
 	});
 });
 

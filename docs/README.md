@@ -36,6 +36,9 @@ For people who run GOtome or use it. Start with **Getting started**.
   - [Kobo, and Tolinos on the Kobo-based firmware](tolino-kobo-mode.md)
   - [GOtome for Tolino](../clients/android/README.md), for Tolinos on
     Android firmware
+- [Your reading history and importing it](importing-reading-history.md):
+  books you read but do not own, notes, and the Goodreads and StoryGraph
+  import.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
 - [Search index](search-index.md): what is rebuilt when, and by hand.

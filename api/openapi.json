@@ -2143,6 +2143,59 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/note": {
+      "put": {
+        "operationId": "setNote",
+        "summary": "Write the caller's private note or review of a book; an empty note removes it",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/progress": {
       "get": {
         "operationId": "getProgress",
@@ -6526,6 +6579,315 @@
           }
         ],
         "x-permission": "signed-in"
+      }
+    },
+    "/me/reading": {
+      "get": {
+        "operationId": "listReading",
+        "summary": "The caller's reading history: what they read, are reading or gave up, owned or not",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only books with this status; reading, completed and abandoned together when left out.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reading",
+                "completed",
+                "abandoned",
+                "wishlist"
+              ]
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "Only books finished in this year (started in it, if not finished).",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "stars",
+            "in": "query",
+            "description": "Only books the caller rated with this many stars.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words of the title or of an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The nextCursor of the page before.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/reading-imports": {
+      "post": {
+        "operationId": "createReadingImport",
+        "summary": "Read a Goodreads or StoryGraph export and preview what importing it would do",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/reading-imports/{importId}": {
+      "get": {
+        "operationId": "getReadingImport",
+        "summary": "An import of a reading history: its preview, then what it came to",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/reading-imports/{importId}/rows/{row}": {
+      "put": {
+        "operationId": "chooseReadingImportRow",
+        "summary": "Pick the book an ambiguous row of an import is, or skip the row",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "row",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/reading-imports/{importId}/start": {
+      "post": {
+        "operationId": "startReadingImport",
+        "summary": "Write a previewed import; a job sets the books one at a time",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/me/stats": {
@@ -11792,6 +12154,47 @@
           "warnings"
         ]
       },
+      "HistoryEntry": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookSummary"
+          },
+          "finishedOn": {
+            "type": "string"
+          },
+          "startedOn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "book"
+        ]
+      },
+      "HistoryList": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "entries",
+          "years"
+        ]
+      },
       "Identifier": {
         "type": "object",
         "properties": {
@@ -11820,6 +12223,96 @@
         "required": [
           "items"
         ]
+      },
+      "ImportAmbiguity": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookSummary"
+            }
+          },
+          "choice": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "row": {
+            "type": "integer"
+          },
+          "skip": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "row",
+          "title",
+          "authors",
+          "candidates",
+          "skip"
+        ]
+      },
+      "ImportChoice": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skip": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ImportForm": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "ImportSkipped": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "row": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "row",
+          "title",
+          "message"
+        ]
+      },
+      "ImportStart": {
+        "type": "object",
+        "properties": {
+          "overwrite": {
+            "type": "boolean"
+          }
+        }
       },
       "IndexStatus": {
         "type": "object",
@@ -12647,6 +13140,17 @@
           "names"
         ]
       },
+      "NoteRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
       "Notification": {
         "type": "object",
         "properties": {
@@ -13111,10 +13615,87 @@
           }
         }
       },
+      "ReadingImport": {
+        "type": "object",
+        "properties": {
+          "ambiguities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportAmbiguity"
+            }
+          },
+          "ambiguous": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "matched": {
+            "type": "integer"
+          },
+          "new": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "overwrite": {
+            "type": "boolean"
+          },
+          "roundedRatings": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "skippedRows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportSkipped"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "state",
+          "library",
+          "overwrite",
+          "total",
+          "matched",
+          "new",
+          "ambiguous",
+          "skipped",
+          "roundedRatings",
+          "ambiguities",
+          "skippedRows",
+          "outcomes"
+        ]
+      },
       "ReadingState": {
         "type": "object",
         "properties": {
           "finishedOn": {
+            "type": "string"
+          },
+          "note": {
             "type": "string"
           },
           "rating": {
@@ -14475,6 +15056,9 @@
           "description": {
             "type": "string"
           },
+          "finishedOn": {
+            "type": "string"
+          },
           "identifiers": {
             "type": "array",
             "items": {
@@ -14506,8 +15090,14 @@
           "publisher": {
             "type": "string"
           },
+          "rating": {
+            "type": "integer"
+          },
           "series": {
             "$ref": "#/components/schemas/SeriesPlace"
+          },
+          "status": {
+            "type": "string"
           },
           "subtitle": {
             "type": "string"
@@ -14523,7 +15113,6 @@
           }
         },
         "required": [
-          "library",
           "provider"
         ]
       },

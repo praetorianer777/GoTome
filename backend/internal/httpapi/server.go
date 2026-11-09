@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -83,6 +84,8 @@ type Server struct {
 	Bulk *bulk.Service
 	// Reading keeps where each person is in a book.
 	Reading *reading.Service
+	// Imports brings in reading histories from other services.
+	Imports *readimport.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
 	// Search finds books by the words of their text; Index looks after the

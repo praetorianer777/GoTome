@@ -8,6 +8,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Your reading history now includes books the library does not hold: on
+  Wishlist, "Add as read" (with stars and the day you finished it) and
+  "Currently reading" sit beside "Wish for it", and "Your reading" lists
+  everything you read with filters by year, status and stars and a search.
+  Every book page has a private note. See `docs/importing-reading-history.md`.
+- Profile, "Import reading history": bring in a Goodreads or StoryGraph
+  export (a CSV file). You see a preview first, pick the right book for
+  rows that could be several, and the import sets status, stars, finish
+  dates, notes and collections for custom shelves; what you set already
+  stays, and importing the same file again changes nothing.
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the
   library, reading status and progress, upload, edit metadata, administer)

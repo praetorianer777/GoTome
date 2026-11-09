@@ -116,6 +116,11 @@ func readCases() map[string][]readCase {
 		"getBookCover": {{path: "/books/{book}/covers/small", control: "insider"}},
 		"downloadFile": {{path: "/files/{file}/download", control: "insider"}},
 		"getStats":     {{path: "/me/stats", control: "insider"}},
+		"listReading":  {{path: "/me/reading", control: "insider"}},
+		"getReadingImport": {
+			{path: "/me/reading-imports/{insiderImport}", control: "insider"},
+			{path: "/me/reading-imports/{formerImport}", control: "former"},
+		},
 		// The releases are of what the caller follows, which the sources
 		// list for anyone; that one is in a library only those who see it
 		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.
@@ -358,6 +363,16 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		owned[map[string]string{"insider": "sharedCollection", "former": "formerCollection"}[name]] = col["id"].(string)
 		owned[map[string]string{"insider": "sharedShelf", "former": "formerShelf"}[name]] = shelf["id"].(string)
 		owned[name+"Bulk"] = bulk["id"].(string)
+		// An import with the secret among the books a row may be.
+		var imp string
+		if err := a.pool.QueryRow(ctx, `WITH i AS (
+				INSERT INTO reading_imports (user_id, source, library_id, sees_all) VALUES ($1, 'goodreads', $2, false) RETURNING id)
+			INSERT INTO reading_import_rows (import_id, row_no, title, match, candidates)
+			SELECT id, 1, 'Some book', 'ambiguous', ARRAY[$3::uuid, $4::uuid] FROM i RETURNING import_id::text`,
+			map[string]string{"insider": insiderID, "former": formerID}[name], open, book, near["bookId"]).Scan(&imp); err != nil {
+			t.Fatal(err)
+		}
+		owned[name+"Import"] = imp
 	}
 
 	if err := db.InTx(ctx, a.pool, func(tx pgx.Tx) error {

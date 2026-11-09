@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ReadingHistory } from "@/books/reading-history";
 import { statsQuery } from "@/books/stats";
 import { FormError } from "@/components/form";
 import { Loading } from "@/components/ui";
@@ -147,6 +148,7 @@ export function Stats() {
 							</ol>
 						)}
 					</section>
+					<ReadingHistory />
 				</>
 			)}
 		</div>
