@@ -116,6 +116,7 @@ func readCases() map[string][]readCase {
 		"getBookCover": {{path: "/books/{book}/covers/small", control: "insider"}},
 		"downloadFile": {{path: "/files/{file}/download", control: "insider"}},
 		"getStats":     {{path: "/me/stats", control: "insider"}},
+		"getPlayQueue": {{path: "/me/queue", why: "the caller's own queue, kept to what they see by ListPlayQueue; TestAPlayQueueHoldsOnlyWhatIsSeen proves it"}},
 		// The releases are of what the caller follows, which the sources
 		// list for anyone; that one is in a library only those who see it
 		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.

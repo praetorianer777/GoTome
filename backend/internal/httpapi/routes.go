@@ -698,6 +698,16 @@ func (s *Server) routes() []Route {
 			Query: releasesQuery{}, Response: releaseList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReleases,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/queue", ID: "getPlayQueue",
+			Summary: "The audiobooks the caller has lined up to play one after another, of those they still see", Tag: "books",
+			Response: playQueue{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getPlayQueue,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/queue", ID: "setPlayQueue",
+			Summary: "Replace the caller's play queue; books they may not see are left out", Tag: "books",
+			Request: playQueue{}, Response: playQueue{}, Permission: auth.PersonalManage, Handler: s.putPlayQueue,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
 			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,

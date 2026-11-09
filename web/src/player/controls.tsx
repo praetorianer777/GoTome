@@ -6,8 +6,10 @@ import { KeyHelp } from "@/components/dialog";
 import { t } from "@/i18n";
 import { formatTime } from "@/lib/format";
 import { type KeyBinding, useKeys } from "@/lib/keys";
-import { chapterStep, type Sleep, usePlayer } from "@/player/player";
+import { BOOSTS } from "@/player/prefs";
+import { canBoost, chapterStep, type Sleep, usePlayer } from "@/player/player";
 import { chapterAt, formatClock } from "@/player/timeline";
+import { UpNext } from "@/player/up-next";
 
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800";
@@ -276,6 +278,73 @@ export function Listen({ bookId }: { bookId: string }) {
 											{state.sleep.kind === "until" && <option value="until">{t("player.sleep.at", { at: formatTime(state.sleep.at) })}</option>}
 										</select>
 									</label>
+									{(state.sleep.kind !== "off" || state.resumable) && (
+										<button type="button" className={button} onClick={() => player.extendSleep()}>
+											{t("player.sleep.extend")}
+										</button>
+									)}
+									{canBoost() && (
+										<label className="flex items-center gap-2">
+											<span>{t("player.boost")}</span>
+											<select
+												value={state.boost}
+												onChange={(e) => player.setBoost(Number(e.target.value))}
+												className={control}
+											>
+												{BOOSTS.map((b) => (
+													<option key={b} value={b}>
+														{b === 1 ? t("player.boost.off") : `${b}×`}
+													</option>
+												))}
+											</select>
+										</label>
+									)}
+								</div>
+								<div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+									<label className="flex items-center gap-2">
+										<input
+											type="checkbox"
+											checked={state.night.enabled}
+											onChange={(e) => player.setNight({ ...state.night, enabled: e.target.checked })}
+										/>
+										<span>{t("player.night")}</span>
+									</label>
+									{state.night.enabled && (
+										<>
+											<label className="flex items-center gap-2">
+												<span>{t("player.night.from")}</span>
+												<input
+													type="time"
+													value={state.night.from}
+													onChange={(e) => e.target.value && player.setNight({ ...state.night, from: e.target.value })}
+													className={control}
+												/>
+											</label>
+											<label className="flex items-center gap-2">
+												<span>{t("player.night.to")}</span>
+												<input
+													type="time"
+													value={state.night.to}
+													onChange={(e) => e.target.value && player.setNight({ ...state.night, to: e.target.value })}
+													className={control}
+												/>
+											</label>
+											<label className="flex items-center gap-2">
+												<span>{t("player.night.minutes")}</span>
+												<select
+													value={state.night.minutes}
+													onChange={(e) => player.setNight({ ...state.night, minutes: Number(e.target.value) })}
+													className={control}
+												>
+													{SLEEP_MINUTES.map((m) => (
+														<option key={m} value={m}>
+															{t("player.sleep.minutes", { minutes: m })}
+														</option>
+													))}
+												</select>
+											</label>
+										</>
+									)}
 								</div>
 								<section aria-labelledby="chapters" className="flex flex-col gap-2">
 									<h2 id="chapters" className="text-lg font-medium">
@@ -303,6 +372,7 @@ export function Listen({ bookId }: { bookId: string }) {
 					</div>
 				</div>
 			)}
+			<UpNext />
 		</div>
 	);
 }

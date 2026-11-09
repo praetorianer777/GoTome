@@ -432,6 +432,12 @@ type PassageFile struct {
 	EmbeddedAt   time.Time
 }
 
+type PlayQueue struct {
+	UserID   uuid.UUID
+	BookID   uuid.UUID
+	Position int32
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte

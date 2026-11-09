@@ -3688,6 +3688,302 @@ describe("the audiobook player", () => {
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
+	function withSecondAudiobook() {
+		server.withBook("Persuasion", {
+			files: [
+				{
+					id: "file-c",
+					kind: "audio",
+					format: "mp3",
+					name: "Persuasion.mp3",
+					size: 1_000_000,
+					missing: false,
+					drm: false,
+					extractState: "done",
+				},
+			],
+		});
+		server.audio["book-2"] = {
+			durationMs: 40_000,
+			complete: true,
+			parts: [
+				{
+					fileId: "file-c",
+					format: "mp3",
+					mediaType: "audio/mpeg",
+					name: "Persuasion.mp3",
+					startMs: 0,
+					durationMs: 40_000,
+				},
+			],
+			chapters: [
+				{ title: "Chapter 1", fileId: "file-c", startMs: 0, endMs: 40_000 },
+			],
+		};
+	}
+
+	it("queues a book from its page, and takes it out again", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		renderApp("/books/book-2");
+		await person.click(await screen.findByRole("button", { name: "Add to queue" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+		await person.click(
+			await screen.findByRole("button", { name: "Take out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual([]));
+		await person.click(await screen.findByRole("button", { name: "Play next" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+	});
+
+	it("lists what is up next, in an order the person changes", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.withBook("Sense", { files: [...server.books[1]!.files] });
+		server.audio["book-3"] = server.audio["book-2"]!;
+		server.queue = ["book-2", "book-3"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const list = within(await screen.findByRole("region", { name: "Up next" }));
+		await person.click(list.getByRole("button", { name: "Move Sense up" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-3", "book-2"]));
+		await person.click(
+			await list.findByRole("button", { name: "Take Persuasion out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual(["book-3"]));
+		await person.click(list.getByRole("button", { name: "Clear the queue" }));
+		await waitFor(() => expect(server.queue).toEqual([]));
+		expect(screen.queryByRole("region", { name: "Up next" })).not.toBeInTheDocument();
+	});
+
+	it("plays the next book in the queue when one ends, from where it was left", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		server.progress["book-2"] = {
+			audio: {
+				fileId: "file-c",
+				locator: "20000",
+				fraction: 0.5,
+				positionMs: 20_000,
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+
+		fireEvent.ended(audio());
+
+		await waitFor(() => expect(audio().getAttribute("src")).toContain("/files/file-c/"));
+		// The finished book's end was saved before the next began.
+		expect(saves().at(-1)).toMatchObject({ fileId: "file-b", positionMs: 110_000 });
+		expect(server.queue).toEqual([]);
+		const bar = within(await screen.findByRole("region", { name: "Now playing" }));
+		expect(bar.getByRole("link", { name: "Persuasion" })).toBeInTheDocument();
+		expect(bar.getByText("Chapter 1 · 0:20")).toBeInTheDocument();
+		expect(bar.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+	});
+
+	it("stops at the end of the chapter instead of going on to the queue", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Sleep timer" }),
+			"At the end of the chapter",
+		);
+		fireEvent.ended(audio());
+		await waitFor(() =>
+			expect(screen.getByRole("combobox", { name: "Sleep timer" })).toHaveValue("off"),
+		);
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+		expect(server.queue).toEqual(["book-2"]);
+	});
+
+	/** Puts the audio element at a time of its part and lets the player see it. */
+	function playedTo(seconds: number) {
+		Object.defineProperty(audio(), "currentTime", {
+			value: seconds,
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.timeUpdate(audio());
+	}
+
+	it("fades out and stops at the end of the chapter, and keeps going when asked for more", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: "Play" }));
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		await person.selectOptions(sleep, "At the end of the chapter");
+		expect(screen.getByRole("button", { name: "Keep listening for 15 more minutes" })).toBeInTheDocument();
+
+		playedTo(10);
+		expect(audio().volume).toBe(1);
+		playedTo(22.5);
+		expect(audio().volume).toBeCloseTo(0.5, 1);
+		await person.click(screen.getByRole("button", { name: "Keep listening for 15 more minutes" }));
+		// One chapter on: Volume II ends at 60 s, the volume is back.
+		expect(audio().volume).toBe(1);
+		playedTo(31);
+		expect(audio().volume).toBe(1);
+		expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+
+		playedTo(59.9);
+		expect(audio().volume).toBeLessThan(0.05);
+		playedTo(60.2);
+		expect(await screen.findByRole("button", { name: "Play" })).toBeInTheDocument();
+		expect(sleep).toHaveValue("off");
+		expect(audio().volume).toBe(1);
+
+		// Just after it stopped, one more press starts it again.
+		await person.click(screen.getByRole("button", { name: "Keep listening for 15 more minutes" }));
+		expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		expect(sleep).toHaveValue("until");
+	});
+
+	it("starts a sleep timer by itself in the hours the person chose", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(screen.getByRole("checkbox", { name: "Start a sleep timer by itself at night" }));
+		// The same hour twice is all day.
+		fireEvent.change(screen.getByLabelText("From"), { target: { value: "08:00" } });
+		fireEvent.change(screen.getByLabelText("Until"), { target: { value: "08:00" } });
+		await person.selectOptions(screen.getByRole("combobox", { name: "Timer length" }), "In 45 minutes");
+		expect(JSON.parse(localStorage.getItem("gotome.player.night") ?? "{}")).toMatchObject({
+			enabled: true,
+			minutes: 45,
+		});
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		expect(sleep).toHaveValue("off");
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+		expect(screen.getByRole("option", { name: /^At \d/ })).toBeInTheDocument();
+	});
+
+	it("keeps off, when the person said off, until the night hours are over", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		localStorage.setItem(
+			"gotome.player.night",
+			JSON.stringify({ enabled: true, from: "08:00", to: "08:00", minutes: 30 }),
+		);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+		await person.selectOptions(sleep, "Off");
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		expect(sleep).toHaveValue("off");
+		// The next night: the saved end has passed.
+		localStorage.setItem("gotome.player.nightQuiet", String(Date.now() - 1000));
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+	});
+
+	it("does not start a timer outside the chosen hours", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		const hour = new Date().getHours();
+		const clock = (h: number) => `${String((h + 24) % 24).padStart(2, "0")}:00`;
+		localStorage.setItem(
+			"gotome.player.night",
+			JSON.stringify({ enabled: true, from: clock(hour + 2), to: clock(hour + 3), minutes: 30 }),
+		);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: "Play" }));
+		expect(screen.getByRole("combobox", { name: "Sleep timer" })).toHaveValue("off");
+	});
+
+	it("boosts the volume through a gain node and a limiter, and remembers it", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		const made: { gain: { gain: { value: number } }; limiter: { threshold: { value: number } } }[] = [];
+		class FakeContext {
+			destination = {};
+			resume = async () => {};
+			createMediaElementSource = () => ({ connect: () => {} });
+			createGain() {
+				const gain = { gain: { value: 1 }, connect: () => {} };
+				made.push({ gain, limiter: { threshold: { value: 0 } } });
+				return gain;
+			}
+			createDynamicsCompressor() {
+				const limiter = {
+					threshold: { value: 0 },
+					knee: { value: 0 },
+					ratio: { value: 0 },
+					attack: { value: 0 },
+					release: { value: 0 },
+					connect: () => {},
+				};
+				made.at(-1)!.limiter = limiter;
+				return limiter;
+			}
+		}
+		vi.stubGlobal("AudioContext", FakeContext);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const boost = await screen.findByRole("combobox", { name: "Volume boost" });
+		expect(boost).toHaveValue("1");
+		await person.selectOptions(boost, "1.5×");
+		expect(made).toHaveLength(1);
+		expect(made[0]?.gain.gain.value).toBe(1.5);
+		expect(made[0]?.limiter.threshold.value).toBeLessThan(0);
+		expect(localStorage.getItem("gotome.player.boost")).toBe("1.5");
+		// The fade of a sleep timer goes down from the boosted volume.
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Sleep timer" }),
+			"At the end of the chapter",
+		);
+		playedTo(22.5);
+		expect(made[0]?.gain.gain.value).toBeCloseTo(0.75, 1);
+		expect(audio().volume).toBe(1);
+		await person.selectOptions(boost, "Off");
+		expect(made).toHaveLength(1);
+		expect(made[0]?.gain.gain.value).toBeCloseTo(0.5, 1);
+	});
+
+	it("offers no boost in a browser without Web Audio", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		vi.stubGlobal("AudioContext", undefined);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await screen.findByRole("combobox", { name: "Sleep timer" });
+		expect(screen.queryByRole("combobox", { name: "Volume boost" })).not.toBeInTheDocument();
+	});
+
 	it("says which formats this browser cannot play, and offers the files", async () => {
 		const person = userEvent.setup();
 		playable("");
