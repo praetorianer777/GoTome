@@ -305,6 +305,33 @@ function BookPage({ book }: { book: BookDetail }) {
 				)}
 			</div>
 
+			{book.recordings.length > 0 && (
+				<section aria-labelledby="recordings-heading" className="flex flex-col gap-2">
+					<h2 id="recordings-heading" className="font-serif text-xl">
+						{t("book.recordings")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.recordings.map((r) => (
+							<li key={r.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: r.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{r.title}
+								</Link>
+								{r.narrators.length > 0 && (
+									<span className="text-slate-600 dark:text-slate-400">
+										{" · "}
+										{t("book.readBy", { names: r.narrators.join(", ") })}
+									</span>
+								)}
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
 			<SimilarBooks bookId={book.id} />
 		</article>
 	);

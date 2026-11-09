@@ -2799,6 +2799,7 @@ export interface components {
             published?: string;
             publisher?: string;
             reading: components["schemas"]["ReadingState"];
+            recordings: components["schemas"]["BookRecording"][];
             series?: string;
             seriesIndex?: number;
             seriesKey?: string;
@@ -2832,6 +2833,12 @@ export interface components {
         BookList: {
             books: components["schemas"]["BookSummary"][];
             nextCursor?: string;
+        };
+        BookRecording: {
+            /** Format: uuid */
+            id: string;
+            narrators: string[];
+            title: string;
         };
         BookSummary: {
             /** Format: date-time */
@@ -3232,6 +3239,7 @@ export interface components {
             foundAt: string;
             /** Format: uuid */
             id: string;
+            narrators?: string[][];
             score: number;
             /** @enum {string} */
             state: "open" | "kept_both" | "merged" | "replaced";
@@ -3269,7 +3277,7 @@ export interface components {
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
+            field: "author" | "narrator" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -3672,7 +3680,7 @@ export interface components {
         };
         PairStateRequest: {
             /** @enum {string} */
-            relation?: "edition" | "translation" | "related";
+            relation?: "edition" | "translation" | "related" | "recording";
             /** @enum {string} */
             state: "kept_both" | "open";
         };
@@ -4904,7 +4912,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
                 sort?: "title" | "author" | "added" | "series";

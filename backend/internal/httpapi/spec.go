@@ -52,7 +52,7 @@ func Spec() *openapi.Document {
 	}
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
 	b.FieldOverrides["Facet.field"] = &openapi.Schema{Type: "string", Enum: []string{
-		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
+		catalog.FieldAuthor, catalog.FieldNarrator, catalog.FieldSeries, catalog.FieldTag,
 		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat, catalog.FieldFiles, catalog.FieldEReader, catalog.FieldGenre,
 	}}
 	b.FieldOverrides["GenreSuggestion.method"] = &openapi.Schema{Type: "string", Enum: []string{genres.MethodVector, genres.MethodNeighbours}}

@@ -210,6 +210,10 @@ type Pair struct {
 	FoundAt   time.Time
 	Books     []catalog.Summary
 	Evidence  []Evidence
+	// Narrators are, when both books are audiobooks read by different
+	// people, the narrators of each in the order of Books: the same book
+	// recorded twice, not a copy. Nil otherwise.
+	Narrators [][]string
 }
 
 // MaxPage is the most pairs a page holds.
@@ -280,6 +284,14 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 	for _, e := range evidence {
 		byPair[e.PairID] = append(byPair[e.PairID], Evidence{Kind: e.Kind, Detail: e.Detail, Score: e.Score})
 	}
+	recordings, err := q.ListRecordingPairs(ctx, ids)
+	if err != nil {
+		return nil, false, err
+	}
+	narrators := map[uuid.UUID][][]string{}
+	for _, r := range recordings {
+		narrators[r.PairID] = [][]string{r.NarratorsA, r.NarratorsB}
+	}
 	out := make([]Pair, 0, len(rows))
 	for _, r := range rows {
 		a, okA := byID[r.BookA]
@@ -289,7 +301,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 		}
 		out = append(out, Pair{
 			ID: r.ID, State: r.State, Score: r.Score, Contained: r.Contained, FoundAt: r.FoundAt,
-			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID],
+			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID], Narrators: narrators[r.ID],
 		})
 	}
 	return out, more, nil
@@ -304,14 +316,18 @@ var ErrNotFound = errors.New("no such pair")
 var ErrState = errors.New("a pair is kept both or open")
 
 // Relations a person may record between two books kept both.
-var Relations = []string{"edition", "translation", "related"}
+var Relations = []string{"edition", "translation", "related", RelationRecording}
+
+// RelationRecording links two recordings of one audiobook by other
+// narrators.
+const RelationRecording = "recording"
 
 // ErrRelation is a relation that is not one of Relations.
 var ErrRelation = errors.New("no such relation")
 
 // SetState records what a person decided about a pair of which they see
 // both books: that both books stay (kept_both), as another edition, a
-// translation or a related book when relation names one, or that it is
+// translation, another recording or a related book when relation names one, or that it is
 // open again. A pair kept both stays so when it is found again.
 func (s *Service) SetState(ctx context.Context, scope library.Scope, id uuid.UUID, state, relation string) error {
 	if state != StateKeptBoth && state != StateOpen {

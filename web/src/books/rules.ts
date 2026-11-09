@@ -5,6 +5,7 @@ export type RuleOp = "in" | "between" | "empty";
 /** The comparisons each field takes, as the server's filter registry has them. */
 export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	author: ["in", "empty"],
+	narrator: ["in", "empty"],
 	series: ["in", "empty"],
 	tag: ["in", "empty"],
 	language: ["in", "empty"],

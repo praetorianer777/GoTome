@@ -480,6 +480,7 @@ export class FakeServer {
 			fields: {},
 			reading: { status: "unread" },
 			placeholder: false,
+			recordings: [],
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 			contributors: (overrides.contributors ?? []).map((c) => ({

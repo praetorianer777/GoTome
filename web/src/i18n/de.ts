@@ -66,6 +66,7 @@ export const de: Record<MessageKey, string> = {
 	"duplicates.evidence.isbn": "Die ISBN {isbn}",
 	"duplicates.evidence.overlap":
 		"Gemeinsamer Text: {jaccard} % Überschneidung; {aInB} % von {a} stehen in {b}, {bInA} % von {b} in {a}",
+	"duplicates.says.narrator": "{a} liest {narratorsA}, {b} liest {narratorsB}: dasselbe Buch, ein anderer Sprecher.",
 	"duplicates.says.sha256": "{a} und {b} sind dieselbe Datei.",
 	"duplicates.says.content": "{a} und {b} haben denselben Inhalt, mit anderen Angaben.",
 	"duplicates.says.isbn": "{a} und {b} haben die ISBN {isbn} gemeinsam.",
@@ -78,6 +79,8 @@ export const de: Record<MessageKey, string> = {
 	"duplicates.relation.none": "nichts",
 	"duplicates.relation.edition": "andere Ausgabe",
 	"duplicates.relation.translation": "Übersetzung",
+	"duplicates.relation.recording": "eine andere Aufnahme",
+	"duplicates.linkRecordings": "Als andere Aufnahmen verknüpfen",
 	"duplicates.relation.related": "verwandte Bücher",
 	"duplicates.mergeClose": "Nicht zusammenführen",
 	"duplicates.otherLibraries":
@@ -277,6 +280,7 @@ export const de: Record<MessageKey, string> = {
 	"filter.fewer": "Weniger anzeigen",
 	"filter.decade": "{decade}er",
 	"filter.value": "{label} ({count})",
+	"filter.field.narrator": "Sprecher",
 	"filter.field.author": "Autor",
 	"filter.field.series": "Reihe",
 	"filter.field.tag": "Schlagwort",
@@ -1183,6 +1187,7 @@ export const de: Record<MessageKey, string> = {
 	"book.back": "Zurück zur Bibliothek",
 	"book.notFound": "Dieses Buch gibt es nicht, oder es liegt in einer Bibliothek, die Sie nicht sehen dürfen.",
 	"book.by": "von {names}",
+	"book.recordings": "Andere Aufnahmen",
 	"book.readBy": "Gelesen von {names}",
 	"book.seriesPosition": "Band {index} von {series}",
 	"book.series": "Teil von {series}",

@@ -157,7 +157,11 @@ background, file by file, and the **Overview** page shows how far it is:
    the other's files to the trash, with everyone's reading and shelves
    carried over; in a library GOtome does not write to, it merges the
    other book in, files and all. **Keep both** and **Merge…** are there
-   too.
+   too. Two audiobooks of one title and author read by different
+   narrators are not copies: the page says "another narrator" and offers
+   **Link as other recordings**, after which each book's page lists the
+   other recordings with their narrators. The library's filter has a
+   Narrator field.
 5. **Books worked out for similar books**: the slowest part, a few
    seconds per book on a CPU. Pause it on the jobs page if the
    machine needs its CPU for other work.

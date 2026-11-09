@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Two recordings of one audiobook by different narrators are no longer
+  suggested as duplicates to merge: the Duplicates page says "another
+  narrator" and links them as other recordings, which each book's page then
+  lists with their narrators. The library can be filtered by narrator.
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the
   library, reading status and progress, upload, edit metadata, administer)

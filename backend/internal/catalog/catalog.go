@@ -191,6 +191,16 @@ type Book struct {
 	Reading Reading
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool
+	// Recordings are the book's other recordings the scope sees: the same
+	// audiobook read by other narrators, linked by a person.
+	Recordings []Recording
+}
+
+// Recording is another recording of a book: its book and who narrates it.
+type Recording struct {
+	ID        uuid.UUID
+	Title     string
+	Narrators []string
 }
 
 // Service reads and writes the catalogue.
@@ -449,6 +459,13 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 	}
 	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
 		return Book{}, err
+	}
+	recordings, err := q.ListBookRecordings(ctx, sqlc.ListBookRecordingsParams{BookID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Book{}, err
+	}
+	for _, r := range recordings {
+		book.Recordings = append(book.Recordings, Recording{ID: r.ID, Title: r.Title, Narrators: r.Narrators})
 	}
 	files, err := q.ListBookFiles(ctx, id)
 	if err != nil {
