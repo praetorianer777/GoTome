@@ -14,12 +14,13 @@ import {
 	progressQuery,
 	saveProgress,
 } from "@/books/progress";
-import { storeBoost, storedBoost, storedNight, storeNight } from "@/player/prefs";
+import { storeBoost, storedBoost, storedNight, storedQuiet, storeNight, storeQuiet } from "@/player/prefs";
 import { saveQueue, takeNext } from "@/player/queue";
 import {
 	EXTEND_MS,
 	fadeFactor,
 	inNight,
+	nightEnd,
 	NIGHT,
 	type Night,
 	RESUME_MS,
@@ -364,6 +365,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				update({ rate });
 			},
 			setSleep(sleep) {
+				const { night } = current.current;
+				if (sleep.kind === "off" && inNight(night, new Date())) {
+					// Said off on purpose: the night timer waits for the next night.
+					storeQuiet(nightEnd(night, new Date()));
+				}
 				fade.current = 1;
 				applyVolume();
 				update({ sleep });
@@ -537,7 +543,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				applyVolume();
 			}
 			const arm =
-				s.sleep.kind === "off" && inNight(s.night, new Date())
+				s.sleep.kind === "off" &&
+				inNight(s.night, new Date()) &&
+				Date.now() >= storedQuiet()
 					? { sleep: { kind: "until" as const, at: Date.now() + s.night.minutes * 60_000 } }
 					: {};
 			update({ playing: true, resumable: false, ...arm });

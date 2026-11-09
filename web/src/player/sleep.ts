@@ -65,6 +65,15 @@ export function inNight(night: Night, date: Date): boolean {
 	return from < to ? now >= from && now < to : now >= from || now < to;
 }
 
+/** When the hours that now hold the date end: the next time the clock reads `to`. */
+export function nightEnd(night: Night, date: Date): number {
+	const to = minutesOf(night.to);
+	const end = new Date(date);
+	end.setHours(Math.floor(to / 60), to % 60, 0, 0);
+	if (end.getTime() <= date.getTime()) end.setDate(end.getDate() + 1);
+	return end.getTime();
+}
+
 /** Acceleration in m/s² past which a movement of the phone is a shake. */
 const SHAKE = 18;
 const SHAKE_WINDOW_MS = 1000;

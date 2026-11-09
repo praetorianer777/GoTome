@@ -1,6 +1,7 @@
 import { NIGHT, type Night } from "@/player/sleep";
 
 const BOOST_KEY = "gotome.player.boost";
+const QUIET_KEY = "gotome.player.nightQuiet";
 const NIGHT_KEY = "gotome.player.night";
 
 /** The volume boosts offered, 1 being none. */
@@ -51,6 +52,15 @@ export function storedNight(): Night {
 		// Unreadable: as if none was chosen.
 	}
 	return NIGHT;
+}
+
+/** Until when a deliberate "off" keeps the night timer from starting again. */
+export function storedQuiet(): number {
+	return Number(read(QUIET_KEY)) || 0;
+}
+
+export function storeQuiet(until: number) {
+	write(QUIET_KEY, String(until));
 }
 
 export function storeNight(night: Night) {

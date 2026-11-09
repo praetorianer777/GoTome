@@ -3823,6 +3823,30 @@ describe("the audiobook player", () => {
 		expect(screen.getByRole("option", { name: /^At \d/ })).toBeInTheDocument();
 	});
 
+	it("keeps off, when the person said off, until the night hours are over", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		localStorage.setItem(
+			"gotome.player.night",
+			JSON.stringify({ enabled: true, from: "08:00", to: "08:00", minutes: 30 }),
+		);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+		await person.selectOptions(sleep, "Off");
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		expect(sleep).toHaveValue("off");
+		// The next night: the saved end has passed.
+		localStorage.setItem("gotome.player.nightQuiet", String(Date.now() - 1000));
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+	});
+
 	it("does not start a timer outside the chosen hours", async () => {
 		const person = userEvent.setup();
 		playable("maybe");
