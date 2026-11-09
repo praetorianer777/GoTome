@@ -74,9 +74,9 @@ Project Gutenberg licence text, which allows copying.
 | The Sign of the Four | Arthur Conan Doyle | en | <https://standardebooks.org/ebooks/arthur-conan-doyle/the-sign-of-the-four> | CC0 1.0 (Standard Ebooks) |
 | The Hound of the Baskervilles | Arthur Conan Doyle | en | <https://standardebooks.org/ebooks/arthur-conan-doyle/the-hound-of-the-baskervilles> | CC0 1.0 (Standard Ebooks) |
 | The Adventures of Sherlock Holmes | Arthur Conan Doyle | en | <https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes> | CC0 1.0 (Standard Ebooks) |
-| Twenty Thousand Leagues Under the Seas | Jules Verne | en | <https://standardebooks.org/ebooks/jules-verne/twenty-thousand-leagues-under-the-seas> | CC0 1.0 (Standard Ebooks) |
-| Around the World in Eighty Days | Jules Verne | en | <https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days> | CC0 1.0 (Standard Ebooks) |
-| Journey to the Centre of the Earth | Jules Verne | en | <https://standardebooks.org/ebooks/jules-verne/a-journey-to-the-center-of-the-earth> | CC0 1.0 (Standard Ebooks) |
+| Twenty Thousand Leagues Under the Seas | Jules Verne | en | <https://www.gutenberg.org/ebooks/2488> | Public domain (Project Gutenberg) |
+| Around the World in Eighty Days | Jules Verne | en | <https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle> | CC0 1.0 (Standard Ebooks) |
+| Journey to the Centre of the Earth | Jules Verne | en | <https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson> | CC0 1.0 (Standard Ebooks) |
 | The Time Machine | H. G. Wells | en | <https://standardebooks.org/ebooks/h-g-wells/the-time-machine> | CC0 1.0 (Standard Ebooks) |
 | The War of the Worlds | H. G. Wells | en | <https://standardebooks.org/ebooks/h-g-wells/the-war-of-the-worlds> | CC0 1.0 (Standard Ebooks) |
 | The Invisible Man | H. G. Wells | en | <https://standardebooks.org/ebooks/h-g-wells/the-invisible-man> | CC0 1.0 (Standard Ebooks) |
@@ -89,9 +89,9 @@ Project Gutenberg licence text, which allows copying.
 | Jane Eyre | Charlotte Brontë | en | <https://standardebooks.org/ebooks/charlotte-bronte/jane-eyre> | CC0 1.0 (Standard Ebooks) |
 | Wuthering Heights | Emily Brontë | en | <https://standardebooks.org/ebooks/emily-bronte/wuthering-heights> | CC0 1.0 (Standard Ebooks) |
 | Moby-Dick | Herman Melville | en | <https://standardebooks.org/ebooks/herman-melville/moby-dick> | CC0 1.0 (Standard Ebooks) |
-| Alice's Adventures in Wonderland | Lewis Carroll | en | <https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland> | CC0 1.0 (Standard Ebooks) |
-| Through the Looking-Glass | Lewis Carroll | en | <https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass> | CC0 1.0 (Standard Ebooks) |
-| The Metamorphosis | Franz Kafka | en | <https://standardebooks.org/ebooks/franz-kafka/the-metamorphosis/david-wyllie> | CC0 1.0 (Standard Ebooks) |
+| Alice's Adventures in Wonderland | Lewis Carroll | en | <https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel> | CC0 1.0 (Standard Ebooks) |
+| Through the Looking-Glass | Lewis Carroll | en | <https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel> | CC0 1.0 (Standard Ebooks) |
+| The Metamorphosis | Franz Kafka | en | <https://www.gutenberg.org/ebooks/5200> | Public domain (Project Gutenberg) |
 | Faust | Johann Wolfgang von Goethe | de | <https://www.gutenberg.org/ebooks/2229> | Public domain (Project Gutenberg) |
 | Die Verwandlung | Franz Kafka | de | <https://www.gutenberg.org/ebooks/22367> | Public domain (Project Gutenberg) |
 | Die Leiden des jungen Werther | Johann Wolfgang von Goethe | de | <https://www.gutenberg.org/ebooks/2407> | Public domain (Project Gutenberg) |

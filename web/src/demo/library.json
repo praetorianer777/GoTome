@@ -246,9 +246,9 @@
    "seriesIndex": 6,
    "pageCount": 480,
    "source": {
-    "page": "https://standardebooks.org/ebooks/jules-verne/twenty-thousand-leagues-under-the-seas",
-    "url": "https://standardebooks.org/ebooks/jules-verne/twenty-thousand-leagues-under-the-seas/downloads/jules-verne_twenty-thousand-leagues-under-the-seas.epub?source=download",
-    "licence": "CC0 1.0 (Standard Ebooks)"
+    "page": "https://www.gutenberg.org/ebooks/2488",
+    "url": "https://www.gutenberg.org/ebooks/2488.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
    },
    "translators": [
     "F. P. Walter"
@@ -274,8 +274,8 @@
    "seriesIndex": 11,
    "pageCount": 256,
    "source": {
-    "page": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days",
-    "url": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/downloads/jules-verne_around-the-world-in-eighty-days.epub?source=download",
+    "page": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle",
+    "url": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle/downloads/jules-verne_around-the-world-in-eighty-days_george-makepeace-towle.epub",
     "licence": "CC0 1.0 (Standard Ebooks)"
    },
    "addedAt": "2026-10-10T09:09:00Z"
@@ -299,8 +299,8 @@
    "seriesIndex": 3,
    "pageCount": 240,
    "source": {
-    "page": "https://standardebooks.org/ebooks/jules-verne/a-journey-to-the-center-of-the-earth",
-    "url": "https://standardebooks.org/ebooks/jules-verne/a-journey-to-the-center-of-the-earth/downloads/jules-verne_a-journey-to-the-center-of-the-earth.epub?source=download",
+    "page": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson",
+    "url": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson/downloads/jules-verne_journey-to-the-center-of-the-earth_f-a-malleson.epub",
     "licence": "CC0 1.0 (Standard Ebooks)"
    },
    "addedAt": "2026-10-11T09:10:00Z"
@@ -603,8 +603,8 @@
    "seriesIndex": 1,
    "pageCount": 96,
    "source": {
-    "page": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland",
-    "url": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/downloads/lewis-carroll_alices-adventures-in-wonderland.epub?source=download",
+    "page": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel",
+    "url": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel/downloads/lewis-carroll_alices-adventures-in-wonderland_john-tenniel.epub",
     "licence": "CC0 1.0 (Standard Ebooks)"
    },
    "addedAt": "2026-10-24T09:23:00Z"
@@ -628,8 +628,8 @@
    "seriesIndex": 2,
    "pageCount": 128,
    "source": {
-    "page": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass",
-    "url": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/downloads/lewis-carroll_through-the-looking-glass.epub?source=download",
+    "page": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel",
+    "url": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel/downloads/lewis-carroll_through-the-looking-glass_john-tenniel.epub",
     "licence": "CC0 1.0 (Standard Ebooks)"
    },
    "addedAt": "2026-10-25T09:24:00Z"
@@ -651,9 +651,9 @@
    "status": "unread",
    "pageCount": 70,
    "source": {
-    "page": "https://standardebooks.org/ebooks/franz-kafka/the-metamorphosis/david-wyllie",
-    "url": "https://standardebooks.org/ebooks/franz-kafka/the-metamorphosis/david-wyllie/downloads/franz-kafka_the-metamorphosis_david-wyllie.epub?source=download",
-    "licence": "CC0 1.0 (Standard Ebooks)"
+    "page": "https://www.gutenberg.org/ebooks/5200",
+    "url": "https://www.gutenberg.org/ebooks/5200.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
    },
    "translators": [
     "David Wyllie"
