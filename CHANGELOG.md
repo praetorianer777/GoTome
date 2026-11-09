@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-09
+
 ### Added
 
 - `gotome match-check` measures how often a lookup by title and author
