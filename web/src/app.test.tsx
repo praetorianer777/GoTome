@@ -6654,6 +6654,27 @@ describe("the overview", () => {
 		).toHaveTextContent("734 MB (intfloat/multilingual-e5-small)");
 	});
 
+	it("lists how each part of GOtome is doing, with a word for each status", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/overview");
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
+		);
+		const heading = await panel.findByRole("heading", {
+			name: "Parts of GOtome",
+		});
+		const items = within(heading.parentElement as HTMLElement).getAllByRole(
+			"listitem",
+		);
+		expect(items[0]).toHaveTextContent("Database · Fine · 1.5 ms");
+		expect(items[2]).toHaveTextContent("Search index backlog · Degraded · 900 s");
+		expect(items[2]).toHaveTextContent(
+			"12 changes wait for the search index",
+		);
+		expect(items[3]).toHaveTextContent("Metadata source openlibrary · Fine");
+	});
+
 	it("warns an administrator of settings too large for the machine, with the commands that fit", async () => {
 		vi.stubGlobal("EventSource", undefined);
 		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");

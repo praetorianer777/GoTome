@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -102,6 +103,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
 			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
 			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/checks", ID: "getSystemChecks",
+			Summary: "How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory", Tag: "system",
+			Response: syscheck.Report{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemChecks,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
@@ -838,6 +844,15 @@ type buildInfo version.Info
 
 func (s *Server) getVersion(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, buildInfo(version.Current()))
+	return nil
+}
+
+func (s *Server) getSystemChecks(w http.ResponseWriter, r *http.Request) error {
+	if s.Checks == nil {
+		writeJSON(w, r, http.StatusOK, syscheck.Report{Checks: s.readiness().Checks(r.Context())})
+		return nil
+	}
+	writeJSON(w, r, http.StatusOK, s.Checks.Collect(r.Context()))
 	return nil
 }
 

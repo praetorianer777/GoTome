@@ -4,6 +4,7 @@ import type { components } from "@/api/schema";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatCount, formatSize } from "@/lib/format";
+import { ChecksList } from "@/system/checks";
 
 export type Health = components["schemas"]["Health"];
 type Warning = components["schemas"]["Warning"];
@@ -92,6 +93,7 @@ export function HealthPanel() {
 				{t("health.title")}
 			</h2>
 			<FormError error={health.error} />
+			<ChecksList />
 			{h && (
 				<>
 					{h.warnings.length > 0 ? (

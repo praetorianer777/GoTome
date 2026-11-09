@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 )
 
 // The components /readyz asks about. Their names are all the public answer
@@ -211,6 +213,25 @@ func probeWritable(dir string) error {
 		}
 	}
 	return nil
+}
+
+// Checks is the report as the administrators' details give it.
+func (r *Readiness) Checks(ctx context.Context) []syscheck.Check {
+	report := r.Report(ctx)
+	out := make([]syscheck.Check, 0, len(report.Results))
+	for _, c := range report.Results {
+		ch := syscheck.Check{Name: c.Name, Status: syscheck.OK, CheckedAt: c.CheckedAt}
+		if c.Name != CheckMigrations {
+			ms := float64(c.Latency.Microseconds()) / 1000
+			ch.Value, ch.Unit = &ms, syscheck.UnitMillis
+		}
+		if !c.OK {
+			ch.Status = syscheck.Failing
+			ch.Message = c.Err.Error()
+		}
+		out = append(out, ch)
+	}
+	return out
 }
 
 type readyAnswer struct {

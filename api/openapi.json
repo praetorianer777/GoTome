@@ -7934,6 +7934,43 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/system/checks": {
+      "get": {
+        "operationId": "getSystemChecks",
+        "summary": "How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/system/health": {
       "get": {
         "operationId": "getSystemHealth",
@@ -9368,6 +9405,47 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "Check": {
+        "type": "object",
+        "properties": {
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "failing"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "ms",
+              "s",
+              "count",
+              "bytes"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "message",
+          "checkedAt"
         ]
       },
       "CleanupApplied": {
@@ -11959,7 +12037,8 @@
               "duplicates.found",
               "files.unreadable",
               "scan.failed",
-              "library.unwritable"
+              "library.unwritable",
+              "system.degraded"
             ]
           },
           "link": {
@@ -12016,7 +12095,8 @@
               "duplicates.found",
               "files.unreadable",
               "scan.failed",
-              "library.unwritable"
+              "library.unwritable",
+              "system.degraded"
             ]
           }
         },
@@ -12559,6 +12639,20 @@
         },
         "required": [
           "keep"
+        ]
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Check"
+            }
+          }
+        },
+        "required": [
+          "checks"
         ]
       },
       "RereadLibraryRequest": {

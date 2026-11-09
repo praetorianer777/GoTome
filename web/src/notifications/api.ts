@@ -13,6 +13,7 @@ import {
 } from "@/books/bulk";
 import { type MessageKey, t } from "@/i18n";
 import { formatReleaseDate } from "@/lib/format";
+import { checkName } from "@/system/checks";
 
 export type Notification = components["schemas"]["Notification"];
 
@@ -105,6 +106,7 @@ export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"files.unreadable": "notifications.kind.filesUnreadable",
 	"scan.failed": "notifications.kind.scanFailed",
 	"library.unwritable": "notifications.kind.libraryUnwritable",
+	"system.degraded": "notifications.kind.systemDegraded",
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
@@ -149,6 +151,11 @@ export function notificationText(n: Notification): {
 				detail: d.error
 					? t("notification.libraryUnwritable.reason", { reason: text(d.error) })
 					: t("notification.libraryUnwritable.many", { count: count(d.count) }),
+			};
+		case "system.degraded":
+			return {
+				title: t("notification.systemDegraded", { component: checkName(text(d.component)) }),
+				detail: t("notification.systemDegraded.detail", { message: text(d.message) }),
 			};
 		case "files.unreadable":
 			return one

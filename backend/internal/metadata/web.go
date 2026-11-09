@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -121,11 +123,41 @@ type web struct {
 	client   *http.Client
 	pool     *pgxpool.Pool
 	limit    *spacer
+	// last is how the latest request that reached the provider ended.
+	last atomic.Pointer[Outcome]
+}
+
+// Outcome is how a provider last answered: Err is empty when it did.
+type Outcome struct {
+	At  time.Time
+	Err string
+}
+
+func (w *web) note(err error) {
+	o := Outcome{At: time.Now()}
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		o.Err = err.Error()
+		if len(o.Err) > 200 {
+			o.Err = o.Err[:200]
+		}
+	}
+	w.last.Store(&o)
 }
 
 var userAgent = "GOtome/" + version.Current().Version + " (+https://github.com/praetorianer777/GoTome)"
 
 func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
+	var asked bool
+	body, err := w.get(ctx, r, &asked)
+	if asked && ctx.Err() == nil {
+		w.note(err)
+	}
+	return body, err
+}
+
+// get is Get, saying through asked whether the request left for the provider
+// rather than being answered from the cache.
+func (w *web) get(ctx context.Context, r Request, asked *bool) ([]byte, error) {
 	method := r.Method
 	if method == "" {
 		method = http.MethodGet
@@ -167,6 +199,7 @@ func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
 		req.Header[k] = vs
 	}
 	req.Header.Set("User-Agent", userAgent)
+	*asked = true
 	resp, err := w.client.Do(req)
 	if err != nil {
 		// The URL in the error may carry the secret query.
@@ -238,4 +271,30 @@ func (s *spacer) wait(ctx context.Context) error {
 	case <-t.C:
 		return nil
 	}
+}
+
+// ProviderState is a provider and how it last answered, as far as this
+// process has asked it since it started; Last is nil before the first request.
+type ProviderState struct {
+	Name    string
+	Enabled bool
+	Last    *Outcome
+}
+
+// ProviderStates lists the providers with their last answers. It asks
+// nobody.
+func (s *Service) ProviderStates(ctx context.Context) []ProviderState {
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	out := make([]ProviderState, 0, len(s.providers))
+	for _, p := range s.providers {
+		st := ProviderState{Name: p.Name(), Enabled: s.enabled == nil || slices.Contains(enabled, p.Name())}
+		if w, ok := s.webs[p.Name()].(*web); ok {
+			st.Last = w.last.Load()
+		}
+		out = append(out, st)
+	}
+	return out
 }

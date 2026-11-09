@@ -13,6 +13,12 @@ What changes for someone who runs or uses GOtome. The format follows
   once, `/readyz` says `migrating` (and how far it is) until they are done,
   and Docker's health check allows ten minutes for that. The monitoring
   addresses are described in the troubleshooting guide.
+- `/readyz` now answers 200 only when the database, the migrations, the
+  search index, the job queue and the data folder all work, and otherwise
+  503 naming the parts that fail (and nothing else, as it is public).
+  Administrators see how each part is doing, and what is degraded without
+  stopping GOtome, on the Overview page and at `/api/v1/system/checks`, and
+  are told when a part has failed for ten minutes.
 
 ## [0.12.0] - 2026-11-09
 

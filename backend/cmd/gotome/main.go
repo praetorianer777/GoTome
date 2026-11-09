@@ -62,6 +62,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -408,6 +409,21 @@ func serve() error {
 	health.DataDir, health.IndexDir = cfg.DataDir, fulltext.Dir(cfg.DataDir)
 	health.Embedding, health.Server = settingStore.Embedding, settingStore.EmbeddingServer
 	go health.Watch(ctx, log)
+	checks := &syscheck.Collector{
+		Pool: pool, Readiness: ready.Checks, Embedding: vectors.Runtime, Providers: meta.ProviderStates, Resources: health,
+	}
+	watcher := &syscheck.Watcher{
+		Collector: checks, Every: time.Minute, Log: log,
+		Tell: func(ctx context.Context, c syscheck.Check) error {
+			return db.InTx(ctx, pool, func(tx pgx.Tx) error {
+				return events.QueueTx(ctx, tx, notify.Event{
+					Kind: notify.KindSystemDegraded, Link: "/overview",
+					Data: map[string]any{"component": c.Name, "message": c.Message},
+				})
+			})
+		},
+	}
+	go watcher.Run(ctx)
 	server := &httpapi.Server{
 		Log:        log,
 		DB:         pool,
@@ -431,6 +447,7 @@ func serve() error {
 		Genres:     genreService,
 		Stats:      stats.NewService(pool, vectors),
 		Resources:  health,
+		Checks:     checks,
 		Deliveries: deliveries.NewService(pool),
 		Pairing:    pairing.NewService(pool),
 		Kobo:       kobo.NewService(pool),
