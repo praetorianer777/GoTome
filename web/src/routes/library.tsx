@@ -100,7 +100,7 @@ export function Library({
 					busy={busy}
 					tools={
 						list.length > 1 && (
-							<label className="flex items-center gap-2">
+							<label className="flex max-w-full min-w-0 items-center gap-2">
 								<span className="text-slate-600 dark:text-slate-400">{t("library.choose")}</span>
 								<select
 									value={selected?.id ?? ""}

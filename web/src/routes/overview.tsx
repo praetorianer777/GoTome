@@ -151,7 +151,7 @@ function Work({ library }: { library: string }) {
 					<StepRow label="overview.files" step={w.files} />
 					{w.filesFailed > 0 && (
 						<li className="-mt-3 text-sm">
-							<Link to="/jobs" className="underline">
+							<Link to="/jobs" className="inline-flex min-h-6 items-center underline">
 								{t("overview.filesFailed", {
 									count: formatCount(w.filesFailed),
 								})}
@@ -344,7 +344,7 @@ export function Overview() {
 			<div className="flex flex-wrap items-end justify-between gap-4">
 				<h1 className="text-2xl font-semibold">{t("overview.title")}</h1>
 				{(libraries.data?.length ?? 0) > 1 && (
-					<label className="flex flex-col gap-1 text-sm">
+					<label className="flex max-w-full min-w-0 flex-col gap-1 text-sm">
 						{t("overview.which")}
 						<select
 							value={library}

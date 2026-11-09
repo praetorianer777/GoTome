@@ -277,7 +277,7 @@ function ChangePassword() {
 				/>
 				{Object.keys(errors).length === 0 && <FormError error={change.error} />}
 				<div className="flex items-center gap-4">
-					<SubmitButton pending={change.isPending}>
+					<SubmitButton pending={change.isPending} kind="secondary">
 						{t("profile.password.submit")}
 					</SubmitButton>
 					{done && (

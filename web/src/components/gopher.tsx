@@ -72,7 +72,7 @@ export function Celebration() {
 		<div
 			key={shown}
 			role="status"
-			className="celebration panel-solid pointer-events-none fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-2xl py-3 pr-5 pl-3 max-sm:right-2 max-sm:bottom-2"
+			className="celebration panel-solid pointer-events-none fixed right-4 bottom-safe-4 z-50 flex items-center gap-3 rounded-2xl py-3 pr-5 pl-3 max-sm:right-2 max-sm:bottom-safe-2"
 		>
 			<div className="relative size-24 shrink-0">
 				<Gopher mood="cheer" size={96} />

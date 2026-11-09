@@ -278,7 +278,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 	return (
 		<PlayerProvider>
 			{isDemo && !fullScreen && <DemoBanner />}
-			<div className="flex min-h-dvh flex-col lg:gap-4 lg:p-4">
+			<div className="flex min-h-dvh flex-col max-lg:pt-safe lg:gap-4 lg:p-4">
 				<a
 					href="#content"
 					className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-slate-900"

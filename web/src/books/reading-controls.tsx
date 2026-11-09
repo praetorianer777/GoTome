@@ -46,7 +46,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 						))}
 					</select>
 				</label>
-				<fieldset className="flex items-center gap-1">
+				<fieldset className="flex items-center gap-2">
 					<legend className="float-left mr-2">{t("reading.rating")}</legend>
 					{Array.from({ length: MAX_RATING }, (_, i) => i + 1).map((n) => (
 						<button
@@ -62,7 +62,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 							}
 							// The same star again takes the rating away.
 							onClick={() => set.mutate({ rating: rating === n ? 0 : n })}
-							className={`text-xl leading-none ${
+							className={`size-6 text-xl leading-none ${
 								rating && n <= rating
 									? "text-amber-600 dark:text-amber-400"
 									: "text-slate-500 dark:text-slate-400"

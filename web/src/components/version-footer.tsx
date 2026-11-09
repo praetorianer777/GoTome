@@ -56,14 +56,14 @@ export function VersionFooter({
 	if (!build) return null;
 	const commit = build.commit?.slice(0, 7);
 	return (
-		<footer className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+		<footer className="border-t border-slate-200 px-4 pt-3 pb-safe-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
 			<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1">
 				{isRelease(build) ? (
 					<a
 						href={`${RELEASES}${build.version}`}
 						target="_blank"
 						rel="noreferrer"
-						className="hover:underline"
+						className="inline-flex min-h-6 items-center hover:underline"
 					>
 						{t("version.release", { version: build.version })}
 					</a>

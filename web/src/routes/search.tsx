@@ -127,9 +127,11 @@ export function SearchPage({
 				</button>
 			</form>
 			</search>
-			<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
+			<div
+				className={`flex flex-wrap items-end gap-x-6 gap-y-3 text-sm ${libraries.isPending ? "min-h-7" : ""}`}
+			>
 				{list.length > 1 && (
-					<label className="flex items-center gap-2">
+					<label className="flex max-w-full min-w-0 items-center gap-2">
 						<span>{t("library.choose")}</span>
 						<select
 							value={library ?? ""}

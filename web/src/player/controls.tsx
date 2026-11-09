@@ -33,7 +33,7 @@ export function MiniPlayer() {
 	return (
 		<section
 			aria-label={t("player.mini")}
-			className="sticky bottom-0 z-10 border-t border-slate-200 bg-white/95 px-4 py-2 text-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"
+			className="sticky bottom-0 z-10 border-t border-slate-200 bg-white/95 px-4 pt-2 pb-safe-2 text-sm lg:backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"
 		>
 			<div className="mx-auto flex max-w-6xl items-center gap-3">
 				<div className="w-10 shrink-0">

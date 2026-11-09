@@ -33,6 +33,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- On a phone every button, field and link is at least 44 pixels high with
+  8 pixels between neighbours, text fields are 16 pixels so iOS no longer
+  zooms into them, and bars at the screen's edge keep clear of the notch and
+  the home indicator.
+- On a 320 pixel wide screen the settings page and the library and search
+  pages with several libraries no longer slide sideways, the search page no
+  longer jumps when its first results arrive, and small links and the rating
+  stars are at least 24 pixels high. The profile no longer shows three
+  filled buttons at once.
 - The dark theme's field and button borders are a little lighter, so they
   stay easy to see over the glass panels, and the library behind the panels
   shows more at night: only its lamps are held down, not the whole picture.

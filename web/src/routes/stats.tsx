@@ -25,7 +25,7 @@ export function Stats() {
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-wrap items-end justify-between gap-4">
 				<h1 className="text-2xl font-semibold">{t("stats.title")}</h1>
-				<fieldset className="flex gap-1 text-sm">
+				<fieldset className="flex gap-2 text-sm">
 					<legend className="sr-only">{t("stats.window")}</legend>
 					{WINDOWS.map((w) => (
 						<button
@@ -139,7 +139,7 @@ export function Stats() {
 									<li key={`${e.date}-${e.event}-${e.bookId}`} className="flex gap-4 px-3 py-2 text-sm">
 										<span className="w-24 shrink-0 tabular-nums text-slate-500">{e.date}</span>
 										<span className="w-20 shrink-0">{t(e.event === "started" ? "stats.started" : "stats.finishedOne")}</span>
-										<Link to="/books/$bookId" params={{ bookId: e.bookId }} className="min-w-0 truncate font-medium hover:underline">
+										<Link to="/books/$bookId" params={{ bookId: e.bookId }} className="min-h-6 min-w-0 truncate font-medium hover:underline">
 											{e.title}
 										</Link>
 									</li>
