@@ -185,7 +185,7 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
 - **Panels** (`panel`): the frame's surfaces: `rounded-2xl`, a soft border,
   90 % opaque, blurred behind. **Cards** (`card`): raised surface inside a
   panel, `rounded-xl`, one thin line, no shadow except on menus and dialogs.
-- **Cover cards** (#359 step 3): a card with the cover, title and author
+- **Cover cards**: a card with the cover, title and author
   below it, each truncated to one line, and a round badge on the cover's
   corner naming the medium (a book for an ebook, headphones for audio; the
   badge has an accessible name and the card's text says it too).
@@ -199,7 +199,7 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
   read.
 - **Dialogs** (`components/dialog.tsx`) and popovers (notifications, the
   account menu) are panels with a shadow.
-- **Home page** (#359 step 2): a hero banner, then Recent additions and
+- **Home page** (#380): a hero banner, then Recent additions and
   Recommended for you as rows of cover cards (a scrolling row on a phone).
   The hero is art: it carries the page's h1 as text beside it, not inside
   the image.

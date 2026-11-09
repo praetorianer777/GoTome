@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { type BookSummary, booksQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { MediumBadge } from "@/books/medium";
 import { candidateCoverUrl } from "@/books/edit";
 import { type WishSearch, useWish, wishSearchQuery } from "@/books/wishes";
 import { FormError } from "@/components/form";
@@ -68,7 +69,8 @@ function WishedBooks({ id, heading, books }: { id: string; heading: string; book
 			</h2>
 			<ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
 				{books.map((book) => (
-					<li key={book.id}>
+					<li key={book.id} className="relative">
+						<MediumBadge formats={book.formats} className="top-1 right-1" />
 						<Link to="/books/$bookId" params={{ bookId: book.id }} className="flex flex-col gap-2">
 							<Cover book={book} size="small" />
 							<span className="flex flex-col">
