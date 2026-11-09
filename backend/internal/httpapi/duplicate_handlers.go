@@ -50,6 +50,23 @@ type duplicatePair struct {
 	FoundAt   time.Time           `json:"foundAt"`
 	Books     []bookSummary       `json:"books"`
 	Evidence  []duplicateEvidence `json:"evidence"`
+	// Narrators, when both books are audiobooks read by different people,
+	// lists the narrators of each book in the order of books: the pair is
+	// one book recorded twice, to be linked as recordings rather than
+	// merged. Left out otherwise.
+	Narrators [][]string `json:"narrators,omitempty"`
+	// Formats is set for an ebook and its audiobook: the pair's books with
+	// the same title and author, one of only ebook files, the other of
+	// only audio files. Left out otherwise.
+	Formats *pairFormats `json:"formats,omitempty"`
+}
+
+type pairFormats struct {
+	// EbookID is the pair's book that holds the ebook.
+	EbookID uuid.UUID `json:"ebookId"`
+	// SameLibrary says a merge can join them; books of two libraries are
+	// only linked (relation format), as a file stays in its library's folder.
+	SameLibrary bool `json:"sameLibrary"`
 }
 
 type duplicateList struct {
@@ -62,7 +79,7 @@ type pairStateRequest struct {
 	// State is kept_both, that both books stay as they are, or open.
 	State string `json:"state"`
 	// Relation, with kept_both, links the two as another edition, a
-	// translation or a related book.
+	// translation, another recording or a related book.
 	Relation string `json:"relation,omitempty"`
 }
 
@@ -131,7 +148,10 @@ func (s *Server) listDuplicates(w http.ResponseWriter, r *http.Request) error {
 		out.NextCursor = strconv.FormatFloat(float64(last.Score), 'g', -1, 32) + "_" + last.ID.String()
 	}
 	for i, p := range pairs {
-		dp := duplicatePair{ID: p.ID, State: p.State, Score: p.Score, Contained: p.Contained, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}}
+		dp := duplicatePair{ID: p.ID, State: p.State, Score: p.Score, Contained: p.Contained, FoundAt: p.FoundAt, Evidence: []duplicateEvidence{}, Narrators: p.Narrators}
+		if p.Formats != nil {
+			dp.Formats = &pairFormats{EbookID: p.Formats.EbookBook, SameLibrary: p.Formats.SameLibrary}
+		}
 		for _, b := range p.Books {
 			dp.Books = append(dp.Books, summaryOf(b))
 		}
@@ -160,7 +180,7 @@ func (s *Server) setPairState(w http.ResponseWriter, r *http.Request) error {
 	case errors.Is(err, dedupe.ErrState):
 		return ErrValidation(map[string]string{"state": "Use kept_both or open."})
 	case errors.Is(err, dedupe.ErrRelation):
-		return ErrValidation(map[string]string{"relation": "With kept_both, use edition, translation or related."})
+		return ErrValidation(map[string]string{"relation": "With kept_both, use edition, translation, recording, format or related."})
 	case err != nil:
 		return err
 	}

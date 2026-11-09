@@ -584,6 +584,11 @@ func (s *Server) routes() []Route {
 			Request: mergeRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.mergeBooks,
 		},
 		{
+			Method: http.MethodPost, Path: "/joins/{joinId}/undo", ID: "undoJoin",
+			Summary: "Split a book the library made of an ebook and its audiobook into the two again", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.undoJoin,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
 			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,

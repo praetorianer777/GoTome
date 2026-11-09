@@ -1358,6 +1358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/joins/{joinId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Split a book the library made of an ebook and its audiobook into the two again */
+        post: operations["undoJoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/download/{fileId}": {
         parameters: {
             query?: never;
@@ -2823,9 +2840,11 @@ export interface components {
                 [key: string]: components["schemas"]["FieldState"];
             };
             files: components["schemas"]["BookFile"][];
+            forms: components["schemas"]["BookForm"][];
             /** Format: uuid */
             id: string;
             identifiers: components["schemas"]["BookIdentifier"][];
+            joins: components["schemas"]["BookJoin"][];
             language?: string;
             /** Format: uuid */
             libraryId: string;
@@ -2834,6 +2853,7 @@ export interface components {
             published?: string;
             publisher?: string;
             reading: components["schemas"]["ReadingState"];
+            recordings: components["schemas"]["BookRecording"][];
             series?: string;
             seriesIndex?: number;
             seriesKey?: string;
@@ -2859,14 +2879,33 @@ export interface components {
             relPath?: string;
             size: number;
         };
+        BookForm: {
+            /** Format: uuid */
+            id: string;
+            kinds: string[];
+            title: string;
+        };
         BookIdentifier: {
             fromFile: boolean;
             type: string;
             value: string;
         };
+        BookJoin: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            joinedAt: string;
+            title: string;
+        };
         BookList: {
             books: components["schemas"]["BookSummary"][];
             nextCursor?: string;
+        };
+        BookRecording: {
+            /** Format: uuid */
+            id: string;
+            narrators: string[];
+            title: string;
         };
         BookSummary: {
             /** Format: date-time */
@@ -3263,10 +3302,12 @@ export interface components {
             books: components["schemas"]["BookSummary"][];
             contained: boolean;
             evidence: components["schemas"]["DuplicateEvidence"][];
+            formats?: components["schemas"]["PairFormats"];
             /** Format: date-time */
             foundAt: string;
             /** Format: uuid */
             id: string;
+            narrators?: string[][];
             score: number;
             /** @enum {string} */
             state: "open" | "kept_both" | "merged" | "replaced";
@@ -3304,7 +3345,7 @@ export interface components {
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
+            field: "author" | "narrator" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -3543,6 +3584,7 @@ export interface components {
             filesPending: number;
             /** Format: uuid */
             id: string;
+            joinFormats: boolean;
             lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
@@ -3705,9 +3747,14 @@ export interface components {
             all?: boolean;
             ids?: string[];
         };
+        PairFormats: {
+            /** Format: uuid */
+            ebookId: string;
+            sameLibrary: boolean;
+        };
         PairStateRequest: {
             /** @enum {string} */
-            relation?: "edition" | "translation" | "related";
+            relation?: "edition" | "translation" | "related" | "recording" | "format";
             /** @enum {string} */
             state: "kept_both" | "open";
         };
@@ -4146,6 +4193,7 @@ export interface components {
             role?: "admin" | "editor" | "reader";
         };
         UpdateLibraryRequest: {
+            joinFormats?: boolean;
             name?: string;
             visibility?: string;
             writable?: boolean;
@@ -4954,7 +5002,7 @@ export interface operations {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
                 /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
                 sort?: "title" | "author" | "added" | "series";
@@ -7089,6 +7137,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobView"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoJoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                joinId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

@@ -460,6 +460,7 @@ export class FakeServer {
 			name,
 			mode: "managed",
 			writable: true,
+			joinFormats: false,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -489,6 +490,9 @@ export class FakeServer {
 			fields: {},
 			reading: { status: "unread" },
 			placeholder: false,
+			recordings: [],
+			forms: [],
+			joins: [],
 			addedAt: `2026-01-01T00:00:${String(n % 60).padStart(2, "0")}Z`,
 			...overrides,
 			contributors: (overrides.contributors ?? []).map((c) => ({

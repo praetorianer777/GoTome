@@ -13,6 +13,7 @@ export type FilterPicks = Partial<Record<FacetField, string[]>>;
 
 export const FACET_FIELDS: FacetField[] = [
 	"author",
+	"narrator",
 	"series",
 	"tag",
 	"language",

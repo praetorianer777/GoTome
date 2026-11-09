@@ -261,6 +261,7 @@ func serve() error {
 	scans.Events = events
 	duplicates.Events = events
 	matches.Events = events
+	duplicates.Checked = scans.QueueJoinTx
 	scans.OnExtracted = func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error {
 		if err := matches.EnqueueTx(ctx, tx, bookID); err != nil {
 			return err

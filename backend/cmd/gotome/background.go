@@ -69,6 +69,7 @@ func (b background) registrations() []registration {
 		worker(&search.RebuildIndexWorker{Index: b.searchIndex}),
 		worker(&fulltext.ApplyWorker{Service: b.textIndex}),
 		worker(&ingest.IndexFilesWorker{Service: b.scans}),
+		worker(&ingest.JoinWorker{Service: b.scans}),
 		worker(&dedupe.CheckWorker{Service: b.duplicates}),
 		worker(&dedupe.SignWorker{Service: b.duplicates}),
 		worker(&similar.EmbedWorker{Service: b.vectors}),

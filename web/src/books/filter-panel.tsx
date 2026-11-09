@@ -18,6 +18,7 @@ const SHOWN = 8;
 
 const FIELD_LABELS: Record<FacetField, MessageKey> = {
 	author: "filter.field.author",
+	narrator: "filter.field.narrator",
 	series: "filter.field.series",
 	tag: "filter.field.tag",
 	language: "filter.field.language",

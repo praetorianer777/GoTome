@@ -146,6 +146,20 @@ function LibraryRow({ library }: { library: Library }) {
 						<option value="private">{t("libraries.visibility.private")}</option>
 					</select>
 				</label>
+				<label className="flex items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.joinFormats}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { joinFormats: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.joinFormats")}</span>
+				</label>
 				{external && (
 					<label className="flex items-center gap-2">
 						<input

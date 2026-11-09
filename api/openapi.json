@@ -1049,7 +1049,7 @@
           {
             "name": "filter",
             "in": "query",
-            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
+            "description": "A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not.",
             "schema": {
               "type": "string"
             }
@@ -4576,6 +4576,49 @@
           }
         ],
         "x-permission": "index:rebuild"
+      }
+    },
+    "/joins/{joinId}/undo": {
+      "post": {
+        "operationId": "undoJoin",
+        "summary": "Split a book the library made of an ebook and its audiobook into the two again",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "joinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
       }
     },
     "/kobo/{token}/download/{fileId}": {
@@ -9549,6 +9592,12 @@
               "$ref": "#/components/schemas/BookFile"
             }
           },
+          "forms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookForm"
+            }
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -9557,6 +9606,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BookIdentifier"
+            }
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookJoin"
             }
           },
           "language": {
@@ -9580,6 +9635,12 @@
           },
           "reading": {
             "$ref": "#/components/schemas/ReadingState"
+          },
+          "recordings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookRecording"
+            }
           },
           "series": {
             "type": "string"
@@ -9614,7 +9675,10 @@
           "addedAt",
           "fields",
           "reading",
-          "placeholder"
+          "placeholder",
+          "recordings",
+          "forms",
+          "joins"
         ]
       },
       "BookFile": {
@@ -9678,6 +9742,29 @@
           "extractState"
         ]
       },
+      "BookForm": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kinds"
+        ]
+      },
       "BookIdentifier": {
         "type": "object",
         "properties": {
@@ -9697,6 +9784,27 @@
           "fromFile"
         ]
       },
+      "BookJoin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "joinedAt"
+        ]
+      },
       "BookList": {
         "type": "object",
         "properties": {
@@ -9712,6 +9820,29 @@
         },
         "required": [
           "books"
+        ]
+      },
+      "BookRecording": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "narrators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "narrators"
         ]
       },
       "BookSummary": {
@@ -11190,6 +11321,9 @@
               "$ref": "#/components/schemas/DuplicateEvidence"
             }
           },
+          "formats": {
+            "$ref": "#/components/schemas/PairFormats"
+          },
           "foundAt": {
             "type": "string",
             "format": "date-time"
@@ -11197,6 +11331,15 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "narrators": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           },
           "score": {
             "type": "number"
@@ -11359,6 +11502,7 @@
             "type": "string",
             "enum": [
               "author",
+              "narrator",
               "series",
               "tag",
               "language",
@@ -12299,6 +12443,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "joinFormats": {
+            "type": "boolean"
+          },
           "lastScan": {
             "$ref": "#/components/schemas/Scan"
           },
@@ -12334,6 +12481,7 @@
           "name",
           "mode",
           "writable",
+          "joinFormats",
           "visibility",
           "createdAt",
           "filesPending",
@@ -12909,6 +13057,22 @@
           }
         }
       },
+      "PairFormats": {
+        "type": "object",
+        "properties": {
+          "ebookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sameLibrary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ebookId",
+          "sameLibrary"
+        ]
+      },
       "PairStateRequest": {
         "type": "object",
         "properties": {
@@ -12917,7 +13081,9 @@
             "enum": [
               "edition",
               "translation",
-              "related"
+              "related",
+              "recording",
+              "format"
             ]
           },
           "state": {
@@ -14523,6 +14689,9 @@
       "UpdateLibraryRequest": {
         "type": "object",
         "properties": {
+          "joinFormats": {
+            "type": "boolean"
+          },
           "name": {
             "type": "string"
           },

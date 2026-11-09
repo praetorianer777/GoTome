@@ -792,7 +792,9 @@ describe("libraries", () => {
 			await screen.findByRole("listitem", { name: "Novels" }),
 		);
 		// Only a folder GOtome does not manage can be read-only.
-		expect(novels.queryByRole("checkbox")).not.toBeInTheDocument();
+		expect(
+			novels.queryByRole("checkbox", { name: "GOtome may change files here" }),
+		).not.toBeInTheDocument();
 		await person.clear(novels.getByLabelText("Name"));
 		await person.type(novels.getByLabelText("Name"), "Fiction");
 		await person.click(novels.getByRole("button", { name: "Rename" }));
@@ -5774,6 +5776,72 @@ describe("replacing and keeping both", () => {
 			"href",
 			"/books/book-1",
 		);
+	});
+
+	it("calls two recordings by other narrators that, offers no merge and links them", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		server.pairs[0]!.narrators = [["Juliet Stevenson"], ["Karen Savage"]];
+		renderApp("/duplicates");
+		const pair = within(
+			await screen.findByRole("listitem", {
+				name: "Emma is read by Juliet Stevenson, Emma (scan) by Karen Savage: the same book, another narrator.",
+			}),
+		);
+		expect(pair.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
+		await person.click(pair.getByRole("button", { name: "Link as other recordings" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body,
+			).toEqual({ state: "kept_both", relation: "recording" }),
+		);
+	});
+
+	it("offers to link an ebook and its audiobook that no merge can join", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		server.pairs[0]!.formats = { ebookId: "book-1", sameLibrary: false };
+		renderApp("/duplicates");
+		const pair = within(
+			await screen.findByRole("listitem", {
+				name: "Emma and Emma (scan) are the ebook and the audiobook of one book, in different libraries.",
+			}),
+		);
+		await person.click(pair.getByRole("button", { name: "Link as ebook and audiobook" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body,
+			).toEqual({ state: "kept_both", relation: "format" }),
+		);
+	});
+
+	it("splits a joined book again from its page", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { joins: [{ id: "join-1", title: "Emma (audio)", joinedAt: "2026-01-02T00:00:00Z" }] });
+		renderApp("/books/book-1");
+		expect(await screen.findByText("Emma (audio) was made one with this book.")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Split them again" }));
+		await waitFor(() =>
+			expect(server.requests.some((r) => r.path === "/joins/join-1/undo")).toBe(true),
+		);
+	});
+
+	it("lists the other recordings on a book's page with their narrators", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Audio")
+			.withBook("Emma", {
+				recordings: [{ id: "book-2", title: "Emma", narrators: ["Karen Savage"] }],
+			});
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Other recordings" }));
+		expect(section.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-2");
+		expect(section.getByText(/Read by Karen Savage/)).toBeInTheDocument();
 	});
 
 	it("says at the button why keeping one failed, and lets it be tried again", async () => {

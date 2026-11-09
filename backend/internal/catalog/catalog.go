@@ -191,6 +191,38 @@ type Book struct {
 	Reading Reading
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool
+	// Recordings are the book's other recordings the scope sees: the same
+	// audiobook read by other narrators, linked by a person.
+	Recordings []Recording
+	// Forms are the books linked as this book in another form, an ebook
+	// and its audiobook in other libraries, which the scope sees.
+	Forms []Form
+	// Joins are the books automatically made one with this, which can be
+	// split off again.
+	Joins []Join
+}
+
+// Form is a book linked as the same book in another form.
+type Form struct {
+	ID    uuid.UUID
+	Title string
+	// Kinds are the kinds of file it holds, ebook or audio.
+	Kinds []string
+}
+
+// Join is a book made one with another by the library's own joining, which
+// a person can take back.
+type Join struct {
+	ID        uuid.UUID
+	Title     string
+	CreatedAt time.Time
+}
+
+// Recording is another recording of a book: its book and who narrates it.
+type Recording struct {
+	ID        uuid.UUID
+	Title     string
+	Narrators []string
 }
 
 // Service reads and writes the catalogue.
@@ -449,6 +481,27 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 	}
 	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
 		return Book{}, err
+	}
+	recordings, err := q.ListBookRecordings(ctx, sqlc.ListBookRecordingsParams{BookID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Book{}, err
+	}
+	for _, r := range recordings {
+		book.Recordings = append(book.Recordings, Recording{ID: r.ID, Title: r.Title, Narrators: r.Narrators})
+	}
+	forms, err := q.ListBookForms(ctx, sqlc.ListBookFormsParams{BookID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Book{}, err
+	}
+	for _, f := range forms {
+		book.Forms = append(book.Forms, Form{ID: f.ID, Title: f.Title, Kinds: f.Kinds})
+	}
+	joins, err := q.ListBookJoins(ctx, id)
+	if err != nil {
+		return Book{}, err
+	}
+	for _, j := range joins {
+		book.Joins = append(book.Joins, Join{ID: j.ID, Title: j.Title, CreatedAt: j.CreatedAt})
 	}
 	files, err := q.ListBookFiles(ctx, id)
 	if err != nil {

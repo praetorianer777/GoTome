@@ -68,6 +68,10 @@ type Service struct {
 	// Texts reads a file's chunk texts again, for signing it anew: no copy
 	// of them is kept (ingest.Service.FileTexts).
 	Texts func(ctx context.Context, fileID uuid.UUID) ([]string, error)
+	// Checked, when set, runs in the transaction of a book's check: what
+	// the pairs it found allow, such as joining an ebook and its audiobook,
+	// is queued there.
+	Checked func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
 }
 
 // NewService returns the Service on the pool; Queue is set once the runner
@@ -133,7 +137,13 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		if err := q.RefreshPairScores(ctx, bookID); err != nil {
 			return err
 		}
-		return s.newPairsTx(ctx, tx, bookID, others)
+		if err := s.newPairsTx(ctx, tx, bookID, others); err != nil {
+			return err
+		}
+		if s.Checked != nil && len(found) > 0 {
+			return s.Checked(ctx, tx, bookID)
+		}
+		return nil
 	})
 }
 
@@ -210,6 +220,20 @@ type Pair struct {
 	FoundAt   time.Time
 	Books     []catalog.Summary
 	Evidence  []Evidence
+	// Narrators are, when both books are audiobooks read by different
+	// people, the narrators of each in the order of Books: the same book
+	// recorded twice, not a copy. Nil otherwise.
+	Narrators [][]string
+	// Formats is set when one book has only ebook files and the other only
+	// audio files: the pair is an ebook and its audiobook.
+	Formats *Formats
+}
+
+// Formats says which of a pair's books is the ebook, and whether the two
+// are in one library, where a merge can join them.
+type Formats struct {
+	EbookBook   uuid.UUID
+	SameLibrary bool
 }
 
 // MaxPage is the most pairs a page holds.
@@ -280,6 +304,22 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 	for _, e := range evidence {
 		byPair[e.PairID] = append(byPair[e.PairID], Evidence{Kind: e.Kind, Detail: e.Detail, Score: e.Score})
 	}
+	recordings, err := q.ListRecordingPairs(ctx, ids)
+	if err != nil {
+		return nil, false, err
+	}
+	narrators := map[uuid.UUID][][]string{}
+	for _, r := range recordings {
+		narrators[r.PairID] = [][]string{r.NarratorsA, r.NarratorsB}
+	}
+	formatPairs, err := q.ListFormatPairs(ctx, ids)
+	if err != nil {
+		return nil, false, err
+	}
+	formats := map[uuid.UUID]*Formats{}
+	for _, r := range formatPairs {
+		formats[r.PairID] = &Formats{EbookBook: r.EbookBook, SameLibrary: r.SameLibrary}
+	}
 	out := make([]Pair, 0, len(rows))
 	for _, r := range rows {
 		a, okA := byID[r.BookA]
@@ -289,7 +329,7 @@ func (s *Service) List(ctx context.Context, scope library.Scope, lq ListQuery) (
 		}
 		out = append(out, Pair{
 			ID: r.ID, State: r.State, Score: r.Score, Contained: r.Contained, FoundAt: r.FoundAt,
-			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID],
+			Books: []catalog.Summary{a, b}, Evidence: byPair[r.ID], Narrators: narrators[r.ID], Formats: formats[r.ID],
 		})
 	}
 	return out, more, nil
@@ -304,14 +344,22 @@ var ErrNotFound = errors.New("no such pair")
 var ErrState = errors.New("a pair is kept both or open")
 
 // Relations a person may record between two books kept both.
-var Relations = []string{"edition", "translation", "related"}
+var Relations = []string{"edition", "translation", "related", RelationRecording, RelationFormat}
+
+// RelationFormat links the same book in another form, an ebook and an
+// audiobook that cannot be merged because they are in different libraries.
+const RelationFormat = "format"
+
+// RelationRecording links two recordings of one audiobook by other
+// narrators.
+const RelationRecording = "recording"
 
 // ErrRelation is a relation that is not one of Relations.
 var ErrRelation = errors.New("no such relation")
 
 // SetState records what a person decided about a pair of which they see
 // both books: that both books stay (kept_both), as another edition, a
-// translation or a related book when relation names one, or that it is
+// translation, another recording or a related book when relation names one, or that it is
 // open again. A pair kept both stays so when it is found again.
 func (s *Service) SetState(ctx context.Context, scope library.Scope, id uuid.UUID, state, relation string) error {
 	if state != StateKeptBoth && state != StateOpen {
