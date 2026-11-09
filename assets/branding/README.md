@@ -6,7 +6,7 @@ binary `gotome`, the Go module path, `GOTOME_*` variables, the repository URL.
 | File | Size | Use |
 |---|---|---|
 | `banner.jpg` | 1024 × 1024 | Top of the repository README |
-| `artwork.jpg` | 1024 × 1054 | Illustration for the web app's login and setup pages |
+| `artwork.jpg` | 1024 × 1054 | Earlier illustration for the login and setup pages; the hero replaced it there |
 | `logo.jpg` | 1024 × 1051 | Logo with wordmark |
 | `icon.png` | 800 × 800 | The logo's mark alone, square; source for the favicon and app icons |
 | `hero.jpg`, `hero-light.jpg` | 1584 × 672 | Home page hero, night and day (gopher at the left, calm space at the right) |

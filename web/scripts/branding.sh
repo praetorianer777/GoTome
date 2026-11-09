@@ -32,7 +32,7 @@ magick "$src/artwork.jpg" -resize 640x -strip -quality 82 "$assets/artwork.webp"
 # day one washed with parchment, so that, with the panels 90 % opaque on top,
 # the text on them keeps its contrast (docs/design.md).
 magick "$src/backdrop.jpg" -resize 1280x -blur 0x3 -evaluate multiply 0.8 -strip -quality 55 "$assets/backdrop.webp"
-magick "$src/backdrop-light.jpg" -resize 1280x -blur 0x3 -fill '#faf6ec' -colorize 55% -strip -quality 55 "$assets/backdrop-light.webp"
+magick "$src/backdrop-light.jpg" -resize 1280x -blur 0x3 -fill '#faf6ec' -colorize 20% -strip -quality 55 "$assets/backdrop-light.webp"
 
 # The hero of the home page, at most 1152 px wide and sharp at 1.2 times that.
 magick "$src/hero.jpg" -resize 1400x -strip -quality 72 "$assets/hero.webp"

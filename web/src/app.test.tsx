@@ -179,12 +179,15 @@ describe("a fresh installation", () => {
 		);
 	});
 
-	it("shows the artwork without shifting the page when it loads", async () => {
+	it("names the app as text beside the hero, in a frame of fixed height", async () => {
 		renderApp("/setup");
-		const artwork = await screen.findByRole("img", { name: "GOtome" });
-		// The size is reserved up front; without it the form would jump.
-		expect(artwork).toHaveAttribute("width", "640");
-		expect(artwork).toHaveAttribute("height", "659");
+		await screen.findByRole("heading", { name: /Welcome/ });
+		const name = await screen.findByText(
+			(_, el) => el?.tagName === "SPAN" && el.textContent === "GOtome",
+		);
+		// The art is a background of a box that has its height, so the form
+		// does not jump when it loads.
+		expect(name.closest(".hero-art")).toHaveClass("h-40");
 	});
 
 	it("sends the sign-in page to setup", async () => {

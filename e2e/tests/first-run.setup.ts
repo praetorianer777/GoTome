@@ -26,7 +26,7 @@ test("the first account is created through the setup page", {
 	await expect(
 		page.getByRole("heading", { name: "Welcome to GOtome" }),
 	).toBeVisible();
-	await expect(page.getByRole("img", { name: "GOtome" })).toBeVisible();
+	await expect(page.locator("main").getByText("GOtome", { exact: true })).toBeVisible();
 
 	await page.getByLabel("User name").fill(ADMIN.username);
 	await page.getByLabel("Password").fill(ADMIN.password);

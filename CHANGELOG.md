@@ -24,7 +24,8 @@ What changes for someone who runs or uses GOtome. The format follows
   medium badges on covers are the new round badges, and covers lift with a
   soft glow under the pointer in the dark theme. Nothing moves with
   "reduce motion" set; panels are opaque with "reduce transparency" and on
-  phones.
+  phones. The sign-in and setup pages open with the gopher reading in its
+  library, by night or by day with the colours.
 
 ## [0.11.0] - 2026-11-09
 

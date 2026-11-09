@@ -100,7 +100,7 @@ body {
 	@media (min-width: 64rem) {
 		@supports (backdrop-filter: blur(1px)) {
 			@media (prefers-reduced-transparency: no-preference) {
-				@apply bg-white/82 dark:bg-slate-900/78;
+				@apply bg-white/74 dark:bg-slate-900/78;
 				backdrop-filter: blur(14px) saturate(120%);
 			}
 		}
@@ -206,5 +206,16 @@ h1 {
 	to {
 		opacity: 0.9;
 		transform: translate(var(--x), var(--y)) scale(1) rotate(160deg);
+	}
+}
+
+/* The home art of the sign-in and setup pages: the library by day or at
+   night. As a background it is the theme's only download. */
+.hero-art {
+	background-image: url("../assets/hero-light.webp");
+	background-size: cover;
+	background-position: left center;
+	@variant dark {
+		background-image: url("../assets/hero.webp");
 	}
 }

@@ -99,9 +99,9 @@ it is used.
 The **backdrop** is an image in both themes (`web/src/assets/backdrop.webp`,
 the library at night, and `backdrop-light.webp`, the library by day, made by
 `web/scripts/branding.sh`): blurred a little, the night one dimmed to 80 %
-and given a faint ink veil and amber corners, the day one washed with
-parchment. It shows through the panels, which are glass on a desktop:
-the panel colour at **78 % (dark) or 82 % (light)** with
+and given a faint ink veil and amber corners, the day one lightened by a fifth
+toward parchment. It shows through the panels, which are glass on a desktop:
+the panel colour at **78 % (dark) or 74 % (light)** with
 `backdrop-filter: blur(14px) saturate(120%)`. Below 1024 px, where a blur
 under a page that scrolls the whole screen is redrawn every frame, and
 where the browser cannot blur (`@supports`) or the person asks for less
@@ -114,23 +114,23 @@ How the opacity was chosen: every pair is checked on the worst spot, not the
 average. Dark: the brightest pixel of the unblurred backdrop (rgb 210 186
 131, a lamp) under the ink veil and the strongest amber corner is rgb 158 134
 96; the panel over it is rgb 52 57 70. Light: the darkest pixel of the day
-backdrop (rgb 212 204 193) under the white panel is rgb 247 246 244. On those:
+backdrop (rgb 185 178 164) under the white panel is rgb 237 235 231. On those:
 
 | Dark pair on the panel | Ratio | Light pair on the panel | Ratio |
 |---|---|---|---|
-| slate-100 text | 9.5 | slate-900 text | 14.3 |
-| slate-300 | 6.1 | slate-600 muted | 5.6 |
-| slate-400 muted (and 500) | 5.2 | slate-500 | 5.1 |
-| cream (titles) | 7.1 | brand-strong | 5.2 |
-| brand cyan | 5.3 | candle-strong | 6.1 |
-| candle amber | 5.0 | gold-strong | 5.9 |
+| slate-100 text | 9.5 | slate-900 text | 13.0 |
+| slate-300 | 6.1 | slate-600 muted | 5.0 |
+| slate-400 muted (and 500) | 5.2 | slate-500 | 4.6 |
+| cream (titles) | 7.1 | brand-strong | 4.7 |
+| brand cyan | 5.3 | candle-strong | 5.5 |
+| candle amber | 5.0 | gold-strong | 5.3 |
 
 A card (slate-800 at 60 %) on that panel gives 5.2 for slate-400 and 9.5 for
 slate-100. The **boundary of a control** (field, select, outline button; WCAG
 1.4.11, 3:1) is its own token, `--control-border` (`styles/index.css`, which
 takes the place of the neutral steps 300 and 600 on any `border-slate-300` and
-`dark:border-slate-600`): `#8a7a5e` in the light theme, 3.9:1 on the worst
-panel and 4.2:1 on a white field; `#7a8aa3` in the dark one, 3.3:1 on the
+`dark:border-slate-600`): `#8a7a5e` in the light theme, 3.5:1 on the worst
+panel and 4.9:1 on a white field; `#7a8aa3` in the dark one, 3.3:1 on the
 worst panel and 4.4:1 on the field's navy. Card and panel hairlines stay
 subtle, as they are decoration. Native checkboxes and radios are drawn by
 the browser in the page's `color-scheme`. The focus ring (brand-strong
@@ -244,10 +244,9 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
   read.
 - **Dialogs** (`components/dialog.tsx`) and popovers (notifications, the
   account menu) are panels with a shadow.
-- **Home page** (#380): a hero banner, then Recent additions and
-  Recommended for you as rows of cover cards (a scrolling row on a phone).
-  The hero is art: it carries the page's h1 as text beside it, not inside
-  the image.
+- **Sign-in and setup**: the hero (night or day by theme) in a rounded
+  frame, the name as text in a panel at its right, then the form on a panel.
+  The art is decoration; on a phone it shows the gopher only.
 
 ## Where the art is used (#381)
 
@@ -262,7 +261,7 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
 | `gopher-reading` | The loading placeholder of a whole page |
 | `gopher-cheer` | The toast when a book is marked finished (`Celebration`), with stars |
 | `badge-ebook`, `-audio`, `-both` | The medium on a cover (`MediumBadge`) |
-| `hero`, `hero-light` | The home page (#380) |
+| `hero`, `hero-light` | The sign-in and setup pages, behind the name as text |
 
 ## Rules for every page
 
