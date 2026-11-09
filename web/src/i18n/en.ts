@@ -180,7 +180,7 @@ export const en = {
 	"login.submit": "Sign in",
 	"login.submitting": "Signing in…",
 
-	"strip.title": "Reading and new books",
+	"strip.title": "Reading and new arrivals",
 	"strip.continue": "Continue reading",
 	"strip.new": "New in the library",
 	"strip.all": "All, newest first",

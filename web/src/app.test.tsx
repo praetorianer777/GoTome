@@ -177,7 +177,7 @@ describe("the strip over the library", () => {
 		reader();
 		renderApp("/");
 		const strip = within(
-			await screen.findByRole("region", { name: "Reading and new books" }),
+			await screen.findByRole("region", { name: "Reading and new arrivals" }),
 		);
 		const going = within(
 			await strip.findByRole("region", { name: "Continue reading" }),
@@ -201,7 +201,7 @@ describe("the strip over the library", () => {
 		reader();
 		const { unmount } = renderApp("/");
 		const toggle = await screen.findByRole("button", {
-			name: "Reading and new books",
+			name: "Reading and new arrivals",
 		});
 		expect(toggle).toHaveAttribute("aria-expanded", "true");
 		await person.click(toggle);
@@ -211,13 +211,13 @@ describe("the strip over the library", () => {
 
 		const again = renderApp("/");
 		expect(
-			await screen.findByRole("button", { name: "Reading and new books" }),
+			await screen.findByRole("button", { name: "Reading and new arrivals" }),
 		).toHaveAttribute("aria-expanded", "false");
 		again.unmount();
 		renderApp("/?status=unread");
 		await screen.findByRole("region", { name: "Books" });
 		expect(
-			screen.queryByRole("button", { name: "Reading and new books" }),
+			screen.queryByRole("button", { name: "Reading and new arrivals" }),
 		).not.toBeInTheDocument();
 	});
 
@@ -229,7 +229,7 @@ describe("the strip over the library", () => {
 		renderApp("/");
 		expect(await screen.findByText("No books yet")).toBeInTheDocument();
 		expect(
-			screen.queryByRole("region", { name: "Reading and new books" }),
+			screen.queryByRole("region", { name: "Reading and new arrivals" }),
 		).not.toBeInTheDocument();
 	});
 });

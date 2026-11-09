@@ -24,12 +24,12 @@ test("the strip over the library lists a book in progress and the new ones, fold
 	).toBe(true);
 
 	await page.goto(`/?library=${id}`);
-	const toggle = page.getByRole("button", { name: "Reading and new books" });
+	const toggle = page.getByRole("button", { name: "Reading and new arrivals" });
 	// A phone starts with it folded, to keep the grid in the first screen.
 	if ((await toggle.getAttribute("aria-expanded")) === "false") {
 		await toggle.click();
 	}
-	const strip = page.getByRole("region", { name: "Reading and new books" });
+	const strip = page.getByRole("region", { name: "Reading and new arrivals" });
 	const continuing = strip.getByRole("region", { name: "Continue reading" });
 	await expect(continuing.getByRole("link", { name: new RegExp(going) })).toContainText(
 		"30 % read",
@@ -47,6 +47,9 @@ test("the strip over the library lists a book in progress and the new ones, fold
 	await expect(toggle).toHaveAttribute("aria-expanded", "false");
 	await toggle.click();
 
-	await continuing.getByRole("link", { name: new RegExp(going) }).click();
-	await expect(page).toHaveURL(new RegExp(`/books/${books[going]}/read/${fileId}`));
+	// The link leads to the place in the reader; the reader itself is the
+	// subject of its own tests (the file here is not a real PDF).
+	await expect(
+		continuing.getByRole("link", { name: new RegExp(going) }),
+	).toHaveAttribute("href", `/books/${books[going]}/read/${fileId}`);
 });

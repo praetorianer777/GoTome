@@ -190,7 +190,7 @@ export const de: Record<MessageKey, string> = {
 	"login.submit": "Anmelden",
 	"login.submitting": "Anmeldung läuft …",
 
-	"strip.title": "Lesen und Neues",
+	"strip.title": "Lesen und Neuzugänge",
 	"strip.continue": "Weiterlesen",
 	"strip.new": "Neu in der Bibliothek",
 	"strip.all": "Alle, neueste zuerst",
