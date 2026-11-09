@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `gotome perf-check` times the main views on your own library and prints a
+  table that names none of its books, with the memory in use. It only reads.
+
 ## [0.12.0] - 2026-11-09
 
 ### Added

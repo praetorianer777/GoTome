@@ -204,3 +204,39 @@ func TestWarningsAreLoggedWhenTheyChangeAndHourly(t *testing.T) {
 		}
 	}
 }
+
+func TestAContainersWorkingSetLeavesOutTheIdleCache(t *testing.T) {
+	stat := "anon 100\nfile 900\ninactive_file 600\nactive_file 300\n"
+	if got := workingSet("1000\n", stat); got != 400 {
+		t.Errorf("cgroup v2: %d, want 400", got)
+	}
+	if got := workingSet("1000", "total_inactive_file 250\n"); got != 750 {
+		t.Errorf("cgroup v1: %d, want 750", got)
+	}
+	if got := workingSet("1000", ""); got != 1000 {
+		t.Errorf("without a stat: %d, want 1000", got)
+	}
+	if got := workingSet("", stat); got != 0 {
+		t.Errorf("without a figure: %d, want 0", got)
+	}
+}
+
+func TestTheServeProcessIsFoundByItsCommandLine(t *testing.T) {
+	root := t.TempDir()
+	process := func(pid, cmdline, status string) {
+		dir := filepath.Join(root, pid)
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		os.WriteFile(filepath.Join(dir, "cmdline"), []byte(cmdline), 0o644)
+		os.WriteFile(filepath.Join(dir, "status"), []byte(status), 0o644)
+	}
+	process("7", "/usr/local/bin/gotome\x00perf-check\x00", "VmRSS:\t999 kB\n")
+	process("8", "/usr/local/bin/gotome\x00serve\x00", "Name:\tgotome\nVmRSS:\t   2048 kB\n")
+	if got := serveProcessBytes(root); got != 2048<<10 {
+		t.Errorf("serve process: %d, want %d", got, 2048<<10)
+	}
+	if got := serveProcessBytes(t.TempDir()); got != 0 {
+		t.Errorf("no process: %d", got)
+	}
+}

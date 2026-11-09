@@ -480,3 +480,6 @@ func (s *Service) changes(ctx context.Context, scope library.Scope, kind string,
 	}
 	return out, nil
 }
+
+// PlaceholderAuthors are the keys of what tools write in place of an author.
+func PlaceholderAuthors() []string { return slices.Clone(placeholderAuthors) }

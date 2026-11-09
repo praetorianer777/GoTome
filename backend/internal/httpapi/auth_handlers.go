@@ -156,6 +156,12 @@ func (s *Server) getMe(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// WithUser is ctx with user signed in, for a caller that serves requests in
+// its own process, on a Server without Auth, and so writes no session.
+func WithUser(ctx context.Context, user auth.User) context.Context {
+	return context.WithValue(ctx, userKey, &user)
+}
+
 // UserFrom is the signed-in user of the request, or nil.
 func UserFrom(ctx context.Context) *auth.User {
 	user, _ := ctx.Value(userKey).(*auth.User)

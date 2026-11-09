@@ -91,6 +91,48 @@ in the app (#265), whose timings at full size are those of
 chunks of 3.19 million, snippets aside). Its files are not there, so its hits
 come without snippets, which a real search reads from the files.
 
+## On a real library
+
+`gotome perf-check` times the same views on an installation's own library,
+which a generated one cannot stand in for. It runs inside the app container,
+against the running installation's database and full-text index:
+
+```
+docker compose exec app gotome perf-check
+```
+
+It asks the views as one person, the first administrator unless `-user`
+names another, and only reads: the database refuses every write on its
+connections, and no job is queued. It is light by design: one request to
+warm up, then the best of three per view, one view at a time with
+`-pause` (half a second) between, and `-timeout` (10 seconds) for each
+request; the first view that fails ends the run, naming the view and the
+status. `-skip "search by description,jobs"` leaves views out, and
+`search by description` needs the embedding model to run, here or on a
+server. The views marked in the last column read every book, as in the table
+above. The views are the list the scale test asks (`internal/perf`); one the
+library has nothing to ask about, such as a series page in a library with no
+series, says so. The search by description does not use passage vectors.
+
+What it asks about is picked from the library and never printed: the author,
+series, tag and language with the most books, the commonest word of the
+titles for the quick search, and for the full-text search a common word and
+a common two-word phrase from the text of ten books (the titles' words if
+their files cannot be read).
+
+The output is a Markdown table you can paste anywhere: the counts of books,
+files, authors, series, chunks (the planner's estimate) and vectors; the CPUs
+and memory the container sees; PostgreSQL's version and memory settings;
+whether embedding runs and which model; and the memory in use before and
+after the views, of the app process, the app container and, if the database
+role may read its files, the database container (`docker stats`' figure:
+without file cache the kernel gives back). It names no title, author,
+series, tag, word or ID of the library, and no error does; a test holds the
+output to that.
+
+The owner's library, about 48,500 books on a 5 GB LXC container without a GPU,
+is yet to be measured; its table goes here.
+
 ## What made the difference
 
 Before #75 the library list read and sorted every book for each page (78 ms),

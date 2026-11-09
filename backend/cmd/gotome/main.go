@@ -111,6 +111,7 @@ Commands:
   similar-check  Measure the similar books of a sample of the library (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
   match-check    Measure how often a lookup by title and author finds the book (-h for options)
+  perf-check     Time the main views on this installation's library, naming nothing of it (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
 `
@@ -150,6 +151,8 @@ func run(args []string) error {
 		return genreCheck(args[1:])
 	case "match-check":
 		return matchCheck(args[1:])
+	case "perf-check":
+		return perfCheck(args[1:])
 	case "openapi":
 		return writeOpenAPI(args[1:])
 	case "version":
