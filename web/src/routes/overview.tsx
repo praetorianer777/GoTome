@@ -151,7 +151,7 @@ function Work({ library }: { library: string }) {
 					<StepRow label="overview.files" step={w.files} />
 					{w.filesFailed > 0 && (
 						<li className="-mt-3 text-sm">
-							<Link to="/jobs" className="underline">
+							<Link to="/jobs" className="inline-flex min-h-6 items-center underline">
 								{t("overview.filesFailed", {
 									count: formatCount(w.filesFailed),
 								})}

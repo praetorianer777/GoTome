@@ -183,7 +183,7 @@ export function Devices({ username }: { username: string }) {
 					error={errors.name}
 					required
 				/>
-				<SubmitButton pending={create.isPending}>
+				<SubmitButton pending={create.isPending} kind="secondary">
 					{t("devices.add")}
 				</SubmitButton>
 			</form>

@@ -1,6 +1,7 @@
 import { type InputHTMLAttributes, type ReactNode, useId } from "react";
 import { ApiError } from "@/api/client";
 import { locale, type MessageKey, t } from "@/i18n";
+import { button } from "@/components/ui";
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 	label: string;
@@ -213,18 +214,25 @@ export function ChoicesField({
 	);
 }
 
+/** A page with several forms has one primary button; the others are secondary. */
 export function SubmitButton({
 	pending,
 	children,
+	kind = "primary",
 }: {
 	pending: boolean;
 	children: ReactNode;
+	kind?: "primary" | "secondary";
 }) {
 	return (
 		<button
 			type="submit"
 			disabled={pending}
-			className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
+			className={
+				kind === "primary"
+					? "rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
+					: button("secondary", "md")
+			}
 		>
 			{children}
 		</button>

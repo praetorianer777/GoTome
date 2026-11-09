@@ -357,7 +357,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 						<li key={section.id}>
 							<a
 								href={`#settings-${section.id}`}
-								className="text-brand-strong underline-offset-2 hover:underline dark:text-brand"
+								className="inline-flex min-h-6 items-center text-brand-strong underline-offset-2 hover:underline dark:text-brand"
 							>
 								{t(section.title)}
 							</a>
@@ -376,7 +376,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 						<h2 id={`settings-${section.id}-title`} className="text-lg font-medium">
 							{t(section.title)}
 						</h2>
-						<div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+						<div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
 							{section.settings.map(field)}
 						</div>
 					</section>

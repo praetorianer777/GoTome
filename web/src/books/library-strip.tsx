@@ -111,7 +111,7 @@ export function LibraryStrip({ library }: { library?: string }) {
 				aria-expanded={!folded}
 				aria-controls="library-strip"
 				onClick={toggle}
-				className="flex items-center gap-2 rounded-lg text-left text-sm font-medium"
+				className="flex min-h-6 items-center gap-2 rounded-lg text-left text-sm font-medium"
 			>
 				<Icon
 					name="chevron"

@@ -63,7 +63,7 @@ export function VersionFooter({
 						href={`${RELEASES}${build.version}`}
 						target="_blank"
 						rel="noreferrer"
-						className="hover:underline"
+						className="inline-flex min-h-6 items-center hover:underline"
 					>
 						{t("version.release", { version: build.version })}
 					</a>

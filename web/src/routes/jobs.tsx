@@ -125,7 +125,7 @@ export function Jobs() {
 										<Link
 											to="/books/$bookId"
 											params={{ bookId: job.bookId }}
-											className="hover:underline"
+											className="inline-flex min-h-6 items-center hover:underline"
 										>
 											{describe(job)}
 										</Link>

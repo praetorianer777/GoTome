@@ -222,7 +222,7 @@ export function PdfReader({
 				<Link
 					to="/books/$bookId"
 					params={{ bookId }}
-					className="text-brand-strong underline underline-offset-4 dark:text-brand"
+					className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
 				>
 					{t("reader.back")}
 				</Link>

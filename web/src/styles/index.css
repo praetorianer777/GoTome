@@ -141,6 +141,13 @@ input[type="range"] {
 	@apply accent-brand-strong dark:accent-brand;
 }
 
+/* A choice with a long option is as wide as that option unless told it may
+   shrink, which pushed the page wider than a phone at 320 px (#378). */
+select {
+	min-width: 0;
+	max-width: 100%;
+}
+
 h1,
 h2 {
 	font-family: var(--font-serif);

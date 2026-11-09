@@ -126,7 +126,7 @@ function Waiting({ item }: { item: ReviewBook }) {
 					<Cover book={book} size="small" />
 				</div>
 				<div className="flex flex-col gap-1">
-					<h2 className="text-xl font-semibold">
+					<h2 className="text-lg font-semibold">
 						<Link
 							to="/books/$bookId"
 							params={{ bookId: book.id }}

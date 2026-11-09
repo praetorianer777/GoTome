@@ -105,7 +105,7 @@ export function ScanStatus({
 							>
 								{t("scan.rereadFailed")}
 							</button>
-							<Link to="/jobs" className="text-brand-strong underline underline-offset-4 dark:text-brand">
+							<Link to="/jobs" className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand">
 								{t("scan.toJobs")}
 							</Link>
 						</>

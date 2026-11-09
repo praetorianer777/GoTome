@@ -182,7 +182,9 @@ text's colour.
   deliberate ones: the book title (`text-3xl`, `sm:text-4xl`, one per page),
   the 404 heading (`text-3xl`), the stars of a rating
   (`text-xl`), and the figures of the overview (`text-xl`). The review
-  heading's `text-xl` is not one of them: it becomes `text-lg`.
+  heading and the book's subtitle are `text-lg`. `web/src/design-lint.test.ts`
+  fails for any other size, for an arbitrary size (`text-[13px]`), and lists
+  the files that hold an exception.
 - **Line length**: running text (descriptions, introductions, help, notes)
   is 45 to 75 characters a line: `max-w-prose` (65ch). `max-w-2xl` (about 85
   characters) is for forms and tables, never for a paragraph. Cards and
@@ -206,7 +208,13 @@ text's colour.
   field, the avatar, tabs' backgrounds and badges.
 - Content is at most `max-w-6xl` wide inside its panel; forms and text at
   most `max-w-2xl`, paragraphs at most `max-w-prose`.
-- A touch target is at least 24 by 24 pixels, and 44 by 44 on a phone.
+- A touch target is at least 24 by 24 pixels, and 44 by 44 on a phone. A
+  link or a text button of one line gets `inline-flex min-h-6 items-center`;
+  a link inside a sentence is exempt (WCAG 2.5.8).
+- No arbitrary values for spacing, type or a length in pixels
+  (`p-[13px]`); `design-lint.test.ts` lists the few that stay (a cover's
+  3-pixel corner, the 18-pixel icons of the sidebar). Grids, `calc()` heights
+  and `aspect-[2/3]` are layout, not steps, and are free.
 
 ## Layout and navigation
 
@@ -313,8 +321,27 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
 - **One primary button per view**, as above.
 - **Reading width**: running text is `max-w-prose`.
 - **Contrast**: every pair is AA, in both themes, over any backdrop.
-- Layout checks that enforce these are #378's; this document is what they
-  measure against.
+- **Reflow**: nothing is wider than the window at 320 pixels and at 200 %
+  zoom (a 640 pixel window). A choice with a long option may shrink
+  (`select` has `min-width: 0` and `max-width: 100%`); a grid that holds
+  forms is `grid-cols-1` before it is `md:grid-cols-2`.
+- **Text spacing** (WCAG 1.4.12): with a line height of 1.5, paragraphs
+  2 times the size, letters 0.12 and words 0.16 of the size, no text is cut
+  off and none lies over other text.
+- **Keyboard**: every control takes focus and shows where it is.
+- **Speed and stability** (lab, throttled: a CPU four times slower, 9 Mbit/s
+  and 60 ms): largest contentful paint 2.5 s, layout shift 0.1, and 200 ms from
+  an action (ticking a filter, opening a book, turning a page) to the next
+  frame. The first load (gzip and brotli) and the main chunk have byte limits.
+  The numbers are in `docs/performance.md`.
+- These are measured, not asked for: `web/src/design-lint.test.ts` (type
+  scale, spacing, arbitrary values), `e2e/tests/layout.spec.ts` (reflow, text
+  spacing, one primary button, targets, focus, on every main view in all four
+  projects), `e2e/tests/vitals.spec.ts` (Chromium and the phone),
+  `web/scripts/budget.mjs` (in `make check-web`) and `accessibility.spec.ts`
+  (axe, contrast of both themes, once installed). The helpers are in
+  `e2e/fixtures/quality.ts`; this document is what they measure against.
+  A rule that a page must break is waived in this document first.
 
 ## Phone, tablet, desktop
 
@@ -322,7 +349,10 @@ All three matter. Phone: one column, the drawer, the quick search across
 the top bar's second row, filters in a sheet, rows of cards that scroll
 sideways. Tablet: the phone's frame with the desktop's grids. Desktop: the
 tabs and the sidebar. Nothing on any page may be
-wider than the screen (`smoke.spec.ts` checks it on the phone).
+wider than the screen (`layout.spec.ts` checks it at 320 pixels on every
+main view). A primary button, one per view, is what `bg-brand-strong` marks;
+`layout.spec.ts` counts those in view. A page with several forms (the
+profile) makes their buttons secondary.
 
 ## Open for the owner
 

@@ -38,7 +38,7 @@ const ROLES: Record<string, MessageKey> = {
 const back = (
 	<Link
 		to="/"
-		className="self-start text-sm text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+		className="inline-flex min-h-6 items-center self-start text-sm text-brand-strong hover:underline underline-offset-4 dark:text-brand"
 	>
 		<span aria-hidden="true">← </span>
 		{t("book.back")}
@@ -175,7 +175,7 @@ function BookPage({ book }: { book: BookDetail }) {
 							{book.title}
 						</h1>
 						{book.subtitle && (
-							<p className="font-serif text-xl text-slate-600 dark:text-slate-400">
+							<p className="font-serif text-lg text-slate-600 dark:text-slate-400">
 								{book.subtitle}
 							</p>
 						)}
