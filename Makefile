@@ -16,3 +16,7 @@ test: ## The whole gate, exactly as CI and the push hook run it
 .PHONY: help
 help:
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | sort
+
+# The value of a make variable, for scripts and CI: make -s print-GOTOME_IMAGE
+print-%:
+	@echo '$($*)'
