@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Gopher, type Mood } from "@/components/gopher";
 import { t } from "@/i18n";
 
 /**
@@ -87,15 +88,19 @@ export function EmptyState({
 	children,
 	action,
 	level = 2,
+	mood = "sleep",
 }: {
 	title?: string;
 	children?: ReactNode;
 	action?: ReactNode;
 	level?: 2 | 3;
+	/** The gopher beside it: asleep where there is nothing yet, searching where nothing matched. */
+	mood?: Extract<Mood, "sleep" | "search" | "confused">;
 }) {
 	const Heading = level === 2 ? "h2" : "h3";
 	return (
-		<div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
+		<div className="rounded-xl border border-dashed border-[var(--color-slate-300)] px-6 py-12 text-center dark:border-slate-700">
+			<Gopher mood={mood} size={112} className="mx-auto mb-4" />
 			{title && <Heading className="text-lg font-medium">{title}</Heading>}
 			{children && (
 				<div className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">

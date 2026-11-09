@@ -1391,6 +1391,9 @@ export const de: Record<MessageKey, string> = {
 	"notFound.body": "Die Adresse ist vielleicht falsch geschrieben, oder die Seite ist umgezogen.",
 	"notFound.back": "Zurück zur Bibliothek",
 
+	"celebrate.title": "Ausgelesen!",
+	"celebrate.body": "Wieder ein Buch gelesen. Gut gemacht.",
+
 	"error.generic": "Etwas ist schiefgegangen. Bitte erneut versuchen.",
 	"error.unreachable":
 		"Der Server antwortet nicht. Bitte die Verbindung prüfen und erneut versuchen.",

@@ -16,6 +16,7 @@ import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
 import { GENRES, type Genre } from "@/books/genres";
 import type { BookSearch } from "@/books/book-browser";
 import { picksFrom } from "@/books/filters";
+import { Gopher } from "@/components/gopher";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { Book } from "@/routes/book";
@@ -80,7 +81,10 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,
 	errorComponent: RouteError,
 	pendingComponent: () => (
-		<p className="p-6 text-center text-slate-500">{t("loading")}</p>
+		<div className="panel mx-auto my-8 flex w-fit flex-col items-center gap-2 rounded-2xl px-8 py-6 text-center text-slate-600 dark:text-slate-400">
+			<Gopher mood="reading" size={72} className="motion-safe:animate-pulse" />
+			<p>{t("loading")}</p>
+		</div>
 	),
 });
 

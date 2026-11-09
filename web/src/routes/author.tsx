@@ -31,7 +31,7 @@ export function AuthorPage({
 	const author = useQuery(authorQuery(authorKey));
 	const a = author.data;
 	if (author.error instanceof ApiError && author.error.status === 404) {
-		return <EmptyState title={t("author.notFound")} />;
+		return <EmptyState mood="confused" title={t("author.notFound")} />;
 	}
 	if (!a) {
 		return (
@@ -64,7 +64,7 @@ export function AuthorPage({
 				sorts={SORTS}
 				defaultSort="series"
 				base={{ field: "person", op: "in", values: [a.key] }}
-				empty={<EmptyState title={t("author.notFound")} />}
+				empty={<EmptyState mood="confused" title={t("author.notFound")} />}
 			/>
 		</div>
 	);

@@ -19,7 +19,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { FormError } from "@/components/form";
-import { Loading } from "@/components/ui";
+import { EmptyState, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { librariesQuery } from "@/libraries/api";
 import { EBOOK_FORMATS, type ReaderSearch } from "@/routes/read";
@@ -190,9 +190,11 @@ export function SearchPage({
 						<Loading />
 					)}
 					{shown.isSuccess && (describing ? near : books).length === 0 && (
-						<p role="status" className="text-slate-600 dark:text-slate-400">
-							{t(describing ? "fulltext.describe.none" : "fulltext.none")}
-						</p>
+						<div role="status">
+							<EmptyState mood="search">
+								{t(describing ? "fulltext.describe.none" : "fulltext.none")}
+							</EmptyState>
+						</div>
 					)}
 					{describing && near.length > 0 && (
 						<ol className="flex flex-col gap-4">

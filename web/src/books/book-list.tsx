@@ -190,7 +190,7 @@ function GridCard({
 				<Cover
 					book={book}
 					size="small"
-					className={`transition duration-200 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 ${book.status === "reading" ? "shadow-candle" : ""}`}
+					className={`transition duration-200 group-hover:-translate-y-1 dark:group-hover:shadow-glow motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 ${book.status === "reading" ? "shadow-candle" : ""}`}
 				/>
 				<span className="line-clamp-2 font-medium leading-snug group-hover:text-brand-strong dark:group-hover:text-brand">
 					{book.title}

@@ -112,7 +112,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 			<FormError error={libraries.error} />
 
 			{libraries.isSuccess && managed.length === 0 && (
-				<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
+				<div className="rounded-lg border border-dashed border-[var(--color-slate-300)] px-6 py-10 text-center dark:border-slate-700">
 					<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
 						{t(
 							can(user, "storage:manage")
@@ -162,7 +162,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 						onDragLeave={() => setDragging(false)}
 						onDrop={drop}
 						data-dragging={dragging || undefined}
-						className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-slate-300 px-6 py-12 text-center data-dragging:border-sky-600 data-dragging:bg-sky-50 dark:border-slate-700 dark:data-dragging:bg-sky-950"
+						className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-[var(--color-slate-300)] px-6 py-12 text-center data-dragging:border-sky-600 data-dragging:bg-sky-50 dark:border-slate-700 dark:data-dragging:bg-sky-950"
 					>
 						<p className="text-lg">
 							{t("upload.drop", { library: target.name })}
