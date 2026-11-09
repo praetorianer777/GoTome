@@ -14,6 +14,7 @@ import {
 	progressQuery,
 	saveProgress,
 } from "@/books/progress";
+import { saveQueue, takeNext } from "@/player/queue";
 import {
 	chapterAt,
 	partAt,
@@ -45,8 +46,8 @@ export interface PlayerState {
 
 export interface Player {
 	state: PlayerState;
-	/** Loads a book at its saved place, without playing it yet. */
-	open(bookId: string): void;
+	/** Loads a book at its saved place, and plays it when asked to. */
+	open(bookId: string, options?: { play?: boolean }): void;
 	play(): void;
 	pause(): void;
 	toggle(): void;
@@ -193,12 +194,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 			);
 		};
 		actions.current = {
-			open(bookId) {
+			open(bookId, options) {
 				if (current.current.bookId === bookId) return;
+				const { sleep } = current.current;
 				if (current.current.bookId) actions.current.close();
 				update({
 					...INITIAL,
 					rate: current.current.rate,
+					// A chapter of the book before means nothing in this one.
+					sleep: sleep.kind === "until" ? sleep : INITIAL.sleep,
 					bookId,
 					loading: true,
 				});
@@ -227,7 +231,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 							unsupported,
 							positionMs: start,
 						});
-						if (unsupported.length === 0) load(start, false);
+						if (unsupported.length === 0) load(start, options?.play ?? false);
 					},
 					(err: unknown) => {
 						if (current.current.bookId !== bookId) return;
@@ -357,8 +361,38 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				loadRef.current(next.startMs, true);
 				return;
 			}
-			if (tl) update({ positionMs: tl.durationMs, playing: false });
+			if (!tl) return;
+			update({ positionMs: tl.durationMs, playing: false });
 			saveRef.current();
+			const { sleep, bookId } = current.current;
+			if (sleep.kind === "chapter") {
+				update({ sleep: { kind: "off" } });
+				return;
+			}
+			if (sleep.kind === "until" && Date.now() >= sleep.at) {
+				update({ sleep: { kind: "off" } });
+				return;
+			}
+			void playNext(bookId);
+		};
+		const playNext = async (finished: string | undefined) => {
+			let next: string | undefined;
+			try {
+				next = await takeNext(queryClient);
+			} catch {
+				// No queue to be had: the book ends where it ends.
+				return;
+			}
+			if (!next) return;
+			if (current.current.bookId !== finished) {
+				// The person moved on meanwhile; the book stays next.
+				const waiting = queryClient.getQueryData<string[]>(["queue"]) ?? [];
+				void saveQueue(queryClient, [next, ...waiting]).catch(() => {});
+				return;
+			}
+			// Opening the book that just ended starts it over.
+			if (next === finished) actions.current.close();
+			actions.current.open(next, { play: true });
 		};
 		const onPlay = () => update({ playing: true });
 		const onPause = () => {
@@ -395,7 +429,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 			el.removeEventListener("error", onError);
 			window.removeEventListener("pagehide", onHide);
 		};
-	}, []);
+	}, [queryClient]);
 
 	useEffect(() => {
 		if (!state.playing) return;

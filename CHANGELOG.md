@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A queue for audiobooks: "Play next" and "Add to queue" on a book's page,
+  "Add to the queue" for books selected in a list and "Queue the rest of
+  this series" on a series' page. The next book starts by itself when one
+  ends, from where you left it. The queue is yours, kept on the server, so
+  it is the same in every browser, and is listed under the player, where you
+  can reorder or clear it.
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the
   library, reading status and progress, upload, edit metadata, administer)

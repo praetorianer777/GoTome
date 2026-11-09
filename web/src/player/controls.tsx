@@ -8,6 +8,7 @@ import { formatTime } from "@/lib/format";
 import { type KeyBinding, useKeys } from "@/lib/keys";
 import { chapterStep, type Sleep, usePlayer } from "@/player/player";
 import { chapterAt, formatClock } from "@/player/timeline";
+import { UpNext } from "@/player/up-next";
 
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800";
@@ -303,6 +304,7 @@ export function Listen({ bookId }: { bookId: string }) {
 					</div>
 				</div>
 			)}
+			<UpNext />
 		</div>
 	);
 }

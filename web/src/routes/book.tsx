@@ -18,6 +18,7 @@ import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
+import { QueueButtons } from "@/player/up-next";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
 import { FormError } from "@/components/form";
@@ -205,6 +206,9 @@ function BookPage({ book }: { book: BookDetail }) {
 								</Link>
 							)}
 							{listenable && <ListenButton bookId={book.id} />}
+							{listenable && personal && (
+								<QueueButtons bookId={book.id} className={button("secondary", "md")} />
+							)}
 							{can(user, "metadata:edit") && (
 								<>
 									<Link

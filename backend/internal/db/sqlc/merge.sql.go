@@ -308,6 +308,27 @@ func (q *Queries) MergeDeliveries(ctx context.Context, arg MergeDeliveriesParams
 	return err
 }
 
+const mergePlayQueue = `-- name: MergePlayQueue :exec
+WITH moved AS (
+    DELETE FROM play_queue x WHERE x.book_id = $2
+    RETURNING user_id, position)
+INSERT INTO play_queue (user_id, book_id, position)
+SELECT user_id, $1, position FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type MergePlayQueueParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's places in people's queues; where a queue has both, the
+// surviving book's.
+func (q *Queries) MergePlayQueue(ctx context.Context, arg MergePlayQueueParams) error {
+	_, err := q.db.Exec(ctx, mergePlayQueue, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const mergeReadingProgress = `-- name: MergeReadingProgress :exec
 WITH moved AS (
     DELETE FROM reading_progress x WHERE x.book_id = $2

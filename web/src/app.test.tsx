@@ -3629,6 +3629,133 @@ describe("the audiobook player", () => {
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
+	function withSecondAudiobook() {
+		server.withBook("Persuasion", {
+			files: [
+				{
+					id: "file-c",
+					kind: "audio",
+					format: "mp3",
+					name: "Persuasion.mp3",
+					size: 1_000_000,
+					missing: false,
+					drm: false,
+					extractState: "done",
+				},
+			],
+		});
+		server.audio["book-2"] = {
+			durationMs: 40_000,
+			complete: true,
+			parts: [
+				{
+					fileId: "file-c",
+					format: "mp3",
+					mediaType: "audio/mpeg",
+					name: "Persuasion.mp3",
+					startMs: 0,
+					durationMs: 40_000,
+				},
+			],
+			chapters: [
+				{ title: "Chapter 1", fileId: "file-c", startMs: 0, endMs: 40_000 },
+			],
+		};
+	}
+
+	it("queues a book from its page, and takes it out again", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		renderApp("/books/book-2");
+		await person.click(await screen.findByRole("button", { name: "Add to queue" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+		await person.click(
+			await screen.findByRole("button", { name: "Take out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual([]));
+		await person.click(await screen.findByRole("button", { name: "Play next" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+	});
+
+	it("lists what is up next, in an order the person changes", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.withBook("Sense", { files: [...server.books[1]!.files] });
+		server.audio["book-3"] = server.audio["book-2"]!;
+		server.queue = ["book-2", "book-3"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const list = within(await screen.findByRole("region", { name: "Up next" }));
+		await person.click(list.getByRole("button", { name: "Move Sense up" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-3", "book-2"]));
+		await person.click(
+			await list.findByRole("button", { name: "Take Persuasion out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual(["book-3"]));
+		await person.click(list.getByRole("button", { name: "Clear the queue" }));
+		await waitFor(() => expect(server.queue).toEqual([]));
+		expect(screen.queryByRole("region", { name: "Up next" })).not.toBeInTheDocument();
+	});
+
+	it("plays the next book in the queue when one ends, from where it was left", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		server.progress["book-2"] = {
+			audio: {
+				fileId: "file-c",
+				locator: "20000",
+				fraction: 0.5,
+				positionMs: 20_000,
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+
+		fireEvent.ended(audio());
+
+		await waitFor(() => expect(audio().getAttribute("src")).toContain("/files/file-c/"));
+		// The finished book's end was saved before the next began.
+		expect(saves().at(-1)).toMatchObject({ fileId: "file-b", positionMs: 110_000 });
+		expect(server.queue).toEqual([]);
+		const bar = within(await screen.findByRole("region", { name: "Now playing" }));
+		expect(bar.getByRole("link", { name: "Persuasion" })).toBeInTheDocument();
+		expect(bar.getByText("Chapter 1 · 0:20")).toBeInTheDocument();
+		expect(bar.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+	});
+
+	it("stops at the end of the chapter instead of going on to the queue", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Sleep timer" }),
+			"At the end of the chapter",
+		);
+		fireEvent.ended(audio());
+		await waitFor(() =>
+			expect(screen.getByRole("combobox", { name: "Sleep timer" })).toHaveValue("off"),
+		);
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+		expect(server.queue).toEqual(["book-2"]);
+	});
+
 	it("says which formats this browser cannot play, and offers the files", async () => {
 		const person = userEvent.setup();
 		playable("");

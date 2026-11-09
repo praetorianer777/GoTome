@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { type CurrentUser, can } from "@/auth/session";
@@ -13,11 +14,14 @@ import { Grid, GridSkeleton, MoreBooks } from "@/books/book-list";
 import { Cover } from "@/books/cover";
 import { candidateCoverUrl } from "@/books/edit";
 import { filterTree } from "@/books/filters";
+import { mediumOf } from "@/books/medium";
 import { useWish } from "@/books/wishes";
 import { FormError } from "@/components/form";
 import { button, EmptyState, PageHeader } from "@/components/ui";
 import { t } from "@/i18n";
 import { bookCount } from "@/lib/format";
+import { usePlayer } from "@/player/player";
+import { useQueue } from "@/player/queue";
 import { Follow } from "@/releases/follow";
 
 /** A series in its order: how far the person is, and what the library lacks. */
@@ -58,7 +62,7 @@ export function SeriesPage({
 			/>
 			{s.next && <NextBook book={s.next} />}
 			<Missing series={s} canWish={personal} />
-			<SeriesBooks seriesKey={s.key} />
+			<SeriesBooks seriesKey={s.key} queueing={personal} />
 		</div>
 	);
 }
@@ -190,7 +194,13 @@ function Listed({
 	);
 }
 
-function SeriesBooks({ seriesKey }: { seriesKey: string }) {
+function SeriesBooks({
+	seriesKey,
+	queueing,
+}: {
+	seriesKey: string;
+	queueing: boolean;
+}) {
 	const books = useInfiniteQuery(
 		booksQuery({
 			filter: filterTree({ series: [seriesKey] }),
@@ -202,6 +212,18 @@ function SeriesBooks({ seriesKey }: { seriesKey: string }) {
 	return (
 		<section aria-label={t("library.books")} className="flex flex-col gap-4">
 			<FormError error={books.error} />
+			{queueing && shown.length > 0 && (
+				<QueueRest load={async () => {
+					let data = books.data;
+					let more = books.hasNextPage;
+					while (more) {
+						const next = await books.fetchNextPage();
+						data = next.data;
+						more = next.hasNextPage;
+					}
+					return data?.pages.flatMap((page) => page.books) ?? [];
+				}} />
+			)}
 			{books.isPending && <GridSkeleton />}
 			{shown.length > 0 && <Grid books={shown} />}
 			{books.hasNextPage && (
@@ -215,5 +237,54 @@ function SeriesBooks({ seriesKey }: { seriesKey: string }) {
 				/>
 			)}
 		</section>
+	);
+}
+
+/**
+ * Lines up the series' audiobooks the person has not finished, in the
+ * series' order, after what is already queued.
+ */
+function QueueRest({ load }: { load: () => Promise<BookSummary[]> }) {
+	const queue = useQueue();
+	const playing = usePlayer().state.bookId;
+	const [told, setTold] = useState<number>();
+	const [busy, setBusy] = useState(false);
+	return (
+		<div className="flex flex-wrap items-center gap-3">
+			<button
+				type="button"
+				className={button("secondary", "md")}
+				disabled={busy}
+				onClick={async () => {
+					setBusy(true);
+					try {
+						const ids = (await load())
+							.filter((b) => {
+								const medium = mediumOf(b.formats);
+								return (
+									(medium === "audio" || medium === "both") &&
+									!b.placeholder &&
+									b.status !== "completed" &&
+									b.id !== playing
+								);
+							})
+							.map((b) => b.id);
+						if (ids.length > 0) queue.add(ids, "last");
+						setTold(ids.length);
+					} finally {
+						setBusy(false);
+					}
+				}}
+			>
+				{t("queue.series")}
+			</button>
+			<span role="status" className="text-sm text-slate-600 dark:text-slate-400">
+				{told === undefined
+					? ""
+					: told === 0
+						? t("queue.seriesNone")
+						: t("queue.seriesDone", { count: told })}
+			</span>
+		</div>
 	);
 }

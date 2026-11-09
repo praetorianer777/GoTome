@@ -21,6 +21,7 @@ import {
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
 import { useSendToDevice } from "@/books/deliveries";
 import { EREADER_FINDINGS } from "@/books/rules";
+import { useQueue } from "@/player/queue";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { ownDevicesQuery } from "@/users/api";
@@ -60,6 +61,7 @@ export function BulkBar({
 	const collect = useAddToCollection();
 	const devices = useQuery(ownDevicesQuery);
 	const send = useSendToDevice();
+	const queue = useQueue();
 	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"], findings?: BulkRequest["findings"]) =>
 		start.mutate(
@@ -134,6 +136,16 @@ export function BulkBar({
 							</option>
 						))}
 					</select>
+				)}
+				{!all && (
+					<button
+						type="button"
+						className={quietButton}
+						disabled={none}
+						onClick={() => queue.add(selection.books ?? [])}
+					>
+						{t("bulk.queue")}
+					</button>
 				)}
 				{(devices.data?.length ?? 0) > 0 && (
 					<select

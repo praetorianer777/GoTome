@@ -360,6 +360,8 @@ export class FakeServer {
 	searchStatus = { files: 4, indexed: 4, rebuilding: false, engine: "0.25.11" };
 	/** The signed-in person's statistics, the same whatever the window. */
 	stats?: ReadingStats;
+	/** The signed-in person's play queue. */
+	queue: string[] = [];
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
@@ -708,6 +710,17 @@ export class FakeServer {
 			return Response.json(
 				this.candidates.search ?? { candidates: [], failures: [] },
 			);
+		}
+		if (path === "/me/queue") {
+			if (request.method === "PUT") {
+				const wanted = (body as { books: string[] }).books;
+				this.queue = [...new Set(wanted)].filter((id) =>
+					this.books.some(
+						(b) => b.id === id && b.files.some((f) => f.kind === "audio"),
+					),
+				);
+			}
+			return Response.json({ books: this.queue });
 		}
 		if (path === "/me/stats") {
 			return Response.json(

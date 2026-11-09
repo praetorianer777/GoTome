@@ -78,6 +78,13 @@ are one audiobook. A folder per book, named after it, works best.
 GOtome reads EPUB, PDF, MOBI, AZW and AZW3, and audiobooks as M4B, M4A,
 MP3, FLAC, Ogg and Opus.
 
+The player keeps a queue for each person on the server, so it follows to
+another browser. "Play next" and "Add to queue" are on an audiobook's page,
+"Add to the queue" on a selection in a list, and "Queue the rest of this
+series" on a series' page. The next book starts when one ends, from the
+place it was left at; the queue is listed under the player, where books
+are moved or taken out. A sleep timer stops the player instead.
+
 ## 3. Start it
 
 ```bash
