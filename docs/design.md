@@ -98,22 +98,39 @@ it is used.
 
 The **backdrop** is an image in both themes (`web/src/assets/backdrop.webp`,
 the library at night, and `backdrop-light.webp`, the library by day, made by
-`web/scripts/branding.sh`): blurred a little, the night one dimmed to 80 %
-and given a faint ink veil and amber corners, the day one lightened by a fifth
-toward parchment. It shows through the panels, which are glass on a desktop:
+`web/scripts/branding.sh`): blurred a little, the night one lifted (gamma
+1.6, so the library shows: its mean luminance is three times what it was) with
+only its lamps held down, a soft knee at a luminance of 90 / 255 that never
+passes 140 / 255, then given a faint ink veil (10 %) and amber corners, the
+day one lightened by a fifth toward parchment. It shows through the panels, which are glass on a desktop:
 the panel colour at **78 % (dark) or 74 % (light)** with
 `backdrop-filter: blur(14px) saturate(120%)`. Below 1024 px, where a blur
 under a page that scrolls the whole screen is redrawn every frame, and
 where the browser cannot blur (`@supports`) or the person asks for less
 transparency (`prefers-reduced-transparency`), panels are 92 % opaque.
+The phone's cost was measured (#406), not only reasoned: Chromium as a
+Pixel 7 in Playwright's container, the CPU throttled four times, 500 books
+in the library grid scrolled in 80 steps, the time between animation frames
+taken. Panels as shipped (opaque, no blur): median 16.7 ms (60 frames a
+second), 95th percentile 16.7 ms, one or three frames in a hundred over
+33 ms. The same page with the blur forced on: median 16.7 ms, 95th
+percentile 33 ms, six to ten frames in a hundred over 33 ms. So the phone
+pays nothing for the glass as shipped, and would pay for it if it had it.
+The container has no GPU, so these are software-rendered frames: on the
+desktop's glass the same run gave a median of 50 ms (20 frames a second)
+against 16.7 ms with opaque panels, which a GPU does not repeat but a
+machine without one does.
+
 Dialogs, menus, the readers (`panel-solid`) and the finished-book toast are
 fully opaque. Only the three large panels blur; cards are translucent
 without a blur of their own.
 
 How the opacity was chosen: every pair is checked on the worst spot, not the
-average. Dark: the brightest pixel of the unblurred backdrop (rgb 210 186
-131, a lamp) under the ink veil and the strongest amber corner is rgb 158 134
-96; the panel over it is rgb 52 57 70. Light: the darkest pixel of the day
+average. Dark: the brightest pixel of the backdrop (a lamp, capped; rgb
+166 133 97 in the file) under the ink veil and the strongest amber corner is
+rgb 157 132 94; the panel over it is rgb 52 57 70. Capping the lamps instead
+of dimming the whole picture is what lets the rest of the library be
+brighter without moving this spot (#406). Light: the darkest pixel of the day
 backdrop (rgb 185 178 164) under the white panel is rgb 237 235 231. On those:
 
 | Dark pair on the panel | Ratio | Light pair on the panel | Ratio |
@@ -130,8 +147,9 @@ slate-100. The **boundary of a control** (field, select, outline button; WCAG
 1.4.11, 3:1) is its own token, `--control-border` (`styles/index.css`, which
 takes the place of the neutral steps 300 and 600 on any `border-slate-300` and
 `dark:border-slate-600`): `#8a7a5e` in the light theme, 3.5:1 on the worst
-panel and 4.9:1 on a white field; `#7a8aa3` in the dark one, 3.3:1 on the
-worst panel and 4.4:1 on the field's navy. Card and panel hairlines stay
+panel and 4.9:1 on a white field; `#8394ad` in the dark one, 3.7:1 on the
+worst panel (it was `#7a8aa3`, 3.3:1, which a small change of the backdrop
+could take under 3:1) and 5.5:1 on the field's navy. Card and panel hairlines stay
 subtle, as they are decoration. Native checkboxes and radios are drawn by
 the browser in the page's `color-scheme`. The focus ring (brand-strong
 `#0b6f96` on light, cyan on dark) is 5.2 and 5.3. If a pair
@@ -147,6 +165,11 @@ text's colour.
   It has the accessible name "GOtome". A logo is exempt from the text
   contrast rules, but it is kept legible: on a panel, at 36 px high in the
   top bar and about 280 px wide on the sign-in and setup pages.
+  The top bar's size is its own cut: at 36 px the large one's thin inner
+  gold line mixed into the cyan and the "GO" read teal, so the small cut
+  runs the "GO" through a median over 3 by 3 pixels, which takes the line
+  out, and gives the colour back with more saturation (125 % on dark, 115 %
+  on light). The large cut for the sign-in and setup pages is unchanged.
 
 - **Headings**: a serif. Only
   what the system has (`--font-serif`: Iowan Old Style, Palatino, Book

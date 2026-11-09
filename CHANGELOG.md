@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The dark theme's field and button borders are a little lighter, so they
+  stay easy to see over the glass panels, and the library behind the panels
+  shows more at night: only its lamps are held down, not the whole picture.
+- The "GO" of the small wordmark in the top bar reads cyan again instead of
+  teal, and the gopher's pictures no longer show a white patch between its
+  head and its headphone band; the sleeping gopher's speech bubble has a "z".
+
 ## [0.12.0] - 2026-11-09
 
 ### Added
@@ -21,7 +30,6 @@ What changes for someone who runs or uses GOtome. The format follows
 - The name in the top bar and on the sign-in and setup pages is a new
   wordmark: an illuminated "GO" and "tome" in gold lettering, one for each
   colour theme.
-
 - Books in the library's grid, on author and series pages and in "similar
   books" are shown as rounded cards, with a round badge on the cover's
   corner saying whether the book is an ebook, an audiobook or both.

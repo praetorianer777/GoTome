@@ -71,7 +71,7 @@ body {
 }
 
 /* The backdrop is only ever seen between and around the panels, which carry
-   all text (docs/design.md); the image is dimmed to stay far darker than them.
+   all text (docs/design.md); the night image keeps its lamps capped, so it stays far darker than them.
    Only the bars blur what is behind them: a blur under the whole content
    would be redrawn on every scroll. */
 body {
@@ -83,7 +83,7 @@ body {
 		background-image:
 			radial-gradient(ellipse 60% 45% at 0% 100%, rgb(230 154 70 / 0.2), transparent),
 			radial-gradient(ellipse 55% 40% at 100% 100%, rgb(230 154 70 / 0.16), transparent),
-			linear-gradient(rgb(11 22 48 / 0.35), rgb(11 22 48 / 0.35)),
+			linear-gradient(rgb(11 22 48 / 0.1), rgb(11 22 48 / 0.1)),
 			url("../assets/backdrop.webp");
 	}
 }
@@ -121,11 +121,11 @@ body {
 	--control-border: #8a7a5e;
 }
 :root[data-theme="dark"] {
-	--control-border: #7a8aa3;
+	--control-border: #8394ad;
 }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
-		--control-border: #7a8aa3;
+		--control-border: #8394ad;
 	}
 }
 .border-slate-300:not([aria-pressed="true"]),
