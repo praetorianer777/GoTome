@@ -54,21 +54,23 @@ luminance far below the page's, which `e2e/tests/accessibility.spec.ts`
 
 ## Colour
 
-Sampled from the artwork and the icon:
+Sampled from the artwork, the icon and the owner's draft
+(`docs/design/draft-2026-11.jpg`, #384):
 
 | Name | Value | From |
 |---|---|---|
-| ink | `#020c16` | the logo's ground; the dark theme's page |
-| brand (cyan) | `#37b5db` | the gopher; accent on dark |
+| ink | `#0b1630` | the dark theme's page: a deep midnight blue, not grey |
+| brand (cyan) | `#45bde0` | the "GO" and the gopher; accent on dark: the focus ring, primary buttons, badges, the avatar |
 | brand-strong | `#0b6f96` | the cyan darkened to read on parchment and white (5.2:1) |
-| candle (amber) | `#e69a46` | candle flames; "reading now", ratings on dark |
+| candle (amber) | `#e69a46` | candle flames; "reading now", ratings on dark; the warm vignette at the page's edges |
 | candle-strong | `#8a4f0f` | the same for light (6.1:1 on parchment) |
-| cream | `#e5d2ab` | the wordmark's "tome", parchment |
+| cream (gold) | `#e8c88a` | the wordmark's "tome"; page titles on dark, sparingly elsewhere (9.6:1 on a panel) |
+| gold-strong | `#7a5a14` | the gold darkened for text on parchment and white (5.9:1 and 6.4:1) |
 | leather | `#52271b` | book spines; used sparingly, never behind text |
 
 The neutral scale is Tailwind's `slate`, redefined in `@theme` to run from
-parchment (50) to ink navy (950), slightly blue throughout, so every page
-that already uses `slate` takes the theme without a change:
+parchment (50) to midnight navy (950), so every page that already uses
+`slate` takes the theme without a change:
 
 | Step | Value | Light theme | Dark theme |
 |---|---|---|---|
@@ -76,22 +78,27 @@ that already uses `slate` takes the theme without a change:
 | 100 | `#f1e9d8` | hovered rows, sidebar | text |
 | 200 | `#e3d8c2` | lines | |
 | 300 | `#c8bca6` | control borders | strong text |
-| 400 | `#94a3b8` | | muted text (≥ 5.4:1 on 800) |
+| 400 | `#9fb0c8` | | muted text: authors, meta (7.0:1 on a panel, 5.2:1 on 800) |
 | 500 | `#5b6a80` | text said in passing (≥ 4.5:1 on 50) | (shown as 400) |
-| 600 | `#4a5870` | muted text (6.7:1 on 50) | control borders |
-| 700 | `#33425a` | | lines |
-| 800 | `#1b2d47` | | hovered rows, lines |
-| 900 | `#0e2038` | text | cards, menus |
-| 950 | `#071526` | | sidebar, top bar |
+| 600 | `#536480` | muted text (5.6:1 on 50, 5.0:1 on 100) | control borders (2.6:1 on a panel; was 2.3) |
+| 700 | `#2c3f5f` | | panel borders, lines |
+| 800 | `#2a3a58` | | the current tab and navigation entry (a lighter blue-grey pill with white text), hovered rows |
+| 900 | `#16243f` | text | panels, cards, menus (translucent navy, 90 %) |
+| 950 | `#0f1b36` | | the drawer |
+
+The dark page is the ink blue with a faint warm amber vignette at its
+corners and the backdrop image under both; panels are translucent navy with
+a 1 pixel border of step 700 and no hard shadow, the bars blur what is
+behind them. Section headings in the sidebar are uppercase white; authors
+and meta are step 400. Every pair of text and ground used is at least WCAG
+AA (4.5:1, 3:1 for large text and controls); a new pair is checked before
+it is used.
 
 The **backdrop** (dark theme) is an image, blurred and dimmed
 (`web/src/assets/backdrop.webp`, made by `web/scripts/branding.sh`) until it
 is far darker than any panel; in the light theme the page is parchment. It
 is seen only between and around panels.
 
-The page itself is ink in the dark. Every pair of text and ground used is
-at least WCAG AA (4.5:1, 3:1 for large text and controls); a new pair is
-checked before it is used.
 
 ## Type
 

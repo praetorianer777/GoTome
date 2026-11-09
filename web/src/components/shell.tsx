@@ -356,7 +356,7 @@ function Sections({ user }: { user: CurrentUser }) {
 						<Link
 							to={item.to}
 							activeOptions={{ exact: true, includeSearch: false }}
-							className="block rounded-full px-4 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-brand/15 dark:data-[status=active]:text-brand"
+							className="block rounded-full px-4 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-slate-800 dark:data-[status=active]:text-white"
 						>
 							{t(item.label)}
 						</Link>
@@ -446,7 +446,7 @@ function Navigation({
 								aria-expanded={open}
 								aria-controls={listId}
 								onClick={() => fold(group)}
-								className="flex items-center justify-between rounded-lg px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+								className="flex items-center justify-between rounded-lg px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase hover:text-slate-900 dark:text-white dark:hover:text-slate-100"
 							>
 								{t(label)}
 								<Icon
@@ -456,7 +456,7 @@ function Navigation({
 							</button>
 						)}
 						{label && !folds && (
-							<p className="flex items-center justify-between px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
+							<p className="flex items-center justify-between px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-white">
 								{t(label)}
 								{icon && (
 									<Icon
@@ -478,7 +478,7 @@ function Navigation({
 												includeSearch: !!item.search,
 											}}
 											onClick={onNavigate}
-											className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-brand/10 dark:data-[status=active]:text-brand dark:data-[status=active]:shadow-glow"
+											className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-slate-800 dark:data-[status=active]:text-white"
 										>
 											<Icon
 												name={item.icon}
