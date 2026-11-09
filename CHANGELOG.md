@@ -40,6 +40,15 @@ What changes for someone who runs or uses GOtome. The format follows
   filtered to one medium; pages sit on rounded panels over a dimmed
   backdrop in the dark theme, and the light theme has the same layout.
   Below 1024 px the menu button opens all of it as the drawer.
+- The web app opens faster, the first time and after a hard refresh: its
+  files are sent compressed (brotli or gzip), pages other than the
+  library, a book and sign-in load when first visited, and large API
+  answers are compressed as well. The first load moves about 170 KB
+  instead of 800 KB.
+- The reading status "Wishlist" is called "Want to read" for a book the
+  library holds, and stays "Wishlist" for one it does not hold yet. The
+  Wishlist page lists the two apart, as "Want to read" and "Not in the
+  library yet".
 - The settings page is grouped in sections (sign-in, book details,
   similar books and search, genres, trash) with a list to jump to each,
   two columns where the screen is wide enough, and shorter
@@ -67,6 +76,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- A book's page keeps long titles, author lists, series, publishers,
+  identifiers, tags and file names inside their boxes at every width:
+  they wrap, and words too long for a line break, instead of running
+  over the details card and off the screen. The details card is a little
+  wider, and lists each identifier on a line of its own.
 - Keeping one book of a pair, moving a file to the trash, restoring it
   or fixing it in a folder GOtome may not write to (a `.trash` or an
   author's folder owned by another user, a read-only mount) failed with
@@ -78,29 +92,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- The web app opens faster, the first time and after a hard refresh: its
-  files are sent compressed (brotli or gzip), pages other than the
-  library, a book and sign-in load when first visited, and large API
-  answers are compressed as well. The first load moves about 170 KB
-  instead of 800 KB.
 - More tags give genres: tags a store marks, such as "Science Fiction
   (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
   "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
   are known spellings. `gotome genre-check` no longer lists tags that
   rightly give no genre, such as "Roman", "eBook", publishers and
   countries, among those to map.
-- The reading status "Wishlist" is called "Want to read" for a book the
-  library holds, and stays "Wishlist" for one it does not hold yet. The
-  Wishlist page lists the two apart, as "Want to read" and "Not in the
-  library yet".
 
 ### Fixed
 
-- A book's page keeps long titles, author lists, series, publishers,
-  identifiers, tags and file names inside their boxes at every width:
-  they wrap, and words too long for a line break, instead of running
-  over the details card and off the screen. The details card is a little
-  wider, and lists each identifier on a line of its own.
 - An author or series followed while GOtome was looking up the others is
   looked up right after, instead of only at the next hourly round.
 - A book's page shows the status reading gave it straight away: going
