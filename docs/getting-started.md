@@ -97,7 +97,9 @@ Three containers start:
    database.
 3. **app**, GOtome, waits for both, brings the database's tables up to
    date and starts. `docker compose ps` shows it `healthy` within a
-   minute.
+   minute; after an upgrade whose migrations are long it shows `starting`
+   until they are done (it answers `/readyz` with `migrating` meanwhile,
+   see [troubleshooting.md](troubleshooting.md#monitoring)).
 
 `docker compose logs -f app` shows what it does. If it stops, the last
 lines say why ([troubleshooting.md](troubleshooting.md)).

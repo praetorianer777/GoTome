@@ -97,6 +97,12 @@ func formatOf(version string) string {
 // Index is the index the service writes.
 func (s *Service) Index() *Index { return s.index }
 
+// Check says whether the index is open and answers.
+func (s *Service) Check(context.Context) error {
+	_, err := s.index.Info()
+	return err
+}
+
 // Close closes the index.
 func (s *Service) Close() error { return s.index.Close() }
 

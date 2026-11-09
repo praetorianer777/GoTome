@@ -17,6 +17,20 @@ What changes for someone who runs or uses GOtome. The format follows
 - `gotome perf-check` times the main views on your own library and prints a
   table that names none of its books, with the memory in use. It only reads.
 
+### Changed
+
+- An upgrade with long database migrations no longer shows the app as
+  `unhealthy` or makes `docker compose up --wait` fail: GOtome listens at
+  once, `/readyz` says `migrating` (and how far it is) until they are done,
+  and Docker's health check allows ten minutes for that. The monitoring
+  addresses are described in the troubleshooting guide.
+- `/readyz` now answers 200 only when the database, the migrations, the
+  search index, the job queue and the data folder all work, and otherwise
+  503 naming the parts that fail (and nothing else, as it is public).
+  Administrators see how each part is doing, and what is degraded without
+  stopping GOtome, on the Overview page and at `/api/v1/system/checks`, and
+  are told when a part has failed for ten minutes.
+
 ### Fixed
 
 - The dark theme's field and button borders are a little lighter, so they

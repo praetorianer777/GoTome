@@ -2491,6 +2491,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory */
+        get: operations["getSystemChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/health": {
         parameters: {
             query?: never;
@@ -2926,6 +2943,17 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        Check: {
+            /** Format: date-time */
+            checkedAt: string;
+            message: string;
+            name: string;
+            /** @enum {string} */
+            status: "ok" | "degraded" | "failing";
+            /** @enum {string} */
+            unit?: "ms" | "s" | "count" | "bytes";
+            value?: number;
         };
         CleanupApplied: {
             /** Format: uuid */
@@ -3620,7 +3648,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3633,7 +3661,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -3776,6 +3804,9 @@ export interface components {
         ReplaceRequest: {
             /** Format: uuid */
             keep: string;
+        };
+        Report: {
+            checks: components["schemas"]["Check"][];
         };
         RereadLibraryRequest: {
             failedOnly: boolean;
@@ -9439,6 +9470,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Work"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
             /** @description The request failed. */

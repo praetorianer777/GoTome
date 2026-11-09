@@ -49,6 +49,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -115,8 +116,11 @@ type app struct {
 	text *fulltext.Service
 	// passages embeds and finds the books' passages, while they are on.
 	passages *passages.Service
-	now      time.Time
-	mu       sync.Mutex
+	// ready is what /readyz answers from; every component holds until a
+	// test says otherwise.
+	ready *httpapi.Readiness
+	now   time.Time
+	mu    sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -227,6 +231,16 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	hubCtx, stopHub := context.WithCancel(context.Background())
 	t.Cleanup(stopHub)
 	go a.server.NotifyHub.Run(hubCtx)
+	a.ready = httpapi.NewReadiness()
+	a.ready.Set(httpapi.CheckDatabase, a.pool.Ping)
+	a.ready.Set(httpapi.CheckSearchIndex, a.text.Check)
+	a.ready.Set(httpapi.CheckJobs, queue.Check)
+	a.ready.Set(httpapi.CheckDataDir, httpapi.DataDirCheck(a.dataDir))
+	a.ready.Migrated()
+	a.server.Ready = a.ready
+	a.server.Checks = &syscheck.Collector{
+		Pool: a.pool, Readiness: a.ready.Checks, Embedding: a.server.Similar.Runtime, Resources: a.server.Resources,
+	}
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL

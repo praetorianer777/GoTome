@@ -49,6 +49,9 @@ const (
 	// KindReleaseOut is a book the person follows that came out. Data as
 	// KindReleaseAnnounced.
 	KindReleaseOut = "release.out"
+	// KindSystemDegraded is a part of GOtome that has been failing for ten
+	// minutes. Data: component, message.
+	KindSystemDegraded = "system.degraded"
 	// KindFeedItem is a new item of a feed the person follows that names
 	// what they asked for. Data: title, feed, and authors where named.
 	KindFeedItem = "feed.item"
@@ -79,6 +82,7 @@ var EventKinds = []EventKind{
 	{Kind: KindFilesUnreadable, Permission: auth.MetadataEdit, Default: true, Summary: page("/jobs")},
 	{Kind: KindScanFailed, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
 	{Kind: KindLibraryUnwritable, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
+	{Kind: KindSystemDegraded, Permission: auth.SettingsManage, Default: true, Summary: page("/overview")},
 }
 
 func libraryPage(library *uuid.UUID) string {

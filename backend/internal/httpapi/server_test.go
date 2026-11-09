@@ -186,8 +186,8 @@ func TestReadinessFollowsTheDatabase(t *testing.T) {
 	if down.Code != http.StatusServiceUnavailable {
 		t.Fatalf("with the database down: status = %d, want 503", down.Code)
 	}
-	if got := decodeError(t, down); got.Code != "unavailable" || strings.Contains(down.Body.String(), errSecret.Error()) {
-		t.Errorf("error = %+v, body %s", got, down.Body)
+	if body := down.Body.String(); !strings.Contains(body, `"not_ready"`) || !strings.Contains(body, `"database"`) || strings.Contains(body, errSecret.Error()) {
+		t.Errorf("body %s", body)
 	}
 	// Alive is not the same as ready: the process still answers.
 	if alive := do(t, h, http.MethodGet, HealthPath); alive.Code != http.StatusOK {

@@ -25,6 +25,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 )
 
 // specVersion is the version of the API, not of the build: the document is
@@ -80,6 +81,10 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["DeviceBook.state"] = &openapi.Schema{Type: "string", Enum: deliveries.States}
 	b.FieldOverrides["DeviceAnswer.state"] = &openapi.Schema{Type: "string", Enum: []string{
 		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
+	}}
+	b.FieldOverrides["Check.status"] = &openapi.Schema{Type: "string", Enum: syscheck.Statuses}
+	b.FieldOverrides["Check.unit"] = &openapi.Schema{Type: "string", Enum: []string{
+		syscheck.UnitMillis, syscheck.UnitSeconds, syscheck.UnitCount, syscheck.UnitBytes,
 	}}
 	b.FieldOverrides["Readiness.state"] = &openapi.Schema{Type: "string", Enum: similar.ReadinessStates}
 	findings := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Findings}}

@@ -146,6 +146,20 @@ func (r *Runner) Start(ctx context.Context) error {
 	return nil
 }
 
+// Check fails once the queue has stopped, as after a fatal error of its own.
+// A runner that does not work jobs has nothing to be ready.
+func (r *Runner) Check(context.Context) error {
+	if !r.works {
+		return nil
+	}
+	select {
+	case <-r.client.Stopped():
+		return errors.New("the job queue has stopped")
+	default:
+		return nil
+	}
+}
+
 // Stop takes no new jobs and waits for the running ones to finish. Those that
 // do not finish in time are cancelled; River runs them again after the next
 // start, which is why a job must be safe to run twice.

@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -61,6 +62,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -188,7 +190,43 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	pool, err := openDatabase(ctx, cfg, log)
+	// Listening comes first: migrations may take minutes, and the process
+	// answers /healthz and /readyz (migrating) meanwhile (#405).
+	ready := httpapi.NewReadiness()
+	ready.Set(httpapi.CheckDataDir, httpapi.DataDirCheck(cfg.DataDir))
+	var handler atomic.Pointer[http.Handler]
+	starting := httpapi.StartupRoutes(ready, log)
+	handler.Store(&starting)
+	srv := &http.Server{
+		Addr: cfg.HTTPAddr,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			(*handler.Load()).ServeHTTP(w, r)
+		}),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
+	}
+	listener, err := net.Listen("tcp", cfg.HTTPAddr)
+	if err != nil {
+		return err
+	}
+	// Exactly one value is ever sent on this channel. Closing it instead would
+	// make the select below read a nil and report a clean exit for a failure.
+	serveErr := make(chan error, 1)
+	go func() {
+		build := version.Current()
+		log.Info("listening", "addr", cfg.HTTPAddr, "env", cfg.Env, "version", build.Version, "commit", build.Commit)
+		err := srv.Serve(listener)
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+		serveErr <- err
+	}()
+	defer srv.Close()
+
+	pool, err := openDatabaseReporting(ctx, cfg, log, ready)
 	if err != nil {
 		return err
 	}
@@ -310,6 +348,7 @@ func serve() error {
 		return err
 	}
 	defer textIndex.Close()
+	ready.Set(httpapi.CheckSearchIndex, textIndex.Check)
 	workers := background{
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
@@ -334,6 +373,7 @@ func serve() error {
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
+	ready.Set(httpapi.CheckJobs, runner.Check)
 	// A new way of cutting text into chunks is rebuilt for in the
 	// background; search keeps answering from what is there.
 	if err := scans.CheckChunkVersion(ctx); err != nil {
@@ -372,9 +412,25 @@ func serve() error {
 	health.DataDir, health.IndexDir = cfg.DataDir, fulltext.Dir(cfg.DataDir)
 	health.Embedding, health.Server = settingStore.Embedding, settingStore.EmbeddingServer
 	go health.Watch(ctx, log)
+	checks := &syscheck.Collector{
+		Pool: pool, Readiness: ready.Checks, Embedding: vectors.Runtime, Providers: meta.ProviderStates, Resources: health,
+	}
+	watcher := &syscheck.Watcher{
+		Collector: checks, Every: time.Minute, Log: log,
+		Tell: func(ctx context.Context, c syscheck.Check) error {
+			return db.InTx(ctx, pool, func(tx pgx.Tx) error {
+				return events.QueueTx(ctx, tx, notify.Event{
+					Kind: notify.KindSystemDegraded, Link: "/overview",
+					Data: map[string]any{"component": c.Name, "message": c.Message},
+				})
+			})
+		},
+	}
+	go watcher.Run(ctx)
 	server := &httpapi.Server{
 		Log:        log,
 		DB:         pool,
+		Ready:      ready,
 		Auth:       accounts,
 		SSO:        sso.NewService(pool, accounts, settingStore),
 		Logins:     httpapi.NewLoginLimits(time.Now),
@@ -394,6 +450,7 @@ func serve() error {
 		Genres:     genreService,
 		Stats:      stats.NewService(pool, vectors),
 		Resources:  health,
+		Checks:     checks,
 		Deliveries: deliveries.NewService(pool),
 		Pairing:    pairing.NewService(pool),
 		Kobo:       kobo.NewService(pool),
@@ -408,28 +465,8 @@ func serve() error {
 
 		TrustedProxies: cfg.TrustedProxies,
 	}
-	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
-		Handler:           server.Routes(),
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
-		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
-	}
-
-	// Exactly one value is ever sent on this channel. Closing it instead would
-	// make the select below read a nil and report a clean exit for a failure.
-	serveErr := make(chan error, 1)
-	go func() {
-		build := version.Current()
-		log.Info("listening", "addr", cfg.HTTPAddr, "env", cfg.Env, "version", build.Version, "commit", build.Commit)
-		err := srv.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			err = nil
-		}
-		serveErr <- err
-	}()
+	full := server.Routes()
+	handler.Store(&full)
 
 	select {
 	case err := <-serveErr:
@@ -453,6 +490,12 @@ func serve() error {
 // openDatabase connects and brings the schema up to date. The server migrates
 // on every start, so an upgrade is a new image and nothing else.
 func openDatabase(ctx context.Context, cfg config.Config, log *slog.Logger) (*pgxpool.Pool, error) {
+	return openDatabaseReporting(ctx, cfg, log, nil)
+}
+
+// openDatabaseReporting is openDatabase for a server that already listens:
+// ready hears of the database and of each migration done.
+func openDatabaseReporting(ctx context.Context, cfg config.Config, log *slog.Logger, ready *httpapi.Readiness) (*pgxpool.Pool, error) {
 	if err := cfg.RequireDatabase(); err != nil {
 		return nil, err
 	}
@@ -460,7 +503,17 @@ func openDatabase(ctx context.Context, cfg config.Config, log *slog.Logger) (*pg
 	if err != nil {
 		return nil, err
 	}
-	applied, err := db.Migrate(ctx, pool)
+	var progress func(done, total int)
+	if ready != nil {
+		ready.Set(httpapi.CheckDatabase, pool.Ping)
+		progress = func(done, total int) {
+			ready.Migrating(done, total)
+			if total > 0 {
+				log.Info("migrating the database", "done", done, "of", total)
+			}
+		}
+	}
+	applied, err := db.MigrateWithProgress(ctx, pool, progress)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -468,6 +521,9 @@ func openDatabase(ctx context.Context, cfg config.Config, log *slog.Logger) (*pg
 	if err := jobs.Migrate(ctx, pool); err != nil {
 		pool.Close()
 		return nil, err
+	}
+	if ready != nil {
+		ready.Migrated()
 	}
 	schema, err := db.SchemaVersion(ctx, pool)
 	if err != nil {

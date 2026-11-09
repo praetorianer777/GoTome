@@ -38,6 +38,7 @@ import { type DuplicatePair, overlapOf } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
 import type { Feed, FeedItem, Release, Tracker } from "@/releases/api";
+import type { SystemCheck } from "@/system/checks";
 import type { Health } from "@/system/health";
 import { makeRouter } from "@/router";
 
@@ -270,6 +271,13 @@ export class FakeServer {
 		months: [{ name: "2026-10", count: 1200 }],
 	};
 	/** How far the background work is, as the overview page shows it. */
+	/** What the administrators' details list. */
+	checks: SystemCheck[] = [
+		{ name: "database", status: "ok", message: "", value: 1.5, unit: "ms", checkedAt: "2026-11-09T10:00:00Z" },
+		{ name: "jobs", status: "ok", message: "", value: 0.2, unit: "ms", checkedAt: "2026-11-09T10:00:00Z" },
+		{ name: "outbox", status: "degraded", message: "12 changes wait for the search index, the oldest for 15m0s", value: 900, unit: "s", checkedAt: "2026-11-09T10:00:00Z" },
+		{ name: "provider:openlibrary", status: "ok", message: "", checkedAt: "2026-11-09T10:00:00Z" },
+	];
 	health: Health = {
 		memory: {
 			machineBytes: 8_000_000_000,
@@ -661,6 +669,15 @@ export class FakeServer {
 					);
 				}
 				return Response.json(this.embeddingModels);
+			}
+			if (path === "/system/checks") {
+				if (!this.session?.permissions.includes("settings:manage")) {
+					return Response.json(
+						{ error: { code: "forbidden", message: "You do not have permission to do that." } },
+						{ status: 403 },
+					);
+				}
+				return Response.json({ checks: this.checks });
 			}
 			if (path === "/system/health") {
 				if (!this.session?.permissions.includes("settings:manage")) {

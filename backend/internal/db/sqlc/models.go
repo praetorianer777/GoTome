@@ -313,9 +313,10 @@ type FileSignature struct {
 }
 
 type FulltextOutbox struct {
-	ID      int64
-	Deletes []int64
-	Docs    []byte
+	ID        int64
+	Deletes   []int64
+	Docs      []byte
+	CreatedAt time.Time
 }
 
 type IndexVersion struct {
