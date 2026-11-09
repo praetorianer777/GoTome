@@ -16,7 +16,8 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The full suite takes about 20 minutes on a hosted runner (#401).
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
