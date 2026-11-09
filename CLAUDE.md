@@ -84,6 +84,17 @@ ever in the compose file or an environment variable. init only adds what is miss
 and CI runs the same script. It must stay fast (target under five minutes) and must
 work in parallel git worktrees, so it may not rely on fixed ports or fixed compose
 project names. An issue that adds something testable adds its stage to the script.
+Every stage is timed: the table at the end of a run (also in a CI job's summary and
+in `.cache/gate-timings.md`) says where the minutes went (#403).
+
+CI (`.github/workflows/ci.yml`) runs the same script cut into parts,
+`./run-tests.sh --full --only <part>[,<part>]` (shell, engine, go, koplugin, fuzz,
+web, android, integration, scale, e2e), as jobs side by side. The Go test image and
+the app image are built once, with buildx and the Actions cache, and handed on as
+artifacts (`.github/actions/load-images`; `STACK_PREBUILT=1` makes `stack-up` start
+the loaded image instead of building); the browser suite is one job per Playwright
+project (`E2E_PROJECT`), each on a stack of its own. The job `tests` is green when
+all of them are. A new stage belongs to exactly one part (`part_of` in the script).
 
 The hook has its own tests in `.claude/hooks/tests/`; run them after changing a hook.
 

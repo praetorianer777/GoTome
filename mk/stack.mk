@@ -111,8 +111,11 @@ match-check: ## Measure how often a lookup by title and author finds the running
 .PHONY: stack-up
 # Its database is thrown away after the run, so it need not survive a crash.
 stack-up: export GOTOME_DB_DURABLE := off
-stack-up: stack-env ffmpeg-source onnxruntime-source ## The gate's stack: build and start it, and wait until both services are healthy
-	docker compose up -d --build --wait --quiet-pull
+# STACK_PREBUILT=1 starts the image that is already there (CI builds it once
+# in a job of its own and hands it on) and builds nothing.
+STACK_BUILD := $(if $(STACK_PREBUILT),--no-build,--build)
+stack-up: stack-env $(if $(STACK_PREBUILT),,ffmpeg-source onnxruntime-source) ## The gate's stack: build and start it, and wait until both services are healthy
+	docker compose up -d $(STACK_BUILD) --wait --quiet-pull
 
 # The suite runs against the stack's Postgres rather than one of its own, so
 # the gate never starts a second database. Each test gets a database copied
@@ -195,7 +198,7 @@ embed-check: ## Run the app image's embedding model against the reference vector
 
 .PHONY: upgrade-test
 upgrade-test: ffmpeg-source onnxruntime-source ## Upgrade an earlier image's installation to this checkout's, and restore its backup into a new one (builds both images)
-	docker compose build app
+	$(if $(STACK_PREBUILT),@true,docker compose build app)
 	@# A stack of its own, beside the checkout's.
 	tests/test-upgrade.sh "$$(tests/upgrade-from.sh)" $(GOTOME_IMAGE) $(STACK_PROJECT)-upgrade
 
