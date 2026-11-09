@@ -22,10 +22,12 @@ type readingState struct {
 	// StartedOn and FinishedOn are dates as 2006-01-02.
 	StartedOn  string `json:"startedOn,omitempty"`
 	FinishedOn string `json:"finishedOn,omitempty"`
+	// Note is the caller's private note or review of the book.
+	Note string `json:"note,omitempty"`
 }
 
 func readingOf(r catalog.Reading) readingState {
-	out := readingState{Status: r.Status, Rating: r.Rating}
+	out := readingState{Status: r.Status, Rating: r.Rating, Note: r.Note}
 	if r.StartedOn != nil {
 		out.StartedOn = r.StartedOn.Format(time.DateOnly)
 	}

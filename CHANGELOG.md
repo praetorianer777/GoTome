@@ -31,6 +31,23 @@ What changes for someone who runs or uses GOtome. The format follows
   so says so on its page and can be split again. Between two libraries
   nothing is merged, as a file stays in its library's folder: the pair can
   be linked, and each book's page lists the other under "Also as".
+- "For you": a row in the library's strip, and a page with more, recommend
+  unread books of the libraries you see that are near what you finished or
+  rated well, each with the books it is "because you liked". Someone who
+  reads crime and fantasy gets both. "Not interested" leaves a book out
+  for good. It needs three finished or rated books and the embedding of
+  similar books; nothing is sent anywhere. `gotome similar-check -recommend`
+  measures it on your ratings (`docs/similarity.md`).
+- Your reading history now includes books the library does not hold: on
+  Wishlist, "Add as read" (with stars and the day you finished it) and
+  "Currently reading" sit beside "Wish for it", and "Your reading" lists
+  everything you read with filters by year, status and stars and a search.
+  Every book page has a private note. See `docs/importing-reading-history.md`.
+- Profile, "Import reading history": bring in a Goodreads or StoryGraph
+  export (a CSV file). You see a preview first, pick the right book for
+  rows that could be several, and the import sets status, stars, finish
+  dates, notes and collections for custom shelves; what you set already
+  stays, and importing the same file again changes nothing.
 
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the

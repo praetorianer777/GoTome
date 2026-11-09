@@ -5,12 +5,17 @@ import { type BookSummary, booksQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { MediumBadge } from "@/books/medium";
 import { candidateCoverUrl } from "@/books/edit";
-import { type WishSearch, useWish, wishSearchQuery } from "@/books/wishes";
+import { type WishRequest, type WishSearch, useWish, wishSearchQuery } from "@/books/wishes";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
 import { librariesQuery } from "@/libraries/api";
 
 const WISHED = JSON.stringify({ all: [{ field: "status", op: "in", values: ["wishlist"] }] });
+
+function today(): string {
+	const now = new Date();
+	return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
 
 const control =
 	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -95,10 +100,38 @@ function WishFinder() {
 	const [search, setSearch] = useState<WishSearch>({});
 	const found = useQuery(wishSearchQuery(search));
 	const libraries = useQuery(librariesQuery);
-	const [library, setLibrary] = useState<string>();
-	const chosen = library ?? libraries.data?.[0]?.id;
+	const [chosen, setChosen] = useState<string>();
+	const [reading, setReading] = useState<{ key: string; rating: number; finishedOn: string }>();
 	const wish = useWish();
 	const navigate = useNavigate();
+
+	function add(
+		c: NonNullable<typeof found.data>["candidates"][number],
+		reading: Pick<WishRequest, "status" | "rating" | "finishedOn">,
+	) {
+		wish.mutate(
+			{
+				library: chosen,
+				provider: c.provider,
+				title: c.title,
+				subtitle: c.subtitle,
+				description: c.description,
+				language: c.language,
+				published: c.published,
+				publisher: c.publisher,
+				series: c.series ? { name: c.series, index: c.seriesIndex } : undefined,
+				pageCount: c.pageCount,
+				contributors: c.contributors,
+				tags: c.tags,
+				identifiers: c.identifiers,
+				coverToken: c.coverToken,
+				...reading,
+			},
+			{
+				onSuccess: (book) => book && navigate({ to: "/books/$bookId", params: { bookId: book.id } }),
+			},
+		);
+	}
 
 	return (
 		<section aria-labelledby="wish-for" className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
@@ -145,7 +178,12 @@ function WishFinder() {
 					{(libraries.data?.length ?? 0) > 1 && (
 						<label className="flex items-center gap-2 text-sm">
 							<span>{t("wishlist.library")}</span>
-							<select value={chosen} onChange={(e) => setLibrary(e.target.value)} className={control}>
+							<select
+								value={chosen ?? ""}
+								onChange={(e) => setChosen(e.target.value || undefined)}
+								className={control}
+							>
+								<option value="">{t("wishlist.libraryAuto")}</option>
 								{libraries.data?.map((l) => (
 									<option key={l.id} value={l.id}>
 										{l.name}
@@ -170,39 +208,80 @@ function WishFinder() {
 											.join(" · ")}
 									</p>
 								</div>
-								<button
-									type="button"
-									className={button}
-									disabled={!chosen || wish.isPending}
-									aria-label={t("wishlist.wishNamed", { title: c.title })}
-									onClick={() =>
-										chosen &&
-										wish.mutate(
-											{
-												library: chosen,
-												provider: c.provider,
-												title: c.title,
-												subtitle: c.subtitle,
-												description: c.description,
-												language: c.language,
-												published: c.published,
-												publisher: c.publisher,
-												series: c.series ? { name: c.series, index: c.seriesIndex } : undefined,
-												pageCount: c.pageCount,
-												contributors: c.contributors,
-												tags: c.tags,
-												identifiers: c.identifiers,
-												coverToken: c.coverToken,
-											},
-											{
-												onSuccess: (book) =>
-													book && navigate({ to: "/books/$bookId", params: { bookId: book.id } }),
-											},
-										)
-									}
-								>
-									{t("wishlist.wish")}
-								</button>
+								<div className="flex flex-col items-end gap-2">
+									<div className="flex flex-wrap justify-end gap-2">
+										<button
+											type="button"
+											className={button}
+											disabled={wish.isPending}
+											aria-label={t("wishlist.wishNamed", { title: c.title })}
+											onClick={() => add(c, { status: "wishlist" })}
+										>
+											{t("wishlist.wish")}
+										</button>
+										<button
+											type="button"
+											className={button}
+											disabled={wish.isPending}
+											aria-label={t("wishlist.addReadNamed", { title: c.title })}
+											onClick={() =>
+												setReading({ key: `${c.provider}-${c.id}`, rating: 0, finishedOn: today() })
+											}
+										>
+											{t("wishlist.addRead")}
+										</button>
+										<button
+											type="button"
+											className={button}
+											disabled={wish.isPending}
+											aria-label={t("wishlist.addReadingNamed", { title: c.title })}
+											onClick={() => add(c, { status: "reading" })}
+										>
+											{t("wishlist.addReading")}
+										</button>
+									</div>
+									{reading?.key === `${c.provider}-${c.id}` && (
+										<form
+											className="flex flex-wrap items-end justify-end gap-3 text-sm"
+											onSubmit={(e) => {
+												e.preventDefault();
+												add(c, {
+													status: "completed",
+													rating: reading.rating || undefined,
+													finishedOn: reading.finishedOn || undefined,
+												});
+											}}
+										>
+											<label className="flex flex-col gap-1">
+												<span>{t("wishlist.readRating")}</span>
+												<select
+													value={reading.rating}
+													onChange={(e) => setReading({ ...reading, rating: Number(e.target.value) })}
+													className={control}
+												>
+													<option value={0}>–</option>
+													{[1, 2, 3, 4, 5].map((n) => (
+														<option key={n} value={n}>
+															{t("reading.stars", { count: n })}
+														</option>
+													))}
+												</select>
+											</label>
+											<label className="flex flex-col gap-1">
+												<span>{t("wishlist.readOn")}</span>
+												<input
+													type="date"
+													value={reading.finishedOn}
+													onChange={(e) => setReading({ ...reading, finishedOn: e.target.value })}
+													className={control}
+												/>
+											</label>
+											<button type="submit" className={button} disabled={wish.isPending}>
+												{t("wishlist.confirmRead")}
+											</button>
+										</form>
+									)}
+								</div>
 							</li>
 						))}
 					</ul>

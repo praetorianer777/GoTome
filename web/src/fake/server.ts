@@ -15,9 +15,11 @@ import type { CleanupKind, CleanupSuggestion } from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
+import type { ReadingImport } from "@/books/history";
+import type { RecommendationList } from "@/books/recommendations";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
-import type { ReadingBulk, ReadingChange } from "@/books/reading";
+import type { ReadingBulk, ReadingChange, ReadingStatus } from "@/books/reading";
 import type {
 	BookEdit,
 	Candidate,
@@ -369,6 +371,10 @@ export class FakeServer {
 	stats?: ReadingStats;
 	/** The signed-in person's play queue. */
 	queue: string[] = [];
+	/** What a Goodreads or StoryGraph export would do, as the preview of an import says it. */
+	importPreview?: ReadingImport;
+	/** What the person is recommended; none, with no profile, unless a test says. */
+	recommendations?: RecommendationList;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
@@ -742,6 +748,24 @@ export class FakeServer {
 			}
 			return Response.json({ books: this.queue });
 		}
+		if (path === "/me/recommendations") {
+			return Response.json(this.recommendations ?? { hasProfile: false, books: [] });
+		}
+		const dismissed = /^\/me\/recommendations\/([^/]+)\/dismiss$/.exec(path);
+		if (dismissed && this.recommendations) {
+			this.recommendations = {
+				...this.recommendations,
+				books: this.recommendations.books.filter((r) => r.book.id !== dismissed[1]),
+			};
+			return new Response(null, { status: 204 });
+		}
+		if (path === "/me/reading") {
+			return this.answerHistory(url.searchParams);
+		}
+		const imported = /^\/me\/reading-imports\/([^/]+)(?:\/(start)|\/rows\/(\d+))?$/.exec(path);
+		if (imported && this.importPreview) {
+			return this.answerImport(request.method, imported[2] === "start", Number(imported[3]), body);
+		}
 		if (path === "/me/stats") {
 			return Response.json(
 				this.stats ?? {
@@ -901,7 +925,14 @@ export class FakeServer {
 		const isDown = () => this.down;
 		const record = (method: string, path: string, name: string) =>
 			this.requests.push({ method, path, body: { file: name } });
-		const answer = (path: string, file: File) => this.answerUpload(path, file);
+		const answer = (path: string, file: File) =>
+			path === "/me/reading-imports"
+				? Promise.resolve(
+						this.importPreview
+							? Response.json(this.importPreview, { status: 201 })
+							: Response.json({ error: { code: "validation", message: "This is not a Goodreads or StoryGraph export." } }, { status: 422 }),
+					)
+				: this.answerUpload(path, file);
 		class FakeXMLHttpRequest {
 			status = 0;
 			responseText = "";
@@ -942,6 +973,48 @@ export class FakeServer {
 			}
 		}
 		return FakeXMLHttpRequest;
+	}
+
+	private answerHistory(query: URLSearchParams): Response {
+		const statuses = query.get("status") ? [query.get("status")] : ["reading", "completed", "abandoned"];
+		const year = query.get("year");
+		const stars = query.get("stars");
+		const words = (query.get("q") ?? "").toLowerCase();
+		const day = (b: BookDetail) => b.reading.finishedOn ?? b.reading.startedOn ?? "";
+		const mine = this.books
+			.filter((b) => statuses.includes(b.reading.status))
+			.sort((a, b) => day(b).localeCompare(day(a)));
+		const years = [...new Set(mine.map((b) => Number(day(b).slice(0, 4))).filter(Boolean))].sort((a, b) => b - a);
+		const entries = mine
+			.filter((b) => !year || day(b).startsWith(year))
+			.filter((b) => !stars || b.reading.rating === Number(stars))
+			.filter(
+				(b) =>
+					!words ||
+					`${b.title} ${b.contributors.map((c) => c.name).join(" ")}`.toLowerCase().includes(words),
+			)
+			.map((b) => ({
+				book: summaryOf(b),
+				startedOn: b.reading.startedOn,
+				finishedOn: b.reading.finishedOn,
+			}));
+		return Response.json({ entries, years });
+	}
+
+	private answerImport(method: string, start: boolean, row: number, body: unknown): Response {
+		const preview = this.importPreview as ReadingImport;
+		if (start) {
+			this.importPreview = { ...preview, state: "done", outcomes: { created: preview.new, changed: preview.matched } };
+			return Response.json(this.importPreview, { status: 202 });
+		}
+		if (method === "PUT") {
+			const choice = body as { book?: string; skip?: boolean };
+			preview.ambiguities = preview.ambiguities.map((a) =>
+				a.row === row ? { ...a, choice: choice.book, skip: Boolean(choice.skip) } : a,
+			);
+			return new Response(null, { status: 204 });
+		}
+		return Response.json(preview);
 	}
 
 	private async answerUpload(path: string, file: File): Promise<Response> {
@@ -1296,14 +1369,26 @@ export class FakeServer {
 		if (progress) {
 			return Response.json(this.progress[progress[1] ?? ""] ?? { finishes: 0 });
 		}
+		const noted = /^\/books\/([^/]+)\/note$/.exec(path);
+		if (noted) {
+			const book = this.books.find((b) => b.id === noted[1]);
+			if (book) {
+				book.reading = { ...book.reading, note: (body as { note: string }).note || undefined };
+			}
+			return new Response(null, { status: 204 });
+		}
 		if (path === "/books/wishes") {
 			const wish = body as WishRequest;
 			this.withBook(wish.title ?? "", {
-				libraryId: wish.library,
+				libraryId: wish.library ?? this.libraries[0]?.id,
 				contributors: wish.contributors ?? [],
 				publisher: wish.publisher,
 				placeholder: true,
-				reading: { status: "wishlist" },
+				reading: {
+					status: (wish.status ?? "wishlist") as ReadingStatus,
+					rating: wish.rating || undefined,
+					finishedOn: wish.finishedOn,
+				},
 			});
 			for (const listed of this.listed) {
 				listed.wished ||= listed.title === wish.title;

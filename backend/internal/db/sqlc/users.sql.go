@@ -26,7 +26,7 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, password_hash, role)
 VALUES ($1, $2, $3, $4)
-RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id
 `
 
 type CreateUserParams struct {
@@ -54,12 +54,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -75,12 +76,13 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users WHERE username = $1
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -96,6 +98,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }
@@ -159,7 +162,7 @@ func (q *Queries) ListStorageUse(ctx context.Context) ([]StorageUse, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users ORDER BY lower(username)
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id FROM users ORDER BY lower(username)
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -181,6 +184,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.DisabledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.HistoryLibraryID,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +252,7 @@ func (q *Queries) SetPassword(ctx context.Context, arg SetPasswordParams) error 
 
 const setQuota = `-- name: SetQuota :one
 UPDATE users SET quota_bytes = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id
 `
 
 type SetQuotaParams struct {
@@ -269,6 +273,7 @@ func (q *Queries) SetQuota(ctx context.Context, arg SetQuotaParams) (User, error
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }
@@ -277,7 +282,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET role = $2, email = $3, disabled_at = $4, updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id
 `
 
 type UpdateUserParams struct {
@@ -305,6 +310,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }

@@ -163,6 +163,10 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 		func() error {
 			return q.MergeReadingProgress(ctx, sqlc.MergeReadingProgressParams{IntoBook: into, FromBook: from})
 		},
+		func() error { return q.MergeBookNotes(ctx, sqlc.MergeBookNotesParams{IntoBook: into, FromBook: from}) },
+		func() error {
+			return q.MergeRecommendationDismissals(ctx, sqlc.MergeRecommendationDismissalsParams{IntoBook: into, FromBook: from})
+		},
 		func() error {
 			return q.MoveReadingHistory(ctx, sqlc.MoveReadingHistoryParams{IntoBook: into, FromBook: from})
 		},

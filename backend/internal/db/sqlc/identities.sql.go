@@ -107,7 +107,7 @@ func (q *Queries) DeleteUserIdentity(ctx context.Context, arg DeleteUserIdentity
 }
 
 const getIdentityUser = `-- name: GetIdentityUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, i.id AS identity_id
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, i.id AS identity_id
 FROM user_identities i
 JOIN users u ON u.id = i.user_id
 WHERE i.issuer = $1 AND i.subject = $2
@@ -119,16 +119,17 @@ type GetIdentityUserParams struct {
 }
 
 type GetIdentityUserRow struct {
-	ID           uuid.UUID
-	Username     string
-	Email        *string
-	PasswordHash *string
-	Role         string
-	QuotaBytes   *int64
-	DisabledAt   *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	IdentityID   uuid.UUID
+	ID               uuid.UUID
+	Username         string
+	Email            *string
+	PasswordHash     *string
+	Role             string
+	QuotaBytes       *int64
+	DisabledAt       *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	HistoryLibraryID *uuid.UUID
+	IdentityID       uuid.UUID
 }
 
 func (q *Queries) GetIdentityUser(ctx context.Context, arg GetIdentityUserParams) (GetIdentityUserRow, error) {
@@ -144,13 +145,14 @@ func (q *Queries) GetIdentityUser(ctx context.Context, arg GetIdentityUserParams
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 		&i.IdentityID,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, error) {
@@ -166,6 +168,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, erro
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }
@@ -212,7 +215,7 @@ func (q *Queries) ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]L
 }
 
 const setRole = `-- name: SetRole :one
-UPDATE users SET role = $2, updated_at = now() WHERE id = $1 RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at
+UPDATE users SET role = $2, updated_at = now() WHERE id = $1 RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id
 `
 
 type SetRoleParams struct {
@@ -233,6 +236,7 @@ func (q *Queries) SetRole(ctx context.Context, arg SetRoleParams) (User, error) 
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 	)
 	return i, err
 }

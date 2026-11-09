@@ -81,7 +81,7 @@ func (q *Queries) DeleteUserAPIKey(ctx context.Context, arg DeleteUserAPIKeyPara
 }
 
 const getAPIKeyUser = `-- name: GetAPIKeyUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, k.id AS key_id, k.scopes AS key_scopes, k.last_used_at AS key_last_used_at
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, k.id AS key_id, k.scopes AS key_scopes, k.last_used_at AS key_last_used_at
 FROM api_keys k
 JOIN users u ON u.id = k.user_id
 WHERE k.key_hash = $1
@@ -95,18 +95,19 @@ type GetAPIKeyUserParams struct {
 }
 
 type GetAPIKeyUserRow struct {
-	ID            uuid.UUID
-	Username      string
-	Email         *string
-	PasswordHash  *string
-	Role          string
-	QuotaBytes    *int64
-	DisabledAt    *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	KeyID         uuid.UUID
-	KeyScopes     []string
-	KeyLastUsedAt *time.Time
+	ID               uuid.UUID
+	Username         string
+	Email            *string
+	PasswordHash     *string
+	Role             string
+	QuotaBytes       *int64
+	DisabledAt       *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	HistoryLibraryID *uuid.UUID
+	KeyID            uuid.UUID
+	KeyScopes        []string
+	KeyLastUsedAt    *time.Time
 }
 
 // The account a key signs in, unless the key has expired or the account is
@@ -124,6 +125,7 @@ func (q *Queries) GetAPIKeyUser(ctx context.Context, arg GetAPIKeyUserParams) (G
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.HistoryLibraryID,
 		&i.KeyID,
 		&i.KeyScopes,
 		&i.KeyLastUsedAt,

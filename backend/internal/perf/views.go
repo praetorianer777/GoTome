@@ -119,6 +119,8 @@ func Views(p Params) []View {
 		View{Name: "smart shelf", Path: "/smart-shelves/" + p.Shelf + "/books"}.need(p.Shelf),
 		{Name: "collections", Path: "/collections"},
 		{Name: "reading statistics", Path: "/me/stats?days=30"},
+		{Name: "reading history", Path: "/me/reading"},
+		{Name: "recommendations", Path: "/me/recommendations"},
 		{Name: "new books", Path: "/releases"},
 		{Name: "items of followed feeds", Path: "/feeds/items"},
 		{Name: "genre review", Path: "/genres/suggestions"},

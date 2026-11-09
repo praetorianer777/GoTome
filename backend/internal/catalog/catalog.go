@@ -503,6 +503,12 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 	for _, j := range joins {
 		book.Joins = append(book.Joins, Join{ID: j.ID, Title: j.Title, CreatedAt: j.CreatedAt})
 	}
+	switch note, err := q.GetBookNote(ctx, sqlc.GetBookNoteParams{UserID: scope.Viewer, BookID: id}); {
+	case err == nil:
+		book.Reading.Note = note
+	case !errors.Is(err, pgx.ErrNoRows):
+		return Book{}, err
+	}
 	files, err := q.ListBookFiles(ctx, id)
 	if err != nil {
 		return Book{}, err

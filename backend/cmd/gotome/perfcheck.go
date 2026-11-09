@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/perf"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -137,6 +138,7 @@ func perfCheck(args []string) error {
 		Matches:    matches,
 		Bulk:       changes,
 		Reading:    reading.NewService(pool),
+		Imports:    readimport.NewService(pool, books, quiet),
 		Shelves:    shelves.NewService(pool, books),
 		Search:     search.NewTantivySearch(pool, books, index),
 		Index:      search.NewIndex(pool, quiet, engineVersion),

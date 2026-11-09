@@ -52,6 +52,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -112,7 +113,7 @@ Commands:
   audio-check    Compare what FFmpeg reads from folders of audio files with their reference
   migrate        Bring the database schema up to date and exit
   reset-password Set a new password for an account, read from the terminal (-h for options)
-  similar-check  Measure the similar books of a sample of the library (-h for options)
+  similar-check  Measure the similar books of a sample of the library, or with -recommend the recommendations (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
   match-check    Measure how often a lookup by title and author finds the book (-h for options)
   perf-check     Time the main views on this installation's library, naming nothing of it (-h for options)
@@ -342,6 +343,7 @@ func serve() error {
 	updateChecks := updates.NewService(pool, settingStore, events, log)
 	updateChecks.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
+	histories := readimport.NewService(pool, books, log)
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
@@ -358,7 +360,7 @@ func serve() error {
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
-		events: events, follows: follows, sync: progressSync, updates: updateChecks,
+		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
 		trashRetention: settingStore.TrashRetention,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
@@ -368,6 +370,7 @@ func serve() error {
 	scans.Queue = runner
 	matches.Queue = runner
 	changes.Queue = runner
+	histories.Queue = runner
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
@@ -448,6 +451,7 @@ func serve() error {
 		Matches:    matches,
 		Bulk:       changes,
 		Reading:    readingService,
+		Imports:    histories,
 		Shelves:    shelves.NewService(pool, books),
 		Search:     search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates: duplicates,
@@ -563,6 +567,26 @@ func migrate() error {
 	return nil
 }
 
+// recommendCheck prints how well each way of weighing a person's taste finds
+// the books of theirs that it did not see (docs/similarity.md).
+func recommendCheck(ctx context.Context, vectors *similar.Service, minRated int, asJSON bool) error {
+	r, err := vectors.CheckRecommendations(ctx, minRated)
+	if err != nil {
+		return err
+	}
+	if asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	fmt.Printf("People asked about  %d, %d books hidden in all\n\n", r.People, r.Hidden)
+	fmt.Printf("%-40s %8s %10s %10s\n", "Configuration", "Hidden", "Recall@10", "Recall@20")
+	for _, c := range r.Results {
+		fmt.Printf("%-40s %8d %9.1f%% %9.1f%%\n", c.Name, c.Hidden, 100*c.Recall10, 100*c.Recall20)
+	}
+	return nil
+}
+
 // similarCheck measures the similar books of a sample of the library, as
 // they are shown now: how many are by the book's own author, from its
 // series, or a copy of it. It reads only.
@@ -573,6 +597,8 @@ func similarCheck(args []string) error {
 	asJSON := flags.Bool("json", false, "print the report as JSON")
 	verbose := flags.Bool("v", false, "list each book with its similar books")
 	describe := flags.String("describe", "", "list the books nearest this description instead, k of them")
+	recommend := flags.Bool("recommend", false, "measure the recommendations instead: hide a share of each person's 4 and 5 star books and count how many come back")
+	minRated := flags.Int("min-rated", 10, "with -recommend, how many 4 and 5 star books a person needs to be asked about")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -609,6 +635,9 @@ func similarCheck(args []string) error {
 			fmt.Println(title)
 		}
 		return nil
+	}
+	if *recommend {
+		return recommendCheck(ctx, vectors, *minRated, *asJSON)
 	}
 	r, err := vectors.Check(ctx, *n, *k)
 	if err != nil {
