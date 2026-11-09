@@ -19,7 +19,14 @@ ever in the compose file or an environment variable. init only adds what is miss
   the author squash-merges it and closes the issue with a pointer to the pull
   request: merging alone does not close issues in this repository. Pull requests by
   anyone else, and any with failing or missing checks, are left to the owner.
-- The backlog is filed as issues in milestones `M0`–`M10`. An issue names its
+- Issues worked on in parallel go as a batch (the owner's decision, 2026-11-09):
+  each issue on its own branch with its own commits and only its own checks, no
+  push; one batch branch (`chore/<batch issue>-batch-<n>`) merges them, resolves
+  conflicts and migration numbers, and passes the gate and CI once. Its pull
+  request names every issue (`Closes #a, closes #b`) and is merged with a merge
+  commit, not squashed, so each issue keeps its commits. A branch that fails is
+  fixed or taken out of the batch.
+- The backlog is filed as issues in milestones (`M0` onwards). An issue names its
   dependencies; do not start it before they are merged.
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
   under `docs/decisions/`. No search or embedding feature work starts before them.
