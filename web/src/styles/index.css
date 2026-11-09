@@ -112,6 +112,27 @@ body {
 	@apply border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none;
 }
 
+/* The boundary of a control (field, select, outline button) is at least 3:1
+   against the panel on the worst spot of the glass (docs/design.md), which
+   the neutral steps 300 and 600 used for it are not. Written once here, over
+   the utilities, rather than darkening every border in the app: cards and
+   panels keep their hairlines. A pressed toggle's own colour stays. */
+:root {
+	--control-border: #8a7a5e;
+}
+:root[data-theme="dark"] {
+	--control-border: #7a8aa3;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--control-border: #7a8aa3;
+	}
+}
+.border-slate-300:not([aria-pressed="true"]),
+.dark\:border-slate-600:not([aria-pressed="true"]) {
+	border-color: var(--control-border);
+}
+
 /* Bars, boxes and sliders the browser draws take the accent. */
 progress,
 input[type="checkbox"],

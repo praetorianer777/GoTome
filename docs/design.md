@@ -126,9 +126,15 @@ backdrop (rgb 212 204 193) under the white panel is rgb 247 246 244. On those:
 | candle amber | 5.0 | gold-strong | 5.9 |
 
 A card (slate-800 at 60 %) on that panel gives 5.2 for slate-400 and 9.5 for
-slate-100. Control borders (slate-600 dark, slate-300 light) are 1.9:1 and
-1.7:1 on the worst spot, as before a thin line on a field that is itself
-filled; they are not text and the field's own ground stays opaque. If a pair
+slate-100. The **boundary of a control** (field, select, outline button; WCAG
+1.4.11, 3:1) is its own token, `--control-border` (`styles/index.css`, which
+takes the place of the neutral steps 300 and 600 on any `border-slate-300` and
+`dark:border-slate-600`): `#8a7a5e` in the light theme, 3.9:1 on the worst
+panel and 4.2:1 on a white field; `#7a8aa3` in the dark one, 3.3:1 on the
+worst panel and 4.4:1 on the field's navy. Card and panel hairlines stay
+subtle, as they are decoration. Native checkboxes and radios are drawn by
+the browser in the page's `color-scheme`. The focus ring (brand-strong
+`#0b6f96` on light, cyan on dark) is 5.2 and 5.3. If a pair
 fails after a change, raise the opacity or dim the backdrop, never the
 text's colour.
 

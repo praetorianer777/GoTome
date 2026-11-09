@@ -99,7 +99,7 @@ export function EmptyState({
 }) {
 	const Heading = level === 2 ? "h2" : "h3";
 	return (
-		<div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
+		<div className="rounded-xl border border-dashed border-[var(--color-slate-300)] px-6 py-12 text-center dark:border-slate-700">
 			<Gopher mood={mood} size={112} className="mx-auto mb-4" />
 			{title && <Heading className="text-lg font-medium">{title}</Heading>}
 			{children && (
