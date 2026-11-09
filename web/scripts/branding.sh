@@ -23,15 +23,19 @@ icon 512 "$public/icon-512.png"
 # The mark in the app's header, shown at 28 px and sharp at three times that.
 magick "$src/icon.png" -resize 84x84 -strip -quality 90 "$assets/mark.webp"
 
-# The illustration on the setup and sign-in pages, shown at up to 320 px wide
-# and sharp at twice that.
-magick "$src/artwork.jpg" -resize 640x -strip -quality 82 "$assets/artwork.webp"
-
 # The backdrops, the library at night for the dark theme and by day for the
-# light one, blurred a little. The night one is dimmed to a fifth less and the
-# day one washed with parchment, so that, with the panels 90 % opaque on top,
-# the text on them keeps its contrast (docs/design.md).
-magick "$src/backdrop.jpg" -resize 1280x -blur 0x3 -evaluate multiply 0.8 -strip -quality 55 "$assets/backdrop.webp"
+# light one, blurred a little. The night one is lifted (gamma) so that the
+# library shows, and only its lamps are held down: a soft knee at a luminance
+# of 90 / 255 that never passes 140, so that the brightest spot under the
+# panels stays where docs/design.md's contrast numbers were taken. The day one
+# is washed with parchment. With the panels on top, the text on them keeps its
+# contrast.
+cap='(0.2126*u.r+0.7152*u.g+0.0722*u.b)'
+knee='(90/255)'
+top='(140/255)'
+magick "$src/backdrop.jpg" -resize 1280x -blur 0x3 -gamma 1.6 \
+	-fx "u*(($cap<=$knee)?1:($knee+($top-$knee)*(1-exp(-($cap-$knee)/($top-$knee))))/max($cap,0.0001))" \
+	-strip -quality 55 "$assets/backdrop.webp"
 magick "$src/backdrop-light.jpg" -resize 1280x -blur 0x3 -fill '#faf6ec' -colorize 20% -strip -quality 55 "$assets/backdrop-light.webp"
 
 # The hero of the home page, at most 1152 px wide and sharp at 1.2 times that.
@@ -41,11 +45,16 @@ magick "$src/hero-light.jpg" -resize 1400x -strip -quality 72 "$assets/hero-ligh
 # The originals of everything below have a white ground. The ground is cut
 # away by filling from the border with a fuzz, which stops at the characters'
 # dark outline; the sticker edge the five gophers have is white as well and
-# goes with it. The alpha is then eroded by a pixel and softened, so that no
-# light fringe of the old ground is left around the outline on a dark page.
+# goes with it. White the fill cannot reach, because an outline encloses it,
+# stays unless a point inside it is named in $inside ("x,y" pairs of the
+# original, one for each such area that is ground). The alpha is then eroded
+# by a pixel and softened, so that no light fringe of the old ground is left
+# around the outline on a dark page.
 cutout() {
+	local fill=() p
+	for p in ${inside:-}; do fill+=(-draw "color $((${p%,*} + 2)),$((${p#*,} + 2)) floodfill"); done
 	magick "$1" -alpha set -bordercolor white -border 2 -fuzz "${3:-12}%" -fill none \
-		-draw 'color 0,0 floodfill' -shave 2x2 \
+		-draw 'color 0,0 floodfill' "${fill[@]}" -shave 2x2 \
 		\( +clone -alpha extract -morphology erode disk:1.5 -blur 0x0.8 \) \
 		-compose copy_opacity -composite -trim +repage "${@:4}" -strip \
 		-define webp:alpha-quality=90 -quality 82 "$2"
@@ -54,14 +63,20 @@ cutout() {
 # The gopher at the foot of the sidebar: the front view of the sheet, shown
 # at 144 px tall and sharp at twice that.
 magick "$src/mascot-sidebar.jpg" -crop 372x720+22+50 +repage "$tmp/side.png"
-cutout "$tmp/side.png" "$assets/mascot-sidebar.webp" 12 -resize x288
+inside="182,60" cutout "$tmp/side.png" "$assets/mascot-sidebar.webp" 12 -resize x288
 # The gopher waving in a page's corner, shown at 64 px wide.
 cutout "$src/mascot-corner.jpg" "$assets/mascot-corner.webp" 12 -resize 128x
 # The gophers of the empty, search, error, loading and finished states, shown
-# at up to 160 px.
-for g in sleep search confused reading cheer; do
-	cutout "$src/gopher-$g.jpg" "$assets/gopher-$g.webp" 22 -resize 320x
-done
+# at up to 160 px. The gap between the head and the headphone band is ground
+# in all five. The sleeping one's speech bubble is an empty shape in the
+# original and gets a "z" drawn as a line.
+magick "$src/gopher-sleep.jpg" -fill none -stroke '#1c2d52' -strokewidth 9 \
+	-draw 'stroke-linecap round stroke-linejoin round polyline 168,118 210,118 168,166 210,166' "$tmp/sleep.png"
+inside="517,122" cutout "$tmp/sleep.png" "$assets/gopher-sleep.webp" 22 -resize 320x
+inside="517,122" cutout "$src/gopher-search.jpg" "$assets/gopher-search.webp" 22 -resize 320x
+inside="515,122" cutout "$src/gopher-confused.jpg" "$assets/gopher-confused.webp" 22 -resize 320x
+inside="552,158" cutout "$src/gopher-reading.jpg" "$assets/gopher-reading.webp" 22 -resize 320x
+inside="551,158" cutout "$src/gopher-cheer.jpg" "$assets/gopher-cheer.webp" 22 -resize 320x
 # The medium's badge on a cover, shown at 24 px and sharp at 2.7 times that.
 for b in ebook audio both; do
 	cutout "$src/badge-$b.jpg" "$assets/badge-$b.webp" 12 -resize 64x64\!
@@ -96,7 +111,7 @@ gild() {
 # The GO with its white ground, the counters of the letters included, cut
 # away; the edge is eroded a pixel and softened, as for the gophers.
 wordmark() {
-	local go=$1 top=$2 sheen=$3 bottom=$4 line=$5 name=$6 h
+	local go=$1 top=$2 sheen=$3 bottom=$4 line=$5 name=$6 boost=$7 h
 	magick "$src/$go" -alpha set -fuzz 14% -transparent white \
 		\( +clone -alpha extract -morphology erode disk:1.5 -blur 0x0.8 \) \
 		-compose copy_opacity -composite -trim +repage "$tmp/go.png"
@@ -107,10 +122,15 @@ wordmark() {
 		-gravity south +append "$tmp/word.png"
 	# The top bar shows it 36 px high and sharp at three times that; the
 	# sign-in and setup pages about 280 px wide and sharp at twice that.
-	magick "$tmp/word.png" -resize x108 -strip -define webp:alpha-quality=90 -quality 85 "$assets/$name.webp"
+	# At that size the GO's thin inner gold line mixes into the cyan and
+	# turns it teal, so the small cut takes the line out (a median over
+	# 3 x 3 pixels) and gives the colour back with more saturation.
+	magick "$tmp/go.png" -statistic Median 3x3 -modulate "100,$boost" "$tmp/go-small.png"
+	magick -background none "$tmp/go-small.png" -size "$((h / 25))x1" xc:none "$tmp/tome-fit.png" \
+		-gravity south +append -resize x108 -strip -define webp:alpha-quality=90 -quality 85 "$assets/$name.webp"
 	magick "$tmp/word.png" -resize 560x -strip -define webp:alpha-quality=90 -quality 85 "$assets/$name-large.webp"
 }
-wordmark wordmark-go.jpg '#b07c26' '#fcebb0' '#8a5a18' '#4a3014' wordmark
-wordmark wordmark-go-light.jpg '#8a6020' '#d6ad55' '#6a4612' '#3a2410' wordmark-light
+wordmark wordmark-go.jpg '#b07c26' '#fcebb0' '#8a5a18' '#4a3014' wordmark 125
+wordmark wordmark-go-light.jpg '#8a6020' '#d6ad55' '#6a4612' '#3a2410' wordmark-light 115
 
 identify "$public"/*.png "$public/favicon.ico" "$assets"/*.webp | awk '{print $1, $3}'
