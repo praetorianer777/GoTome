@@ -12,6 +12,12 @@ ARG RUST_IMAGE=rust:1.96.0-slim-bookworm@sha256:4732ca96fd086cb9be682050c3f01762
 ARG FFMPEG_VERSION=9.0.2
 ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
 
+# ONNX Runtime's release and the SHA-256 of each architecture's archive, which
+# mk/onnxruntime.mk reads and fetches into deploy/vendor.
+ARG ORT_VERSION=1.30.0
+ARG ORT_SHA256_AMD64=a5ed5a3cac51fbb2e90da632ae43d19212faaa20e76484e62bcb7c23ddb3b3fd
+ARG ORT_SHA256_ARM64=e16a27a8ed330bbc698df7330b0cf56e722f354e3bcc92118682c74ef3c3e3da
+
 FROM node:24-alpine AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
@@ -21,21 +27,25 @@ COPY api/ /src/api/
 COPY web/ ./
 RUN npm run build
 
-# ONNX Runtime's own release for both architectures, each checked against
-# the SHA-256 GitHub publishes for it (docs/decisions/embedding-runtime.md);
-# the stage runs on the target's architecture and keeps that one's library.
-# Both are fetched because the classic builder, which compose may use, has
+# ONNX Runtime's own release for both architectures, from deploy/vendor (make
+# onnxruntime-fetch) so that a build asks GitHub for nothing, each checked
+# against the SHA-256 pinned above (docs/decisions/embedding-runtime.md); the
+# stage runs on the target's architecture and keeps that one's library.
+# Both are copied because the classic builder, which compose may use, has
 # neither TARGETARCH in FROM nor skips stages nothing copies from.
 FROM debian:bookworm-slim AS onnxruntime
-ADD https://github.com/microsoft/onnxruntime/releases/download/v1.30.0/onnxruntime-linux-x64-1.30.0.tgz /ort-amd64.tgz
-ADD https://github.com/microsoft/onnxruntime/releases/download/v1.30.0/onnxruntime-linux-aarch64-1.30.0.tgz /ort-arm64.tgz
+ARG ORT_VERSION
+ARG ORT_SHA256_AMD64
+ARG ORT_SHA256_ARM64
+COPY deploy/vendor/onnxruntime-linux-x64-${ORT_VERSION}.tgz /ort-amd64.tgz
+COPY deploy/vendor/onnxruntime-linux-aarch64-${ORT_VERSION}.tgz /ort-arm64.tgz
 RUN printf '%s\n' \
-      'a5ed5a3cac51fbb2e90da632ae43d19212faaa20e76484e62bcb7c23ddb3b3fd  /ort-amd64.tgz' \
-      'e16a27a8ed330bbc698df7330b0cf56e722f354e3bcc92118682c74ef3c3e3da  /ort-arm64.tgz' \
+      "${ORT_SHA256_AMD64}  /ort-amd64.tgz" \
+      "${ORT_SHA256_ARM64}  /ort-arm64.tgz" \
       | sha256sum -c - && \
     mkdir /out && \
     tar -xzf "/ort-$(dpkg --print-architecture).tgz" -C /out --strip-components=2 \
-      --wildcards '*/lib/libonnxruntime.so.1.30.0'
+      --wildcards "*/lib/libonnxruntime.so.${ORT_VERSION}"
 
 # The full-text engine (#265), which the binary loads at run time. With the
 # crates in engine/vendor (make engine-fetch) it builds offline; without,

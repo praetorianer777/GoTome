@@ -35,9 +35,11 @@ jobs:
           path: engine/vendor
           key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
 
-      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
-      # away. An older key's file serves unless the pin changed.
-      - name: Cache FFmpeg's source
+      # FFmpeg's source (make ffmpeg-fetch) and ONNX Runtime's archives (make
+      # onnxruntime-fetch, with retries): ffmpeg.org and GitHub's release
+      # downloads often turn runners away. An older key's files serve unless
+      # a pin changed; the build fetches what is missing.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
         uses: actions/cache@v4
         with:
           path: deploy/vendor
@@ -96,9 +98,11 @@ jobs:
           # The release tags and the commit the change started from.
           fetch-depth: 0
 
-      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
-      # away. An older key's file serves unless the pin changed.
-      - name: Cache FFmpeg's source
+      # FFmpeg's source (make ffmpeg-fetch) and ONNX Runtime's archives (make
+      # onnxruntime-fetch, with retries): ffmpeg.org and GitHub's release
+      # downloads often turn runners away. An older key's files serve unless
+      # a pin changed; the build fetches what is missing.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
         uses: actions/cache@v4
         with:
           path: deploy/vendor
@@ -125,9 +129,11 @@ jobs:
           path: .cache/embed/model
           key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
 
-      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
-      # away. An older key's file serves unless the pin changed.
-      - name: Cache FFmpeg's source
+      # FFmpeg's source (make ffmpeg-fetch) and ONNX Runtime's archives (make
+      # onnxruntime-fetch, with retries): ffmpeg.org and GitHub's release
+      # downloads often turn runners away. An older key's files serve unless
+      # a pin changed; the build fetches what is missing.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
         uses: actions/cache@v4
         with:
           path: deploy/vendor
