@@ -8,6 +8,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- Books in the library's grid, on author and series pages and in "similar
+  books" are shown as rounded cards, with a round badge on the cover's
+  corner saying whether the book is an ebook, an audiobook or both.
 - The dark theme's colours follow the owner's draft more closely: a deep
   midnight blue with a faint warm glow at the corners, translucent navy
   panels with soft borders, a brighter cyan accent, gold page titles, and

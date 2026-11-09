@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { similarQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { MediumBadge } from "@/books/medium";
 import { t } from "@/i18n";
 
 /** A row of the books most like this one; nothing while there are none. */
@@ -16,7 +17,8 @@ export function SimilarBooks({ bookId }: { bookId: string }) {
 			</h2>
 			<ul className="flex gap-3 overflow-x-auto pb-2">
 				{books.map((book) => (
-					<li key={book.id} className="w-24 shrink-0">
+					<li key={book.id} className="relative w-24 shrink-0">
+						<MediumBadge formats={book.formats} className="top-1 right-1 scale-90" />
 						<Link
 							to="/books/$bookId"
 							params={{ bookId: book.id }}

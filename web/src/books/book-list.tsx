@@ -2,10 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { BookSummary } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { MediumBadge } from "@/books/medium";
 import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { statusLabel } from "@/books/reading";
 import { useColumns, useWindowRows, VIRTUAL_FROM } from "@/books/virtual";
-import { button, Skeleton } from "@/components/ui";
+import { button, card, Skeleton } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 
@@ -116,8 +117,8 @@ export function GridSkeleton() {
 	);
 }
 
-/** A card's height with its cover and three lines, before it is measured. */
-const CARD_ROW_ESTIMATE = 360;
+/** A card's height with its cover, padding and three lines, before it is measured. */
+const CARD_ROW_ESTIMATE = 400;
 
 /**
  * The grid of a long list, a row of cards at a time: only the rows near the
@@ -174,9 +175,10 @@ function GridCard({
 	selection?: Selection;
 }) {
 	return (
-		<>
+		<div className={`${card} relative flex h-full flex-col gap-2 p-3`}>
+			<MediumBadge formats={book.formats} className="top-5 right-5" />
 			{selection && (
-				<span className="absolute top-2 left-2 z-10 flex rounded bg-white/90 p-1 shadow-sm dark:bg-slate-900/90">
+				<span className="absolute top-5 left-5 z-10 flex rounded bg-white/90 p-1 shadow-sm dark:bg-slate-900/90">
 					<Tick book={book} selection={selection} />
 				</span>
 			)}
@@ -194,7 +196,7 @@ function GridCard({
 					{book.title}
 				</span>
 			</Link>
-			<div className="mt-0.5 flex flex-col gap-0.5">
+			<div className="flex flex-col gap-0.5">
 				{book.authors.length > 0 && (
 					<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
 						<AuthorLinks book={book} />
@@ -204,7 +206,7 @@ function GridCard({
 				<Standing book={book} />
 				<FilesMissing book={book} />
 			</div>
-		</>
+		</div>
 	);
 }
 
