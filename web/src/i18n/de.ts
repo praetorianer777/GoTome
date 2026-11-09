@@ -15,6 +15,12 @@ export const de: Record<MessageKey, string> = {
 	"nav.menu": "Menü",
 	"nav.group.catalogue": "Katalog",
 	"nav.group.admin": "Verwaltung",
+	"nav.sections": "Bereiche",
+	"nav.group.ebooks": "E-Books",
+	"nav.group.audiobooks": "Hörbücher",
+	"nav.group.more": "Mehr",
+	"nav.allEbooks": "Alle E-Books",
+	"nav.allAudiobooks": "Alle Hörbücher",
 	"user.menuFor": "Konto: {name}",
 
 	"storage.unlimited": "Ihre Uploads belegen {used}. Es gibt keine Begrenzung.",

@@ -25,12 +25,22 @@ export function button(
 	size: "sm" | "md" = "sm",
 ): string {
 	const pad = size === "sm" ? "px-3 py-1" : "px-4 py-2";
-	return `inline-flex items-center justify-center gap-2 rounded-md ${pad} disabled:opacity-60 ${BUTTONS[kind]}`;
+	return `inline-flex items-center justify-center gap-2 rounded-lg ${pad} disabled:opacity-60 ${BUTTONS[kind]}`;
 }
 
 /** The classes of a select or a text field. */
 export const control =
-	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
+	"rounded-lg border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
+
+/**
+ * The frame's surfaces (top bar, sidebar, content): see `panel` in
+ * styles/index.css. Text sits on a panel, never on the backdrop.
+ */
+export const panel = "panel rounded-2xl";
+
+/** A raised surface inside a panel: a cover card, a group of settings. */
+export const card =
+	"rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/60";
 
 /**
  * A page's title, with how many it lists where that is known, a sentence
@@ -59,7 +69,7 @@ export function PageHeader({
 					)}
 				</div>
 				{intro && (
-					<p className="max-w-2xl text-slate-600 dark:text-slate-400">
+					<p className="max-w-prose text-slate-600 dark:text-slate-400">
 						{intro}
 					</p>
 				)}
@@ -85,7 +95,7 @@ export function EmptyState({
 }) {
 	const Heading = level === 2 ? "h2" : "h3";
 	return (
-		<div className="rounded-lg border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
+		<div className="rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
 			{title && <Heading className="text-lg font-medium">{title}</Heading>}
 			{children && (
 				<div className="mx-auto mt-2 max-w-md text-slate-600 dark:text-slate-400">

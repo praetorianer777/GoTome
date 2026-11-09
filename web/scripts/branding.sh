@@ -25,4 +25,10 @@ magick "$src/icon.png" -resize 84x84 -strip -quality 90 "$assets/mark.webp"
 # and sharp at twice that.
 magick "$src/artwork.jpg" -resize 640x -strip -quality 82 "$assets/artwork.webp"
 
+# The dark theme's backdrop: the artwork blurred and dimmed until no pixel is
+# brighter than a panel's border, so the text on the panels over it keeps its
+# contrast (docs/design.md). Replace it with the library at night when that
+# art exists.
+magick "$src/artwork.jpg" -resize 960x -blur 0x14 -brightness-contrast -62x-10 -strip -quality 60 "$assets/backdrop.webp"
+
 identify "$public"/*.png "$public/favicon.ico" "$assets"/*.webp | awk '{print $1, $3}'

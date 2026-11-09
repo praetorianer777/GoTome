@@ -15,6 +15,7 @@ import {
 import mark from "@/assets/mark.webp";
 import { QuickSearch } from "@/books/quick-search";
 import { Dialog } from "@/components/dialog";
+import { panel } from "@/components/ui";
 import { LanguageSelect, ThemeSelect } from "@/components/preferences";
 import { useServerVersion, VersionFooter } from "@/components/version-footer";
 import { Bell } from "@/notifications/bell";
@@ -22,7 +23,16 @@ import { type MessageKey, t } from "@/i18n";
 import { MiniPlayer } from "@/player/controls";
 import { PlayerProvider } from "@/player/player";
 
-export type NavGroup = "library" | "catalogue" | "admin";
+export type NavGroup =
+	| "sections"
+	| "ebooks"
+	| "audiobooks"
+	| "more"
+	| "catalogue"
+	| "admin";
+
+const EBOOK_FORMATS = ["epub", "pdf", "mobi", "azw3", "azw"];
+const AUDIO_FORMATS = ["m4b", "m4a", "mp3", "flac", "ogg", "opus"];
 
 export interface NavItem {
 	to:
@@ -47,6 +57,8 @@ export interface NavItem {
 		| "/admin/users"
 		| "/admin/settings";
 	label: MessageKey;
+	/** The library's filter the entry opens it with: all of one medium. */
+	search?: { format: string[] };
 	/**
 	 * What the person must be allowed to do for the entry to be offered;
 	 * none for a page every signed-in person may open.
@@ -65,66 +77,82 @@ export const NAV_ITEMS: NavItem[] = [
 		to: "/",
 		label: "nav.library",
 		permission: "library:read",
-		group: "library",
+		group: "sections",
 		icon: "library",
-	},
-	{
-		to: "/authors",
-		label: "nav.authors",
-		permission: "library:read",
-		group: "library",
-		icon: "person",
-	},
-	{
-		to: "/series",
-		label: "nav.series",
-		permission: "library:read",
-		group: "library",
-		icon: "shelf",
-	},
-	{
-		to: "/search",
-		label: "nav.search",
-		permission: "library:read",
-		group: "library",
-		icon: "search",
-	},
-	{
-		to: "/collections",
-		label: "nav.collections",
-		permission: "library:read",
-		group: "library",
-		icon: "shelf",
 	},
 	{
 		to: "/wishlist",
 		label: "nav.wishlist",
 		permission: "personal:manage",
-		group: "library",
+		group: "sections",
 		icon: "heart",
 	},
 	{
 		to: "/releases",
 		label: "nav.releases",
 		permission: "personal:manage",
-		group: "library",
+		group: "sections",
 		icon: "spark",
 	},
 	{
 		to: "/stats",
 		label: "nav.stats",
 		permission: "personal:manage",
-		group: "library",
+		group: "sections",
 		icon: "chart",
+	},
+	{
+		to: "/",
+		label: "nav.allEbooks",
+		search: { format: EBOOK_FORMATS },
+		permission: "library:read",
+		group: "ebooks",
+		icon: "book",
+	},
+	{
+		to: "/authors",
+		label: "nav.authors",
+		permission: "library:read",
+		group: "ebooks",
+		icon: "person",
+	},
+	{
+		to: "/series",
+		label: "nav.series",
+		permission: "library:read",
+		group: "ebooks",
+		icon: "shelf",
+	},
+	{
+		to: "/collections",
+		label: "nav.collections",
+		permission: "library:read",
+		group: "ebooks",
+		icon: "folder",
+	},
+	{
+		to: "/search",
+		label: "nav.search",
+		permission: "library:read",
+		group: "ebooks",
+		icon: "search",
+	},
+	{
+		to: "/",
+		label: "nav.allAudiobooks",
+		search: { format: AUDIO_FORMATS },
+		permission: "library:read",
+		group: "audiobooks",
+		icon: "headphones",
 	},
 	{
 		to: "/overview",
 		label: "nav.overview",
 		permission: "library:read",
-		group: "library",
+		group: "more",
 		icon: "gauge",
 	},
-	{ to: "/profile", label: "nav.profile", group: "library", icon: "person" },
+	{ to: "/profile", label: "nav.profile", group: "more", icon: "person" },
 	{
 		to: "/upload",
 		label: "nav.upload",
@@ -206,10 +234,23 @@ export function visibleNavItems(
 	);
 }
 
-const GROUPS: { group: NavGroup; label?: MessageKey }[] = [
-	{ group: "library" },
-	{ group: "catalogue", label: "nav.group.catalogue" },
-	{ group: "admin", label: "nav.group.admin" },
+/**
+ * The sidebar's groups in order. The sections are the top bar's tabs on a
+ * desktop and appear here only in the drawer; a medium's group has a
+ * heading with its icon; the last two fold.
+ */
+const GROUPS: {
+	group: NavGroup;
+	label?: MessageKey;
+	icon?: IconName;
+	folds?: boolean;
+}[] = [
+	{ group: "sections" },
+	{ group: "ebooks", label: "nav.group.ebooks", icon: "book" },
+	{ group: "audiobooks", label: "nav.group.audiobooks", icon: "headphones" },
+	{ group: "more", label: "nav.group.more" },
+	{ group: "catalogue", label: "nav.group.catalogue", folds: true },
+	{ group: "admin", label: "nav.group.admin", folds: true },
 ];
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -229,75 +270,116 @@ export function Shell({ user }: { user: CurrentUser }) {
 
 	return (
 		<PlayerProvider>
-			<div className="flex min-h-dvh">
+			<div className="flex min-h-dvh flex-col lg:gap-4 lg:p-4">
 				<a
 					href="#content"
 					className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-slate-900"
 				>
 					{t("nav.skip")}
 				</a>
-				<aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-slate-200 bg-slate-100/70 px-3 py-4 lg:flex dark:border-slate-800 dark:bg-slate-950">
-					<Wordmark />
-					<Navigation user={user} />
-				</aside>
-				<div className="flex min-w-0 flex-1 flex-col">
-					<header className="z-30 border-b lg:sticky lg:top-0 border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-ink">
-						<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-							<button
-								type="button"
-								aria-label={t("nav.menu")}
-								aria-expanded={drawer}
-								onClick={() => setDrawer(true)}
-								className="rounded-md p-1.5 text-slate-700 hover:bg-slate-200 lg:hidden dark:text-slate-200 dark:hover:bg-slate-800"
-							>
-								<Icon name="menu" className="h-6 w-6" />
-							</button>
-							<div className="lg:hidden">
-								<Wordmark compact />
-							</div>
-							{can(user, "library:read") && (
-								<div className="order-last w-full sm:order-none sm:w-auto">
-									<QuickSearch />
-								</div>
-							)}
-							<div className="ml-auto flex items-center gap-2">
-								<Bell />
-								<AccountMenu user={user} />
-							</div>
+				<header
+					className={`${panel} z-30 backdrop-blur-md max-lg:rounded-none max-lg:border-x-0 max-lg:border-t-0 lg:sticky lg:top-4`}
+				>
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+						<button
+							type="button"
+							aria-label={t("nav.menu")}
+							aria-expanded={drawer}
+							onClick={() => setDrawer(true)}
+							className="rounded-lg p-1.5 text-slate-700 hover:bg-slate-200 lg:hidden dark:text-slate-200 dark:hover:bg-slate-800"
+						>
+							<Icon name="menu" className="h-6 w-6" />
+						</button>
+						<Wordmark />
+						<Sections user={user} />
+						<div className="ml-auto flex items-center gap-2 lg:order-last">
+							<Bell />
+							<AccountMenu user={user} />
 						</div>
-					</header>
-					<main
-						id="content"
-						className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
+						{can(user, "library:read") && (
+							<div className="order-last w-full sm:order-none sm:ml-auto sm:w-auto lg:ml-0">
+								<QuickSearch />
+							</div>
+						)}
+					</div>
+				</header>
+				<div className="flex min-w-0 flex-1 lg:gap-4">
+					<aside
+						className={`${panel} sticky top-22 hidden h-[calc(100dvh-6.5rem)] w-64 shrink-0 flex-col gap-4 overflow-y-auto px-3 py-4 backdrop-blur-md lg:flex`}
 					>
-						<Outlet />
-					</main>
-					{!fullScreen && <VersionFooter {...version} />}
-					<MiniPlayer />
+						<Navigation user={user} />
+						<img
+							src={mark}
+							alt=""
+							width={56}
+							height={56}
+							className="mt-auto h-14 w-14 shrink-0 self-start rounded-xl opacity-90"
+						/>
+					</aside>
+					<div
+						className={`${panel} flex min-w-0 flex-1 flex-col max-lg:rounded-none max-lg:border-x-0 lg:rounded-2xl`}
+					>
+						<main
+							id="content"
+							className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
+						>
+							<Outlet />
+						</main>
+						{!fullScreen && <VersionFooter {...version} />}
+						<MiniPlayer />
+					</div>
 				</div>
 			</div>
 			{drawer && (
 				<Dialog title={t("nav.menu")} onClose={() => setDrawer(false)} drawer>
-					<Navigation user={user} onNavigate={() => setDrawer(false)} />
+					<Navigation
+						user={user}
+						inDrawer
+						onNavigate={() => setDrawer(false)}
+					/>
 				</Dialog>
 			)}
 		</PlayerProvider>
 	);
 }
 
-/** The icon and the name as the artwork writes it: "GO" in cyan, "tome" in cream serif. */
-function Wordmark({ compact = false }: { compact?: boolean }) {
+/** The main sections as tabs in the top bar, on a desktop. */
+function Sections({ user }: { user: CurrentUser }) {
+	const items = visibleNavItems(NAV_ITEMS, user).filter(
+		(item) => item.group === "sections",
+	);
 	return (
-		<Link to="/" className="flex items-center gap-2 rounded-md px-1">
+		<nav aria-label={t("nav.sections")} className="hidden lg:block">
+			<ul className="flex items-center gap-1">
+				{items.map((item) => (
+					<li key={item.to}>
+						<Link
+							to={item.to}
+							activeOptions={{ exact: true, includeSearch: false }}
+							className="block rounded-full px-4 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-brand/15 dark:data-[status=active]:text-brand"
+						>
+							{t(item.label)}
+						</Link>
+					</li>
+				))}
+			</ul>
+		</nav>
+	);
+}
+
+/** The icon and the name as the artwork writes it: "GO" in cyan, "tome" in cream serif. */
+function Wordmark() {
+	return (
+		<Link to="/" className="flex items-center gap-2 rounded-lg px-1">
 			{/* Decorative: the name beside it is the link's text. */}
 			<img
 				src={mark}
-				width={compact ? 28 : 32}
-				height={compact ? 28 : 32}
+				width={32}
+				height={32}
 				alt=""
 				className="rounded-md"
 			/>
-			<span className={`${compact ? "text-lg" : "text-xl"} tracking-tight`}>
+			<span className="text-xl tracking-tight">
 				<span className="font-sans font-extrabold text-brand-strong dark:text-brand">
 					GO
 				</span>
@@ -321,9 +403,11 @@ function storedFolds(): NavGroup[] {
 
 function Navigation({
 	user,
+	inDrawer = false,
 	onNavigate,
 }: {
 	user: CurrentUser;
+	inDrawer?: boolean;
 	onNavigate?: () => void;
 }) {
 	const items = visibleNavItems(NAV_ITEMS, user);
@@ -344,22 +428,25 @@ function Navigation({
 
 	return (
 		<nav aria-label={t("nav.main")} className="flex flex-col gap-5 text-sm">
-			{GROUPS.map(({ group, label }) => {
+			{GROUPS.map(({ group, label, icon, folds }) => {
+				if (group === "sections" && !inDrawer) return null;
 				const entries = items.filter((item) => item.group === group);
 				if (entries.length === 0) return null;
 				// A group holding the page shown stays open.
 				const open =
-					!folded.includes(group) || entries.some((item) => item.to === path);
+					!folds ||
+					!folded.includes(group) ||
+					entries.some((item) => item.to === path);
 				const listId = `${baseId}-${group}`;
 				return (
 					<div key={group} className="flex flex-col gap-1">
-						{label && (
+						{label && folds && (
 							<button
 								type="button"
 								aria-expanded={open}
 								aria-controls={listId}
 								onClick={() => fold(group)}
-								className="flex items-center justify-between rounded-md px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+								className="flex items-center justify-between rounded-lg px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
 							>
 								{t(label)}
 								<Icon
@@ -368,15 +455,30 @@ function Navigation({
 								/>
 							</button>
 						)}
+						{label && !folds && (
+							<p className="flex items-center justify-between px-3 py-1 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
+								{t(label)}
+								{icon && (
+									<Icon
+										name={icon}
+										className="h-5 w-5 text-candle-strong dark:text-candle"
+									/>
+								)}
+							</p>
+						)}
 						{open && (
 							<ul id={listId} className="flex flex-col gap-0.5">
 								{entries.map((item) => (
-									<li key={item.to}>
+									<li key={`${item.to}${item.search?.format[0] ?? ""}`}>
 										<Link
 											to={item.to}
-											activeOptions={{ exact: true, includeSearch: false }}
+											search={item.search}
+											activeOptions={{
+												exact: true,
+												includeSearch: !!item.search,
+											}}
 											onClick={onNavigate}
-											className="flex items-center gap-3 rounded-md px-3 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-brand/10 dark:data-[status=active]:text-brand dark:data-[status=active]:shadow-glow"
+											className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-200/70 hover:text-slate-900 data-[status=active]:bg-brand-strong/10 data-[status=active]:font-semibold data-[status=active]:text-brand-strong dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:data-[status=active]:bg-brand/10 dark:data-[status=active]:text-brand dark:data-[status=active]:shadow-glow"
 										>
 											<Icon
 												name={item.icon}
@@ -464,7 +566,7 @@ function AccountMenu({ user }: { user: CurrentUser }) {
 					id={panelId}
 					role="group"
 					aria-label={t("user.menu")}
-					className="absolute right-0 z-40 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+					className="absolute right-0 z-40 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
 				>
 					<p className="px-2 pt-1 pb-2">
 						<span className="block font-medium">
@@ -512,6 +614,8 @@ function AccountMenu({ user }: { user: CurrentUser }) {
 
 export type IconName =
 	| "library"
+	| "book"
+	| "headphones"
 	| "search"
 	| "shelf"
 	| "heart"
@@ -536,6 +640,12 @@ export type IconName =
 
 const ICONS: Record<IconName, string[]> = {
 	tag: ["M4 4h7l9 9-7 7-9-9z", "M8 8h.01"],
+	book: ["M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z", "M12 6v14"],
+	headphones: [
+		"M4 15v-3a8 8 0 0 1 16 0v3",
+		"M4 15h3v5H5a1 1 0 0 1-1-1z",
+		"M20 15h-3v5h2a1 1 0 0 0 1-1z",
+	],
 	library: ["M4 4h3v16H4z", "M9 4h3v16H9z", "M14.5 4.7l2.9-.8 3.9 15.4-2.9.8z"],
 	search: [
 		"M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13z",

@@ -86,7 +86,11 @@ export async function mainNav(page: Page): Promise<Locator> {
 	if (await menu.isVisible()) {
 		await menu.click();
 	}
-	return page.getByRole("navigation", { name: "Main" });
+	// On a desktop the sections are tabs in the top bar, on a phone the first
+	// group of the drawer's "Main".
+	return page
+		.getByRole("navigation", { name: "Main" })
+		.or(page.getByRole("navigation", { name: "Areas" }));
 }
 
 /** Opens the account menu at the top right of the signed-in person. */

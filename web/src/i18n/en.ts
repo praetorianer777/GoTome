@@ -13,6 +13,12 @@ export const en = {
 	"nav.menu": "Menu",
 	"nav.group.catalogue": "Catalogue",
 	"nav.group.admin": "Administration",
+	"nav.sections": "Areas",
+	"nav.group.ebooks": "Ebooks",
+	"nav.group.audiobooks": "Audiobooks",
+	"nav.group.more": "More",
+	"nav.allEbooks": "All ebooks",
+	"nav.allAudiobooks": "All audiobooks",
 	"user.menuFor": "Account: {name}",
 
 	"storage.unlimited": "Your uploads take up {used}. There is no limit.",

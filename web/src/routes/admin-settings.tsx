@@ -351,7 +351,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 
 	return (
 		<div className="flex flex-col gap-6 lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-			<nav aria-label={t("settings.sections")} className="lg:sticky lg:top-20">
+			<nav aria-label={t("settings.sections")} className="lg:sticky lg:top-24">
 				<ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm lg:flex-col lg:gap-2">
 					{sections.map((section) => (
 						<li key={section.id}>
@@ -384,7 +384,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 				{Object.keys(errors).length === 0 && (
 					<FormError error={update.error ?? remove.error} />
 				)}
-				<div className="sticky bottom-0 flex items-center gap-4 border-t border-slate-200 bg-slate-50 py-3 dark:border-slate-700 dark:bg-ink">
+				<div className="sticky bottom-0 flex items-center gap-4 border-t border-slate-200 bg-white py-3 dark:border-slate-700 dark:bg-slate-900">
 					<SubmitButton pending={update.isPending}>
 						{update.isPending ? t("settings.saving") : t("settings.save")}
 					</SubmitButton>

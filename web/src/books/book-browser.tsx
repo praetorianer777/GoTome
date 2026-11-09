@@ -195,7 +195,7 @@ export function BookBrowser({
 				<aside
 					id="filters"
 					aria-label={t("filter.title")}
-					className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-56 lg:overflow-y-auto`}
+					className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:w-56 lg:overflow-y-auto`}
 				>
 					<FilterPanel
 						facets={facets.data ?? []}
