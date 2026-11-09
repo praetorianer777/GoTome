@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/auth/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's API keys: bearer tokens for scripts, each limited to its scopes */
+        get: operations["listOwnAPIKeys"];
+        put?: never;
+        /** Make an API key, shown this once */
+        post: operations["createOwnAPIKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/api-keys/{keyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of the caller's API keys */
+        delete: operations["revokeOwnAPIKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/device-requests": {
         parameters: {
             query?: never;
@@ -2660,6 +2695,22 @@ export interface components {
         AccountList: {
             users: components["schemas"]["Account"][];
         };
+        ApiKeyList: {
+            keys: components["schemas"]["ApiKeyView"][];
+        };
+        ApiKeyView: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            name: string;
+            prefix: string;
+            scopes: string[];
+        };
         ApplyCandidateRequest: {
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
@@ -2995,6 +3046,12 @@ export interface components {
             /** Format: binary */
             file: string;
         };
+        CreateAPIKeyRequest: {
+            /** Format: date-time */
+            expiresAt?: string;
+            name: string;
+            scopes: string[];
+        };
         CreateAccountRequest: {
             email?: string;
             password: string;
@@ -3011,6 +3068,10 @@ export interface components {
             rootPath?: string;
             visibility: string;
             writable?: boolean;
+        };
+        CreatedAPIKey: {
+            key: components["schemas"]["ApiKeyView"];
+            token: string;
         };
         CreatedDevice: {
             catalog: string;
@@ -4081,6 +4142,97 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listOwnAPIKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAPIKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedAPIKey"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listDeviceRequests: {
         parameters: {
             query?: never;

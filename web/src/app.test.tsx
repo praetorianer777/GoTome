@@ -2303,6 +2303,31 @@ describe("profile", () => {
 		await waitFor(() => expect(server.devices).toHaveLength(0));
 	});
 
+	it("makes an API key with chosen scopes, shows it once, and revokes it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		const keys = within(await screen.findByRole("region", { name: "API keys" }));
+
+		await person.type(keys.getByLabelText("Name of the key"), "Home automation");
+		await person.click(keys.getByLabelText("Read the library"));
+		await person.click(keys.getByRole("button", { name: "Make a key" }));
+		expect(await keys.findByText("Choose at least one scope.")).toBeInTheDocument();
+
+		await person.click(keys.getByLabelText("Reading status, progress and shelves"));
+		await person.click(keys.getByRole("button", { name: "Make a key" }));
+		const created = await keys.findByRole("status");
+		expect(created).toHaveTextContent("Home automation is made.");
+		expect(created).toHaveTextContent(`gotome_${"x".repeat(43)}`);
+		expect(await keys.findByText("Not used yet")).toBeInTheDocument();
+		expect(server.apiKeys[0]?.scopes).toEqual(["progress"]);
+
+		await person.click(
+			keys.getByRole("button", { name: "Revoke the key Home automation" }),
+		);
+		await waitFor(() => expect(server.apiKeys).toHaveLength(0));
+	});
+
 	it("shows a device asking to be added with its code, and accepts or declines it", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");

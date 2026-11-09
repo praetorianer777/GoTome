@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type ApiKey struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Name       string
+	KeyHash    []byte
+	KeyPrefix  string
+	Scopes     []string
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+	ExpiresAt  *time.Time
+}
+
 type AudioChapter struct {
 	FileID   uuid.UUID
 	Position int32

@@ -119,6 +119,36 @@ export function useDeleteDevice() {
 	});
 }
 
+export type ApiKey = components["schemas"]["ApiKeyView"];
+
+export const ownApiKeysQuery = queryOptions({
+	queryKey: ["auth", "api-keys"],
+	queryFn: async (): Promise<ApiKey[]> =>
+		(await api.GET("/auth/api-keys")).data?.keys ?? [],
+});
+
+export function useCreateApiKey() {
+	return useMutation({
+		mutationFn: async (body: {
+			name: string;
+			scopes: string[];
+			expiresAt?: string;
+		}) => (await api.POST("/auth/api-keys", { body })).data,
+		onSuccess: useInvalidate(ownApiKeysQuery.queryKey),
+	});
+}
+
+export function useRevokeApiKey() {
+	return useMutation({
+		mutationFn: async (id: string) => {
+			await api.DELETE("/auth/api-keys/{keyId}", {
+				params: { path: { keyId: id } },
+			});
+		},
+		onSuccess: useInvalidate(ownApiKeysQuery.queryKey),
+	});
+}
+
 export type DeviceBook = components["schemas"]["DeviceBook"];
 
 /**

@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- API keys on the profile, for scripts and other programs that use GOtome
+  without a browser: give a key a name, the scopes it may use (read the
+  library, reading status and progress, upload, edit metadata, administer)
+  and an optional expiry. It is shown once, sent as `Authorization:
+  Bearer`, and never does more than your role allows. The list shows when
+  each was last used; revoking one stops it at once. See `docs/api.md`.
+
 ## [0.12.0] - 2026-11-09
 
 ### Added

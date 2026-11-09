@@ -122,6 +122,16 @@ export class FakeServer {
 		createdAt: string;
 		lastUsedAt?: string;
 	}[] = [];
+	/** The signed-in person's API keys. */
+	apiKeys: {
+		id: string;
+		name: string;
+		prefix: string;
+		scopes: string[];
+		createdAt: string;
+		lastUsedAt?: string;
+		expiresAt?: string;
+	}[] = [];
 	/** Books sent to the person's e-readers. */
 	deliveries: {
 		id: string;
@@ -1057,6 +1067,7 @@ export class FakeServer {
 			path.startsWith("/users/") ||
 			path.startsWith("/auth/sessions") ||
 			path.startsWith("/auth/devices") ||
+			path.startsWith("/auth/api-keys") ||
 			path.startsWith("/auth/device-requests") ||
 			path === "/auth/password" ||
 			path === "/auth/storage"
@@ -2170,6 +2181,36 @@ export class FakeServer {
 					createdAt: "2026-01-04T08:00:00Z",
 				});
 			}
+			return new Response(null, { status: 204 });
+		}
+		if (path === "/auth/api-keys" && method === "GET") {
+			return Response.json({ keys: this.apiKeys });
+		}
+		if (path === "/auth/api-keys" && method === "POST") {
+			const scopes = (body.scopes as string[]) ?? [];
+			if (scopes.length === 0) {
+				return refuse(422, "validation_failed", "Some fields are not valid.", {
+					scopes: "Choose at least one scope.",
+				});
+			}
+			const key = {
+				id: `k-${this.apiKeys.length + 1}`,
+				name: String(body.name ?? "").trim(),
+				prefix: "gotome_AbCdE",
+				scopes,
+				createdAt: "2026-01-04T08:00:00Z",
+				expiresAt: body.expiresAt as string | undefined,
+			};
+			this.apiKeys.push(key);
+			return Response.json(
+				{ key, token: `gotome_${"x".repeat(43)}` },
+				{ status: 201 },
+			);
+		}
+		if (path.startsWith("/auth/api-keys/") && method === "DELETE") {
+			this.apiKeys = this.apiKeys.filter(
+				(k) => `/auth/api-keys/${k.id}` !== path,
+			);
 			return new Response(null, { status: 204 });
 		}
 		if (path === "/auth/devices" && method === "GET") {

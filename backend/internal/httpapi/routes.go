@@ -58,6 +58,10 @@ type Route struct {
 	// Devices lets a device's token (HTTP Basic auth) sign in to the route,
 	// as well as a browser's session; no other route takes one.
 	Devices bool
+	// Keys lets an API key reach a route that declares SignedIn. Routes with
+	// any other permission are reached through the key's scopes; the others
+	// that concern the caller's account stay closed to keys.
+	Keys    bool
 	Handler HandlerFunc
 }
 
@@ -75,6 +79,12 @@ const (
 	// caller's own account, the settings, a provider's answer.
 	ReadsNoLibrary
 )
+
+// keyReaches says whether an API key can call the route at all, given the
+// right scope.
+func (rt Route) keyReaches() bool {
+	return rt.Permission != auth.Public && (rt.Permission != auth.SignedIn || rt.Keys)
+}
 
 func (rt Route) successStatus() int {
 	switch {
@@ -157,7 +167,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
-			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getMe,
+			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Keys: true, Handler: s.getMe,
 		},
 
 		{
@@ -235,6 +245,22 @@ func (s *Server) routes() []Route {
 			Summary: "Add a device, and get the token it signs in with, shown this once", Tag: "auth",
 			Request: createDeviceRequest{}, Response: createdDevice{}, Status: http.StatusCreated,
 			Permission: auth.SignedIn, Handler: s.createOwnDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/api-keys", ID: "listOwnAPIKeys",
+			Summary: "The caller's API keys: bearer tokens for scripts, each limited to its scopes", Tag: "auth",
+			Response: apiKeyList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnAPIKeys,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/api-keys", ID: "createOwnAPIKey",
+			Summary: "Make an API key, shown this once", Tag: "auth",
+			Request: createAPIKeyRequest{}, Response: createdAPIKey{}, Status: http.StatusCreated,
+			Permission: auth.SignedIn, Handler: s.createOwnAPIKey,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/api-keys/{keyId}", ID: "revokeOwnAPIKey",
+			Summary: "Revoke one of the caller's API keys", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.revokeOwnAPIKey,
 		},
 		{
 			Method: http.MethodGet, Path: "/auth/device-requests", ID: "listDeviceRequests",
