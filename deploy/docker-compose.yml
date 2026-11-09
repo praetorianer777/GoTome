@@ -70,10 +70,15 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "gotome", "healthcheck"]
-      interval: 5s
+      # The app listens before it migrates and answers /readyz with 503
+      # while it does, which a long upgrade can take minutes over: checks
+      # that fail in the start period do not count, and it turns healthy at
+      # the first that passes (#405).
+      start_period: 10m
+      start_interval: 5s
+      interval: 30s
       timeout: 4s
-      retries: 12
-      start_period: 5s
+      retries: 3
     # Longer than the time the app gives requests and background jobs to
     # finish, so that a stop lets a running scan put down what it holds.
     stop_grace_period: 75s
@@ -108,9 +113,13 @@ services:
       # Over TCP on purpose: the image's first-boot server listens on the
       # socket only, so this passes once the init scripts have run.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U gotome -d gotome"]
-      interval: 3s
+      # A restart of the container, as after an ALTER SYSTEM that needs one,
+      # starts the period again; recovery after a crash can take a while.
+      start_period: 5m
+      start_interval: 2s
+      interval: 10s
       timeout: 3s
-      retries: 40
+      retries: 6
     restart: unless-stopped
 
 volumes:

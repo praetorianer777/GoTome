@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- An upgrade with long database migrations no longer shows the app as
+  `unhealthy` or makes `docker compose up --wait` fail: GOtome listens at
+  once, `/readyz` says `migrating` (and how far it is) until they are done,
+  and Docker's health check allows ten minutes for that. The monitoring
+  addresses are described in the troubleshooting guide.
+
 ## [0.12.0] - 2026-11-09
 
 ### Added

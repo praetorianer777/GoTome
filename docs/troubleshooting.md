@@ -30,6 +30,30 @@ device`**: the disk is full. Free some (`docker image prune` removes old
 images after updates; empty the trash), then start it again; Postgres
 recovers by itself once there is room.
 
+## Monitoring
+
+GOtome answers two addresses for a monitor (Uptime Kuma and the like). Both
+are public and cheap, and say nothing but a status:
+
+| Address | Answers 200 | Use it for |
+|---|---|---|
+| `/healthz` | while the process runs and its web server answers; it asks nothing else, so a slow database never makes it fail | a container restart policy |
+| `/readyz` | `{"status":"ready"}` while GOtome can serve | a load balancer or an uptime monitor |
+
+While GOtome starts, `/readyz` answers 503. During an upgrade's database
+migrations it says `{"status":"migrating","migrationsApplied":3,"migrationsTotal":13}`
+and the log says `migrating the database` for each; a large library can
+spend minutes there. That is not a failure: Docker's health check gives the
+app ten minutes (`start_period`) and turns it `healthy` the moment it
+answers, and a monitor should wait for `/readyz` rather than alert on the
+first 503 after an upgrade.
+
+`docker compose ps` shows the state of the containers: `app` and `db` should be `healthy`
+(`starting` for a while after a start or an upgrade), `init` has exited.
+After `ALTER SYSTEM` changes that need Postgres restarted, the `db`
+container is `starting` again until it accepts connections; the app
+reconnects by itself.
+
 ## Signing in and changes
 
 - **Every change is refused with "This request came from another site and
