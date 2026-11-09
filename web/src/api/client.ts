@@ -9,6 +9,21 @@ import type { components, paths } from "./schema";
 /** Where the API lives, on the origin that serves the app. */
 export const API_BASE = "/api/v1";
 
+let assetResolver: ((path: string) => string) | undefined;
+
+/**
+ * The demo has no server for images and files, which a page asks for by
+ * address rather than through fetch; it says where they are instead.
+ */
+export function resolveAssetsWith(resolver: (path: string) => string) {
+	assetResolver = resolver;
+}
+
+/** The address of a cover or file the browser loads by itself. */
+export function assetUrl(path: string): string {
+	return assetResolver ? assetResolver(path) : `${API_BASE}${path}`;
+}
+
 /** The error every endpoint answers with when it refuses. */
 export type ApiErrorBody = components["schemas"]["APIError"];
 

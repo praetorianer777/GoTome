@@ -9,12 +9,17 @@ coverage.out
 
 node_modules/
 /web/dist/
+/web/dist-demo/
+# Fetched by make sample-books; the pins in sample-books.lock.json are kept.
+/web/demo/files/
+/web/demo/covers/
 /web/coverage/
 # Filled by the image build and by make web-embed; only the placeholder is kept.
 /backend/internal/webui/dist/*
 !/backend/internal/webui/dist/.gitkeep
 
 /e2e/test-results/
+/e2e/test-results-demo/
 /e2e/playwright-report/
 
 # foliate-js is kept to what the EPUB and MOBI reader loads: upstream's demo

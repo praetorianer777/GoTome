@@ -12,6 +12,8 @@ import {
 	type Permission,
 	useLogout,
 } from "@/auth/session";
+import { DemoBanner, DemoNote } from "@/components/demo";
+import { isDemo, notInTheDemo } from "@/demo/mode";
 import mark from "@/assets/mark.webp";
 import mascotCorner from "@/assets/mascot-corner.webp";
 import mascotSidebar from "@/assets/mascot-sidebar.webp";
@@ -270,10 +272,12 @@ export function Shell({ user }: { user: CurrentUser }) {
 	const fullScreen =
 		!!matchRoute({ to: "/books/$bookId/read/$fileId" }) ||
 		!!matchRoute({ to: "/books/$bookId/listen" });
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
 	const [drawer, setDrawer] = useState(false);
 
 	return (
 		<PlayerProvider>
+			{isDemo && !fullScreen && <DemoBanner />}
 			<div className="flex min-h-dvh flex-col lg:gap-4 lg:p-4">
 				<a
 					href="#content"
@@ -327,7 +331,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 							id="content"
 							className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
 						>
-							<Outlet />
+							{notInTheDemo(pathname) ? <DemoNote /> : <Outlet />}
 						</main>
 						{!fullScreen && (
 							<div className="relative">
@@ -596,19 +600,21 @@ function AccountMenu({ user }: { user: CurrentUser }) {
 						<LanguageSelect />
 						<ThemeSelect />
 					</div>
-					<button
-						type="button"
-						disabled={logout.isPending}
-						onClick={() =>
-							logout.mutate(undefined, {
-								onSuccess: () => navigate({ to: "/login" }),
-							})
-						}
-						className={`${item} disabled:opacity-60`}
-					>
-						<Icon name="signOut" className="h-4 w-4" />
-						{t("user.signOut")}
-					</button>
+					{!isDemo && (
+						<button
+							type="button"
+							disabled={logout.isPending}
+							onClick={() =>
+								logout.mutate(undefined, {
+									onSuccess: () => navigate({ to: "/login" }),
+								})
+							}
+							className={`${item} disabled:opacity-60`}
+						>
+							<Icon name="signOut" className="h-4 w-4" />
+							{t("user.signOut")}
+						</button>
+					)}
 				</div>
 			)}
 		</div>

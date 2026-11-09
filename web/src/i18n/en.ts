@@ -1456,6 +1456,11 @@ export const en = {
 	"settings.genreSuggestions.hint":
 		"Tags gives books the genres their tags mean. The others also suggest genres from what books are about, or from the books most like them, for review under Genres; measure them with gotome genre-check first.",
 	loading: "Loading…",
+	"demo.banner": "This is a demo with public-domain sample books. Changes stay in this tab and are gone on reload.",
+	"demo.install": "Run your own",
+	"demo.note.title": "Not in the demo",
+	"demo.note.body": "This part of GOtome writes to a library or changes the server, which the demo does not have. Install GOtome to use it.",
+	"demo.note.back": "Back to the library",
 } as const;
 
 export type MessageKey = keyof typeof en;

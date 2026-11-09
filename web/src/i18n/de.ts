@@ -1475,4 +1475,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.genreSuggestions.hint":
 		"Schlagwörter gibt Büchern die Genres, die ihre Schlagwörter meinen. Die anderen schlagen außerdem Genres nach dem Inhalt der Bücher oder nach den ähnlichsten Büchern vor, zum Prüfen unter Genres; miss sie vorher mit gotome genre-check.",
 	loading: "Wird geladen …",
+	"demo.banner": "Das ist eine Demo mit gemeinfreien Beispielbüchern. Änderungen bleiben in diesem Tab und sind nach dem Neuladen weg.",
+	"demo.install": "Selbst betreiben",
+	"demo.note.title": "Nicht in der Demo",
+	"demo.note.body": "Dieser Teil von GOtome schreibt in eine Bibliothek oder ändert den Server, den die Demo nicht hat. Installiere GOtome, um ihn zu nutzen.",
+	"demo.note.back": "Zurück zur Bibliothek",
 };

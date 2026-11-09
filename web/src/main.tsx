@@ -9,8 +9,17 @@ import "@/styles/index.css";
 applyTheme(storedTheme());
 applyLocale();
 
-createRoot(document.getElementById("root")!).render(
-	<StrictMode>
-		<App />
-	</StrictMode>,
-);
+async function start() {
+	// Written out here, not through isDemo, so the bundler sees a constant and
+	// leaves the fake server out of every other build.
+	if (import.meta.env.MODE === "demo") {
+		await (await import("@/demo/boot")).bootDemo();
+	}
+	createRoot(document.getElementById("root")!).render(
+		<StrictMode>
+			<App />
+		</StrictMode>,
+	);
+}
+
+void start();
