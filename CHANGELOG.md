@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The dark theme's colours follow the owner's draft more closely: a deep
+  midnight blue with a faint warm glow at the corners, translucent navy
+  panels with soft borders, a brighter cyan accent, gold page titles, and
+  a lighter blue-grey pill for the current tab and menu entry. The light
+  theme keeps its parchment, with muted text and borders slightly bluer.
+
 ## [0.11.0] - 2026-11-09
 
 ### Added
@@ -34,11 +42,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- The dark theme's colours follow the owner's draft more closely: a deep
-  midnight blue with a faint warm glow at the corners, translucent navy
-  panels with soft borders, a brighter cyan accent, gold page titles, and
-  a lighter blue-grey pill for the current tab and menu entry. The light
-  theme keeps its parchment, with muted text and borders slightly bluer.
 - The app has a new look, after the owner's draft
   ([design.md](docs/design.md)): the top bar carries the wordmark, the
   sections (Library, Wishlist, New books, Statistics), a rounded search and
