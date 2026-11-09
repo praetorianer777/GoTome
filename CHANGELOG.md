@@ -14,6 +14,8 @@ What changes for someone who runs or uses GOtome. The format follows
   and an optional expiry. It is shown once, sent as `Authorization:
   Bearer`, and never does more than your role allows. The list shows when
   each was last used; revoking one stops it at once. See `docs/api.md`.
+- `gotome perf-check` times the main views on your own library and prints a
+  table that names none of its books, with the memory in use. It only reads.
 
 ### Fixed
 

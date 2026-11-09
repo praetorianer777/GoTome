@@ -45,6 +45,7 @@ For people who run GOtome or use it. Start with **Getting started**.
 ## For developers
 
 - [Design](design.md): how the web app looks.
-- [Performance at 50,000 books](performance.md).
+- [Performance at 50,000 books](performance.md), and `gotome perf-check` for
+  timing the views on your own library.
 - [Decision records](decisions/): the search engine, the text store, the
   embedding runtime, the MOBI reader, passage vectors.
