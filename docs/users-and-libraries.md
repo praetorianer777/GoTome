@@ -103,6 +103,28 @@ trash is not emptied. The edits made in that time are written into the
 files once a scan finds the folder writable again, or an administrator
 turns **GOtome may change files here** on again.
 
+### Ebook and audiobook as one book
+
+An ebook and its audiobook usually lie in different folders, so a scan
+makes two books. The Duplicates page finds them by title and author and
+calls them "the ebook and the audiobook of one book"; **Merge…** joins them.
+Turn on **Make one book of an ebook and its audiobook with the same title
+and author** on the Libraries page and GOtome does that by itself, as a
+merge of your own would: the ebook's book stays, takes the audiobook's
+files and its narrators, and the audiobook's address leads there. It joins
+only when the match is clear, one ebook for one audiobook, both in that
+library, and only books with nothing but ebook files and nothing but audio
+files. The book's page says it was joined and offers **Split them again**
+(editors): the audiobook is a book again with its files, and the pair is
+kept as two books, so it is not joined a second time. What people did
+with the book since (status, rating, place read, shelves) stays with the
+surviving book.
+
+A merge never crosses libraries, as a file stays in its library's folder.
+For an ebook and an audiobook of two libraries the Duplicates page offers
+**Link as ebook and audiobook** instead: the two stay two books, and each
+one's page lists the other under "Also as".
+
 Without that permission GOtome only reads: a file that disappears from
 the folder is marked missing, and nothing on disk is moved, renamed or
 deleted. An upload of a file whose exact bytes are already in a library

@@ -155,6 +155,15 @@ type BookIdentifier struct {
 	Value  string
 }
 
+type BookJoin struct {
+	ID        uuid.UUID
+	IntoBook  uuid.UUID
+	FromBook  uuid.UUID
+	FileIds   []uuid.UUID
+	CreatedAt time.Time
+	UndoneAt  *time.Time
+}
+
 type BookRelation struct {
 	BookA uuid.UUID
 	BookB uuid.UUID
@@ -344,6 +353,7 @@ type Library struct {
 	UpdatedAt        time.Time
 	UnwritableSince  *time.Time
 	UnwritableReason *string
+	JoinFormats      bool
 }
 
 type LibraryMember struct {

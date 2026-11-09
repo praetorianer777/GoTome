@@ -4578,6 +4578,49 @@
         "x-permission": "index:rebuild"
       }
     },
+    "/joins/{joinId}/undo": {
+      "post": {
+        "operationId": "undoJoin",
+        "summary": "Split a book the library made of an ebook and its audiobook into the two again",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "joinId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/kobo/{token}/download/{fileId}": {
       "get": {
         "operationId": "koboDownload",
@@ -9421,6 +9464,12 @@
               "$ref": "#/components/schemas/BookFile"
             }
           },
+          "forms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookForm"
+            }
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -9429,6 +9478,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BookIdentifier"
+            }
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookJoin"
             }
           },
           "language": {
@@ -9493,7 +9548,9 @@
           "fields",
           "reading",
           "placeholder",
-          "recordings"
+          "recordings",
+          "forms",
+          "joins"
         ]
       },
       "BookFile": {
@@ -9557,6 +9614,29 @@
           "extractState"
         ]
       },
+      "BookForm": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kinds"
+        ]
+      },
       "BookIdentifier": {
         "type": "object",
         "properties": {
@@ -9574,6 +9654,27 @@
           "type",
           "value",
           "fromFile"
+        ]
+      },
+      "BookJoin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "joinedAt"
         ]
       },
       "BookList": {
@@ -11092,6 +11193,9 @@
               "$ref": "#/components/schemas/DuplicateEvidence"
             }
           },
+          "formats": {
+            "$ref": "#/components/schemas/PairFormats"
+          },
           "foundAt": {
             "type": "string",
             "format": "date-time"
@@ -12211,6 +12315,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "joinFormats": {
+            "type": "boolean"
+          },
           "lastScan": {
             "$ref": "#/components/schemas/Scan"
           },
@@ -12246,6 +12353,7 @@
           "name",
           "mode",
           "writable",
+          "joinFormats",
           "visibility",
           "createdAt",
           "filesPending",
@@ -12819,6 +12927,22 @@
           }
         }
       },
+      "PairFormats": {
+        "type": "object",
+        "properties": {
+          "ebookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sameLibrary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ebookId",
+          "sameLibrary"
+        ]
+      },
       "PairStateRequest": {
         "type": "object",
         "properties": {
@@ -12828,7 +12952,8 @@
               "edition",
               "translation",
               "related",
-              "recording"
+              "recording",
+              "format"
             ]
           },
           "state": {
@@ -14382,6 +14507,9 @@
       "UpdateLibraryRequest": {
         "type": "object",
         "properties": {
+          "joinFormats": {
+            "type": "boolean"
+          },
           "name": {
             "type": "string"
           },

@@ -250,6 +250,12 @@ function statement(pair: DuplicatePair): string {
 			narratorsB: nb.join(", "),
 		});
 	}
+	if (pair.formats) {
+		return t(
+			pair.formats.sameLibrary ? "duplicates.says.formats" : "duplicates.says.formatsApart",
+			names,
+		);
+	}
 	switch (strongest.kind) {
 		case "sha256":
 			return t("duplicates.says.sha256", names);
@@ -382,6 +388,18 @@ function Pair({
 							{t("duplicates.linkRecordings")}
 						</button>
 					)}
+					{pair.state === "open" && pair.formats && !pair.formats.sameLibrary && (
+						<button
+							type="button"
+							disabled={setState.isPending}
+							onClick={() =>
+								setState.mutate({ id: pair.id, state: "kept_both", relation: "format" })
+							}
+							className={button}
+						>
+							{t("duplicates.linkFormats")}
+						</button>
+					)}
 					{pair.state === "open" && (
 						<label className="flex items-center gap-2 text-sm">
 							<span>{t("duplicates.relation")}</span>
@@ -394,6 +412,7 @@ function Pair({
 								<option value="edition">{t("duplicates.relation.edition")}</option>
 								<option value="translation">{t("duplicates.relation.translation")}</option>
 								<option value="recording">{t("duplicates.relation.recording")}</option>
+								<option value="format">{t("duplicates.relation.format")}</option>
 								<option value="related">{t("duplicates.relation.related")}</option>
 							</select>
 						</label>

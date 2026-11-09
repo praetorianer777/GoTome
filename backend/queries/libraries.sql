@@ -28,6 +28,7 @@ UPDATE libraries
 SET name       = COALESCE(sqlc.narg(name), name),
     visibility = COALESCE(sqlc.narg(visibility), visibility),
     writable   = COALESCE(sqlc.narg(writable), writable),
+    join_formats = COALESCE(sqlc.narg(join_formats), join_formats),
     -- Whoever sets it has just seen the folder written to, or turned it off.
     unwritable_since  = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_since END,
     unwritable_reason = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_reason END,

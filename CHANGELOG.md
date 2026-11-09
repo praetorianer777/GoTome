@@ -12,6 +12,13 @@ What changes for someone who runs or uses GOtome. The format follows
   suggested as duplicates to merge: the Duplicates page says "another
   narrator" and links them as other recordings, which each book's page then
   lists with their narrators. The library can be filtered by narrator.
+- An ebook and its audiobook of the same title and author, which a scan
+  makes two books because they lie in different folders, are shown on the
+  Duplicates page as such. A library can join them by itself (Libraries
+  page, "Make one book of an ebook and its audiobook ..."); a book joined
+  so says so on its page and can be split again. Between two libraries
+  nothing is merged, as a file stays in its library's folder: the pair can
+  be linked, and each book's page lists the other under "Also as".
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the
   library, reading status and progress, upload, edit metadata, administer)

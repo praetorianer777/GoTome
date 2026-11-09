@@ -20,6 +20,7 @@ import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
+import { useUndoJoin } from "@/duplicates/api";
 import { FormError } from "@/components/form";
 import { button, Skeleton } from "@/components/ui";
 import { useRereadFile } from "@/jobs/api";
@@ -332,8 +333,68 @@ function BookPage({ book }: { book: BookDetail }) {
 				</section>
 			)}
 
+			{book.forms.length > 0 && (
+				<section aria-labelledby="forms-heading" className="flex flex-col gap-2">
+					<h2 id="forms-heading" className="font-serif text-xl">
+						{t("book.forms")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.forms.map((f) => (
+							<li key={f.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: f.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{f.title}
+								</Link>
+								<span className="text-slate-600 dark:text-slate-400">
+									{" · "}
+									{f.kinds
+										.map((k) => t(k === "audio" ? "book.form.audio" : "book.form.ebook"))
+										.join(", ")}
+								</span>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{book.joins.length > 0 && (
+				<Joins joins={book.joins} canSplit={can(user, "metadata:edit")} />
+			)}
+
 			<SimilarBooks bookId={book.id} />
 		</article>
+	);
+}
+
+function Joins({ joins, canSplit }: { joins: BookDetail["joins"]; canSplit: boolean }) {
+	const undo = useUndoJoin();
+	return (
+		<section aria-labelledby="joins-heading" className="flex flex-col gap-2">
+			<h2 id="joins-heading" className="font-serif text-xl">
+				{t("book.joins")}
+			</h2>
+			<ul className="flex flex-col gap-2">
+				{joins.map((j) => (
+					<li key={j.id} className="flex flex-wrap items-center gap-3">
+						<span>{t("book.joined", { title: j.title })}</span>
+						{canSplit && (
+							<button
+								type="button"
+								disabled={undo.isPending}
+								onClick={() => undo.mutate(j.id)}
+								className="rounded-md border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.split")}
+							</button>
+						)}
+					</li>
+				))}
+			</ul>
+			<FormError error={undo.error} />
+		</section>
 	);
 }
 

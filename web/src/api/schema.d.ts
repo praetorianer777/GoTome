@@ -1358,6 +1358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/joins/{joinId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Split a book the library made of an ebook and its audiobook into the two again */
+        post: operations["undoJoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/download/{fileId}": {
         parameters: {
             query?: never;
@@ -2788,9 +2805,11 @@ export interface components {
                 [key: string]: components["schemas"]["FieldState"];
             };
             files: components["schemas"]["BookFile"][];
+            forms: components["schemas"]["BookForm"][];
             /** Format: uuid */
             id: string;
             identifiers: components["schemas"]["BookIdentifier"][];
+            joins: components["schemas"]["BookJoin"][];
             language?: string;
             /** Format: uuid */
             libraryId: string;
@@ -2825,10 +2844,23 @@ export interface components {
             relPath?: string;
             size: number;
         };
+        BookForm: {
+            /** Format: uuid */
+            id: string;
+            kinds: string[];
+            title: string;
+        };
         BookIdentifier: {
             fromFile: boolean;
             type: string;
             value: string;
+        };
+        BookJoin: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            joinedAt: string;
+            title: string;
         };
         BookList: {
             books: components["schemas"]["BookSummary"][];
@@ -3235,6 +3267,7 @@ export interface components {
             books: components["schemas"]["BookSummary"][];
             contained: boolean;
             evidence: components["schemas"]["DuplicateEvidence"][];
+            formats?: components["schemas"]["PairFormats"];
             /** Format: date-time */
             foundAt: string;
             /** Format: uuid */
@@ -3516,6 +3549,7 @@ export interface components {
             filesPending: number;
             /** Format: uuid */
             id: string;
+            joinFormats: boolean;
             lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
@@ -3678,9 +3712,14 @@ export interface components {
             all?: boolean;
             ids?: string[];
         };
+        PairFormats: {
+            /** Format: uuid */
+            ebookId: string;
+            sameLibrary: boolean;
+        };
         PairStateRequest: {
             /** @enum {string} */
-            relation?: "edition" | "translation" | "related" | "recording";
+            relation?: "edition" | "translation" | "related" | "recording" | "format";
             /** @enum {string} */
             state: "kept_both" | "open";
         };
@@ -4104,6 +4143,7 @@ export interface components {
             role?: "admin" | "editor" | "reader";
         };
         UpdateLibraryRequest: {
+            joinFormats?: boolean;
             name?: string;
             visibility?: string;
             writable?: boolean;
@@ -7047,6 +7087,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobView"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoJoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                joinId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

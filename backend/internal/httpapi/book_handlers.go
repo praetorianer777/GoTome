@@ -229,6 +229,26 @@ type bookDetail struct {
 	// Recordings are other recordings of this audiobook the caller sees,
 	// read by other narrators.
 	Recordings []bookRecording `json:"recordings"`
+	// Forms are this book in another form, linked by a person: an ebook and
+	// its audiobook that are in different libraries and so not one book.
+	Forms []bookForm `json:"forms"`
+	// Joins are books the library made one with this by itself, an ebook
+	// and its audiobook; POST /joins/{id}/undo splits one off again.
+	Joins []bookJoin `json:"joins"`
+}
+
+type bookForm struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+	// Kinds are the kinds of file the book holds: ebook, audio.
+	Kinds []string `json:"kinds"`
+}
+
+type bookJoin struct {
+	ID uuid.UUID `json:"id"`
+	// Title is the title of the book that was made one with this.
+	Title    string    `json:"title"`
+	JoinedAt time.Time `json:"joinedAt"`
 }
 
 // bookRecording is another recording of a book.
@@ -457,12 +477,18 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
-		Recordings: []bookRecording{},
+		Recordings: []bookRecording{}, Forms: []bookForm{}, Joins: []bookJoin{},
 	}
 	for _, c := range b.Contributors {
 		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Key: catalog.PersonKey(c.Name), Role: c.Role})
 	}
 	out.Tags = append(out.Tags, b.Tags...)
+	for _, f := range b.Forms {
+		out.Forms = append(out.Forms, bookForm{ID: f.ID, Title: f.Title, Kinds: append([]string{}, f.Kinds...)})
+	}
+	for _, j := range b.Joins {
+		out.Joins = append(out.Joins, bookJoin{ID: j.ID, Title: j.Title, JoinedAt: j.CreatedAt})
+	}
 	for _, r := range b.Recordings {
 		out.Recordings = append(out.Recordings, bookRecording{ID: r.ID, Title: r.Title, Narrators: append([]string{}, r.Narrators...)})
 	}

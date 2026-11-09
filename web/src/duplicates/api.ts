@@ -135,3 +135,17 @@ export function useMergeBooks() {
 		},
 	});
 }
+
+/** Splits a book the library made of an ebook and its audiobook into the two again. */
+export function useUndoJoin() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (joinId: string) =>
+			api.POST("/joins/{joinId}/undo", { params: { path: { joinId } } }),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["duplicates"] });
+			queryClient.invalidateQueries({ queryKey: ["book"] });
+			queryClient.invalidateQueries({ queryKey: ["books"] });
+		},
+	});
+}

@@ -53,3 +53,19 @@ func (s *Server) mergeBooks(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, detailOf(b, user))
 	return nil
 }
+
+func (s *Server) undoJoin(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "joinId", "join")
+	if err != nil {
+		return err
+	}
+	err = s.Scans.Unjoin(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
+	if errors.Is(err, ingest.ErrNoJoin) {
+		return ErrNotFound("There is no such join.")
+	}
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
