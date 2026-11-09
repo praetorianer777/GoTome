@@ -20,6 +20,8 @@ binary `gotome`, the Go module path, `GOTOME_*` variables, the repository URL.
 | `gopher-cheer.jpg` | 1024 × 1024 | The toast when a book is marked finished |
 | `badge-ebook.jpg`, `badge-audio.jpg` | 1024 × 1024 | The medium's round badge on a cover |
 | `badge-both.jpg` | 1408 × 768 | The same for a book with an ebook and an audiobook |
+| `wordmark-go.jpg`, `wordmark-go-light.jpg` | 1408 × 768 | The illuminated "GO" of the wordmark, cyan for the dark theme and teal for the light one |
+| `fonts/UnifrakturCook-Bold.ttf` | | The font "tome" of the wordmark is set in; a build source only, the app loads no font |
 | `gopher-sheet.jpg` | 1408 × 768 | Character reference only; not shipped |
 
 The web app's icons, header mark and sign-in illustration are generated from
@@ -35,3 +37,9 @@ padded to a square with the logo's own background colour, `rgb(2, 12, 22)`.
 
 The gopher is based on the Go gopher, designed by Renée French and licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+The wordmark is built by the same script: the "GO" is cut out of its
+original and "tome" is set in UnifrakturCook Bold, filled with a gold
+gradient and outlined in brown, at two thirds of the GO's height. The font is
+by j. 'mach' wust (Peter Wiegel) and licensed under the
+[SIL Open Font License 1.1](fonts/OFL.txt).
