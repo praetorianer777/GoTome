@@ -312,7 +312,7 @@ function BookPage({ book }: { book: BookDetail }) {
 
 			{book.recordings.length > 0 && (
 				<section aria-labelledby="recordings-heading" className="flex flex-col gap-2">
-					<h2 id="recordings-heading" className="font-serif text-xl">
+					<h2 id="recordings-heading" className="font-serif text-lg">
 						{t("book.recordings")}
 					</h2>
 					<ul className="flex flex-col gap-1">
@@ -339,7 +339,7 @@ function BookPage({ book }: { book: BookDetail }) {
 
 			{book.forms.length > 0 && (
 				<section aria-labelledby="forms-heading" className="flex flex-col gap-2">
-					<h2 id="forms-heading" className="font-serif text-xl">
+					<h2 id="forms-heading" className="font-serif text-lg">
 						{t("book.forms")}
 					</h2>
 					<ul className="flex flex-col gap-1">
@@ -377,7 +377,7 @@ function Joins({ joins, canSplit }: { joins: BookDetail["joins"]; canSplit: bool
 	const undo = useUndoJoin();
 	return (
 		<section aria-labelledby="joins-heading" className="flex flex-col gap-2">
-			<h2 id="joins-heading" className="font-serif text-xl">
+			<h2 id="joins-heading" className="font-serif text-lg">
 				{t("book.joins")}
 			</h2>
 			<ul className="flex flex-col gap-2">

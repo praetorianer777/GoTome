@@ -197,13 +197,16 @@ loads, and what of it goes over the wire.
 Measured in the lab, in the browser suite and the web gate: GOtome collects
 no field data, by design (#378). A budget is set above today's figure so that
 a loaded machine does not trip it, and is raised only on purpose, in the
-commit that needs it.
+commit that needs it. The main chunk's went from 165 to 185 KiB for the
+player's queue, sleep timer and boost (#420, #421) and batch 2's texts in
+both languages; loading only the reader's language would take the other's
+out of it (#445).
 
 | What | Where | Today | Budget |
 | --- | --- | --- | --- |
-| Main chunk (`index`, raw) | `make check-web` (`web/scripts/budget.mjs`) | 148 KiB | 165 KiB |
-| First load, gzip (the entry, what it preloads, the stylesheet) | `make check-web` | 218 KiB | 245 KiB |
-| First load, brotli | `make check-web` | 185 KiB | 210 KiB |
+| Main chunk (`index`, raw) | `make check-web` (`web/scripts/budget.mjs`) | 166 KiB | 185 KiB |
+| First load, gzip (the entry, what it preloads, the stylesheet) | `make check-web` | 225 KiB | 245 KiB |
+| First load, brotli | `make check-web` | 191 KiB | 210 KiB |
 | Largest contentful paint | `e2e/tests/vitals.spec.ts` | 0.2 to 0.9 s | 2.5 s |
 | Cumulative layout shift | `vitals.spec.ts` | 0.00 to 0.07 | 0.1 |
 | Ticking a filter, opening a book, turning a page (the slowest event to the next frame) | `vitals.spec.ts` | 16 to 110 ms | 200 ms |

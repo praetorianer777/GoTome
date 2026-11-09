@@ -12,7 +12,7 @@ const dist = fileURLToPath(new URL("../dist", import.meta.url));
 // Raised only on purpose, with the table in docs/performance.md. Today:
 // main chunk 148 KiB raw, first load 218 KiB gzip and 185 KiB brotli.
 const LIMITS = {
-	mainRaw: 165 * 1024,
+	mainRaw: 185 * 1024,
 	firstLoadGzip: 245 * 1024,
 	firstLoadBrotli: 210 * 1024,
 };

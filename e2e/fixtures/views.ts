@@ -10,6 +10,7 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/duplicates", heading: "Duplicates" },
 	{ path: "/collections", heading: "Collections" },
 	{ path: "/wishlist", heading: "Wishlist" },
+	{ path: "/recommendations", heading: "For you" },
 	{ path: "/releases", heading: "New books" },
 	{ path: "/stats", heading: "Your reading" },
 	{ path: "/overview", heading: "Overview" },
