@@ -83,7 +83,16 @@ another browser. "Play next" and "Add to queue" are on an audiobook's page,
 "Add to the queue" on a selection in a list, and "Queue the rest of this
 series" on a series' page. The next book starts when one ends, from the
 place it was left at; the queue is listed under the player, where books
-are moved or taken out. A sleep timer stops the player instead.
+are moved or taken out.
+
+The sleep timer stops after 15 to 60 minutes or at the end of the chapter,
+fading the volume down over its last 15 seconds. "Keep listening for 15
+more minutes" extends it, also in the half minute after it stopped; on a
+phone whose browser allows it (not iOS), shaking it does the same. The
+player can also start a timer by itself when a book is played between two
+hours you choose, for a length you choose. The volume boost raises the
+volume up to twice through the browser's Web Audio, with a limiter against
+clipping. The night hours and the boost are this browser's own.
 
 ## 3. Start it
 

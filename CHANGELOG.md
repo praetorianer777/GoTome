@@ -8,6 +8,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- The audiobook player's sleep timer fades the volume down before it stops,
+  can be extended by 15 minutes (a button, or shaking the phone where the
+  browser allows it, also just after it stopped), and can start by itself
+  when you play a book between hours you choose. A volume boost of up to
+  twice, with a limiter against clipping, helps with quiet recordings. The
+  night hours and the boost are kept per browser.
 - A queue for audiobooks: "Play next" and "Add to queue" on a book's page,
   "Add to the queue" for books selected in a list and "Queue the rest of
   this series" on a series' page. The next book starts by itself when one
