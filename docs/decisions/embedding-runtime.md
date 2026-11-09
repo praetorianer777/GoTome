@@ -35,7 +35,10 @@ model's SentencePiece Unigram vocabulary, as Hugging Face's `tokenizers` does
   revision, each file checked against its published SHA-256, as
   `spikes/embed/fetch.sh` does. It is not in the image. The ONNX Runtime
   library (29 MB) is: the app image is built with cgo from #64 on, for amd64
-  and arm64.
+  and arm64. The image takes it from the release archives in the git-ignored
+  `deploy/vendor`, which `make onnxruntime-fetch` fills once from the release
+  `deploy/Dockerfile` pins by version and SHA-256 (#387): a build that
+  `ADD`ed them by URL asked GitHub every time, and failed when it answered 504.
 - Vectors are stored with the model's name, revision and weights, so that a
   change of any re-embeds (#65).
 
