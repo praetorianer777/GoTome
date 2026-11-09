@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { API_BASE, api } from "@/api/client";
+import { isDemo } from "@/demo/mode";
 import type { components } from "@/api/schema";
 import {
 	BULK_OUTCOME_LABELS,
@@ -46,7 +47,7 @@ export function useMarkRead() {
 export function useNotificationStream() {
 	const queryClient = useQueryClient();
 	useEffect(() => {
-		if (typeof EventSource === "undefined") return;
+		if (typeof EventSource === "undefined" || isDemo) return;
 		const stream = new EventSource(`${API_BASE}/notifications/stream`);
 		stream.addEventListener("unread", (e) => {
 			const { unread } = JSON.parse((e as MessageEvent<string>).data) as {

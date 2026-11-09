@@ -1,0 +1,51 @@
+name: Demo
+
+# The clickable demo (#396): the web app against a fake API in the browser,
+# with public-domain sample books, on GitHub Pages. Built on every release tag
+# and by hand. The owner enables Pages once: Settings, Pages, Source: GitHub
+# Actions.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # The books are fetched here, not kept in the repository; the lock file
+      # holds their hashes, and the fetch fails when one differs.
+      - name: Fetch the sample books
+        run: make sample-books
+
+      - name: Build the demo
+        run: make web-demo
+
+      - name: Test the demo build
+        run: make test-demo
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist-demo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
