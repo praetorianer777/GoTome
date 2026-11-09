@@ -16,15 +16,17 @@
    checked for contrast. */
 @theme {
 	/* The logo's night-blue ground and the gopher's cyan. */
-	--color-ink: #020c16;
-	--color-brand: #37b5db;
+	--color-ink: #0b1630;
+	--color-brand: #45bde0;
 	/* The same cyan, dark enough to read as text on parchment and white. */
 	--color-brand-strong: #0b6f96;
 	/* Candlelight, for what is being read and for ratings. */
 	--color-candle: #e69a46;
 	--color-candle-strong: #8a4f0f;
 	/* The wordmark's "tome", and the leather of the books. */
-	--color-cream: #e5d2ab;
+	--color-cream: #e8c88a;
+	/* The same gold, dark enough to read as text on parchment and white. */
+	--color-gold-strong: #7a5a14;
 	--color-leather: #52271b;
 
 	/* The neutrals run from parchment to ink navy, so every page that uses
@@ -33,13 +35,13 @@
 	--color-slate-100: #f1e9d8;
 	--color-slate-200: #e3d8c2;
 	--color-slate-300: #c8bca6;
-	--color-slate-400: #94a3b8;
+	--color-slate-400: #9fb0c8;
 	--color-slate-500: #5b6a80;
-	--color-slate-600: #4a5870;
-	--color-slate-700: #33425a;
-	--color-slate-800: #1b2d47;
-	--color-slate-900: #0e2038;
-	--color-slate-950: #071526;
+	--color-slate-600: #536480;
+	--color-slate-700: #2c3f5f;
+	--color-slate-800: #2a3a58;
+	--color-slate-900: #16243f;
+	--color-slate-950: #0f1b36;
 
 	/* Only what the system has: the policy allows no font from elsewhere. */
 	--font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, ui-serif, serif;
@@ -74,7 +76,12 @@ body {
    would be redrawn on every scroll. */
 body {
 	@variant dark {
-		background-image: url("../assets/backdrop.webp");
+		background-image:
+			radial-gradient(ellipse 60% 45% at 0% 100%, rgb(230 154 70 / 0.34), transparent),
+			radial-gradient(ellipse 55% 40% at 100% 100%, rgb(230 154 70 / 0.28), transparent),
+			radial-gradient(ellipse 50% 35% at 100% 0%, rgb(230 154 70 / 0.14), transparent),
+			radial-gradient(ellipse 90% 70% at 50% 35%, rgb(19 33 61 / 0.75), rgb(11 22 48 / 0.9)),
+			url("../assets/backdrop.webp");
 		background-size: cover;
 		background-position: center;
 		background-attachment: fixed;
@@ -84,7 +91,7 @@ body {
 /* The frame's surfaces: top bar, sidebar, content. At least 90 % opaque, so
    what is behind never lowers the contrast of text on them. */
 @utility panel {
-	@apply border border-slate-200 bg-white/90 shadow-sm dark:border-slate-700/60 dark:bg-slate-900/90 dark:shadow-none;
+	@apply border border-slate-200 bg-white/90 shadow-sm dark:border-slate-700 dark:bg-slate-900/90 dark:shadow-none;
 }
 
 /* Bars, boxes and sliders the browser draws take the accent. */
@@ -98,6 +105,12 @@ input[type="range"] {
 h1,
 h2 {
 	font-family: var(--font-serif);
+}
+/* The wordmark's gold, on the dark theme's page titles only. */
+h1 {
+	@variant dark {
+		color: var(--color-cream);
+	}
 }
 
 /* One focus ring everywhere, visible on both grounds: the light blue is too
