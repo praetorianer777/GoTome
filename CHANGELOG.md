@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Books in the library's grid, on author and series pages and in "similar
+  books" are shown as rounded cards, with a round badge on the cover's
+  corner saying whether the book is an ebook, an audiobook or both.
+
 ## [0.11.0] - 2026-11-09
 
 ### Added
@@ -34,9 +40,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- Books in the library's grid, on author and series pages and in "similar
-  books" are shown as rounded cards, with a round badge on the cover's
-  corner saying whether the book is an ebook, an audiobook or both.
 - The app has a new look, after the owner's draft
   ([design.md](docs/design.md)): the top bar carries the wordmark, the
   sections (Library, Wishlist, New books, Statistics), a rounded search and
