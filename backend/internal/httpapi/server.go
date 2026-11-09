@@ -151,7 +151,7 @@ func mount(api chi.Router, routes []Route) {
 		if rt.Method == http.MethodGet && rt.Reads == readsUnset {
 			panic(fmt.Sprintf("httpapi: route %s %s does not say what it reads", rt.Method, rt.Path))
 		}
-		h := handle(require(rt.Permission, rt.Devices, rt.Handler))
+		h := handle(require(rt.Permission, rt.Devices, rt.Keys, rt.Handler))
 		if rt.Produces == "" {
 			h = compressed(h)
 		}

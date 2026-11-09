@@ -21,6 +21,7 @@ const (
 	loggerKey
 	userKey
 	deviceKey
+	apiKeyKey
 	clientKey
 )
 

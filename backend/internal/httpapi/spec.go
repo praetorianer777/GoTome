@@ -36,6 +36,9 @@ const jsonMedia = "application/json"
 // sessionScheme names the security scheme of routes that need a session.
 const sessionScheme = "session"
 
+// keyScheme names the security scheme of an API key sent as a bearer token.
+const keyScheme = "apiKey"
+
 var pathParam = regexp.MustCompile(`\{([^}/]+)\}`)
 
 // Spec is the OpenAPI document of the API, derived from the route table.
@@ -145,6 +148,9 @@ func Spec() *openapi.Document {
 		op.Permission = string(rt.Permission)
 		if rt.Permission != auth.Public {
 			op.Security = []map[string][]string{{sessionScheme: {}}}
+			if rt.keyReaches() {
+				op.Security = append(op.Security, map[string][]string{keyScheme: {}})
+			}
 		}
 		for _, m := range pathParam.FindAllStringSubmatch(rt.Path, -1) {
 			op.Parameters = append(op.Parameters, openapi.Parameter{
@@ -184,6 +190,10 @@ func Spec() *openapi.Document {
 		sessionScheme: {
 			Type: "apiKey", In: "cookie", Name: SessionCookie,
 			Description: "The session cookie that signing in sets.",
+		},
+		keyScheme: {
+			Type: "http", Scheme: "bearer", BearerFormat: "gotome_…",
+			Description: "An API key made on the profile, sent as Authorization: Bearer. It reaches the routes its scopes allow and never more than its owner's role, and none about the account itself except GET /auth/me.",
 		},
 	}
 	return doc
