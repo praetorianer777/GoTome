@@ -128,7 +128,7 @@ export function Library({
 					}
 					empty={
 						words ? (
-							<EmptyState title={t("library.matching.none")}>
+							<EmptyState mood="search" title={t("library.matching.none")}>
 								{t("library.matching.noneBody")}
 							</EmptyState>
 						) : busy ? (

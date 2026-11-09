@@ -16,6 +16,15 @@ What changes for someone who runs or uses GOtome. The format follows
   panels with soft borders, a brighter cyan accent, gold page titles, and
   a lighter blue-grey pill for the current tab and menu entry. The light
   theme keeps its parchment, with muted text and borders slightly bluer.
+- The app now carries GOtome's own artwork: the library at night or by day
+  shows through the glass-like panels, the gopher stands at the sidebar's
+  foot and in the page corner, sleeps in empty lists, searches where nothing
+  matched, looks confused on errors and missing pages, reads while a page
+  loads, and cheers with a few stars when you mark a book finished. The
+  medium badges on covers are the new round badges, and covers lift with a
+  soft glow under the pointer in the dark theme. Nothing moves with
+  "reduce motion" set; panels are opaque with "reduce transparency" and on
+  phones.
 
 ## [0.11.0] - 2026-11-09
 

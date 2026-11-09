@@ -1375,6 +1375,9 @@ export const en = {
 	"notFound.body": "The address may be mistyped, or the page has moved.",
 	"notFound.back": "Back to the library",
 
+	"celebrate.title": "Finished!",
+	"celebrate.body": "Another book read. Well done.",
+
 	"error.generic": "Something went wrong. Try again.",
 	"error.unreachable":
 		"The server does not answer. Check the connection and try again.",

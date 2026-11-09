@@ -15,8 +15,8 @@ image generator; the layout and the look are what count.
   (`assets/branding/`): the gopher's cyan on a near-black, blue night, and
   candlelight on leather and parchment. Dark is the signature theme; light
   is the same library by day, on parchment, with the same layout.
-- **Panels over a backdrop.** The page is a dim, blurred library at night
-  (dark theme; parchment in the light one). Everything a person reads or
+- **Panels over a backdrop.** The page is the library, at night in the dark
+  theme and by day in the light one, seen through the glass of the panels. Everything a person reads or
   uses sits on a **panel**: a rounded, slightly glassy surface of the
   neutral scale (`bg-slate-900/90` with a soft border and a blur behind it;
   `bg-white/90` in the light theme). The sidebar, the top bar and the main
@@ -29,9 +29,11 @@ image generator; the layout and the look are what count.
   nothing has to be looked for twice.
 - **Mascots and art are allowed, in the margins.** The gopher may stand in a
   corner of the sidebar or a page, a hero may open the home page, a round
-  badge on a cover says the medium. They are decoration (`alt=""`), never
-  carry information alone, never sit behind text, and add no animation
-  beyond a short fade. A soft cyan glow marks focus and the current
+  badge on a cover says the medium. Decoration has `alt=""`, never carries
+  information alone, never sits behind text; the badges, which do, keep
+  their accessible names. Animation is a hover lift with a cyan glow on a
+  cover (dark theme) and the toast of a finished book, and none of it runs
+  where `prefers-reduced-motion` is set. A soft cyan glow marks focus and the current
   navigation entry; a faint warm one may mark what is being read.
 - **Nothing for a few.** Keyboard and screen-reader use (#76) keeps working
   everywhere: landmarks, one visible focus ring, dialogs that hold focus,
@@ -94,11 +96,41 @@ and meta are step 400. Every pair of text and ground used is at least WCAG
 AA (4.5:1, 3:1 for large text and controls); a new pair is checked before
 it is used.
 
-The **backdrop** (dark theme) is an image, blurred and dimmed
-(`web/src/assets/backdrop.webp`, made by `web/scripts/branding.sh`) until it
-is far darker than any panel; in the light theme the page is parchment. It
-is seen only between and around panels.
+The **backdrop** is an image in both themes (`web/src/assets/backdrop.webp`,
+the library at night, and `backdrop-light.webp`, the library by day, made by
+`web/scripts/branding.sh`): blurred a little, the night one dimmed to 80 %
+and given a faint ink veil and amber corners, the day one washed with
+parchment. It shows through the panels, which are glass on a desktop:
+the panel colour at **78 % (dark) or 82 % (light)** with
+`backdrop-filter: blur(14px) saturate(120%)`. Below 1024 px, where a blur
+under a page that scrolls the whole screen is redrawn every frame, and
+where the browser cannot blur (`@supports`) or the person asks for less
+transparency (`prefers-reduced-transparency`), panels are 92 % opaque.
+Dialogs, menus, the readers (`panel-solid`) and the finished-book toast are
+fully opaque. Only the three large panels blur; cards are translucent
+without a blur of their own.
 
+How the opacity was chosen: every pair is checked on the worst spot, not the
+average. Dark: the brightest pixel of the unblurred backdrop (rgb 210 186
+131, a lamp) under the ink veil and the strongest amber corner is rgb 158 134
+96; the panel over it is rgb 52 57 70. Light: the darkest pixel of the day
+backdrop (rgb 212 204 193) under the white panel is rgb 247 246 244. On those:
+
+| Dark pair on the panel | Ratio | Light pair on the panel | Ratio |
+|---|---|---|---|
+| slate-100 text | 9.5 | slate-900 text | 14.3 |
+| slate-300 | 6.1 | slate-600 muted | 5.6 |
+| slate-400 muted (and 500) | 5.2 | slate-500 | 5.1 |
+| cream (titles) | 7.1 | brand-strong | 5.2 |
+| brand cyan | 5.3 | candle-strong | 6.1 |
+| candle amber | 5.0 | gold-strong | 5.9 |
+
+A card (slate-800 at 60 %) on that panel gives 5.2 for slate-400 and 9.5 for
+slate-100. Control borders (slate-600 dark, slate-300 light) are 1.9:1 and
+1.7:1 on the worst spot, as before a thin line on a field that is itself
+filled; they are not text and the field's own ground stays opaque. If a pair
+fails after a change, raise the opacity or dim the backdrop, never the
+text's colour.
 
 ## Type
 
@@ -210,6 +242,21 @@ The parts are in `web/src/components/ui.tsx` (`button`, `control`, `panel`,
   Recommended for you as rows of cover cards (a scrolling row on a phone).
   The hero is art: it carries the page's h1 as text beside it, not inside
   the image.
+
+## Where the art is used (#381)
+
+| Image | Where |
+|---|---|
+| `backdrop`, `backdrop-light` | Behind the whole app, by theme (`body`, `styles/index.css`) |
+| `mascot-sidebar` | The sidebar's foot (desktop) |
+| `mascot-corner` | The content panel's foot, right (desktop only) |
+| `gopher-sleep` | `EmptyState`, the default: nothing here yet |
+| `gopher-search` | `EmptyState mood="search"`: no result of a search or filter |
+| `gopher-confused` | 404, the error page, a missing author or series |
+| `gopher-reading` | The loading placeholder of a whole page |
+| `gopher-cheer` | The toast when a book is marked finished (`Celebration`), with stars |
+| `badge-ebook`, `-audio`, `-both` | The medium on a cover (`MediumBadge`) |
+| `hero`, `hero-light` | The home page (#380) |
 
 ## Rules for every page
 

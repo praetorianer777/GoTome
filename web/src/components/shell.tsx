@@ -13,8 +13,11 @@ import {
 	useLogout,
 } from "@/auth/session";
 import mark from "@/assets/mark.webp";
+import mascotCorner from "@/assets/mascot-corner.webp";
+import mascotSidebar from "@/assets/mascot-sidebar.webp";
 import { QuickSearch } from "@/books/quick-search";
 import { Dialog } from "@/components/dialog";
+import { Celebration } from "@/components/gopher";
 import { panel } from "@/components/ui";
 import { LanguageSelect, ThemeSelect } from "@/components/preferences";
 import { useServerVersion, VersionFooter } from "@/components/version-footer";
@@ -278,7 +281,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 					{t("nav.skip")}
 				</a>
 				<header
-					className={`${panel} z-30 backdrop-blur-md max-lg:rounded-none max-lg:border-x-0 max-lg:border-t-0 lg:sticky lg:top-4`}
+					className={`${panel} z-30 max-lg:rounded-none max-lg:border-x-0 max-lg:border-t-0 lg:sticky lg:top-4`}
 				>
 					<div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
 						<button
@@ -305,19 +308,19 @@ export function Shell({ user }: { user: CurrentUser }) {
 				</header>
 				<div className="flex min-w-0 flex-1 lg:gap-4">
 					<aside
-						className={`${panel} sticky top-22 hidden h-[calc(100dvh-6.5rem)] w-64 shrink-0 flex-col gap-4 overflow-y-auto px-3 py-4 backdrop-blur-md lg:flex`}
+						className={`${panel} sticky top-22 hidden h-[calc(100dvh-6.5rem)] w-64 shrink-0 flex-col gap-4 overflow-y-auto px-3 py-4 lg:flex`}
 					>
 						<Navigation user={user} />
 						<img
-							src={mark}
+							src={mascotSidebar}
 							alt=""
-							width={56}
-							height={56}
-							className="mt-auto h-14 w-14 shrink-0 self-start rounded-xl opacity-90"
+							width={80}
+							height={144}
+							className="mt-auto h-36 w-20 shrink-0 self-center object-contain"
 						/>
 					</aside>
 					<div
-						className={`${panel} flex min-w-0 flex-1 flex-col max-lg:rounded-none max-lg:border-x-0 lg:rounded-2xl`}
+						className={`${fullScreen ? "panel-solid rounded-2xl" : panel} flex min-w-0 flex-1 flex-col max-lg:rounded-none max-lg:border-x-0 lg:rounded-2xl`}
 					>
 						<main
 							id="content"
@@ -325,11 +328,23 @@ export function Shell({ user }: { user: CurrentUser }) {
 						>
 							<Outlet />
 						</main>
-						{!fullScreen && <VersionFooter {...version} />}
+						{!fullScreen && (
+							<div className="relative">
+								<VersionFooter {...version} />
+								<img
+									src={mascotCorner}
+									alt=""
+									width={64}
+									height={64}
+									className="pointer-events-none absolute right-6 bottom-0 hidden size-16 lg:block"
+								/>
+							</div>
+						)}
 						<MiniPlayer />
 					</div>
 				</div>
 			</div>
+			<Celebration />
 			{drawer && (
 				<Dialog title={t("nav.menu")} onClose={() => setDrawer(false)} drawer>
 					<Navigation

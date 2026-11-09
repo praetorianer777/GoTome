@@ -75,23 +75,41 @@ body {
    Only the bars blur what is behind them: a blur under the whole content
    would be redrawn on every scroll. */
 body {
+	background-image: url("../assets/backdrop-light.webp");
+	background-size: cover;
+	background-position: center;
+	background-attachment: fixed;
 	@variant dark {
 		background-image:
-			radial-gradient(ellipse 60% 45% at 0% 100%, rgb(230 154 70 / 0.34), transparent),
-			radial-gradient(ellipse 55% 40% at 100% 100%, rgb(230 154 70 / 0.28), transparent),
-			radial-gradient(ellipse 50% 35% at 100% 0%, rgb(230 154 70 / 0.14), transparent),
-			radial-gradient(ellipse 90% 70% at 50% 35%, rgb(19 33 61 / 0.75), rgb(11 22 48 / 0.9)),
+			radial-gradient(ellipse 60% 45% at 0% 100%, rgb(230 154 70 / 0.2), transparent),
+			radial-gradient(ellipse 55% 40% at 100% 100%, rgb(230 154 70 / 0.16), transparent),
+			linear-gradient(rgb(11 22 48 / 0.35), rgb(11 22 48 / 0.35)),
 			url("../assets/backdrop.webp");
-		background-size: cover;
-		background-position: center;
-		background-attachment: fixed;
 	}
 }
 
-/* The frame's surfaces: top bar, sidebar, content. At least 90 % opaque, so
-   what is behind never lowers the contrast of text on them. */
+/* The frame's surfaces: top bar, sidebar, content. Glass on a desktop: the
+   panel colour at 78 % (dark) or 82 % (light) over a blurred backdrop, the
+   least that keeps every text and control pair of docs/design.md above its
+   ratio on the worst spot of the backdrop. Without a blur to soften it, or
+   when the person asked for less transparency, and on a phone, where a blur
+   under a page that scrolls the whole screen is redrawn on every frame, the
+   panel is at least 92 % opaque. */
 @utility panel {
-	@apply border border-slate-200 bg-white/90 shadow-sm dark:border-slate-700 dark:bg-slate-900/90 dark:shadow-none;
+	@apply border border-slate-200 bg-white/92 shadow-sm dark:border-slate-700 dark:bg-slate-900/92 dark:shadow-none;
+	@media (min-width: 64rem) {
+		@supports (backdrop-filter: blur(1px)) {
+			@media (prefers-reduced-transparency: no-preference) {
+				@apply bg-white/82 dark:bg-slate-900/78;
+				backdrop-filter: blur(14px) saturate(120%);
+			}
+		}
+	}
+}
+
+/* A panel that stays opaque: what is text-heavy or layered (the readers). */
+@utility panel-solid {
+	@apply border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none;
 }
 
 /* Bars, boxes and sliders the browser draws take the accent. */
@@ -127,5 +145,45 @@ h1 {
 .text-slate-500 {
 	@variant dark {
 		color: var(--color-slate-400);
+	}
+}
+
+/* The stars of the finished-book toast fly out and fade, and the toast
+   itself rises; with reduced motion they sit still and the toast just
+   appears. */
+.confetti {
+	opacity: 0.9;
+	transform: translate(calc(var(--x) * 0.4), calc(var(--y) * 0.4));
+}
+@media (prefers-reduced-motion: no-preference) {
+	.celebration {
+		animation: toast-in 300ms ease-out both, toast-out 400ms ease-in 3.5s both;
+	}
+	.confetti {
+		animation: confetti 1.6s ease-out both;
+	}
+}
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(1rem);
+	}
+}
+@keyframes toast-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes confetti {
+	from {
+		opacity: 0;
+		transform: translate(0, 0) scale(0.4) rotate(0deg);
+	}
+	30% {
+		opacity: 1;
+	}
+	to {
+		opacity: 0.9;
+		transform: translate(var(--x), var(--y)) scale(1) rotate(160deg);
 	}
 }

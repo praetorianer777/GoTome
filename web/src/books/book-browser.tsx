@@ -228,6 +228,7 @@ export function BookBrowser({
 							shown.length === 0 &&
 							(filtered > 0 ? (
 								<EmptyState
+									mood="search"
 									title={t("library.filtered.title")}
 									action={
 										<button

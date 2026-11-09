@@ -31,7 +31,7 @@ export function SeriesPage({
 	const series = useQuery(seriesQuery(seriesKey));
 	const s = series.data;
 	if (series.error instanceof ApiError && series.error.status === 404) {
-		return <EmptyState title={t("series.notFound")} />;
+		return <EmptyState mood="confused" title={t("series.notFound")} />;
 	}
 	if (!s) {
 		return (
