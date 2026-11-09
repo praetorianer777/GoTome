@@ -1038,7 +1038,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - The binary is built with cgo and loads the library at run time
   (`LoadRuntime`, `GOTOME_ONNXRUNTIME`); the Dockerfile's `onnxruntime`
   stage takes it from ONNX Runtime's release for the image's architecture,
-  checked by SHA-256. Nothing of it is needed to build or test: the binding
+  checked by SHA-256. Version and hashes are `ARG`s of the Dockerfile
+  (`mk/onnxruntime.mk` reads them); the archives for both architectures lie in
+  the git-ignored `deploy/vendor`, which `make onnxruntime-fetch` fills once
+  (the owner runs it; it writes into the main checkout's, and a worktree links
+  from there; CI fetches them with retries and caches them with FFmpeg's
+  source). The image build asks nobody: no `ADD` of a URL, and `up`,
+  `stack-up` and `upgrade-test` need `onnxruntime-source` first. Nothing of it is needed to build or test: the binding
   carries its headers, and a build without cgo answers that it has none.
 - The model is not in the image. `Fetch` puts its files under
   `GOTOME_MODEL_DIR` (`<data>/models`) and checks size and SHA-256 every

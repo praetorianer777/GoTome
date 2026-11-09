@@ -54,13 +54,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # What CI on main cached; without it the image build fetches the source.
-      - name: Restore FFmpeg's source
+      # What CI on main cached; without it the image build fetches FFmpeg's
+      # source, and the next step ONNX Runtime's archives.
+      - name: Restore FFmpeg's source and ONNX Runtime's archives
         uses: actions/cache/restore@v4
         with:
           path: deploy/vendor
           key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
           restore-keys: ffmpeg-source-
+
+      - name: Fetch ONNX Runtime's archives that are missing
+        run: make onnxruntime-source
 
       - uses: docker/setup-buildx-action@v3
 
