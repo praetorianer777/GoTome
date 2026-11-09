@@ -52,6 +52,10 @@ const (
 	// KindSystemDegraded is a part of GOtome that has been failing for ten
 	// minutes. Data: component, message.
 	KindSystemDegraded = "system.degraded"
+	// KindUpdateAvailable is a GOtome release newer than the running one,
+	// told once per version. Data: version, current, security (whether its
+	// notes have a Security section), url.
+	KindUpdateAvailable = "update.available"
 	// KindFeedItem is a new item of a feed the person follows that names
 	// what they asked for. Data: title, feed, and authors where named.
 	KindFeedItem = "feed.item"
@@ -83,6 +87,7 @@ var EventKinds = []EventKind{
 	{Kind: KindScanFailed, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
 	{Kind: KindLibraryUnwritable, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
 	{Kind: KindSystemDegraded, Permission: auth.SettingsManage, Default: true, Summary: page("/overview")},
+	{Kind: KindUpdateAvailable, Permission: auth.SettingsManage, Default: true, Summary: page("/overview")},
 }
 
 func libraryPage(library *uuid.UUID) string {

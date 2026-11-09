@@ -52,6 +52,9 @@ const (
 	// TrashRetentionDays is how many days a trashed file is kept before it
 	// is deleted for good.
 	TrashRetentionDays = "trash.retentionDays"
+	// UpdatesCheck is "on" or "off": whether GitHub is asked once a day for
+	// the latest release, to tell administrators of a newer one.
+	UpdatesCheck = "updates.check"
 	// EmbeddingEnabled is "on" or "off": whether books are embedded for
 	// suggesting similar ones. Off pauses it; on again goes on with the
 	// books that have no vector yet.
@@ -165,6 +168,7 @@ var Definitions = []Definition{
 	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
+	{Key: UpdatesCheck, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel, Choices: slices.Sorted(maps.Keys(embed.Specs))},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},

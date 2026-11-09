@@ -63,6 +63,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
@@ -88,6 +89,7 @@ const (
 	genreInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
+	updateCheckInterval = time.Hour
 	// feedFetchInterval is how often feeds are looked at for those due.
 	feedFetchInterval = 10 * time.Minute
 	// New and changed ebook files get the MD5 KOReader names them by.
@@ -336,6 +338,8 @@ func serve() error {
 	fixes := cleanup.NewService(pool, changes)
 	follows.Events = events
 	follows.Offline = cfg.Offline
+	updateChecks := updates.NewService(pool, settingStore, events, log)
+	updateChecks.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
@@ -353,7 +357,7 @@ func serve() error {
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
-		events: events, follows: follows, sync: progressSync,
+		events: events, follows: follows, sync: progressSync, updates: updateChecks,
 		trashRetention: settingStore.TrashRetention,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
@@ -450,6 +454,7 @@ func serve() error {
 		Genres:     genreService,
 		Stats:      stats.NewService(pool, vectors),
 		Resources:  health,
+		Updates:    updateChecks,
 		Checks:     checks,
 		Deliveries: deliveries.NewService(pool),
 		Pairing:    pairing.NewService(pool),

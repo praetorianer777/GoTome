@@ -2525,6 +2525,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version */
+        get: operations["getSystemUpdate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trackers": {
         parameters: {
             query?: never;
@@ -3648,7 +3665,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3661,7 +3678,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -3800,6 +3817,18 @@ export interface components {
         };
         ReleaseList: {
             releases: components["schemas"]["Release"][];
+        };
+        ReleaseStatus: {
+            available: boolean;
+            /** Format: date-time */
+            checkedAt?: string;
+            current: string;
+            enabled: boolean;
+            latest?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            security: boolean;
+            url?: string;
         };
         ReplaceRequest: {
             /** Format: uuid */
@@ -9528,6 +9557,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseStatus"];
                 };
             };
             /** @description The request failed. */

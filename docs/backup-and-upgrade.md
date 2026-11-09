@@ -72,6 +72,16 @@ that made the backup: GOtome brings the database up to date when it starts.
 
 ## Upgrading
 
+GOtome tells administrators when a newer release is out: a line in the
+footer ("v0.13.0 available"), a notification once per version (more
+prominent when the release notes have a Security section), and the latest
+version and when it was checked on the overview page under "This machine".
+Once a day it asks GitHub for the latest release of
+`praetorianer777/GoTome` (no account, no token); GitHub learns that an
+instance exists at your address, nothing else. Turn it off with the setting
+`updates.check` (Check for new releases), or with `GOTOME_OFFLINE=true`,
+which asks nothing. GOtome never updates itself.
+
 Back up first. If `.env` pins `GOTOME_IMAGE` to a version, change it to the
 new one. Then pull the new image and start it:
 

@@ -566,6 +566,65 @@ describe("signed in", () => {
 		).toBeInTheDocument();
 	});
 
+	it("tells an administrator in the footer that a newer release is out, and nobody else", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = {
+			current: "0.5.0",
+			enabled: true,
+			latest: "0.6.0",
+			url: "https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+			security: true,
+			available: true,
+		};
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/");
+		const link = await screen.findByRole("link", {
+			name: "v0.6.0 available, with security fixes",
+		});
+		expect(link).toHaveAttribute(
+			"href",
+			"https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+		);
+	});
+
+	it("asks a reader nothing about releases", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = { ...server.update, latest: "0.6.0", available: true };
+		server.withAccount("Rae", "a long password", "reader").signedInAs("Rae");
+		renderApp("/");
+		await screen.findByRole("link", { name: "GOtome v0.5.0" });
+		expect(screen.queryByText(/available/)).not.toBeInTheDocument();
+		expect(server.requests.some((r) => r.path === "/system/update")).toBe(
+			false,
+		);
+	});
+
+	it("shows the running and the latest version on the machine panel, with the way to upgrade", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = {
+			current: "0.5.0",
+			enabled: true,
+			latest: "0.6.0",
+			publishedAt: "2026-11-01T10:00:00Z",
+			checkedAt: "2026-11-09T09:00:00Z",
+			url: "https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+			security: false,
+			available: true,
+		};
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/overview");
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
+		);
+		expect(await panel.findByText("0.6.0 is out")).toBeInTheDocument();
+		expect(panel.getByText(/Running: 0.5.0/)).toBeInTheDocument();
+		expect(panel.getByText(/Checked/)).toBeInTheDocument();
+		expect(panel.getByRole("link", { name: "How to upgrade" })).toHaveAttribute(
+			"href",
+			"https://github.com/praetorianer777/GoTome/blob/main/docs/backup-and-upgrade.md",
+		);
+	});
+
 	it("says a build that is not a release is one, with its commit", async () => {
 		server.build = { version: "dev", commit: "abcdef0123456" };
 		renderApp("/");

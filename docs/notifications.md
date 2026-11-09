@@ -19,6 +19,7 @@ on until turned off.
 | A feed I follow lists a new item I asked for | everyone |
 | Details found for a book wait for review | editors and administrators |
 | New possible duplicates | editors and administrators |
+| A new version of GOtome is out (once per version) | administrators |
 | Files that cannot be read | editors and administrators |
 | A library cannot be scanned | administrators |
 | A library's folder cannot be written to (once, until it can again) | administrators |

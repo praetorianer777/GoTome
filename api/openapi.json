@@ -8535,6 +8535,46 @@
         "x-permission": "settings:manage"
       }
     },
+    "/system/update": {
+      "get": {
+        "operationId": "getSystemUpdate",
+        "summary": "The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/trackers": {
       "get": {
         "operationId": "listTrackers",
@@ -12683,7 +12723,8 @@
               "files.unreadable",
               "scan.failed",
               "library.unwritable",
-              "system.degraded"
+              "system.degraded",
+              "update.available"
             ]
           },
           "link": {
@@ -12741,7 +12782,8 @@
               "files.unreadable",
               "scan.failed",
               "library.unwritable",
-              "system.degraded"
+              "system.degraded",
+              "update.available"
             ]
           }
         },
@@ -13272,6 +13314,43 @@
         },
         "required": [
           "releases"
+        ]
+      },
+      "ReleaseStatus": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "latest": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "security": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "enabled",
+          "security",
+          "available"
         ]
       },
       "ReplaceRequest": {

@@ -24,6 +24,7 @@ import { Wordmark } from "@/components/wordmark";
 import { panel } from "@/components/ui";
 import { LanguageSelect, ThemeSelect } from "@/components/preferences";
 import { useServerVersion, VersionFooter } from "@/components/version-footer";
+import { useUpdate } from "@/system/update";
 import { Bell } from "@/notifications/bell";
 import { type MessageKey, t } from "@/i18n";
 import { MiniPlayer } from "@/player/controls";
@@ -267,6 +268,7 @@ const ROLE_LABELS: Record<string, MessageKey> = {
 
 export function Shell({ user }: { user: CurrentUser }) {
 	const version = useServerVersion();
+	const update = useUpdate(user);
 	const matchRoute = useMatchRoute();
 	// The readers and the player take the whole screen.
 	const fullScreen =
@@ -335,7 +337,7 @@ export function Shell({ user }: { user: CurrentUser }) {
 						</main>
 						{!fullScreen && (
 							<div className="relative">
-								<VersionFooter {...version} />
+								<VersionFooter {...version} update={update} />
 								<img
 									src={mascotCorner}
 									alt=""

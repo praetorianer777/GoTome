@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { t } from "@/i18n";
+import type { ReleaseStatus } from "@/system/update";
 
 export type BuildInfo = components["schemas"]["BuildInfo"];
 
@@ -49,9 +50,11 @@ export function useServerVersion(): {
 export function VersionFooter({
 	build,
 	updated,
+	update,
 }: {
 	build: BuildInfo | null;
 	updated: boolean;
+	update?: ReleaseStatus | null;
 }) {
 	if (!build) return null;
 	const commit = build.commit?.slice(0, 7);
@@ -73,6 +76,19 @@ export function VersionFooter({
 							? t("version.buildWithCommit", { version: build.version, commit })
 							: t("version.build", { version: build.version })}
 					</span>
+				)}
+				{update?.available && (
+					<a
+						href={update.url}
+						target="_blank"
+						rel="noreferrer"
+						className="font-medium text-slate-700 hover:underline dark:text-slate-200"
+					>
+						{t(
+							update.security ? "version.availableSecurity" : "version.available",
+							{ version: update.latest ?? "" },
+						)}
+					</a>
 				)}
 				{updated && (
 					<p

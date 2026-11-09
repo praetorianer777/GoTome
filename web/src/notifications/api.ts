@@ -108,6 +108,7 @@ export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"scan.failed": "notifications.kind.scanFailed",
 	"library.unwritable": "notifications.kind.libraryUnwritable",
 	"system.degraded": "notifications.kind.systemDegraded",
+	"update.available": "notifications.kind.updateAvailable",
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
@@ -157,6 +158,19 @@ export function notificationText(n: Notification): {
 			return {
 				title: t("notification.systemDegraded", { component: checkName(text(d.component)) }),
 				detail: t("notification.systemDegraded.detail", { message: text(d.message) }),
+			};
+		case "update.available":
+			return {
+				title: t("notification.updateAvailable", { version: text(d.version) }),
+				detail:
+					d.count !== undefined
+						? t("notification.updateAvailable.many", { count: count(d.count) })
+						: t(
+								d.security === true
+									? "notification.updateAvailable.security"
+									: "notification.updateAvailable.detail",
+								{ current: text(d.current) },
+							),
 			};
 		case "files.unreadable":
 			return one
