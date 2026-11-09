@@ -148,5 +148,41 @@
   "size": 170237,
   "url": "https://www.gutenberg.org/ebooks/6498.epub3.images",
   "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-twenty": {
+  "sha256": "5bf874dc29a9fe3e08d08be5c50aead3643631a60a51f028cb63abde2f9bc64b",
+  "size": 2815846,
+  "url": "https://www.gutenberg.org/ebooks/2488.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-around": {
+  "sha256": "115e6bd0317d98f86fe3f74571beeadbbb345ee7b04bccbf139db858610cc7bf",
+  "size": 667271,
+  "url": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle/downloads/jules-verne_around-the-world-in-eighty-days_george-makepeace-towle.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-centre": {
+  "sha256": "c1ba6c2564ad2491d47947df359e0ceea763940aaf52b779155a9309117951a6",
+  "size": 900388,
+  "url": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson/downloads/jules-verne_journey-to-the-center-of-the-earth_f-a-malleson.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-alice": {
+  "sha256": "431719c25bcb0b6a67fc03938b4633723d775324ac2c62a06a04f98862148bef",
+  "size": 18398869,
+  "url": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel/downloads/lewis-carroll_alices-adventures-in-wonderland_john-tenniel.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-glass": {
+  "sha256": "616b0f03690304f6c22ef7488fa4faf1673c0f114276a2e64a4bec2f62fdbb3a",
+  "size": 24709469,
+  "url": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel/downloads/lewis-carroll_through-the-looking-glass_john-tenniel.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-metamorphosis": {
+  "sha256": "81a841cac683831522c7ae24ba6de819f1e360494ed0a122895efe93b4feeb97",
+  "size": 317251,
+  "url": "https://www.gutenberg.org/ebooks/5200.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
  }
 }
