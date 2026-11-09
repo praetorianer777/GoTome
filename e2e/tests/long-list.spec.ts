@@ -77,7 +77,7 @@ test("a long list keeps only the books near the window, and back returns to the 
 		.toBe(0);
 	// Rows measured on the way down make the page taller than the estimate
 	// did, so the end is scrolled to again until the last book is there.
-	const last = page.getByText(title(TOTAL - 1), { exact: true }).first();
+	const last = region.getByText(title(TOTAL - 1), { exact: true }).first();
 	await expect
 		.poll(
 			async () => {
@@ -91,7 +91,7 @@ test("a long list keeps only the books near the window, and back returns to the 
 	const cards = region.getByRole("listitem");
 	await expect(cards.first()).toHaveAttribute("aria-setsize", String(TOTAL));
 	expect(await cards.count()).toBeLessThan(150);
-	await expect(page.getByText(title(0), { exact: true })).toHaveCount(0);
+	await expect(region.getByText(title(0), { exact: true })).toHaveCount(0);
 
 	// Halfway down, a book is opened and left again.
 	await page.evaluate(() =>
@@ -124,7 +124,7 @@ test("a long list keeps only the books near the window, and back returns to the 
 	await expect(page).toHaveURL(/\/books\//);
 	await page.goBack();
 	// Back draws the list from its start, then scrolls to the row.
-	await expect(page.getByText(name, { exact: true }).first()).toBeInViewport();
+	await expect(region.getByText(name, { exact: true }).first()).toBeInViewport();
 	expect(await cards.count()).toBeLessThan(150);
 	expect(
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),

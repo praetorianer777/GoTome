@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { type CurrentUser, can } from "@/auth/session";
 import { BookBrowser, type BookSearch, type SortChoice } from "@/books/book-browser";
 import { GridSkeleton } from "@/books/book-list";
+import { FACET_FIELDS, pickCount } from "@/books/filters";
+import { LibraryStrip } from "@/books/library-strip";
 import { FormError } from "@/components/form";
 import { button, control, EmptyState, PageHeader } from "@/components/ui";
 import { t } from "@/i18n";
@@ -39,6 +41,10 @@ export function Library({
 		(list.length === 1 ? list[0] : undefined);
 	const busy = (selected ? [selected] : list).some(libraryIsBusy);
 	const words = search.q?.trim() || undefined;
+	const narrowed =
+		pickCount(
+			Object.fromEntries(FACET_FIELDS.map((field) => [field, search[field]])),
+		) > 0;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -57,6 +63,9 @@ export function Library({
 					)
 				}
 			/>
+			{list.length > 0 && !words && !narrowed && (
+				<LibraryStrip library={selected?.id} />
+			)}
 			{libraries.isPending && <GridSkeleton />}
 			<FormError error={libraries.error} />
 
