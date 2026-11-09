@@ -13,8 +13,12 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const files = join(root, "demo/files");
 const covers = join(root, "demo/covers");
 const lockPath = join(root, "demo/sample-books.lock.json");
-const library = JSON.parse(readFileSync(join(root, "src/demo/library.json"), "utf8"));
-const lock = existsSync(lockPath) ? JSON.parse(readFileSync(lockPath, "utf8")) : {};
+const library = JSON.parse(
+	readFileSync(join(root, "src/demo/library.json"), "utf8"),
+);
+const lock = existsSync(lockPath)
+	? JSON.parse(readFileSync(lockPath, "utf8"))
+	: {};
 mkdirSync(files, { recursive: true });
 mkdirSync(covers, { recursive: true });
 
@@ -37,7 +41,11 @@ function* entries(zip) {
 		yield {
 			name,
 			read() {
-				const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+				const start =
+					local +
+					30 +
+					zip.readUInt16LE(local + 26) +
+					zip.readUInt16LE(local + 28);
 				const raw = zip.subarray(start, start + size);
 				return method === 0 ? raw : inflateRawSync(raw);
 			},
@@ -47,7 +55,9 @@ function* entries(zip) {
 }
 
 function coverOf(id, epub) {
-	const entry = [...entries(epub)].find((e) => /(^|\/)cover[^/]*\.(jpe?g|png|webp)$/i.test(e.name));
+	const entry = [...entries(epub)].find((e) =>
+		/(^|\/)cover[^/]*\.(jpe?g|png|webp)$/i.test(e.name),
+	);
 	if (!entry) return "no cover image in the EPUB";
 	const image = entry.read();
 	const ext = entry.name.split(".").pop().toLowerCase().replace("jpeg", "jpg");
@@ -65,7 +75,9 @@ for (const book of library.books) {
 		if (existsSync(target)) {
 			data = readFileSync(target);
 		} else {
-			const res = await fetch(book.source.url, { headers: { "user-agent": "GOtome-demo-sample-books" } });
+			const res = await fetch(book.source.url, {
+				headers: { "user-agent": "GOtome-demo-sample-books" },
+			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			data = Buffer.from(await res.arrayBuffer());
 		}
@@ -74,20 +86,31 @@ for (const book of library.books) {
 		if (known && known.sha256 !== hash) {
 			throw new Error(`SHA-256 is ${hash}, the lock file pins ${known.sha256}`);
 		}
+		// Read as a zip before anything is kept: a site may answer a page instead.
+		const cover = coverOf(book.id, data);
 		if (!known) {
-			lock[book.id] = { sha256: hash, size: data.length, url: book.source.url, licence: book.source.licence };
+			lock[book.id] = {
+				sha256: hash,
+				size: data.length,
+				url: book.source.url,
+				licence: book.source.licence,
+			};
 			pinned++;
 		}
 		writeFileSync(target, data);
-		console.log(`${book.id}: ${data.length} bytes, ${coverOf(book.id, data)}`);
+		console.log(`${book.id}: ${data.length} bytes, ${cover}`);
 	} catch (err) {
 		failed++;
 		console.error(`${book.id}: ${book.source.url}: ${err.message}`);
 	}
 }
 writeFileSync(lockPath, `${JSON.stringify(lock, null, 1)}\n`);
-console.log(`${pinned} hashes pinned in demo/sample-books.lock.json; commit it.`);
+console.log(
+	`${pinned} hashes pinned in demo/sample-books.lock.json; commit it.`,
+);
 if (failed > 0) {
-	console.error(`${failed} books were not fetched; their URLs in src/demo/library.json need a look.`);
+	console.error(
+		`${failed} books were not fetched; their URLs in src/demo/library.json need a look.`,
+	);
 	process.exit(1);
 }
