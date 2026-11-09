@@ -59,6 +59,10 @@ the [configuration reference](docs/configuration.md),
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;
 see [CLAUDE.md](CLAUDE.md). `./run-tests.sh` is the gate that must pass before a push.
 
+## Security
+
+Report vulnerabilities privately, as [SECURITY.md](SECURITY.md) describes.
+
 ## Licence
 
 [Apache 2.0](LICENSE)
