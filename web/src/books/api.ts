@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-import { API_BASE, api } from "@/api/client";
+import { api, assetUrl } from "@/api/client";
 import type { components, paths } from "@/api/schema";
 
 export type BookSummary = components["schemas"]["BookSummary"];
@@ -228,9 +228,9 @@ export function coverUrl(
 	if (!book.coverKey) {
 		return undefined;
 	}
-	return `${API_BASE}/books/${book.id}/covers/${size}?v=${book.coverKey}`;
+	return assetUrl(`/books/${book.id}/covers/${size}?v=${book.coverKey}`);
 }
 
 export function downloadUrl(file: { id: string }): string {
-	return `${API_BASE}/files/${file.id}/download`;
+	return assetUrl(`/files/${file.id}/download`);
 }

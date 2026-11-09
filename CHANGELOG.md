@@ -6,6 +6,40 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- API keys on the profile, for scripts and other programs that use GOtome
+  without a browser: give a key a name, the scopes it may use (read the
+  library, reading status and progress, upload, edit metadata, administer)
+  and an optional expiry. It is shown once, sent as `Authorization:
+  Bearer`, and never does more than your role allows. The list shows when
+  each was last used; revoking one stops it at once. See `docs/api.md`.
+- `gotome perf-check` times the main views on your own library and prints a
+  table that names none of its books, with the memory in use. It only reads.
+
+### Changed
+
+- An upgrade with long database migrations no longer shows the app as
+  `unhealthy` or makes `docker compose up --wait` fail: GOtome listens at
+  once, `/readyz` says `migrating` (and how far it is) until they are done,
+  and Docker's health check allows ten minutes for that. The monitoring
+  addresses are described in the troubleshooting guide.
+- `/readyz` now answers 200 only when the database, the migrations, the
+  search index, the job queue and the data folder all work, and otherwise
+  503 naming the parts that fail (and nothing else, as it is public).
+  Administrators see how each part is doing, and what is degraded without
+  stopping GOtome, on the Overview page and at `/api/v1/system/checks`, and
+  are told when a part has failed for ten minutes.
+
+### Fixed
+
+- The dark theme's field and button borders are a little lighter, so they
+  stay easy to see over the glass panels, and the library behind the panels
+  shows more at night: only its lamps are held down, not the whole picture.
+- The "GO" of the small wordmark in the top bar reads cyan again instead of
+  teal, and the gopher's pictures no longer show a white patch between its
+  head and its headphone band; the sleeping gopher's speech bubble has a "z".
+
 ## [0.12.0] - 2026-11-09
 
 ### Added
@@ -21,7 +55,6 @@ What changes for someone who runs or uses GOtome. The format follows
 - The name in the top bar and on the sign-in and setup pages is a new
   wordmark: an illuminated "GO" and "tome" in gold lettering, one for each
   colour theme.
-
 - Books in the library's grid, on author and series pages and in "similar
   books" are shown as rounded cards, with a round badge on the cover's
   corner saying whether the book is an ebook, an audiobook or both.

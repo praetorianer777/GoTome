@@ -29,6 +29,7 @@ import {
 	useEndOwnSession,
 	useUnlinkIdentity,
 } from "@/users/api";
+import { ApiKeys } from "@/users/api-keys";
 import { Devices } from "@/users/devices";
 import { StorageUse } from "@/users/storage";
 
@@ -92,6 +93,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 			<ChangePassword />
 			<Sessions />
 			<Devices username={user.username} />
+			<ApiKeys />
 		</div>
 	);
 }

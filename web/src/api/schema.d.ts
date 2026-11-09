@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/auth/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's API keys: bearer tokens for scripts, each limited to its scopes */
+        get: operations["listOwnAPIKeys"];
+        put?: never;
+        /** Make an API key, shown this once */
+        post: operations["createOwnAPIKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/api-keys/{keyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of the caller's API keys */
+        delete: operations["revokeOwnAPIKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/device-requests": {
         parameters: {
             query?: never;
@@ -2456,6 +2491,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory */
+        get: operations["getSystemChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/health": {
         parameters: {
             query?: never;
@@ -2659,6 +2711,22 @@ export interface components {
         };
         AccountList: {
             users: components["schemas"]["Account"][];
+        };
+        ApiKeyList: {
+            keys: components["schemas"]["ApiKeyView"][];
+        };
+        ApiKeyView: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            name: string;
+            prefix: string;
+            scopes: string[];
         };
         ApplyCandidateRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -2876,6 +2944,17 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
+        Check: {
+            /** Format: date-time */
+            checkedAt: string;
+            message: string;
+            name: string;
+            /** @enum {string} */
+            status: "ok" | "degraded" | "failing";
+            /** @enum {string} */
+            unit?: "ms" | "s" | "count" | "bytes";
+            value?: number;
+        };
         CleanupApplied: {
             /** Format: uuid */
             id: string;
@@ -2995,6 +3074,12 @@ export interface components {
             /** Format: binary */
             file: string;
         };
+        CreateAPIKeyRequest: {
+            /** Format: date-time */
+            expiresAt?: string;
+            name: string;
+            scopes: string[];
+        };
         CreateAccountRequest: {
             email?: string;
             password: string;
@@ -3011,6 +3096,10 @@ export interface components {
             rootPath?: string;
             visibility: string;
             writable?: boolean;
+        };
+        CreatedAPIKey: {
+            key: components["schemas"]["ApiKeyView"];
+            token: string;
         };
         CreatedDevice: {
             catalog: string;
@@ -3559,7 +3648,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
+            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -3572,7 +3661,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -3715,6 +3804,9 @@ export interface components {
         ReplaceRequest: {
             /** Format: uuid */
             keep: string;
+        };
+        Report: {
+            checks: components["schemas"]["Check"][];
         };
         RereadLibraryRequest: {
             failedOnly: boolean;
@@ -4081,6 +4173,97 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listOwnAPIKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAPIKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedAPIKey"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listDeviceRequests: {
         parameters: {
             query?: never;
@@ -9287,6 +9470,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Work"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
             /** @description The request failed. */

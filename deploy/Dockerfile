@@ -129,7 +129,8 @@ USER gotome
 # inherits the directory's owner, so the app can write to it.
 VOLUME /data
 EXPOSE 8080
-# The binary probes itself, so the image needs no curl.
-HEALTHCHECK --interval=10s --timeout=4s --start-period=10s --retries=6 CMD ["gotome", "healthcheck"]
+# The binary probes itself, so the image needs no curl. The start period is
+# for migrations, during which /readyz answers 503 (migrating).
+HEALTHCHECK --interval=30s --timeout=4s --start-period=10m --start-interval=5s --retries=3 CMD ["gotome", "healthcheck"]
 ENTRYPOINT ["gotome"]
 CMD ["serve"]

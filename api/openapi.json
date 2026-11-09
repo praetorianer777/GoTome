@@ -55,6 +55,128 @@
     }
   ],
   "paths": {
+    "/auth/api-keys": {
+      "get": {
+        "operationId": "listOwnAPIKeys",
+        "summary": "The caller's API keys: bearer tokens for scripts, each limited to its scopes",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      },
+      "post": {
+        "operationId": "createOwnAPIKey",
+        "summary": "Make an API key, shown this once",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAPIKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAPIKey"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
+    "/auth/api-keys/{keyId}": {
+      "delete": {
+        "operationId": "revokeOwnAPIKey",
+        "summary": "Revoke one of the caller's API keys",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
+      }
+    },
     "/auth/device-requests": {
       "get": {
         "operationId": "listDeviceRequests",
@@ -505,6 +627,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "signed-in"
@@ -847,6 +972,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -894,6 +1022,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1002,6 +1133,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1049,6 +1183,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1104,6 +1241,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1159,6 +1299,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1228,6 +1371,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1275,6 +1421,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -1330,6 +1479,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1377,6 +1529,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -1424,6 +1579,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1479,6 +1637,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1526,6 +1687,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1573,6 +1737,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1630,6 +1797,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1677,6 +1847,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1732,6 +1905,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1788,6 +1964,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -1835,6 +2014,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -1893,6 +2075,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1950,6 +2135,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -1997,6 +2185,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2062,6 +2253,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2119,6 +2313,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2174,6 +2371,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -2221,6 +2421,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -2291,6 +2494,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -2338,6 +2544,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -2378,6 +2587,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -2425,6 +2637,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -2470,6 +2685,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2510,6 +2728,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2555,6 +2776,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -2610,6 +2834,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2667,6 +2894,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2715,6 +2945,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2772,6 +3005,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2812,6 +3048,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2886,6 +3125,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -2926,6 +3168,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -2964,6 +3209,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3121,6 +3369,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3176,6 +3427,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3288,6 +3542,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -3335,6 +3592,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -3385,6 +3645,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -3435,6 +3698,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -3472,6 +3738,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
@@ -3512,6 +3781,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
@@ -3549,6 +3821,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -3586,6 +3861,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3631,6 +3909,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3668,6 +3949,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3708,6 +3992,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3755,6 +4042,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -3795,6 +4085,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -3843,6 +4136,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -3890,6 +4186,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -3947,6 +4246,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -3987,6 +4289,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -4027,6 +4332,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -4098,6 +4406,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -4159,6 +4470,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -4206,6 +4520,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -4253,6 +4570,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -4309,6 +4629,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4349,6 +4672,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4389,6 +4715,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4436,6 +4765,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4483,6 +4815,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4523,6 +4858,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4563,6 +4901,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4603,6 +4944,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4643,6 +4987,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4691,6 +5038,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -4739,6 +5089,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4787,6 +5140,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4850,6 +5206,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -4890,6 +5249,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4930,6 +5292,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -4970,6 +5335,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5010,6 +5378,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5074,6 +5445,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5154,6 +5528,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5239,6 +5616,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -5286,6 +5666,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -5385,6 +5768,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5430,6 +5816,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5470,6 +5859,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5515,6 +5907,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -5570,6 +5965,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5627,6 +6025,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -5674,6 +6075,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5722,6 +6126,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5768,6 +6175,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -5815,6 +6225,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -5872,6 +6285,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "books:upload"
@@ -5919,6 +6335,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -5976,6 +6395,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -6016,6 +6438,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -6153,6 +6578,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -6201,6 +6629,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -6264,6 +6695,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -6442,6 +6876,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6490,6 +6927,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6567,6 +7007,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6623,6 +7066,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6661,6 +7107,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6709,6 +7158,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6747,6 +7199,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6795,6 +7250,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6843,6 +7301,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6881,6 +7342,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6937,6 +7401,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -6988,6 +7455,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -7067,6 +7537,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7104,6 +7577,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -7151,6 +7627,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -7222,6 +7701,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7269,6 +7751,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
@@ -7324,6 +7809,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7371,6 +7859,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7408,6 +7899,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
@@ -7453,6 +7947,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
@@ -7562,6 +8059,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7607,6 +8107,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -7647,6 +8150,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -7692,6 +8198,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7747,6 +8256,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -7835,6 +8347,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7882,6 +8397,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "library:read"
@@ -7929,9 +8447,52 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "index:rebuild"
+      }
+    },
+    "/system/checks": {
+      "get": {
+        "operationId": "getSystemChecks",
+        "summary": "How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory",
+        "tags": [
+          "system"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
       }
     },
     "/system/health": {
@@ -7966,6 +8527,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "settings:manage"
@@ -8003,6 +8567,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -8048,6 +8615,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -8088,6 +8658,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "personal:manage"
@@ -8135,6 +8708,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "metadata:edit"
@@ -8172,6 +8748,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "users:manage"
@@ -8217,6 +8796,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "users:manage"
@@ -8274,6 +8856,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "users:manage"
@@ -8331,6 +8916,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "storage:manage"
@@ -8371,6 +8959,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "x-permission": "users:manage"
@@ -8556,6 +9147,60 @@
         },
         "required": [
           "users"
+        ]
+      },
+      "ApiKeyList": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeyView"
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ]
+      },
+      "ApiKeyView": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "scopes",
+          "createdAt"
         ]
       },
       "ApplyCandidateRequest": {
@@ -9370,6 +10015,47 @@
           "newPassword"
         ]
       },
+      "Check": {
+        "type": "object",
+        "properties": {
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "failing"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "ms",
+              "s",
+              "count",
+              "bytes"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "message",
+          "checkedAt"
+        ]
+      },
       "CleanupApplied": {
         "type": "object",
         "properties": {
@@ -9815,6 +10501,28 @@
           "file"
         ]
       },
+      "CreateAPIKeyRequest": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
+        ]
+      },
       "CreateAccountRequest": {
         "type": "object",
         "properties": {
@@ -9876,6 +10584,21 @@
           "name",
           "mode",
           "visibility"
+        ]
+      },
+      "CreatedAPIKey": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ApiKeyView"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "token"
         ]
       },
       "CreatedDevice": {
@@ -11959,7 +12682,8 @@
               "duplicates.found",
               "files.unreadable",
               "scan.failed",
-              "library.unwritable"
+              "library.unwritable",
+              "system.degraded"
             ]
           },
           "link": {
@@ -12016,7 +12740,8 @@
               "duplicates.found",
               "files.unreadable",
               "scan.failed",
-              "library.unwritable"
+              "library.unwritable",
+              "system.degraded"
             ]
           }
         },
@@ -12559,6 +13284,20 @@
         },
         "required": [
           "keep"
+        ]
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Check"
+            }
+          }
+        },
+        "required": [
+          "checks"
         ]
       },
       "RereadLibraryRequest": {
@@ -13837,6 +14576,12 @@
       }
     },
     "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "gotome_…",
+        "description": "An API key made on the profile, sent as Authorization: Bearer. It reaches the routes its scopes allow and never more than its owner's role, and none about the account itself except GET /auth/me."
+      },
       "session": {
         "type": "apiKey",
         "in": "cookie",

@@ -16,6 +16,7 @@ import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
 import { GENRES, type Genre } from "@/books/genres";
 import type { BookSearch } from "@/books/book-browser";
 import { picksFrom } from "@/books/filters";
+import { isDemo } from "@/demo/mode";
 import { Gopher } from "@/components/gopher";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
@@ -577,7 +578,15 @@ const routeTree = rootRoute.addChildren([
 export function makeRouter(queryClient: QueryClient, history?: RouterHistory) {
 	// Back from a book returns to where the list was scrolled to: its pages
 	// are still cached, so the list is as long as it was.
-	return createRouter({ routeTree, context: { queryClient }, history, defaultPreload: false, scrollRestoration: true });
+	return createRouter({
+		routeTree,
+		context: { queryClient },
+		history,
+		defaultPreload: false,
+		scrollRestoration: true,
+		// The demo lives under the Pages project's path, not at the root.
+		basepath: isDemo ? import.meta.env.BASE_URL : undefined,
+	});
 }
 
 // Registers the router's type, so links and params are checked against the

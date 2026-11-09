@@ -2303,6 +2303,31 @@ describe("profile", () => {
 		await waitFor(() => expect(server.devices).toHaveLength(0));
 	});
 
+	it("makes an API key with chosen scopes, shows it once, and revokes it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		const keys = within(await screen.findByRole("region", { name: "API keys" }));
+
+		await person.type(keys.getByLabelText("Name of the key"), "Home automation");
+		await person.click(keys.getByLabelText("Read the library"));
+		await person.click(keys.getByRole("button", { name: "Make a key" }));
+		expect(await keys.findByText("Choose at least one scope.")).toBeInTheDocument();
+
+		await person.click(keys.getByLabelText("Reading status, progress and shelves"));
+		await person.click(keys.getByRole("button", { name: "Make a key" }));
+		const created = await keys.findByRole("status");
+		expect(created).toHaveTextContent("Home automation is made.");
+		expect(created).toHaveTextContent(`gotome_${"x".repeat(43)}`);
+		expect(await keys.findByText("Not used yet")).toBeInTheDocument();
+		expect(server.apiKeys[0]?.scopes).toEqual(["progress"]);
+
+		await person.click(
+			keys.getByRole("button", { name: "Revoke the key Home automation" }),
+		);
+		await waitFor(() => expect(server.apiKeys).toHaveLength(0));
+	});
+
 	it("shows a device asking to be added with its code, and accepts or declines it", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
@@ -6652,6 +6677,27 @@ describe("the overview", () => {
 		expect(
 			panel.getByText("Embedding model on the CPU").nextSibling,
 		).toHaveTextContent("734 MB (intfloat/multilingual-e5-small)");
+	});
+
+	it("lists how each part of GOtome is doing, with a word for each status", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/overview");
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
+		);
+		const heading = await panel.findByRole("heading", {
+			name: "Parts of GOtome",
+		});
+		const items = within(heading.parentElement as HTMLElement).getAllByRole(
+			"listitem",
+		);
+		expect(items[0]).toHaveTextContent("Database · Fine · 1.5 ms");
+		expect(items[2]).toHaveTextContent("Search index backlog · Degraded · 900 s");
+		expect(items[2]).toHaveTextContent(
+			"12 changes wait for the search index",
+		);
+		expect(items[3]).toHaveTextContent("Metadata source openlibrary · Fine");
 	});
 
 	it("warns an administrator of settings too large for the machine, with the commands that fit", async () => {

@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { API_BASE, api } from "@/api/client";
+import { isDemo } from "@/demo/mode";
 import type { components } from "@/api/schema";
 import {
 	BULK_OUTCOME_LABELS,
@@ -13,6 +14,7 @@ import {
 } from "@/books/bulk";
 import { type MessageKey, t } from "@/i18n";
 import { formatReleaseDate } from "@/lib/format";
+import { checkName } from "@/system/checks";
 
 export type Notification = components["schemas"]["Notification"];
 
@@ -46,7 +48,7 @@ export function useMarkRead() {
 export function useNotificationStream() {
 	const queryClient = useQueryClient();
 	useEffect(() => {
-		if (typeof EventSource === "undefined") return;
+		if (typeof EventSource === "undefined" || isDemo) return;
 		const stream = new EventSource(`${API_BASE}/notifications/stream`);
 		stream.addEventListener("unread", (e) => {
 			const { unread } = JSON.parse((e as MessageEvent<string>).data) as {
@@ -105,6 +107,7 @@ export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"files.unreadable": "notifications.kind.filesUnreadable",
 	"scan.failed": "notifications.kind.scanFailed",
 	"library.unwritable": "notifications.kind.libraryUnwritable",
+	"system.degraded": "notifications.kind.systemDegraded",
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
@@ -149,6 +152,11 @@ export function notificationText(n: Notification): {
 				detail: d.error
 					? t("notification.libraryUnwritable.reason", { reason: text(d.error) })
 					: t("notification.libraryUnwritable.many", { count: count(d.count) }),
+			};
+		case "system.degraded":
+			return {
+				title: t("notification.systemDegraded", { component: checkName(text(d.component)) }),
+				detail: t("notification.systemDegraded.detail", { message: text(d.message) }),
 			};
 		case "files.unreadable":
 			return one

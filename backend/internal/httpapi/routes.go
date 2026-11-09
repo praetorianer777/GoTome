@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -58,6 +59,10 @@ type Route struct {
 	// Devices lets a device's token (HTTP Basic auth) sign in to the route,
 	// as well as a browser's session; no other route takes one.
 	Devices bool
+	// Keys lets an API key reach a route that declares SignedIn. Routes with
+	// any other permission are reached through the key's scopes; the others
+	// that concern the caller's account stay closed to keys.
+	Keys    bool
 	Handler HandlerFunc
 }
 
@@ -75,6 +80,12 @@ const (
 	// caller's own account, the settings, a provider's answer.
 	ReadsNoLibrary
 )
+
+// keyReaches says whether an API key can call the route at all, given the
+// right scope.
+func (rt Route) keyReaches() bool {
+	return rt.Permission != auth.Public && (rt.Permission != auth.SignedIn || rt.Keys)
+}
 
 func (rt Route) successStatus() int {
 	switch {
@@ -102,6 +113,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
 			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
 			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/checks", ID: "getSystemChecks",
+			Summary: "How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory", Tag: "system",
+			Response: syscheck.Report{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemChecks,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
@@ -157,7 +173,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
-			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getMe,
+			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Keys: true, Handler: s.getMe,
 		},
 
 		{
@@ -235,6 +251,22 @@ func (s *Server) routes() []Route {
 			Summary: "Add a device, and get the token it signs in with, shown this once", Tag: "auth",
 			Request: createDeviceRequest{}, Response: createdDevice{}, Status: http.StatusCreated,
 			Permission: auth.SignedIn, Handler: s.createOwnDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/api-keys", ID: "listOwnAPIKeys",
+			Summary: "The caller's API keys: bearer tokens for scripts, each limited to its scopes", Tag: "auth",
+			Response: apiKeyList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnAPIKeys,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/api-keys", ID: "createOwnAPIKey",
+			Summary: "Make an API key, shown this once", Tag: "auth",
+			Request: createAPIKeyRequest{}, Response: createdAPIKey{}, Status: http.StatusCreated,
+			Permission: auth.SignedIn, Handler: s.createOwnAPIKey,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/api-keys/{keyId}", ID: "revokeOwnAPIKey",
+			Summary: "Revoke one of the caller's API keys", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.revokeOwnAPIKey,
 		},
 		{
 			Method: http.MethodGet, Path: "/auth/device-requests", ID: "listDeviceRequests",
@@ -838,6 +870,15 @@ type buildInfo version.Info
 
 func (s *Server) getVersion(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, buildInfo(version.Current()))
+	return nil
+}
+
+func (s *Server) getSystemChecks(w http.ResponseWriter, r *http.Request) error {
+	if s.Checks == nil {
+		writeJSON(w, r, http.StatusOK, syscheck.Report{Checks: s.readiness().Checks(r.Context())})
+		return nil
+	}
+	writeJSON(w, r, http.StatusOK, s.Checks.Collect(r.Context()))
 	return nil
 }
 

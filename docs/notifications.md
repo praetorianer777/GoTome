@@ -22,6 +22,7 @@ on until turned off.
 | Files that cannot be read | editors and administrators |
 | A library cannot be scanned | administrators |
 | A library's folder cannot be written to (once, until it can again) | administrators |
+| A part of GOtome has been failing for ten minutes (once, until it works again) | administrators |
 
 Nobody is told of a library they do not see. Many events of one kind
 within a few minutes, such as an import of a thousand books, are told

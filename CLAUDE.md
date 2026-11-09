@@ -19,7 +19,14 @@ ever in the compose file or an environment variable. init only adds what is miss
   the author squash-merges it and closes the issue with a pointer to the pull
   request: merging alone does not close issues in this repository. Pull requests by
   anyone else, and any with failing or missing checks, are left to the owner.
-- The backlog is filed as issues in milestones `M0`–`M10`. An issue names its
+- Issues worked on in parallel go as a batch (the owner's decision, 2026-11-09):
+  each issue on its own branch with its own commits and only its own checks, no
+  push; one batch branch (`chore/<batch issue>-batch-<n>`) merges them, resolves
+  conflicts and migration numbers, and passes the gate and CI once. Its pull
+  request names every issue (`Closes #a, closes #b`) and is merged with a merge
+  commit, not squashed, so each issue keeps its commits. A branch that fails is
+  fixed or taken out of the batch.
+- The backlog is filed as issues in milestones (`M0` onwards). An issue names its
   dependencies; do not start it before they are merged.
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
   under `docs/decisions/`. No search or embedding feature work starts before them.
@@ -337,9 +344,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `make scale-test` (`test/scale_test.go`, in the full gate) seeds 50,000
   books and asks every main view as two people: each within a second, and
   none reading `books`, `book_files` or `book_chunks` whole except those in
-  `wholeByDesign`. It catches the plans that ran through `auto_explain` on
+  `perf.WholeByDesign`. It catches the plans that ran through `auto_explain` on
   the connection and writes them to `.cache/scale-plans`. A new main view
   goes into `scaleViews`. `docs/performance.md` has the table.
+- `gotome perf-check` (`cmd/gotome/perfcheck.go`, `internal/perf`) times the
+  same views (`perf.Views`, which the scale test asks too) on an installation's
+  own library, as one person, in-process through the router with no session
+  written. Its connections are `default_transaction_read_only`, it queues
+  nothing, and nothing it prints or fails with may name anything of the
+  library (views are named generically, errors say the view and a status):
+  `perfcheck_test.go` holds the output to that. A new view goes into
+  `perf.Views`; what it needs picked from the library into `perf.Pick`.
 - Call `visible_library_ids` in `FROM` (`IN (SELECT * FROM
   visible_library_ids(...))`): in a select list the planner cannot see
   into it and takes half the books for visible. A filter on the viewer's

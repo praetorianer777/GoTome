@@ -81,16 +81,22 @@ const listOutbox = `-- name: ListOutbox :many
 SELECT id, deletes, docs FROM fulltext_outbox ORDER BY id LIMIT $1
 `
 
+type ListOutboxRow struct {
+	ID      int64
+	Deletes []int64
+	Docs    []byte
+}
+
 // The oldest changes the full-text index is still to get.
-func (q *Queries) ListOutbox(ctx context.Context, limit int32) ([]FulltextOutbox, error) {
+func (q *Queries) ListOutbox(ctx context.Context, limit int32) ([]ListOutboxRow, error) {
 	rows, err := q.db.Query(ctx, listOutbox, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []FulltextOutbox{}
+	items := []ListOutboxRow{}
 	for rows.Next() {
-		var i FulltextOutbox
+		var i ListOutboxRow
 		if err := rows.Scan(&i.ID, &i.Deletes, &i.Docs); err != nil {
 			return nil, err
 		}

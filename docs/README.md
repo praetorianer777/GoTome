@@ -28,6 +28,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   of, and following authors, series and feeds.
 - [Single sign-on](single-sign-on.md): OpenID Connect with Authentik,
   Authelia, Keycloak and others; roles from groups.
+- [The API and API keys](api.md): calling GOtome from scripts with a
+  key, its scopes, and the OpenAPI document.
 - [E-readers](devices.md): which way for which device, adding one, and
   sending books.
   - [KOReader and OPDS](koreader.md)
@@ -43,6 +45,8 @@ For people who run GOtome or use it. Start with **Getting started**.
 ## For developers
 
 - [Design](design.md): how the web app looks.
-- [Performance at 50,000 books](performance.md).
+- [Performance at 50,000 books](performance.md), and `gotome perf-check` for
+  timing the views on your own library.
+- [The demo](demo.md): the Pages build, its sample data and the books it fetches.
 - [Decision records](decisions/): the search engine, the text store, the
   embedding runtime, the MOBI reader, passage vectors.

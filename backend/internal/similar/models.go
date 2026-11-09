@@ -225,3 +225,17 @@ func (s *Service) Models(ctx context.Context, scope library.Scope) (ModelList, e
 	})
 	return out, nil
 }
+
+// Runtime says whether embedding is on and, if so, whether the chosen model
+// can run here: the same probe as Models, without counting vectors.
+func (s *Service) Runtime(ctx context.Context) (model string, enabled bool, ready Readiness, err error) {
+	spec, on, err := s.config(ctx)
+	if err != nil {
+		return "", false, Readiness{}, err
+	}
+	ready = Readiness{State: NoRuntime}
+	if s.Probe != nil {
+		ready = s.Probe(ctx, spec)
+	}
+	return spec.Model.Name, on, ready, nil
+}

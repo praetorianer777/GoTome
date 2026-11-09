@@ -24,6 +24,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
+	"github.com/praetorianer777/gotome/backend/internal/perf"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
@@ -41,31 +42,6 @@ const scaleBudget = time.Second
 // scannedWhole are the tables no main view may read from end to end: they
 // grow with the library.
 var scannedWhole = []string{"books", "book_files", "book_chunks"}
-
-// wholeByDesign are the views that read every book, or every file, the
-// viewer sees, because what they answer is about all of them; they are held
-// to scaleBudget alone.
-var wholeByDesign = map[string]string{
-	// It counts each value over every book the filter leaves.
-	"facets": "counts every book",
-	// The exact cosine scan of #66 compares the book with every other one;
-	// at 50,000 books an approximate index is not worth what it costs.
-	"similar books": "compares with every book",
-	// So does a description, with the vectors of every visible book.
-	"search by description": "compares with every book",
-	// Each library's files are counted and their sizes added up.
-	"libraries": "counts every file",
-	// Suggestions are about the whole catalogue: every author credit is
-	// grouped by person, every title matched, and each kind counted.
-	"clean-up: authors": "reads every credit and title",
-	"clean-up: titles":  "reads every credit and title",
-	"clean-up: series":  "reads every credit and title",
-	// The overview counts what the books hold and how far the work on
-	// them is.
-	"overview":              "counts every book and file",
-	"overview: work":        "counts every book and file",
-	"overview of a library": "counts every book and file",
-}
 
 // wholeQueriesByDesign are the statements, by their sqlc name, that read
 // every book by design within a view that otherwise may not, so that the
@@ -372,106 +348,31 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 	}
 }
 
-// scaleView is one main view, asked as the web app asks it.
-type scaleView struct {
-	name string
-	path string
-	// adminOnly is a view the member may not use.
-	adminOnly bool
-	// feed is an OPDS feed for e-readers, which is XML, not JSON.
-	feed bool
-	// after is the view whose nextCursor stands for @next in the path.
-	after string
-}
-
-// scaleViews are the views of the web app's pages, with what the seed
-// named filled in.
-func scaleViews(t *testing.T, a *app, ctx context.Context) []scaleView {
+// scaleViews are perf.Views with what the seed named filled in.
+func scaleViews(t *testing.T, a *app, ctx context.Context) []perf.View {
 	t.Helper()
-	var book, library, collection, shelf string
-	var author, series, tag, quick, word string
+	var p perf.Params
 	for _, q := range []struct {
 		sql string
 		to  *string
 	}{
-		{`SELECT id::text FROM scale_books WHERE n = 25000`, &book},
-		{`SELECT id::text FROM scale_libraries WHERE n = 3`, &library},
-		{`SELECT id::text FROM collections WHERE name = 'Favourites'`, &collection},
-		{`SELECT id::text FROM smart_shelves`, &shelf},
-		{`SELECT name FROM scale_authors WHERE n = 4242`, &author},
-		{`SELECT s.name_key FROM series s JOIN scale_series n ON n.id = s.id WHERE n.n = 1300`, &series},
-		{`SELECT name FROM scale_tags WHERE n = 17`, &tag},
-		{`SELECT lower(scale_word(37035))`, &quick},
-		{`SELECT lower(scale_word(25000 * 31 + 5 * 97))`, &word},
+		{`SELECT id::text FROM scale_books WHERE n = 25000`, &p.Book},
+		{`SELECT id::text FROM scale_libraries WHERE n = 3`, &p.Library},
+		{`SELECT id::text FROM collections WHERE name = 'Favourites'`, &p.Collection},
+		{`SELECT id::text FROM smart_shelves`, &p.Shelf},
+		{`SELECT name FROM scale_authors WHERE n = 4242`, &p.Author},
+		{`SELECT s.name_key FROM series s JOIN scale_series n ON n.id = s.id WHERE n.n = 1300`, &p.Series},
+		{`SELECT name FROM scale_tags WHERE n = 17`, &p.Tag},
+		{`SELECT lower(scale_word(37035))`, &p.Quick},
+		{`SELECT lower(scale_word(25000 * 31 + 5 * 97))`, &p.Word},
+		{`SELECT lower(scale_word(25000 * 31 + 5 * 97)) || ' ' || lower(scale_word(25000 * 31 + 6 * 97))`, &p.Phrase},
 	} {
 		if err := a.pool.QueryRow(ctx, q.sql).Scan(q.to); err != nil {
 			t.Fatalf("%s: %v", q.sql, err)
 		}
 	}
-	filter := func(tree string) string { return url.Values{"filter": {tree}}.Encode() }
-	byAuthor := fmt.Sprintf(`{"field": "author", "op": "in", "values": [%q]}`, author)
-	byPerson := fmt.Sprintf(`{"field": "person", "op": "in", "values": [%q]}`, author)
-	bySeries := fmt.Sprintf(`{"field": "series", "op": "in", "values": [%q]}`, series)
-	byWords := fmt.Sprintf(`{"field": "words", "op": "like", "values": [%q]}`, quick)
-	tagAndLanguage := fmt.Sprintf(`{"all": [{"field": "tag", "op": "in", "values": [%q]}, {"field": "language", "op": "in", "values": ["de"]}]}`, tag)
-	return []scaleView{
-		{name: "library by title", path: "/books?limit=50"},
-		{name: "library by author", path: "/books?sort=author&limit=50"},
-		{name: "library newest first", path: "/books?sort=added&order=desc&limit=50"},
-		{name: "library page 2", path: "/books?limit=50&cursor=@next", after: "library by title"},
-		{name: "one library", path: "/books?limit=50&library=" + library},
-		{name: "filter by author", path: "/books?limit=50&" + filter(byAuthor)},
-		{name: "authors", path: "/authors?limit=60"},
-		{name: "series", path: "/series?limit=60"},
-		{name: "an author", path: "/authors/" + url.PathEscape(author)},
-		{name: "an author's books", path: "/books?limit=50&sort=series&" + filter(byPerson)},
-		{name: "an author's facets", path: "/books/facets?" + filter(byPerson)},
-		{name: "a series", path: "/series/" + url.PathEscape(series)},
-		{name: "a series' books", path: "/books?limit=50&sort=series&" + filter(bySeries)},
-		{name: "filter by tag and language", path: "/books?limit=50&" + filter(tagAndLanguage)},
-		{name: "filter by status", path: "/books?limit=50&" + filter(`{"field": "status", "op": "in", "values": ["reading"]}`)},
-		{name: "filter by year", path: "/books?limit=50&" + filter(`{"field": "published", "op": "between", "values": ["1900", "1950"]}`)},
-		{name: "filter by missing files", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["missing"]}`)},
-		{name: "filter by no file on disk", path: "/books?limit=50&" + filter(`{"field": "files", "op": "in", "values": ["none-on-disk"]}`)},
-		{name: "filter by e-reader findings", path: "/books?limit=50&" + filter(`{"field": "ereader", "op": "in", "values": ["large-fonts", "large-image"]}`)},
-		{name: "facets", path: "/books/facets"},
-		{name: "facets of a filter", path: "/books/facets?" + filter(tagAndLanguage)},
-		{name: "count of a filter", path: "/books/count?" + filter(tagAndLanguage)},
-		{name: "quick search", path: "/books/search?q=" + quick},
-		{name: "every quick search match", path: "/books?limit=50&" + filter(byWords)},
-		{name: "every quick search match by author", path: "/books?limit=50&sort=author&" + filter(byWords)},
-		{name: "facets of every quick search match", path: "/books/facets?" + filter(byWords)},
-		{name: "author names", path: "/books/names?kind=author&q=" + quick[:3]},
-		{name: "full-text search", path: "/search?q=" + word},
-		{name: "book", path: "/books/" + book},
-		{name: "similar books", path: "/books/" + book + "/similar"},
-		{name: "duplicates", path: "/duplicates"},
-		{name: "review", path: "/matches"},
-		{name: "collection", path: "/collections/" + collection},
-		{name: "smart shelf", path: "/smart-shelves/" + shelf + "/books"},
-		{name: "collections", path: "/collections"},
-		{name: "reading statistics", path: "/me/stats?days=30"},
-		{name: "new books", path: "/releases"},
-		{name: "items of followed feeds", path: "/feeds/items"},
-		{name: "genre review", path: "/genres/suggestions"},
-		{name: "genre review page 2", path: "/genres/suggestions?cursor=@next", after: "genre review"},
-		{name: "genre review of a genre", path: "/genres/suggestions?genre=crime"},
-		{name: "search by description", path: "/search/similar?q=" + url.QueryEscape("a detective story set in Venice")},
-		{name: "clean-up: authors", path: "/cleanup?kind=authors"},
-		{name: "clean-up: titles", path: "/cleanup?kind=titles"},
-		{name: "clean-up: series", path: "/cleanup?kind=series"},
-		{name: "trash", path: "/trash"},
-		{name: "jobs", path: "/jobs"},
-		{name: "libraries", path: "/libraries"},
-		{name: "users", path: "/users", adminOnly: true},
-		{name: "e-reader catalogue: newest", path: "/opds/books", feed: true},
-		{name: "e-reader catalogue: authors", path: "/opds/authors", feed: true},
-		{name: "e-reader catalogue: an author", path: "/opds/books?" + url.Values{"author": {author}}.Encode(), feed: true},
-		{name: "e-reader catalogue: search", path: "/opds/search?q=" + quick, feed: true},
-		{name: "overview", path: "/statistics"},
-		{name: "overview of a library", path: "/statistics?library=" + library},
-		{name: "overview: work", path: "/statistics/work"},
-	}
+	p.SimilarBook, p.Language, p.Describe = p.Book, "de", "a detective story set in Venice"
+	return perf.Views(p)
 }
 
 // TestTheMainViewsAtFiftyThousandBooks asks every main view of the web app
@@ -519,11 +420,11 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 		results[who.name] = map[string]result{}
 		next := map[string]string{}
 		for _, v := range views {
-			if v.adminOnly && who.name != "administrator" {
+			if v.AdminOnly && who.name != "administrator" {
 				continue
 			}
-			path := strings.Replace(v.path, "@next", url.QueryEscape(next[v.after]), 1)
-			key := who.name + " " + v.name
+			path := strings.Replace(v.Path, "@next", url.QueryEscape(next[v.After]), 1)
+			key := who.name + " " + v.Name
 			catcher.watch(key)
 			// The best of three, so that a busy machine does not decide.
 			best := time.Hour
@@ -531,7 +432,7 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 				began := time.Now()
 				var status int
 				var body map[string]any
-				if v.feed {
+				if v.Feed {
 					var raw []byte
 					status, raw = a.get(who.client, path)
 					body = map[string]any{"body": string(raw)}
@@ -544,7 +445,7 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 					t.Fatalf("%s: GET %s: %d %v\n%s", key, path, status, body, logs[max(0, len(logs)-2000):])
 				}
 				if c, ok := body["nextCursor"].(string); ok {
-					next[v.name] = c
+					next[v.Name] = c
 				}
 				best = min(best, took)
 			}
@@ -564,11 +465,11 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 				r.scans = append(r.scans, rel)
 			}
 			sort.Strings(r.scans)
-			results[who.name][v.name] = r
+			results[who.name][v.Name] = r
 			if best > scaleBudget {
 				t.Errorf("%s: %s, want at most %s", key, best.Round(time.Millisecond), scaleBudget)
 			}
-			if _, whole := wholeByDesign[v.name]; len(r.scans) > 0 && !whole {
+			if _, whole := perf.WholeByDesign[v.Name]; len(r.scans) > 0 && !whole {
 				t.Errorf("%s reads all of %s", key, strings.Join(r.scans, ", "))
 			}
 		}
@@ -582,17 +483,17 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 	table.WriteString("\n| View | Administrator | Member | Reads every book |\n|---|---:|---:|---|\n")
 	for _, v := range views {
 		cell := func(who string) string {
-			r, ok := results[who][v.name]
+			r, ok := results[who][v.Name]
 			if !ok {
 				return "–"
 			}
 			return fmt.Sprintf("%d ms", r.best.Milliseconds())
 		}
-		why := wholeByDesign[v.name]
+		why := perf.WholeByDesign[v.Name]
 		if why == "" {
-			why = results["administrator"][v.name].byDesign
+			why = results["administrator"][v.Name].byDesign
 		}
-		fmt.Fprintf(&table, "| %s | %s | %s | %s |\n", v.name, cell("administrator"), cell("member"), why)
+		fmt.Fprintf(&table, "| %s | %s | %s | %s |\n", v.Name, cell("administrator"), cell("member"), why)
 	}
 	t.Log(table.String())
 }

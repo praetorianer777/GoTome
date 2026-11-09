@@ -30,6 +30,50 @@ device`**: the disk is full. Free some (`docker image prune` removes old
 images after updates; empty the trash), then start it again; Postgres
 recovers by itself once there is room.
 
+## Monitoring
+
+GOtome answers two addresses for a monitor (Uptime Kuma and the like).
+Both are public and cheap, and say nothing but a status:
+
+| Address | Answers 200 | Use it for |
+|---|---|---|
+| `/healthz` | while the process runs and its web server answers; it asks nothing else, so a slow database never makes it fail | a container restart policy |
+| `/readyz` | `{"status":"ready"}` while GOtome can serve: the database answers, the migrations are done, the search index is open, the job queue runs and the data folder can be written to | a load balancer or an uptime monitor |
+
+When something is missing, `/readyz` answers 503 with
+`{"status":"not_ready","failing":["search_index"]}`: the names of the parts
+that fail (`database`, `migrations`, `search_index`, `jobs`, `data_dir`) and
+nothing else; the reason is in the log and in the administrators' details
+below. The answer is kept for a few seconds, so polling every second costs
+nothing. Things that leave GOtome working, such as an embedding model that
+cannot run, a metadata source that is down or a search index that is behind,
+do not make it not ready; they show in the details.
+
+While GOtome starts, `/readyz` answers 503. During an upgrade's database
+migrations it says `{"status":"migrating","migrationsApplied":3,"migrationsTotal":13}`
+and the log says `migrating the database` for each; a large library can
+spend minutes there. That is not a failure: Docker's health check gives the
+app ten minutes (`start_period`) and turns it `healthy` the moment it
+answers, and a monitor should wait for `/readyz` rather than alert on the
+first 503 after an upgrade.
+
+`docker compose ps` shows the state of the containers: `app` and `db` should be `healthy`
+(`starting` for a while after a start or an upgrade), `init` has exited.
+After `ALTER SYSTEM` changes that need Postgres restarted, the `db`
+container is `starting` again until it accepts connections; the app
+reconnects by itself.
+
+**Details for administrators**: `GET /api/v1/system/checks`, with the
+session of an administrator, answers for each part its status (`ok`,
+`degraded`, `failing`), a short message, a measured value and when it was
+checked: the five parts above with how long each took, the embedding model,
+each metadata source's last answer, how long the oldest change has waited
+for the search index, jobs that fail, were given up or hang, libraries
+whose last scan failed, free disk space and memory. The Overview page's
+"This machine" panel lists them with a colour for each. An administrator
+is told in the app when a part has been failing for ten minutes, once until
+it works again.
+
 ## Signing in and changes
 
 - **Every change is refused with "This request came from another site and

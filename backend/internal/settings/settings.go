@@ -401,7 +401,13 @@ func Open(ctx context.Context, pool *pgxpool.Pool, box *secret.Box) (*Store, err
 	if err := q.AddKeyCheck(ctx, sqlc.AddKeyCheckParams{Key: keyCheck, Sealed: check}); err != nil {
 		return nil, err
 	}
-	row, err := q.GetSetting(ctx, keyCheck)
+	return OpenReadOnly(ctx, pool, box)
+}
+
+// OpenReadOnly is Open for a database that may not be written to, such as
+// a command that only measures: the check value must be there already.
+func OpenReadOnly(ctx context.Context, pool *pgxpool.Pool, box *secret.Box) (*Store, error) {
+	row, err := sqlc.New(pool).GetSetting(ctx, keyCheck)
 	if err != nil {
 		return nil, err
 	}
