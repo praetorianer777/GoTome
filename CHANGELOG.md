@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-10
+
 ### Fixed
 
 - A library's last scan of a single file says "one file", not "1 files".
