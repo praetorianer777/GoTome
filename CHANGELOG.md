@@ -16,6 +16,16 @@ What changes for someone who runs or uses GOtome. The format follows
   an answer cached from an earlier lookup by its ISBN) and whether that
   agrees with the suggestion. Nothing is asked of a provider for this.
 
+### Changed
+
+- Similar books, recommendations, the search by description and the facets of
+  a quick search answer two to five times faster on a library embedded with
+  bge-m3: the vectors are stored in the database's rows (the upgrade writes
+  them again once), and the facets look the matching books up once. The
+  search by description opens its model when GOtome starts, if its files are
+  there, and answers "the embedding model is loading" while it opens instead
+  of waiting for it.
+
 ### Fixed
 
 - Clean-up no longer offers to take the series off the books of an author
@@ -28,6 +38,9 @@ What changes for someone who runs or uses GOtome. The format follows
   Each choice shows what it does to every book first, and one is ticked
   beforehand only where the titles or a provider's answer point to it. "Apply
   all" leaves these suggestions for you to decide.
+- `gotome perf-check` reports a view that does not answer within its time
+  limit as "over 10 s" in its row, fails at the end, and times the views after
+  it, instead of stopping there.
 
 ## [0.15.0] - 2026-11-10
 

@@ -95,6 +95,9 @@ func (s *Server) searchDescribed(w http.ResponseWriter, r *http.Request) error {
 	scope := library.ScopeOf(*UserFrom(r.Context()))
 	limit := cmp.Or(q.Limit, defaultDescribed)
 	ids, more, err := s.Similar.Describe(r.Context(), scope, libraryID, q.Q, q.Offset, limit)
+	if errors.Is(err, similar.ErrLoading) {
+		return ErrUnavailable("The embedding model is loading. Try again in a minute.")
+	}
 	if errors.Is(err, similar.ErrUnavailable) {
 		return ErrUnavailable("Searching by description needs the embedding model, which cannot run here yet.")
 	}

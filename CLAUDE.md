@@ -1182,7 +1182,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under
-  500 ms on 50,000 books). Content and metadata are blended 0.6 to 0.4
+  500 ms on 50,000 books; `book_vectors.embedding` is stored `PLAIN`, in the row,
+  as a 4 KB bge-m3 vector in TOAST made it three times slower, #456). Content and metadata are blended 0.6 to 0.4
   where both books have both, otherwise the kind they share decides.
   Visibility is `visible_library_ids` in the query; the book itself, books
   it shares a duplicate pair with in any state, and its `book_relations`

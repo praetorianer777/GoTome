@@ -46,6 +46,10 @@ services:
       - /fixtures/shelf-phone/.trash:mode=0555
 
   db:
+    # The smallest machine GOtome supports (#455): the scale test must pass on
+    # two CPUs. Postgres does not read a cgroup's limit and still plans
+    # parallel workers by the host's, as it does in an LXC with two CPUs.
+    cpus: 2
     # What a stall in the tests is made of, in the logs CI keeps when they
     # fail: lock waits past deadlock_timeout (1 s), slow statements,
     # checkpoints and autovacuum runs. The gate's stack, which is thrown

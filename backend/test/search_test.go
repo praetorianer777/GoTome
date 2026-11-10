@@ -209,3 +209,51 @@ func TestQuickSearchIsQuickOnALargeLibrary(t *testing.T) {
 		}
 	}
 }
+
+func TestFacetsOfAQuickSearchCountTheBooksTheyMatch(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	shared := uuid.MustParse(a.library(admin, "Shared", "shared"))
+	private := uuid.MustParse(a.library(admin, "Private", "private"))
+	books := catalog.NewService(a.pool)
+	for _, b := range []struct {
+		lib                   uuid.UUID
+		title, author, tongue string
+	}{
+		{shared, "The Way of Kings", "Brandon Sanderson", "en"},
+		{shared, "Mistborn", "Brandon Sanderson", "en"},
+		{shared, "Brandon's Ghost", "Jane Austen", "de"},
+		{shared, "Pride and Prejudice", "Jane Austen", "en"},
+		{private, "Elantris", "Brandon Sanderson", "en"},
+	} {
+		if _, err := books.CreateBook(ctx, catalog.NewBook{
+			LibraryID: b.lib, Title: b.title, Language: b.tongue,
+			Contributors: []catalog.NewContributor{{Name: b.author, Role: catalog.RoleAuthor}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	words := `{"field": "words", "op": "like", "values": ["brandon"]}`
+	for name, c := range map[string]*http.Client{"administrator": admin, "reader": reader} {
+		status, body, _ := a.call(c, http.MethodGet, "/books/facets?"+url.Values{"filter": {words}}.Encode(), nil)
+		if status != 200 {
+			t.Fatalf("%s: facets %d %v", name, status, body)
+		}
+		counts, _ := facetCounts(t, body)
+		for _, field := range []string{"author", "language"} {
+			for value, want := range counts[field] {
+				tree := `{"all": [` + words + `, {"field": "` + field + `", "op": "in", "values": [` + strconv.Quote(value) + `]}]}`
+				_, listed, _ := a.call(c, http.MethodGet, "/books?"+url.Values{"filter": {tree}}.Encode(), nil)
+				if got := len(listed["books"].([]any)); got != want {
+					t.Errorf("%s: %s %s counts %d, the list has %d", name, field, value, want, got)
+				}
+			}
+			if len(counts[field]) == 0 {
+				t.Errorf("%s: no %s values among the matches", name, field)
+			}
+		}
+	}
+}
