@@ -2,9 +2,11 @@ package similar
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -22,6 +24,58 @@ type queries struct {
 	mu    sync.Mutex
 	model embed.Model
 	e     embed.Embedder
+	// loading is closed when the model being opened is, with loadErr set
+	// when it failed.
+	loading chan struct{}
+	loadErr error
+}
+
+// ErrLoading is a model that is being opened and is not ready yet: opening
+// takes longer than a request may wait, so the request is answered at once
+// and the model goes on loading for the next.
+var ErrLoading = errors.New("the embedding model is loading")
+
+// loadWait is how long a request waits for a model that is opening before it
+// answers ErrLoading. It stays under the 10 s perf-check allows a view.
+var loadWait = 5 * time.Second
+
+// loadLimit bounds opening a model, which downloads it when it may.
+const loadLimit = 30 * time.Minute
+
+// Warm starts opening the model for descriptions in the background when it
+// is here to run without a download, so that the first search does not wait
+// for it. A probe of a server can take a while: call it in a goroutine.
+func (s *Service) Warm(ctx context.Context) {
+	spec, _, err := s.config(ctx)
+	if err != nil || s.open == nil || s.Probe == nil || s.Probe(ctx, spec).State != ReadyHere {
+		return
+	}
+	s.queries.mu.Lock()
+	defer s.queries.mu.Unlock()
+	if s.queries.e == nil && s.queries.loading == nil {
+		s.startOpen(spec)
+	}
+}
+
+// startOpen opens the model in the background; the caller holds the lock.
+func (s *Service) startOpen(spec embed.Spec) chan struct{} {
+	done := make(chan struct{})
+	s.queries.loading, s.queries.loadErr = done, nil
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), loadLimit)
+		defer cancel()
+		e, err := s.open(ctx, spec)
+		s.queries.mu.Lock()
+		if err == nil {
+			s.queries.e, s.queries.model = e, spec.Model
+		} else {
+			s.queries.loadErr = err
+		}
+		s.queries.loading = nil
+		s.queries.mu.Unlock()
+		close(done)
+	}()
+	return done
 }
 
 // Describe returns the books whose content and metadata are nearest a
@@ -169,25 +223,40 @@ func (s *Service) Spec(ctx context.Context) (embed.Spec, error) {
 // model Describe keeps open. A model that cannot run here is
 // ErrUnavailable.
 func (s *Service) EmbedQueries(ctx context.Context, spec embed.Spec, texts []string) ([][]float32, error) {
-	s.queries.mu.Lock()
-	defer s.queries.mu.Unlock()
-	if s.queries.e != nil && s.queries.model != spec.Model {
-		_ = s.queries.e.Close()
-		s.queries.e = nil
-	}
-	if s.queries.e == nil {
+	for {
+		s.queries.mu.Lock()
+		if s.queries.e != nil && s.queries.model != spec.Model {
+			_ = s.queries.e.Close()
+			s.queries.e = nil
+		}
+		if s.queries.e != nil {
+			defer s.queries.mu.Unlock()
+			prefixed := make([]string, len(texts))
+			for i, t := range texts {
+				prefixed[i] = spec.Prefix + t
+			}
+			return s.queries.e.Embed(ctx, prefixed)
+		}
 		if s.open == nil {
+			s.queries.mu.Unlock()
 			return nil, ErrUnavailable
 		}
-		e, err := s.open(ctx, spec)
-		if err != nil {
+		if err := s.queries.loadErr; err != nil {
+			s.queries.loadErr = nil
+			s.queries.mu.Unlock()
 			return nil, err
 		}
-		s.queries.e, s.queries.model = e, spec.Model
+		done := s.queries.loading
+		if done == nil {
+			done = s.startOpen(spec)
+		}
+		s.queries.mu.Unlock()
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(loadWait):
+			return nil, ErrLoading
+		}
 	}
-	prefixed := make([]string, len(texts))
-	for i, t := range texts {
-		prefixed[i] = spec.Prefix + t
-	}
-	return s.queries.e.Embed(ctx, prefixed)
 }

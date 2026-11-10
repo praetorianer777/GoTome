@@ -8,6 +8,47 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Every suggestion on the clean-up page can show its books before and after:
+  each book with the fields the fix changes, the old value struck through and
+  the new one beside it, and the fields you locked marked as staying. The
+  first five show, "and n more" shows the rest. Beside each book it says what
+  a provider is already known to say about it (a match kept for the book, or
+  an answer cached from an earlier lookup by its ISBN) and whether that
+  agrees with the suggestion. Nothing is asked of a provider for this.
+
+### Changed
+
+- Similar books, recommendations, the search by description and the facets of
+  a quick search answer two to five times faster on a library embedded with
+  bge-m3: the vectors are stored in the database's rows, and the facets look
+  the matching books up once. The first start after upgrading writes every
+  vector again, which takes a few minutes on a large library before GOtome
+  answers. The
+  search by description opens its model when GOtome starts, if its files are
+  there, and answers "the embedding model is loading" while it opens instead
+  of waiting for it.
+
+### Fixed
+
+- Clean-up no longer offers to take the series off the books of an author
+  whose name is also a series just because some of their books lack it. House
+  names of series look exactly like that, and applying the old suggestion would have cleared the series, and the places in
+  it, from dozens of novels. The page now asks which the name is: the series
+  (the author goes from every book and the books without the series get it,
+  at the place their title says) or the author (the books leave the series).
+  Each choice shows what it does to every book first, and one is ticked
+  beforehand only where the titles or a provider's answer point to it. "Apply
+  all" leaves these suggestions for you to decide.
+- `gotome perf-check` reports a view that does not answer within its time
+  limit as "over 10 s" in its row, fails at the end, and times the views after
+  it, instead of stopping there.
+- On a phone, the wishlist's lookup results no longer squeeze their text
+  into a narrow column: the buttons now sit below the text.
+
+## [0.15.0] - 2026-11-10
+
+### Added
+
 - A new page, Changes, lists what was merged, replaced or cleaned up, run by
   run, with each book's details before and after. A run, or one change of
   it, can be undone: the merged book comes back with its files, shelves and

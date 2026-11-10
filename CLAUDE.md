@@ -987,7 +987,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `person_key` and `catalog.PersonKey`), a value a tool left in place of an
   author (`placeholders`, the keys in `placeholderAuthors`), an author
   whose books are in a series of the same name (`clashes`: the author goes
-  where every book is in it, the series where only some are), what a
+  where every book is in it; where only some are, the fix is `choose` and
+  the pick names `nameIsSeries` or `clearSeries`, never a default, #470), what a
   shop added to a title (`titles`, `cleanup.TitleAdditions`, which the SQL
   function `title_has_addition` repeats into the stored column
   `books.title_addition`; a test holds the two to one answer), and a
@@ -998,7 +999,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   value the books' IDs).
 - Nothing is stored about what is found: the SQL functions
   `cleanup_<kind>` work it out from the books the viewer sees each time
-  (`GET /cleanup`, `metadata:edit`). A dismissal (`cleanup_dismissals`)
+  (`GET /cleanup`, `metadata:edit`). `GET /cleanup/preview` (#462) shows one
+  suggestion's books before and after from the same `changes()` Apply makes
+  (`catalog.PreviewBook` over `planChange`, locked fields marked), with what
+  providers are already known to say (kept `metadata_matches`, and cached
+  `provider_records` answers through `metadata.Service.Cached`); it asks
+  no provider. A dismissal (`cleanup_dismissals`)
   holds for the value it was dismissed at, so a suggestion comes back when
   what it was about changes.
 - Applying (`POST /cleanup/apply`) is a bulk change of each book its own
@@ -1176,7 +1182,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under
-  500 ms on 50,000 books). Content and metadata are blended 0.6 to 0.4
+  500 ms on 50,000 books; `book_vectors.embedding` is stored `PLAIN`, in the row,
+  as a 4 KB bge-m3 vector in TOAST made it three times slower, #456;
+  a row then holds at most about 8 KB, so a model of more than about
+  1,900 numbers cannot be stored and needs another storage first). Content and metadata are blended 0.6 to 0.4
   where both books have both, otherwise the kind they share decides.
   Visibility is `visible_library_ids` in the query; the book itself, books
   it shares a duplicate pair with in any state, and its `book_relations`

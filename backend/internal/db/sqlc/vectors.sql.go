@@ -482,14 +482,21 @@ WITH mine AS (
       AND v.model = $5::text AND v.model_version = $6::text
 ),
 near AS (
-    SELECT v.book_id,
-           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'content') AS content,
-           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'metadata') AS metadata
-    FROM book_vectors v
-    JOIN mine m ON m.kind = v.kind
-    WHERE v.model = $5::text AND v.model_version = $6::text
-      AND v.book_id <> $3::uuid
-    GROUP BY v.book_id
+    SELECT s.book_id,
+           max(s.sim) FILTER (WHERE m.kind = 'content') AS content,
+           max(s.sim) FILTER (WHERE m.kind = 'metadata') AS metadata
+    FROM mine m
+    -- One scan of the vectors of each kind: joined on the kind, the planner
+    -- memoizes the whole scan of each kind (160 MB at 50,000 books).
+    CROSS JOIN LATERAL (
+        SELECT v.book_id, 1 - (v.embedding <=> m.embedding) AS sim
+        FROM book_vectors v
+        WHERE v.kind = m.kind
+          AND v.model = $5::text AND v.model_version = $6::text
+          AND v.book_id <> $3::uuid
+        OFFSET 0
+    ) s
+    GROUP BY s.book_id
 )
 SELECT n.book_id,
        (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL

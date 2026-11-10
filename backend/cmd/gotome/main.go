@@ -344,6 +344,7 @@ func serve() error {
 	changes.Curation = curations
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
+	fixes.Meta = meta
 	follows.Events = events
 	follows.Offline = cfg.Offline
 	updateChecks := updates.NewService(pool, settingStore, events, log)
@@ -387,6 +388,7 @@ func serve() error {
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
+	go vectors.Warm(ctx)
 	genreService.Queue = runner
 	passageVectors.Queue = runner
 	events.Queue = runner

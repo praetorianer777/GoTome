@@ -185,16 +185,7 @@ const maxLookups = 3
 // best first. A provider that fails is reported in the error, joined from
 // ProviderErrors, beside what the others found.
 func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidate, error) {
-	var ids []catalog.Identifier
-	for _, id := range book.Identifiers {
-		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
-			ids = append(ids, id.Identifier)
-		}
-	}
-	// Papers and many scholarly books have a DOI and no ISBN.
-	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
-		ids = append(ids, book.Identifiers[i].Identifier)
-	}
+	ids := lookupIDs(book)
 	q := Query{Title: book.Title, Authors: book.Authors(), Language: book.Language}
 	if q.Language == "" && s.language != nil {
 		q.Language = s.language(ctx)
@@ -243,6 +234,53 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 	}
 	slices.SortStableFunc(found, func(a, b Candidate) int { return cmp.Compare(b.Score, a.Score) })
 	return found, errors.Join(errs...)
+}
+
+// lookupIDs are the identifiers a book is looked up by: its ISBNs, and a
+// DOI, which papers and many scholarly books have instead of an ISBN.
+func lookupIDs(book catalog.Book) []catalog.Identifier {
+	var ids []catalog.Identifier
+	for _, id := range book.Identifiers {
+		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
+			ids = append(ids, id.Identifier)
+		}
+	}
+	// Papers and many scholarly books have a DOI and no ISBN.
+	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
+		ids = append(ids, book.Identifiers[i].Identifier)
+	}
+	return ids
+}
+
+// Cached returns what the providers answered about the book's identifiers
+// earlier and still keep in provider_records. It asks nobody: an answer not
+// kept is none, whatever the provider would say.
+func (s *Service) Cached(ctx context.Context, book catalog.Book) []Record {
+	ids := lookupIDs(book)
+	if len(ids) == 0 {
+		return nil
+	}
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	var out []Record
+	for _, p := range s.providers {
+		if s.enabled != nil && !slices.Contains(enabled, p.Name()) {
+			continue
+		}
+		for _, id := range ids {
+			got, err := p.Lookup(ctx, s.cached[p.Name()], id)
+			if err != nil {
+				continue
+			}
+			for _, r := range got {
+				r.Provider = p.Name()
+				out = append(out, r)
+			}
+		}
+	}
+	return out
 }
 
 // Has reports whether a provider of that name is asked.

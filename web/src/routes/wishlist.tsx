@@ -196,11 +196,12 @@ function WishFinder() {
 						{found.data.candidates.map((c) => (
 							<li key={`${c.provider}-${c.id}`} className="flex items-start gap-3 py-2">
 								{c.coverToken ? (
-									<img src={candidateCoverUrl(c.coverToken)} alt="" className="w-12 rounded" />
+									<img src={candidateCoverUrl(c.coverToken)} alt="" className="w-12 shrink-0 rounded" />
 								) : (
-									<span className="w-12" />
+									<span className="w-12 shrink-0" />
 								)}
-								<div className="min-w-0 flex-1">
+								<div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+								<div className="min-w-0 sm:flex-1">
 									<p className="font-medium">{c.title}</p>
 									<p className="text-sm text-slate-600 dark:text-slate-400">
 										{[c.contributors.map((p) => p.name).join(", "), c.published, c.publisher]
@@ -208,8 +209,8 @@ function WishFinder() {
 											.join(" · ")}
 									</p>
 								</div>
-								<div className="flex flex-col items-end gap-2">
-									<div className="flex flex-wrap justify-end gap-2">
+								<div className="flex min-w-0 flex-col gap-2 sm:items-end">
+									<div className="flex flex-wrap gap-2 sm:justify-end">
 										<button
 											type="button"
 											className={button}
@@ -242,7 +243,7 @@ function WishFinder() {
 									</div>
 									{reading?.key === `${c.provider}-${c.id}` && (
 										<form
-											className="flex flex-wrap items-end justify-end gap-3 text-sm"
+											className="flex flex-wrap items-end sm:justify-end gap-3 text-sm"
 											onSubmit={(e) => {
 												e.preventDefault();
 												add(c, {
@@ -281,6 +282,7 @@ function WishFinder() {
 											</button>
 										</form>
 									)}
+								</div>
 								</div>
 							</li>
 						))}

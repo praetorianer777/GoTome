@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -164,15 +165,34 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 	if err != nil {
 		return Changed{}, err
 	}
-	var out Changed
-	for _, field := range c.fields() {
-		if slices.Contains(book.Locked, field) && !c.IncludeLocked {
-			out.Skipped = append(out.Skipped, field)
+	e, skipped := planChange(book, c)
+	out := Changed{Skipped: skipped}
+	out.Values = e.ChangesValues()
+	for field, on := range c.Locks {
+		if slices.Contains(book.Locked, field) != on {
+			e.Locks = maps.Clone(c.Locks)
+			out.Locks = !out.Values
+			break
 		}
 	}
-	use := func(field string) bool { return !slices.Contains(out.Skipped, field) }
+	if !out.Values && !out.Locks {
+		return out, nil
+	}
+	return out, EditTx(ctx, tx, scope, id, e)
+}
 
-	var e Edit
+// planChange works out what a change does to a book: the edit that carries
+// it out, and the fields it leaves alone because they are locked. ChangeTx
+// makes the edit and PreviewChange shows it, so that a preview is what the
+// change does.
+func planChange(book Book, c Change) (e Edit, skipped []string) {
+	for _, field := range c.fields() {
+		if slices.Contains(book.Locked, field) && !c.IncludeLocked {
+			skipped = append(skipped, field)
+		}
+	}
+	use := func(field string) bool { return !slices.Contains(skipped, field) }
+
 	if c.Title != nil && use(FieldTitle) && clean(*c.Title) != book.Title {
 		e.Title = c.Title
 	}
@@ -238,18 +258,64 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 			e.Tags = &after
 		}
 	}
-	out.Values = e.ChangesValues()
-	for field, on := range c.Locks {
-		if slices.Contains(book.Locked, field) != on {
-			e.Locks = maps.Clone(c.Locks)
-			out.Locks = !out.Values
-			break
+	return e, skipped
+}
+
+// FieldPreview is one field of a book as a change leaves it. Locked says the
+// change leaves it as it is because a person locked it; After is then what
+// it would be otherwise.
+type FieldPreview struct {
+	Field  string
+	Before string
+	After  string
+	Locked bool
+}
+
+// PreviewBook says what a change does to a book, without making it: the
+// title, the series with its place and the authors, those it would change
+// and those it would change were they not locked. Nothing is listed for a
+// book the change leaves as it is.
+func PreviewBook(book Book, c Change) []FieldPreview {
+	_, skipped := planChange(book, c)
+	c.IncludeLocked = true
+	e, _ := planChange(book, c)
+	var out []FieldPreview
+	add := func(field, before, after string) {
+		out = append(out, FieldPreview{Field: field, Before: before, After: after, Locked: slices.Contains(skipped, field)})
+	}
+	if e.Title != nil {
+		add(FieldTitle, book.Title, clean(*e.Title))
+	}
+	if e.Series != nil {
+		add(FieldSeries, SeriesText(book.Series, book.SeriesIndex), SeriesText(e.Series.Name, e.Series.Index))
+	}
+	if e.Contributors != nil {
+		var before, after []string
+		for _, p := range book.Contributors {
+			if p.Role == RoleAuthor {
+				before = append(before, p.Name)
+			}
 		}
+		for _, p := range *e.Contributors {
+			if p.Role == RoleAuthor {
+				after = append(after, p.Name)
+			}
+		}
+		add(FieldContributors, strings.Join(before, "; "), strings.Join(after, "; "))
 	}
-	if !out.Values && !out.Locks {
-		return out, nil
+	return out
+}
+
+// SeriesText is a series with the book's place in it, as "Name #1".
+func SeriesText(name string, index *float64) string {
+	name = clean(name)
+	if name == "" {
+		return ""
 	}
-	return out, EditTx(ctx, tx, scope, id, e)
+	if index == nil {
+		return name
+	}
+	return name + " #" + strconv.FormatFloat(*index, 'f', -1, 64)
 }
 
 func sameIndex(a, b *float64) bool {

@@ -1,6 +1,16 @@
 package perf
 
-import "testing"
+import (
+	"bytes"
+	"context"
+	"errors"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/auth"
+)
 
 func TestTheCommonWordAndPhraseAreThoseOfMostChunks(t *testing.T) {
 	chunks := [][]string{
@@ -46,5 +56,28 @@ func TestAViewWithoutWhatItAsksAboutHasNoPath(t *testing.T) {
 				t.Errorf("%s needs nothing but has no path", v.Name)
 			}
 		}
+	}
+}
+
+func TestAViewOverItsLimitIsReportedAndTheRestGoOn(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "slow") {
+			<-r.Context().Done()
+			return
+		}
+		w.Write([]byte(`[1]`))
+	})
+	views := []View{{Name: "slow", Path: "/slow"}, {Name: "fast", Path: "/fast"}}
+	results, err := Measure(context.Background(), handler, auth.User{}, views, Options{Tries: 1, Timeout: 20 * time.Millisecond})
+	if !errors.Is(err, ErrOverLimit) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(results) != 2 || results[0].Not != "over 20 ms" || results[1].Not != NotSkipped || results[1].Rows != 1 {
+		t.Fatalf("results = %+v", results)
+	}
+	var out bytes.Buffer
+	Print(&out, Context{}, results)
+	if !strings.Contains(out.String(), "| slow | over 20 ms |") {
+		t.Errorf("report:\n%s", out.String())
 	}
 }

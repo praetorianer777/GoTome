@@ -244,7 +244,7 @@ func TestPerfCheckTimesEveryViewAndNamesNothing(t *testing.T) {
 	}
 }
 
-func TestPerfCheckStopsOnAFailureWithoutNamingAnything(t *testing.T) {
+func TestPerfCheckReportsViewsOverTheirLimitWithoutNamingAnything(t *testing.T) {
 	pool := dbtest.New(t)
 	onDatabase(t, pool)
 	localOpener = func(embed.OnnxOptions) similar.Opener {
@@ -261,6 +261,9 @@ func TestPerfCheckStopsOnAFailureWithoutNamingAnything(t *testing.T) {
 	perfOutputNamesNothing(t, err.Error())
 	if !strings.Contains(err.Error(), `"library by title"`) {
 		t.Errorf("the error does not say which view: %v", err)
+	}
+	if !strings.Contains(out, "over 1ns") || !strings.Contains(out, "overview: work") {
+		t.Errorf("the report lacks the views over their limit and the ones after:\n%s", out)
 	}
 
 	if _, err := command(t, "", "perf-check", "-user", "nobody-of-that-name"); err == nil || strings.Contains(err.Error(), "nobody-of-that-name") {

@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/perf"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
@@ -36,6 +37,12 @@ const scaleVariable = "GOTOME_SCALE"
 // scalePlansVariable names a folder for the plans of every view, one JSON
 // file each, to read when a view is slow or reads a table whole.
 const scalePlansVariable = "GOTOME_SCALE_PLANS"
+
+// scaleSpec is the embedding model the test library is made under: the
+// largest one, bge-m3 with 1,024 numbers a vector, as on a library whose
+// owner chose it (#455). The smaller default would hide what its vectors
+// cost.
+var scaleSpec = embed.BGEM3
 
 // scaleBudget is the longest a main view may take at 50,000 books.
 const scaleBudget = time.Second
@@ -155,7 +162,7 @@ type seedStatement struct {
 // Names are made of syllables, so that their trigrams repeat as real ones
 // do. Each book's number n is kept in scale_books.
 func scaleSeed(admin, member uuid.UUID) []seedStatement {
-	model := embed.E5Small.Model
+	model := scaleSpec.Model
 	return []seedStatement{
 		{sql: `CREATE FUNCTION scale_word(i bigint) RETURNS text LANGUAGE sql IMMUTABLE AS $$
 			SELECT initcap(s[1 + i % 16] || s[1 + (i / 16) % 16] || s[1 + (i / 256) % 16])
@@ -269,13 +276,13 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 		{sql: `INSERT INTO search_words (word) SELECT DISTINCT lower(scale_word(i)) FROM generate_series(0, 4095) i ON CONFLICT DO NOTHING`},
 		{sql: `WITH pool AS (
 				SELECT n, array_agg(random() - 0.5)::vector AS v
-				FROM generate_series(0, 999) n, generate_series(1, 384) d
+				FROM generate_series(0, 999) n, generate_series(1, $3::int) d
 				GROUP BY n)
 			INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
 			SELECT b.id, k.kind, $1, $2, sha256('scale'), p.v
 			FROM scale_books b
 			CROSS JOIN (VALUES ('content', 0), ('metadata', 500)) k(kind, shift)
-			JOIN pool p ON p.n = (b.n + k.shift) % 1000`, args: []any{model.Name, similar.Version(model)}},
+			JOIN pool p ON p.n = (b.n + k.shift) % 1000`, args: []any{model.Name, similar.Version(model), model.Dim}},
 
 		{sql: `INSERT INTO user_books (user_id, book_id, status, rating, started_on, finished_on)
 			SELECT u, id, (ARRAY['reading','completed','completed','abandoned','wishlist','unread'])[1 + n / 6 % 6],
@@ -411,6 +418,11 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 	admin, adminID := a.signedIn("admin", "admin")
 	member, memberID := a.signedIn("member", "editor")
 
+	choice := "bge-m3"
+	if err := a.settings.Update(ctx, uuid.MustParse(adminID), map[string]*string{settings.EmbeddingModel: &choice}); err != nil {
+		t.Fatal(err)
+	}
+
 	started := time.Now()
 	for _, s := range scaleSeed(uuid.MustParse(adminID), uuid.MustParse(memberID)) {
 		if _, err := base.Exec(ctx, s.sql, s.args...); err != nil {
@@ -537,8 +549,8 @@ func writePlans(t *testing.T, dir string, catcher *planCatcher) {
 	}
 }
 
-// cleanupTakesOneSuggestion applies one suggestion of each kind and
-// dismisses another, as the clean-up page does when a button is clicked:
+// cleanupTakesOneSuggestion previews and applies one suggestion of each kind
+// and dismisses another, as the clean-up page does when a button is clicked:
 // each must take under scaleBudget and read no table of scannedWhole from
 // end to end, as it would if it worked out every suggestion of its kind.
 func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *planCatcher) {
@@ -553,18 +565,33 @@ func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *
 			t.Fatalf("the seed has %d clean-up suggestions of kind %s, want at least 2", len(suggestions), kind)
 		}
 		subject := func(i int) string { return suggestions[i].(map[string]any)["subject"].(string) }
+		// A clash that is to choose is applied with the fix chosen, and
+		// previewed with it.
+		fix := ""
+		if suggestions[0].(map[string]any)["fix"] == "choose" {
+			fix = "nameIsSeries"
+		}
+		pick := map[string]any{"subject": subject(0)}
+		if fix != "" {
+			pick["fix"] = fix
+		}
 		for _, act := range []struct {
 			name, path string
 			req        map[string]any
 			want       int
 		}{
-			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{map[string]any{"subject": subject(0)}}}, http.StatusAccepted},
+			{"preview", "/cleanup/preview?kind=" + kind + "&subject=" + url.QueryEscape(subject(0)) + "&limit=5&fix=" + fix, nil, http.StatusOK},
+			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{pick}}, http.StatusAccepted},
 			{"dismiss", "/cleanup/dismiss", map[string]any{"kind": kind, "subject": subject(1)}, http.StatusNoContent},
 		} {
 			key := "clean-up " + act.name + " " + kind
 			catcher.watch(key)
 			began := time.Now()
-			status, out, _ := a.call(who, http.MethodPost, act.path, act.req)
+			method := http.MethodPost
+			if act.req == nil {
+				method = http.MethodGet
+			}
+			status, out, _ := a.call(who, method, act.path, act.req)
 			took := time.Since(began)
 			catcher.watch("")
 			if status != act.want {

@@ -7,12 +7,15 @@ looks like, how it is measured, and what an operator can set.
 
 `make scale-test` (`backend/test/scale_test.go`) seeds 50,000 books in 20
 libraries, with 12,000 authors, 2,500 series, 400 tags, files in three
-formats, identifiers, a chunk of text and two vectors per book, reading
+formats, identifiers, a chunk of text and two vectors of 1,024 numbers (the
+size of bge-m3's, the largest model) per book, reading
 state, shelves, duplicate pairs, matches and genres to review, and ten
 feeds of 5,000 items for each of the two people who ask. It then asks every
 main view of the web app through the API, as an administrator who sees every
 library and as an editor who sees 18 of 20, the best of three each. The app
-runs inside the test, held to 2 GB of memory.
+runs inside the test, held to 2 GB of memory and two CPUs, and so is the
+database (`make scale-test` limits the stack's with `docker update`), as on
+the smallest machine GOtome is meant for (#455).
 
 Each view must answer within one second, and none may read the books, their
 files or their chunks from end to end, except the views marked below, whose
@@ -22,7 +25,7 @@ statement as Postgres ran it (`auto_explain`, sent to the connection), so a
 plan that reads a table whole fails it; `.cache/scale-plans` keeps the plans
 of the last run.
 
-Measured on 2026-11-06 on a 12-core machine shared with other work, the
+Vectors of 384 numbers and a database on all 12 cores, measured on 2026-11-06 on a 12-core machine shared with other work, the
 database with `random_page_cost = 1.1` as the compose file sets it:
 
 | View | Administrator | Member | Reads every book |
@@ -84,6 +87,57 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | overview of a library | 40 ms | 40 ms | counts every book and file |
 | overview: work | 166 ms | 145 ms | counts every book and file |
 
+With vectors of 1,024 numbers and two CPUs (2026-11-10, #455) the views that
+compare vectors and the facets of the quick search became:
+
+| View | Administrator | Member |
+|---|---:|---:|
+| similar books | 712 ms | 707 ms |
+| recommendations | 3,696 ms | 3,412 ms |
+| search by description | 405 ms | 406 ms |
+| facets of every quick search match | 194 ms | 131 ms |
+
+On the owner's library (48,560 books, 3.19 million chunks, 2 CPUs) the same
+views took 2,057 ms, 1,751 ms (facets of every quick search match), 1,314 ms
+(a phrase) and over 10 s (description). The seed's one chunk per book does
+not reach the phrase search's.
+
+After #456 (same machine, same seed):
+
+| View | Administrator | Member |
+|---|---:|---:|
+| similar books | 269 ms | 255 ms |
+| recommendations | 711 ms | 626 ms |
+| search by description | 168 ms | 153 ms |
+| facets of every quick search match | 53 ms | 48 ms |
+
+- A vector of 1,024 numbers is 4 KB, over the 2 KB at which Postgres moves a
+  value out of the row into the table's TOAST relation, so every comparison
+  read two relations and an index per vector (875,000 buffers for one
+  similar-books query at 50,000 books). Migration 00073 stores them in the
+  row. Alone it takes the query from 1,000 ms to 360 ms; the rest is the
+  cosines of 98,000 vectors (75 ms) and a plan that memoized the whole scan
+  of each kind (160 MB), which `ListSimilarBooks` avoids by scanning each
+  kind in a lateral subquery. Its answer is the former query's
+  (`TestSimilarBooksAreTheSameAsTheFormerScanWithLongVectors`).
+- The facets of a quick search each looked the matching books up again, 14
+  queries side by side on 2 CPUs. They are looked up once and each count
+  takes the list (up to 5,000 books; a wider search is looked up by each, as
+  before).
+- The model of the search by description took over 10 s to open on 2 CPUs, at
+  the first search. It is opened in the background at start when its files
+  are there (`Service.Warm`), and a search that arrives while it opens waits
+  up to 5 s and is then answered 503, "The embedding model is loading", while
+  the opening goes on.
+- The phrase search is not changed. The scale test cannot show it (one chunk
+  per book where the owner's library has 65), and the time could be in the
+  engine, scoring the positions of the chunks that hold both words of the
+  commonest phrase of ten books (which `perf-check` picks), in the outer
+  join, or in the snippets, which read the page's files. If it is the
+  engine, it needs a change of the engine (a smaller window for a phrase, or
+  an index of common word pairs), not a query. Which it is takes the phases
+  timed on the owner's machine.
+
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library; it runs on the index
 in the app (#265), whose timings at full size are those of
@@ -106,8 +160,10 @@ names another, and only reads: the database refuses every write on its
 connections, and no job is queued. It is light by design: one request to
 warm up, then the best of three per view, one view at a time with
 `-pause` (half a second) between, and `-timeout` (10 seconds) for each
-request; the first view that fails ends the run, naming the view and the
-status. `-skip "search by description,jobs"` leaves views out, and
+request; a view with no answer in that time is reported as "over 10 s" in its
+row and the run goes on, ending with an error that names those views; the
+first view that answers with a failure ends the run, naming the view and
+the status. `-skip "search by description,jobs"` leaves views out, and
 `search by description` needs the embedding model to run, here or on a
 server. The views marked in the last column read every book, as in the table
 above. The views are the list the scale test asks (`internal/perf`); one the
