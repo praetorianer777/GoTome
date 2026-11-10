@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Similar books, recommendations, the search by description and the facets of
+  a quick search answer two to five times faster on a library embedded with
+  bge-m3: the vectors are stored in the database's rows (the upgrade writes
+  them again once), and the facets look the matching books up once. The
+  search by description opens its model when GOtome starts, if its files are
+  there, and answers "the embedding model is loading" while it opens instead
+  of waiting for it.
+
 ### Fixed
 
 - `gotome perf-check` reports a view that does not answer within its time

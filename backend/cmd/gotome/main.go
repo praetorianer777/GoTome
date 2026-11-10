@@ -387,6 +387,7 @@ func serve() error {
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	vectors.Queue = runner
+	go vectors.Warm(ctx)
 	genreService.Queue = runner
 	passageVectors.Queue = runner
 	events.Queue = runner

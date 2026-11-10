@@ -336,6 +336,11 @@ func format(v string) (string, error) {
 // the books the scope may see, in one library or all, that the filter keeps;
 // placeholders only when asked for, as they are not in the library yet.
 func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, placeholders bool, arg func(any) string) ([]string, error) {
+	return visibleBooksIn(filtersFor(scope.Viewer), scope, libraryID, tree, placeholders, arg)
+}
+
+// visibleBooksIn is visibleBooks with the registry the tree compiles against.
+func visibleBooksIn(registry filter.Registry, scope library.Scope, libraryID *uuid.UUID, tree filter.Node, placeholders bool, arg func(any) string) ([]string, error) {
 	where := []string{
 		"b.deleted_at IS NULL",
 		"b.library_id IN (SELECT * FROM visible_library_ids(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + "))",
@@ -346,7 +351,7 @@ func visibleBooks(scope library.Scope, libraryID *uuid.UUID, tree filter.Node, p
 	if !placeholders {
 		where = append(where, "NOT b.placeholder")
 	}
-	cond, err := filtersFor(scope.Viewer).Compile(tree, arg)
+	cond, err := registry.Compile(tree, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -506,6 +511,10 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 	if _, err := filtersFor(scope.Viewer).Compile(tree, func(any) string { return "NULL" }); err != nil {
 		return nil, err
 	}
+	registry, err := s.matchedOnce(ctx, scope.Viewer, tree)
+	if err != nil {
+		return nil, err
+	}
 	// Each count reads the books the filter leaves on its own, so they run
 	// at once, each on a connection of its own: the view takes as long as
 	// the slowest count rather than all of them in a row.
@@ -517,7 +526,7 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 			args = append(args, v)
 			return fmt.Sprintf("$%d", len(args))
 		}
-		where, err := visibleBooks(scope, libraryID, tree.Without(fq.field), false, arg)
+		where, err := visibleBooksIn(registry, scope, libraryID, tree.Without(fq.field), false, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -551,6 +560,63 @@ func (s *Service) Facets(ctx context.Context, scope library.Scope, libraryID *uu
 		return nil, err
 	}
 	return facets, nil
+}
+
+// maxMatchedOnce is how many books a quick search may match for its matches
+// to be sent to each count as a list; more are looked up by each.
+const maxMatchedOnce = 5000
+
+// matchedOnce is the registry the facets of a tree compile against: where
+// the tree holds a quick search (the field words), its books are looked up
+// once and each count takes the list, rather than every count, which run
+// side by side, finding them again: on two CPUs that was most of the time
+// of the view (#456).
+func (s *Service) matchedOnce(ctx context.Context, viewer uuid.UUID, tree filter.Node) (filter.Registry, error) {
+	registry := filtersFor(viewer)
+	var words []string
+	var walk func(filter.Node)
+	walk = func(n filter.Node) {
+		if n.Field == FieldWords && n.Op == OpLike && len(n.Values) == 1 {
+			if k, err := searchWords(n.Values[0]); err == nil && !slices.Contains(words, k) {
+				words = append(words, k)
+			}
+		}
+		for _, c := range n.All {
+			walk(c)
+		}
+		for _, c := range n.Any {
+			walk(c)
+		}
+		if n.Not != nil {
+			walk(*n.Not)
+		}
+	}
+	walk(tree)
+	found := map[string][]uuid.UUID{}
+	for _, w := range words {
+		rows, err := s.pool.Query(ctx, `SELECT book_id FROM quick_search_matches($1)`, w)
+		if err != nil {
+			return nil, err
+		}
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+		if err != nil {
+			return nil, err
+		}
+		if len(ids) <= maxMatchedOnce {
+			found[w] = ids
+		}
+	}
+	if len(found) == 0 {
+		return registry, nil
+	}
+	lookedUp := registry[FieldWords][OpLike]
+	registry[FieldWords] = filter.Field{OpLike: {Arity: lookedUp.Arity, Value: lookedUp.Value, SQL: func(v []string, arg func(any) string) string {
+		if ids, ok := found[v[0]]; ok {
+			return `b.id = ANY(` + arg(ids) + `::uuid[])`
+		}
+		return lookedUp.SQL(v, arg)
+	}}}
+	return registry, nil
 }
 
 // picked are the values the tree's "in" rules on the field ask for, as they

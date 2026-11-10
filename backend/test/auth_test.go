@@ -204,7 +204,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	// Descriptions are embedded as the books' passages were in the tests:
 	// by the fake model, under the name the settings give.
 	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
-		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) { return &embed.Fake{Dim: spec.Model.Dim}, nil }, quiet)
+		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			return &embed.Fake{Dim: spec.Model.Dim}, nil
+		}, quiet)
 	a.server.Similar.Passages = a.scans.Passages
 	a.server.Similar.Queue = queue
 	a.server.Genres = genres.NewService(a.pool, a.server.Similar, func(ctx context.Context) (string, error) {
@@ -218,7 +220,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	}
 	t.Cleanup(func() { passageStore.Close() })
 	a.passages = passages.NewService(a.pool, passageStore, a.settings.Embedding, a.settings.EmbeddingPassages,
-		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) { return &embed.Fake{Dim: spec.Model.Dim}, nil }, quiet)
+		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			return &embed.Fake{Dim: spec.Model.Dim}, nil
+		}, quiet)
 	a.passages.Chunks = a.scans.FileChunks
 	a.server.Similar.NearPassages = a.passages.Near
 	a.server.Similar.PassageStatus = a.passages.Status

@@ -185,3 +185,82 @@ func TestSimilarBooksAreQuickOnALargeLibrary(t *testing.T) {
 		}
 	}
 }
+
+// formerSimilarSQL is the query ListSimilarBooks was before #456: the same
+// scan joined on the kind, whose answer the new one must equal.
+const formerSimilarSQL = `
+WITH mine AS (
+    SELECT v.kind, v.embedding FROM book_vectors v
+    WHERE v.book_id = $1::uuid AND v.model = $2::text AND v.model_version = $3::text
+),
+near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    JOIN mine m ON m.kind = v.kind
+    WHERE v.model = $2::text AND v.model_version = $3::text AND v.book_id <> $1::uuid
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata) END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+ORDER BY score DESC, n.book_id
+LIMIT 25`
+
+func TestSimilarBooksAreTheSameAsTheFormerScanWithLongVectors(t *testing.T) {
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Long", "shared")
+	model := embed.BGEM3.Model
+	_, err := a.pool.Exec(ctx, `
+		WITH made AS (
+			INSERT INTO books (library_id, title, sort_title, title_key)
+			SELECT $1, 'Book ' || i, 'Book ' || i, 'book ' || i FROM generate_series(1, 1500) i
+			RETURNING id),
+		numbered AS (SELECT id, row_number() OVER () AS rn FROM made),
+		pool AS (
+			SELECT n, array_agg(random() - 0.5)::vector AS v
+			FROM generate_series(0, 299) n, generate_series(1, $4::int) d
+			GROUP BY n)
+		INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
+		SELECT b.id, k.kind, $2, $3, sha256('test'), p.v
+		FROM numbered b
+		CROSS JOIN (VALUES ('content', 0), ('metadata', 150)) k(kind, shift)
+		JOIN pool p ON p.n = (b.rn + k.shift) % 300
+		WHERE k.kind = 'metadata' OR b.rn % 7 <> 0`,
+		lib, model.Name, similar.Version(model), model.Dim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, title := range []string{"Book 100", "Book 700", "Book 1400"} {
+		var book uuid.UUID
+		a.pool.QueryRow(ctx, `SELECT id FROM books WHERE title = $1`, title).Scan(&book)
+		rows, err := a.pool.Query(ctx, formerSimilarSQL, book, model.Name, similar.Version(model))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var want []uuid.UUID
+		for rows.Next() {
+			var id uuid.UUID
+			var score float64
+			if err := rows.Scan(&id, &score); err != nil {
+				t.Fatal(err)
+			}
+			want = append(want, id)
+		}
+		rows.Close()
+		got, err := a.server.Similar.Similar(ctx, library.Scope{SeesAll: true}, book, 25)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(want) == 0 || !slices.Equal(got, want[:min(len(want), len(got))]) {
+			t.Errorf("%s: %v, want %v", title, got, want)
+		}
+	}
+}

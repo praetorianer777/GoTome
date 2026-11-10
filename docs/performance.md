@@ -102,6 +102,42 @@ views took 2,057 ms, 1,751 ms (facets of every quick search match), 1,314 ms
 (a phrase) and over 10 s (description). The seed's one chunk per book does
 not reach the phrase search's.
 
+After #456 (same machine, same seed):
+
+| View | Administrator | Member |
+|---|---:|---:|
+| similar books | 269 ms | 255 ms |
+| recommendations | 711 ms | 626 ms |
+| search by description | 168 ms | 153 ms |
+| facets of every quick search match | 53 ms | 48 ms |
+
+- A vector of 1,024 numbers is 4 KB, over the 2 KB at which Postgres moves a
+  value out of the row into the table's TOAST relation, so every comparison
+  read two relations and an index per vector (875,000 buffers for one
+  similar-books query at 50,000 books). Migration 00073 stores them in the
+  row. Alone it takes the query from 1,000 ms to 360 ms; the rest is the
+  cosines of 98,000 vectors (75 ms) and a plan that memoized the whole scan
+  of each kind (160 MB), which `ListSimilarBooks` avoids by scanning each
+  kind in a lateral subquery. Its answer is the former query's
+  (`TestSimilarBooksAreTheSameAsTheFormerScanWithLongVectors`).
+- The facets of a quick search each looked the matching books up again, 14
+  queries side by side on 2 CPUs. They are looked up once and each count
+  takes the list (up to 5,000 books; a wider search is looked up by each, as
+  before).
+- The model of the search by description took over 10 s to open on 2 CPUs, at
+  the first search. It is opened in the background at start when its files
+  are there (`Service.Warm`), and a search that arrives while it opens waits
+  up to 5 s and is then answered 503, "The embedding model is loading", while
+  the opening goes on.
+- The phrase search is not changed. The scale test cannot show it (one chunk
+  per book where the owner's library has 65), and the time could be in the
+  engine, scoring the positions of the chunks that hold both words of the
+  commonest phrase of ten books (which `perf-check` picks), in the outer
+  join, or in the snippets, which read the page's files. If it is the
+  engine, it needs a change of the engine (a smaller window for a phrase, or
+  an index of common word pairs), not a query. Which it is takes the phases
+  timed on the owner's machine.
+
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library; it runs on the index
 in the app (#265), whose timings at full size are those of
