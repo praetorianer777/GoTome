@@ -67,16 +67,19 @@ export function PdfReader({
 	fileId,
 	at,
 	find,
+	preview = false,
 }: {
 	bookId: string;
 	fileId: string;
+	/** Opens at the first page and saves nothing: no place, no session, no status. */
+	preview?: boolean;
 	/** A page to open at instead of the saved place. */
 	at?: number;
 	/** A passage to look for on the pages from at to to, to open at its page. */
 	find?: { word: string; passage: string; to?: number };
 }) {
 	const book = useQuery(bookQuery(bookId));
-	const progress = useQuery(progressQuery(bookId));
+	const progress = useQuery({ ...progressQuery(bookId), enabled: !preview });
 	const queryClient = useQueryClient();
 	const save = useSaveProgress(bookId, "ebook");
 	const { mutate: savePlace } = save;
@@ -146,11 +149,11 @@ export function PdfReader({
 	// moves on from it.
 	if (
 		doc &&
-		!progress.isPending &&
+		(preview || !progress.isPending) &&
 		page === undefined &&
 		(target !== undefined || at === undefined)
 	) {
-		const resumed = pageIn(progress.data?.ebook, fileId, doc.pages);
+		const resumed = preview ? undefined : pageIn(progress.data?.ebook, fileId, doc.pages);
 		const start = Math.min(Math.max(target ?? resumed ?? 1, 1), doc.pages);
 		kept.current = target === undefined ? resumed : start;
 		setPage(start);
@@ -161,7 +164,7 @@ export function PdfReader({
 	};
 
 	useEffect(() => {
-		if (!doc || page === undefined || page === kept.current) {
+		if (preview || !doc || page === undefined || page === kept.current) {
 			return;
 		}
 		const timer = setTimeout(() => {
@@ -180,7 +183,7 @@ export function PdfReader({
 			);
 		}, SAVE_AFTER_MS);
 		return () => clearTimeout(timer);
-	}, [doc, page, fileId, savePlace]);
+	}, [preview, doc, page, fileId, savePlace]);
 
 	const show = (which: Panel | undefined) => {
 		// Closing gives focus back to the button that opened the panel.
@@ -220,13 +223,19 @@ export function PdfReader({
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex flex-wrap items-center gap-2 text-sm">
-				<Link
-					to="/books/$bookId"
-					params={{ bookId }}
-					className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
-				>
-					{t("reader.back")}
-				</Link>
+				{preview ? (
+					<span role="status" className="font-medium text-candle-strong dark:text-candle">
+						{t("reader.preview")}
+					</span>
+				) : (
+					<Link
+						to="/books/$bookId"
+						params={{ bookId }}
+						className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
+					>
+						{t("reader.back")}
+					</Link>
+				)}
 				<h1 className="mr-auto min-w-0 truncate font-medium">{title}</h1>
 				<button
 					ref={(el) => {

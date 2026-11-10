@@ -16,6 +16,7 @@ export function Dialog({
 	alert = false,
 	describedBy,
 	drawer = false,
+	wide = false,
 }: {
 	title: string;
 	onClose: () => void;
@@ -23,6 +24,8 @@ export function Dialog({
 	alert?: boolean;
 	describedBy?: string;
 	drawer?: boolean;
+	/** Takes the window's width up to a large reading width, for a book or a form. */
+	wide?: boolean;
 }) {
 	useModal();
 	const id = useId();
@@ -80,7 +83,7 @@ export function Dialog({
 				aria-labelledby={id}
 				aria-describedby={describedBy}
 				tabIndex={-1}
-				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r pt-safe-4 pb-safe-4 pl-safe-4 dark:bg-slate-950" : "max-w-lg rounded-2xl border"}`}
+				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r pt-safe-4 pb-safe-4 pl-safe-4 dark:bg-slate-950" : `${wide ? "max-w-5xl" : "max-w-lg"} rounded-2xl border`}`}
 			>
 				<div className="flex items-center gap-2">
 					<h2 id={id} className="mr-auto text-lg font-medium">

@@ -109,3 +109,46 @@ export function ReaderRoute() {
 		</div>
 	);
 }
+
+/**
+ * The first readable file of a book in its reader, opened at the start and
+ * saving nothing, for a look inside from a review queue.
+ */
+export function ReaderPreview({ bookId }: { bookId: string }) {
+	const book = useQuery(bookQuery(bookId));
+	if (!book.data) {
+		return (
+			<>
+				{book.isPending && (
+					<p className="text-slate-500">{t("reader.opening")}</p>
+				)}
+				<FormError error={book.error} />
+			</>
+		);
+	}
+	const file = book.data.files.find((f) => !f.missing && readable(f.format));
+	const opening = <p className="text-slate-500">{t("reader.opening")}</p>;
+	if (file?.format === "pdf") {
+		return (
+			<Suspense fallback={opening}>
+				<PdfReader bookId={bookId} fileId={file.id} preview />
+			</Suspense>
+		);
+	}
+	if (file) {
+		return (
+			<Suspense fallback={opening}>
+				<EbookReader
+					bookId={bookId}
+					fileId={file.id}
+					fileName={file.name}
+					title={book.data.title}
+					preview
+				/>
+			</Suspense>
+		);
+	}
+	return (
+		<p className="text-slate-600 dark:text-slate-400">{t("reader.cannotRead")}</p>
+	);
+}

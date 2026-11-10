@@ -3081,6 +3081,112 @@ describe("reviewing matches", () => {
 		expect(server.books[0]?.publisher).toBe("John Murray");
 	});
 
+
+	function withPanelBook() {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", {
+				description: "A young woman who meddles in the loves of her friends.",
+				tags: ["Regency"],
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				files: [
+					{
+						id: "file-1",
+						kind: "ebook",
+						format: "epub",
+						name: "Emma.epub",
+						size: 200_000,
+						missing: false,
+						drm: false,
+						extractState: "done",
+					},
+				],
+			});
+		server.review = [
+			{
+				book: server.books[0] as BookDetail,
+				matches: [
+					{
+						matchId: "m1",
+						provider: "openlibrary",
+						id: "m1",
+						score: 0.6,
+						title: "Emma",
+						publisher: "Penguin",
+						contributors: [{ name: "Jane Austen", role: "author" as const }],
+						tags: [],
+						identifiers: [],
+						fields: {},
+					},
+				],
+			},
+		];
+	}
+
+	it("shows the book beside the list, with a look inside that saves no place", async () => {
+		const person = userEvent.setup();
+		withPanelBook();
+		const { router } = renderApp("/review");
+		await person.click(await screen.findByRole("button", { name: "Emma" }));
+
+		const panel = await screen.findByRole("dialog", { name: "Emma" });
+		expect(router.state.location.search).toEqual({ book: "book-1" });
+		expect(
+			within(panel).getByText(/meddles in the loves of her friends/),
+		).toBeInTheDocument();
+		expect(within(panel).getByText("Emma.epub")).toBeInTheDocument();
+		expect(within(panel).getByText("Regency")).toBeInTheDocument();
+		expect(
+			within(panel).getByRole("link", { name: "Open the book page" }),
+		).toHaveAttribute("href", "/books/book-1");
+
+		await person.click(within(panel).getByRole("button", { name: "Look inside" }));
+		expect(
+			await screen.findByText("Preview: your place is not saved"),
+		).toBeInTheDocument();
+		await waitFor(() => expect(ebook.opened).toHaveLength(1));
+		await person.click(await screen.findByRole("button", { name: "Page right" }));
+		await new Promise((r) => setTimeout(r, 900));
+		expect(
+			server.requests.filter((r) => r.path.includes("/progress")),
+		).toEqual([]);
+
+		await person.keyboard("{Escape}");
+		expect(
+			await screen.findByRole("dialog", { name: "Emma" }),
+		).toBeInTheDocument();
+		await person.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		expect(router.state.location.search).toEqual({});
+	});
+
+	it("keeps the book beside the list on a wide window and closes it with Escape", async () => {
+		const person = userEvent.setup();
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: true,
+			media: query,
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		}));
+		withPanelBook();
+		renderApp("/review?book=book-1");
+		const panel = await screen.findByRole("complementary", {
+			name: "Emma, details",
+		});
+		expect(within(panel).getByText("Open the book page")).toBeInTheDocument();
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+		await person.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(
+				screen.queryByRole("complementary", { name: "Emma, details" }),
+			).not.toBeInTheDocument(),
+		);
+	});
+
 	it("keeps readers out", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		const { router } = renderApp("/review");
@@ -6931,8 +7037,8 @@ describe("reviewing suggested genres", () => {
 			expect(screen.queryByText("Travel")).not.toBeInTheDocument(),
 		);
 		expect(
-			screen.getByRole("link", { name: "Death at La Fenice" }),
-		).toHaveAttribute("href", "/books/book-1");
+			screen.getByRole("button", { name: "Death at La Fenice" }),
+		).toBeInTheDocument();
 		expect(screen.getByText("from the books most like it")).toBeInTheDocument();
 
 		await person.click(
@@ -6961,6 +7067,34 @@ describe("reviewing suggested genres", () => {
 		expect(
 			await screen.findByRole("button", { name: "Accept Travel" }),
 		).toBeInTheDocument();
+	});
+
+	it("shows a suggestion's description in its row and the book beside the list", async () => {
+		const person = userEvent.setup();
+		server.withBook("Death at La Fenice", {
+			description: "Commissario Brunetti investigates a death at the opera.",
+			tags: ["Krimi"],
+		});
+		const { router } = renderApp("/genres");
+		expect(
+			await screen.findByText(/Brunetti investigates a death/),
+		).toBeInTheDocument();
+		await person.click(
+			screen.getByRole("button", { name: "Death at La Fenice" }),
+		);
+		const panel = await screen.findByRole("dialog", {
+			name: "Death at La Fenice",
+		});
+		expect(router.state.location.search).toEqual({ book: "book-1" });
+		await person.click(
+			within(panel).getByRole("button", { name: "Accept Crime & mystery" }),
+		);
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/books/book-1/genres/crime")
+					?.body,
+			).toEqual({ state: "accepted" }),
+		);
 	});
 
 	it("names the genres in German", async () => {
