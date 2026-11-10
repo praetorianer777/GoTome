@@ -3267,6 +3267,94 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/curation/duplicates": {
+      "get": {
+        "operationId": "listDuplicateClasses",
+        "summary": "How many open pairs of duplicates the rules can resolve by themselves, per class, and which classes the settings have them resolve every day",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateClassList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      },
+      "post": {
+        "operationId": "startDuplicateRun",
+        "summary": "Resolve the open pairs of the classes chosen in a job: merge books of the same text, link books that hold one another; a dry run records what it would do and changes nothing",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateRunStarted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/curation/runs": {
       "get": {
         "operationId": "listCurationRuns",
@@ -3465,7 +3553,7 @@
     "/curation/runs/{runId}/undo": {
       "post": {
         "operationId": "undoCurationRun",
-        "summary": "Undo every action of a run that is not undone; one whose books changed since is left and reported",
+        "summary": "Undo every action of a run that is not undone, in a job; one whose books changed since is left and reported on the action. The run says undoing until it is done",
         "tags": [
           "books"
         ],
@@ -3480,12 +3568,12 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK",
+          "202": {
+            "description": "Accepted",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CurationUndone"
+                  "$ref": "#/components/schemas/CurationUndoQueued"
                 }
               }
             }
@@ -12196,6 +12284,9 @@
           "rule": {
             "type": "string"
           },
+          "skipped": {
+            "type": "integer"
+          },
           "startedBy": {
             "type": "string",
             "format": "uuid"
@@ -12205,6 +12296,9 @@
           },
           "state": {
             "type": "string"
+          },
+          "undoing": {
+            "type": "boolean"
           },
           "undone": {
             "type": "integer"
@@ -12222,7 +12316,9 @@
           "state",
           "createdAt",
           "actions",
-          "undone"
+          "undone",
+          "skipped",
+          "undoing"
         ]
       },
       "CurationRunDetail": {
@@ -12263,18 +12359,16 @@
           "runs"
         ]
       },
-      "CurationUndone": {
+      "CurationUndoQueued": {
         "type": "object",
         "properties": {
-          "actions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CurationOutcome"
-            }
+          "runId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
-          "actions"
+          "runId"
         ]
       },
       "CurrentUser": {
@@ -12658,6 +12752,43 @@
           "books"
         ]
       },
+      "DuplicateClassCount": {
+        "type": "object",
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "daily": {
+            "type": "boolean"
+          },
+          "merges": {
+            "type": "boolean"
+          },
+          "pairs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "class",
+          "pairs",
+          "merges",
+          "daily"
+        ]
+      },
+      "DuplicateClassList": {
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateClassCount"
+            }
+          }
+        },
+        "required": [
+          "classes"
+        ]
+      },
       "DuplicateEvidence": {
         "type": "object",
         "properties": {
@@ -12760,6 +12891,40 @@
           "foundAt",
           "books",
           "evidence"
+        ]
+      },
+      "DuplicateRunRequest": {
+        "type": "object",
+        "properties": {
+          "classes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "classes",
+          "dryRun"
+        ]
+      },
+      "DuplicateRunStarted": {
+        "type": "object",
+        "properties": {
+          "pairs": {
+            "type": "integer"
+          },
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "runId",
+          "pairs"
         ]
       },
       "EditBookRequest": {

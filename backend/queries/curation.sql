@@ -8,7 +8,7 @@ RETURNING id;
 SELECT id, automatic FROM curation_runs WHERE bulk_change_id = $1;
 
 -- name: GetCurationRunForUpdate :one
-SELECT id, automatic, state FROM curation_runs WHERE id = $1 FOR UPDATE;
+SELECT id, automatic, state, dry_run FROM curation_runs WHERE id = $1 FOR UPDATE;
 
 -- name: FinishCurationRun :exec
 UPDATE curation_runs SET state = 'done', finished_at = now() WHERE bulk_change_id = $1 AND state = 'running';
@@ -24,7 +24,7 @@ RETURNING id;
 -- viewer's own that has none yet, the newest first. Counts are of the
 -- actions the viewer sees.
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
-       r.created_at, r.finished_at, r.confirmed_at, r.undone_at,
+       r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS actions,
        (SELECT count(*) FROM curation_actions a
@@ -43,7 +43,7 @@ LIMIT sqlc.arg(max_rows);
 
 -- name: GetCurationRun :one
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
-       r.created_at, r.finished_at, r.confirmed_at, r.undone_at,
+       r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS actions,
        (SELECT count(*) FROM curation_actions a
@@ -70,7 +70,7 @@ LIMIT sqlc.arg(max_rows);
 -- name: GetCurationActionForUpdate :one
 -- An action in a library the viewer sees, locked.
 SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before, a.after, a.state, a.created_at,
-       r.automatic, r.state AS run_state
+       r.automatic, r.state AS run_state, r.dry_run
 FROM curation_actions a
 JOIN curation_runs r ON r.id = a.run_id
 WHERE a.id = sqlc.arg(id)
@@ -78,11 +78,14 @@ WHERE a.id = sqlc.arg(id)
 FOR UPDATE OF a;
 
 -- name: ListCurationActionIDsToUndo :many
--- The run's actions the viewer sees that are not undone, the last made first.
-SELECT a.id FROM curation_actions a
-WHERE a.run_id = $1 AND a.state = 'done'
+-- The run's actions the viewer sees that are not undone, the last made
+-- first, before the one an earlier try of an undo stopped at.
+SELECT a.id, a.created_at FROM curation_actions a
+WHERE a.run_id = sqlc.arg(run_id) AND a.state = 'done'
   AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
-ORDER BY a.created_at DESC, a.id DESC;
+  AND (sqlc.narg(before_at)::timestamptz IS NULL OR (a.created_at, a.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT sqlc.arg(max_rows);
 
 -- name: SetCurationActionUndone :exec
 UPDATE curation_actions SET state = 'undone', note = '', undone_at = now(), undone_by = sqlc.arg(by) WHERE id = sqlc.arg(id);
@@ -124,3 +127,54 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.trashed_at, l.root_path, l.w
 FROM book_files f JOIN libraries l ON l.id = f.library_id
 WHERE f.id = ANY(sqlc.arg(ids)::uuid[])
 ORDER BY f.id;
+
+-- name: CreateDuplicatesRun :one
+-- A run of the duplicates rules, waiting for its job.
+INSERT INTO curation_runs (kind, rule, started_by, automatic, dry_run, state, classes, scope_viewer, scope_sees_all)
+VALUES ('duplicates', sqlc.arg(rule), sqlc.narg(started_by), true, sqlc.arg(dry_run), 'planned',
+        sqlc.arg(classes)::text[], sqlc.narg(scope_viewer), sqlc.arg(scope_sees_all))
+RETURNING id;
+
+-- name: GetDuplicatesRunToWork :one
+SELECT id, state, dry_run, classes, resume_after, scope_viewer, scope_sees_all, started_by
+FROM curation_runs WHERE id = $1 AND kind = 'duplicates';
+
+-- name: StartDuplicatesRun :exec
+UPDATE curation_runs SET state = 'running' WHERE id = $1 AND state = 'planned';
+
+-- name: AdvanceDuplicatesRun :exec
+UPDATE curation_runs SET resume_after = sqlc.arg(after_id), skipped = skipped + sqlc.arg(skipped)::int WHERE id = sqlc.arg(id);
+
+-- name: FinishDuplicatesRun :exec
+UPDATE curation_runs SET state = 'done', finished_at = now() WHERE id = $1 AND state = 'running';
+
+-- name: DropEmptySystemRun :exec
+-- A run nobody started that found nothing to do leaves no trace.
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL
+  AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id);
+
+-- name: HasActiveDuplicatesRun :one
+SELECT EXISTS (SELECT 1 FROM curation_runs WHERE kind = 'duplicates' AND automatic AND state IN ('planned', 'running'));
+
+-- name: FirstActiveAdmin :one
+SELECT id FROM users WHERE role = 'admin' AND disabled_at IS NULL ORDER BY created_at, id LIMIT 1;
+
+-- name: RequestRunUndo :execrows
+-- Asks for the run to be undone by its job; not while it still makes
+-- actions, not twice, and not for a dry run, which changed nothing.
+UPDATE curation_runs SET undo_requested_at = now(), undo_viewer = sqlc.arg(viewer), undo_sees_all = sqlc.arg(sees_all),
+    undo_cursor_at = NULL, undo_cursor_id = NULL
+WHERE id = sqlc.arg(id) AND undo_requested_at IS NULL AND NOT dry_run AND state NOT IN ('planned', 'running');
+
+-- name: GetRunUndo :one
+SELECT id, undo_requested_at, undo_viewer, undo_sees_all, undo_cursor_at, undo_cursor_id FROM curation_runs WHERE id = $1;
+
+-- name: AdvanceRunUndo :exec
+UPDATE curation_runs SET undo_cursor_at = $2, undo_cursor_id = $3 WHERE id = $1;
+
+-- name: ClearRunUndo :exec
+UPDATE curation_runs SET undo_requested_at = NULL WHERE id = $1;
+
+-- name: GetCurationRunFlags :one
+SELECT dry_run, state, undo_requested_at IS NOT NULL AS undoing FROM curation_runs WHERE id = $1;

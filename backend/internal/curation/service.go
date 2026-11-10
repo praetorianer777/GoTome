@@ -9,9 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -27,6 +29,10 @@ const (
 	ActionMerge   = "merge"
 	ActionReplace = "replace"
 	ActionEdit    = "edit"
+	// ActionLink keeps two books and relates them.
+	ActionLink = "link"
+	// ActionSkip is a pair a dry run would leave for a person.
+	ActionSkip = "skip"
 )
 
 // The states of a run.
@@ -57,10 +63,16 @@ type Hooks struct {
 	WriteBackTx func(ctx context.Context, tx pgx.Tx, book uuid.UUID) (int, error)
 }
 
+// Queue is what runs jobs: an undo is one.
+type Queue interface {
+	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
+}
+
 // Service keeps runs and actions, and undoes them.
 type Service struct {
 	pool  *pgxpool.Pool
 	Hooks Hooks
+	Queue Queue
 }
 
 // NewService returns a Service.
@@ -221,7 +233,7 @@ func (s *Service) Confirm(ctx context.Context, scope library.Scope, id uuid.UUID
 		if err != nil {
 			return err
 		}
-		if run.State != StateDone {
+		if run.State != StateDone || run.DryRun {
 			return ErrNotConfirmable
 		}
 		if _, err := q.ConfirmCurationRun(ctx, id); err != nil {
@@ -246,3 +258,18 @@ func (s *Service) Confirm(ctx context.Context, scope library.Scope, id uuid.UUID
 func marshal(s Snapshot) ([]byte, error) { return json.Marshal(s) }
 
 func jsonUnmarshal(data []byte, v any) error { return json.Unmarshal(data, v) }
+
+// RecordPlan records into the run, as a dry run does, what a rule would do
+// to the books, which it does not do: an action with its reason and no
+// changes.
+func (s *Service) RecordPlan(ctx context.Context, run, library uuid.UUID, kind, rule, reason string, books ...uuid.UUID) error {
+	var r *string
+	if rule != "" {
+		r = &rule
+	}
+	_, err := sqlc.New(s.pool).InsertCurationAction(ctx, sqlc.InsertCurationActionParams{
+		RunID: run, LibraryID: library, Kind: kind, Rule: r, Reason: reason,
+		Books: books, TrashedFiles: []uuid.UUID{}, Before: []byte("{}"), After: []byte("{}"),
+	})
+	return err
+}

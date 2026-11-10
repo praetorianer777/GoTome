@@ -121,6 +121,15 @@ const (
 	MailSecurity = "mail.security"
 	MailUser     = "mail.user"
 	MailPassword = "mail.password"
+	// DuplicateClasses lists, comma-separated, the classes of open duplicate
+	// pairs that are handled by themselves (#466, dedupe.AutoClasses); empty,
+	// the default, handles none.
+	DuplicateClasses = "curation.duplicates.classes"
+	// DuplicateConflict is what is done with a pair whose books differ in a
+	// field no rule can decide: "skip" leaves it whole for a person,
+	// "mergeAgreeing" merges what agrees and keeps the surviving book's value
+	// for the rest.
+	DuplicateConflict = "curation.duplicates.onConflict"
 	// MailSender is the From address, the one each person approves at
 	// Amazon.
 	MailSender = "mail.sender"
@@ -163,6 +172,9 @@ func (d Definition) clean(value string) (string, error) {
 	}
 	items := []string{value}
 	if d.Multiple {
+		if value == "" && d.Default == "" {
+			return value, nil
+		}
 		items = strings.Split(value, ",")
 	}
 	for _, item := range items {
@@ -209,6 +221,34 @@ var Definitions = []Definition{
 	{Key: MailUser, Kind: KindText},
 	{Key: MailPassword, Kind: KindSecret},
 	{Key: MailSender, Kind: KindText, Check: email},
+	{Key: DuplicateClasses, Kind: KindText, Check: duplicateClasses, Choices: DuplicateClassNames, Multiple: true},
+	{Key: DuplicateConflict, Kind: KindText, Default: "skip", Check: duplicateConflict, Choices: DuplicateConflicts},
+}
+
+// DuplicateClassNames are the values of DuplicateClasses, as
+// dedupe.AutoClasses names them (a test holds the two to one list).
+var DuplicateClassNames = []string{"same_text", "overlap_high", "overlap_mid", "contained", "part_inside"}
+
+// DuplicateConflicts are the values of DuplicateConflict.
+var DuplicateConflicts = []string{"skip", "mergeAgreeing"}
+
+func duplicateClasses(v string) (string, error) {
+	var out []string
+	for name := range strings.SplitSeq(strings.ToLower(v), ",") {
+		if name = strings.TrimSpace(name); name != "" && !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	return strings.Join(out, ","), nil
+}
+
+func duplicateConflict(v string) (string, error) {
+	for _, c := range DuplicateConflicts {
+		if strings.EqualFold(strings.TrimSpace(v), c) {
+			return c, nil
+		}
+	}
+	return "", errors.New("Say skip or mergeAgreeing.")
 }
 
 // MailSecurities are the values of MailSecurity.

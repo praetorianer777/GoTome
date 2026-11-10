@@ -175,6 +175,8 @@ See [genres.md](genres.md).
 | Key | On the page | Default | What it does |
 |---|---|---|---|
 | `genres.suggest` | Genres for books | `off` | How books are given genres of GOtome's fixed list: `off` writes none; `tags` gives each book the genres its tags mean; `vector`, `neighbours` and `combined` also suggest genres from what a book is about, from the books most like it, or the second and, where it cannot tell, the first, for review under **Genres**. Use `neighbours` ([genres.md](genres.md)). The last three need similar books worked out; measure them with `gotome genre-check` first. A book's tags are never changed. |
+| `curation.duplicates.classes` | Duplicates resolved by themselves | empty | Which classes of open duplicate pairs the rules handle every day without being asked, comma-separated, from `same_text`, `overlap_high`, `overlap_mid`, `contained` and `part_inside`. Empty handles none. The first three merge, the other two keep both books and link them; a run can be undone under **Changes** ([duplicates.md](duplicates.md)). Measure with `gotome duplicate-check` first. |
+| `curation.duplicates.onConflict` | A pair whose books differ | `skip` | What a run does with a pair whose books differ in a field no rule can decide: `skip` leaves it whole for a person; `mergeAgreeing` merges it, takes what agrees and keeps the surviving book's value of the rest. |
 
 ### Signing in
 

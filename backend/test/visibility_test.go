@@ -136,11 +136,12 @@ func readCases() map[string][]readCase {
 		// TestADescriptionFindsTheNearestBooksTheViewerSees and
 		// TestPassagesFindTheBooksTheyAreFromOnlyWhereTheyAreSeen.
 		// Not by the title, which a twin would be ranked by otherwise.
-		"searchDescribed":  {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
-		"listCleanup":      {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
-		"previewCleanup":   {{path: "/cleanup/preview", query: q("kind", "authors", "subject", "{person}"), control: "insider"}},
-		"listCurationRuns": {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
-		"getCurationRun":   {{path: "/curation/runs/{curationRun}", control: "insider"}},
+		"searchDescribed":      {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
+		"listCleanup":          {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"previewCleanup":       {{path: "/cleanup/preview", query: q("kind", "authors", "subject", "{person}"), control: "insider"}},
+		"listCurationRuns":     {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
+		"getCurationRun":       {{path: "/curation/runs/{curationRun}", control: "insider"}},
+		"listDuplicateClasses": {{path: "/curation/duplicates", why: "counts only, of pairs in libraries the caller sees; TestAPairInALibraryTheCallerDoesNotSeeIsNeverCountedOrTouched proves it"}},
 		"listGenreSuggestions": {
 			{path: "/genres/suggestions", control: "insider"},
 			{path: "/genres/suggestions", query: q("genre", "crime"), control: "insider"},

@@ -32,6 +32,10 @@ type Run struct {
 	UndoneAt      *time.Time
 	Actions       int
 	Undone        int
+	// Skipped counts the pairs a duplicates run left for a person.
+	Skipped int
+	// Undoing is set while the run's job undoes it.
+	Undoing bool
 }
 
 // FieldChange is one detail of a book as an action left it.
@@ -142,7 +146,7 @@ func (s *Service) Runs(ctx context.Context, scope library.Scope, f RunFilter, li
 		out[i] = Run{
 			ID: r.ID, Kind: r.Kind, Rule: deref(r.Rule), StartedBy: r.StartedBy, StartedByName: deref(r.StartedByName),
 			DryRun: r.DryRun, Automatic: r.Automatic, State: r.State, CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
-			ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: int(r.Actions), Undone: int(r.Undone),
+			ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: int(r.Actions), Undone: int(r.Undone), Skipped: int(r.Skipped), Undoing: r.Undoing,
 		}
 	}
 	return out, next, nil
@@ -166,7 +170,7 @@ func (s *Service) GetRun(ctx context.Context, scope library.Scope, id uuid.UUID,
 	run := Run{
 		ID: r.ID, Kind: r.Kind, Rule: deref(r.Rule), StartedBy: r.StartedBy, StartedByName: deref(r.StartedByName),
 		DryRun: r.DryRun, Automatic: r.Automatic, State: r.State, CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
-		ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: int(r.Actions), Undone: int(r.Undone),
+		ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: int(r.Actions), Undone: int(r.Undone), Skipped: int(r.Skipped), Undoing: r.Undoing,
 	}
 	limit = min(max(limit, 1), MaxPage)
 	rows, err := q.ListCurationActions(ctx, sqlc.ListCurationActionsParams{

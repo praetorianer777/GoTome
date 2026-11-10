@@ -161,13 +161,35 @@ func (a *app) richPair() scene {
 	return s
 }
 
+// undoRun asks for the run to be undone and works the job that does it, as
+// the queue would, and returns what each action came to.
 func (a *app) undoRun(c *http.Client, run string) []any {
 	a.t.Helper()
 	status, out, _ := a.call(c, http.MethodPost, "/curation/runs/"+run+"/undo", nil)
-	if status != 200 {
+	if status != 202 {
 		a.t.Fatalf("undo run: %d %v", status, out)
 	}
-	return out["actions"].([]any)
+	if got := a.runs(c)[0]; got["id"] == run && got["undoing"] != true {
+		a.t.Errorf("the run is not undoing while its job waits: %v", got)
+	}
+	id := uuid.MustParse(run)
+	outcomes := []any{}
+	for {
+		done, finished, err := a.server.Curation.WorkUndo(context.Background(), id)
+		if err != nil {
+			a.t.Fatal(err)
+		}
+		for _, o := range done.Actions {
+			outcomes = append(outcomes, map[string]any{"state": o.State, "message": o.Message})
+		}
+		if finished {
+			break
+		}
+	}
+	if got := a.runs(c)[0]; got["id"] == run && got["undoing"] != false {
+		a.t.Errorf("the run is still undoing after its job: %v", got)
+	}
+	return outcomes
 }
 
 func TestUndoingAMergeRestoresEveryRowItMoved(t *testing.T) {

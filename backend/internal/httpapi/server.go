@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -127,6 +128,8 @@ type Server struct {
 	Cleanup *cleanup.Service
 	// Curation keeps the runs of changes to books and undoes them.
 	Curation *curation.Service
+	// AutoDuplicates resolves the duplicate pairs the rules are sure of.
+	AutoDuplicates *autodupe.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service
