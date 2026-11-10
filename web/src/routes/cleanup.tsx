@@ -32,10 +32,15 @@ export function Cleanup({
 	const navigate = useNavigate();
 	const list = useInfiniteQuery(cleanupQuery(kind));
 	const apply = useApplyCleanup();
+	const applyOne = useApplyCleanup();
+	const dismissOne = useDismissCleanup();
 	const [applied, setApplied] = useState<{ id: string; total: number }>();
 	// A fix is made by a job: until it has run, the server still suggests
-	// it, so the page leaves out what was applied here.
+	// it, so the page leaves out what was applied here. A suggestion goes
+	// as soon as it is clicked and comes back with the error if the server
+	// refuses.
 	const [gone, setGone] = useState<Set<string>>(new Set());
+	const [failed, setFailed] = useState<Map<string, unknown>>(new Map());
 	const [sure, setSure] = useState(false);
 
 	const pages = list.data?.pages ?? [];
@@ -45,15 +50,39 @@ export function Cleanup({
 		.flatMap((p) => p?.suggestions ?? [])
 		.filter((s) => !gone.has(`${s.kind}:${s.subject}`));
 
-	const done = (
+	const act = (
 		s: CleanupSuggestion,
-		result?: { id: string; total: number },
+		run: () => Promise<{ id: string; total: number } | void | undefined>,
 	) => {
-		setGone((g) => new Set(g).add(`${s.kind}:${s.subject}`));
-		if (result) {
-			setApplied(result);
-		}
+		const key = `${s.kind}:${s.subject}`;
+		setGone((g) => new Set(g).add(key));
+		setFailed((f) => {
+			const next = new Map(f);
+			next.delete(key);
+			return next;
+		});
+		run().then(
+			(result) => {
+				if (result) {
+					setApplied(result);
+				}
+			},
+			(error) => {
+				setGone((g) => {
+					const next = new Set(g);
+					next.delete(key);
+					return next;
+				});
+				setFailed((f) => new Map(f).set(key, error));
+			},
+		);
 	};
+	const onApply = (
+		s: CleanupSuggestion,
+		picks: { subject: string; to?: string }[],
+	) => act(s, () => applyOne.mutateAsync({ kind: s.kind, picks }));
+	const onDismiss = (s: CleanupSuggestion) =>
+		act(s, () => dismissOne.mutateAsync({ kind: s.kind, subject: s.subject }));
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -144,7 +173,9 @@ export function Cleanup({
 					<Suggestion
 						key={`${s.kind}:${s.subject}`}
 						suggestion={s}
-						onDone={done}
+						error={failed.get(`${s.kind}:${s.subject}`)}
+						onApply={onApply}
+						onDismiss={onDismiss}
 					/>
 				))}
 			</ul>
@@ -164,22 +195,23 @@ export function Cleanup({
 
 function Suggestion({
 	suggestion: s,
-	onDone,
+	error,
+	onApply,
+	onDismiss,
 }: {
 	suggestion: CleanupSuggestion;
-	onDone: (
+	error?: unknown;
+	onApply: (
 		s: CleanupSuggestion,
-		applied?: { id: string; total: number },
+		picks: { subject: string; to?: string }[],
 	) => void;
+	onDismiss: (s: CleanupSuggestion) => void;
 }) {
-	const apply = useApplyCleanup();
-	const dismiss = useDismissCleanup();
 	const [keep, setKeep] = useState(s.suggested ?? "");
 	const [other, setOther] = useState("");
 	const [own, setOwn] = useState(false);
 	const name = s.found[0]?.name ?? "";
 	const to = own ? other : keep;
-	const busy = apply.isPending || dismiss.isPending;
 
 	return (
 		<li className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 md:flex-row md:items-start md:gap-6 dark:border-slate-800">
@@ -303,23 +335,17 @@ function Suggestion({
 					</ul>
 				</div>
 			)}
-			<FormError error={apply.error ?? dismiss.error} />
+			<FormError error={error} />
 			</div>
 			<div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
 				<button
 					type="button"
 					className={button}
-					disabled={busy || (s.fix === "merge" && to.trim() === "")}
+					disabled={s.fix === "merge" && to.trim() === ""}
 					onClick={() =>
-						apply.mutate(
-							{
-								kind: s.kind,
-								picks: [
-									{ subject: s.subject, ...(s.fix === "merge" ? { to } : {}) },
-								],
-							},
-							{ onSuccess: (result) => onDone(s, result) },
-						)
+						onApply(s, [
+							{ subject: s.subject, ...(s.fix === "merge" ? { to } : {}) },
+						])
 					}
 				>
 					{t(`cleanup.apply.${s.fix}`)}
@@ -327,13 +353,7 @@ function Suggestion({
 				<button
 					type="button"
 					className={quietButton}
-					disabled={busy}
-					onClick={() =>
-						dismiss.mutate(
-							{ kind: s.kind, subject: s.subject },
-							{ onSuccess: () => onDone(s) },
-						)
-					}
+					onClick={() => onDismiss(s)}
 				>
 					{t("cleanup.dismiss")}
 				</button>
