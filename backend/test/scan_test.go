@@ -22,6 +22,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
 // folder is a library on a folder of its own, scanned without the job queue.
@@ -647,5 +648,15 @@ func TestAskingAgainRevivesAScanThatLostItsJob(t *testing.T) {
 	}
 	if done := a.lastScan(admin, id, "done"); done["id"] != stuck["id"] {
 		t.Errorf("the scan that finished is %v, want %v", done["id"], stuck["id"])
+	}
+}
+
+// The folder watcher may ask for a library deleted since it last looked;
+// that is a library like any other that does not exist, not a failure.
+func TestAScanOfALibraryThatIsGoneIsNotFound(t *testing.T) {
+	a := newApp(t)
+	_, err := a.scans.Request(context.Background(), uuid.New(), nil)
+	if !errors.Is(err, library.ErrNotFound) {
+		t.Fatalf("Request on a library that is gone = %v, want library.ErrNotFound", err)
 	}
 }

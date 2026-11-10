@@ -439,6 +439,10 @@ func serve() error {
 		},
 		Request: func(ctx context.Context, id uuid.UUID) error {
 			_, err := scans.Request(ctx, id, nil)
+			if errors.Is(err, library.ErrNotFound) {
+				// Deleted since the list of targets was read; the next read drops it.
+				return nil
+			}
 			return err
 		},
 		Log: log,
