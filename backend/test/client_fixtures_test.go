@@ -149,7 +149,7 @@ func TestTheDeviceClientsFixturesAreTheServersAnswers(t *testing.T) {
 	edit(pride, map[string]any{
 		"title":        "Pride & Prejudice: A Novel",
 		"series":       map[string]any{"name": "Austen's Novels", "index": 2},
-		"contributors": []map[string]any{{"name": "Jane Austen", "role": "author"}, {"name": "Tony Tanner", "role": "editor"}},
+		"contributors": []map[string]any{{"name": "Jane Austen", "role": "author"}, {"name": "Tom Tanford", "role": "editor"}},
 	})
 	if status, out := a.putCover(admin, pride, squarePNG(t)); status != 200 {
 		t.Fatalf("cover: %d %v", status, out)

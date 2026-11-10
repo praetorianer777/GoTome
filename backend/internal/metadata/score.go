@@ -69,8 +69,8 @@ func words(s string) map[string]bool {
 }
 
 // authorsMatch is the share of the book's authors the record names too. Two
-// names are one author when their keys are equal or, for "J. R. R. Tolkien"
-// and "John Ronald Reuel Tolkien", their last words are.
+// names are one author when their keys are equal or, for "H. K. L. Brandt"
+// and "Heinrich Karl Ludwig Brandt", their last words are.
 func authorsMatch(book catalog.Book, r Record) float64 {
 	mine := book.Authors()
 	var theirs []string

@@ -6,19 +6,19 @@ test("a Goodreads export is previewed, imported, and lists books the library lac
 }, testInfo) => {
 	test.setTimeout(60_000);
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
-	const held = `Dune ${stamp}`;
-	const missing = `Foundation ${stamp}`;
+	const held = `Dusk ${stamp}`;
+	const missing = `Ironbridge ${stamp}`;
 	await openSignedIn(page);
 	const { books } = await libraryOfBooks(page, `Import ${stamp}`, [held]);
 	const edited = await page.request.patch(`/api/v1/books/${books[held]}`, {
-		data: { contributors: [{ name: "Frank Herbert", role: "author" }] },
+		data: { contributors: [{ name: "Henrik Halden", role: "author" }] },
 	});
 	expect(edited.status()).toBe(200);
 
 	const csv = [
 		"Title,Author,Additional Authors,ISBN,ISBN13,My Rating,Date Read,Bookshelves,Exclusive Shelf,My Review",
-		`${held},Frank Herbert,,"=""""","=""""",5,2021/03/14,favorites,read,Spice must flow.`,
-		`${missing},Isaac Asimov,,"=""""","=""""",4,2019/07/02,,read,`,
+		`${held},Henrik Halden,,"=""""","=""""",5,2021/03/14,favorites,read,Brine must flow.`,
+		`${missing},Ivo Marek,,"=""""","=""""",4,2019/07/02,,read,`,
 	].join("\n");
 
 	await page.goto("/profile");
@@ -44,7 +44,7 @@ test("a Goodreads export is previewed, imported, and lists books the library lac
 		page.getByRole("combobox", { name: "Your status" }),
 	).toHaveValue("completed");
 	await expect(page.getByRole("textbox", { name: "Private note" })).toHaveValue(
-		"Spice must flow.",
+		"Brine must flow.",
 	);
 
 	await page.goto("/stats");

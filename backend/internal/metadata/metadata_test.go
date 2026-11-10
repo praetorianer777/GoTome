@@ -229,9 +229,9 @@ func TestScore(t *testing.T) {
 	}{
 		{"the same book", emmaRecord, 0.95, 0.99},
 		{"another spelling of the author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Austen, Jane"}}, Published: "1815"}, 0.95, 0.99},
-		{"another author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Donoghue"}}, Published: "2010"}, 0.5, 0.65},
+		{"another author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Holloway"}}, Published: "2010"}, 0.5, 0.65},
 		{"another book", Record{Title: "Persuasion", Contributors: []catalog.NewContributor{{Name: "Jane Austen"}}}, 0.3, 0.5},
-		{"nothing alike", Record{Title: "Dune", Contributors: []catalog.NewContributor{{Name: "Frank Herbert"}}, Language: "en"}, 0, 0.1},
+		{"nothing alike", Record{Title: "Dusk", Contributors: []catalog.NewContributor{{Name: "Henrik Halden"}}, Language: "en"}, 0, 0.1},
 	}
 	for _, c := range cases {
 		if got := Score(book, c.r); got < c.low || got > c.top {

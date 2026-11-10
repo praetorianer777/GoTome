@@ -53,11 +53,11 @@ func TestQuickSearch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	add(shared, "The Way of Kings", "Brandon Sanderson", "The Stormlight Archive")
-	add(shared, "Mistborn", "Brandon Sanderson", "")
+	add(shared, "The Path of Lanterns", "Bastian Landorf", "The Beacon Archive")
+	add(shared, "Moorwalker", "Bastian Landorf", "")
 	add(shared, "Der Schatten des Windes", "Carlos Ruiz Zafón", "")
 	add(shared, "Pride and Prejudice", "Jane Austen", "")
-	add(private, "Elantris", "Brandon Sanderson", "")
+	add(private, "Eldmoor", "Bastian Landorf", "")
 
 	cases := []struct {
 		words   string
@@ -65,14 +65,14 @@ func TestQuickSearch(t *testing.T) {
 		matches []string
 	}{
 		// One wrong letter in the author's name.
-		{"Sandersen", []string{"Mistborn", "The Way of Kings"}, []string{"author", "author"}},
+		{"Landorff", []string{"Moorwalker", "The Path of Lanterns"}, []string{"author", "author"}},
 		// Part of a title, and a misspelt part.
-		{"way of king", []string{"The Way of Kings"}, []string{"title"}},
+		{"path of lantern", []string{"The Path of Lanterns"}, []string{"title"}},
 		{"Pride and Prejudise", []string{"Pride and Prejudice"}, []string{"title"}},
 		// Accents and case do not matter.
 		{"zafon", []string{"Der Schatten des Windes"}, []string{"author"}},
 		{"SCHATTEN", []string{"Der Schatten des Windes"}, []string{"title"}},
-		{"stormlight", []string{"The Way of Kings"}, []string{"series"}},
+		{"beacon", []string{"The Path of Lanterns"}, []string{"series"}},
 		{"ab", nil, nil},
 		{"xyzzy plugh", nil, nil},
 	}
@@ -84,7 +84,7 @@ func TestQuickSearch(t *testing.T) {
 	}
 
 	// What the reader may not see is not found; the administrator sees all.
-	if titles, _ := a.search(admin, "sanderson"); len(titles) != 3 {
+	if titles, _ := a.search(admin, "landorf"); len(titles) != 3 {
 		t.Errorf("the administrator finds %v", titles)
 	}
 
@@ -110,7 +110,7 @@ func TestQuickSearch(t *testing.T) {
 	if status, titles := list(reader, "xyzzy plugh"); status != 200 || len(titles) != 0 {
 		t.Errorf("listing nonsense: %d %v", status, titles)
 	}
-	if _, titles := list(admin, "sanderson"); !equalStrings(titles, []string{"Elantris", "Mistborn", "The Way of Kings"}) {
+	if _, titles := list(admin, "landorf"); !equalStrings(titles, []string{"Eldmoor", "Moorwalker", "The Path of Lanterns"}) {
 		t.Errorf("the administrator lists %v", titles)
 	}
 	if status, _ := list(reader, "ab"); status != 422 {
@@ -223,11 +223,11 @@ func TestFacetsOfAQuickSearchCountTheBooksTheyMatch(t *testing.T) {
 		lib                   uuid.UUID
 		title, author, tongue string
 	}{
-		{shared, "The Way of Kings", "Brandon Sanderson", "en"},
-		{shared, "Mistborn", "Brandon Sanderson", "en"},
-		{shared, "Brandon's Ghost", "Jane Austen", "de"},
+		{shared, "The Path of Lanterns", "Bastian Landorf", "en"},
+		{shared, "Moorwalker", "Bastian Landorf", "en"},
+		{shared, "Bastian's Ghost", "Jane Austen", "de"},
 		{shared, "Pride and Prejudice", "Jane Austen", "en"},
-		{private, "Elantris", "Brandon Sanderson", "en"},
+		{private, "Eldmoor", "Bastian Landorf", "en"},
 	} {
 		if _, err := books.CreateBook(ctx, catalog.NewBook{
 			LibraryID: b.lib, Title: b.title, Language: b.tongue,
@@ -236,7 +236,7 @@ func TestFacetsOfAQuickSearchCountTheBooksTheyMatch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	words := `{"field": "words", "op": "like", "values": ["brandon"]}`
+	words := `{"field": "words", "op": "like", "values": ["bastian"]}`
 	for name, c := range map[string]*http.Client{"administrator": admin, "reader": reader} {
 		status, body, _ := a.call(c, http.MethodGet, "/books/facets?"+url.Values{"filter": {words}}.Encode(), nil)
 		if status != 200 {

@@ -380,7 +380,7 @@ func splitName(name string) (stem, format string) {
 }
 
 // folderFor names the folder an upload goes into after the book its name
-// suggests: "Dune - Part 02.mp3" into "Dune", "Emma.epub" into "Emma".
+// suggests: "Dusk - Part 02.mp3" into "Dusk", "Emma.epub" into "Emma".
 func folderFor(stem, format string) string {
 	title := stem
 	if kind, _ := catalog.KindOf(format); kind == catalog.KindAudio {

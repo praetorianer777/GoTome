@@ -8,8 +8,8 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE
 RETURN btrim(regexp_replace(lower(name), '[^[:alnum:]]+', ' ', 'g'));
 -- +goose StatementEnd
 
--- The series a title holds, as loose_key, or NULL: "Rain Wild Chronicles
--- 01 - Drachenhüter", "Drachenhüter (Rain Wild Chronicles #1)". It is
+-- The series a title holds, as loose_key, or NULL: "Sternwanderer
+-- 01 - Leuchtturmwärter", "Leuchtturmwärter (Sternwanderer #1)". It is
 -- cleanup.SeriesInTitle, which reads the series, the position and the
 -- title; a test holds the two to one answer. Like title_addition it is
 -- matched as titles are written, into books.title_series.
@@ -44,7 +44,7 @@ CREATE INDEX series_loose_key_idx ON series (loose_key(name));
 
 -- Series that books without one hold in their titles. A series is taken
 -- for one where at least two books of a library hold it, or a book the
--- viewer sees is in a series of that name already: "Fahrenheit 451 - …"
+-- viewer sees is in a series of that name already: "Celsius 212 - …"
 -- alone is a title. The value is the books' IDs, so a dismissal holds
 -- until a book joins or leaves, and the names are their titles, in the
 -- same order.

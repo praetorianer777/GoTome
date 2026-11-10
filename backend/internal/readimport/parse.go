@@ -199,7 +199,7 @@ func names(lists ...string) []string {
 	return out
 }
 
-// isbns reads the ISBNs of a row. Goodreads writes them as ="9780441013593"
+// isbns reads the ISBNs of a row. Goodreads writes them as ="9780195001013"
 // so that a spreadsheet keeps the digits; the quirk comes off first.
 func isbns(fields ...string) []string {
 	var out []string

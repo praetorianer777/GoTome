@@ -1479,7 +1479,7 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.about.titles":
 		"Was ein Shop einem Titel hinzugefügt hat: die verkaufte Ausgabe oder das Genre nach einem Doppelpunkt oder Gedankenstrich.",
 	"cleanup.about.series":
-		"Bücher ohne Reihe, deren Titel eine nennt, etwa „Rain Wild Chronicles 01 - Drachenhüter“ oder „Drachenhüter (Rain Wild Chronicles #1)“. Eine Reihe wird vorgeschlagen, wenn zwei Bücher einer Bibliothek sie nennen oder es sie schon gibt. Anwenden nimmt die Bücher an den Stellen, die ihre Titel nennen, in die Reihe auf und nimmt die Reihe aus ihren Titeln.",
+		"Bücher ohne Reihe, deren Titel eine nennt, etwa „Sternwanderer 01 - Leuchtturmwärter“ oder „Leuchtturmwärter (Sternwanderer #1)“. Eine Reihe wird vorgeschlagen, wenn zwei Bücher einer Bibliothek sie nennen oder es sie schon gibt. Anwenden nimmt die Bücher an den Stellen, die ihre Titel nennen, in die Reihe auf und nimmt die Reihe aus ihren Titeln.",
 	"cleanup.none": "Hier gibt es nichts vorzuschlagen.",
 	"cleanup.books": "Bücher: {count}",
 	"cleanup.keep": "Zu behaltende Schreibweise",

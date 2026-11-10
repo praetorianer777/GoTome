@@ -50,8 +50,8 @@ export function useUnfollow() {
 /**
  * The tracker of an author or a series, if the person follows it. Names are
  * compared as the server compares them: without case, accents or
- * punctuation, and an author's in either order, "Cornwell, Bernard" being
- * Bernard Cornwell.
+ * punctuation, and an author's in either order, "Devlin, Gerald" being
+ * Gerald Devlin.
  */
 export function trackerOf(trackers: Tracker[] | undefined, kind: FollowKind, name: string) {
 	const key = nameKey(kind, name);

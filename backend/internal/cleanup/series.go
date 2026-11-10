@@ -11,18 +11,18 @@ import (
 // function title_series_key holds the same patterns for Postgres, with
 // [[:alpha:]] for \pL: change both, and seriesWords with them.
 var (
-	// seriesFirst is "<series> <n> - <title>": "Rain Wild Chronicles 01 -
-	// Drachenhüter", "Perry Rhodan - 2500 - Projekt Saturn", "Die Zwerge,
-	// Band 3: Das Schicksal der Zwerge", "Wheel of Time #2: The Great Hunt".
+	// seriesFirst is "<series> <n> - <title>": "Sternwanderer 01 -
+	// Leuchtturmwärter", "Nordlicht-Saga - 2500 - Projekt Kupfer", "Die Glasbläser,
+	// Band 3: Das Schicksal der Glasbläser", "Salt Road #2: The Long Crossing".
 	// The number stands apart from the series and is followed by a dash or
-	// a colon and a title, so "Catch22 - …", "1984 - …" and "Krieg und
-	// Frieden - Teil 1" are not read so.
+	// a colon and a title, so "Trap17 - …", "1957 - …" and "Stadt und
+	// Land - Teil 1" are not read so.
 	seriesFirst = regexp.MustCompile(`(?i)^(.*?\pL.*?)(?:\s*[,(:–—-]\s*|\s+)` +
 		`(?:(?:band|bd\.|teil|folge|buch|book|vol\.|volume|nr\.|no\.|#)\s*)?` +
 		`(\d{1,4}(?:\.\d)?)\s*\)?\s*[:–—-]\s*(.*\pL.*)$`)
 	// seriesLast is "<title> (<series> #<n>)" with a word or # before the
-	// number: "Drachenhüter (Rain Wild Chronicles #1)", "Die Gefährten (Der
-	// Herr der Ringe, Band 1)". "Der Hobbit (Teil 1)" names no series.
+	// number: "Leuchtturmwärter (Sternwanderer #1)", "Die Brückenbauer (Das
+	// Salzland, Band 1)". "Die Laterne (Teil 1)" names no series.
 	seriesLast = regexp.MustCompile(`(?i)^(.*?\pL.*?)\s*\(\s*([^()]*?\pL[^()]*?)(?:\s*,\s*|\s+)` +
 		`(?:band|bd\.|teil|folge|buch|book|vol\.|volume|nr\.|no\.|#)\s*(\d{1,4}(?:\.\d)?)\s*\)$`)
 )
@@ -45,8 +45,8 @@ type SeriesTitle struct {
 }
 
 // SeriesInTitle reads the series and the book's position in it out of a
-// title such as "Rain Wild Chronicles 01 - Drachenhüter", or says there is
-// none. A four-digit number from 1800 to 2099 is a year ("Berlin 1945 -
+// title such as "Sternwanderer 01 - Leuchtturmwärter", or says there is
+// none. A four-digit number from 1800 to 2099 is a year ("Hamburg 1923 -
 // …"), not a position.
 func SeriesInTitle(title string) (SeriesTitle, bool) {
 	title = strings.TrimSpace(title)

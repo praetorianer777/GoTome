@@ -7,9 +7,9 @@ import (
 
 func TestNamesInEitherOrder(t *testing.T) {
 	for in, want := range map[string]string{
-		"Cornwell, Bernard": "Bernard Cornwell",
-		"Bernard Cornwell":  "Bernard Cornwell",
-		" Ende , Michael ":  "Michael Ende",
+		"Devlin, Gerald":   "Gerald Devlin",
+		"Gerald Devlin":    "Gerald Devlin",
+		" Keller , Jonas ": "Jonas Keller",
 		// Several commas are a list of names, which is left alone.
 		"Frommert, Christian, Clasen, Jens": "Frommert, Christian, Clasen, Jens",
 		"Prince,":                           "Prince,",

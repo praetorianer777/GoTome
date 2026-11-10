@@ -332,9 +332,9 @@ func TestUndoingACleanUpRestoresTheBooksItChanged(t *testing.T) {
 	books := catalog.NewService(a.pool)
 	var ids []string
 	for _, b := range []struct{ title, author string }{
-		{"Das letzte Evangelium", "Goldstein, Barbara"},
-		{"Der vergessene Papst", "Goldstein, Barbara"},
-		{"Die Kardinälin", "Barbara Goldstein"},
+		{"Das stille Archiv", "Weidner, Ulrike"},
+		{"Der verschollene Abt", "Weidner, Ulrike"},
+		{"Die Gräfin", "Ulrike Weidner"},
 	} {
 		id, err := books.CreateBook(context.Background(), catalog.NewBook{
 			LibraryID: uuid.MustParse(lib), Title: b.title, Contributors: []catalog.NewContributor{{Name: b.author}},
@@ -346,7 +346,7 @@ func TestUndoingACleanUpRestoresTheBooksItChanged(t *testing.T) {
 	}
 	before := a.stateOf(ids...)
 	a.applyCleanup(editor, map[string]any{
-		"kind": "authors", "picks": []map[string]string{{"subject": "barbara goldstein", "to": "Barbara  Goldstein"}},
+		"kind": "authors", "picks": []map[string]string{{"subject": "ulrike weidner", "to": "Ulrike  Weidner"}},
 	})
 	changed := a.stateOf(ids...)
 	if changed["book_contributors"] == before["book_contributors"] {

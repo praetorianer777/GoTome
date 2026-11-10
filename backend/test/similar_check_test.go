@@ -23,12 +23,12 @@ func TestTheSimilarCheckMeasuresAuthorsSeriesAndCopies(t *testing.T) {
 	// Five books of one author, under two spellings, one a copy of another
 	// with a shop's addition, two in a series; and one of another author.
 	for i, b := range []struct{ title, author, series string }{
-		{"Das letzte Evangelium", "Barbara Goldstein", "Evangelien"},
-		{"Die Evangelistin", "Barbara Goldstein", "Evangelien"},
-		{"Die Kardinälin", "Goldstein, Barbara", ""},
-		{"Der vergessene Papst", "Barbara Goldstein", ""},
-		{"Das letzte Evangelium: Historischer Roman (German Edition)", "Goldstein, Barbara", ""},
-		{"Die Goldspinnerin", "Gerit Bertram", ""},
+		{"Das stille Archiv", "Ulrike Weidner", "Archivreihe"},
+		{"Die Schreiberin", "Ulrike Weidner", "Archivreihe"},
+		{"Die Gräfin", "Weidner, Ulrike", ""},
+		{"Der verschollene Abt", "Ulrike Weidner", ""},
+		{"Das stille Archiv: Historischer Roman (German Edition)", "Weidner, Ulrike", ""},
+		{"Die Silberweberin", "Greta Berndt", ""},
 	} {
 		id, err := books.CreateBook(context.Background(), catalog.NewBook{
 			LibraryID: lib, Title: b.title, Series: b.series, Contributors: []catalog.NewContributor{{Name: b.author}},
@@ -79,15 +79,15 @@ func TestSimilarBooksTakeTwoOfAnAuthorOrSeriesAndNoCopies(t *testing.T) {
 	ids := map[string]uuid.UUID{}
 	// Nearest first: the further from the book, the larger the second axis.
 	for i, b := range []struct{ title, author, series string }{
-		{"Rauklands Schwert", "Jordis Lank", "Raukland"},
-		{"Rauklands Sohn: Raukland Trilogie (German Edition)", "Lank, Jordis", "Raukland"},
-		{"Rauklands Sohn", "Jordis Lank", ""},
-		{"Rauklands Blut", "Jordis Lank", "Raukland"},
-		{"Raukland: Der Anfang", "Jordis Lank", ""},
-		{"Im Auftrag der Rache", "Col Buchanan", "Erbe des Feuers"},
-		{"Die Stadt der Feuer", "Col Buchanan", "Erbe des Feuers"},
-		{"Das Feuer erwacht", "Anna Andere", "Erbe des Feuers"},
-		{"Die Goldspinnerin", "Gerit Bertram", ""},
+		{"Brennholds Schwert", "Marta Sieber", "Brennhold"},
+		{"Brennholds Sohn: Brennhold Trilogie (German Edition)", "Sieber, Marta", "Brennhold"},
+		{"Brennholds Sohn", "Marta Sieber", ""},
+		{"Brennholds Blut", "Marta Sieber", "Brennhold"},
+		{"Brennhold: Der Anfang", "Marta Sieber", ""},
+		{"Im Namen der Nacht", "Colin Buckley", "Erbe der Lichter"},
+		{"Die Stadt der Lichter", "Colin Buckley", "Erbe der Lichter"},
+		{"Das Feuer erwacht", "Anna Andere", "Erbe der Lichter"},
+		{"Die Silberweberin", "Greta Berndt", ""},
 	} {
 		id, err := books.CreateBook(context.Background(), catalog.NewBook{
 			LibraryID: lib, Title: b.title, Series: b.series, Contributors: []catalog.NewContributor{{Name: b.author}},
@@ -98,10 +98,10 @@ func TestSimilarBooksTakeTwoOfAnAuthorOrSeriesAndNoCopies(t *testing.T) {
 		ids[b.title] = id
 		a.putVector(id, similar.KindContent, direction(map[int]float32{0: 1, 1: float32(i) / 10}))
 	}
-	got := a.similarTitles(admin, ids["Rauklands Schwert"])
+	got := a.similarTitles(admin, ids["Brennholds Schwert"])
 	want := []string{
-		"Rauklands Sohn: Raukland Trilogie (German Edition)", "Rauklands Blut",
-		"Im Auftrag der Rache", "Die Stadt der Feuer", "Die Goldspinnerin",
+		"Brennholds Sohn: Brennhold Trilogie (German Edition)", "Brennholds Blut",
+		"Im Namen der Nacht", "Die Stadt der Lichter", "Die Silberweberin",
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("similar books %q,\nwant %q", got, want)

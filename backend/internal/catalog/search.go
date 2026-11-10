@@ -28,8 +28,8 @@ const (
 	// maxSearchLen keeps a pasted paragraph from becoming a slow search.
 	maxSearchLen = 100
 	// matchThreshold is how alike the search and some stretch of a title or
-	// name must be, from 0 to 1. Postgres says 0.6 by default; "sandersen"
-	// and "sanderson" are 0.54 alike, and a quick search should forgive one
+	// name must be, from 0 to 1. Postgres says 0.6 by default; "lundquist"
+	// and "lundqvist" are 0.54 alike, and a quick search should forgive one
 	// wrong letter in nine. quick_search_matches sets the same.
 	matchThreshold = 0.45
 )

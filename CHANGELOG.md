@@ -270,8 +270,8 @@ What changes for someone who runs or uses GOtome. The format follows
   back and reload return to it. A suggestion chosen with the arrow keys
   still opens that book, author or series.
 - Clean up suggests a series for books without one whose titles name it,
-  such as "Rain Wild Chronicles 01 - Drachenhüter" or "Drachenhüter (Rain
-  Wild Chronicles #1)", where two books of a library name it or it is a
+  such as "Sternwanderer 01 - Leuchtturmwärter" or "Leuchtturmwärter
+  (Sternwanderer #1)", where two books of a library name it or it is a
   series already. Applying it puts the books into the series at the
   places their titles say and takes the series off their titles.
 
@@ -406,10 +406,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
-- More tags give a genre: romance imprints (Julia, Romana, Baccara, Bianca,
-  Tiffany, Historical RomanHefte), Jugend, Mord, Historisch, Historischer
-  Krimi, horror series (Dorian Hunter, Dämonenkiller, Vampir Horror Roman),
-  Rettungskreuzer Ikarus, Scheibenwelt and Sex.
+- More tags give a genre: romance imprints, Jugend, Mord, Historisch,
+  Historischer Krimi, several horror, science fiction and fantasy series
+  and Sex.
 - Genre suggestions from the nearest books need 40% of them to agree
   instead of half, and `combined` now follows them, using the comparison
   with the genres' descriptions only for a book whose neighbours have no
@@ -746,7 +745,7 @@ What changes for someone who runs or uses GOtome. The format follows
   and how many are copies of it (`docs/similarity.md`).
 - A "Clean up" page suggests fixes for how books are described, each to
   apply or leave with one click, or all of a kind at once: one author under
-  several spellings ("Goldstein, Barbara" and "Barbara Goldstein") made
+  several spellings ("Weidner, Ulrike" and "Ulrike Weidner") made
   one, values such as "authors_sort" or "Unknown" taken off as authors, an
   author who is the name of their books' series, and what shops add to
   titles, such as "(German Edition)" or ": Roman". A fix is your edit:
@@ -837,8 +836,8 @@ What changes for someone who runs or uses GOtome. The format follows
   address carries the filters, so a filtered view can be bookmarked or shared.
   On a phone the panel is behind a "Filters" button.
 - Quick search. The box in the header finds books by title, author or series
-  as you type, even misspelt or only begun: "Sandersen" finds Brandon
-  Sanderson. Press "/" to get to it from anywhere, the arrow keys to pick a
+  as you type, even misspelt or only begun: "Landorff" finds Bastian
+  Landorf. Press "/" to get to it from anywhere, the arrow keys to pick a
   book and Enter to open it. It answers in well under a tenth of a second on
   50,000 books.
 - Settings. Administrators set the language book details are fetched in and

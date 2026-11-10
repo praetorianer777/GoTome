@@ -87,7 +87,7 @@ func TestAPlatformAsAuthorResolvesTheAuthorAndLeavesTheTitle(t *testing.T) {
 
 func TestRules(t *testing.T) {
 	locked := func(fields ...string) []string { return fields }
-	dune := metadata.Record{Provider: "openlibrary", Title: "Dune Messiah (German Edition)"}
+	dusk := metadata.Record{Provider: "openlibrary", Title: "Dusk Reckoning (German Edition)"}
 	tests := []struct {
 		name  string
 		a, b  Description
@@ -108,15 +108,15 @@ func TestRules(t *testing.T) {
 			Options{}, catalog.FieldPublisher, []string{"Heyne"}, SideB, RuleEmpty},
 		{"filename guess loses",
 			Description{Title: "scan_0042_final", Sources: map[string]string{catalog.FieldTitle: catalog.SourceFilename}},
-			Description{Title: "Der Hobbit"},
-			Options{}, catalog.FieldTitle, []string{"Der Hobbit"}, SideB, RuleFilename},
+			Description{Title: "Die Laterne"},
+			Options{}, catalog.FieldTitle, []string{"Die Laterne"}, SideB, RuleFilename},
 		{"provider with a shared identifier decides",
-			Description{Title: "Dune Messiah"}, Description{Title: "Children of Dune"},
-			Options{Providers: []metadata.Record{dune}}, catalog.FieldTitle, []string{"Dune Messiah"}, SideProvider, RuleProvider},
+			Description{Title: "Dusk Reckoning"}, Description{Title: "Children of Dusk"},
+			Options{Providers: []metadata.Record{dusk}}, catalog.FieldTitle, []string{"Dusk Reckoning"}, SideProvider, RuleProvider},
 		{"equal after normalising keeps the cleanest spelling",
-			Description{Title: "Der Hobbit (German Edition)", Authors: []string{"Tolkien, J.R.R."}},
-			Description{Title: "Der Hobbit", Authors: []string{"J.R.R. Tolkien"}},
-			Options{}, catalog.FieldContributors, []string{"J.R.R. Tolkien"}, SideA, RuleEqual},
+			Description{Title: "Die Laterne (German Edition)", Authors: []string{"Brandt, H.K.L."}},
+			Description{Title: "Die Laterne", Authors: []string{"H.K.L. Brandt"}},
+			Options{}, catalog.FieldContributors, []string{"H.K.L. Brandt"}, SideA, RuleEqual},
 		{"the most used spelling wins",
 			Description{Series: "Sternwanderer"}, Description{Series: "sternwanderer"},
 			Options{Usage: map[string]int{"sternwanderer": 3}}, catalog.FieldSeries, []string{"sternwanderer"}, SideB, RuleEqual},
@@ -124,8 +124,8 @@ func TestRules(t *testing.T) {
 			Description{Published: "2010"}, Description{Published: "2010-08-31"},
 			Options{}, catalog.FieldPublished, []string{"2010-08-31"}, SideB, RuleSubset},
 		{"a placeholder author is no author",
-			Description{Authors: []string{"Unknown"}}, Description{Authors: []string{"Ann Leckie"}},
-			Options{}, catalog.FieldContributors, []string{"Ann Leckie"}, SideB, RuleEmpty},
+			Description{Authors: []string{"Unknown"}}, Description{Authors: []string{"Anna Lenck"}},
+			Options{}, catalog.FieldContributors, []string{"Anna Lenck"}, SideB, RuleEmpty},
 		{"identifiers of both are kept",
 			Description{Identifiers: []catalog.Identifier{{Type: "isbn", Value: "9783608960358"}}},
 			Description{Identifiers: []catalog.Identifier{{Type: "isbn", Value: "9783608960358"}, {Type: "asin", Value: "B000"}}},
@@ -134,7 +134,7 @@ func TestRules(t *testing.T) {
 			Description{Tags: []string{"Fantasy"}}, Description{Tags: []string{"fantasy", "Epic"}},
 			Options{}, catalog.FieldTags, []string{"fantasy", "Epic"}, SideB, RuleSubset},
 		{"series position goes with its series",
-			Description{Series: "Dune", SeriesIndex: f(2)}, Description{Series: "Dune Chronicles", SeriesIndex: f(1), Sources: map[string]string{catalog.FieldSeries: catalog.SourceManual}},
+			Description{Series: "Dusk", SeriesIndex: f(2)}, Description{Series: "Dusk Chronicles", SeriesIndex: f(1), Sources: map[string]string{catalog.FieldSeries: catalog.SourceManual}},
 			Options{}, FieldSeriesIndex, []string{"1"}, SideB, RuleLocked},
 	}
 	for _, tt := range tests {
@@ -154,7 +154,7 @@ func TestConflicts(t *testing.T) {
 		{"two different values", Description{Publisher: "Heyne"}, Description{Publisher: "Piper"}, catalog.FieldPublisher},
 		{"both locked",
 			Description{Publisher: "Heyne", Locked: both}, Description{Publisher: "Piper", Locked: both}, catalog.FieldPublisher},
-		{"different people", Description{Authors: []string{"Ann Leckie"}}, Description{Authors: []string{"Ursula Le Guin"}}, catalog.FieldContributors},
+		{"different people", Description{Authors: []string{"Anna Lenck"}}, Description{Authors: []string{"Ulla Lund"}}, catalog.FieldContributors},
 		{"different positions", Description{Series: "X", SeriesIndex: f(1)}, Description{Series: "X", SeriesIndex: f(2)}, FieldSeriesIndex},
 	}
 	for _, tt := range tests {

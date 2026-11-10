@@ -9,17 +9,17 @@ import (
 
 func TestPickLeavesOutCopiesAndCapsAuthorsAndSeries(t *testing.T) {
 	series, other := uuid.New(), uuid.New()
-	book := traits{id: uuid.New(), title: "Rauklands Schwert", series: &series, people: []string{"jordis lank"}}
+	book := traits{id: uuid.New(), title: "Brennholds Schwert", series: &series, people: []string{"marta sieber"}}
 	near := []traits{
-		{title: "Rauklands Sohn: Raukland Trilogie (German Edition)", series: &series, people: []string{"jordis lank"}},
-		{title: "Rauklands Blut", series: &series, people: []string{"jordis lank"}},
-		{title: "Rauklands Sohn", series: &series, people: []string{"jordis lank"}},
-		{title: "Rauklands Schwert (German Edition)", people: []string{"jordis lank"}},
-		{title: "Im Auftrag der Rache", series: &other, people: []string{"buchanan col"}},
-		{title: "Die Goldspinnerin", people: []string{"bertram gerit"}},
-		{title: "Raukland: Der Anfang", people: []string{"jordis lank"}},
-		{title: "Die Hexe von Paris", people: []string{"bertram gerit"}},
-		{title: "Der Bastard", people: []string{"bertram gerit"}},
+		{title: "Brennholds Sohn: Brennhold Trilogie (German Edition)", series: &series, people: []string{"marta sieber"}},
+		{title: "Brennholds Blut", series: &series, people: []string{"marta sieber"}},
+		{title: "Brennholds Sohn", series: &series, people: []string{"marta sieber"}},
+		{title: "Brennholds Schwert (German Edition)", people: []string{"marta sieber"}},
+		{title: "Im Namen der Nacht", series: &other, people: []string{"buchanan col"}},
+		{title: "Die Silberweberin", people: []string{"berndt greta"}},
+		{title: "Brennhold: Der Anfang", people: []string{"marta sieber"}},
+		{title: "Die Wäscherin von Lyon", people: []string{"berndt greta"}},
+		{title: "Der Findling", people: []string{"berndt greta"}},
 		{title: "Ohne Autor"},
 	}
 	names := map[uuid.UUID]string{}
@@ -34,8 +34,8 @@ func TestPickLeavesOutCopiesAndCapsAuthorsAndSeries(t *testing.T) {
 	// The Sohn's copy comes after it; the Schwert's is the book's own. A
 	// series takes two places, an author two.
 	want := []string{
-		"Rauklands Sohn: Raukland Trilogie (German Edition)", "Rauklands Blut",
-		"Im Auftrag der Rache", "Die Goldspinnerin", "Die Hexe von Paris", "Ohne Autor",
+		"Brennholds Sohn: Brennhold Trilogie (German Edition)", "Brennholds Blut",
+		"Im Namen der Nacht", "Die Silberweberin", "Die Wäscherin von Lyon", "Ohne Autor",
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("picked %q,\nwant %q", got, want)
@@ -49,8 +49,8 @@ func TestTwoVolumesWithTheirOwnSubtitlesAreNoCopies(t *testing.T) {
 		copy bool
 	}{
 		{"Die Chroniken von Narnia: Prinz Kaspian", "Die Chroniken von Narnia: Der silberne Sessel", false},
-		{"Wolfs Brut", "Wolfs Brut: Kommissar Kilians zweiter Fall", true},
-		{"Das letzte Evangelium: Historischer Roman (German Edition)", "Das letzte Evangelium", true},
+		{"Fuchsbrut", "Fuchsbrut: Kommissar Lenzens zweiter Fall", true},
+		{"Das stille Archiv: Historischer Roman (German Edition)", "Das stille Archiv", true},
 		{"Emma", "Emma", true},
 	} {
 		if got := isCopy(traits{title: c.a, people: people}, traits{title: c.b, people: people}); got != c.copy {

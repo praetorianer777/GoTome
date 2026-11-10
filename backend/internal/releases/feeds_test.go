@@ -47,7 +47,7 @@ const atomFeedText = `<?xml version="1.0" encoding="utf-8"?>
     <title type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml">The <em>Next</em> One</div></title>
     <link rel="enclosure" href="https://cdn.example.org/cover.jpg"/>
     <link href="https://example.org/next"/>
-    <author><name>Cornwell, Bernard</name></author>
+    <author><name>Devlin, Gerald</name></author>
     <category term="fiction" label="Historical fiction"/>
     <content type="html">&lt;p&gt;Out in spring.&lt;/p&gt;</content>
     <updated>2026-11-01T10:00:00Z</updated>
@@ -161,17 +161,17 @@ func TestAFeedFiltersByKeywordsAndAuthors(t *testing.T) {
 		{[]string{"krimi", "roman"}, nil, true},
 		{nil, []string{"Liza Grimm"}, true},
 		{nil, []string{"Grimm, Liza"}, true},
-		{nil, []string{"Bernard Cornwell"}, false},
+		{nil, []string{"Gerald Devlin"}, false},
 		{[]string{"krimi"}, []string{"Liza Grimm"}, false},
-		{[]string{"roman"}, []string{"Bernard Cornwell", "Liza Grimm"}, true},
+		{[]string{"roman"}, []string{"Gerald Devlin", "Liza Grimm"}, true},
 	} {
 		if got := newFeedFilter(c.keywords, c.authors).matches(item); got != c.want {
 			t.Errorf("keywords %v, authors %v: %v", c.keywords, c.authors, got)
 		}
 	}
 	// An author named only in the text is found there, in either order.
-	named := feedItem{Title: "Neu von Bernard Cornwell"}
-	if !newFeedFilter(nil, []string{"Cornwell, Bernard"}).matches(named) {
+	named := feedItem{Title: "Neu von Gerald Devlin"}
+	if !newFeedFilter(nil, []string{"Devlin, Gerald"}).matches(named) {
 		t.Error("an author named in the title is not found")
 	}
 }

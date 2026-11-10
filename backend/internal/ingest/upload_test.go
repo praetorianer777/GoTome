@@ -17,10 +17,10 @@ func TestUploadNames(t *testing.T) {
 		{"..hidden.pdf", "hidden", "pdf", "hidden"},
 		{`What? A "Book": 1*2<3>4|5.pdf`, "What A Book 1 2 3 4 5", "pdf", "What A Book 1 2 3 4 5"},
 		{"tab\there\x00.mobi", "tab here", "mobi", "tab here"},
-		{"Dune - Part 02.mp3", "Dune - Part 02", "mp3", "Dune"},
-		{"Harry_Potter_03.m4b", "Harry_Potter_03", "m4b", "Harry Potter"},
+		{"Dusk - Part 02.mp3", "Dusk - Part 02", "mp3", "Dusk"},
+		{"Max_Mohr_03.m4b", "Max_Mohr_03", "m4b", "Max Mohr"},
 		// A number alone in a book's name is part of its title.
-		{"Fahrenheit 451.epub", "Fahrenheit 451", "epub", "Fahrenheit 451"},
+		{"Celsius 212.epub", "Celsius 212", "epub", "Celsius 212"},
 		{".epub", "epub", "epub", "epub"},
 		{"???.pdf", "pdf", "pdf", "pdf"},
 		{"Bad\xffUTF.epub", "BadUTF", "epub", "BadUTF"},
