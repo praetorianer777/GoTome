@@ -6,6 +6,67 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The audiobook player's sleep timer fades the volume down before it stops,
+  can be extended by 15 minutes (a button, or shaking the phone where the
+  browser allows it, also just after it stopped), and can start by itself
+  when you play a book between hours you choose. A volume boost of up to
+  twice, with a limiter against clipping, helps with quiet recordings. The
+  night hours and the boost are kept per browser.
+- A queue for audiobooks: "Play next" and "Add to queue" on a book's page,
+  "Add to the queue" for books selected in a list and "Queue the rest of
+  this series" on a series' page. The next book starts by itself when one
+  ends, from where you left it. The queue is yours, kept on the server, so
+  it is the same in every browser, and is listed under the player, where you
+  can reorder or clear it.
+- Two recordings of one audiobook by different narrators are no longer
+  suggested as duplicates to merge: the Duplicates page says "another
+  narrator" and links them as other recordings, which each book's page then
+  lists with their narrators. The library can be filtered by narrator.
+- An ebook and its audiobook of the same title and author, which a scan
+  makes two books because they lie in different folders, are shown on the
+  Duplicates page as such. A library can join them by itself (Libraries
+  page, "Make one book of an ebook and its audiobook ..."); a book joined
+  so says so on its page and can be split again. Between two libraries
+  nothing is merged, as a file stays in its library's folder: the pair can
+  be linked, and each book's page lists the other under "Also as".
+- "For you": a row in the library's strip, and a page with more, recommend
+  unread books of the libraries you see that are near what you finished or
+  rated well, each with the books it is "because you liked". Someone who
+  reads crime and fantasy gets both. "Not interested" leaves a book out
+  for good. It needs three finished or rated books and the embedding of
+  similar books; nothing is sent anywhere. `gotome similar-check -recommend`
+  measures it on your ratings (`docs/similarity.md`).
+- Your reading history now includes books the library does not hold: on
+  Wishlist, "Add as read" (with stars and the day you finished it) and
+  "Currently reading" sit beside "Wish for it", and "Your reading" lists
+  everything you read with filters by year, status and stars and a search.
+  Every book page has a private note. See `docs/importing-reading-history.md`.
+- Profile, "Import reading history": bring in a Goodreads or StoryGraph
+  export (a CSV file). You see a preview first, pick the right book for
+  rows that could be several, and the import sets status, stars, finish
+  dates, notes and collections for custom shelves; what you set already
+  stays, and importing the same file again changes nothing.
+- Administrators are told when a new GOtome release is out: a line in the
+  footer, a notification once per version (you can switch it off on the
+  profile), and the latest version on the overview page with a link to the
+  upgrade guide. GOtome asks GitHub once a day, with no account and no
+  token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
+  turn it off. It never updates itself.
+
+### Fixed
+
+- On a phone every button, field and link is at least 44 pixels high with
+  8 pixels between neighbours, text fields are 16 pixels so iOS no longer
+  zooms into them, and bars at the screen's edge keep clear of the notch and
+  the home indicator.
+- On a 320 pixel wide screen the settings page and the library and search
+  pages with several libraries no longer slide sideways, the search page no
+  longer jumps when its first results arrive, and small links and the rating
+  stars are at least 24 pixels high. The profile no longer shows three
+  filled buttons at once.
+
 ## [0.13.0] - 2026-11-09
 
 ### Added

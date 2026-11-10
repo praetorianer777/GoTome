@@ -155,6 +155,22 @@ type BookIdentifier struct {
 	Value  string
 }
 
+type BookJoin struct {
+	ID        uuid.UUID
+	IntoBook  uuid.UUID
+	FromBook  uuid.UUID
+	FileIds   []uuid.UUID
+	CreatedAt time.Time
+	UndoneAt  *time.Time
+}
+
+type BookNote struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	Body      string
+	UpdatedAt time.Time
+}
+
 type BookRelation struct {
 	BookA uuid.UUID
 	BookB uuid.UUID
@@ -344,6 +360,7 @@ type Library struct {
 	UpdatedAt        time.Time
 	UnwritableSince  *time.Time
 	UnwritableReason *string
+	JoinFormats      bool
 }
 
 type LibraryMember struct {
@@ -432,6 +449,12 @@ type PassageFile struct {
 	EmbeddedAt   time.Time
 }
 
+type PlayQueue struct {
+	UserID   uuid.UUID
+	BookID   uuid.UUID
+	Position int32
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte
@@ -454,6 +477,38 @@ type ReadingFinish struct {
 	BookID     uuid.UUID
 	Medium     string
 	FinishedAt time.Time
+}
+
+type ReadingImport struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Source     string
+	LibraryID  uuid.UUID
+	SeesAll    bool
+	Overwrite  bool
+	CreatedAt  time.Time
+	StartedAt  *time.Time
+	FinishedAt *time.Time
+}
+
+type ReadingImportRow struct {
+	ImportID   uuid.UUID
+	RowNo      int32
+	Title      string
+	Authors    []string
+	Isbns      []string
+	Status     *string
+	Rating     *int16
+	Rounded    bool
+	ReadOn     *time.Time
+	Shelves    []string
+	Review     string
+	Match      string
+	BookID     *uuid.UUID
+	Candidates []uuid.UUID
+	Skip       bool
+	Outcome    *string
+	Message    string
 }
 
 type ReadingProgress struct {
@@ -480,6 +535,12 @@ type ReadingSession struct {
 	EndedAt      time.Time
 	FromFraction float64
 	ToFraction   float64
+}
+
+type RecommendationDismissal struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	CreatedAt time.Time
 }
 
 type Release struct {
@@ -587,16 +648,29 @@ type UnusedEmbeddingModel struct {
 	Since time.Time
 }
 
+type UpdateCheck struct {
+	ID              bool
+	LatestVersion   *string
+	Url             *string
+	PublishedAt     *time.Time
+	Security        bool
+	CheckedAt       *time.Time
+	AttemptedAt     *time.Time
+	Error           *string
+	NotifiedVersion *string
+}
+
 type User struct {
-	ID           uuid.UUID
-	Username     string
-	Email        *string
-	PasswordHash *string
-	Role         string
-	QuotaBytes   *int64
-	DisabledAt   *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID               uuid.UUID
+	Username         string
+	Email            *string
+	PasswordHash     *string
+	Role             string
+	QuotaBytes       *int64
+	DisabledAt       *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	HistoryLibraryID *uuid.UUID
 }
 
 type UserBook struct {

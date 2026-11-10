@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -37,6 +38,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -83,6 +85,8 @@ type Server struct {
 	Bulk *bulk.Service
 	// Reading keeps where each person is in a book.
 	Reading *reading.Service
+	// Imports brings in reading histories from other services.
+	Imports *readimport.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
 	// Search finds books by the words of their text; Index looks after the
@@ -109,6 +113,8 @@ type Server struct {
 	// Resources checks the machine's memory and disk against what
 	// Postgres, the app and the embedding model are set to take.
 	Resources *resources.Service
+	// Updates is what is known of the latest release.
+	Updates *updates.Service
 	// Checks gathers how each part of GOtome is doing, for administrators.
 	Checks *syscheck.Collector
 	// Releases follows authors and series for their new books.

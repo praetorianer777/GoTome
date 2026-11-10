@@ -88,7 +88,7 @@ export function EmbeddingPanel() {
 					>
 						{t(s.enabled ? "embedding.pause" : "embedding.start")}
 					</button>
-					<Link to="/admin/settings" hash="embedding-model" className="text-sm underline">
+					<Link to="/admin/settings" hash="embedding-model" className="inline-flex min-h-6 items-center text-sm underline">
 						{t("embedding.chooseModel")}
 					</Link>
 				</div>

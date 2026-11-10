@@ -17,9 +17,11 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 )
 
 // background is what the workers of serve work with.
@@ -37,6 +39,8 @@ type background struct {
 	events      *notify.Events
 	follows     *releases.Service
 	sync        *kosync.Service
+	updates     *updates.Service
+	imports     *readimport.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -58,6 +62,7 @@ func (b background) registrations() []registration {
 	return []registration{
 		worker(&enrich.MatchWorker{Service: b.matches}),
 		worker(&bulk.Worker{Service: b.changes}),
+		worker(&readimport.Worker{Service: b.imports}),
 		worker(&auth.SweepSessionsWorker{Service: b.accounts}),
 		worker(&ingest.ScanWorker{Service: b.scans}),
 		worker(&ingest.ScanAllWorker{Service: b.scans}),
@@ -67,6 +72,7 @@ func (b background) registrations() []registration {
 		worker(&search.RebuildIndexWorker{Index: b.searchIndex}),
 		worker(&fulltext.ApplyWorker{Service: b.textIndex}),
 		worker(&ingest.IndexFilesWorker{Service: b.scans}),
+		worker(&ingest.JoinWorker{Service: b.scans}),
 		worker(&dedupe.CheckWorker{Service: b.duplicates}),
 		worker(&dedupe.SignWorker{Service: b.duplicates}),
 		worker(&similar.EmbedWorker{Service: b.vectors}),
@@ -76,6 +82,7 @@ func (b background) registrations() []registration {
 		worker(&notify.FlushWorker{Events: b.events}),
 		worker(&releases.PollWorker{Service: b.follows}),
 		worker(&releases.FetchFeedsWorker{Service: b.follows}),
+		worker(&updates.CheckWorker{Service: b.updates}),
 		worker(&kosync.HashWorker{Service: b.sync}),
 		worker(&ingest.MeasureWorker{Service: b.scans}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
@@ -102,6 +109,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		releases.FeedsPeriodic(feedFetchInterval),
+		updates.Periodic(updateCheckInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		fulltext.Periodic(outboxInterval),

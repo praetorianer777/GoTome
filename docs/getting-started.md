@@ -78,6 +78,22 @@ are one audiobook. A folder per book, named after it, works best.
 GOtome reads EPUB, PDF, MOBI, AZW and AZW3, and audiobooks as M4B, M4A,
 MP3, FLAC, Ogg and Opus.
 
+The player keeps a queue for each person on the server, so it follows to
+another browser. "Play next" and "Add to queue" are on an audiobook's page,
+"Add to the queue" on a selection in a list, and "Queue the rest of this
+series" on a series' page. The next book starts when one ends, from the
+place it was left at; the queue is listed under the player, where books
+are moved or taken out.
+
+The sleep timer stops after 15 to 60 minutes or at the end of the chapter,
+fading the volume down over its last 15 seconds. "Keep listening for 15
+more minutes" extends it, also in the half minute after it stopped; on a
+phone whose browser allows it (not iOS), shaking it does the same. The
+player can also start a timer by itself when a book is played between two
+hours you choose, for a length you choose. The volume boost raises the
+volume up to twice through the browser's Web Audio, with a limiter against
+clipping. The night hours and the boost are this browser's own.
+
 ## 3. Start it
 
 ```bash
@@ -157,7 +173,11 @@ background, file by file, and the **Overview** page shows how far it is:
    the other's files to the trash, with everyone's reading and shelves
    carried over; in a library GOtome does not write to, it merges the
    other book in, files and all. **Keep both** and **Merge…** are there
-   too.
+   too. Two audiobooks of one title and author read by different
+   narrators are not copies: the page says "another narrator" and offers
+   **Link as other recordings**, after which each book's page lists the
+   other recordings with their narrators. The library's filter has a
+   Narrator field.
 5. **Books worked out for similar books**: the slowest part, a few
    seconds per book on a CPU. Pause it on the jobs page if the
    machine needs its CPU for other work.

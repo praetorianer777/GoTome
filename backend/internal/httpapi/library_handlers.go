@@ -15,12 +15,15 @@ import (
 
 // libraryResponse is a library as the API shows it.
 type libraryResponse struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	Mode       string    `json:"mode"`
-	Writable   bool      `json:"writable"`
-	Visibility string    `json:"visibility"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Mode     string    `json:"mode"`
+	Writable bool      `json:"writable"`
+	// JoinFormats: books of an ebook and its audiobook with the same title
+	// and author are made one by themselves, as a person's merge would.
+	JoinFormats bool      `json:"joinFormats"`
+	Visibility  string    `json:"visibility"`
+	CreatedAt   time.Time `json:"createdAt"`
 	// RootPath and OwnerID are for those who manage storage. Where the files
 	// lie on the server is nothing a reader needs to be told.
 	RootPath *string    `json:"rootPath,omitempty"`
@@ -89,13 +92,16 @@ type updateLibraryRequest struct {
 	Name       *string `json:"name,omitempty"`
 	Visibility *string `json:"visibility,omitempty"`
 	Writable   *bool   `json:"writable,omitempty"`
+	// JoinFormats, on, makes one book of an ebook and its audiobook of the
+	// same title and author in this library, by itself.
+	JoinFormats *bool `json:"joinFormats,omitempty"`
 }
 
 func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID], UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
+		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
@@ -227,7 +233,7 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable})
+	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats})
 	if err != nil {
 		return libraryError(err)
 	}
@@ -238,6 +244,12 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	user := UserFrom(r.Context())
+	// Pairs found before the option was turned on are joined by the checks.
+	if req.JoinFormats != nil && *req.JoinFormats {
+		if _, err := s.Duplicates.Request(r.Context(), library.ScopeOf(*user), &id); err != nil {
+			return err
+		}
+	}
 	scans, err := s.scanState(r, library.ScopeOf(*user))
 	if err != nil {
 		return err

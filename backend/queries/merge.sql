@@ -112,6 +112,16 @@ INSERT INTO deliveries (device_id, book_id, queued_at, delivered_at)
 SELECT device_id, sqlc.arg(into_book), queued_at, delivered_at FROM moved
 ON CONFLICT DO NOTHING;
 
+-- name: MergePlayQueue :exec
+-- The book's places in people's queues; where a queue has both, the
+-- surviving book's.
+WITH moved AS (
+    DELETE FROM play_queue x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING user_id, position)
+INSERT INTO play_queue (user_id, book_id, position)
+SELECT user_id, sqlc.arg(into_book), position FROM moved
+ON CONFLICT DO NOTHING;
+
 -- name: MergeRelations :exec
 -- The book's links to its other editions and translations; one to the
 -- surviving book itself goes.
@@ -205,3 +215,16 @@ WHERE book_a = least(sqlc.arg(into_book)::uuid, sqlc.arg(from_book)::uuid)
 INSERT INTO book_relations (book_a, book_b, kind)
 VALUES (least(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), greatest(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), sqlc.arg(kind))
 ON CONFLICT (book_a, book_b) DO UPDATE SET kind = EXCLUDED.kind;
+
+-- name: ListBookRecordings :many
+-- The book's other recordings the viewer sees, with their narrators.
+SELECT o.id, o.title,
+       coalesce((SELECT array_agg(au.name ORDER BY c.position, au.sort_name) FROM book_contributors c
+                 JOIN authors au ON au.id = c.author_id
+                 WHERE c.book_id = o.id AND c.role = 'narrator'), '{}')::text[] AS narrators
+FROM book_relations r
+JOIN books o ON o.id = CASE WHEN r.book_a = sqlc.arg(book_id) THEN r.book_b ELSE r.book_a END
+WHERE sqlc.arg(book_id) IN (r.book_a, r.book_b) AND r.kind = 'recording'
+  AND o.deleted_at IS NULL
+  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY o.title, o.id;

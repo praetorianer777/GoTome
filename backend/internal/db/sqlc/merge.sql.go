@@ -150,6 +150,52 @@ func (q *Queries) ForwardMergedBooks(ctx context.Context, arg ForwardMergedBooks
 	return err
 }
 
+const listBookRecordings = `-- name: ListBookRecordings :many
+SELECT o.id, o.title,
+       coalesce((SELECT array_agg(au.name ORDER BY c.position, au.sort_name) FROM book_contributors c
+                 JOIN authors au ON au.id = c.author_id
+                 WHERE c.book_id = o.id AND c.role = 'narrator'), '{}')::text[] AS narrators
+FROM book_relations r
+JOIN books o ON o.id = CASE WHEN r.book_a = $1 THEN r.book_b ELSE r.book_a END
+WHERE $1 IN (r.book_a, r.book_b) AND r.kind = 'recording'
+  AND o.deleted_at IS NULL
+  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+ORDER BY o.title, o.id
+`
+
+type ListBookRecordingsParams struct {
+	BookID  uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type ListBookRecordingsRow struct {
+	ID        uuid.UUID
+	Title     string
+	Narrators []string
+}
+
+// The book's other recordings the viewer sees, with their narrators.
+func (q *Queries) ListBookRecordings(ctx context.Context, arg ListBookRecordingsParams) ([]ListBookRecordingsRow, error) {
+	rows, err := q.db.Query(ctx, listBookRecordings, arg.BookID, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookRecordingsRow{}
+	for rows.Next() {
+		var i ListBookRecordingsRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Narrators); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLiveBookFiles = `-- name: ListLiveBookFiles :many
 SELECT id FROM book_files
 WHERE book_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
@@ -305,6 +351,27 @@ type MergeDeliveriesParams struct {
 // book's.
 func (q *Queries) MergeDeliveries(ctx context.Context, arg MergeDeliveriesParams) error {
 	_, err := q.db.Exec(ctx, mergeDeliveries, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const mergePlayQueue = `-- name: MergePlayQueue :exec
+WITH moved AS (
+    DELETE FROM play_queue x WHERE x.book_id = $2
+    RETURNING user_id, position)
+INSERT INTO play_queue (user_id, book_id, position)
+SELECT user_id, $1, position FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type MergePlayQueueParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's places in people's queues; where a queue has both, the
+// surviving book's.
+func (q *Queries) MergePlayQueue(ctx context.Context, arg MergePlayQueueParams) error {
+	_, err := q.db.Exec(ctx, mergePlayQueue, arg.IntoBook, arg.FromBook)
 	return err
 }
 

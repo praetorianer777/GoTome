@@ -6,6 +6,8 @@ import type { BookSummary } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { filterTree } from "@/books/filters";
 import { MediumBadge } from "@/books/medium";
+import { RecommendationCard } from "@/books/recommendation-card";
+import { recommendationsQuery } from "@/books/recommendations";
 import { type ProgressState, progressQuery } from "@/books/progress";
 import { Icon } from "@/components/shell";
 import { card } from "@/components/ui";
@@ -14,6 +16,7 @@ import { usePlayer } from "@/player/player";
 
 const CONTINUE_MAX = 3;
 const NEWEST_MAX = 12;
+const FOR_YOU_MAX = 12;
 const FOLD_KEY = "gotome.strip.folded";
 
 function storedFold(): boolean | undefined {
@@ -80,6 +83,7 @@ function lastRead(p?: ProgressState): number {
 export function LibraryStrip({ library }: { library?: string }) {
 	const reading = useQuery(readingQuery(library));
 	const newest = useQuery(newestQuery(library));
+	const recommended = useQuery(recommendationsQuery(FOR_YOU_MAX));
 	const progresses = useQueries({
 		queries: (reading.data ?? []).map((b) => progressQuery(b.id)),
 	});
@@ -90,7 +94,10 @@ export function LibraryStrip({ library }: { library?: string }) {
 		.sort((a, b) => lastRead(b.progress) - lastRead(a.progress))
 		.slice(0, CONTINUE_MAX);
 	const fresh = newest.data ?? [];
-	if (going.length === 0 && fresh.length === 0) return null;
+	const forYou = (recommended.data?.books ?? []).filter(
+		(r) => !library || r.book.libraryId === library,
+	);
+	if (going.length === 0 && fresh.length === 0 && forYou.length === 0) return null;
 
 	const toggle = () => {
 		setFolded(!folded);
@@ -111,7 +118,7 @@ export function LibraryStrip({ library }: { library?: string }) {
 				aria-expanded={!folded}
 				aria-controls="library-strip"
 				onClick={toggle}
-				className="flex items-center gap-2 rounded-lg text-left text-sm font-medium"
+				className="flex min-h-6 items-center gap-2 rounded-lg text-left text-sm font-medium"
 			>
 				<Icon
 					name="chevron"
@@ -129,6 +136,28 @@ export function LibraryStrip({ library }: { library?: string }) {
 							{going.map(({ book, progress }) => (
 								<li key={book.id}>
 									<Going book={book} progress={progress} />
+								</li>
+							))}
+						</ul>
+					</section>
+				)}
+				{forYou.length > 0 && (
+					<section aria-labelledby="strip-for-you" className="flex min-w-0 flex-col gap-2">
+						<div className="flex flex-wrap items-baseline justify-between gap-x-4">
+							<h2 id="strip-for-you" className="text-lg font-medium">
+								{t("strip.forYou")}
+							</h2>
+							<Link
+								to="/recommendations"
+								className="text-sm text-brand-strong underline underline-offset-4 dark:text-brand"
+							>
+								{t("strip.forYouMore")}
+							</Link>
+						</div>
+						<ul className="flex gap-3 overflow-x-auto pb-2">
+							{forYou.map((rec) => (
+								<li key={rec.book.id} className="w-28 shrink-0">
+									<RecommendationCard rec={rec} />
 								</li>
 							))}
 						</ul>

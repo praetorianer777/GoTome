@@ -360,6 +360,57 @@ func (q *Queries) ListLibraryBookIDs(ctx context.Context, arg ListLibraryBookIDs
 	return items, nil
 }
 
+const listRecordingPairs = `-- name: ListRecordingPairs :many
+SELECT p.id AS pair_id, na.names::text[] AS narrators_a, nb.names::text[] AS narrators_b
+FROM duplicate_pairs p
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_a AND c.role = 'narrator') na
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_b AND c.role = 'narrator') nb
+WHERE p.id = ANY($1::uuid[])
+  AND na.names IS NOT NULL AND nb.names IS NOT NULL
+  AND (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_a AND c.role = 'narrator')
+      IS DISTINCT FROM
+      (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_b AND c.role = 'narrator')
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_a AND f.kind = 'audio' AND f.trashed_at IS NULL)
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_b AND f.kind = 'audio' AND f.trashed_at IS NULL)
+`
+
+type ListRecordingPairsRow struct {
+	PairID     uuid.UUID
+	NarratorsA []string
+	NarratorsB []string
+}
+
+// Of the pairs, those whose books are both audiobooks with narrators that
+// differ: the same book read by someone else, not a copy. The narrators of
+// each book are named as the pair's first and second book.
+func (q *Queries) ListRecordingPairs(ctx context.Context, pairIds []uuid.UUID) ([]ListRecordingPairsRow, error) {
+	rows, err := q.db.Query(ctx, listRecordingPairs, pairIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecordingPairsRow{}
+	for rows.Next() {
+		var i ListRecordingPairsRow
+		if err := rows.Scan(&i.PairID, &i.NarratorsA, &i.NarratorsB); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSignatureCompanions = `-- name: ListSignatureCompanions :many
 SELECT DISTINCT s.file_id, b.id AS book_id, s.shingles, s.signature
 FROM file_lsh me

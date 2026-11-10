@@ -75,7 +75,7 @@ func (s *Server) serveCover(w http.ResponseWriter, r *http.Request, id uuid.UUID
 
 type listBooksQuery struct {
 	Library      string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
+	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
 	Sort         string `query:"sort" enum:"title,author,added,series" doc:"What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series."`
 	Order        string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor       string `query:"cursor" doc:"The nextCursor of the page before."`
@@ -226,6 +226,36 @@ type bookDetail struct {
 	// Placeholder is a book wished for that the library does not hold yet;
 	// the first file imported that is this book fulfils it.
 	Placeholder bool `json:"placeholder"`
+	// Recordings are other recordings of this audiobook the caller sees,
+	// read by other narrators.
+	Recordings []bookRecording `json:"recordings"`
+	// Forms are this book in another form, linked by a person: an ebook and
+	// its audiobook that are in different libraries and so not one book.
+	Forms []bookForm `json:"forms"`
+	// Joins are books the library made one with this by itself, an ebook
+	// and its audiobook; POST /joins/{id}/undo splits one off again.
+	Joins []bookJoin `json:"joins"`
+}
+
+type bookForm struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+	// Kinds are the kinds of file the book holds: ebook, audio.
+	Kinds []string `json:"kinds"`
+}
+
+type bookJoin struct {
+	ID uuid.UUID `json:"id"`
+	// Title is the title of the book that was made one with this.
+	Title    string    `json:"title"`
+	JoinedAt time.Time `json:"joinedAt"`
+}
+
+// bookRecording is another recording of a book.
+type bookRecording struct {
+	ID        uuid.UUID `json:"id"`
+	Title     string    `json:"title"`
+	Narrators []string  `json:"narrators"`
 }
 
 // fieldState is where a field's value came from and whether automatic
@@ -447,11 +477,21 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
+		Recordings: []bookRecording{}, Forms: []bookForm{}, Joins: []bookJoin{},
 	}
 	for _, c := range b.Contributors {
 		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Key: catalog.PersonKey(c.Name), Role: c.Role})
 	}
 	out.Tags = append(out.Tags, b.Tags...)
+	for _, f := range b.Forms {
+		out.Forms = append(out.Forms, bookForm{ID: f.ID, Title: f.Title, Kinds: append([]string{}, f.Kinds...)})
+	}
+	for _, j := range b.Joins {
+		out.Joins = append(out.Joins, bookJoin{ID: j.ID, Title: j.Title, JoinedAt: j.CreatedAt})
+	}
+	for _, r := range b.Recordings {
+		out.Recordings = append(out.Recordings, bookRecording{ID: r.ID, Title: r.Title, Narrators: append([]string{}, r.Narrators...)})
+	}
 	// The same ISBN in two files is one identifier to whoever reads it.
 	seen := map[identifier]int{}
 	for _, ident := range b.Identifiers {

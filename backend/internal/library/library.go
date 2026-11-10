@@ -80,6 +80,9 @@ type Library struct {
 	// can.
 	UnwritableSince  *time.Time `json:"unwritableSince,omitempty"`
 	UnwritableReason string     `json:"unwritableReason,omitempty"`
+	// JoinFormats makes one book of an ebook and its audiobook, found by
+	// title and author, by itself.
+	JoinFormats bool `json:"joinFormats"`
 }
 
 // Member is somebody who may see a private library.
@@ -109,6 +112,8 @@ type Changes struct {
 	Name       *string
 	Visibility *string
 	Writable   *bool
+	// JoinFormats turns the automatic joining of an ebook and its audiobook on or off.
+	JoinFormats *bool
 }
 
 // Service manages libraries.
@@ -259,7 +264,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 		}
 	}
 
-	row, err := q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable})
+	row, err := q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Library{}, ErrNotFound
 	}
@@ -435,7 +440,7 @@ func fromRow(row sqlc.Library) Library {
 	return Library{
 		ID: row.ID, Name: row.Name, RootPath: row.RootPath, Mode: row.Mode,
 		Writable: row.Writable, Visibility: row.Visibility, OwnerID: row.OwnerID, CreatedAt: row.CreatedAt,
-		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason),
+		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats,
 	}
 }
 

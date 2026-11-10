@@ -17,7 +17,7 @@ export function CollectionPicker({ bookId }: { bookId: string }) {
 	const busy = add.isPending || remove.isPending;
 	return (
 		<details className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
-			<summary className="cursor-pointer">
+			<summary className="min-h-6 cursor-pointer">
 				{t("collections.ofBook", {
 					count: mine.filter((c) => c.hasBook).length,
 				})}
@@ -49,7 +49,7 @@ export function CollectionPicker({ bookId }: { bookId: string }) {
 				</ul>
 				<Link
 					to="/collections"
-					className="self-start text-brand-strong hover:underline dark:text-brand"
+					className="inline-flex min-h-6 items-center self-start text-brand-strong hover:underline dark:text-brand"
 				>
 					{t("collections.manage")}
 				</Link>

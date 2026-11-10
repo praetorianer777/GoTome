@@ -566,6 +566,65 @@ describe("signed in", () => {
 		).toBeInTheDocument();
 	});
 
+	it("tells an administrator in the footer that a newer release is out, and nobody else", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = {
+			current: "0.5.0",
+			enabled: true,
+			latest: "0.6.0",
+			url: "https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+			security: true,
+			available: true,
+		};
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/");
+		const link = await screen.findByRole("link", {
+			name: "v0.6.0 available, with security fixes",
+		});
+		expect(link).toHaveAttribute(
+			"href",
+			"https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+		);
+	});
+
+	it("asks a reader nothing about releases", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = { ...server.update, latest: "0.6.0", available: true };
+		server.withAccount("Rae", "a long password", "reader").signedInAs("Rae");
+		renderApp("/");
+		await screen.findByRole("link", { name: "GOtome v0.5.0" });
+		expect(screen.queryByText(/available/)).not.toBeInTheDocument();
+		expect(server.requests.some((r) => r.path === "/system/update")).toBe(
+			false,
+		);
+	});
+
+	it("shows the running and the latest version on the machine panel, with the way to upgrade", async () => {
+		vi.stubGlobal("EventSource", undefined);
+		server.update = {
+			current: "0.5.0",
+			enabled: true,
+			latest: "0.6.0",
+			publishedAt: "2026-11-01T10:00:00Z",
+			checkedAt: "2026-11-09T09:00:00Z",
+			url: "https://github.com/praetorianer777/GoTome/releases/tag/v0.6.0",
+			security: false,
+			available: true,
+		};
+		server.withAccount("Ada", "a long password", "admin").signedInAs("Ada");
+		renderApp("/overview");
+		const panel = within(
+			await screen.findByRole("region", { name: "This machine" }),
+		);
+		expect(await panel.findByText("0.6.0 is out")).toBeInTheDocument();
+		expect(panel.getByText(/Running: 0.5.0/)).toBeInTheDocument();
+		expect(panel.getByText(/Checked/)).toBeInTheDocument();
+		expect(panel.getByRole("link", { name: "How to upgrade" })).toHaveAttribute(
+			"href",
+			"https://github.com/praetorianer777/GoTome/blob/main/docs/backup-and-upgrade.md",
+		);
+	});
+
 	it("says a build that is not a release is one, with its commit", async () => {
 		server.build = { version: "dev", commit: "abcdef0123456" };
 		renderApp("/");
@@ -733,7 +792,9 @@ describe("libraries", () => {
 			await screen.findByRole("listitem", { name: "Novels" }),
 		);
 		// Only a folder GOtome does not manage can be read-only.
-		expect(novels.queryByRole("checkbox")).not.toBeInTheDocument();
+		expect(
+			novels.queryByRole("checkbox", { name: "GOtome may change files here" }),
+		).not.toBeInTheDocument();
 		await person.clear(novels.getByLabelText("Name"));
 		await person.type(novels.getByLabelText("Name"), "Fiction");
 		await person.click(novels.getByRole("button", { name: "Rename" }));
@@ -3629,6 +3690,302 @@ describe("the audiobook player", () => {
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
+	function withSecondAudiobook() {
+		server.withBook("Persuasion", {
+			files: [
+				{
+					id: "file-c",
+					kind: "audio",
+					format: "mp3",
+					name: "Persuasion.mp3",
+					size: 1_000_000,
+					missing: false,
+					drm: false,
+					extractState: "done",
+				},
+			],
+		});
+		server.audio["book-2"] = {
+			durationMs: 40_000,
+			complete: true,
+			parts: [
+				{
+					fileId: "file-c",
+					format: "mp3",
+					mediaType: "audio/mpeg",
+					name: "Persuasion.mp3",
+					startMs: 0,
+					durationMs: 40_000,
+				},
+			],
+			chapters: [
+				{ title: "Chapter 1", fileId: "file-c", startMs: 0, endMs: 40_000 },
+			],
+		};
+	}
+
+	it("queues a book from its page, and takes it out again", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		renderApp("/books/book-2");
+		await person.click(await screen.findByRole("button", { name: "Add to queue" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+		await person.click(
+			await screen.findByRole("button", { name: "Take out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual([]));
+		await person.click(await screen.findByRole("button", { name: "Play next" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-2"]));
+	});
+
+	it("lists what is up next, in an order the person changes", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.withBook("Sense", { files: [...server.books[1]!.files] });
+		server.audio["book-3"] = server.audio["book-2"]!;
+		server.queue = ["book-2", "book-3"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const list = within(await screen.findByRole("region", { name: "Up next" }));
+		await person.click(list.getByRole("button", { name: "Move Sense up" }));
+		await waitFor(() => expect(server.queue).toEqual(["book-3", "book-2"]));
+		await person.click(
+			await list.findByRole("button", { name: "Take Persuasion out of the queue" }),
+		);
+		await waitFor(() => expect(server.queue).toEqual(["book-3"]));
+		await person.click(list.getByRole("button", { name: "Clear the queue" }));
+		await waitFor(() => expect(server.queue).toEqual([]));
+		expect(screen.queryByRole("region", { name: "Up next" })).not.toBeInTheDocument();
+	});
+
+	it("plays the next book in the queue when one ends, from where it was left", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		server.progress["book-2"] = {
+			audio: {
+				fileId: "file-c",
+				locator: "20000",
+				fraction: 0.5,
+				positionMs: 20_000,
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+
+		fireEvent.ended(audio());
+
+		await waitFor(() => expect(audio().getAttribute("src")).toContain("/files/file-c/"));
+		// The finished book's end was saved before the next began.
+		expect(saves().at(-1)).toMatchObject({ fileId: "file-b", positionMs: 110_000 });
+		expect(server.queue).toEqual([]);
+		const bar = within(await screen.findByRole("region", { name: "Now playing" }));
+		expect(bar.getByRole("link", { name: "Persuasion" })).toBeInTheDocument();
+		expect(bar.getByText("Chapter 1 · 0:20")).toBeInTheDocument();
+		expect(bar.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+	});
+
+	it("stops at the end of the chapter instead of going on to the queue", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		withSecondAudiobook();
+		server.queue = ["book-2"];
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: /^Volume III/ }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Sleep timer" }),
+			"At the end of the chapter",
+		);
+		fireEvent.ended(audio());
+		await waitFor(() =>
+			expect(screen.getByRole("combobox", { name: "Sleep timer" })).toHaveValue("off"),
+		);
+		expect(audio().getAttribute("src")).toContain("/files/file-b/");
+		expect(server.queue).toEqual(["book-2"]);
+	});
+
+	/** Puts the audio element at a time of its part and lets the player see it. */
+	function playedTo(seconds: number) {
+		Object.defineProperty(audio(), "currentTime", {
+			value: seconds,
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.timeUpdate(audio());
+	}
+
+	it("fades out and stops at the end of the chapter, and keeps going when asked for more", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: "Play" }));
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		await person.selectOptions(sleep, "At the end of the chapter");
+		expect(screen.getByRole("button", { name: "Keep listening for 15 more minutes" })).toBeInTheDocument();
+
+		playedTo(10);
+		expect(audio().volume).toBe(1);
+		playedTo(22.5);
+		expect(audio().volume).toBeCloseTo(0.5, 1);
+		await person.click(screen.getByRole("button", { name: "Keep listening for 15 more minutes" }));
+		// One chapter on: Volume II ends at 60 s, the volume is back.
+		expect(audio().volume).toBe(1);
+		playedTo(31);
+		expect(audio().volume).toBe(1);
+		expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+
+		playedTo(59.9);
+		expect(audio().volume).toBeLessThan(0.05);
+		playedTo(60.2);
+		expect(await screen.findByRole("button", { name: "Play" })).toBeInTheDocument();
+		expect(sleep).toHaveValue("off");
+		expect(audio().volume).toBe(1);
+
+		// Just after it stopped, one more press starts it again.
+		await person.click(screen.getByRole("button", { name: "Keep listening for 15 more minutes" }));
+		expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
+		expect(sleep).toHaveValue("until");
+	});
+
+	it("starts a sleep timer by itself in the hours the person chose", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(screen.getByRole("checkbox", { name: "Start a sleep timer by itself at night" }));
+		// The same hour twice is all day.
+		fireEvent.change(screen.getByLabelText("From"), { target: { value: "08:00" } });
+		fireEvent.change(screen.getByLabelText("Until"), { target: { value: "08:00" } });
+		await person.selectOptions(screen.getByRole("combobox", { name: "Timer length" }), "In 45 minutes");
+		expect(JSON.parse(localStorage.getItem("gotome.player.night") ?? "{}")).toMatchObject({
+			enabled: true,
+			minutes: 45,
+		});
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		expect(sleep).toHaveValue("off");
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+		expect(screen.getByRole("option", { name: /^At \d/ })).toBeInTheDocument();
+	});
+
+	it("keeps off, when the person said off, until the night hours are over", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		localStorage.setItem(
+			"gotome.player.night",
+			JSON.stringify({ enabled: true, from: "08:00", to: "08:00", minutes: 30 }),
+		);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const sleep = screen.getByRole("combobox", { name: "Sleep timer" });
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+		await person.selectOptions(sleep, "Off");
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		expect(sleep).toHaveValue("off");
+		// The next night: the saved end has passed.
+		localStorage.setItem("gotome.player.nightQuiet", String(Date.now() - 1000));
+		await person.click(screen.getByRole("button", { name: "Pause" }));
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await waitFor(() => expect(sleep).toHaveValue("until"));
+	});
+
+	it("does not start a timer outside the chosen hours", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		const hour = new Date().getHours();
+		const clock = (h: number) => `${String((h + 24) % 24).padStart(2, "0")}:00`;
+		localStorage.setItem(
+			"gotome.player.night",
+			JSON.stringify({ enabled: true, from: clock(hour + 2), to: clock(hour + 3), minutes: 30 }),
+		);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await person.click(await screen.findByRole("button", { name: "Play" }));
+		expect(screen.getByRole("combobox", { name: "Sleep timer" })).toHaveValue("off");
+	});
+
+	it("boosts the volume through a gain node and a limiter, and remembers it", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		const made: { gain: { gain: { value: number } }; limiter: { threshold: { value: number } } }[] = [];
+		class FakeContext {
+			destination = {};
+			resume = async () => {};
+			createMediaElementSource = () => ({ connect: () => {} });
+			createGain() {
+				const gain = { gain: { value: 1 }, connect: () => {} };
+				made.push({ gain, limiter: { threshold: { value: 0 } } });
+				return gain;
+			}
+			createDynamicsCompressor() {
+				const limiter = {
+					threshold: { value: 0 },
+					knee: { value: 0 },
+					ratio: { value: 0 },
+					attack: { value: 0 },
+					release: { value: 0 },
+					connect: () => {},
+				};
+				made.at(-1)!.limiter = limiter;
+				return limiter;
+			}
+		}
+		vi.stubGlobal("AudioContext", FakeContext);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		const boost = await screen.findByRole("combobox", { name: "Volume boost" });
+		expect(boost).toHaveValue("1");
+		await person.selectOptions(boost, "1.5×");
+		expect(made).toHaveLength(1);
+		expect(made[0]?.gain.gain.value).toBe(1.5);
+		expect(made[0]?.limiter.threshold.value).toBeLessThan(0);
+		expect(localStorage.getItem("gotome.player.boost")).toBe("1.5");
+		// The fade of a sleep timer goes down from the boosted volume.
+		await person.click(screen.getByRole("button", { name: "Play" }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Sleep timer" }),
+			"At the end of the chapter",
+		);
+		playedTo(22.5);
+		expect(made[0]?.gain.gain.value).toBeCloseTo(0.75, 1);
+		expect(audio().volume).toBe(1);
+		await person.selectOptions(boost, "Off");
+		expect(made).toHaveLength(1);
+		expect(made[0]?.gain.gain.value).toBeCloseTo(0.5, 1);
+	});
+
+	it("offers no boost in a browser without Web Audio", async () => {
+		const person = userEvent.setup();
+		playable("maybe");
+		withAudiobook("mp3");
+		vi.stubGlobal("AudioContext", undefined);
+		renderApp("/books/book-1/listen");
+		await person.click(await screen.findByRole("button", { name: "Listen" }));
+		await screen.findByRole("combobox", { name: "Sleep timer" });
+		expect(screen.queryByRole("combobox", { name: "Volume boost" })).not.toBeInTheDocument();
+	});
+
 	it("says which formats this browser cannot play, and offers the files", async () => {
 		const person = userEvent.setup();
 		playable("");
@@ -3716,7 +4073,9 @@ describe("reading statistics", () => {
 
 		await person.click(screen.getByRole("button", { name: "7 days" }));
 		await waitFor(() =>
-			expect(server.requests.at(-1)?.path).toMatch(/^\/me\/stats\?days=7&tz=/),
+			expect(server.requests.filter((r) => r.path.startsWith("/me/stats")).at(-1)?.path).toMatch(
+				/^\/me\/stats\?days=7&tz=/,
+			),
 		);
 	});
 });
@@ -3769,7 +4128,7 @@ describe("the wishlist", () => {
 		expect(
 			server.requests.find((r) => r.path === "/books/wishes")?.body,
 		).toMatchObject({
-			library: "lib-1",
+			status: "wishlist",
 			provider: "openlibrary",
 			title: "Emma",
 			publisher: "John Murray",
@@ -3802,6 +4161,202 @@ describe("the wishlist", () => {
 		expect(
 			await screen.findByRole("combobox", { name: "Your status" }),
 		).toHaveDisplayValue("Want to read");
+	});
+});
+
+describe("reading history", () => {
+	it("adds a book the library lacks as read, with stars and the day it was finished", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.candidates.search = {
+			candidates: [
+				{
+					provider: "openlibrary",
+					id: "OL1",
+					score: 0.9,
+					title: "Emma",
+					contributors: [{ name: "Jane Austen", role: "author" }],
+					tags: [],
+					identifiers: [],
+				},
+			],
+			failures: [],
+		};
+		renderApp("/wishlist");
+		await person.type(await screen.findByRole("textbox", { name: "Title" }), "Emma");
+		await person.click(screen.getByRole("button", { name: "Look it up" }));
+		await person.click(await screen.findByRole("button", { name: "Add Emma as read" }));
+		await person.selectOptions(screen.getByRole("combobox", { name: "Your rating" }), "4");
+		fireEvent.change(screen.getByLabelText("Finished on"), { target: { value: "2017-05-06" } });
+		await person.click(screen.getByRole("button", { name: "Add to my reading" }));
+
+		expect(await screen.findByRole("combobox", { name: "Your status" })).toHaveDisplayValue("Completed");
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toMatchObject({
+			status: "completed",
+			rating: 4,
+			finishedOn: "2017-05-06",
+			title: "Emma",
+		});
+	});
+
+	it("lists what the person read, owned or not, and narrows it by year and a search", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Dune", { reading: { status: "completed", rating: 5, finishedOn: "2021-03-14" } })
+			.withBook("Foundation", {
+				placeholder: true,
+				reading: { status: "completed", rating: 4, finishedOn: "2019-07-02" },
+			});
+		renderApp("/stats");
+		const history = within(await screen.findByRole("region", { name: "Everything you read" }));
+		expect(await history.findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
+		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		expect(history.getByText(/Not in the library/)).toBeInTheDocument();
+
+		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "2019");
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Dune/ })).not.toBeInTheDocument());
+		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "");
+		await person.type(history.getByRole("searchbox", { name: "Title or author" }), "dune");
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Foundation/ })).not.toBeInTheDocument());
+	});
+
+	it("keeps a private note on a book", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Dune");
+		renderApp("/books/book-1");
+		await person.type(await screen.findByRole("textbox", { name: "Private note" }), "Spice.");
+		await person.click(screen.getByRole("button", { name: "Save note" }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/books/book-1/note")?.body).toEqual({ note: "Spice." }),
+		);
+	});
+});
+
+describe("importing a reading history", () => {
+	const preview = {
+		id: "imp-1",
+		source: "goodreads",
+		state: "preview",
+		library: "lib-1",
+		overwrite: false,
+		total: 6,
+		matched: 1,
+		new: 3,
+		ambiguous: 1,
+		skipped: 1,
+		roundedRatings: 2,
+		ambiguities: [
+			{
+				row: 3,
+				title: "Emma",
+				authors: ["Jane Austen"],
+				candidates: [
+					{ id: "b-1", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+					{ id: "b-2", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+				],
+				skip: false,
+			},
+		],
+		skippedRows: [{ row: 6, title: "Odd One", message: "The row's shelf is none GOtome knows." }],
+		outcomes: {},
+	} as const;
+
+	it("previews an export, takes a choice for the ambiguous row, and imports", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.importPreview = structuredClone(preview) as unknown as typeof server.importPreview;
+		renderApp("/profile");
+		const section = within(await screen.findByRole("region", { name: "Import reading history" }));
+		await person.upload(
+			section.getByLabelText("Export file (CSV)"),
+			new File(["Title,Exclusive Shelf\n"], "goodreads.csv", { type: "text/csv" }),
+		);
+		await person.click(section.getByRole("button", { name: "Preview" }));
+
+		expect(await section.findByText("Goodreads export")).toBeInTheDocument();
+		expect(section.getByText("1 books already in your libraries")).toBeInTheDocument();
+		expect(section.getByText("3 books it does not hold, to be added as books you read")).toBeInTheDocument();
+		expect(section.getByText("2 ratings were in fractions of a star and are rounded to whole stars.")).toBeInTheDocument();
+		expect(section.getByText(/Row 6: Odd One/)).toBeInTheDocument();
+
+		const which = within(section.getByRole("group", { name: "Which book is Emma?" }));
+		await person.click(which.getAllByRole("radio")[1] as HTMLElement);
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/me/reading-imports/imp-1/rows/3")?.body).toEqual({
+				book: "b-2",
+			}),
+		);
+		await person.click(section.getByRole("button", { name: "Import" }));
+		expect(await section.findByText("Done.")).toBeInTheDocument();
+		expect(section.getByText("3 books added")).toBeInTheDocument();
+	});
+});
+
+describe("recommendations", () => {
+	function recommended() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma")
+			.withBook("Mort");
+		const summary = (id: string, title: string) => ({
+			id,
+			libraryId: "lib-1",
+			title,
+			authors: [],
+			authorKeys: [],
+			formats: [],
+			addedAt: "2026-01-01T00:00:00Z",
+			status: "unread" as const,
+			placeholder: false,
+			filesMissing: false,
+		});
+		server.recommendations = {
+			hasProfile: true,
+			books: [
+				{ book: summary("book-1", "Emma"), because: [{ id: "x-1", title: "Persuasion" }, { id: "x-2", title: "Sanditon" }] },
+				{ book: summary("book-2", "Mort"), because: [{ id: "x-3", title: "Eric" }] },
+			],
+		};
+	}
+
+	it("shows a For you row in the strip with why, and a page with more", async () => {
+		const person = userEvent.setup();
+		localStorage.removeItem("gotome.strip.folded");
+		recommended();
+		const { router } = renderApp("/");
+		const row = within(await screen.findByRole("region", { name: "For you" }));
+		expect(row.getByRole("link", { name: /^Emma/ })).toBeInTheDocument();
+		expect(row.getByText("Because you liked Persuasion, Sanditon")).toBeInTheDocument();
+		await person.click(row.getByRole("link", { name: "More for you" }));
+		expect(router.state.location.pathname).toBe("/recommendations");
+		expect(await screen.findByRole("heading", { name: "For you", level: 1 })).toBeInTheDocument();
+		expect(screen.getByText("Because you liked Eric")).toBeInTheDocument();
+	});
+
+	it("leaves a book out for good when the person is not interested", async () => {
+		const person = userEvent.setup();
+		recommended();
+		renderApp("/recommendations");
+		await person.click(await screen.findByRole("button", { name: "Not interested in Emma" }));
+		await waitFor(() => expect(screen.queryByRole("link", { name: /^Emma/ })).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.path === "/me/recommendations/book-1/dismiss")).toBe(true);
+		expect(screen.getByRole("link", { name: /^Mort/ })).toBeInTheDocument();
+	});
+
+	it("says what it needs while there is no profile, and shows no row", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Emma");
+		renderApp("/recommendations");
+		expect(await screen.findByText(/Finish or rate at least three books/)).toBeInTheDocument();
 	});
 });
 
@@ -5419,6 +5974,72 @@ describe("replacing and keeping both", () => {
 			"href",
 			"/books/book-1",
 		);
+	});
+
+	it("calls two recordings by other narrators that, offers no merge and links them", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		server.pairs[0]!.narrators = [["Juliet Stevenson"], ["Karen Savage"]];
+		renderApp("/duplicates");
+		const pair = within(
+			await screen.findByRole("listitem", {
+				name: "Emma is read by Juliet Stevenson, Emma (scan) by Karen Savage: the same book, another narrator.",
+			}),
+		);
+		expect(pair.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
+		await person.click(pair.getByRole("button", { name: "Link as other recordings" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body,
+			).toEqual({ state: "kept_both", relation: "recording" }),
+		);
+	});
+
+	it("offers to link an ebook and its audiobook that no merge can join", async () => {
+		const person = userEvent.setup();
+		withEmmas();
+		server.pairs[0]!.formats = { ebookId: "book-1", sameLibrary: false };
+		renderApp("/duplicates");
+		const pair = within(
+			await screen.findByRole("listitem", {
+				name: "Emma and Emma (scan) are the ebook and the audiobook of one book, in different libraries.",
+			}),
+		);
+		await person.click(pair.getByRole("button", { name: "Link as ebook and audiobook" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/duplicates/pair-1/state")?.body,
+			).toEqual({ state: "kept_both", relation: "format" }),
+		);
+	});
+
+	it("splits a joined book again from its page", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", { joins: [{ id: "join-1", title: "Emma (audio)", joinedAt: "2026-01-02T00:00:00Z" }] });
+		renderApp("/books/book-1");
+		expect(await screen.findByText("Emma (audio) was made one with this book.")).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Split them again" }));
+		await waitFor(() =>
+			expect(server.requests.some((r) => r.path === "/joins/join-1/undo")).toBe(true),
+		);
+	});
+
+	it("lists the other recordings on a book's page with their narrators", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Audio")
+			.withBook("Emma", {
+				recordings: [{ id: "book-2", title: "Emma", narrators: ["Karen Savage"] }],
+			});
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Other recordings" }));
+		expect(section.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-2");
+		expect(section.getByText(/Read by Karen Savage/)).toBeInTheDocument();
 	});
 
 	it("says at the button why keeping one failed, and lets it be tried again", async () => {

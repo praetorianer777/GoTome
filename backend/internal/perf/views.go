@@ -53,6 +53,9 @@ var WholeByDesign = map[string]string{
 	// The exact cosine scan of #66 compares the book with every other one;
 	// at 50,000 books an approximate index is not worth what it costs.
 	"similar books": "compares with every book",
+	// Recommendations compare every book with each centre of the viewer's
+	// taste.
+	"recommendations": "compares with every book",
 	// So does a description, with the vectors of every visible book.
 	"search by description": "compares with every book",
 	// Each library's files are counted and their sizes added up.
@@ -119,6 +122,8 @@ func Views(p Params) []View {
 		View{Name: "smart shelf", Path: "/smart-shelves/" + p.Shelf + "/books"}.need(p.Shelf),
 		{Name: "collections", Path: "/collections"},
 		{Name: "reading statistics", Path: "/me/stats?days=30"},
+		{Name: "reading history", Path: "/me/reading"},
+		{Name: "recommendations", Path: "/me/recommendations"},
 		{Name: "new books", Path: "/releases"},
 		{Name: "items of followed feeds", Path: "/feeds/items"},
 		{Name: "genre review", Path: "/genres/suggestions"},

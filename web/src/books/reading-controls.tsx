@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import type { BookDetail } from "@/books/api";
+import { useSetNote } from "@/books/history";
 import { type ProgressState, progressQuery } from "@/books/progress";
 import {
 	MAX_RATING,
@@ -46,7 +48,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 						))}
 					</select>
 				</label>
-				<fieldset className="flex items-center gap-1">
+				<fieldset className="flex items-center gap-2">
 					<legend className="float-left mr-2">{t("reading.rating")}</legend>
 					{Array.from({ length: MAX_RATING }, (_, i) => i + 1).map((n) => (
 						<button
@@ -62,7 +64,7 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 							}
 							// The same star again takes the rating away.
 							onClick={() => set.mutate({ rating: rating === n ? 0 : n })}
-							className={`text-xl leading-none ${
+							className={`size-6 text-xl leading-none ${
 								rating && n <= rating
 									? "text-amber-600 dark:text-amber-400"
 									: "text-slate-500 dark:text-slate-400"
@@ -95,9 +97,43 @@ export function ReadingControls({ book }: { book: BookDetail }) {
 					/>
 				</label>
 			</div>
+			<Note book={book} />
 			{progress && <Where progress={progress} />}
 			<FormError error={set.error} />
 		</section>
+	);
+}
+
+/** The person's private note or review of the book. */
+function Note({ book }: { book: BookDetail }) {
+	const save = useSetNote(book.id);
+	const saved = book.reading.note ?? "";
+	const [typed, setTyped] = useState<string>();
+	const text = typed ?? saved;
+	return (
+		<div className="flex flex-col gap-2">
+			<label className="flex flex-col gap-1">
+				<span>{t("reading.note")}</span>
+				<textarea
+					value={text}
+					rows={3}
+					onChange={(e) => setTyped(e.target.value)}
+					className={`${control} w-full`}
+				/>
+			</label>
+			<div className="flex items-center gap-3">
+				<button
+					type="button"
+					disabled={save.isPending || text === saved}
+					onClick={() => save.mutate(text, { onSuccess: () => setTyped(undefined) })}
+					className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+				>
+					{t("reading.noteSave")}
+				</button>
+				<span className="text-slate-600 dark:text-slate-400">{t("reading.noteHint")}</span>
+			</div>
+			<FormError error={save.error} />
+		</div>
 	);
 }
 

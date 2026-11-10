@@ -192,6 +192,46 @@ loads, and what of it goes over the wire.
   that accepts it (`httpapi/compress.go`); files, covers, the OPDS feeds
   and the notification stream are sent as they are.
 
+## Budgets of the web app
+
+Measured in the lab, in the browser suite and the web gate: GOtome collects
+no field data, by design (#378). A budget is set above today's figure so that
+a loaded machine does not trip it, and is raised only on purpose, in the
+commit that needs it. The main chunk's went from 165 to 185 KiB for the
+player's queue, sleep timer and boost (#420, #421) and batch 2's texts in
+both languages; loading only the reader's language would take the other's
+out of it (#445).
+
+| What | Where | Today | Budget |
+| --- | --- | --- | --- |
+| Main chunk (`index`, raw) | `make check-web` (`web/scripts/budget.mjs`) | 166 KiB | 185 KiB |
+| First load, gzip (the entry, what it preloads, the stylesheet) | `make check-web` | 225 KiB | 245 KiB |
+| First load, brotli | `make check-web` | 191 KiB | 210 KiB |
+| Largest contentful paint | `e2e/tests/vitals.spec.ts` | 0.2 to 0.9 s | 2.5 s |
+| Cumulative layout shift | `vitals.spec.ts` | 0.00 to 0.07 | 0.1 |
+| Ticking a filter, opening a book, turning a page (the slowest event to the next frame) | `vitals.spec.ts` | 16 to 110 ms | 200 ms |
+
+- The views are the library, a book's page, the text search and the EPUB
+  reader. The phone project runs them with the CPU four times slower and a
+  network of 9 Mbit/s and 60 ms; the desktop project runs them as they are.
+  Only Chromium has the observers (`PerformanceObserver` for
+  `largest-contentful-paint`, `layout-shift` and `event`, no package) and can
+  be throttled, so the other two projects skip it.
+- Each load is measured three times and the median counts; each action three
+  times and the fastest counts. One slow measurement on a busy machine is
+  not a regression, three are.
+- A layout shift of an element that was gone before the browser reported it
+  is not counted: that is the book's own text moving inside the reader's
+  frame, which the app does not lay out. The library's 0.07 is the strip over
+  it appearing once its books arrive.
+- The first load is what `index.html` names, compressed the way
+  `compress.mjs` does, so the figure is the bytes a browser receives.
+- Alongside the budgets, `e2e/tests/layout.spec.ts` holds every main view to
+  the layout rules of `docs/design.md` (reflow at 320 pixels and 200 % zoom,
+  text spacing, targets, one primary button, visible focus), in all four
+  projects, and `web/src/design-lint.test.ts` the type scale and spacing in
+  the source.
+
 ## Memory
 
 - **The app.** When the container has a memory limit, `gotome serve` sets

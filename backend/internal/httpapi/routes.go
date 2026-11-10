@@ -11,6 +11,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -113,6 +114,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
 			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
 			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/update", ID: "getSystemUpdate",
+			Summary: "The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version", Tag: "system",
+			Response: updates.ReleaseStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemUpdate,
 		},
 		{
 			Method: http.MethodGet, Path: "/system/checks", ID: "getSystemChecks",
@@ -578,6 +584,11 @@ func (s *Server) routes() []Route {
 			Request: mergeRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.mergeBooks,
 		},
 		{
+			Method: http.MethodPost, Path: "/joins/{joinId}/undo", ID: "undoJoin",
+			Summary: "Split a book the library made of an ebook and its audiobook into the two again", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.undoJoin,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
 			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,
@@ -692,9 +703,61 @@ func (s *Server) routes() []Route {
 			Query: releasesQuery{}, Response: releaseList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReleases,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/queue", ID: "getPlayQueue",
+			Summary: "The audiobooks the caller has lined up to play one after another, of those they still see", Tag: "books",
+			Response: playQueue{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getPlayQueue,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/queue", ID: "setPlayQueue",
+			Summary: "Replace the caller's play queue; books they may not see are left out", Tag: "books",
+			Request: playQueue{}, Response: playQueue{}, Permission: auth.PersonalManage, Handler: s.putPlayQueue,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
 			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/note", ID: "setNote",
+			Summary: "Write the caller's private note or review of a book; an empty note removes it", Tag: "books",
+			Request: noteRequest{}, Permission: auth.PersonalManage, Handler: s.setNote,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/recommendations", ID: "listRecommendations",
+			Summary: "Unread books of the libraries the caller sees that are near what they liked, with why", Tag: "books",
+			Query: recommendationsQuery{}, Response: recommendationList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listRecommendations,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/recommendations/{bookId}/dismiss", ID: "dismissRecommendation",
+			Summary: "Say the caller is not interested in a book: it is left out of their recommendations", Tag: "books",
+			Permission: auth.PersonalManage, Handler: s.dismissRecommendation,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
+			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
+			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports", ID: "createReadingImport",
+			Summary: "Read a Goodreads or StoryGraph export and preview what importing it would do", Tag: "books",
+			Consumes: "multipart/form-data", Request: importForm{}, Response: readingImport{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading-imports/{importId}", ID: "getReadingImport",
+			Summary: "An import of a reading history: its preview, then what it came to", Tag: "books",
+			Response: readingImport{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getImport,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/reading-imports/{importId}/rows/{row}", ID: "chooseReadingImportRow",
+			Summary: "Pick the book an ambiguous row of an import is, or skip the row", Tag: "books",
+			Request: importChoice{}, Permission: auth.PersonalManage, Handler: s.chooseImportRow,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports/{importId}/start", ID: "startReadingImport",
+			Summary: "Write a previewed import; a job sets the books one at a time", Tag: "books",
+			Request: importStart{}, Response: readingImport{}, Status: http.StatusAccepted,
+			Permission: auth.PersonalManage, Handler: s.startImport,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
@@ -879,6 +942,15 @@ func (s *Server) getSystemChecks(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	writeJSON(w, r, http.StatusOK, s.Checks.Collect(r.Context()))
+	return nil
+}
+
+func (s *Server) getSystemUpdate(w http.ResponseWriter, r *http.Request) error {
+	status, err := s.Updates.Status(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, status)
 	return nil
 }
 

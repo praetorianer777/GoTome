@@ -24,8 +24,10 @@ const (
 	// FieldPerson is an author under every spelling of their name; a value
 	// compares as PersonKey does. It has no facet, so a list narrowed to one
 	// person still offers the author facet, with their co-authors.
-	FieldPerson    = "person"
-	FieldSeries    = "series"
+	FieldPerson = "person"
+	FieldSeries = "series"
+	// FieldNarrator is a narrator of an audiobook, by name as author is.
+	FieldNarrator  = "narrator"
 	FieldTag       = "tag"
 	FieldLanguage  = "language"
 	FieldPublished = "published"
@@ -111,6 +113,15 @@ var Filters = filter.Registry{
 		}},
 		OpEmpty: {SQL: func([]string, func(any) string) string {
 			return `NOT EXISTS (SELECT 1 FROM book_contributors c WHERE c.book_id = b.id AND c.role = '` + RoleAuthor + `')`
+		}},
+	},
+	FieldNarrator: {
+		OpIn: {Arity: -1, Value: nameKey, SQL: func(v []string, arg func(any) string) string {
+			return `EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
+				WHERE c.book_id = b.id AND c.role = '` + RoleNarrator + `' AND a.name_key = ANY(` + arg(v) + `::text[]))`
+		}},
+		OpEmpty: {SQL: func([]string, func(any) string) string {
+			return `NOT EXISTS (SELECT 1 FROM book_contributors c WHERE c.book_id = b.id AND c.role = '` + RoleNarrator + `')`
 		}},
 	},
 	FieldPerson: {
@@ -384,6 +395,15 @@ var facetQueries = []struct {
 SELECT a.name_key, a.name, count(*)
 FROM books b
 JOIN book_contributors c ON c.book_id = b.id AND c.role = '` + RoleAuthor + `'
+JOIN authors a ON a.id = c.author_id
+WHERE {where}
+GROUP BY a.name_key, a.name, a.sort_name
+ORDER BY a.name_key = ANY({picked}::text[]) DESC, 3 DESC, a.sort_name
+LIMIT {limit}`},
+	{FieldNarrator, `
+SELECT a.name_key, a.name, count(*)
+FROM books b
+JOIN book_contributors c ON c.book_id = b.id AND c.role = '` + RoleNarrator + `'
 JOIN authors a ON a.id = c.author_id
 WHERE {where}
 GROUP BY a.name_key, a.name, a.sort_name

@@ -242,6 +242,20 @@ function statement(pair: DuplicatePair): string {
 	const strongest = byScore(pair.evidence)[0];
 	if (!a || !b || !strongest) return "";
 	const names = { a: a.title, b: b.title };
+	const [na, nb] = pair.narrators ?? [];
+	if (na && nb) {
+		return t("duplicates.says.narrator", {
+			...names,
+			narratorsA: na.join(", "),
+			narratorsB: nb.join(", "),
+		});
+	}
+	if (pair.formats) {
+		return t(
+			pair.formats.sameLibrary ? "duplicates.says.formats" : "duplicates.says.formatsApart",
+			names,
+		);
+	}
 	switch (strongest.kind) {
 		case "sha256":
 			return t("duplicates.says.sha256", names);
@@ -314,7 +328,8 @@ function Pair({
 	const a = useQuery(bookQuery(pair.books[0]?.id ?? ""));
 	const b = useQuery(bookQuery(pair.books[1]?.id ?? ""));
 	const details = [a.data, b.data];
-	const decide = canAct && pair.state === "open" && oneLibrary;
+	const recordings = Boolean(pair.narrators);
+	const decide = canAct && pair.state === "open" && oneLibrary && !recordings;
 	const said = statement(pair);
 	return (
 		<li
@@ -361,17 +376,43 @@ function Pair({
 			</ul>
 			{canAct && (
 				<div className="flex flex-wrap items-center gap-2">
+					{pair.state === "open" && recordings && (
+						<button
+							type="button"
+							disabled={setState.isPending}
+							onClick={() =>
+								setState.mutate({ id: pair.id, state: "kept_both", relation: "recording" })
+							}
+							className={button}
+						>
+							{t("duplicates.linkRecordings")}
+						</button>
+					)}
+					{pair.state === "open" && pair.formats && !pair.formats.sameLibrary && (
+						<button
+							type="button"
+							disabled={setState.isPending}
+							onClick={() =>
+								setState.mutate({ id: pair.id, state: "kept_both", relation: "format" })
+							}
+							className={button}
+						>
+							{t("duplicates.linkFormats")}
+						</button>
+					)}
 					{pair.state === "open" && (
-						<label className="flex items-center gap-2 text-sm">
+						<label className="flex min-w-0 max-w-full items-center gap-2 text-sm">
 							<span>{t("duplicates.relation")}</span>
 							<select
 								value={relation}
 								onChange={(e) => setRelation(e.target.value as Relation | "")}
-								className={control}
+								className={`${control} min-w-0`}
 							>
 								<option value="">{t("duplicates.relation.none")}</option>
 								<option value="edition">{t("duplicates.relation.edition")}</option>
 								<option value="translation">{t("duplicates.relation.translation")}</option>
+								<option value="recording">{t("duplicates.relation.recording")}</option>
+								<option value="format">{t("duplicates.relation.format")}</option>
 								<option value="related">{t("duplicates.relation.related")}</option>
 							</select>
 						</label>
@@ -541,7 +582,9 @@ function BookCard({
 					return (
 						<FieldRow key={field.label} label={field.label} changed={changed}>
 							{field.label === "duplicates.field.authors" && book.authors.length > 0 ? (
-								<AuthorLinks book={book} />
+								<span className="[&_a]:inline-block [&_a]:min-h-6">
+									<AuthorLinks book={book} />
+								</span>
 							) : field.label === "duplicates.field.files" && detail ? (
 								<ul className="flex flex-col gap-0.5">
 									{detail.files.map((f) => (

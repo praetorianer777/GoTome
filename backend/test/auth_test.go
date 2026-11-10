@@ -39,6 +39,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
@@ -186,6 +187,8 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Bulk.Queue = queue
 	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
 	a.server.Reading = reading.NewService(a.pool)
+	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
+	a.server.Imports.Queue = queue
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	a.text = openTextIndex(t, a.pool)
 	a.server.Search = drainingSearch{a.text, search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())}

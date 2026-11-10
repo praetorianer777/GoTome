@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ReadingHistory } from "@/books/reading-history";
 import { statsQuery } from "@/books/stats";
 import { FormError } from "@/components/form";
 import { Loading } from "@/components/ui";
@@ -25,7 +26,7 @@ export function Stats() {
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-wrap items-end justify-between gap-4">
 				<h1 className="text-2xl font-semibold">{t("stats.title")}</h1>
-				<fieldset className="flex gap-1 text-sm">
+				<fieldset className="flex gap-2 text-sm">
 					<legend className="sr-only">{t("stats.window")}</legend>
 					{WINDOWS.map((w) => (
 						<button
@@ -82,29 +83,31 @@ export function Stats() {
 								{t("stats.legend.listening")}
 							</span>
 						</p>
-						<table className="sr-only">
-							<caption>{t("stats.days")}</caption>
-							<thead>
-								<tr>
-									<th scope="col">{t("stats.column.date")}</th>
-									<th scope="col">{t("stats.column.pages")}</th>
-									<th scope="col">{t("stats.column.reading")}</th>
-									<th scope="col">{t("stats.column.listening")}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{data.days
-									.filter((d) => d.pages || d.readingMinutes || d.listeningMinutes)
-									.map((d) => (
-										<tr key={d.date}>
-											<td>{d.date}</td>
-											<td>{formatCount(d.pages)}</td>
-											<td>{formatCount(d.readingMinutes)}</td>
-											<td>{formatCount(d.listeningMinutes)}</td>
-										</tr>
-									))}
-							</tbody>
-						</table>
+						<div className="sr-only">
+							<table>
+								<caption>{t("stats.days")}</caption>
+								<thead>
+									<tr>
+										<th scope="col">{t("stats.column.date")}</th>
+										<th scope="col">{t("stats.column.pages")}</th>
+										<th scope="col">{t("stats.column.reading")}</th>
+										<th scope="col">{t("stats.column.listening")}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{data.days
+										.filter((d) => d.pages || d.readingMinutes || d.listeningMinutes)
+										.map((d) => (
+											<tr key={d.date}>
+												<td>{d.date}</td>
+												<td>{formatCount(d.pages)}</td>
+												<td>{formatCount(d.readingMinutes)}</td>
+												<td>{formatCount(d.listeningMinutes)}</td>
+											</tr>
+										))}
+								</tbody>
+							</table>
+						</div>
 					</section>
 
 					<section aria-labelledby="stats-years" className="flex flex-col gap-2">
@@ -139,7 +142,7 @@ export function Stats() {
 									<li key={`${e.date}-${e.event}-${e.bookId}`} className="flex gap-4 px-3 py-2 text-sm">
 										<span className="w-24 shrink-0 tabular-nums text-slate-500">{e.date}</span>
 										<span className="w-20 shrink-0">{t(e.event === "started" ? "stats.started" : "stats.finishedOne")}</span>
-										<Link to="/books/$bookId" params={{ bookId: e.bookId }} className="min-w-0 truncate font-medium hover:underline">
+										<Link to="/books/$bookId" params={{ bookId: e.bookId }} className="min-h-6 min-w-0 truncate font-medium hover:underline">
 											{e.title}
 										</Link>
 									</li>
@@ -147,6 +150,7 @@ export function Stats() {
 							</ol>
 						)}
 					</section>
+					<ReadingHistory />
 				</>
 			)}
 		</div>

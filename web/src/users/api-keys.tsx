@@ -153,7 +153,7 @@ export function ApiKeys() {
 					)}
 				</fieldset>
 				<div>
-					<SubmitButton pending={create.isPending}>
+					<SubmitButton pending={create.isPending} kind="secondary">
 						{t("apiKeys.add")}
 					</SubmitButton>
 				</div>

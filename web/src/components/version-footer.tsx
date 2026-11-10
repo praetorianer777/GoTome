@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { t } from "@/i18n";
+import type { ReleaseStatus } from "@/system/update";
 
 export type BuildInfo = components["schemas"]["BuildInfo"];
 
@@ -49,21 +50,23 @@ export function useServerVersion(): {
 export function VersionFooter({
 	build,
 	updated,
+	update,
 }: {
 	build: BuildInfo | null;
 	updated: boolean;
+	update?: ReleaseStatus | null;
 }) {
 	if (!build) return null;
 	const commit = build.commit?.slice(0, 7);
 	return (
-		<footer className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+		<footer className="border-t border-slate-200 px-4 pt-3 pb-safe-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
 			<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1">
 				{isRelease(build) ? (
 					<a
 						href={`${RELEASES}${build.version}`}
 						target="_blank"
 						rel="noreferrer"
-						className="hover:underline"
+						className="inline-flex min-h-6 items-center hover:underline"
 					>
 						{t("version.release", { version: build.version })}
 					</a>
@@ -73,6 +76,19 @@ export function VersionFooter({
 							? t("version.buildWithCommit", { version: build.version, commit })
 							: t("version.build", { version: build.version })}
 					</span>
+				)}
+				{update?.available && (
+					<a
+						href={update.url}
+						target="_blank"
+						rel="noreferrer"
+						className="font-medium text-slate-700 hover:underline dark:text-slate-200"
+					>
+						{t(
+							update.security ? "version.availableSecurity" : "version.available",
+							{ version: update.latest ?? "" },
+						)}
+					</a>
 				)}
 				{updated && (
 					<p

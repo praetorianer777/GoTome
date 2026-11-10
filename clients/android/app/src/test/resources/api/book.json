@@ -66,6 +66,9 @@
   "reading": {
     "status": "unread"
   },
-  "placeholder": false
+  "placeholder": false,
+  "recordings": [],
+  "forms": [],
+  "joins": []
 }
 

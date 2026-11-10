@@ -18,8 +18,10 @@ import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
+import { QueueButtons } from "@/player/up-next";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
+import { useUndoJoin } from "@/duplicates/api";
 import { FormError } from "@/components/form";
 import { button, Skeleton } from "@/components/ui";
 import { useRereadFile } from "@/jobs/api";
@@ -38,7 +40,7 @@ const ROLES: Record<string, MessageKey> = {
 const back = (
 	<Link
 		to="/"
-		className="self-start text-sm text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+		className="inline-flex min-h-6 items-center self-start text-sm text-brand-strong hover:underline underline-offset-4 dark:text-brand"
 	>
 		<span aria-hidden="true">← </span>
 		{t("book.back")}
@@ -175,7 +177,7 @@ function BookPage({ book }: { book: BookDetail }) {
 							{book.title}
 						</h1>
 						{book.subtitle && (
-							<p className="font-serif text-xl text-slate-600 dark:text-slate-400">
+							<p className="font-serif text-lg text-slate-600 dark:text-slate-400">
 								{book.subtitle}
 							</p>
 						)}
@@ -205,6 +207,9 @@ function BookPage({ book }: { book: BookDetail }) {
 								</Link>
 							)}
 							{listenable && <ListenButton bookId={book.id} />}
+							{listenable && personal && (
+								<QueueButtons bookId={book.id} className={button("secondary", "md")} />
+							)}
 							{can(user, "metadata:edit") && (
 								<>
 									<Link
@@ -305,8 +310,95 @@ function BookPage({ book }: { book: BookDetail }) {
 				)}
 			</div>
 
+			{book.recordings.length > 0 && (
+				<section aria-labelledby="recordings-heading" className="flex flex-col gap-2">
+					<h2 id="recordings-heading" className="font-serif text-lg">
+						{t("book.recordings")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.recordings.map((r) => (
+							<li key={r.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: r.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{r.title}
+								</Link>
+								{r.narrators.length > 0 && (
+									<span className="text-slate-600 dark:text-slate-400">
+										{" · "}
+										{t("book.readBy", { names: r.narrators.join(", ") })}
+									</span>
+								)}
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{book.forms.length > 0 && (
+				<section aria-labelledby="forms-heading" className="flex flex-col gap-2">
+					<h2 id="forms-heading" className="font-serif text-lg">
+						{t("book.forms")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.forms.map((f) => (
+							<li key={f.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: f.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{f.title}
+								</Link>
+								<span className="text-slate-600 dark:text-slate-400">
+									{" · "}
+									{f.kinds
+										.map((k) => t(k === "audio" ? "book.form.audio" : "book.form.ebook"))
+										.join(", ")}
+								</span>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{book.joins.length > 0 && (
+				<Joins joins={book.joins} canSplit={can(user, "metadata:edit")} />
+			)}
+
 			<SimilarBooks bookId={book.id} />
 		</article>
+	);
+}
+
+function Joins({ joins, canSplit }: { joins: BookDetail["joins"]; canSplit: boolean }) {
+	const undo = useUndoJoin();
+	return (
+		<section aria-labelledby="joins-heading" className="flex flex-col gap-2">
+			<h2 id="joins-heading" className="font-serif text-lg">
+				{t("book.joins")}
+			</h2>
+			<ul className="flex flex-col gap-2">
+				{joins.map((j) => (
+					<li key={j.id} className="flex flex-wrap items-center gap-3">
+						<span>{t("book.joined", { title: j.title })}</span>
+						{canSplit && (
+							<button
+								type="button"
+								disabled={undo.isPending}
+								onClick={() => undo.mutate(j.id)}
+								className="rounded-md border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.split")}
+							</button>
+						)}
+					</li>
+				))}
+			</ul>
+			<FormError error={undo.error} />
+		</section>
 	);
 }
 
@@ -353,7 +445,7 @@ function Files({
 				{files.map((file) => (
 					<li
 						key={file.id}
-						className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm"
+						className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 text-sm"
 					>
 						<span className="w-14 rounded bg-slate-100 py-0.5 text-center text-xs font-semibold tracking-wide uppercase dark:bg-slate-800">
 							{file.format}
