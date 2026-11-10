@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -137,6 +138,7 @@ func readCases() map[string][]readCase {
 		// Not by the title, which a twin would be ranked by otherwise.
 		"searchDescribed":  {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
 		"listCleanup":      {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"previewCleanup":   {{path: "/cleanup/preview", query: q("kind", "authors", "subject", "{person}"), control: "insider"}},
 		"listCurationRuns": {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
 		"getCurationRun":   {{path: "/curation/runs/{curationRun}", control: "insider"}},
 		"listGenreSuggestions": {
@@ -198,7 +200,7 @@ func readCases() map[string][]readCase {
 // twinned are the placeholders that name the secret itself. A call that
 // uses one must be answered to someone outside the library exactly as the
 // same call about something that does not exist.
-var twinned = []string{"book", "file", "library", "title", "author", "tag", "series"}
+var twinned = []string{"book", "file", "library", "title", "author", "tag", "series", "person"}
 
 var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
@@ -264,6 +266,7 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		// match words alike, which would find the secret for its twin.
 		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark, "series": "Nescitum " + twinMark,
 	}
+	secret["person"], twin["person"] = catalog.PersonKey(secret["author"]), catalog.PersonKey(twin["author"])
 	book := secret["book"]
 	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+book, map[string]any{
 		"title": secret["title"], "series": map[string]any{"name": secret["series"]},

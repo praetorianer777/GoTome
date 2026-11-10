@@ -1,8 +1,8 @@
 -- name: ListCleanupCredits :many
 -- The author credits of the books the viewer sees whose author is one of
 -- the people (person_keys) or names (name_keys) a clean-up is about, with
--- the key of the book's series.
-SELECT c.book_id, a.name, a.name_key, a.person_key, COALESCE(s.name_key, '')::text AS series_key
+-- the key of the book's series and its title.
+SELECT c.book_id, b.title, a.name, a.name_key, a.person_key, COALESCE(s.name_key, '')::text AS series_key
 FROM book_contributors c
 JOIN authors a ON a.id = c.author_id
 JOIN books b ON b.id = c.book_id
@@ -17,3 +17,15 @@ INSERT INTO cleanup_dismissals (kind, subject, value, dismissed_by)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (kind, subject) DO UPDATE
 SET value = EXCLUDED.value, dismissed_by = EXCLUDED.dismissed_by, dismissed_at = now();
+
+-- name: ListMatchRecords :many
+-- What providers said about the books, from the matches kept for them
+-- (pending or applied), the best fitting first, for the books among book_ids
+-- that the viewer sees.
+SELECT m.book_id, m.provider, m.record_id, m.state, m.record
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.book_id = ANY(sqlc.arg(book_ids)::uuid[]) AND m.state <> 'dismissed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY m.book_id, m.score DESC, m.provider, m.record_id;

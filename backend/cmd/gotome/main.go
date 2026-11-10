@@ -344,6 +344,7 @@ func serve() error {
 	changes.Curation = curations
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
+	fixes.Meta = meta
 	follows.Events = events
 	follows.Offline = cfg.Offline
 	updateChecks := updates.NewService(pool, settingStore, events, log)

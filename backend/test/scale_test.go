@@ -537,8 +537,8 @@ func writePlans(t *testing.T, dir string, catcher *planCatcher) {
 	}
 }
 
-// cleanupTakesOneSuggestion applies one suggestion of each kind and
-// dismisses another, as the clean-up page does when a button is clicked:
+// cleanupTakesOneSuggestion previews and applies one suggestion of each kind
+// and dismisses another, as the clean-up page does when a button is clicked:
 // each must take under scaleBudget and read no table of scannedWhole from
 // end to end, as it would if it worked out every suggestion of its kind.
 func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *planCatcher) {
@@ -553,18 +553,33 @@ func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *
 			t.Fatalf("the seed has %d clean-up suggestions of kind %s, want at least 2", len(suggestions), kind)
 		}
 		subject := func(i int) string { return suggestions[i].(map[string]any)["subject"].(string) }
+		// A clash that is to choose is applied with the fix chosen, and
+		// previewed with it.
+		fix := ""
+		if suggestions[0].(map[string]any)["fix"] == "choose" {
+			fix = "nameIsSeries"
+		}
+		pick := map[string]any{"subject": subject(0)}
+		if fix != "" {
+			pick["fix"] = fix
+		}
 		for _, act := range []struct {
 			name, path string
 			req        map[string]any
 			want       int
 		}{
-			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{map[string]any{"subject": subject(0)}}}, http.StatusAccepted},
+			{"preview", "/cleanup/preview?kind=" + kind + "&subject=" + url.QueryEscape(subject(0)) + "&limit=5&fix=" + fix, nil, http.StatusOK},
+			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{pick}}, http.StatusAccepted},
 			{"dismiss", "/cleanup/dismiss", map[string]any{"kind": kind, "subject": subject(1)}, http.StatusNoContent},
 		} {
 			key := "clean-up " + act.name + " " + kind
 			catcher.watch(key)
 			began := time.Now()
-			status, out, _ := a.call(who, http.MethodPost, act.path, act.req)
+			method := http.MethodPost
+			if act.req == nil {
+				method = http.MethodGet
+			}
+			status, out, _ := a.call(who, method, act.path, act.req)
 			took := time.Since(began)
 			catcher.watch("")
 			if status != act.want {

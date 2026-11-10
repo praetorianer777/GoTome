@@ -6,6 +6,29 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Every suggestion on the clean-up page can show its books before and after:
+  each book with the fields the fix changes, the old value struck through and
+  the new one beside it, and the fields you locked marked as staying. The
+  first five show, "and n more" shows the rest. Beside each book it says what
+  a provider is already known to say about it (a match kept for the book, or
+  an answer cached from an earlier lookup by its ISBN) and whether that
+  agrees with the suggestion. Nothing is asked of a provider for this.
+
+### Fixed
+
+- Clean-up no longer offers to take the series off the books of an author
+  whose name is also a series just because some of their books lack it. House
+  names of series look exactly like that, and
+  applying the old suggestion would have cleared the series, and the places in
+  it, from dozens of novels. The page now asks which the name is: the series
+  (the author goes from every book and the books without the series get it,
+  at the place their title says) or the author (the books leave the series).
+  Each choice shows what it does to every book first, and one is ticked
+  beforehand only where the titles or a provider's answer point to it. "Apply
+  all" leaves these suggestions for you to decide.
+
 ## [0.15.0] - 2026-11-10
 
 ### Added

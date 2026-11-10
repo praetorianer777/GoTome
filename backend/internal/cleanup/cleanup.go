@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 )
 
 // The kinds of suggestion.
@@ -54,10 +55,19 @@ const (
 	FixClearSeries  = "clearSeries"
 	FixRetitle      = "retitle"
 	FixSetSeries    = "setSeries"
+	// FixNameIsSeries is the fix of a clash where only some of the author's
+	// books have the series: the name is the series, so the author goes
+	// from every book and the books without the series get it.
+	FixNameIsSeries = "nameIsSeries"
+	// FixChoose is what a clash of that kind suggests: no fix, as either
+	// may be right and one of them takes data away. Apply refuses it
+	// without a choice of FixNameIsSeries or FixClearSeries.
+	FixChoose = "choose"
 )
 
-// Fixes lists every fix.
-var Fixes = []string{FixMerge, FixRemoveAuthor, FixClearSeries, FixRetitle, FixSetSeries}
+// Fixes lists every fix a suggestion can say, FixChoose for one that waits
+// for a choice.
+var Fixes = []string{FixMerge, FixRemoveAuthor, FixClearSeries, FixRetitle, FixSetSeries, FixNameIsSeries, FixChoose}
 
 // placeholderAuthors are the keys of what tools write when they have no
 // author: "authors_sort" is a template value left unfilled. "Anonymous" is
@@ -96,7 +106,9 @@ type Suggestion struct {
 	Found []Name
 	Fix   string
 	// Suggested is the author's spelling to keep, the title without its
-	// addition, or the series as most of the titles spell it.
+	// addition, or the series as most of the titles spell it; for a clash
+	// that is to choose, the fix the titles and the providers' answers
+	// point to, or none.
 	Suggested string
 	// Books is how many books it is about: those of every spelling of an
 	// author, of the author or series that clash, or the one of a title.
@@ -128,13 +140,17 @@ type Starter interface {
 
 // Service finds and applies suggestions.
 type Service struct {
-	pool *pgxpool.Pool
-	bulk Starter
+	pool  *pgxpool.Pool
+	bulk  Starter
+	books *catalog.Service
+	// Meta, when set, adds to a preview what the providers answered before
+	// and still keep in provider_records.
+	Meta *metadata.Service
 }
 
 // NewService returns a Service.
 func NewService(pool *pgxpool.Pool, bulk Starter) *Service {
-	return &Service{pool: pool, bulk: bulk}
+	return &Service{pool: pool, bulk: bulk, books: catalog.NewService(pool)}
 }
 
 // source is the SQL function that finds a kind, with its arguments after
@@ -215,6 +231,11 @@ LIMIT $%d`, from, n+1, keyset, n+2), args...)
 		last := page.Suggestions[limit-1]
 		page.Next = &Cursor{Books: last.Books, Subject: last.Subject}
 	}
+	if kind == KindClashes {
+		if err := s.suggestClashes(ctx, scope, page.Suggestions); err != nil {
+			return Page{}, err
+		}
+	}
 	return page, nil
 }
 
@@ -228,6 +249,9 @@ func suggest(sg Suggestion) Suggestion {
 		sg.Fix = FixRemoveAuthor
 	case KindClashes:
 		sg.Fix = sg.value
+		if sg.value == FixClearSeries {
+			sg.Fix = FixChoose
+		}
 	case KindTitles:
 		sg.Fix = FixRetitle
 		sg.Suggested = CleanTitle(sg.Found[0].Name)
@@ -339,10 +363,14 @@ func (s *Service) Dismiss(ctx context.Context, scope library.Scope, kind, subjec
 }
 
 // Pick is a suggestion to apply, and for an author the spelling to keep
-// when it is not the one suggested: any spelling of the same person.
+// when it is not the one suggested: any spelling of the same person, and for
+// a clash that is to choose which the name is.
 type Pick struct {
 	Subject string
 	To      string
+	// Fix is, for a clash that is to choose, FixNameIsSeries or
+	// FixClearSeries.
+	Fix string
 }
 
 // Applied is the bulk change that applies suggestions, and how many books
@@ -371,7 +399,10 @@ func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, p
 	var chosen []Suggestion
 	if picks == nil {
 		for _, sg := range found {
-			chosen = append(chosen, sg)
+			// Either fix of a clash takes something away: a person chooses.
+			if sg.Fix != FixChoose {
+				chosen = append(chosen, sg)
+			}
 		}
 	}
 	for _, p := range picks {
@@ -379,15 +410,9 @@ func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, p
 		if !ok {
 			continue
 		}
-		if p.To != "" {
-			if kind != KindAuthors {
-				return Applied{}, catalog.EditError{"to": "Only an author's spelling can be chosen."}
-			}
-			to := strings.Join(strings.Fields(p.To), " ")
-			if catalog.PersonKey(to) != sg.Subject {
-				return Applied{}, catalog.EditError{"to": "Choose a spelling of the same name."}
-			}
-			sg.Suggested = to
+		sg, err := pickFix(kind, sg, p)
+		if err != nil {
+			return Applied{}, err
 		}
 		chosen = append(chosen, sg)
 	}
@@ -405,6 +430,34 @@ func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, p
 	}
 	id, err := s.bulk.StartEach(ctx, scope, changes)
 	return Applied{BulkChangeID: id, Books: len(changes)}, err
+}
+
+// pickFix brings a suggestion to what a pick asks for: the spelling of an
+// author to keep, the fix of a clash. It refuses what does not fit.
+func pickFix(kind string, sg Suggestion, p Pick) (Suggestion, error) {
+	if p.To != "" {
+		if kind != KindAuthors {
+			return sg, catalog.EditError{"to": "Only an author's spelling can be chosen."}
+		}
+		to := strings.Join(strings.Fields(p.To), " ")
+		if catalog.PersonKey(to) != sg.Subject {
+			return sg, catalog.EditError{"to": "Choose a spelling of the same name."}
+		}
+		sg.Suggested = to
+	}
+	switch {
+	case p.Fix == "" || p.Fix == sg.Fix && sg.Fix != FixChoose:
+		if sg.Fix == FixChoose {
+			return sg, catalog.EditError{"fix": "Choose which the name is: the series or the author."}
+		}
+	case sg.Fix == FixChoose && (p.Fix == FixNameIsSeries || p.Fix == FixClearSeries):
+		sg.Fix = p.Fix
+	case kind != KindClashes || !slices.Contains(Fixes, p.Fix):
+		return sg, catalog.EditError{"fix": "There is no such fix for this suggestion."}
+	default:
+		return sg, catalog.EditError{"fix": "That fix does not fit this suggestion."}
+	}
+	return sg, nil
 }
 
 // changes turns suggestions into the change of each book they touch, one
@@ -480,15 +533,31 @@ func (s *Service) changes(ctx context.Context, scope library.Scope, kind string,
 				}
 			case KindClashes:
 				sg, ok := bySubject[cr.NameKey]
-				if !ok || cr.SeriesKey != cr.NameKey {
+				if !ok {
 					continue
 				}
-				c := change(cr.BookID)
-				if sg.Fix == FixRemoveAuthor {
+				inSeries := cr.SeriesKey == cr.NameKey
+				switch sg.Fix {
+				case FixRemoveAuthor:
+					if inSeries {
+						c := change(cr.BookID)
+						c.RemoveAuthors = append(c.RemoveAuthors, cr.Name)
+					}
+				case FixClearSeries:
+					if inSeries {
+						none := ""
+						change(cr.BookID).Series = &none
+					}
+				case FixNameIsSeries:
+					c := change(cr.BookID)
 					c.RemoveAuthors = append(c.RemoveAuthors, cr.Name)
-				} else {
-					none := ""
-					c.Series = &none
+					if !inSeries && c.Series == nil {
+						series := cr.Name
+						c.Series = &series
+						if place, ok := SeriesInTitle(cr.Title); ok && catalog.Key(place.Series) == cr.NameKey {
+							c.SeriesIndex = &place.Position
+						}
+					}
 				}
 			}
 		}

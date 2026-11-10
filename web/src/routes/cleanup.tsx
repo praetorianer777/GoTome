@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
 	CLEANUP_KINDS,
+	type ChoosableFix,
 	type CleanupKind,
 	type CleanupSuggestion,
 	cleanupQuery,
@@ -10,6 +11,7 @@ import {
 	useDismissCleanup,
 } from "@/books/cleanup";
 import { BookPanelLayout } from "@/books/book-panel";
+import { CleanupPreviewList } from "@/books/cleanup-preview";
 import { FormError } from "@/components/form";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
@@ -84,7 +86,7 @@ export function Cleanup({
 	};
 	const onApply = (
 		s: CleanupSuggestion,
-		picks: { subject: string; to?: string }[],
+		picks: { subject: string; to?: string; fix?: ChoosableFix }[],
 	) => act(s, () => applyOne.mutateAsync({ kind: s.kind, picks }));
 	const onDismiss = (s: CleanupSuggestion) =>
 		act(s, () => dismissOne.mutateAsync({ kind: s.kind, subject: s.subject }));
@@ -215,7 +217,7 @@ function Suggestion({
 	error?: unknown;
 	onApply: (
 		s: CleanupSuggestion,
-		picks: { subject: string; to?: string }[],
+		picks: { subject: string; to?: string; fix?: ChoosableFix }[],
 	) => void;
 	onDismiss: (s: CleanupSuggestion) => void;
 	onOpen: (book: string) => void;
@@ -223,6 +225,16 @@ function Suggestion({
 	const [keep, setKeep] = useState(s.suggested ?? "");
 	const [other, setOther] = useState("");
 	const [own, setOwn] = useState(false);
+	const [showBooks, setShowBooks] = useState(false);
+	// A clash that is to choose has no default that takes data away: only
+	// what the titles and the providers point to is ticked beforehand.
+	const [fix, setFix] = useState<ChoosableFix | "">(
+		s.suggested === "nameIsSeries" || s.suggested === "clearSeries"
+			? s.suggested
+			: "",
+	);
+	const [showFix, setShowFix] = useState<Record<string, boolean>>({});
+	const choose = s.kind === "clashes" && s.fix === "choose";
 	const name = s.found[0]?.name ?? "";
 	const to = own ? other : keep;
 
@@ -278,14 +290,62 @@ function Suggestion({
 					</span>
 				</p>
 			)}
-			{s.kind === "clashes" && (
+			{choose && (
+				<fieldset className="flex min-w-0 flex-col gap-3">
+					<legend className="mb-1 font-medium">
+						{t("cleanup.clash.some", {
+							name,
+							series: s.books,
+							all: s.found[0]?.books ?? s.books,
+						})}
+					</legend>
+					{(["nameIsSeries", "clearSeries"] as const).map((f) => (
+						<div key={f} className="flex min-w-0 flex-col gap-2">
+							<label className="flex items-start gap-2">
+								<input
+									type="radio"
+									name={`fix-${s.subject}`}
+									className="mt-1"
+									checked={fix === f}
+									onChange={() => setFix(f)}
+								/>
+								<span>
+									{t(`cleanup.clash.${f}`, { name })}
+									{s.suggested === f && (
+										<>
+											{" "}
+											<span className="text-sm text-slate-500">
+												({t("cleanup.clash.suggested")})
+											</span>
+										</>
+									)}
+								</span>
+							</label>
+							<button
+								type="button"
+								aria-expanded={!!showFix[f]}
+								className={`${quietButton} ml-6 self-start`}
+								onClick={() => setShowFix({ ...showFix, [f]: !showFix[f] })}
+							>
+								{showFix[f]
+									? t("cleanup.preview.hide")
+									: t("cleanup.preview.show")}
+							</button>
+							<div className="ml-6 min-w-0">
+								<CleanupPreviewList
+									suggestion={s}
+									fix={f}
+									open={!!showFix[f]}
+									onOpen={onOpen}
+								/>
+							</div>
+						</div>
+					))}
+				</fieldset>
+			)}
+			{s.kind === "clashes" && !choose && (
 				<p>
-					{t(
-						s.fix === "removeAuthor"
-							? "cleanup.removeAuthor"
-							: "cleanup.clearSeries",
-						{ name },
-					)}{" "}
+					{t("cleanup.removeAuthor", { name })}{" "}
 					<span className="text-sm text-slate-500">
 						{t("cleanup.books", { count: s.books })}
 					</span>
@@ -348,21 +408,43 @@ function Suggestion({
 					</ul>
 				</div>
 			)}
+			{!choose && (
+				<CleanupPreviewList
+					suggestion={s}
+					to={s.fix === "merge" && to.trim() !== "" ? to : undefined}
+					open={showBooks}
+					onOpen={onOpen}
+				/>
+			)}
 			<FormError error={error} />
 			</div>
 			<div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
 				<button
 					type="button"
 					className={button}
-					disabled={s.fix === "merge" && to.trim() === ""}
+					disabled={(s.fix === "merge" && to.trim() === "") || (choose && fix === "")}
 					onClick={() =>
 						onApply(s, [
-							{ subject: s.subject, ...(s.fix === "merge" ? { to } : {}) },
+							{
+								subject: s.subject,
+								...(s.fix === "merge" ? { to } : {}),
+								...(choose && fix !== "" ? { fix } : {}),
+							},
 						])
 					}
 				>
-					{t(`cleanup.apply.${s.fix}`)}
+					{t(`cleanup.apply.${choose && fix !== "" ? fix : s.fix}`)}
 				</button>
+				{!choose && (
+					<button
+						type="button"
+						aria-expanded={showBooks}
+						className={quietButton}
+						onClick={() => setShowBooks(!showBooks)}
+					>
+						{showBooks ? t("cleanup.preview.hide") : t("cleanup.preview.show")}
+					</button>
+				)}
 				<button
 					type="button"
 					className={quietButton}

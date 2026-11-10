@@ -2698,6 +2698,107 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/cleanup/preview": {
+      "get": {
+        "operationId": "previewCleanup",
+        "summary": "What applying one suggested fix does to each of its books, and what the providers are known to say about them",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "The kind of the suggestion.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "authors",
+                "placeholders",
+                "clashes",
+                "titles",
+                "series"
+              ]
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "description": "The suggestion's subject, as the list says.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "For an author, the spelling to keep when it is not the one suggested.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fix",
+            "in": "query",
+            "description": "For a suggestion whose fix is to choose, the fix to show; required then.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nameIsSeries",
+                "clearSeries"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "How many books to skip.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many books to show, at most 200; 5 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/collections": {
       "get": {
         "operationId": "listCollections",
@@ -11293,6 +11394,39 @@
           "kind"
         ]
       },
+      "CleanupBook": {
+        "type": "object",
+        "properties": {
+          "coverKey": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupEvidence"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupField"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "fields",
+          "evidence"
+        ]
+      },
       "CleanupCounts": {
         "type": "object",
         "properties": {
@@ -11340,6 +11474,54 @@
         "required": [
           "kind",
           "subject"
+        ]
+      },
+      "CleanupEvidence": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "source",
+          "field",
+          "value"
+        ]
+      },
+      "CleanupField": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "before",
+          "after"
         ]
       },
       "CleanupList": {
@@ -11391,6 +11573,9 @@
       "CleanupPick": {
         "type": "object",
         "properties": {
+          "fix": {
+            "type": "string"
+          },
           "subject": {
             "type": "string"
           },
@@ -11400,6 +11585,28 @@
         },
         "required": [
           "subject"
+        ]
+      },
+      "CleanupPreview": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CleanupBook"
+            }
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/CleanupSuggestion"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "suggestion",
+          "total",
+          "books"
         ]
       },
       "CleanupSuggestion": {
@@ -11419,7 +11626,9 @@
               "removeAuthor",
               "clearSeries",
               "retitle",
-              "setSeries"
+              "setSeries",
+              "nameIsSeries",
+              "choose"
             ]
           },
           "found": {

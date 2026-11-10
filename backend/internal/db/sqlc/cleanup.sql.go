@@ -36,7 +36,7 @@ func (q *Queries) DismissCleanup(ctx context.Context, arg DismissCleanupParams) 
 }
 
 const listCleanupCredits = `-- name: ListCleanupCredits :many
-SELECT c.book_id, a.name, a.name_key, a.person_key, COALESCE(s.name_key, '')::text AS series_key
+SELECT c.book_id, b.title, a.name, a.name_key, a.person_key, COALESCE(s.name_key, '')::text AS series_key
 FROM book_contributors c
 JOIN authors a ON a.id = c.author_id
 JOIN books b ON b.id = c.book_id
@@ -56,6 +56,7 @@ type ListCleanupCreditsParams struct {
 
 type ListCleanupCreditsRow struct {
 	BookID    uuid.UUID
+	Title     string
 	Name      string
 	NameKey   string
 	PersonKey *string
@@ -64,7 +65,7 @@ type ListCleanupCreditsRow struct {
 
 // The author credits of the books the viewer sees whose author is one of
 // the people (person_keys) or names (name_keys) a clean-up is about, with
-// the key of the book's series.
+// the key of the book's series and its title.
 func (q *Queries) ListCleanupCredits(ctx context.Context, arg ListCleanupCreditsParams) ([]ListCleanupCreditsRow, error) {
 	rows, err := q.db.Query(ctx, listCleanupCredits,
 		arg.PersonKeys,
@@ -81,10 +82,64 @@ func (q *Queries) ListCleanupCredits(ctx context.Context, arg ListCleanupCredits
 		var i ListCleanupCreditsRow
 		if err := rows.Scan(
 			&i.BookID,
+			&i.Title,
 			&i.Name,
 			&i.NameKey,
 			&i.PersonKey,
 			&i.SeriesKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchRecords = `-- name: ListMatchRecords :many
+SELECT m.book_id, m.provider, m.record_id, m.state, m.record
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.book_id = ANY($1::uuid[]) AND m.state <> 'dismissed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+ORDER BY m.book_id, m.score DESC, m.provider, m.record_id
+`
+
+type ListMatchRecordsParams struct {
+	BookIds []uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type ListMatchRecordsRow struct {
+	BookID   uuid.UUID
+	Provider string
+	RecordID string
+	State    string
+	Record   []byte
+}
+
+// What providers said about the books, from the matches kept for them
+// (pending or applied), the best fitting first, for the books among book_ids
+// that the viewer sees.
+func (q *Queries) ListMatchRecords(ctx context.Context, arg ListMatchRecordsParams) ([]ListMatchRecordsRow, error) {
+	rows, err := q.db.Query(ctx, listMatchRecords, arg.BookIds, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchRecordsRow{}
+	for rows.Next() {
+		var i ListMatchRecordsRow
+		if err := rows.Scan(
+			&i.BookID,
+			&i.Provider,
+			&i.RecordID,
+			&i.State,
+			&i.Record,
 		); err != nil {
 			return nil, err
 		}

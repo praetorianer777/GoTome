@@ -1,5 +1,6 @@
 import {
 	infiniteQueryOptions,
+	queryOptions,
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -34,13 +35,55 @@ export const cleanupQuery = (kind: CleanupKind) =>
 		getNextPageParam: (last) => last?.nextCursor,
 	});
 
+/** The two fixes of a clash that is to choose. */
+export type ChoosableFix = "nameIsSeries" | "clearSeries";
+
+export type CleanupPreview = components["schemas"]["CleanupPreview"];
+export type CleanupPreviewBook = components["schemas"]["CleanupBook"];
+
+/**
+ * What applying one suggestion does to the first `limit` of its books, and
+ * what the providers are known to say about them. Asked when a suggestion is
+ * opened, so the list stays light.
+ */
+export const cleanupPreviewQuery = (
+	s: { kind: CleanupKind; subject: string },
+	options: { to?: string; fix?: string; limit: number },
+) =>
+	queryOptions({
+		queryKey: [
+			"cleanup",
+			"preview",
+			s.kind,
+			s.subject,
+			options.to,
+			options.fix,
+			options.limit,
+		],
+		queryFn: async () =>
+			(
+				await api.GET("/cleanup/preview", {
+					params: {
+						query: {
+							kind: s.kind,
+							subject: s.subject,
+							limit: options.limit,
+							...(options.to ? { to: options.to } : {}),
+							...(options.fix ? { fix: options.fix as ChoosableFix } : {}),
+						},
+					},
+				})
+			).data,
+		placeholderData: (previous) => previous,
+	});
+
 /** Applies suggestions, or every one of a kind when picks are left out. */
 export function useApplyCleanup() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (body: {
 			kind: CleanupKind;
-			picks?: { subject: string; to?: string }[];
+			picks?: { subject: string; to?: string; fix?: ChoosableFix }[];
 		}) => (await api.POST("/cleanup/apply", { body })).data,
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleanup"] }),
 	});

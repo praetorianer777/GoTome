@@ -571,6 +571,11 @@ func (s *Server) routes() []Route {
 			Query: cleanupQuery{}, Response: cleanupList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCleanup,
 		},
 		{
+			Method: http.MethodGet, Path: "/cleanup/preview", ID: "previewCleanup",
+			Summary: "What applying one suggested fix does to each of its books, and what the providers are known to say about them", Tag: "books",
+			Query: cleanupPreviewQuery{}, Response: cleanupPreview{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.previewCleanup,
+		},
+		{
 			Method: http.MethodPost, Path: "/cleanup/apply", ID: "applyCleanup",
 			Summary: "Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees", Tag: "books",
 			Request: cleanupApplyRequest{}, Response: cleanupApplied{}, Status: http.StatusAccepted,
