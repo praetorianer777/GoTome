@@ -7,12 +7,15 @@ looks like, how it is measured, and what an operator can set.
 
 `make scale-test` (`backend/test/scale_test.go`) seeds 50,000 books in 20
 libraries, with 12,000 authors, 2,500 series, 400 tags, files in three
-formats, identifiers, a chunk of text and two vectors per book, reading
+formats, identifiers, a chunk of text and two vectors of 1,024 numbers (the
+size of bge-m3's, the largest model) per book, reading
 state, shelves, duplicate pairs, matches and genres to review, and ten
 feeds of 5,000 items for each of the two people who ask. It then asks every
 main view of the web app through the API, as an administrator who sees every
 library and as an editor who sees 18 of 20, the best of three each. The app
-runs inside the test, held to 2 GB of memory.
+runs inside the test, held to 2 GB of memory and two CPUs, and so is the
+database (`cpus: 2` in `deploy/docker-compose.dev.yml`), as on the smallest
+machine GOtome is meant for (#455).
 
 Each view must answer within one second, and none may read the books, their
 files or their chunks from end to end, except the views marked below, whose
@@ -22,7 +25,7 @@ statement as Postgres ran it (`auto_explain`, sent to the connection), so a
 plan that reads a table whole fails it; `.cache/scale-plans` keeps the plans
 of the last run.
 
-Measured on 2026-11-06 on a 12-core machine shared with other work, the
+Vectors of 384 numbers and a database on all 12 cores, measured on 2026-11-06 on a 12-core machine shared with other work, the
 database with `random_page_cost = 1.1` as the compose file sets it:
 
 | View | Administrator | Member | Reads every book |
@@ -83,6 +86,21 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | overview | 290 ms | 276 ms | counts every book and file |
 | overview of a library | 40 ms | 40 ms | counts every book and file |
 | overview: work | 166 ms | 145 ms | counts every book and file |
+
+With vectors of 1,024 numbers and two CPUs (2026-11-10, #455) the views that
+compare vectors and the facets of the quick search became:
+
+| View | Administrator | Member |
+|---|---:|---:|
+| similar books | 712 ms | 707 ms |
+| recommendations | 3,696 ms | 3,412 ms |
+| search by description | 405 ms | 406 ms |
+| facets of every quick search match | 194 ms | 131 ms |
+
+On the owner's library (48,560 books, 3.19 million chunks, 2 CPUs) the same
+views took 2,057 ms, 1,751 ms (facets of every quick search match), 1,314 ms
+(a phrase) and over 10 s (description). The seed's one chunk per book does
+not reach the phrase search's.
 
 The seed has one chunk of text per book, where a real book has about 75: the
 full-text search's plans are those of a full library; it runs on the index
