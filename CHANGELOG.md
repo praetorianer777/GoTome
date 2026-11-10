@@ -6,6 +6,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- On a phone, the wishlist's lookup results no longer squeeze their text into a narrow column: the buttons now sit below the text.
+
 ## [0.15.0] - 2026-11-10
 
 ### Added
