@@ -20,8 +20,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 - Similar books, recommendations, the search by description and the facets of
   a quick search answer two to five times faster on a library embedded with
-  bge-m3: the vectors are stored in the database's rows (the upgrade writes
-  them again once), and the facets look the matching books up once. The
+  bge-m3: the vectors are stored in the database's rows, and the facets look
+  the matching books up once. The first start after upgrading writes every
+  vector again, which takes a few minutes on a large library before GOtome
+  answers. The
   search by description opens its model when GOtome starts, if its files are
   there, and answers "the embedding model is loading" while it opens instead
   of waiting for it.
@@ -30,8 +32,7 @@ What changes for someone who runs or uses GOtome. The format follows
 
 - Clean-up no longer offers to take the series off the books of an author
   whose name is also a series just because some of their books lack it. House
-  names of series look exactly like that, and
-  applying the old suggestion would have cleared the series, and the places in
+  names of series look exactly like that, and applying the old suggestion would have cleared the series, and the places in
   it, from dozens of novels. The page now asks which the name is: the series
   (the author goes from every book and the books without the series get it,
   at the place their title says) or the author (the books leave the series).
@@ -41,7 +42,8 @@ What changes for someone who runs or uses GOtome. The format follows
 - `gotome perf-check` reports a view that does not answer within its time
   limit as "over 10 s" in its row, fails at the end, and times the views after
   it, instead of stopping there.
-- On a phone, the wishlist's lookup results no longer squeeze their text into a narrow column: the buttons now sit below the text.
+- On a phone, the wishlist's lookup results no longer squeeze their text
+  into a narrow column: the buttons now sit below the text.
 
 ## [0.15.0] - 2026-11-10
 

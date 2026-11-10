@@ -1183,7 +1183,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under
   500 ms on 50,000 books; `book_vectors.embedding` is stored `PLAIN`, in the row,
-  as a 4 KB bge-m3 vector in TOAST made it three times slower, #456). Content and metadata are blended 0.6 to 0.4
+  as a 4 KB bge-m3 vector in TOAST made it three times slower, #456;
+  a row then holds at most about 8 KB, so a model of more than about
+  1,900 numbers cannot be stored and needs another storage first). Content and metadata are blended 0.6 to 0.4
   where both books have both, otherwise the kind they share decides.
   Visibility is `visible_library_ids` in the query; the book itself, books
   it shares a duplicate pair with in any state, and its `book_relations`

@@ -14,8 +14,8 @@ feeds of 5,000 items for each of the two people who ask. It then asks every
 main view of the web app through the API, as an administrator who sees every
 library and as an editor who sees 18 of 20, the best of three each. The app
 runs inside the test, held to 2 GB of memory and two CPUs, and so is the
-database (`cpus: 2` in `deploy/docker-compose.dev.yml`), as on the smallest
-machine GOtome is meant for (#455).
+database (`make scale-test` limits the stack's with `docker update`), as on
+the smallest machine GOtome is meant for (#455).
 
 Each view must answer within one second, and none may read the books, their
 files or their chunks from end to end, except the views marked below, whose
