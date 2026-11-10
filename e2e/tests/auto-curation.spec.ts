@@ -41,7 +41,9 @@ test("a dry run of the automatic clean-up shows what it would do under Changes a
 	await panel.getByRole("link", { name: "See it under Changes" }).click();
 	await expect(page).toHaveURL(/\/curation\?run=/);
 
-	const run = page.getByRole("listitem", { name: /^Clean-up / }).first();
+	const run = page
+		.getByRole("listitem", { name: /^Clean-up / })
+		.filter({ has: page.getByRole("button", { name: "Hide changes" }) });
 	await expect(run).toContainText("Dry run");
 	await expect(run).toContainText("Done", { timeout: 30_000 });
 	await expect(run.getByRole("button", { name: /^Undo the run/ })).toHaveCount(0);
