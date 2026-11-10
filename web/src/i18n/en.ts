@@ -986,6 +986,30 @@ export const en = {
 	"settings.oidcLinkByEmail": "Find accounts by e-mail address",
 	"settings.oidcLinkByEmail.hint":
 		"A first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
+	"settings.mailHost": "Mail server",
+	"settings.mailHost.hint":
+		"The SMTP server GOtome sends books to Kindles through, such as smtp.example.org, without a port. It is the only host GOtome sends mail to. Leave empty to turn sending to a Kindle off.",
+	"settings.mailPort": "Mail server port",
+	"settings.mailPort.hint":
+		"Usually 587 for STARTTLS and 465 for TLS.",
+	"settings.mailSecurity": "Mail encryption",
+	"settings.mailSecurity.hint":
+		"Nothing is sent, and no password offered, without it unless you choose none, which is only for a server on a network you trust.",
+	"settings.mailUser": "Mail user name",
+	"settings.mailUser.hint":
+		"Leave empty if the server needs no sign-in.",
+	"settings.mailPassword": "Mail password",
+	"settings.mailPassword.hint":
+		"Kept sealed; it is never shown again.",
+	"settings.mailSender": "Sender address",
+	"settings.mailSender.hint":
+		"The address the mail comes from. Everyone has to add it to the approved senders in their Amazon account (Content & Devices, Preferences, Personal Document Settings), or Amazon drops the books.",
+	"settings.section.mail": "Mail",
+	"settingChoice.mail.security.starttls":
+		"STARTTLS (upgrade the connection)",
+	"settingChoice.mail.security.tls":
+		"TLS (encrypted from the start)",
+	"settingChoice.mail.security.none": "None (no encryption)",
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.applyIndex": "Bring the search index up to date",
 	"jobs.kind.indexFiles": "Read the books' text into the search index",
@@ -1094,6 +1118,36 @@ export const en = {
 	"deliveries.waiting": "Waiting for {device}",
 	"deliveries.delivered": "On {device} since {date}",
 	"deliveries.takeBack": "Take back",
+	"kindle.title": "Kindle",
+	"kindle.send": "Send to Kindle",
+	"kindle.noAddress":
+		"To send the book to your Kindle, add its address first.",
+	"kindle.addAddress": "Add it on your profile.",
+	"kindle.approve":
+		"Amazon takes books only from approved senders: add {sender} to the approved e-mail list in your Amazon account (Content & Devices, Preferences, Personal Document Settings).",
+	"kindle.skipped.unavailable":
+		"There is no EPUB of it to send; only EPUB files are sent.",
+	"kindle.skipped.tooLarge":
+		"Its EPUB is larger than the {size} Amazon takes by e-mail.",
+	"kindle.skipped.pending": "It is already on its way.",
+	"kindle.sent": "Sent to {address} on {date}",
+	"kindle.failed": "Not sent: {message}",
+	"kindle.waiting": "On its way to {address}",
+	"kindle.profile": "Send to Kindle",
+	"kindle.profile.intro":
+		"GOtome e-mails a book's {format} file to your Kindle, up to {size}. Nothing is converted, so a book without an EPUB cannot be sent.",
+	"kindle.profile.off":
+		"No mail server is set up yet, so books cannot be sent. An administrator can add one in the settings.",
+	"kindle.address": "Kindle e-mail address",
+	"kindle.address.hint":
+		"Amazon shows it under Content & Devices, Devices, your Kindle. It ends in @kindle.com.",
+	"kindle.save": "Save address",
+	"bulk.kindle": "Send to Kindle",
+	"bulk.kindleDone": "{count} books are on their way to your Kindle.",
+	"notification.kindleSent": "Sent to your Kindle",
+	"notification.kindleSent.detail": "{title}",
+	"notification.kindleFailed": "Could not send to your Kindle",
+	"notification.kindleFailed.detail": "{title}: {message}",
 	"bulk.send": "Send to an e-reader",
 	"bulk.sendDone": "{count} books are on their way to {name}.",
 	"devices.title": "E-readers",

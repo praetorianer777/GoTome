@@ -75,7 +75,7 @@ func Spec() *openapi.Document {
 	for _, k := range notify.EventKinds {
 		events = append(events, k.Kind)
 	}
-	kinds := append([]string{notify.KindBulkFinished, notify.KindDeviceRequested}, events...)
+	kinds := append([]string{notify.KindBulkFinished, notify.KindDeviceRequested, notify.KindKindleSent, notify.KindKindleFailed}, events...)
 	b.FieldOverrides["Notification.kind"] = &openapi.Schema{Type: "string", Enum: kinds}
 	b.FieldOverrides["NotificationSetting.kind"] = &openapi.Schema{Type: "string", Enum: events}
 	b.FieldOverrides["DeviceBook.state"] = &openapi.Schema{Type: "string", Enum: deliveries.States}

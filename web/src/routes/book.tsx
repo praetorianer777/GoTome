@@ -12,6 +12,7 @@ import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
 import { EReaderFindings } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
+import { SendToKindle } from "@/books/kindle";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
@@ -279,6 +280,10 @@ function BookPage({ book }: { book: BookDetail }) {
 						book.files.some((f) => f.kind === "ebook" && !f.missing) && (
 							<SendToDevice bookId={book.id} />
 						)}
+					{personal &&
+						book.files.some(
+							(f) => f.format === "epub" && !f.missing,
+						) && <SendToKindle bookId={book.id} />}
 				</div>
 				{details.length > 0 && (
 					<section

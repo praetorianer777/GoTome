@@ -195,3 +195,16 @@ See [single-sign-on.md](single-sign-on.md).
 | `oidc.defaultRole` | Role of everyone else | `reader` | The role of someone in none of the groups: `admin`, `editor`, `reader`, or `none` to let only the groups in. While no groups are set, the role of an account made at a first sign-in. |
 | `oidc.signup` | Make accounts at first sign-in | `on` | `on` makes an account for someone who signs in through the provider for the first time. `off` lets in only accounts already linked, or found by their address. |
 | `oidc.linkByEmail` | Find accounts by e-mail address | `off` | `on` lets a first sign-in take over the account with the e-mail address the provider says it has verified. Only for a provider that verifies addresses. |
+
+### Mail (Send to Kindle)
+
+Books go to a Kindle as an e-mail attachment: the EPUB, unchanged, up to 50 MB (Amazon's limit; your mail server may allow less). Each person sets their Kindle address on their profile (`name@kindle.com` only) and approves the sender address in their Amazon account. See [Send to Kindle](kindle.md).
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `mail.host` | Mail server | none | The SMTP server books are sent to a Kindle through ("Send to Kindle"); none turns the feature off, as does `GOTOME_OFFLINE=true`. A name without a port. It is the only host GOtome sends mail to, and the one administrator-named host GOtome dials whatever address it resolves to, a local mail server included. |
+| `mail.port` | Mail server port | `587` | The server's port: 587 for STARTTLS, 465 for TLS. |
+| `mail.security` | Mail encryption | `starttls` | `starttls` upgrades the connection and refuses to send if the server does not offer it, `tls` is TLS from the first byte, `none` sends in the clear (and offers no password to any host but localhost). |
+| `mail.user` | Mail user name | none | Signs in with this and `mail.password` (plain authentication, only ever over TLS); empty signs in as nobody. |
+| `mail.password` | Mail password | none (secret) | Kept sealed, never sent back, never logged. |
+| `mail.sender` | Sender address | none | The From address, which each person has to approve in their Amazon account or Amazon drops the mail. Without it the feature is off. |

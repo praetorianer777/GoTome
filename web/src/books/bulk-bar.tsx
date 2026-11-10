@@ -20,6 +20,7 @@ import {
 } from "@/books/reading";
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
 import { useSendToDevice } from "@/books/deliveries";
+import { kindleQuery, skippedText, useSendToKindle } from "@/books/kindle";
 import { EREADER_FINDINGS } from "@/books/rules";
 import { useQueue } from "@/player/queue";
 import { FormError } from "@/components/form";
@@ -61,6 +62,8 @@ export function BulkBar({
 	const collect = useAddToCollection();
 	const devices = useQuery(ownDevicesQuery);
 	const send = useSendToDevice();
+	const kindle = useQuery(kindleQuery);
+	const sendKindle = useSendToKindle();
 	const queue = useQueue();
 	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"], findings?: BulkRequest["findings"]) =>
@@ -165,6 +168,16 @@ export function BulkBar({
 						))}
 					</select>
 				)}
+				{kindle.data?.available && kindle.data.address && (
+					<button
+						type="button"
+						className={quietButton}
+						disabled={none || sendKindle.isPending}
+						onClick={() => sendKindle.mutate(selection)}
+					>
+						{t("bulk.kindle")}
+					</button>
+				)}
 				{canEdit && (
 					<>
 				<button
@@ -239,6 +252,15 @@ export function BulkBar({
 					})}
 				</p>
 			)}
+			{sendKindle.data && (
+				<p role="status">
+					{[
+						t("bulk.kindleDone", { count: sendKindle.data.queued }),
+						...skippedText(sendKindle.data.skipped, kindle.data?.maxBytes ?? 0),
+					].join(" ")}
+				</p>
+			)}
+			<FormError error={sendKindle.error} />
 			<FormError error={send.error} />
 			<FormError error={collect.error} />
 			<FormError error={setStatus.error} />

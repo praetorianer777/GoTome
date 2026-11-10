@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
@@ -41,6 +42,7 @@ type background struct {
 	sync        *kosync.Service
 	updates     *updates.Service
 	imports     *readimport.Service
+	kindle      *kindle.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -84,6 +86,7 @@ func (b background) registrations() []registration {
 		worker(&releases.FetchFeedsWorker{Service: b.follows}),
 		worker(&updates.CheckWorker{Service: b.updates}),
 		worker(&kosync.HashWorker{Service: b.sync}),
+		worker(&kindle.Worker{Service: b.kindle}),
 		worker(&ingest.MeasureWorker{Service: b.scans}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
 	}

@@ -107,7 +107,7 @@ func (q *Queries) DeleteUserIdentity(ctx context.Context, arg DeleteUserIdentity
 }
 
 const getIdentityUser = `-- name: GetIdentityUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, i.id AS identity_id
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, i.id AS identity_id
 FROM user_identities i
 JOIN users u ON u.id = i.user_id
 WHERE i.issuer = $1 AND i.subject = $2
@@ -129,6 +129,7 @@ type GetIdentityUserRow struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
+	KindleAddress    *string
 	IdentityID       uuid.UUID
 }
 
@@ -146,13 +147,14 @@ func (q *Queries) GetIdentityUser(ctx context.Context, arg GetIdentityUserParams
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
+		&i.KindleAddress,
 		&i.IdentityID,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id FROM users WHERE email = $1
+SELECT id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id, kindle_address FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, error) {
@@ -169,6 +171,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
+		&i.KindleAddress,
 	)
 	return i, err
 }
@@ -215,7 +218,7 @@ func (q *Queries) ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]L
 }
 
 const setRole = `-- name: SetRole :one
-UPDATE users SET role = $2, updated_at = now() WHERE id = $1 RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id
+UPDATE users SET role = $2, updated_at = now() WHERE id = $1 RETURNING id, username, email, password_hash, role, quota_bytes, disabled_at, created_at, updated_at, history_library_id, kindle_address
 `
 
 type SetRoleParams struct {
@@ -237,6 +240,7 @@ func (q *Queries) SetRole(ctx context.Context, arg SetRoleParams) (User, error) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
+		&i.KindleAddress,
 	)
 	return i, err
 }

@@ -45,6 +45,8 @@ and send them all at once. Each device then fetches them its own way: from
 the **Sent to this device** entry of the OPDS catalogue or the KOReader
 plugin, at a Kobo's next sync, or when the Tolino app next goes online.
 
+A Kindle takes books by e-mail instead: see [Send to Kindle](kindle.md).
+
 A device's page, reached from your profile, lists the books sent to it:
 waiting, synced, or delivered. A book still waiting can be taken back; on
 a Kobo, taking a book back removes it at the next sync.

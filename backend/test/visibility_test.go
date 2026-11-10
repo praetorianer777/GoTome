@@ -170,7 +170,8 @@ func readCases() map[string][]readCase {
 			{path: "/opds/collections/{sharedCollection}", control: "insider"},
 			{path: "/opds/collections/{formerCollection}", control: "former"},
 		},
-		"listBookDeliveries": {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listBookDeliveries":  {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listBookKindleSends": {{path: "/books/{book}/kindle", control: "insider"}},
 		"listDeviceBooks": {
 			{path: "/devices/{insiderDevice}/books", control: "insider"},
 			{path: "/devices/{formerDevice}/books", control: "former"},

@@ -1004,6 +1004,30 @@ export const de: Record<MessageKey, string> = {
 	"settings.oidcLinkByEmail": "Konten über die E-Mail-Adresse finden",
 	"settings.oidcLinkByEmail.hint":
 		"Eine erste Anmeldung übernimmt das Konto mit der Adresse, die der Identitätsanbieter als bestätigt meldet. Nur für einen Anbieter, der Adressen bestätigt.",
+	"settings.mailHost": "Mailserver",
+	"settings.mailHost.hint":
+		"Der SMTP-Server, über den GOtome Bücher an Kindles schickt, etwa smtp.example.org, ohne Port. Es ist der einzige Rechner, an den GOtome Mails schickt. Leer lassen, um das Senden an einen Kindle auszuschalten.",
+	"settings.mailPort": "Port des Mailservers",
+	"settings.mailPort.hint":
+		"Meist 587 für STARTTLS und 465 für TLS.",
+	"settings.mailSecurity": "Mail-Verschlüsselung",
+	"settings.mailSecurity.hint":
+		"Ohne sie wird nichts gesendet und kein Passwort angeboten, außer Sie wählen „Keine“, was nur für einen Server in einem vertrauten Netz gedacht ist.",
+	"settings.mailUser": "Benutzername für die Mail",
+	"settings.mailUser.hint":
+		"Leer lassen, wenn der Server keine Anmeldung braucht.",
+	"settings.mailPassword": "Passwort für die Mail",
+	"settings.mailPassword.hint":
+		"Wird verschlüsselt gespeichert und nie wieder angezeigt.",
+	"settings.mailSender": "Absenderadresse",
+	"settings.mailSender.hint":
+		"Die Adresse, von der die Mails kommen. Alle müssen sie in ihrem Amazon-Konto unter den genehmigten Absendern eintragen (Inhalte & Geräte, Einstellungen, Einstellungen für persönliche Dokumente), sonst verwirft Amazon die Bücher.",
+	"settings.section.mail": "Mail",
+	"settingChoice.mail.security.starttls":
+		"STARTTLS (Verbindung aufwerten)",
+	"settingChoice.mail.security.tls":
+		"TLS (von Anfang an verschlüsselt)",
+	"settingChoice.mail.security.none": "Keine (unverschlüsselt)",
 	"jobs.kind.rebuildIndex": "Suchindex neu aufbauen",
 	"jobs.kind.applyIndex": "Suchindex auf den neuesten Stand bringen",
 	"jobs.kind.indexFiles": "Text der Bücher in den Suchindex lesen",
@@ -1113,6 +1137,36 @@ export const de: Record<MessageKey, string> = {
 	"deliveries.waiting": "Wartet auf {device}",
 	"deliveries.delivered": "Auf {device} seit {date}",
 	"deliveries.takeBack": "Zurücknehmen",
+	"kindle.title": "Kindle",
+	"kindle.send": "An Kindle senden",
+	"kindle.noAddress":
+		"Um das Buch an Ihren Kindle zu senden, tragen Sie zuerst dessen Adresse ein.",
+	"kindle.addAddress": "Im Profil eintragen.",
+	"kindle.approve":
+		"Amazon nimmt Bücher nur von genehmigten Absendern an: Tragen Sie {sender} in Ihrem Amazon-Konto in die Liste der genehmigten E-Mail-Adressen ein (Inhalte & Geräte, Einstellungen, Einstellungen für persönliche Dokumente).",
+	"kindle.skipped.unavailable":
+		"Es gibt keine EPUB-Datei zum Senden; es werden nur EPUB-Dateien gesendet.",
+	"kindle.skipped.tooLarge":
+		"Die EPUB-Datei ist größer als die {size}, die Amazon per E-Mail annimmt.",
+	"kindle.skipped.pending": "Es ist schon unterwegs.",
+	"kindle.sent": "Am {date} an {address} gesendet",
+	"kindle.failed": "Nicht gesendet: {message}",
+	"kindle.waiting": "Unterwegs an {address}",
+	"kindle.profile": "An Kindle senden",
+	"kindle.profile.intro":
+		"GOtome schickt die {format}-Datei eines Buchs per E-Mail an Ihren Kindle, bis zu {size}. Es wird nichts umgewandelt; ein Buch ohne EPUB lässt sich nicht senden.",
+	"kindle.profile.off":
+		"Es ist noch kein Mailserver eingerichtet, daher können keine Bücher gesendet werden. Ein Administrator kann in den Einstellungen einen eintragen.",
+	"kindle.address": "E-Mail-Adresse des Kindle",
+	"kindle.address.hint":
+		"Amazon zeigt sie unter Inhalte & Geräte, Geräte, Ihr Kindle. Sie endet auf @kindle.com.",
+	"kindle.save": "Adresse speichern",
+	"bulk.kindle": "An Kindle senden",
+	"bulk.kindleDone": "{count} Bücher sind unterwegs zu Ihrem Kindle.",
+	"notification.kindleSent": "An Ihren Kindle gesendet",
+	"notification.kindleSent.detail": "{title}",
+	"notification.kindleFailed": "Senden an Ihren Kindle fehlgeschlagen",
+	"notification.kindleFailed.detail": "{title}: {message}",
 	"bulk.send": "An einen E-Reader senden",
 	"bulk.sendDone": "{count} Bücher sind unterwegs zu {name}.",
 	"devices.title": "E-Reader",

@@ -21,6 +21,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -106,6 +107,8 @@ type Server struct {
 	Kobo *kobo.Service
 	// Deliveries sends books to people's devices.
 	Deliveries *deliveries.Service
+	// Kindle sends books to people's Kindles by e-mail.
+	Kindle *kindle.Service
 	// Sync is the server KOReader's progress sync talks to.
 	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.

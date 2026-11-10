@@ -32,6 +32,11 @@ const (
 	// KindDeviceRequested is an e-reader asking to be added to the
 	// account. Its data are the device's name and the code it shows.
 	KindDeviceRequested = "device.requested"
+	// KindKindleSent and KindKindleFailed are the end of a send to the
+	// person's Kindle (#412). Their data are the book's title and, for a
+	// failure, what went wrong.
+	KindKindleSent   = "kindle.sent"
+	KindKindleFailed = "kindle.failed"
 )
 
 // MaxPage is the most notifications one page holds.

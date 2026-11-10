@@ -33,6 +33,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -221,6 +222,8 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Resources.DataDir = a.dataDir
 	a.server.Resources.Embedding, a.server.Resources.Server = a.settings.Embedding, a.settings.EmbeddingServer
 	a.server.Deliveries = deliveries.NewService(a.pool)
+	a.server.Kindle = kindle.NewService(a.pool, a.settings, a.server.Books, quiet)
+	a.server.Kindle.Queue = queue
 	a.server.Pairing = pairing.NewService(a.pool)
 	a.server.Kobo = kobo.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
