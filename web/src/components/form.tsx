@@ -102,13 +102,15 @@ export function SelectField({
 			<label htmlFor={id} className="text-sm font-medium">
 				{label}
 			</label>
+			{/* contain-layout: WebKit adds the width of the longest option to the
+				page's scrollable width, 55 px at 320 px on the settings (#447). */}
 			<select
 				id={id}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				aria-describedby={describedBy(id, hint, error)}
 				aria-invalid={error ? true : undefined}
-				className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 aria-invalid:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:aria-invalid:border-red-400"
+				className="contain-layout rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 aria-invalid:border-red-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:aria-invalid:border-red-400"
 			>
 				{choices.map((c) => (
 					<option key={c.value} value={c.value}>

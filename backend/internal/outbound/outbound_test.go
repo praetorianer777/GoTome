@@ -90,3 +90,18 @@ func TestPublic(t *testing.T) {
 		}
 	}
 }
+
+func TestATrustedAddressIsAURLOrAHostAndPort(t *testing.T) {
+	for raw, want := range map[string]string{
+		"https://idp.lan":                "idp.lan:443",
+		"http://idp.lan":                 "idp.lan:80",
+		"https://keycloak:8443/realms/x": "keycloak:8443",
+		"mail.example.org:587":           "mail.example.org:587",
+		"[fd00::1]:25":                   "[fd00::1]:25",
+		"mail.example.org":               "",
+	} {
+		if got := hostPort(raw); got != want {
+			t.Errorf("hostPort(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}

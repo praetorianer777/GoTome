@@ -49,6 +49,13 @@ preview and nothing is written:
   leave out,
 - the rows with nothing to import, such as a shelf GOtome does not know.
 
+Books the library does not hold are looked up afterwards, by their ISBN
+or else their title and authors, as a file read is: the cover, description
+and what the file lacked are filled in in the background. This needs a
+metadata provider and "Look new books up" (`metadata.autoMatch`) on; without
+a connection to one (`GOTOME_OFFLINE`) nothing is asked and these books keep
+what the file said.
+
 StoryGraph rates in fractions of a star; GOtome rounds them to whole stars
 and says how many it rounded.
 
@@ -61,6 +68,12 @@ and says how many it rounded.
 | date read | the day you finished it, counted in its year |
 | custom shelves (Goodreads) and tags (StoryGraph) | collections of the same names |
 | review | your private note |
+
+A book read with no date in the file is completed all the same, and shows
+in **Your reading** without a year. It has no finish, so it counts in no
+year of **Statistics** (GOtome does not make a date up, neither today's nor
+the import's); the statistics say how many books are "Completed without a
+date" under the years. The same goes for any book you mark completed by hand.
 
 What you already set stays: a status other than unread or want to read, a
 rating, a finish date or a note is not replaced unless you tick "Replace

@@ -31,6 +31,7 @@ import {
 } from "@/users/api";
 import { ApiKeys } from "@/users/api-keys";
 import { Devices } from "@/users/devices";
+import { KindleAddress } from "@/users/kindle";
 import { ReadingImport } from "@/users/reading-import";
 import { StorageUse } from "@/users/storage";
 
@@ -95,6 +96,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 			<Sessions />
 			<ReadingImport />
 			<Devices username={user.username} />
+			<KindleAddress />
 			<ApiKeys />
 		</div>
 	);
@@ -120,7 +122,7 @@ function LanguageChoice() {
 				<select
 					value={chosen}
 					onChange={(e) =>
-						setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
+						void setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
 					}
 					className="w-fit rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
 				>

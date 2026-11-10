@@ -240,6 +240,9 @@ func (c *Collector) machine(ctx context.Context) []Check {
 	memory := Check{Name: "memory", Status: OK, CheckedAt: now}
 	memory.Value, memory.Unit = value(float64(h.Memory.MachineBytes), UnitBytes)
 	for _, w := range h.Warnings {
+		if w.Kind == resources.KindWatches {
+			continue
+		}
 		target := &memory
 		if w.Kind == resources.KindDisk {
 			target = &disk

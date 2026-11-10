@@ -40,6 +40,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -344,6 +345,9 @@ func serve() error {
 	updateChecks.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
 	histories := readimport.NewService(pool, books, log)
+	if !cfg.Offline {
+		histories.Lookup = matches.EnqueueTx
+	}
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
@@ -356,7 +360,10 @@ func serve() error {
 	}
 	defer textIndex.Close()
 	ready.Set(httpapi.CheckSearchIndex, textIndex.Check)
+	mailing := kindle.NewService(pool, settingStore, books, log)
+	mailing.Offline = cfg.Offline
 	workers := background{
+		kindle:   mailing,
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
@@ -368,6 +375,7 @@ func serve() error {
 		return err
 	}
 	scans.Queue = runner
+	mailing.Queue = runner
 	matches.Queue = runner
 	changes.Queue = runner
 	histories.Queue = runner
@@ -420,6 +428,30 @@ func serve() error {
 	health.DataDir, health.IndexDir = cfg.DataDir, fulltext.Dir(cfg.DataDir)
 	health.Embedding, health.Server = settingStore.Embedding, settingStore.EmbeddingServer
 	go health.Watch(ctx, log)
+	folders := &ingest.Watcher{
+		Targets: func(ctx context.Context) ([]ingest.WatchTarget, error) {
+			rows, err := sqlc.New(pool).ListWatchedLibraries(ctx)
+			targets := make([]ingest.WatchTarget, 0, len(rows))
+			for _, r := range rows {
+				targets = append(targets, ingest.WatchTarget{ID: r.ID, Root: r.RootPath})
+			}
+			return targets, err
+		},
+		Request: func(ctx context.Context, id uuid.UUID) error {
+			_, err := scans.Request(ctx, id, nil)
+			if errors.Is(err, library.ErrNotFound) {
+				// Deleted since the list of targets was read; the next read drops it.
+				return nil
+			}
+			return err
+		},
+		Log: log,
+	}
+	go folders.Run(ctx)
+	health.Watches = func() resources.Watches {
+		s := folders.Status()
+		return resources.Watches{Watches: s.Watches, Limit: s.Limit, Notified: s.Notified, Polled: s.Polled, LimitReached: s.LimitReached}
+	}
 	checks := &syscheck.Collector{
 		Pool: pool, Readiness: ready.Checks, Embedding: vectors.Runtime, Providers: meta.ProviderStates, Resources: health,
 	}
@@ -462,6 +494,7 @@ func serve() error {
 		Updates:    updateChecks,
 		Checks:     checks,
 		Deliveries: deliveries.NewService(pool),
+		Kindle:     mailing,
 		Pairing:    pairing.NewService(pool),
 		Kobo:       kobo.NewService(pool),
 		Sync:       progressSync,

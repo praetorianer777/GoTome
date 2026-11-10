@@ -75,6 +75,9 @@ const (
 	KindParallel = "parallel"
 	// KindDisk: the data directory's disk is nearly full.
 	KindDisk = "disk"
+	// KindWatches: the kernel's limit of inotify watches is reached, so a
+	// library's folder is polled instead of watched.
+	KindWatches = "watches"
 )
 
 // Memory is the memory the app's container sees and what the parts take.
@@ -130,6 +133,18 @@ type Disk struct {
 	NeedFreeBytes int64 `json:"needFreeBytes"`
 }
 
+// Watches is what the folder watcher holds (#409).
+type Watches struct {
+	// Watches is the inotify watches taken, one per folder; Limit the
+	// kernel's fs.inotify.max_user_watches, 0 if not known.
+	Watches int `json:"watches"`
+	Limit   int `json:"limit"`
+	// Notified and Polled count the libraries watched either way.
+	Notified     int  `json:"notified"`
+	Polled       int  `json:"polled"`
+	LimitReached bool `json:"limitReached"`
+}
+
 // Warning is one thing that does not fit, with the commands that make it
 // fit where there are any: SQL statements to run in the database.
 type Warning struct {
@@ -142,6 +157,7 @@ type Health struct {
 	Memory   Memory    `json:"memory"`
 	Postgres Postgres  `json:"postgres"`
 	Disk     Disk      `json:"disk"`
+	Watches  Watches   `json:"watches"`
 	Warnings []Warning `json:"warnings"`
 }
 
@@ -171,6 +187,9 @@ func Evaluate(h Health) Health {
 	}
 	if d.TotalBytes > 0 && d.FreeBytes < d.NeedFreeBytes {
 		h.Warnings = append(h.Warnings, Warning{Kind: KindDisk, Commands: []string{}})
+	}
+	if h.Watches.LimitReached {
+		h.Warnings = append(h.Warnings, Warning{Kind: KindWatches, Commands: []string{}})
 	}
 	return h
 }
@@ -228,6 +247,8 @@ type Service struct {
 	// are; Server the embedding server's address, "" for none.
 	Embedding func(ctx context.Context) (embed.Spec, bool, error)
 	Server    func(ctx context.Context) (string, error)
+	// Watches reports the folder watcher; nil where there is none.
+	Watches func() Watches
 	// memory reads the machine's memory and the container's limit; tests
 	// replace it.
 	memory func() (machine, limit int64)
@@ -305,6 +326,9 @@ func (s *Service) Check(ctx context.Context) (Health, error) {
 	}
 	if s.IndexDir != "" {
 		h.Disk.IndexBytes = folderSize(s.IndexDir)
+	}
+	if s.Watches != nil {
+		h.Watches = s.Watches()
 	}
 	return Evaluate(h), nil
 }

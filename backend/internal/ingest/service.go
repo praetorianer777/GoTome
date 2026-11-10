@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
@@ -147,6 +148,9 @@ func (s *Service) Request(ctx context.Context, libraryID uuid.UUID, by *uuid.UUI
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := q.QueueScan(ctx, sqlc.QueueScanParams{LibraryID: libraryID, RequestedBy: by})
+		if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return library.ErrNotFound
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			row, err = q.LockActiveScan(ctx, libraryID)
 			if errors.Is(err, pgx.ErrNoRows) {

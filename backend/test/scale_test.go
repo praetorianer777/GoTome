@@ -282,6 +282,10 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			       CASE WHEN n / 6 % 6 < 4 THEN date '2025-01-01' + n % 600 END, NULL
 			FROM scale_books, (VALUES ($1::uuid, 1), ($2::uuid, 2)) w(u, k)
 			WHERE n % 6 = 1 AND k = 2 OR n % 11 = 2 AND k = 1`, args: []any{admin, member}},
+		// An imported history: 1,200 of the books the member read are ones
+		// the library does not hold, with a metadata vector alone.
+		{sql: `UPDATE books SET placeholder = true WHERE id IN (SELECT id FROM scale_books WHERE n % 42 = 7)`},
+		{sql: `DELETE FROM book_vectors WHERE kind = 'content' AND book_id IN (SELECT id FROM scale_books WHERE n % 42 = 7)`},
 		{sql: `INSERT INTO reading_sessions (user_id, book_id, medium, client_id, started_at, ended_at, from_fraction, to_fraction)
 			SELECT $1, b.id, 'ebook', 'scale', now() - (s % 365) * interval '1 day',
 			       now() - (s % 365) * interval '1 day' + interval '40 minutes', (s % 10) / 10.0, (s % 10 + 1) / 10.0

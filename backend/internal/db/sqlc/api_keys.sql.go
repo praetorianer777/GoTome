@@ -81,7 +81,7 @@ func (q *Queries) DeleteUserAPIKey(ctx context.Context, arg DeleteUserAPIKeyPara
 }
 
 const getAPIKeyUser = `-- name: GetAPIKeyUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, k.id AS key_id, k.scopes AS key_scopes, k.last_used_at AS key_last_used_at
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, k.id AS key_id, k.scopes AS key_scopes, k.last_used_at AS key_last_used_at
 FROM api_keys k
 JOIN users u ON u.id = k.user_id
 WHERE k.key_hash = $1
@@ -105,6 +105,7 @@ type GetAPIKeyUserRow struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
+	KindleAddress    *string
 	KeyID            uuid.UUID
 	KeyScopes        []string
 	KeyLastUsedAt    *time.Time
@@ -126,6 +127,7 @@ func (q *Queries) GetAPIKeyUser(ctx context.Context, arg GetAPIKeyUserParams) (G
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
+		&i.KindleAddress,
 		&i.KeyID,
 		&i.KeyScopes,
 		&i.KeyLastUsedAt,

@@ -78,6 +78,9 @@ type Service struct {
 	log   *slog.Logger
 	// Queue is set once the job runner exists.
 	Queue Queue
+	// Lookup, when set, is called in the transaction that makes a book for
+	// a row, to ask for the book to be looked up: enrich.Service.EnqueueTx.
+	Lookup func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
 }
 
 // NewService returns a Service.
@@ -484,6 +487,11 @@ func (s *Service) write(ctx context.Context, tx pgx.Tx, scope library.Scope, imp
 				return "", "", nil, err
 			}
 			created = true
+			if s.Lookup != nil {
+				if err := s.Lookup(ctx, tx, id); err != nil {
+					return "", "", nil, err
+				}
+			}
 		}
 	}
 	in := catalog.ImportedReading{Status: *row.Status, Note: row.Review, Overwrite: imp.Overwrite}

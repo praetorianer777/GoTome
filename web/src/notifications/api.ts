@@ -241,6 +241,19 @@ export function notificationText(n: Notification): {
 					? t("notification.feedItem.one", { title: text(d.title), feed: text(d.feed) })
 					: t("notification.feedItem.many", { count: count(d.count) }),
 			};
+		case "kindle.sent":
+			return {
+				title: t("notification.kindleSent"),
+				detail: t("notification.kindleSent.detail", { title: text(d.title) }),
+			};
+		case "kindle.failed":
+			return {
+				title: t("notification.kindleFailed"),
+				detail: t("notification.kindleFailed.detail", {
+					title: text(d.title),
+					message: text(d.message),
+				}),
+			};
 		case "bulk.finished": {
 			const action = typeof n.data.action === "string" ? n.data.action : "";
 			const outcomes = (n.data.outcomes ?? {}) as Partial<

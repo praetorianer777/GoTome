@@ -10,11 +10,11 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 const dist = fileURLToPath(new URL("../dist", import.meta.url));
 
 // Raised only on purpose, with the table in docs/performance.md. Today:
-// main chunk 148 KiB raw, first load 218 KiB gzip and 185 KiB brotli.
+// main chunk 165 KiB raw, first load 202 KiB gzip and 174 KiB brotli.
 const LIMITS = {
-	mainRaw: 185 * 1024,
-	firstLoadGzip: 245 * 1024,
-	firstLoadBrotli: 210 * 1024,
+	mainRaw: 183 * 1024,
+	firstLoadGzip: 221 * 1024,
+	firstLoadBrotli: 193 * 1024,
 };
 
 const html = readFileSync(`${dist}/index.html`, "utf8");

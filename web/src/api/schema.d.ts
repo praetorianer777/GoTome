@@ -638,6 +638,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/kindle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's latest sends of the book to their Kindle, with their outcome */
+        get: operations["listBookKindleSends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/merge": {
         parameters: {
             query?: never;
@@ -1392,6 +1409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kindle/sends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the EPUBs of books to the caller's Kindle by e-mail, one job each: by IDs, or a library and filter */
+        post: operations["sendToKindle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/download/{fileId}": {
         parameters: {
             query?: never;
@@ -1952,6 +1986,24 @@ export interface paths {
         put?: never;
         /** Reject a waiting match; it is not proposed again */
         post: operations["rejectMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/kindle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether books can be sent to a Kindle by e-mail, the address they come from and the caller's Kindle address */
+        get: operations["getKindle"];
+        /** Set the caller's Kindle address, or remove it with an empty one */
+        put: operations["putKindle"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3614,6 +3666,7 @@ export interface components {
             memory: components["schemas"]["Memory"];
             postgres: components["schemas"]["Postgres"];
             warnings: components["schemas"]["Warning"][];
+            watches: components["schemas"]["Watches"];
         };
         HistoryEntry: {
             book: components["schemas"]["BookSummary"];
@@ -3692,6 +3745,39 @@ export interface components {
             scheduledAt: string;
             state: string;
         };
+        KindleAddress: {
+            address: string;
+        };
+        KindleResult: {
+            queued: number;
+            skipped: components["schemas"]["KindleSkipped"][];
+        };
+        KindleSendList: {
+            sends: components["schemas"]["KindleSendView"][];
+        };
+        KindleSendView: {
+            address: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            message?: string;
+            state: string;
+        };
+        KindleSkipped: {
+            /** Format: uuid */
+            bookId: string;
+            reason: string;
+        };
+        KindleStatus: {
+            address: string;
+            available: boolean;
+            format: string;
+            maxBytes: number;
+            sender?: string;
+        };
         KoboResult: {
             Result: string;
         };
@@ -3767,6 +3853,7 @@ export interface components {
             /** Format: date-time */
             unwritableSince?: string;
             visibility: string;
+            watch: boolean;
             writable: boolean;
         };
         LinkedIdentity: {
@@ -3900,7 +3987,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "device.requested" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
+            kind: "bulk.finished" | "device.requested" | "kindle.sent" | "kindle.failed" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -4059,6 +4146,7 @@ export interface components {
             totalListeningMinutes: number;
             totalPages: number;
             totalReadingMinutes: number;
+            undated: number;
             years: components["schemas"]["StatsYear"][];
         };
         RebuildResult: {
@@ -4405,6 +4493,7 @@ export interface components {
             joinFormats?: boolean;
             name?: string;
             visibility?: string;
+            watch?: boolean;
             writable?: boolean;
         };
         UpdateSettingsRequest: {
@@ -4438,6 +4527,13 @@ export interface components {
         Warning: {
             commands: string[];
             kind: string;
+        };
+        Watches: {
+            limit: number;
+            limitReached: boolean;
+            notified: number;
+            polled: number;
+            watches: number;
         };
         WishRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -5804,6 +5900,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listBookKindleSends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleSendList"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -7423,6 +7550,39 @@ export interface operations {
             };
         };
     };
+    sendToKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     koboDownload: {
         parameters: {
             query?: never;
@@ -8581,6 +8741,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KindleAddress"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleStatus"];
+                };
             };
             /** @description The request failed. */
             default: {

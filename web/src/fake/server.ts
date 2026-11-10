@@ -140,6 +140,15 @@ export class FakeServer {
 		/** When a Kobo reader's sync told it of the book. */
 		syncedAt?: string;
 	}[] = [];
+	/** Sending to a Kindle: the mail server's state, and what was sent. */
+	kindle = {
+		available: false,
+		sender: "library@example.org",
+		address: "",
+		maxBytes: 50 * 1024 * 1024,
+		format: "epub",
+	};
+	kindleSends: { id: string; bookId: string; state: string; message?: string; address: string; createdAt: string; finishedAt?: string }[] = [];
 	/** The signed-in person's sessions, as the profile page lists them. */
 	sessions = [
 		{
@@ -311,6 +320,13 @@ export class FakeServer {
 			indexBytes: 300_000_000,
 			needFreeBytes: 11_000_000_000,
 		},
+		watches: {
+			watches: 120,
+			limit: 65_536,
+			notified: 1,
+			polled: 0,
+			limitReached: false,
+		},
 		warnings: [],
 	};
 	work = {
@@ -467,6 +483,7 @@ export class FakeServer {
 			mode: "managed",
 			writable: true,
 			joinFormats: false,
+			watch: true,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -778,6 +795,7 @@ export class FakeServer {
 					totalListeningMinutes: 0,
 					pagesEstimated: false,
 					years: [],
+					undated: 0,
 					history: [],
 				},
 			);
@@ -848,6 +866,43 @@ export class FakeServer {
 		}
 		if (path.startsWith("/matches")) {
 			return this.answerMatches(request.method, path, body as CandidateApply);
+		}
+		if (path === "/me/kindle") {
+			if (request.method === "PUT") {
+				const address = String((body as { address?: string }).address ?? "").trim().toLowerCase();
+				if (address && !address.endsWith("@kindle.com")) {
+					return Response.json(
+						{ error: { code: "validation_failed", message: "Check the highlighted fields.", fields: { address: "Give the address of your Kindle, such as name@kindle.com." } } },
+						{ status: 422 },
+					);
+				}
+				this.kindle = { ...this.kindle, address };
+			}
+			return Response.json(this.kindle);
+		}
+		if (path === "/kindle/sends" && request.method === "POST") {
+			const books = (body as { books?: string[] }).books ?? this.books.map((b) => b.id);
+			let queued = 0;
+			const skipped: { bookId: string; reason: string }[] = [];
+			for (const bookId of books) {
+				const book = this.books.find((b) => b.id === bookId);
+				if (!book?.files.some((f) => f.format === "epub")) {
+					skipped.push({ bookId, reason: "unavailable" });
+				} else if (this.kindleSends.some((s) => s.bookId === bookId && s.state === "queued")) {
+					skipped.push({ bookId, reason: "pending" });
+				} else {
+					this.kindleSends.unshift({
+						id: `ks-${this.kindleSends.length + 1}`, bookId, state: "queued",
+						address: this.kindle.address, createdAt: "2026-01-05T08:00:00Z",
+					});
+					queued++;
+				}
+			}
+			return Response.json({ queued, skipped });
+		}
+		const bookKindle = /^\/books\/([^/]+)\/kindle$/.exec(path);
+		if (bookKindle) {
+			return Response.json({ sends: this.kindleSends.filter((s) => s.bookId === bookKindle[1]) });
 		}
 		const bookDeliveries = /^\/books\/([^/]+)\/deliveries$/.exec(path);
 		if (bookDeliveries) {

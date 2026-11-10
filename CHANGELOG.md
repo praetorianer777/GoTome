@@ -8,6 +8,27 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Libraries watch their folders: files put into (or taken out of) a library's
+  folder are found by a scan about a minute later, without pressing "Scan
+  now". Network shares are checked every minute instead, and the overview
+  tells when the kernel's limit of watches is reached. It can be turned off
+  per library.
+- Send to Kindle: when an administrator has set up a mail server (Settings,
+  Mail), a book's EPUB goes to your Kindle by e-mail, from the book's page or
+  for books selected in a list. Add your Kindle address on your profile and
+  approve the sender address in your Amazon account. Only EPUB files up to
+  50 MB are sent, unchanged; each send is a job whose outcome is on the book's
+  page and in a notification. See `docs/kindle.md`.
+- Books you read but the library does not hold (most of an imported Goodreads
+  or StoryGraph history) now count in what "For you" learns from your taste,
+  and are never recommended themselves. See `docs/similarity.md`.
+- Statistics count the books completed with no finish date, such as those an
+  imported history gave none, apart from the years ("Completed without a
+  date"), without inventing a date for them.
+- Books an imported Goodreads or StoryGraph history adds that the library
+  does not hold are looked up by their ISBN like a new file is, so they get
+  a cover and a description. See `docs/importing-reading-history.md`.
+
 - The audiobook player's sleep timer fades the volume down before it stops,
   can be extended by 15 minutes (a button, or shaking the phone where the
   browser allows it, also just after it stopped), and can start by itself
@@ -54,6 +75,12 @@ What changes for someone who runs or uses GOtome. The format follows
   upgrade guide. GOtome asks GitHub once a day, with no account and no
   token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
   turn it off. It never updates itself.
+- Read aloud in the web reader for EPUB, MOBI and AZW3 books: a "Read aloud"
+  button (or the R key) reads from the top of the page with the browser's own
+  voices, highlights the sentence being read and turns pages as it goes. The
+  voice (the book's language picks the first) and the speed are chosen under
+  "Display" and kept per browser. Nothing leaves the browser; the button is
+  left out where the browser has no voices, and PDFs are not read aloud.
 
 ### Fixed
 

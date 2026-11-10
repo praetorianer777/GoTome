@@ -50,15 +50,7 @@ test.describe("layout rules", () => {
 				await open(page, view);
 				note(
 					"overflow at 320 px",
-					(await overflowProblems(page)).filter(
-						// WebKit counts a width no box on this page has (#447).
-						(f) =>
-							!(
-								testInfo.project.name === "webkit" &&
-								view.label === "/admin/settings" &&
-								f.startsWith("the page is ")
-							),
-					),
+					await overflowProblems(page),
 				);
 				note(
 					"text spacing at 320 px",

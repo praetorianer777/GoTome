@@ -442,6 +442,11 @@ export const en = {
 	"reader.flow.paginated": "Pages",
 	"reader.flow.scrolled": "Scrolling",
 	"reader.fontSize": "Text size {percent}%",
+	"reader.speak": "Read aloud",
+	"reader.voice": "Voice",
+	"reader.rate": "Speed",
+	"reader.rateAt": "{rate}×",
+	"reader.speakNotPdf": "Read aloud is for EPUB, MOBI and AZW3 books, not for PDFs.",
 	"reader.smaller": "Smaller",
 	"reader.larger": "Larger",
 	"reader.search": "Search",
@@ -472,6 +477,7 @@ export const en = {
 	"keys.contents": "Show or hide the contents",
 	"keys.search": "Show or hide the search",
 	"keys.look": "Show or hide the display settings",
+	"keys.speak": "Start or stop reading aloud",
 	"keys.larger": "Larger text",
 	"keys.smaller": "Smaller text",
 	"keys.closePanel": "Close the open panel",
@@ -606,6 +612,7 @@ export const en = {
 	"health.warn.memory": "Postgres, the app and the embedding model may take {need}, more than the {budget} of this machine's memory they can share. Postgres's settings travel with its volume and may be sized for another machine; when memory runs out, Postgres is killed. Run these where the compose file is:",
 	"health.warn.embedding": "The embedding model {model} alone takes about {size}, which leaves Postgres almost no memory. Choose a smaller model, run it on an embedding server, or turn embedding off in the settings.",
 	"health.warn.parallel": "Postgres may start {workers} parallel workers, but this machine has {cpus} CPUs. Run these where the compose file is:",
+	"health.warn.watches": "The kernel allows {limit} inotify watches and {used} are taken, so a library's folder is checked every minute or two instead of being watched, and new files appear a little later. Raise the limit on the host, for instance with sudo sysctl fs.inotify.max_user_watches=524288 (put it in /etc/sysctl.d/ to keep it), then restart GOtome.",
 	"health.warn.disk": "Only {free} is free on the data directory's disk; keep at least {need}. Postgres stops when its disk is full. Free space: remove old images with docker image prune after an update, empty the trash, or move to a larger disk.",
 	"nav.wishlist": "Wishlist",
 	"nav.releases": "New books",
@@ -866,6 +873,7 @@ export const en = {
 	"stats.years": "Books finished per year",
 	"stats.noYears": "No book read to its end yet.",
 	"stats.finished": "{count} books",
+	"stats.undated": "Completed without a date: {count}, in no year",
 	"stats.finishedAgain": "{count} finished, {books} different books",
 	"stats.history": "Started and finished",
 	"stats.noHistory": "Nothing started yet.",
@@ -986,6 +994,30 @@ export const en = {
 	"settings.oidcLinkByEmail": "Find accounts by e-mail address",
 	"settings.oidcLinkByEmail.hint":
 		"A first sign-in takes the account with the address the identity provider says it has verified. Only for a provider that verifies addresses.",
+	"settings.mailHost": "Mail server",
+	"settings.mailHost.hint":
+		"The SMTP server GOtome sends books to Kindles through, such as smtp.example.org, without a port. It is the only host GOtome sends mail to. Leave empty to turn sending to a Kindle off.",
+	"settings.mailPort": "Mail server port",
+	"settings.mailPort.hint":
+		"Usually 587 for STARTTLS and 465 for TLS.",
+	"settings.mailSecurity": "Mail encryption",
+	"settings.mailSecurity.hint":
+		"Nothing is sent, and no password offered, without it unless you choose none, which is only for a server on a network you trust.",
+	"settings.mailUser": "Mail user name",
+	"settings.mailUser.hint":
+		"Leave empty if the server needs no sign-in.",
+	"settings.mailPassword": "Mail password",
+	"settings.mailPassword.hint":
+		"Kept sealed; it is never shown again.",
+	"settings.mailSender": "Sender address",
+	"settings.mailSender.hint":
+		"The address the mail comes from. Everyone has to add it to the approved senders in their Amazon account (Content & Devices, Preferences, Personal Document Settings), or Amazon drops the books.",
+	"settings.section.mail": "Mail",
+	"settingChoice.mail.security.starttls":
+		"STARTTLS (upgrade the connection)",
+	"settingChoice.mail.security.tls":
+		"TLS (encrypted from the start)",
+	"settingChoice.mail.security.none": "None (no encryption)",
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.applyIndex": "Bring the search index up to date",
 	"jobs.kind.indexFiles": "Read the books' text into the search index",
@@ -1094,6 +1126,36 @@ export const en = {
 	"deliveries.waiting": "Waiting for {device}",
 	"deliveries.delivered": "On {device} since {date}",
 	"deliveries.takeBack": "Take back",
+	"kindle.title": "Kindle",
+	"kindle.send": "Send to Kindle",
+	"kindle.noAddress":
+		"To send the book to your Kindle, add its address first.",
+	"kindle.addAddress": "Add it on your profile.",
+	"kindle.approve":
+		"Amazon takes books only from approved senders: add {sender} to the approved e-mail list in your Amazon account (Content & Devices, Preferences, Personal Document Settings).",
+	"kindle.skipped.unavailable":
+		"There is no EPUB of it to send; only EPUB files are sent.",
+	"kindle.skipped.tooLarge":
+		"Its EPUB is larger than the {size} Amazon takes by e-mail.",
+	"kindle.skipped.pending": "It is already on its way.",
+	"kindle.sent": "Sent to {address} on {date}",
+	"kindle.failed": "Not sent: {message}",
+	"kindle.waiting": "On its way to {address}",
+	"kindle.profile": "Send to Kindle",
+	"kindle.profile.intro":
+		"GOtome e-mails a book's {format} file to your Kindle, up to {size}. Nothing is converted, so a book without an EPUB cannot be sent.",
+	"kindle.profile.off":
+		"No mail server is set up yet, so books cannot be sent. An administrator can add one in the settings.",
+	"kindle.address": "Kindle e-mail address",
+	"kindle.address.hint":
+		"Amazon shows it under Content & Devices, Devices, your Kindle. It ends in @kindle.com.",
+	"kindle.save": "Save address",
+	"bulk.kindle": "Send to Kindle",
+	"bulk.kindleDone": "{count} books are on their way to your Kindle.",
+	"notification.kindleSent": "Sent to your Kindle",
+	"notification.kindleSent.detail": "{title}",
+	"notification.kindleFailed": "Could not send to your Kindle",
+	"notification.kindleFailed.detail": "{title}: {message}",
 	"bulk.send": "Send to an e-reader",
 	"bulk.sendDone": "{count} books are on their way to {name}.",
 	"devices.title": "E-readers",
@@ -1232,6 +1294,7 @@ export const en = {
 	"libraries.visibility.shared": "Everybody",
 	"libraries.visibility.private": "Only its members",
 	"libraries.joinFormats": "Make one book of an ebook and its audiobook with the same title and author",
+	"libraries.watch": "Scan this folder by itself soon after files in it change",
 	"libraries.writable": "GOtome may change files here",
 	"libraries.unwritable": "Since {when}, GOtome cannot write to this folder: {reason}. Until a scan finds it writable again, edits made meanwhile stay in GOtome without being written into the files, and nothing is moved to the trash or fixed. A folder mounted with :ro is read-only whatever this library says.",
 	"libraries.create": "Add the library",

@@ -2083,6 +2083,56 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/kindle": {
+      "get": {
+        "operationId": "listBookKindleSends",
+        "summary": "The caller's latest sends of the book to their Kindle, with their outcome",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KindleSendList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/merge": {
       "post": {
         "operationId": "mergeBooks",
@@ -4674,6 +4724,56 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/kindle/sends": {
+      "post": {
+        "operationId": "sendToKindle",
+        "summary": "Send the EPUBs of books to the caller's Kindle by e-mail, one job each: by IDs, or a library and filter",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KindleResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/kobo/{token}/download/{fileId}": {
       "get": {
         "operationId": "koboDownload",
@@ -6540,6 +6640,94 @@
           }
         ],
         "x-permission": "metadata:edit"
+      }
+    },
+    "/me/kindle": {
+      "get": {
+        "operationId": "getKindle",
+        "summary": "Whether books can be sent to a Kindle by e-mail, the address they come from and the caller's Kindle address",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KindleStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "put": {
+        "operationId": "putKindle",
+        "summary": "Set the caller's Kindle address, or remove it with an empty one",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KindleAddress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KindleStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/me/notification-settings": {
@@ -12510,12 +12698,16 @@
             "items": {
               "$ref": "#/components/schemas/Warning"
             }
+          },
+          "watches": {
+            "$ref": "#/components/schemas/Watches"
           }
         },
         "required": [
           "memory",
           "postgres",
           "disk",
+          "watches",
           "warnings"
         ]
       },
@@ -12783,6 +12975,123 @@
           "maxAttempts",
           "createdAt",
           "scheduledAt"
+        ]
+      },
+      "KindleAddress": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "KindleResult": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KindleSkipped"
+            }
+          }
+        },
+        "required": [
+          "queued",
+          "skipped"
+        ]
+      },
+      "KindleSendList": {
+        "type": "object",
+        "properties": {
+          "sends": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KindleSendView"
+            }
+          }
+        },
+        "required": [
+          "sends"
+        ]
+      },
+      "KindleSendView": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "address",
+          "createdAt"
+        ]
+      },
+      "KindleSkipped": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookId",
+          "reason"
+        ]
+      },
+      "KindleStatus": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "format": {
+            "type": "string"
+          },
+          "maxBytes": {
+            "type": "integer"
+          },
+          "sender": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "address",
+          "maxBytes",
+          "format"
         ]
       },
       "KoboResult": {
@@ -13058,6 +13367,9 @@
           "visibility": {
             "type": "string"
           },
+          "watch": {
+            "type": "boolean"
+          },
           "writable": {
             "type": "boolean"
           }
@@ -13068,6 +13380,7 @@
           "mode",
           "writable",
           "joinFormats",
+          "watch",
           "visibility",
           "createdAt",
           "filesPending",
@@ -13546,6 +13859,8 @@
             "enum": [
               "bulk.finished",
               "device.requested",
+              "kindle.sent",
+              "kindle.failed",
               "books.added",
               "wish.fulfilled",
               "release.announced",
@@ -14159,6 +14474,9 @@
           "totalReadingMinutes": {
             "type": "integer"
           },
+          "undated": {
+            "type": "integer"
+          },
           "years": {
             "type": "array",
             "items": {
@@ -14176,6 +14494,7 @@
           "totalListeningMinutes",
           "pagesEstimated",
           "years",
+          "undated",
           "history"
         ]
       },
@@ -15424,6 +15743,9 @@
           "visibility": {
             "type": "string"
           },
+          "watch": {
+            "type": "boolean"
+          },
           "writable": {
             "type": "boolean"
           }
@@ -15535,6 +15857,33 @@
         "required": [
           "kind",
           "commands"
+        ]
+      },
+      "Watches": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "limitReached": {
+            "type": "boolean"
+          },
+          "notified": {
+            "type": "integer"
+          },
+          "polled": {
+            "type": "integer"
+          },
+          "watches": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "watches",
+          "limit",
+          "notified",
+          "polled",
+          "limitReached"
         ]
       },
       "WishRequest": {

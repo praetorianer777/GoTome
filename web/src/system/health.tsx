@@ -38,6 +38,11 @@ function warningText(w: Warning, h: Health): string {
 				workers: formatCount(h.postgres.maxParallelWorkers),
 				cpus: formatCount(h.memory.cpus),
 			});
+		case "watches":
+			return t("health.warn.watches", {
+				limit: formatCount(h.watches.limit),
+				used: formatCount(h.watches.watches),
+			});
 		default:
 			return t("health.warn.disk", {
 				free: formatSize(h.disk.freeBytes),

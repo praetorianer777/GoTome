@@ -25,11 +25,13 @@ type Taste struct {
 	Low float64
 	// Centres is the most groups the books they liked are cut into.
 	Centres int
+	// Unowned says that books read but not held (placeholders) count.
+	Unowned bool
 }
 
 // DefaultTaste is what recommendations use: 5 stars count fully, a
 // finished book with no stars a little less than a 4.
-var DefaultTaste = Taste{Five: 1, Four: 0.7, Three: 0.3, Unrated: 0.4, Low: 0, Centres: 4}
+var DefaultTaste = Taste{Five: 1, Four: 0.7, Three: 0.3, Unrated: 0.4, Low: 0, Centres: 4, Unowned: true}
 
 func (t Taste) weight(status string, rating *int16) float64 {
 	if rating == nil {
@@ -91,7 +93,7 @@ func (p Profile) Centres() int { return len(p.centres) }
 
 func (s *Service) taste(ctx context.Context, scope library.Scope, spec embed.Spec, t Taste) ([]liked, error) {
 	rows, err := sqlc.New(s.pool).ListTasteBooks(ctx, sqlc.ListTasteBooksParams{
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Model: spec.Model.Name, ModelVersion: Version(spec.Model), Max: tasteBooks,
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Model: spec.Model.Name, ModelVersion: Version(spec.Model), Max: tasteBooks, Unowned: t.Unowned,
 	})
 	if err != nil {
 		return nil, err

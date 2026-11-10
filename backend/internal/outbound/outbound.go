@@ -60,25 +60,7 @@ func NewClient(o Options) *http.Client {
 	if header == 0 {
 		header = 30 * time.Second
 	}
-	trusted := map[string]bool{}
-	for _, raw := range o.Trusted {
-		if hp := hostPort(raw); hp != "" {
-			trusted[hp] = true
-		}
-	}
-	guarded := &net.Dialer{Timeout: dialTimeout, Control: func(_, address string, _ syscall.RawConn) error {
-		if o.AllowPrivate {
-			return nil
-		}
-		return Check(address)
-	}}
-	open := &net.Dialer{Timeout: dialTimeout}
-	dial := func(ctx context.Context, network, address string) (net.Conn, error) {
-		if trusted[strings.ToLower(address)] {
-			return open.DialContext(ctx, network, address)
-		}
-		return guarded.DialContext(ctx, network, address)
-	}
+	dial := NewDialer(o)
 	return &http.Client{
 		Transport: &http.Transport{
 			Proxy:                 nil,
@@ -102,6 +84,31 @@ func NewClient(o Options) *http.Client {
 	}
 }
 
+// NewDialer returns the function the client dials with, for a protocol of
+// its own such as SMTP: public addresses only, except the trusted ones.
+// A trusted address is a URL or a host and port, such as mail.example.org:587.
+func NewDialer(o Options) func(ctx context.Context, network, address string) (net.Conn, error) {
+	trusted := map[string]bool{}
+	for _, raw := range o.Trusted {
+		if hp := hostPort(raw); hp != "" {
+			trusted[hp] = true
+		}
+	}
+	guarded := &net.Dialer{Timeout: dialTimeout, Control: func(_, address string, _ syscall.RawConn) error {
+		if o.AllowPrivate {
+			return nil
+		}
+		return Check(address)
+	}}
+	open := &net.Dialer{Timeout: dialTimeout}
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		if trusted[strings.ToLower(address)] {
+			return open.DialContext(ctx, network, address)
+		}
+		return guarded.DialContext(ctx, network, address)
+	}
+}
+
 // Check refuses an address, as host and port, that is not on the public
 // internet. The host must be an IP address: names are checked once they
 // resolved.
@@ -119,6 +126,11 @@ func Check(address string) error {
 // hostPort is the host and port a URL is dialled at, as the transport
 // names it, or "" for what is not a web address.
 func hostPort(raw string) string {
+	// A URL splits too ("https://idp.lan" as host "https", port "//idp.lan"),
+	// so only what has no scheme is taken as a host and port.
+	if host, port, err := net.SplitHostPort(strings.TrimSpace(raw)); err == nil && host != "" && port != "" && !strings.Contains(raw, "://") {
+		return strings.ToLower(net.JoinHostPort(host, port))
+	}
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || u.Hostname() == "" {
 		return ""

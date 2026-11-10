@@ -341,6 +341,19 @@ type IndexVersion struct {
 	UpdatedAt time.Time
 }
 
+type KindleSend struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	BookID     uuid.UUID
+	FileID     uuid.UUID
+	Title      string
+	Address    string
+	State      string
+	Message    string
+	CreatedAt  time.Time
+	FinishedAt *time.Time
+}
+
 type KoboBook struct {
 	DeviceID   uuid.UUID
 	BookID     uuid.UUID
@@ -361,6 +374,7 @@ type Library struct {
 	UnwritableSince  *time.Time
 	UnwritableReason *string
 	JoinFormats      bool
+	Watch            bool
 }
 
 type LibraryMember struct {
@@ -671,6 +685,7 @@ type User struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
+	KindleAddress    *string
 }
 
 type UserBook struct {

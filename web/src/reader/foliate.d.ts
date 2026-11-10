@@ -12,6 +12,8 @@ declare module "foliate-js/view.js" {
 		cfi: string;
 		tocItem?: { label?: string; href?: string };
 		location?: { current: number; next: number; total: number };
+		/** The visible part of the section, from its start. */
+		range?: Range;
 		section?: { current: number; total: number };
 	}
 
@@ -20,9 +22,17 @@ declare module "foliate-js/view.js" {
 		excerpt: { pre: string; match: string; post: string };
 	}
 
+	export interface FoliateOverlayer {
+		add(key: string, range: Range, draw: unknown, options?: object): void;
+		remove(key: string): void;
+	}
+
 	export interface FoliateRenderer extends HTMLElement {
 		setStyles?(css: string): void;
 		atEnd?: boolean;
+		scrollToAnchor(anchor: Range): Promise<void>;
+		nextSection(): Promise<void>;
+		getContents(): { index: number; doc?: Document; overlayer?: FoliateOverlayer }[];
 		next(): Promise<void>;
 		prev(): Promise<void>;
 	}
@@ -37,6 +47,7 @@ declare module "foliate-js/view.js" {
 		book: FoliateBook;
 		renderer: FoliateRenderer;
 		lastLocation: FoliateLocation | null;
+		language?: { canonical?: string };
 		open(book: File | Blob): Promise<void>;
 		init(options: {
 			lastLocation?: string;
@@ -59,5 +70,11 @@ declare module "foliate-js/view.js" {
 		prev(): Promise<void>;
 		next(): Promise<void>;
 		close(): void;
+	}
+}
+
+declare module "foliate-js/overlayer.js" {
+	export class Overlayer {
+		static highlight(rects: unknown, options?: { color?: string }): SVGElement;
 	}
 }

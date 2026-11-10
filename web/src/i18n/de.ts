@@ -449,6 +449,11 @@ export const de: Record<MessageKey, string> = {
 	"reader.flow.paginated": "Seiten",
 	"reader.flow.scrolled": "Fortlaufend",
 	"reader.fontSize": "Textgröße {percent} %",
+	"reader.speak": "Vorlesen",
+	"reader.voice": "Stimme",
+	"reader.rate": "Geschwindigkeit",
+	"reader.rateAt": "{rate}×",
+	"reader.speakNotPdf": "Vorlesen gibt es für EPUB-, MOBI- und AZW3-Bücher, nicht für PDFs.",
 	"reader.smaller": "Kleiner",
 	"reader.larger": "Größer",
 	"reader.search": "Suchen",
@@ -479,6 +484,7 @@ export const de: Record<MessageKey, string> = {
 	"keys.contents": "Inhalt ein- oder ausblenden",
 	"keys.search": "Suche ein- oder ausblenden",
 	"keys.look": "Darstellung ein- oder ausblenden",
+	"keys.speak": "Vorlesen starten oder beenden",
 	"keys.larger": "Größerer Text",
 	"keys.smaller": "Kleinerer Text",
 	"keys.closePanel": "Offenen Bereich schließen",
@@ -613,6 +619,7 @@ export const de: Record<MessageKey, string> = {
 	"health.warn.memory": "Postgres, die App und das Embedding-Modell dürfen {need} belegen, mehr als die {budget} des Arbeitsspeichers dieses Rechners, die sie sich teilen können. Die Einstellungen von Postgres wandern mit seinem Volume und passen womöglich zu einem anderen Rechner; geht der Speicher aus, wird Postgres beendet. Führen Sie dies dort aus, wo die Compose-Datei liegt:",
 	"health.warn.embedding": "Das Embedding-Modell {model} belegt allein etwa {size} und lässt Postgres kaum Arbeitsspeicher. Wählen Sie ein kleineres Modell, lassen Sie es auf einem Embedding-Server laufen oder schalten Sie das Embedding in den Einstellungen ab.",
 	"health.warn.parallel": "Postgres darf {workers} parallele Worker starten, dieser Rechner hat aber {cpus} CPUs. Führen Sie dies dort aus, wo die Compose-Datei liegt:",
+	"health.warn.watches": "Der Kernel erlaubt {limit} inotify-Überwachungen und {used} sind belegt; deshalb wird der Ordner einer Bibliothek alle ein bis zwei Minuten durchgesehen, statt überwacht zu werden, und neue Dateien erscheinen etwas später. Erhöhen Sie die Grenze auf dem Host, zum Beispiel mit sudo sysctl fs.inotify.max_user_watches=524288 (zum Behalten in /etc/sysctl.d/ eintragen), und starten Sie GOtome neu.",
 	"health.warn.disk": "Auf der Platte des Datenverzeichnisses sind nur {free} frei; lassen Sie mindestens {need} frei. Postgres hält an, wenn seine Platte voll ist. Schaffen Sie Platz: Entfernen Sie nach einem Update alte Images mit docker image prune, leeren Sie den Papierkorb oder ziehen Sie auf eine größere Platte um.",
 	"nav.wishlist": "Wunschliste",
 	"nav.releases": "Neuerscheinungen",
@@ -881,6 +888,7 @@ export const de: Record<MessageKey, string> = {
 	"stats.years": "Beendete Bücher pro Jahr",
 	"stats.noYears": "Noch kein Buch zu Ende gelesen.",
 	"stats.finished": "Bücher: {count}",
+	"stats.undated": "Ohne Datum beendet: {count}, in keinem Jahr",
 	"stats.finishedAgain": "{count} beendet, {books} verschiedene Bücher",
 	"stats.history": "Begonnen und beendet",
 	"stats.noHistory": "Noch nichts begonnen.",
@@ -1004,6 +1012,30 @@ export const de: Record<MessageKey, string> = {
 	"settings.oidcLinkByEmail": "Konten über die E-Mail-Adresse finden",
 	"settings.oidcLinkByEmail.hint":
 		"Eine erste Anmeldung übernimmt das Konto mit der Adresse, die der Identitätsanbieter als bestätigt meldet. Nur für einen Anbieter, der Adressen bestätigt.",
+	"settings.mailHost": "Mailserver",
+	"settings.mailHost.hint":
+		"Der SMTP-Server, über den GOtome Bücher an Kindles schickt, etwa smtp.example.org, ohne Port. Es ist der einzige Rechner, an den GOtome Mails schickt. Leer lassen, um das Senden an einen Kindle auszuschalten.",
+	"settings.mailPort": "Port des Mailservers",
+	"settings.mailPort.hint":
+		"Meist 587 für STARTTLS und 465 für TLS.",
+	"settings.mailSecurity": "Mail-Verschlüsselung",
+	"settings.mailSecurity.hint":
+		"Ohne sie wird nichts gesendet und kein Passwort angeboten, außer Sie wählen „Keine“, was nur für einen Server in einem vertrauten Netz gedacht ist.",
+	"settings.mailUser": "Benutzername für die Mail",
+	"settings.mailUser.hint":
+		"Leer lassen, wenn der Server keine Anmeldung braucht.",
+	"settings.mailPassword": "Passwort für die Mail",
+	"settings.mailPassword.hint":
+		"Wird verschlüsselt gespeichert und nie wieder angezeigt.",
+	"settings.mailSender": "Absenderadresse",
+	"settings.mailSender.hint":
+		"Die Adresse, von der die Mails kommen. Alle müssen sie in ihrem Amazon-Konto unter den genehmigten Absendern eintragen (Inhalte & Geräte, Einstellungen, Einstellungen für persönliche Dokumente), sonst verwirft Amazon die Bücher.",
+	"settings.section.mail": "Mail",
+	"settingChoice.mail.security.starttls":
+		"STARTTLS (Verbindung aufwerten)",
+	"settingChoice.mail.security.tls":
+		"TLS (von Anfang an verschlüsselt)",
+	"settingChoice.mail.security.none": "Keine (unverschlüsselt)",
 	"jobs.kind.rebuildIndex": "Suchindex neu aufbauen",
 	"jobs.kind.applyIndex": "Suchindex auf den neuesten Stand bringen",
 	"jobs.kind.indexFiles": "Text der Bücher in den Suchindex lesen",
@@ -1113,6 +1145,36 @@ export const de: Record<MessageKey, string> = {
 	"deliveries.waiting": "Wartet auf {device}",
 	"deliveries.delivered": "Auf {device} seit {date}",
 	"deliveries.takeBack": "Zurücknehmen",
+	"kindle.title": "Kindle",
+	"kindle.send": "An Kindle senden",
+	"kindle.noAddress":
+		"Um das Buch an Ihren Kindle zu senden, tragen Sie zuerst dessen Adresse ein.",
+	"kindle.addAddress": "Im Profil eintragen.",
+	"kindle.approve":
+		"Amazon nimmt Bücher nur von genehmigten Absendern an: Tragen Sie {sender} in Ihrem Amazon-Konto in die Liste der genehmigten E-Mail-Adressen ein (Inhalte & Geräte, Einstellungen, Einstellungen für persönliche Dokumente).",
+	"kindle.skipped.unavailable":
+		"Es gibt keine EPUB-Datei zum Senden; es werden nur EPUB-Dateien gesendet.",
+	"kindle.skipped.tooLarge":
+		"Die EPUB-Datei ist größer als die {size}, die Amazon per E-Mail annimmt.",
+	"kindle.skipped.pending": "Es ist schon unterwegs.",
+	"kindle.sent": "Am {date} an {address} gesendet",
+	"kindle.failed": "Nicht gesendet: {message}",
+	"kindle.waiting": "Unterwegs an {address}",
+	"kindle.profile": "An Kindle senden",
+	"kindle.profile.intro":
+		"GOtome schickt die {format}-Datei eines Buchs per E-Mail an Ihren Kindle, bis zu {size}. Es wird nichts umgewandelt; ein Buch ohne EPUB lässt sich nicht senden.",
+	"kindle.profile.off":
+		"Es ist noch kein Mailserver eingerichtet, daher können keine Bücher gesendet werden. Ein Administrator kann in den Einstellungen einen eintragen.",
+	"kindle.address": "E-Mail-Adresse des Kindle",
+	"kindle.address.hint":
+		"Amazon zeigt sie unter Inhalte & Geräte, Geräte, Ihr Kindle. Sie endet auf @kindle.com.",
+	"kindle.save": "Adresse speichern",
+	"bulk.kindle": "An Kindle senden",
+	"bulk.kindleDone": "{count} Bücher sind unterwegs zu Ihrem Kindle.",
+	"notification.kindleSent": "An Ihren Kindle gesendet",
+	"notification.kindleSent.detail": "{title}",
+	"notification.kindleFailed": "Senden an Ihren Kindle fehlgeschlagen",
+	"notification.kindleFailed.detail": "{title}: {message}",
 	"bulk.send": "An einen E-Reader senden",
 	"bulk.sendDone": "{count} Bücher sind unterwegs zu {name}.",
 	"devices.title": "E-Reader",
@@ -1250,6 +1312,7 @@ export const de: Record<MessageKey, string> = {
 	"libraries.visibility.shared": "Alle",
 	"libraries.visibility.private": "Nur ihre Mitglieder",
 	"libraries.joinFormats": "Aus E-Book und Hörbuch mit gleichem Titel und Autor ein Buch machen",
+	"libraries.watch": "Diesen Ordner selbst durchsuchen, kurz nachdem sich Dateien darin ändern",
 	"libraries.writable": "GOtome darf hier Dateien ändern",
 	"libraries.unwritable": "Seit {when} kann GOtome nicht in diesen Ordner schreiben: {reason}. Bis beim Durchsuchen festgestellt wird, dass er wieder beschreibbar ist, werden Änderungen in der Zwischenzeit nur in GOtome gespeichert und nicht in die Dateien geschrieben, und nichts wird in den Papierkorb verschoben oder repariert. Ein mit :ro eingebundener Ordner ist schreibgeschützt, was auch immer diese Bibliothek sagt.",
 	"libraries.create": "Bibliothek hinzufügen",

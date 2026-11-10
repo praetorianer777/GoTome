@@ -173,6 +173,15 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 	if len(years) != 3 {
 		t.Errorf("finishes count in their years: %v", years)
 	}
+	if stats["undated"] != 0.0 {
+		t.Errorf("every imported read has its date: %v", stats["undated"])
+	}
+	if status, body, _ := a.call(reader, http.MethodPut, "/books/"+emma1.String()+"/reading", map[string]any{"status": "completed"}); status != http.StatusOK {
+		t.Fatalf("completing: %d %v", status, body)
+	}
+	if _, stats, _ = a.call(reader, http.MethodGet, "/me/stats?tz=UTC", nil); stats["undated"] != 1.0 || len(stats["years"].([]any)) != 3 {
+		t.Errorf("a book completed with no date is counted apart: %v", stats)
+	}
 	_, shelves, _ := a.call(reader, http.MethodGet, "/collections", nil)
 	names := []string{}
 	for _, c := range shelves["collections"].([]any) {
@@ -331,5 +340,34 @@ func TestMergingBooksKeepsEachPersonsNotesAndReadFinishes(t *testing.T) {
 	var finishes int
 	if err := a.pool.QueryRow(context.Background(), `SELECT count(*) FROM reading_finishes WHERE book_id = $1`, emma1).Scan(&finishes); err != nil || finishes != 1 {
 		t.Errorf("finishes: %d %v", finishes, err)
+	}
+}
+
+func TestBooksAnImportMadeAreQueuedForALookup(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	m, _ := a.matcher()
+	a.server.Imports.Lookup = m.EnqueueTx
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
+	_, _, emma2 := a.historyBooks(t, lib)
+
+	_, preview := a.importFile(reader, "goodreads.csv", nil)
+	id := preview["id"].(string)
+	a.call(reader, http.MethodPut, "/me/reading-imports/"+id+"/rows/3", map[string]any{"book": emma2.String()})
+	a.call(reader, http.MethodPost, "/me/reading-imports/"+id+"/start", map[string]any{})
+	a.runImport(id)
+
+	var lookups, onHeld int
+	if err := a.pool.QueryRow(context.Background(), `
+		SELECT count(*) FILTER (WHERE b.placeholder),
+		       count(*) FILTER (WHERE NOT b.placeholder)
+		FROM river_job j JOIN books b ON b.id = (j.args->>'bookId')::uuid
+		WHERE j.kind = 'enrich.match_book'`).Scan(&lookups, &onHeld); err != nil {
+		t.Fatal(err)
+	}
+	if lookups != 3 || onHeld != 0 {
+		t.Errorf("lookups queued: %d for new books, %d for held ones; want 3 and 0", lookups, onHeld)
 	}
 }

@@ -36,7 +36,39 @@ const ebook = vi.hoisted(() => ({
 	opened: [] as { name: string; start?: string }[],
 	looks: [] as unknown[],
 	finds: [] as { word: string; passage: string }[],
+	marked: [] as (string | null)[],
 }));
+
+// The browser's voices: speaking a sentence ends it at once, and what was
+// spoken is kept for the test to see.
+const spoken = vi.hoisted(() => ({
+	said: [] as { text: string; voice?: string; rate: number }[],
+	cancelled: 0,
+}));
+function installSpeech(voices: { name: string; voiceURI: string; lang: string }[]) {
+	class Utterance {
+		voice: { voiceURI: string } | null = null;
+		rate = 1;
+		lang = "";
+		onend: (() => void) | null = null;
+		onerror: (() => void) | null = null;
+		constructor(public text: string) {}
+	}
+	vi.stubGlobal("SpeechSynthesisUtterance", Utterance);
+	vi.stubGlobal("speechSynthesis", {
+		getVoices: () =>
+			voices.map((v) => ({ ...v, default: false, localService: true })),
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		cancel: () => {
+			spoken.cancelled++;
+		},
+		speak: (u: Utterance) => {
+			spoken.said.push({ text: u.text, voice: u.voice?.voiceURI, rate: u.rate });
+			setTimeout(() => u.onend?.(), 0);
+		},
+	});
+}
 vi.mock("@/reader/ebook", () => ({
 	openEbook: async (
 		_into: HTMLElement,
@@ -59,13 +91,16 @@ vi.mock("@/reader/ebook", () => ({
 			: 0;
 		const chapter = () =>
 			["One", "Two", "Three"][Math.min(Math.floor(at / 4), 2)];
-		const place = () =>
+		const listeners = new Set<() => void>();
+		const place = () => {
+			for (const listener of listeners) listener();
 			options.onPlace({
 				cfi: `epubcfi(/6/${at})`,
 				fraction: at / 10,
 				chapter: chapter(),
 				atEnd: at >= 10,
 			});
+		};
 		const turn = async (step: number) => {
 			at = Math.min(Math.max(at + step, 0), 10);
 			place();
@@ -105,6 +140,21 @@ vi.mock("@/reader/ebook", () => ({
 						]
 					: [],
 			clearSearch: () => {},
+			language: "de",
+			speech: {
+				sentences: () => [
+					{ text: `Satz eins bei ${at}.`, start: 0, end: 1 },
+					{ text: "Satz zwei.", start: 2, end: 3 },
+				],
+				mark: async (sentence: { text: string } | null) => {
+					ebook.marked.push(sentence?.text ?? null);
+				},
+				nextSection: async () => false,
+				onMoved: (listener: () => void) => {
+					listeners.add(listener);
+					return () => listeners.delete(listener);
+				},
+			},
 			goToFraction: async (fraction: number) => {
 				at = Math.round(fraction * 10);
 				place();
@@ -128,6 +178,10 @@ beforeEach(() => {
 	ebook.opened.length = 0;
 	ebook.looks.length = 0;
 	ebook.finds.length = 0;
+	ebook.marked.length = 0;
+	spoken.said.length = 0;
+	spoken.cancelled = 0;
+	vi.unstubAllGlobals();
 	delete document.documentElement.dataset.theme;
 	server = new FakeServer().install();
 });
@@ -816,6 +870,13 @@ describe("libraries", () => {
 			nas.getByRole("checkbox", { name: "GOtome may change files here" }),
 		);
 		await waitFor(() => expect(server.libraries[1]?.writable).toBe(true));
+
+		await person.click(
+			nas.getByRole("checkbox", {
+				name: "Scan this folder by itself soon after files in it change",
+			}),
+		);
+		await waitFor(() => expect(server.libraries[1]?.watch).toBe(false));
 
 		await person.click(nas.getByRole("button", { name: "Remove" }));
 		expect(server.libraries).toHaveLength(2);
@@ -4037,6 +4098,7 @@ describe("reading statistics", () => {
 				{ year: 2026, finishes: 1, books: 1 },
 				{ year: 2025, finishes: 2, books: 1 },
 			],
+			undated: 2,
 			history: [
 				{
 					bookId: "book-1",
@@ -4062,6 +4124,9 @@ describe("reading statistics", () => {
 		).toBeInTheDocument();
 		expect(
 			screen.getByText(/2 finished, 1 different books/),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText("Completed without a date: 2, in no year"),
 		).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Emma" })).toHaveAttribute(
 			"href",
@@ -4921,6 +4986,104 @@ describe("the EPUB and MOBI reader", () => {
 		expect(
 			JSON.parse(localStorage.getItem("gotome.reader.look") ?? "{}"),
 		).toEqual({ flow: "scrolled", theme: "sepia", fontSize: 110 });
+	});
+
+	it("reads aloud with the voice of the book's language, marks each sentence and keeps the voice chosen", async () => {
+		const person = userEvent.setup();
+		installSpeech([
+			{ name: "Ada", voiceURI: "en-ada", lang: "en-GB" },
+			{ name: "Hans", voiceURI: "de-hans", lang: "de-DE" },
+		]);
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		const button = screen.getByRole("button", { name: "Read aloud" });
+		await waitFor(() => expect(button).toBeEnabled());
+		await person.click(button);
+		await waitFor(() =>
+			expect(spoken.said.map((s) => s.text)).toEqual([
+				"Satz eins bei 0.",
+				"Satz zwei.",
+			]),
+		);
+		expect(spoken.said[0]).toMatchObject({ voice: "de-hans", rate: 1 });
+		expect(ebook.marked).toEqual(["Satz eins bei 0.", "Satz zwei.", null]);
+		await waitFor(() => expect(button).toHaveAttribute("aria-pressed", "false"));
+
+		await person.click(screen.getByRole("button", { name: "Display" }));
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Voice" }),
+			"Ada (en-GB)",
+		);
+		await person.selectOptions(
+			screen.getByRole("combobox", { name: "Speed" }),
+			"1.5×",
+		);
+		expect(
+			JSON.parse(localStorage.getItem("gotome.reader.speech") ?? "{}"),
+		).toEqual({ rate: 1.5, voice: "en-ada" });
+		spoken.said.length = 0;
+		await person.click(button);
+		await waitFor(() => expect(spoken.said).toHaveLength(2));
+		expect(spoken.said[0]).toMatchObject({ voice: "en-ada", rate: 1.5 });
+	});
+
+	it("stops reading aloud with the same button and on leaving the reader", async () => {
+		const person = userEvent.setup();
+		installSpeech([{ name: "Hans", voiceURI: "de-hans", lang: "de-DE" }]);
+		vi.spyOn(speechSynthesis, "speak").mockImplementation(() => {});
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		const button = screen.getByRole("button", { name: "Read aloud" });
+		await waitFor(() => expect(button).toBeEnabled());
+		await person.click(button);
+		expect(button).toHaveAttribute("aria-pressed", "true");
+		await person.click(button);
+		expect(button).toHaveAttribute("aria-pressed", "false");
+		expect(spoken.cancelled).toBe(1);
+		await person.click(button);
+		await person.click(screen.getByRole("link", { name: "Back to the book" }));
+		await waitFor(() => expect(spoken.cancelled).toBe(2));
+	});
+
+	it("follows a page turned while reading aloud and does not go back to the sentence", async () => {
+		const person = userEvent.setup();
+		installSpeech([{ name: "Hans", voiceURI: "de-hans", lang: "de-DE" }]);
+		const said: string[] = [];
+		vi.spyOn(speechSynthesis, "speak").mockImplementation((u) => {
+			said.push((u as unknown as { text: string }).text);
+		});
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		const button = screen.getByRole("button", { name: "Read aloud" });
+		await waitFor(() => expect(button).toBeEnabled());
+		await person.click(button);
+		await waitFor(() => expect(said).toEqual(["Satz eins bei 0."]));
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		await waitFor(() => expect(said).toEqual(["Satz eins bei 0.", "Satz eins bei 1."]));
+		expect(spoken.cancelled).toBeGreaterThan(0);
+		expect(button).toHaveAttribute("aria-pressed", "true");
+		expect(await screen.findByText("10%")).toBeInTheDocument();
+	});
+
+	it("leaves read aloud out where the browser has no voices", async () => {
+		installSpeech([]);
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Read aloud" })).toBeNull();
+	});
+
+	it("says that read aloud is not for PDFs", async () => {
+		installSpeech([{ name: "Hans", voiceURI: "de-hans", lang: "de-DE" }]);
+		withBook("pdf", "Persuasion.pdf");
+		renderApp("/books/book-1/read/file-1");
+		expect(
+			await screen.findByText(/^Read aloud is for EPUB, MOBI and AZW3/),
+		).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Read aloud" })).toBeNull();
 	});
 
 	it("is read from the keyboard: pages, contents, search, text size and the list of keys", async () => {
@@ -7237,6 +7400,82 @@ describe("sending to an e-reader", () => {
 	});
 });
 
+describe("sending to a Kindle", () => {
+	const epub = {
+		id: "file-1",
+		kind: "ebook" as const,
+		format: "epub",
+		name: "Persuasion.epub",
+		size: 1_400_000,
+		missing: false,
+		drm: false,
+		extractState: "done" as const,
+	};
+
+	it("offers nothing on a book's page while no mail server is set up", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		await screen.findByRole("region", { name: "E-readers" });
+		expect(screen.queryByRole("region", { name: "Kindle" })).not.toBeInTheDocument();
+	});
+
+	it("keeps the address from the profile, and refuses one that is not a Kindle's", async () => {
+		const person = userEvent.setup();
+		server.kindle.available = true;
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		const field = await screen.findByLabelText(/Kindle e-mail address/);
+		await person.type(field, "rita@example.org");
+		await person.click(screen.getByRole("button", { name: "Save address" }));
+		expect(
+			await screen.findByText(/Give the address of your Kindle/),
+		).toBeInTheDocument();
+		expect(server.kindle.address).toBe("");
+
+		await person.clear(field);
+		await person.type(field, "rita_1@kindle.com");
+		await person.click(screen.getByRole("button", { name: "Save address" }));
+		await waitFor(() => expect(server.kindle.address).toBe("rita_1@kindle.com"));
+	});
+
+	it("sends a book from its page and says where the approved sender is needed", async () => {
+		const person = userEvent.setup();
+		server.kindle.available = true;
+		server.kindle.address = "rita_1@kindle.com";
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Kindle" }));
+		expect(section.getByText(/library@example\.org/)).toBeInTheDocument();
+		await person.click(section.getByRole("button", { name: "Send to Kindle" }));
+		expect(
+			await section.findByText("On its way to rita_1@kindle.com"),
+		).toBeInTheDocument();
+		expect(server.kindleSends).toHaveLength(1);
+
+		await person.click(section.getByRole("button", { name: "Send to Kindle" }));
+		expect(await section.findByText("It is already on its way.")).toBeInTheDocument();
+		expect(server.kindleSends).toHaveLength(1);
+	});
+
+	it("asks for an address first", async () => {
+		server.kindle.available = true;
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Kindle" }));
+		expect(section.queryByRole("button", { name: "Send to Kindle" })).not.toBeInTheDocument();
+		expect(section.getByRole("link", { name: "Add it on your profile." })).toBeInTheDocument();
+	});
+});
+
 describe("the overview", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -7342,6 +7581,7 @@ describe("the overview", () => {
 					commands: ["ALTER SYSTEM SET shared_buffers = '1024MB';"],
 				},
 				{ kind: "disk", commands: [] },
+				{ kind: "watches", commands: [] },
 			],
 		};
 		renderApp("/overview");
@@ -7361,6 +7601,9 @@ describe("the overview", () => {
 				/Only 2 GB is free on the data directory's disk; keep at least 11 GB\./,
 			),
 		).toHaveTextContent(/docker image prune/);
+		expect(
+			panel.getByText(/allows 65,536 inotify watches and 120 are taken/),
+		).toHaveTextContent(/fs\.inotify\.max_user_watches=524288/);
 		expect(panel.queryByText(/There is room/)).not.toBeInTheDocument();
 	});
 
