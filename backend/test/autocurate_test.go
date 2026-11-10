@@ -249,9 +249,7 @@ func TestAutomaticCleanupAppliesOnlyWhatTheDataDecides(t *testing.T) {
 		}
 	}
 	// Automatic runs wait to write into files until confirmed.
-	if status, _, _ := a.call(editor, http.MethodPost, "/curation/runs/"+run+"/undo", nil); status != 200 {
-		t.Fatalf("undo: %d", status)
-	}
+	a.undoRun(editor, run)
 	a.sameState("a run undone", before, a.stateOf(allStr...))
 	if got := authors("Verborgen"); !slices.Equal(got, []string{"Unknown"}) {
 		t.Errorf("hidden: %v", got)
@@ -423,9 +421,7 @@ func TestAutomaticMatchesTakeWhatProvidersAgreeOnAndLeaveTheRest(t *testing.T) {
 		}
 	}
 
-	if status, out, _ := a.call(editor, http.MethodPost, "/curation/runs/"+run+"/undo", nil); status != 200 {
-		t.Fatalf("undo: %d %v", status, out)
-	}
+	a.undoRun(editor, run)
 	a.sameState("an undone run", before, a.stateOf(every...))
 	for m, want := range map[uuid.UUID]string{whole: "pending", other: "pending", conflict: "pending", tooLate: "pending", agreeA: "pending"} {
 		if got := a.matchState(m); got != want {
