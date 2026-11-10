@@ -361,6 +361,7 @@ type Library struct {
 	UnwritableSince  *time.Time
 	UnwritableReason *string
 	JoinFormats      bool
+	Watch            bool
 }
 
 type LibraryMember struct {

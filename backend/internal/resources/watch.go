@@ -20,6 +20,7 @@ var messages = map[string]string{
 	KindMemory:    "Postgres's memory settings, with the app's and the embedding model's, exceed this machine's memory; lower them with the commands given, then restart the database",
 	KindEmbedding: "the embedding model alone takes nearly all of this machine's memory; choose a smaller one, run it on an embedding server, or turn embedding off",
 	KindParallel:  "Postgres may start more parallel workers than this machine has CPUs; lower them with the commands given",
+	KindWatches:   "the kernel's limit of inotify watches is reached, so a library's folder is polled instead of watched; raise fs.inotify.max_user_watches on the host",
 	KindDisk:      "the data directory's disk is nearly full; Postgres stops when its disk is full. Free space, for instance with docker image prune after an update",
 }
 

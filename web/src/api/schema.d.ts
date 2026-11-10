@@ -3614,6 +3614,7 @@ export interface components {
             memory: components["schemas"]["Memory"];
             postgres: components["schemas"]["Postgres"];
             warnings: components["schemas"]["Warning"][];
+            watches: components["schemas"]["Watches"];
         };
         HistoryEntry: {
             book: components["schemas"]["BookSummary"];
@@ -3767,6 +3768,7 @@ export interface components {
             /** Format: date-time */
             unwritableSince?: string;
             visibility: string;
+            watch: boolean;
             writable: boolean;
         };
         LinkedIdentity: {
@@ -4405,6 +4407,7 @@ export interface components {
             joinFormats?: boolean;
             name?: string;
             visibility?: string;
+            watch?: boolean;
             writable?: boolean;
         };
         UpdateSettingsRequest: {
@@ -4438,6 +4441,13 @@ export interface components {
         Warning: {
             commands: string[];
             kind: string;
+        };
+        Watches: {
+            limit: number;
+            limitReached: boolean;
+            notified: number;
+            polled: number;
+            watches: number;
         };
         WishRequest: {
             contributors?: components["schemas"]["Contributor"][];

@@ -420,6 +420,26 @@ func serve() error {
 	health.DataDir, health.IndexDir = cfg.DataDir, fulltext.Dir(cfg.DataDir)
 	health.Embedding, health.Server = settingStore.Embedding, settingStore.EmbeddingServer
 	go health.Watch(ctx, log)
+	folders := &ingest.Watcher{
+		Targets: func(ctx context.Context) ([]ingest.WatchTarget, error) {
+			rows, err := sqlc.New(pool).ListWatchedLibraries(ctx)
+			targets := make([]ingest.WatchTarget, 0, len(rows))
+			for _, r := range rows {
+				targets = append(targets, ingest.WatchTarget{ID: r.ID, Root: r.RootPath})
+			}
+			return targets, err
+		},
+		Request: func(ctx context.Context, id uuid.UUID) error {
+			_, err := scans.Request(ctx, id, nil)
+			return err
+		},
+		Log: log,
+	}
+	go folders.Run(ctx)
+	health.Watches = func() resources.Watches {
+		s := folders.Status()
+		return resources.Watches{Watches: s.Watches, Limit: s.Limit, Notified: s.Notified, Polled: s.Polled, LimitReached: s.LimitReached}
+	}
 	checks := &syscheck.Collector{
 		Pool: pool, Readiness: ready.Checks, Embedding: vectors.Runtime, Providers: meta.ProviderStates, Resources: health,
 	}

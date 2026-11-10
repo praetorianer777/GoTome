@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Libraries watch their folders: files put into (or taken out of) a library's
+  folder are found by a scan about a minute later, without pressing "Scan
+  now". Network shares are checked every minute instead, and the overview
+  tells when the kernel's limit of watches is reached. It can be turned off
+  per library.
 - The audiobook player's sleep timer fades the volume down before it stops,
   can be extended by 15 minutes (a button, or shaking the phone where the
   browser allows it, also just after it stopped), and can start by itself

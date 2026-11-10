@@ -145,3 +145,31 @@ Folders whose names start with a dot are passed by.
 Libraries are scanned when they are added, every `GOTOME_SCAN_INTERVAL`
 (six hours by default), and when an editor presses **Scan now**. A scan
 of a large library works in turns and goes on after a restart.
+
+#### Watching folders
+
+GOtome also watches each library's folder and scans it by itself, about
+a minute after files in it came, went or were renamed, so a book put into
+an external folder appears without pressing **Scan now**. A burst of copies
+is one scan, made once the folder has been quiet for 30 seconds (at the
+latest ten minutes after the first change). Folders whose names start with a
+dot (`.uploads`, `.trash`), the ones other software keeps (`@eaDir`,
+`#recycle`) and files of formats GOtome does not read are not watched; the
+scan's own rules are unchanged, so a file that is still being copied is
+read by the next scan once its size has settled.
+
+On Linux GOtome asks the kernel (inotify) for one watch per folder, not per
+file: a library of 50,000 files in 5,000 folders takes 5,000 watches and
+next to no memory. The kernel limits them for all programs of a user
+(`fs.inotify.max_user_watches`, often 65,536 or more, in older kernels
+8,192). When it is reached, GOtome watches no library halfway: the one that
+did not fit is checked instead, every minute, by the modification times of its
+folders, and **This machine** on the overview says so with the command that
+raises the limit on the host (`sudo sysctl fs.inotify.max_user_watches=524288`).
+Network shares (NFS, SMB, and FUSE mounts) do not tell about changes other
+computers make, so they are always checked that way. That check sees a file
+added, removed or renamed, not one replaced in place; the scan every
+`GOTOME_SCAN_INTERVAL` finds the rest.
+
+Turn the watching off for a library with **Scan this folder by itself soon
+after files in it change** on **Libraries** in the administration.

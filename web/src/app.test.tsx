@@ -817,6 +817,13 @@ describe("libraries", () => {
 		);
 		await waitFor(() => expect(server.libraries[1]?.writable).toBe(true));
 
+		await person.click(
+			nas.getByRole("checkbox", {
+				name: "Scan this folder by itself soon after files in it change",
+			}),
+		);
+		await waitFor(() => expect(server.libraries[1]?.watch).toBe(false));
+
 		await person.click(nas.getByRole("button", { name: "Remove" }));
 		expect(server.libraries).toHaveLength(2);
 		expect(
@@ -7342,6 +7349,7 @@ describe("the overview", () => {
 					commands: ["ALTER SYSTEM SET shared_buffers = '1024MB';"],
 				},
 				{ kind: "disk", commands: [] },
+				{ kind: "watches", commands: [] },
 			],
 		};
 		renderApp("/overview");
@@ -7361,6 +7369,9 @@ describe("the overview", () => {
 				/Only 2 GB is free on the data directory's disk; keep at least 11 GB\./,
 			),
 		).toHaveTextContent(/docker image prune/);
+		expect(
+			panel.getByText(/allows 65,536 inotify watches and 120 are taken/),
+		).toHaveTextContent(/fs\.inotify\.max_user_watches=524288/);
 		expect(panel.queryByText(/There is room/)).not.toBeInTheDocument();
 	});
 
