@@ -54,6 +54,12 @@ What changes for someone who runs or uses GOtome. The format follows
   upgrade guide. GOtome asks GitHub once a day, with no account and no
   token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
   turn it off. It never updates itself.
+- Read aloud in the web reader for EPUB, MOBI and AZW3 books: a "Read aloud"
+  button (or the R key) reads from the top of the page with the browser's own
+  voices, highlights the sentence being read and turns pages as it goes. The
+  voice (the book's language picks the first) and the speed are chosen under
+  "Display" and kept per browser. Nothing leaves the browser; the button is
+  left out where the browser has no voices, and PDFs are not read aloud.
 
 ### Fixed
 

@@ -256,3 +256,13 @@ takes too much from the machine:
 
 The model settings page shows for each model whether it runs here, its
 download size and memory, and how many books have its vectors.
+
+## Read aloud is missing in the reader
+
+Read aloud uses the voices the browser or the operating system brings, and
+nothing is sent to the server. The "Read aloud" button appears in the EPUB,
+MOBI and AZW3 reader only where the browser lists at least one voice; PDFs are
+not read aloud. On Linux, Chromium has none unless a speech service such as
+speech-dispatcher is installed, and Firefox needs it too. Installing a voice
+for the book's language in the system's settings makes it the default for
+that book; another can be chosen under "Display".
