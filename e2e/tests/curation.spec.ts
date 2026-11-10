@@ -52,7 +52,7 @@ test("a merge shows under Changes with its before and after, and undoing the run
 	const title = action.getByRole("row", { name: /^Title/ });
 	await expect(title).toContainText(`Kept ${stamp}`);
 	await expect(title).toContainText(`Merged ${stamp}`);
-	await expect(action.getByRole("row", { name: /^Files/ })).toContainText("2");
+	await expect(action.getByRole("row", { name: "Files Before: 1 After: 2" })).toBeVisible();
 
 	await run.getByRole("button", { name: /^Undo the run of/ }).click();
 	await expect(run.getByRole("status")).toHaveText("1 undone, 0 left as they are.");

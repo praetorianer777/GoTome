@@ -753,6 +753,35 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   set `replaced`. Keeping both may link the two in `book_relations` as an
   edition, a translation or related (`PUT /duplicates/{id}/state`).
 
+## Curation runs
+
+- `internal/curation` (#464) records what is changed to books apart from a
+  hand edit in the editor, so that it can be undone: `curation_runs` (kind
+  `duplicates`, `cleanup`, `matches`; a person's run has `started_by` and no
+  rule; `automatic` runs keep their trash and wait to write into files until
+  confirmed) and `curation_actions` (one per pair or book, with the rows of
+  the books in every table of `curation.Tables` before and after, as JSON).
+  `Tables` is the one list of what a merge moves; `TestTablesCoverWhatAMergeWrites`
+  fails when `merge.sql` (or the queries `mergeTx` calls) writes a table it lacks.
+  A new table that points at a book goes into `Tables` (or `Rebuilt`, if it only
+  holds what is made again from the files).
+- A merge, a replace (`ingest.Service`, `s.Curation.Begin` before and `Done`
+  after, inside its transaction) and each book of a clean-up (`bulk.StartEach`
+  makes the run; the job records an action in the transaction that changes
+  the book) are recorded. `curation.WithRun` puts later rules into a run of
+  their own; `curation.Deferred(ctx)` holds the write-back of an automatic run
+  until `Confirm`.
+- Undo (`POST /curation/actions/{id}/undo`, `/curation/runs/{id}/undo`) is one
+  transaction per action, holding the books' libraries first: the files the
+  action trashed must still lie in the trash (else `notUndoable`); the rows
+  now must equal the action's `after` (tables marked `Quiet` or unsettled
+  suggestions excepted), else the action is a `conflict` and is left as it
+  is; then `Restore` puts the rows back, and `ingest.AfterUndoTx` queues the
+  text of books that lost their chunks. Runs and actions are listed only
+  where a library is visible (`visible_library_ids`).
+- `ListExpiredTrash` leaves the files of an automatic run that is not
+  confirmed, and until the retention has passed since it was.
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by
