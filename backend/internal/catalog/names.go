@@ -171,7 +171,7 @@ type Gap struct {
 }
 
 // MaxSeriesIndex is the highest position a book may hold in a series. The
-// longest series there are, such as Perry Rhodan past 3,300 issues, stay far
+// longest series there are, such as Nordlicht-Saga past 3,300 issues, stay far
 // below it; a position above it is a slip or a file's attempt to make the
 // series page count places without end (#320).
 const MaxSeriesIndex = 100_000

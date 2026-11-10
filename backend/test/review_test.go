@@ -36,7 +36,7 @@ func TestDoubtfulMatchesAreReviewed(t *testing.T) {
 		}
 		return id
 	}
-	first, second, secret := doubtful(shared, "Emma Donoghue"), doubtful(shared, "Emma Tennant"), doubtful(hidden, "Emma Thompson")
+	first, second, secret := doubtful(shared, "Emma Holloway"), doubtful(shared, "Emma Tenby"), doubtful(hidden, "Emma Thornby")
 
 	if status, _, _ := a.call(reader, http.MethodGet, "/matches", nil); status != 403 {
 		t.Errorf("a reader reviews: %d", status)

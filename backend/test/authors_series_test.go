@@ -54,16 +54,16 @@ func TestAnAuthorIsEverySpellingOfTheirName(t *testing.T) {
 	a := newApp(t)
 	admin, _ := a.signedIn("admin", "admin")
 	lib := a.library(admin, "Open", "shared")
-	a.bookBy(lib, "Das Kind", "Barbara Goldstein")
-	a.bookBy(lib, "Die Baumeisterin", "Barbara Goldstein")
-	a.bookBy(lib, "Der Fälscher", "Goldstein, Barbara")
-	a.bookBy(lib, "Anderes", "Barbara Hambly")
+	a.bookBy(lib, "Das Kind", "Ulrike Weidner")
+	a.bookBy(lib, "Die Baumeisterin", "Ulrike Weidner")
+	a.bookBy(lib, "Der Fälscher", "Weidner, Ulrike")
+	a.bookBy(lib, "Anderes", "Silke Hartwig")
 
-	status, body, _ := a.call(admin, http.MethodGet, "/authors/"+url.PathEscape("Goldstein, Barbara"), nil)
+	status, body, _ := a.call(admin, http.MethodGet, "/authors/"+url.PathEscape("Weidner, Ulrike"), nil)
 	if status != http.StatusOK {
 		t.Fatalf("GET the author: %d %v", status, body)
 	}
-	if body["name"] != "Barbara Goldstein" || body["key"] != "barbara goldstein" || body["books"] != 3.0 {
+	if body["name"] != "Ulrike Weidner" || body["key"] != "ulrike weidner" || body["books"] != 3.0 {
 		t.Errorf("the author: %v", body)
 	}
 	if s := body["spellings"].([]any); len(s) != 2 {
@@ -205,13 +205,13 @@ func TestTheQuickSearchOffersAuthorsAndSeriesTheViewerSees(t *testing.T) {
 	reader, _ := a.signedIn("rita", "reader")
 	lib := a.library(admin, "Open", "shared")
 	vault := a.library(admin, "Vault", "private")
-	a.bookBy(lib, "One", "Barbara Goldstein")
-	a.inSeries(admin, a.bookBy(lib, "Two", "Goldstein, Barbara"), "Goldsteins Saga", 1)
-	a.bookBy(vault, "Three", "Goldstein Hidden")
+	a.bookBy(lib, "One", "Ulrike Weidner")
+	a.inSeries(admin, a.bookBy(lib, "Two", "Weidner, Ulrike"), "Weidners Saga", 1)
+	a.bookBy(vault, "Three", "Weidner Hidden")
 
 	names := func(c *http.Client) []string {
 		t.Helper()
-		status, body, _ := a.call(c, http.MethodGet, "/books/search?q=goldstein", nil)
+		status, body, _ := a.call(c, http.MethodGet, "/books/search?q=weidner", nil)
 		if status != http.StatusOK {
 			t.Fatalf("searching: %d %v", status, body)
 		}
@@ -223,7 +223,7 @@ func TestTheQuickSearchOffersAuthorsAndSeriesTheViewerSees(t *testing.T) {
 		slices.Sort(out)
 		return out
 	}
-	want := []string{"author barbara goldstein 2", "series goldsteins saga 1"}
+	want := []string{"author ulrike weidner 2", "series weidners saga 1"}
 	if got := names(reader); !slices.Equal(got, want) {
 		t.Errorf("the reader: %v", got)
 	}
@@ -239,9 +239,9 @@ func TestTheListsOfNamesHoldEachOnceWithWhatTheViewerSees(t *testing.T) {
 	reader, _ := a.signedIn("rita", "reader")
 	lib := a.library(admin, "Open", "shared")
 	vault := a.library(admin, "Vault", "private")
-	a.bookBy(lib, "One", "Barbara Goldstein")
-	a.bookBy(lib, "Two", "Barbara Goldstein")
-	a.bookBy(lib, "Three", "Goldstein, Barbara")
+	a.bookBy(lib, "One", "Ulrike Weidner")
+	a.bookBy(lib, "Two", "Ulrike Weidner")
+	a.bookBy(lib, "Three", "Weidner, Ulrike")
 	a.bookBy(lib, "Four", "Carl Adams")
 	a.bookBy(vault, "Five", "Zoe Hidden")
 	a.inSeries(admin, a.bookBy(lib, "Six", "Carl Adams"), "Rivers", 1)
@@ -271,7 +271,7 @@ func TestTheListsOfNamesHoldEachOnceWithWhatTheViewerSees(t *testing.T) {
 	for _, size := range []int{1, 50} {
 		got := list("/authors", reader, size)
 		slices.Sort(got)
-		if want := []string{"adams carl=2", "barbara goldstein=3"}; !slices.Equal(got, want) {
+		if want := []string{"adams carl=2", "ulrike weidner=3"}; !slices.Equal(got, want) {
 			t.Errorf("authors in pages of %d: %v", size, got)
 		}
 	}

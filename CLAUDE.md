@@ -1055,7 +1055,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `internal/releases` follows an author or a series for new books (#69). A
   `release_subjects` row is one author or series, by kind and
   `catalog.Key`, an author's in the order providers write names
-  (`metadata.NaturalName`: "Cornwell, Bernard" is Bernard Cornwell);
+  (`metadata.NaturalName`: "Devlin, Gerald" is Gerald Devlin);
   `trackers` are who follows it, and a subject nobody follows goes with
   what was found for it. `POST`/`GET /trackers`, `DELETE
   /trackers/{id}` (`personal:manage`); the book page follows its authors

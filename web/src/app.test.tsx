@@ -204,7 +204,7 @@ describe("the strip over the library", () => {
 			.withLibrary("Novels")
 			.withBook("Emma")
 			.withBook("Persuasion", { reading: { status: "reading" } })
-			.withBook("Dune", { reading: { status: "reading" } });
+			.withBook("Dusk", { reading: { status: "reading" } });
 		server.progress["book-2"] = {
 			ebook: {
 				clientId: "phone",
@@ -1117,7 +1117,7 @@ describe("books", () => {
 	// cover, which carries the title again for the eye only.
 	const cards = (books: ReturnType<typeof within>) =>
 		books
-			.getAllByRole("link", { name: /^(?!.*(Herbert|Austen|Chronicles))/ })
+			.getAllByRole("link", { name: /^(?!.*(Halden|Austen|Chronicles))/ })
 			.map(
 				(l: HTMLElement) =>
 					`${l.lastElementChild?.textContent}${l.parentElement?.lastElementChild?.firstElementChild?.textContent}`,
@@ -1145,21 +1145,21 @@ describe("books", () => {
 				],
 			})
 			.withBook(
-				"Dune",
+				"Dusk",
 				{
 					subtitle: "Deluxe Edition",
 					contributors: [
-						{ name: "Frank Herbert", role: "author" },
-						{ name: "Scott Brick", role: "narrator" },
+						{ name: "Henrik Halden", role: "author" },
+						{ name: "Simon Brook", role: "narrator" },
 					],
-					series: "Dune Chronicles",
+					series: "Dusk Chronicles",
 					seriesIndex: 1,
 					published: "1965",
 					publisher: "Chilton",
 					description: "A desert planet.\n\nAnd a boy.",
 					tags: ["Science Fiction"],
 					identifiers: [
-						{ type: "isbn", value: "9780441013593", fromFile: true },
+						{ type: "isbn", value: "9780195001013", fromFile: true },
 					],
 					durationMs: 21 * 3600_000 + 2 * 60_000,
 					files: [
@@ -1167,7 +1167,7 @@ describe("books", () => {
 							id: "file-2",
 							kind: "audio",
 							format: "mp3",
-							name: "Dune 1.mp3",
+							name: "Dusk 1.mp3",
 							size: 400_000_000,
 							missing: false,
 							drm: false,
@@ -1179,7 +1179,7 @@ describe("books", () => {
 							id: "file-3",
 							kind: "audio",
 							format: "mp3",
-							name: "Dune 2.mp3",
+							name: "Dusk 2.mp3",
 							size: 380_000_000,
 							missing: true,
 							drm: false,
@@ -1203,7 +1203,7 @@ describe("books", () => {
 		const books = within(await screen.findByRole("region", { name: "Books" }));
 		await waitFor(() =>
 			expect(cards(books)).toEqual([
-				"DuneFrank Herbert",
+				"DuskHenrik Halden",
 				"EmmaJane Austen",
 				"PersuasionJane Austen",
 			]),
@@ -1231,7 +1231,7 @@ describe("books", () => {
 		await person.selectOptions(screen.getByLabelText("Sort by"), "Author");
 		await waitFor(() =>
 			expect(cards(books)).toEqual([
-				"DuneFrank Herbert",
+				"DuskHenrik Halden",
 				"EmmaJane Austen",
 				"PersuasionJane Austen",
 			]),
@@ -1249,7 +1249,7 @@ describe("books", () => {
 		await waitFor(() =>
 			expect(cards(books)).toEqual([
 				"EmmaJane Austen",
-				"DuneFrank Herbert",
+				"DuskHenrik Halden",
 				"PersuasionJane Austen",
 			]),
 		);
@@ -1261,7 +1261,7 @@ describe("books", () => {
 		);
 		const rows = within(books.getByRole("table")).getAllByRole("row");
 		expect(rows[1]).toHaveTextContent("Emma");
-		expect(rows[2]).toHaveTextContent("Dune");
+		expect(rows[2]).toHaveTextContent("Dusk");
 	});
 
 	it("loads a large library a page at a time", async () => {
@@ -1325,26 +1325,26 @@ describe("books", () => {
 		const person = userEvent.setup();
 		withShelf();
 		const { router } = renderApp("/");
-		await person.click(await screen.findByRole("link", { name: "Dune" }));
+		await person.click(await screen.findByRole("link", { name: "Dusk" }));
 
 		expect(
-			await screen.findByRole("heading", { name: "Dune", level: 1 }),
+			await screen.findByRole("heading", { name: "Dusk", level: 1 }),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/books/book-2");
 		for (const text of [
 			"Deluxe Edition",
-			"Read by Scott Brick",
+			"Read by Simon Brook",
 			"Chilton",
 			"1965",
 			"21 h 2 min",
-			"ISBN 9780441013593",
+			"ISBN 9780195001013",
 			"Science Fiction",
 		]) {
 			expect(screen.getByText(text)).toBeInTheDocument();
 		}
-		expect(screen.getByText(/^by/)).toHaveTextContent("by Frank Herbert");
+		expect(screen.getByText(/^by/)).toHaveTextContent("by Henrik Halden");
 		expect(screen.getByText(/^Book 1 of/)).toHaveTextContent(
-			"Book 1 of Dune Chronicles",
+			"Book 1 of Dusk Chronicles",
 		);
 		// An audiobook alone is listened to, not read.
 		expect(screen.getByRole("link", { name: "Listen" })).toHaveAttribute(
@@ -1355,14 +1355,14 @@ describe("books", () => {
 			screen.queryByRole("link", { name: "Read" }),
 		).not.toBeInTheDocument();
 		const files = within(screen.getByRole("region", { name: "Files" }));
-		const download = files.getByRole("link", { name: "Download Dune 1.mp3" });
+		const download = files.getByRole("link", { name: "Download Dusk 1.mp3" });
 		expect(download).toHaveAttribute("href", "/api/v1/files/file-2/download");
 		expect(
 			files.getByText(/Part 2 · Not in the folder any more/),
 		).toBeInTheDocument();
 		// A file that is gone cannot be downloaded.
 		expect(
-			files.queryByRole("link", { name: "Download Dune 2.mp3" }),
+			files.queryByRole("link", { name: "Download Dusk 2.mp3" }),
 		).not.toBeInTheDocument();
 
 		await person.click(
@@ -1376,12 +1376,12 @@ describe("books", () => {
 	it("lets long values on a book's page break anywhere, and lists each identifier on a line", async () => {
 		const word =
 			"Donaudampfschifffahrtsgesellschaftskapitänswitwenrentenversicherung";
-		const fileName = `Robin_Hobb_-_Rain_Wild_Chronicles_01_-_${word}.epub`;
+		const fileName = `Roswitha_Hoff_-_Sternwanderer_01_-_${word}.epub`;
 		server
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook(`Rain Wild Chronicles 01 - Drachenhüter ${word}`, {
+			.withBook(`Sternwanderer 01 - Leuchtturmwärter ${word}`, {
 				contributors: [
 					...Array.from({ length: 6 }, (_, i) => ({
 						name: `Margaret Lindholm-${word}-${i}`,
@@ -1822,11 +1822,11 @@ describe("quick search", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Mistborn", {
-				contributors: [{ name: "Brandon Sanderson", role: "author" }],
+			.withBook("Moorwalker", {
+				contributors: [{ name: "Bastian Landorf", role: "author" }],
 			})
-			.withBook("The Way of Kings", {
-				contributors: [{ name: "Brandon Sanderson", role: "author" }],
+			.withBook("The Path of Lanterns", {
+				contributors: [{ name: "Bastian Landorf", role: "author" }],
 			})
 			.withBook("Emma", {
 				contributors: [{ name: "Jane Austen", role: "author" }],
@@ -1843,7 +1843,7 @@ describe("quick search", () => {
 		await person.keyboard("/");
 		const box = screen.getByRole("combobox", { name: "Search books" });
 		expect(box).toHaveFocus();
-		await person.type(box, "Sandersen");
+		await person.type(box, "Landorff");
 
 		const results = await screen.findByRole("listbox", { name: "Books found" });
 		// Two books, the list of every book found, and last the search of
@@ -1852,10 +1852,10 @@ describe("quick search", () => {
 			expect(within(results).getAllByRole("option")).toHaveLength(4),
 		);
 		expect(within(results).getAllByRole("option")[2]).toHaveTextContent(
-			"Every book like “Sandersen”",
+			"Every book like “Landorff”",
 		);
 		expect(within(results).getAllByRole("option")[3]).toHaveTextContent(
-			"Search the text of the books for “Sandersen”",
+			"Search the text of the books for “Landorff”",
 		);
 		expect(box).toHaveAttribute("aria-expanded", "true");
 
@@ -1867,7 +1867,7 @@ describe("quick search", () => {
 		await person.keyboard("{Enter}");
 		expect(
 			await screen.findByRole("heading", {
-				name: "The Way of Kings",
+				name: "The Path of Lanterns",
 				level: 1,
 			}),
 		).toBeInTheDocument();
@@ -1880,11 +1880,11 @@ describe("quick search", () => {
 		withShelf();
 		const { router } = renderApp("/");
 		const box = await screen.findByRole("combobox", { name: "Search books" });
-		await person.type(box, "Sandersen");
+		await person.type(box, "Landorff");
 		const results = await screen.findByRole("listbox", { name: "Books found" });
 		await waitFor(() =>
 			expect(
-				within(results).getByRole("option", { name: "Every book like “Sandersen”" }),
+				within(results).getByRole("option", { name: "Every book like “Landorff”" }),
 			).toBeInTheDocument(),
 		);
 
@@ -1892,14 +1892,14 @@ describe("quick search", () => {
 		await person.keyboard("{Enter}");
 		expect(
 			await screen.findByRole("heading", {
-				name: "Books like “Sandersen”",
+				name: "Books like “Landorff”",
 				level: 1,
 			}),
 		).toBeInTheDocument();
-		expect(router.state.location.search).toMatchObject({ q: "Sandersen" });
+		expect(router.state.location.search).toMatchObject({ q: "Landorff" });
 		const list = screen.getByRole("region", { name: "Books" });
 		await waitFor(() =>
-			expect(within(list).getAllByRole("link", { name: /Way of Kings|Mistborn/ })).toHaveLength(2),
+			expect(within(list).getAllByRole("link", { name: /Path of Lanterns|Moorwalker/ })).toHaveLength(2),
 		);
 		expect(within(list).queryByRole("link", { name: /Emma/ })).not.toBeInTheDocument();
 		const asked = server.requests.find(
@@ -2801,7 +2801,7 @@ describe("editing a book", () => {
 		await person.click(screen.getByRole("button", { name: "Add a person" }));
 		await person.type(
 			screen.getByRole("combobox", { name: "Name of person 2" }),
-			"Fiona Stafford",
+			"Fiona Stanhope",
 		);
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Role of person 2" }),
@@ -2824,7 +2824,7 @@ describe("editing a book", () => {
 				title: "Emma (Annotated)",
 				contributors: [
 					{ name: "Jane Austen", role: "author" },
-					{ name: "Fiona Stafford", role: "editor" },
+					{ name: "Fiona Stanhope", role: "editor" },
 				],
 				tags: ["Fiction", "Classics"],
 			},
@@ -3005,7 +3005,7 @@ describe("reviewing matches", () => {
 			.signedInAs("Edith")
 			.withLibrary("Novels")
 			.withBook("Emma", {
-				contributors: [{ name: "Emma Donoghue", role: "author" }],
+				contributors: [{ name: "Emma Holloway", role: "author" }],
 			})
 			.withBook("Persuasion");
 		const match = (matchId: string, title: string, publisher: string) => ({
@@ -3257,9 +3257,9 @@ describe("changing many books", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Edith")
 			.withLibrary("Novels")
-			.withBook("Mort", { series: "Discworl", tags: ["Fantasy"] })
-			.withBook("Eric", {
-				series: "Discworl",
+			.withBook("Marl", { series: "Saltmoo", tags: ["Fantasy"] })
+			.withBook("Ewald", {
+				series: "Saltmoo",
 				fields: { series: { source: "manual", locked: true } },
 			})
 			.withBook("Emma");
@@ -3270,7 +3270,7 @@ describe("changing many books", () => {
 	it("edits every book that matches the filter, and reports the locked ones", async () => {
 		const person = userEvent.setup();
 		withShelf();
-		const { router } = renderApp("/?series=discworl");
+		const { router } = renderApp("/?series=saltmoo");
 		await person.click(
 			await screen.findByRole("button", { name: "Select books" }),
 		);
@@ -3281,7 +3281,7 @@ describe("changing many books", () => {
 			screen.getByText("Every book that matches is selected"),
 		).toBeInTheDocument();
 		expect(
-			await screen.findByRole("checkbox", { name: "Select Mort" }),
+			await screen.findByRole("checkbox", { name: "Select Marl" }),
 		).toBeChecked();
 
 		await person.click(screen.getByRole("button", { name: "Edit" }));
@@ -3297,7 +3297,7 @@ describe("changing many books", () => {
 		);
 		await person.type(
 			screen.getByRole("textbox", { name: "Value for Series" }),
-			"Discworld",
+			"Saltmoor",
 		);
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "What to do with Tags" }),
@@ -3322,22 +3322,22 @@ describe("changing many books", () => {
 			{
 				library: "lib-1",
 				filter: JSON.stringify({
-					all: [{ field: "series", op: "in", values: ["discworl"] }],
+					all: [{ field: "series", op: "in", values: ["saltmoo"] }],
 				}),
 				action: "edit",
-				change: { series: "Discworld", addTags: ["Humour", "Satire"] },
+				change: { series: "Saltmoor", addTags: ["Humour", "Satire"] },
 			},
 		]);
 		expect(screen.getByText("2 of 2 books done.")).toBeInTheDocument();
 		const eric = screen
-			.getByRole("link", { name: "Eric" })
+			.getByRole("link", { name: "Ewald" })
 			.closest("li") as HTMLElement;
 		expect(
 			within(eric).getByText("Locked, left as it was: Series"),
 		).toBeInTheDocument();
 		expect(within(eric).getByText("Changed")).toBeInTheDocument();
-		expect(server.books[0]?.series).toBe("Discworld");
-		expect(server.books[1]?.series).toBe("Discworl");
+		expect(server.books[0]?.series).toBe("Saltmoor");
+		expect(server.books[1]?.series).toBe("Saltmoo");
 		expect(server.books[2]?.tags).toEqual([]);
 
 		await person.click(screen.getByRole("button", { name: "Changed: 2" }));
@@ -3356,8 +3356,8 @@ describe("changing many books", () => {
 		await person.click(
 			await screen.findByRole("checkbox", { name: "Select Emma" }),
 		);
-		await person.click(screen.getByRole("checkbox", { name: "Select Mort" }));
-		await person.click(screen.getByRole("checkbox", { name: "Select Mort" }));
+		await person.click(screen.getByRole("checkbox", { name: "Select Marl" }));
+		await person.click(screen.getByRole("checkbox", { name: "Select Marl" }));
 		expect(screen.getByText("1 selected")).toBeInTheDocument();
 		await person.click(screen.getByRole("button", { name: "Fetch details" }));
 
@@ -4426,23 +4426,23 @@ describe("reading history", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Dune", { reading: { status: "completed", rating: 5, finishedOn: "2021-03-14" } })
-			.withBook("Foundation", {
+			.withBook("Dusk", { reading: { status: "completed", rating: 5, finishedOn: "2021-03-14" } })
+			.withBook("Ironbridge", {
 				placeholder: true,
 				reading: { status: "completed", rating: 4, finishedOn: "2019-07-02" },
 			});
 		renderApp("/stats");
 		const history = within(await screen.findByRole("region", { name: "Everything you read" }));
-		expect(await history.findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
-		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		expect(await history.findByRole("link", { name: /^Dusk/ })).toBeInTheDocument();
+		expect(history.getByRole("link", { name: /^Ironbridge/ })).toBeInTheDocument();
 		expect(history.getByText(/Not in the library/)).toBeInTheDocument();
 
 		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "2019");
-		await waitFor(() => expect(history.queryByRole("link", { name: /^Dune/ })).not.toBeInTheDocument());
-		expect(history.getByRole("link", { name: /^Foundation/ })).toBeInTheDocument();
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Dusk/ })).not.toBeInTheDocument());
+		expect(history.getByRole("link", { name: /^Ironbridge/ })).toBeInTheDocument();
 		await person.selectOptions(history.getByRole("combobox", { name: "Year" }), "");
-		await person.type(history.getByRole("searchbox", { name: "Title or author" }), "dune");
-		await waitFor(() => expect(history.queryByRole("link", { name: /^Foundation/ })).not.toBeInTheDocument());
+		await person.type(history.getByRole("searchbox", { name: "Title or author" }), "dusk");
+		await waitFor(() => expect(history.queryByRole("link", { name: /^Ironbridge/ })).not.toBeInTheDocument());
 	});
 
 	it("keeps a private note on a book", async () => {
@@ -4451,7 +4451,7 @@ describe("reading history", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Dune");
+			.withBook("Dusk");
 		renderApp("/books/book-1");
 		await person.type(await screen.findByRole("textbox", { name: "Private note" }), "Spice.");
 		await person.click(screen.getByRole("button", { name: "Save note" }));
@@ -4528,7 +4528,7 @@ describe("recommendations", () => {
 			.signedInAs("Rita")
 			.withLibrary("Novels")
 			.withBook("Emma")
-			.withBook("Mort");
+			.withBook("Marl");
 		const summary = (id: string, title: string) => ({
 			id,
 			libraryId: "lib-1",
@@ -4545,7 +4545,7 @@ describe("recommendations", () => {
 			hasProfile: true,
 			books: [
 				{ book: summary("book-1", "Emma"), because: [{ id: "x-1", title: "Persuasion" }, { id: "x-2", title: "Sanditon" }] },
-				{ book: summary("book-2", "Mort"), because: [{ id: "x-3", title: "Eric" }] },
+				{ book: summary("book-2", "Marl"), because: [{ id: "x-3", title: "Ewald" }] },
 			],
 		};
 	}
@@ -4561,7 +4561,7 @@ describe("recommendations", () => {
 		await person.click(row.getByRole("link", { name: "More for you" }));
 		expect(router.state.location.pathname).toBe("/recommendations");
 		expect(await screen.findByRole("heading", { name: "For you", level: 1 })).toBeInTheDocument();
-		expect(screen.getByText("Because you liked Eric")).toBeInTheDocument();
+		expect(screen.getByText("Because you liked Ewald")).toBeInTheDocument();
 	});
 
 	it("leaves a book out for good when the person is not interested", async () => {
@@ -4571,7 +4571,7 @@ describe("recommendations", () => {
 		await person.click(await screen.findByRole("button", { name: "Not interested in Emma" }));
 		await waitFor(() => expect(screen.queryByRole("link", { name: /^Emma/ })).not.toBeInTheDocument());
 		expect(server.requests.some((r) => r.path === "/me/recommendations/book-1/dismiss")).toBe(true);
-		expect(screen.getByRole("link", { name: /^Mort/ })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /^Marl/ })).toBeInTheDocument();
 	});
 
 	it("says what it needs while there is no profile, and shows no row", async () => {
@@ -4587,8 +4587,8 @@ describe("collections", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Mort")
-			.withBook("Eric")
+			.withBook("Marl")
+			.withBook("Ewald")
 			.withBook("Emma");
 	}
 	const titles = () =>
@@ -4670,10 +4670,10 @@ describe("collections", () => {
 			to: "/collections/$collectionId",
 			params: { collectionId: "col-1" },
 		});
-		await screen.findByRole("button", { name: "Move Eric up" });
-		expect(titles()).toEqual(["Emma", "Mort", "Eric"]);
-		await person.click(screen.getByRole("button", { name: "Move Eric up" }));
-		await waitFor(() => expect(titles()).toEqual(["Emma", "Eric", "Mort"]));
+		await screen.findByRole("button", { name: "Move Ewald up" });
+		expect(titles()).toEqual(["Emma", "Marl", "Ewald"]);
+		await person.click(screen.getByRole("button", { name: "Move Ewald up" }));
+		await waitFor(() => expect(titles()).toEqual(["Emma", "Ewald", "Marl"]));
 		expect(server.collections[0]?.books).toEqual([
 			"book-3",
 			"book-2",
@@ -4683,7 +4683,7 @@ describe("collections", () => {
 		await person.click(
 			screen.getByRole("button", { name: "Take Emma out of the collection" }),
 		);
-		await waitFor(() => expect(titles()).toEqual(["Eric", "Mort"]));
+		await waitFor(() => expect(titles()).toEqual(["Ewald", "Marl"]));
 	});
 
 	it("shows another person's shared collection without letting it be changed", async () => {
@@ -4752,12 +4752,12 @@ describe("smart shelves", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Mistborn", {
-				...by("Brandon Sanderson"),
+			.withBook("Moorwalker", {
+				...by("Bastian Landorf"),
 				reading: { status: "unread", rating: 5 },
 			})
-			.withBook("Elantris", {
-				...by("Brandon Sanderson"),
+			.withBook("Eldmoor", {
+				...by("Bastian Landorf"),
 				reading: { status: "completed", rating: 4 },
 			})
 			.withBook("Emma", {
@@ -4842,7 +4842,7 @@ describe("smart shelves", () => {
 		await person.click(screen.getByRole("link", { name: "New smart shelf" }));
 		await person.type(
 			await screen.findByRole("textbox", { name: "Name" }),
-			"Next Sanderson",
+			"Next Landorf",
 		);
 
 		const first = within(
@@ -4850,7 +4850,7 @@ describe("smart shelves", () => {
 		);
 		await person.type(
 			first.getByRole("textbox", { name: "Values" }),
-			"Brandon Sanderson",
+			"Bastian Landorf",
 		);
 		expect(
 			await screen.findByText("Books matching now: 2"),
@@ -4870,7 +4870,7 @@ describe("smart shelves", () => {
 		await person.click(screen.getByRole("button", { name: "Create" }));
 
 		expect(
-			await screen.findByRole("heading", { name: "Next Sanderson", level: 1 }),
+			await screen.findByRole("heading", { name: "Next Landorf", level: 1 }),
 		).toBeInTheDocument();
 		expect(router.state.location.pathname).toBe("/smart-shelves/smart-1");
 		expect(
@@ -4878,11 +4878,11 @@ describe("smart shelves", () => {
 				(r) => r.path === "/smart-shelves" && r.method === "POST",
 			)?.body,
 		).toEqual({
-			name: "Next Sanderson",
+			name: "Next Landorf",
 			visibility: "private",
 			filter: JSON.stringify({
 				all: [
-					{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+					{ field: "author", op: "in", values: ["Bastian Landorf"] },
 					{ field: "status", op: "in", values: ["unread"] },
 				],
 			}),
@@ -4891,11 +4891,11 @@ describe("smart shelves", () => {
 			screen.getByRole("list", { name: "Books on this shelf" }),
 		);
 		expect(
-			await books.findByRole("link", { name: /^Mistborn/ }),
+			await books.findByRole("link", { name: /^Moorwalker/ }),
 		).toBeInTheDocument();
 		expect(books.getAllByRole("link")).toHaveLength(1);
 
-		await person.click(books.getByRole("link", { name: /^Mistborn/ }));
+		await person.click(books.getByRole("link", { name: /^Moorwalker/ }));
 		await person.selectOptions(
 			await screen.findByRole("combobox", { name: "Your status" }),
 			"Completed",
@@ -4912,10 +4912,10 @@ describe("smart shelves", () => {
 	it("edits the rules of a shelf, with groups and rules turned round", async () => {
 		const person = userEvent.setup();
 		withShelf();
-		server.withSmartShelf("Sanderson", {
+		server.withSmartShelf("Landorf", {
 			field: "author",
 			op: "in",
-			values: ["Brandon Sanderson"],
+			values: ["Bastian Landorf"],
 		});
 		renderApp("/smart-shelves/smart-1");
 		await person.click(
@@ -4926,7 +4926,7 @@ describe("smart shelves", () => {
 				"textbox",
 				{ name: "Values" },
 			),
-		).toHaveValue("Brandon Sanderson");
+		).toHaveValue("Bastian Landorf");
 		await person.selectOptions(
 			screen.getByRole("combobox", { name: "Books that match" }),
 			"any rule",
@@ -4960,7 +4960,7 @@ describe("smart shelves", () => {
 		await waitFor(() =>
 			expect(JSON.parse(server.smartShelves[0]?.filter ?? "")).toEqual({
 				any: [
-					{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+					{ field: "author", op: "in", values: ["Bastian Landorf"] },
 					{
 						all: [
 							{ not: { field: "rating", op: "between", values: ["5", ""] } },
@@ -6298,11 +6298,11 @@ describe("replacing and keeping both", () => {
 	it("calls two recordings by other narrators that, offers no merge and links them", async () => {
 		const person = userEvent.setup();
 		withEmmas();
-		server.pairs[0]!.narrators = [["Juliet Stevenson"], ["Karen Savage"]];
+		server.pairs[0]!.narrators = [["Helen Marsh"], ["Kira Vogt"]];
 		renderApp("/duplicates");
 		const pair = within(
 			await screen.findByRole("listitem", {
-				name: "Emma is read by Juliet Stevenson, Emma (scan) by Karen Savage: the same book, another narrator.",
+				name: "Emma is read by Helen Marsh, Emma (scan) by Kira Vogt: the same book, another narrator.",
 			}),
 		);
 		expect(pair.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
@@ -6353,12 +6353,12 @@ describe("replacing and keeping both", () => {
 			.signedInAs("Edith")
 			.withLibrary("Audio")
 			.withBook("Emma", {
-				recordings: [{ id: "book-2", title: "Emma", narrators: ["Karen Savage"] }],
+				recordings: [{ id: "book-2", title: "Emma", narrators: ["Kira Vogt"] }],
 			});
 		renderApp("/books/book-1");
 		const section = within(await screen.findByRole("region", { name: "Other recordings" }));
 		expect(section.getByRole("link", { name: "Emma" })).toHaveAttribute("href", "/books/book-2");
-		expect(section.getByText(/Read by Karen Savage/)).toBeInTheDocument();
+		expect(section.getByText(/Read by Kira Vogt/)).toBeInTheDocument();
 	});
 
 	it("says at the button why keeping one failed, and lets it be tried again", async () => {
@@ -6740,7 +6740,7 @@ describe("following authors and series", () => {
 		);
 		await person.type(
 			feeds.getByRole("textbox", { name: "Authors" }),
-			"Cornwell, Bernard; Liza Grimm",
+			"Devlin, Gerald; Liza Grimm",
 		);
 		await person.click(feeds.getByRole("button", { name: "Follow the feed" }));
 		expect(
@@ -6752,11 +6752,11 @@ describe("following authors and series", () => {
 		).toEqual({
 			url: "https://author.example/atom",
 			keywords: ["novel", "spring"],
-			authors: ["Cornwell, Bernard", "Liza Grimm"],
+			authors: ["Devlin, Gerald", "Liza Grimm"],
 		});
 		expect(
 			feeds.getByText(
-				"Naming novel, spring · By Cornwell, Bernard; Liza Grimm",
+				"Naming novel, spring · By Devlin, Gerald; Liza Grimm",
 			),
 		).toBeInTheDocument();
 
@@ -6942,8 +6942,8 @@ describe("the lists of authors and series", () => {
 				contributors: [{ name: "Jane Austen", role: "author" }],
 				series: "Bath",
 			})
-			.withBook("Dune", {
-				contributors: [{ name: "Frank Herbert", role: "author" }],
+			.withBook("Dusk", {
+				contributors: [{ name: "Henrik Halden", role: "author" }],
 			});
 	});
 	afterEach(() => vi.unstubAllGlobals());
@@ -6955,7 +6955,7 @@ describe("the lists of authors and series", () => {
 		const a = await screen.findByRole("region", { name: "A" });
 		expect(a).toHaveTextContent("Jane Austen2 books");
 		expect(screen.getByRole("region", { name: "H" })).toHaveTextContent(
-			"Frank Herbert1 book",
+			"Henrik Halden1 book",
 		);
 		await person.click(within(a).getByRole("link", { name: "Jane Austen" }));
 		expect(
@@ -7035,7 +7035,7 @@ describe("reviewing suggested genres", () => {
 		id,
 		libraryId: "lib-1",
 		title,
-		authors: ["Donna Leon"],
+		authors: ["Lena Brandt"],
 		authorKeys: ["donna leon"],
 		formats: ["epub"],
 		addedAt: "2026-01-01T00:00:00Z",
@@ -7051,19 +7051,19 @@ describe("reviewing suggested genres", () => {
 			.withLibrary("Novels");
 		server.genreSuggestions = [
 			{
-				book: book("book-1", "Death at La Fenice"),
+				book: book("book-1", "Death at La Stella"),
 				genre: "crime",
 				method: "vector",
 				score: 0.12,
 			},
 			{
-				book: book("book-2", "Acqua Alta"),
+				book: book("book-2", "Marea Alta"),
 				genre: "crime",
 				method: "neighbours",
 				score: 0.8,
 			},
 			{
-				book: book("book-2", "Acqua Alta"),
+				book: book("book-2", "Marea Alta"),
 				genre: "travel",
 				method: "vector",
 				score: 0.06,
@@ -7087,7 +7087,7 @@ describe("reviewing suggested genres", () => {
 			expect(screen.queryByText("Travel")).not.toBeInTheDocument(),
 		);
 		expect(
-			screen.getByRole("button", { name: "Death at La Fenice" }),
+			screen.getByRole("button", { name: "Death at La Stella" }),
 		).toBeInTheDocument();
 		expect(screen.getByText("from the books most like it")).toBeInTheDocument();
 
@@ -7121,19 +7121,19 @@ describe("reviewing suggested genres", () => {
 
 	it("shows a suggestion's description in its row and the book beside the list", async () => {
 		const person = userEvent.setup();
-		server.withBook("Death at La Fenice", {
-			description: "Commissario Brunetti investigates a death at the opera.",
+		server.withBook("Death at La Stella", {
+			description: "Commissario Falconi investigates a death at the opera.",
 			tags: ["Krimi"],
 		});
 		const { router } = renderApp("/genres");
 		expect(
-			await screen.findByText(/Brunetti investigates a death/),
+			await screen.findByText(/Falconi investigates a death/),
 		).toBeInTheDocument();
 		await person.click(
-			screen.getByRole("button", { name: "Death at La Fenice" }),
+			screen.getByRole("button", { name: "Death at La Stella" }),
 		);
 		const panel = await screen.findByRole("dialog", {
-			name: "Death at La Fenice",
+			name: "Death at La Stella",
 		});
 		expect(router.state.location.search).toEqual({ book: "book-1" });
 		await person.click(
@@ -7169,13 +7169,13 @@ describe("cleaning up how books are described", () => {
 		server.cleanup = [
 			{
 				kind: "authors",
-				subject: "barbara goldstein",
+				subject: "ulrike weidner",
 				found: [
-					{ name: "Goldstein, Barbara", books: 2 },
-					{ name: "Barbara Goldstein", books: 1 },
+					{ name: "Weidner, Ulrike", books: 2 },
+					{ name: "Ulrike Weidner", books: 1 },
 				],
 				fix: "merge",
-				suggested: "Goldstein, Barbara",
+				suggested: "Weidner, Ulrike",
 				books: 3,
 			},
 			{
@@ -7183,12 +7183,12 @@ describe("cleaning up how books are described", () => {
 				subject: "book-9",
 				found: [
 					{
-						name: "Das letzte Evangelium: Historischer Roman (German Edition)",
+						name: "Das stille Archiv: Historischer Roman (German Edition)",
 						books: 1,
 					},
 				],
 				fix: "retitle",
-				suggested: "Das letzte Evangelium",
+				suggested: "Das stille Archiv",
 				books: 1,
 				book: "book-9",
 			},
@@ -7221,11 +7221,11 @@ describe("cleaning up how books are described", () => {
 			screen.getByRole("button", { name: "Placeholder authors: 2" }),
 		).toBeInTheDocument();
 		expect(
-			screen.getByRole("radio", { name: /^Goldstein, Barbara Books: 2/ }),
+			screen.getByRole("radio", { name: /^Weidner, Ulrike Books: 2/ }),
 		).toBeChecked();
 
 		await person.click(
-			screen.getByRole("radio", { name: /^Barbara Goldstein Books: 1/ }),
+			screen.getByRole("radio", { name: /^Ulrike Weidner Books: 1/ }),
 		);
 		await person.click(
 			screen.getByRole("button", { name: "Use this spelling" }),
@@ -7240,7 +7240,7 @@ describe("cleaning up how books are described", () => {
 			server.requests.find((r) => r.path === "/cleanup/apply")?.body,
 		).toEqual({
 			kind: "authors",
-			picks: [{ subject: "barbara goldstein", to: "Barbara Goldstein" }],
+			picks: [{ subject: "ulrike weidner", to: "Ulrike Weidner" }],
 		});
 		expect(
 			await screen.findByText("Nothing to suggest here."),
@@ -7251,11 +7251,11 @@ describe("cleaning up how books are described", () => {
 		);
 		expect(router.state.location.search).toEqual({ kind: "titles" });
 		expect(
-			await screen.findByText("Das letzte Evangelium"),
+			await screen.findByText("Das stille Archiv"),
 		).toBeInTheDocument();
 		expect(
 			screen.getByRole("button", {
-				name: "Das letzte Evangelium: Historischer Roman (German Edition)",
+				name: "Das stille Archiv: Historischer Roman (German Edition)",
 			}),
 		).toBeInTheDocument();
 		await person.click(screen.getByRole("button", { name: "Leave it" }));
@@ -7273,13 +7273,13 @@ describe("cleaning up how books are described", () => {
 	it("brings a suggestion back with the error when the server refuses it", async () => {
 		const person = userEvent.setup();
 		renderApp("/cleanup?kind=titles");
-		await screen.findByText("Das letzte Evangelium");
+		await screen.findByText("Das stille Archiv");
 		server.cleanup = server.cleanup.filter((s) => s.kind !== "titles");
 		await person.click(screen.getByRole("button", { name: "Leave it" }));
 		expect(await screen.findByRole("alert")).toHaveTextContent(
 			"There is no such suggestion",
 		);
-		expect(screen.getByText("Das letzte Evangelium")).toBeInTheDocument();
+		expect(screen.getByText("Das stille Archiv")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Leave it" })).toBeEnabled();
 	});
 
@@ -7287,12 +7287,12 @@ describe("cleaning up how books are described", () => {
 		const person = userEvent.setup();
 		const book = (n: number) => ({
 			id: `book-${n}`,
-			title: `Goldstein book ${n}`,
+			title: `Weidner book ${n}`,
 			fields: [
 				{
 					name: "contributors" as const,
-					before: "Barbara Goldstein",
-					after: "Goldstein, Barbara",
+					before: "Ulrike Weidner",
+					after: "Weidner, Ulrike",
 				},
 				{
 					name: "title" as const,
@@ -7308,20 +7308,20 @@ describe("cleaning up how books are described", () => {
 								provider: "hardcover",
 								source: "match" as const,
 								field: "authors" as const,
-								value: "Goldstein, Barbara",
+								value: "Weidner, Ulrike",
 								verdict: "agrees" as const,
 							},
 							{
 								provider: "openlibrary",
 								source: "cached" as const,
 								field: "authors" as const,
-								value: "B. Goldstein",
+								value: "U. Weidner",
 								verdict: "differs" as const,
 							},
 						]
 					: [],
 		});
-		server.cleanupPreviews["authors:barbara goldstein"] = [
+		server.cleanupPreviews["authors:ulrike weidner"] = [
 			1, 2, 3, 4, 5, 6, 7,
 		].map(book);
 		renderApp("/cleanup");
@@ -7337,16 +7337,16 @@ describe("cleaning up how books are described", () => {
 			within(item).getByRole("button", { name: "Show the books" }),
 		);
 		expect(
-			await within(item).findByRole("button", { name: "Goldstein book 5" }),
+			await within(item).findByRole("button", { name: "Weidner book 5" }),
 		).toBeVisible();
 		expect(
-			within(item).queryByRole("button", { name: "Goldstein book 6" }),
+			within(item).queryByRole("button", { name: "Weidner book 6" }),
 		).toBeNull();
 		expect(
-			within(item).getAllByText("Barbara Goldstein", { selector: "del" }),
+			within(item).getAllByText("Ulrike Weidner", { selector: "del" }),
 		).toHaveLength(5);
 		expect(
-			within(item).getAllByText("Goldstein, Barbara", { selector: "ins" }),
+			within(item).getAllByText("Weidner, Ulrike", { selector: "ins" }),
 		).toHaveLength(5);
 		expect(within(item).getAllByText("Locked title")).toHaveLength(5);
 		expect(
@@ -7359,7 +7359,7 @@ describe("cleaning up how books are described", () => {
 			within(item).getByRole("button", { name: "and 2 more" }),
 		);
 		expect(
-			await within(item).findByRole("button", { name: "Goldstein book 7" }),
+			await within(item).findByRole("button", { name: "Weidner book 7" }),
 		).toBeVisible();
 	});
 
@@ -7449,7 +7449,7 @@ describe("cleaning up how books are described", () => {
 		renderApp("/cleanup");
 		await person.type(
 			await screen.findByRole("textbox", { name: "Another spelling" }),
-			"Barbara A. Goldstein",
+			"Ulrike A. Weidner",
 		);
 		expect(
 			screen.getByRole("radio", { name: /^Another spelling:/ }),
@@ -7462,7 +7462,7 @@ describe("cleaning up how books are described", () => {
 				server.requests.find((r) => r.path === "/cleanup/apply")?.body,
 			).toEqual({
 				kind: "authors",
-				picks: [{ subject: "barbara goldstein", to: "Barbara A. Goldstein" }],
+				picks: [{ subject: "ulrike weidner", to: "Ulrike A. Weidner" }],
 			}),
 		);
 	});
@@ -7490,46 +7490,46 @@ describe("cleaning up how books are described", () => {
 	it("puts the books whose titles name a series into it", async () => {
 		server.cleanup.push({
 			kind: "series",
-			subject: "rain wild chronicles",
+			subject: "sternwanderer",
 			found: [
 				{
-					name: "Rain Wild Chronicles 01 - Drachenhüter",
+					name: "Sternwanderer 01 - Leuchtturmwärter",
 					books: 1,
 					book: "book-1",
 					position: 1,
-					title: "Drachenhüter",
+					title: "Leuchtturmwärter",
 				},
 				{
-					name: "Drachenkämpfer (Rain Wild Chronicles #2.5)",
+					name: "Wellenbrecher (Sternwanderer #2.5)",
 					books: 1,
 					book: "book-2",
 					position: 2.5,
-					title: "Drachenkämpfer",
+					title: "Wellenbrecher",
 				},
 			],
 			fix: "setSeries",
-			suggested: "Rain Wild Chronicles",
+			suggested: "Sternwanderer",
 			books: 2,
 		});
 		const person = userEvent.setup();
 		const { router } = renderApp("/cleanup?kind=series");
 		expect(
-			await screen.findByText("Series “Rain Wild Chronicles”"),
+			await screen.findByText("Series “Sternwanderer”"),
 		).toBeInTheDocument();
 		expect(
 			screen.getByRole("button", { name: "Series in titles: 1" }),
 		).toHaveAttribute("aria-pressed", "true");
 		expect(
 			screen.getByRole("button", {
-				name: "Rain Wild Chronicles 01 - Drachenhüter",
+				name: "Sternwanderer 01 - Leuchtturmwärter",
 			}),
 		).toBeInTheDocument();
 		await person.click(
-			screen.getByRole("button", { name: "Rain Wild Chronicles 01 - Drachenhüter" }),
+			screen.getByRole("button", { name: "Sternwanderer 01 - Leuchtturmwärter" }),
 		);
 		expect(router.state.location.search).toEqual({ kind: "series", book: "book-1" });
-		expect(screen.getByText("1: Drachenhüter")).toBeInTheDocument();
-		expect(screen.getByText("2.5: Drachenkämpfer")).toBeInTheDocument();
+		expect(screen.getByText("1: Leuchtturmwärter")).toBeInTheDocument();
+		expect(screen.getByText("2.5: Wellenbrecher")).toBeInTheDocument();
 		await person.click(
 			screen.getByRole("button", { name: "Put them into the series" }),
 		);
@@ -7540,7 +7540,7 @@ describe("cleaning up how books are described", () => {
 			server.requests.find((r) => r.path === "/cleanup/apply")?.body,
 		).toEqual({
 			kind: "series",
-			picks: [{ subject: "rain wild chronicles" }],
+			picks: [{ subject: "sternwanderer" }],
 		});
 	});
 
@@ -7564,11 +7564,11 @@ describe("searching by a description", () => {
 			.withAccount("Rita", "a long password", "reader")
 			.signedInAs("Rita")
 			.withLibrary("Novels")
-			.withBook("Death at La Fenice", {
+			.withBook("Death at La Stella", {
 				description:
-					"Commissario Brunetti, a detective in Venice, investigates a death.",
+					"Commissario Falconi, a detective in Venice, investigates a death.",
 			})
-			.withBook("Brunetti's Cookbook", {
+			.withBook("Falconi's Cookbook", {
 				description: "Recipes from the detective's Venice.",
 			})
 			.withBook("A Gardening Year", { description: "What to sow when." });
@@ -7598,11 +7598,11 @@ describe("searching by a description", () => {
 			await screen.findByRole("region", { name: "Books found" }),
 		);
 		const links = await found.findAllByRole("link", {
-			name: /Fenice|Cookbook/,
+			name: /Stella|Cookbook/,
 		});
 		expect(links.map((l) => l.textContent)).toEqual([
-			"Death at La Fenice",
-			"Brunetti's Cookbook",
+			"Death at La Stella",
+			"Falconi's Cookbook",
 		]);
 		expect(
 			found.queryByRole("link", { name: "A Gardening Year" }),

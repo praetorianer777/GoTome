@@ -72,7 +72,7 @@ Several folders are several mounts (`/books/fiction`, `/books/comics`)
 and several libraries. Two libraries may not overlap.
 
 How files are grouped into books: the files of one folder that share a
-name are one book in several formats (`Dune.epub`, `Dune.pdf`), and the
+name are one book in several formats (`Dusk.epub`, `Dusk.pdf`), and the
 numbered audio files of one folder, or of its `CD 1`, `CD 2` subfolders,
 are one audiobook. A folder per book, named after it, works best.
 GOtome reads EPUB, PDF, MOBI, AZW and AZW3, and audiobooks as M4B, M4A,

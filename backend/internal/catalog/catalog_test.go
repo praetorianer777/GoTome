@@ -25,10 +25,10 @@ func TestTheRuleBuilderOffersEveryFormat(t *testing.T) {
 func TestKey(t *testing.T) {
 	same := [][]string{
 		{"Brontë, Charlotte", "bronte charlotte", "BRONTE  CHARLOTTE", "Bronte; Charlotte."},
-		{"J.R.R. Tolkien", "J. R. R. Tolkien", "j r r tolkien"},
+		{"H.K.L. Brandt", "H. K. L. Brandt", "h k l brandt"},
 		{"Straße", "Strasse", "STRASSE"},
 		{"Æsop’s Fables", "Aesop's Fables", "aesop s fables"},
-		{"The Hitchhiker's Guide—to the Galaxy", "the hitchhiker s guide to the galaxy"},
+		{"The Wanderer's Guide—to the Harbour", "the wanderer s guide to the harbour"},
 		// A decomposed e with a combining accent, and the single character.
 		{"Cafe" + string(rune(0x0301)), "Café", "cafe"},
 		{"Война и мир", "война и мир"},
@@ -44,7 +44,7 @@ func TestKey(t *testing.T) {
 			}
 		}
 	}
-	if Key("Dune") == Key("Dune Messiah") {
+	if Key("Dusk") == Key("Dusk Reckoning") {
 		t.Error("different titles share a key")
 	}
 	for _, empty := range []string{"", "   ", "—", "!?"} {
@@ -56,8 +56,8 @@ func TestKey(t *testing.T) {
 
 func TestSortTitle(t *testing.T) {
 	cases := []struct{ title, language, want string }{
-		{"The Hobbit", "en", "Hobbit, The"},
-		{"A Game of Thrones", "en-US", "Game of Thrones, A"},
+		{"The Lantern", "en", "Lantern, The"},
+		{"A Tale of Embers", "en-US", "Tale of Embers, A"},
 		{"An Unexpected Journey", "EN", "Unexpected Journey, An"},
 		{"Der Prozess", "de", "Prozess, Der"},
 		{"Die Verwandlung", "de-AT", "Verwandlung, Die"},
@@ -65,13 +65,13 @@ func TestSortTitle(t *testing.T) {
 		{"L'Étranger", "fr", "Étranger, L'"},
 		{"  The   Two  Towers ", "en", "Two Towers, The"},
 		// The language decides: this is not a German article.
-		{"Die Hard", "en", "Die Hard"},
-		{"The Hobbit", "", "The Hobbit"},
-		{"The Hobbit", "de", "The Hobbit"},
+		{"Die Slowly", "en", "Die Slowly"},
+		{"The Lantern", "", "The Lantern"},
+		{"The Lantern", "de", "The Lantern"},
 		// An article alone, or as the start of a longer word, is the title.
 		{"The", "en", "The"},
 		{"Theology", "en", "Theology"},
-		{"Dune", "en", "Dune"},
+		{"Dusk", "en", "Dusk"},
 	}
 	for _, c := range cases {
 		if got := SortTitle(c.title, c.language); got != c.want {
@@ -83,18 +83,18 @@ func TestSortTitle(t *testing.T) {
 func TestSortName(t *testing.T) {
 	cases := []struct{ name, want string }{
 		{"Jane Austen", "Austen, Jane"},
-		{"J. R. R. Tolkien", "Tolkien, J. R. R."},
+		{"H. K. L. Brandt", "Brandt, H. K. L."},
 		{"Ursula K. Le Guin", "Le Guin, Ursula K."},
 		{"Ludwig van Beethoven", "van Beethoven, Ludwig"},
 		{"Johann Wolfgang von Goethe", "von Goethe, Johann Wolfgang"},
-		{"Martin Luther King Jr.", "King, Martin Luther Jr."},
+		{"Karl Anton Reuss Jr.", "Reuss, Karl Anton Jr."},
 		{"  Jane   Austen ", "Austen, Jane"},
 		// Already filed, a single name, or nothing: left alone.
 		{"Austen, Jane", "Austen, Jane"},
 		{"Voltaire", "Voltaire"},
 		{"", ""},
 		// A particle is not a surname on its own.
-		{"Van Morrison", "Morrison, Van"},
+		{"Vera Morland", "Morland, Vera"},
 	}
 	for _, c := range cases {
 		if got := SortName(c.name); got != c.want {

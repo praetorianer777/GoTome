@@ -60,10 +60,10 @@ func TestADescriptionFindsTheNearestBooksTheViewerSees(t *testing.T) {
 		content            []float32
 		metadata           []float32
 	}{
-		{open, "Death at La Fenice", "Donna Leon", near(1), near(1)},
-		{open, "Brunetti's Cookbook", "Roberta Pianaro", near(0.6), nil},
+		{open, "Death at La Stella", "Lena Brandt", near(1), near(1)},
+		{open, "Falconi's Cookbook", "Rosa Pilgram", near(0.6), nil},
 		{open, "A Gardening Year", "Gertrude Jekyll", near(0.1), near(0.1)},
-		{vault, "The Secret of the Lagoon", "Donna Leon", near(1), near(1)},
+		{vault, "The Secret of the Lagoon", "Lena Brandt", near(1), near(1)},
 		// A copy, which a page leaves out after the book.
 		{open, "A Gardening Year (German Edition)", "Jekyll, Gertrude", near(0.1), near(0.1)},
 	} {
@@ -81,7 +81,7 @@ func TestADescriptionFindsTheNearestBooksTheViewerSees(t *testing.T) {
 	a.bookIn(open, "Not Embedded Yet")
 
 	status, got, out := a.described(reader, url.Values{"q": {"  a detective   story set in Venice "}})
-	if status != 200 || !slices.Equal(got, []string{"Death at La Fenice", "Brunetti's Cookbook", "A Gardening Year"}) {
+	if status != 200 || !slices.Equal(got, []string{"Death at La Stella", "Falconi's Cookbook", "A Gardening Year"}) {
 		t.Errorf("the reader's books: %d %v %v", status, got, out)
 	}
 	if _, got, _ := a.described(admin, url.Values{"q": {wanted}, "limit": {"2"}}); len(got) != 2 || !slices.Contains(got, "The Secret of the Lagoon") {

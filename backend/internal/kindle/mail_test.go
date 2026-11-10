@@ -29,8 +29,8 @@ func serverFor(s *smtptest.Server, security string) Server {
 
 func message(book []byte) Message {
 	return Message{
-		To: "reader@kindle.com", ID: "abc@example.org", Subject: "Dune\r\nBcc: x@example.org", Body: "Sent by GOtome",
-		Filename: "Dune\r\n.epub", ContentType: "application/epub+zip", Attachment: bytes.NewReader(book),
+		To: "reader@kindle.com", ID: "abc@example.org", Subject: "Dusk\r\nBcc: x@example.org", Body: "Sent by GOtome",
+		Filename: "Dusk\r\n.epub", ContentType: "application/epub+zip", Attachment: bytes.NewReader(book),
 	}
 }
 
@@ -84,7 +84,7 @@ func TestSendDeliversTheAttachmentIntactOverEveryKindOfTLS(t *testing.T) {
 				if p.FileName() == "" {
 					continue
 				}
-				if p.FileName() != "Dune.epub" {
+				if p.FileName() != "Dusk.epub" {
 					t.Fatalf("filename %q", p.FileName())
 				}
 				raw, _ := io.ReadAll(p)

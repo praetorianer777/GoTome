@@ -63,7 +63,7 @@ func (a *app) runImport(id string) {
 	}
 }
 
-func (a *app) historyBooks(t *testing.T, lib uuid.UUID) (dune, emma1, emma2 uuid.UUID) {
+func (a *app) historyBooks(t *testing.T, lib uuid.UUID) (dusk, emma1, emma2 uuid.UUID) {
 	t.Helper()
 	books := catalog.NewService(a.pool)
 	make := func(title, author string, isbn string, year string) uuid.UUID {
@@ -78,7 +78,7 @@ func (a *app) historyBooks(t *testing.T, lib uuid.UUID) (dune, emma1, emma2 uuid
 		}
 		return id
 	}
-	return make("Dune", "Frank Herbert", "9780441013593", "1965"), make("Emma", "Jane Austen", "", "1815"), make("Emma", "Jane Austen", "", "1816")
+	return make("Dusk", "Henrik Halden", "9780195001013", "1965"), make("Emma", "Jane Austen", "", "1815"), make("Emma", "Jane Austen", "", "1816")
 }
 
 func standing(t *testing.T, a *app, c *http.Client, id string) map[string]any {
@@ -93,7 +93,7 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 	admin, _ := a.signedIn("admin", "admin")
 	reader, _ := a.signedIn("reader", "reader")
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
-	dune, emma1, emma2 := a.historyBooks(t, lib)
+	dusk, emma1, emma2 := a.historyBooks(t, lib)
 
 	status, preview := a.importFile(reader, "goodreads.csv", nil)
 	if status != 201 || preview["source"] != "goodreads" || preview["state"] != "preview" ||
@@ -101,7 +101,7 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 		t.Fatalf("preview: %d %v", status, preview)
 	}
 	id := preview["id"].(string)
-	if r := standing(t, a, reader, dune.String()); r["status"] != "unread" {
+	if r := standing(t, a, reader, dusk.String()); r["status"] != "unread" {
 		t.Errorf("the preview wrote: %v", r)
 	}
 	ambiguity := preview["ambiguities"].([]any)[0].(map[string]any)
@@ -134,9 +134,9 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 		t.Errorf("outcomes: %v", done)
 	}
 
-	r := standing(t, a, reader, dune.String())
-	if r["status"] != "completed" || r["rating"] != 5.0 || r["finishedOn"] != "2021-03-14" || r["note"] != "Spice must flow." {
-		t.Errorf("Dune: %v", r)
+	r := standing(t, a, reader, dusk.String())
+	if r["status"] != "completed" || r["rating"] != 5.0 || r["finishedOn"] != "2021-03-14" || r["note"] != "Brine must flow." {
+		t.Errorf("Dusk: %v", r)
 	}
 	if r := standing(t, a, reader, emma2.String()); r["status"] != "completed" || r["rating"] != 3.0 {
 		t.Errorf("the chosen Emma: %v", r)
@@ -144,8 +144,8 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 	if r := standing(t, a, reader, emma1.String()); r["status"] != "unread" {
 		t.Errorf("the other Emma: %v", r)
 	}
-	if r := standing(t, a, admin, dune.String()); r["status"] != "unread" || r["note"] != nil {
-		t.Errorf("another person's Dune: %v", r)
+	if r := standing(t, a, admin, dusk.String()); r["status"] != "unread" || r["note"] != nil {
+		t.Errorf("another person's Dusk: %v", r)
 	}
 
 	_, history, _ := a.call(reader, http.MethodGet, "/me/reading?"+url.Values{"status": {"completed"}}.Encode(), nil)
@@ -153,10 +153,10 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 	if len(entries) != 3 || !slices.Equal(history["years"].([]any), []any{2026.0, 2021.0, 2019.0, 2018.0}) {
 		t.Fatalf("history: %v", history)
 	}
-	_, history, _ = a.call(reader, http.MethodGet, "/me/reading?"+url.Values{"year": {"2019"}, "q": {"asimov"}}.Encode(), nil)
+	_, history, _ = a.call(reader, http.MethodGet, "/me/reading?"+url.Values{"year": {"2019"}, "q": {"marek"}}.Encode(), nil)
 	entries = history["entries"].([]any)
 	if len(entries) != 1 || entries[0].(map[string]any)["book"].(map[string]any)["placeholder"] != true {
-		t.Errorf("Foundation, a book the library lacks: %v", history)
+		t.Errorf("Ironbridge, a book the library lacks: %v", history)
 	}
 	_, history, _ = a.call(reader, http.MethodGet, "/me/reading?stars=5", nil)
 	if len(history["entries"].([]any)) != 1 {
@@ -228,8 +228,8 @@ func TestAnImportKeepsWhatThePersonSetUnlessToldToOverwrite(t *testing.T) {
 	admin, _ := a.signedIn("admin", "admin")
 	reader, _ := a.signedIn("reader", "reader")
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
-	dune, _, _ := a.historyBooks(t, lib)
-	path := "/books/" + dune.String() + "/reading"
+	dusk, _, _ := a.historyBooks(t, lib)
+	path := "/books/" + dusk.String() + "/reading"
 	a.call(reader, http.MethodPut, path, map[string]any{"status": "completed", "rating": 2, "finishedOn": "2020-01-01"})
 
 	run := func(overwrite bool) {
@@ -239,11 +239,11 @@ func TestAnImportKeepsWhatThePersonSetUnlessToldToOverwrite(t *testing.T) {
 		a.runImport(id)
 	}
 	run(false)
-	if r := standing(t, a, reader, dune.String()); r["rating"] != 2.0 || r["finishedOn"] != "2020-01-01" {
+	if r := standing(t, a, reader, dusk.String()); r["rating"] != 2.0 || r["finishedOn"] != "2020-01-01" {
 		t.Errorf("without overwrite: %v", r)
 	}
 	run(true)
-	if r := standing(t, a, reader, dune.String()); r["rating"] != 5.0 || r["finishedOn"] != "2021-03-14" {
+	if r := standing(t, a, reader, dusk.String()); r["rating"] != 5.0 || r["finishedOn"] != "2021-03-14" {
 		t.Errorf("with overwrite: %v", r)
 	}
 }
@@ -255,7 +255,7 @@ func TestAnImportOnlyMatchesBooksOfLibrariesThePersonSees(t *testing.T) {
 	reader, _ := a.signedIn("reader", "reader")
 	shared := uuid.MustParse(a.library(admin, "Shelf", "shared"))
 	private := uuid.MustParse(a.library(admin, "Mine", "private"))
-	dune, _, _ := a.historyBooks(t, private)
+	dusk, _, _ := a.historyBooks(t, private)
 
 	_, preview := a.importFile(reader, "goodreads.csv", map[string]string{"library": shared.String()})
 	if preview["matched"] != 0.0 || preview["new"] != 5.0 {
@@ -264,11 +264,11 @@ func TestAnImportOnlyMatchesBooksOfLibrariesThePersonSees(t *testing.T) {
 	id := preview["id"].(string)
 	a.call(reader, http.MethodPost, "/me/reading-imports/"+id+"/start", map[string]any{})
 	a.runImport(id)
-	if status, _, _ := a.call(reader, http.MethodGet, "/books/"+dune.String(), nil); status != 404 {
+	if status, _, _ := a.call(reader, http.MethodGet, "/books/"+dusk.String(), nil); status != 404 {
 		t.Errorf("the private book: %d", status)
 	}
 	var n int
-	if err := a.pool.QueryRow(context.Background(), `SELECT count(*) FROM user_books WHERE book_id = $1`, dune).Scan(&n); err != nil || n != 0 {
+	if err := a.pool.QueryRow(context.Background(), `SELECT count(*) FROM user_books WHERE book_id = $1`, dusk).Scan(&n); err != nil || n != 0 {
 		t.Errorf("state on a book the person does not see: %d %v", n, err)
 	}
 	if status, body := a.importFile(reader, "goodreads.csv", map[string]string{"library": private.String()}); status != 422 {

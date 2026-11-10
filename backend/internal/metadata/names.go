@@ -7,8 +7,8 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 )
 
-// NaturalName turns a name filed as "Cornwell, Bernard" into "Bernard
-// Cornwell", which is how providers know people. A name with no comma, or
+// NaturalName turns a name filed as "Devlin, Gerald" into "Bernard
+// Devlin", which is how providers know people. A name with no comma, or
 // with several, which may be a list of names, is left as it is.
 func NaturalName(name string) string {
 	name = strings.TrimSpace(name)

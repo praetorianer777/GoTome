@@ -70,12 +70,12 @@ func TestABulkEditChangesTheFilteredBooksAndSkipsLockedFields(t *testing.T) {
 	lib := a.library(admin, "Shelf", "shared")
 	books := catalog.NewService(a.pool)
 	ids := map[string]uuid.UUID{}
-	for i, title := range []string{"Mort", "Sourcery", "Eric", "Emma"} {
+	for i, title := range []string{"Marl", "Sundial", "Ewald", "Emma"} {
 		in := catalog.NewBook{LibraryID: uuid.MustParse(lib), Title: title, Tags: []string{"Fantasy", "Paperback"},
-			Contributors: []catalog.NewContributor{{Name: "Terry Pratchet"}, {Name: "Nigel Planer", Role: catalog.RoleNarrator}}}
+			Contributors: []catalog.NewContributor{{Name: "Tomas Prendel"}, {Name: "Nils Planke", Role: catalog.RoleNarrator}}}
 		if title != "Emma" {
 			index := float64(i + 4)
-			in.Series, in.SeriesIndex = "Discworl", &index
+			in.Series, in.SeriesIndex = "Saltmoo", &index
 		}
 		id, err := books.CreateBook(context.Background(), in)
 		if err != nil {
@@ -83,14 +83,14 @@ func TestABulkEditChangesTheFilteredBooksAndSkipsLockedFields(t *testing.T) {
 		}
 		ids[title] = id
 	}
-	// A person set Eric's series by hand; Sourcery's tags and authors too.
-	a.call(editor, http.MethodPatch, "/books/"+ids["Eric"].String(), map[string]any{"locks": map[string]bool{"series": true}})
-	a.call(editor, http.MethodPatch, "/books/"+ids["Sourcery"].String(), map[string]any{"locks": map[string]bool{"series": true, "tags": true, "contributors": true}})
+	// A person set Ewald's series by hand; Sundial's tags and authors too.
+	a.call(editor, http.MethodPatch, "/books/"+ids["Ewald"].String(), map[string]any{"locks": map[string]bool{"series": true}})
+	a.call(editor, http.MethodPatch, "/books/"+ids["Sundial"].String(), map[string]any{"locks": map[string]bool{"series": true, "tags": true, "contributors": true}})
 
 	edit := map[string]any{
-		"filter": `{"all":[{"field":"series","op":"in","values":["Discworl"]}]}`, "library": lib, "action": "edit",
+		"filter": `{"all":[{"field":"series","op":"in","values":["Saltmoo"]}]}`, "library": lib, "action": "edit",
 		"change": map[string]any{
-			"series": "Discworld", "authors": []string{"Terry Pratchett"},
+			"series": "Saltmoor", "authors": []string{"Tomas Prendell"},
 			"addTags": []string{"Humour", "fantasy"}, "removeTags": []string{"Paperback"},
 		},
 	}
@@ -101,38 +101,38 @@ func TestABulkEditChangesTheFilteredBooksAndSkipsLockedFields(t *testing.T) {
 	if status["total"].(float64) != 3 || status["done"].(float64) != 3 {
 		t.Errorf("total and done: %v", status)
 	}
-	want := map[string]string{"Mort": "changed", "Eric": "changed series", "Sourcery": "locked contributors series tags"}
+	want := map[string]string{"Marl": "changed", "Ewald": "changed series", "Sundial": "locked contributors series tags"}
 	if got := outcomes(status); !sameOutcomes(got, want) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
 
-	mort := a.book(ids["Mort"])
-	if mort.Series != "Discworld" || mort.SeriesIndex == nil || *mort.SeriesIndex != 4 {
-		t.Errorf("Mort's series: %q %v", mort.Series, mort.SeriesIndex)
+	mort := a.book(ids["Marl"])
+	if mort.Series != "Saltmoor" || mort.SeriesIndex == nil || *mort.SeriesIndex != 4 {
+		t.Errorf("Marl's series: %q %v", mort.Series, mort.SeriesIndex)
 	}
-	if !slices.Equal(mort.Authors(), []string{"Terry Pratchett"}) || len(mort.Contributors) != 2 {
-		t.Errorf("Mort's contributors: %+v", mort.Contributors)
+	if !slices.Equal(mort.Authors(), []string{"Tomas Prendell"}) || len(mort.Contributors) != 2 {
+		t.Errorf("Marl's contributors: %+v", mort.Contributors)
 	}
 	if slices.Sort(mort.Tags); !slices.Equal(mort.Tags, []string{"Fantasy", "Humour"}) {
-		t.Errorf("Mort's tags: %v", mort.Tags)
+		t.Errorf("Marl's tags: %v", mort.Tags)
 	}
 	if !slices.Contains(mort.Locked, "series") || mort.Sources["tags"] != catalog.SourceManual {
-		t.Errorf("Mort's locks %v and sources %v", mort.Locked, mort.Sources)
+		t.Errorf("Marl's locks %v and sources %v", mort.Locked, mort.Sources)
 	}
-	if eric := a.book(ids["Eric"]); eric.Series != "Discworl" || !slices.Equal(eric.Authors(), []string{"Terry Pratchett"}) {
-		t.Errorf("Eric: %q %v", eric.Series, eric.Authors())
+	if eric := a.book(ids["Ewald"]); eric.Series != "Saltmoo" || !slices.Equal(eric.Authors(), []string{"Tomas Prendell"}) {
+		t.Errorf("Ewald: %q %v", eric.Series, eric.Authors())
 	}
-	if emma := a.book(ids["Emma"]); emma.Series != "" || !slices.Equal(emma.Authors(), []string{"Terry Pratchet"}) || len(emma.Tags) != 2 {
+	if emma := a.book(ids["Emma"]); emma.Series != "" || !slices.Equal(emma.Authors(), []string{"Tomas Prendel"}) || len(emma.Tags) != 2 {
 		t.Errorf("Emma, not selected, was changed: %+v", emma)
 	}
 
-	// Once more, locked fields included: Sourcery follows; Mort is as the
+	// Once more, locked fields included: Sundial follows; Marl is as the
 	// change would leave it.
-	edit["filter"] = `{"all":[{"field":"author","op":"in","values":["Terry Pratchett", "Terry Pratchet"]}]}`
+	edit["filter"] = `{"all":[{"field":"author","op":"in","values":["Tomas Prendell", "Tomas Prendel"]}]}`
 	edit["change"].(map[string]any)["includeLocked"] = true
 	delete(edit["change"].(map[string]any), "authors")
 	status = a.runBulk(editor, edit)
-	want = map[string]string{"Mort": "unchanged", "Eric": "changed", "Sourcery": "changed", "Emma": "changed"}
+	want = map[string]string{"Marl": "unchanged", "Ewald": "changed", "Sundial": "changed", "Emma": "changed"}
 	if got := outcomes(status); !sameOutcomes(got, want) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
@@ -141,10 +141,10 @@ func TestABulkEditChangesTheFilteredBooksAndSkipsLockedFields(t *testing.T) {
 		t.Errorf("somebody else's bulk change: %d", status)
 	}
 	for name, req := range map[string]map[string]any{
-		"no action":        {"books": []uuid.UUID{ids["Mort"]}},
-		"nothing to do":    {"books": []uuid.UUID{ids["Mort"]}, "action": "edit", "change": map[string]any{}},
-		"a bad language":   {"books": []uuid.UUID{ids["Mort"]}, "action": "edit", "change": map[string]any{"language": "not a language at all"}},
-		"a fetch's change": {"books": []uuid.UUID{ids["Mort"]}, "action": "fetch", "change": map[string]any{"series": "X"}},
+		"no action":        {"books": []uuid.UUID{ids["Marl"]}},
+		"nothing to do":    {"books": []uuid.UUID{ids["Marl"]}, "action": "edit", "change": map[string]any{}},
+		"a bad language":   {"books": []uuid.UUID{ids["Marl"]}, "action": "edit", "change": map[string]any{"language": "not a language at all"}},
+		"a fetch's change": {"books": []uuid.UUID{ids["Marl"]}, "action": "fetch", "change": map[string]any{"series": "X"}},
 		"no books":         {"books": []uuid.UUID{uuid.New()}, "action": "writeBack"},
 		"a bad filter":     {"filter": `{"field":"colour","op":"in","values":["red"]}`, "action": "writeBack"},
 	} {

@@ -50,12 +50,12 @@ func TestAnotherNarratorIsLinkedNotMerged(t *testing.T) {
 		}
 		return id
 	}
-	stevenson := add("Emma", "m4b", "stevenson/Emma.m4b", "Juliet Stevenson")
-	savage := add("Emma", "m4b", "savage/Emma.m4b", "Karen Savage")
+	marsh := add("Emma", "m4b", "marsh/Emma.m4b", "Helen Marsh")
+	vogt := add("Emma", "m4b", "vogt/Emma.m4b", "Kira Vogt")
 	ebook := add("Emma", "epub", "text/Emma.epub")
-	sameVoice := add("Persuasion", "m4b", "a/Persuasion.m4b", "Juliet Stevenson")
-	again := add("Persuasion", "m4b", "b/Persuasion.m4b", "Juliet Stevenson")
-	for _, id := range []uuid.UUID{stevenson, savage, ebook, sameVoice, again} {
+	sameVoice := add("Persuasion", "m4b", "a/Persuasion.m4b", "Helen Marsh")
+	again := add("Persuasion", "m4b", "b/Persuasion.m4b", "Helen Marsh")
+	for _, id := range []uuid.UUID{marsh, vogt, ebook, sameVoice, again} {
 		if err := a.server.Duplicates.Check(ctx, id); err != nil {
 			t.Fatal(err)
 		}
@@ -82,11 +82,11 @@ func TestAnotherNarratorIsLinkedNotMerged(t *testing.T) {
 	for _, p := range pairs {
 		ids := []string{p.Books[0].ID, p.Books[1].ID}
 		switch {
-		case slices.Contains(ids, stevenson.String()) && slices.Contains(ids, savage.String()):
+		case slices.Contains(ids, marsh.String()) && slices.Contains(ids, vogt.String()):
 			recording = p.ID
-			want := [][]string{{"Juliet Stevenson"}, {"Karen Savage"}}
-			if p.Books[0].ID == savage.String() {
-				want = [][]string{{"Karen Savage"}, {"Juliet Stevenson"}}
+			want := [][]string{{"Helen Marsh"}, {"Kira Vogt"}}
+			if p.Books[0].ID == vogt.String() {
+				want = [][]string{{"Kira Vogt"}, {"Helen Marsh"}}
 			}
 			if !slices.EqualFunc(p.Narrators, want, slices.Equal[[]string]) {
 				t.Errorf("narrators = %v, want %v", p.Narrators, want)
@@ -109,7 +109,7 @@ func TestAnotherNarratorIsLinkedNotMerged(t *testing.T) {
 		map[string]any{"state": "kept_both", "relation": "recording"}); status != 204 {
 		t.Fatalf("link as recordings: %d", status)
 	}
-	for id, other := range map[uuid.UUID]string{stevenson: "Karen Savage", savage: "Juliet Stevenson"} {
+	for id, other := range map[uuid.UUID]string{marsh: "Kira Vogt", vogt: "Helen Marsh"} {
 		status, body := a.get(admin, "/books/"+id.String())
 		var book recordingBook
 		if status != 200 || json.Unmarshal(body, &book) != nil || len(book.Recordings) != 1 ||
@@ -127,14 +127,14 @@ func TestAnotherNarratorIsLinkedNotMerged(t *testing.T) {
 		}
 	}
 
-	filter := `{"all":[{"field":"narrator","op":"in","values":["Karen Savage"]}]}`
+	filter := `{"all":[{"field":"narrator","op":"in","values":["Kira Vogt"]}]}`
 	status, body = a.get(admin, "/books?filter="+url.QueryEscape(filter))
 	var found struct {
 		Books []struct {
 			ID string `json:"id"`
 		} `json:"books"`
 	}
-	if status != 200 || json.Unmarshal(body, &found) != nil || len(found.Books) != 1 || found.Books[0].ID != savage.String() {
+	if status != 200 || json.Unmarshal(body, &found) != nil || len(found.Books) != 1 || found.Books[0].ID != vogt.String() {
 		t.Errorf("filter by narrator: %d %s", status, body)
 	}
 	status, body = a.get(admin, "/books/facets")
@@ -163,7 +163,7 @@ func TestAnotherNarratorIsLinkedNotMerged(t *testing.T) {
 		}
 	}
 	slices.Sort(narrators)
-	if !slices.Equal(narrators, []string{"Juliet Stevenson", "Karen Savage"}) {
+	if !slices.Equal(narrators, []string{"Helen Marsh", "Kira Vogt"}) {
 		t.Errorf("narrator facet = %v", narrators)
 	}
 }

@@ -116,11 +116,11 @@ the book's EPUB files as well ([users-and-libraries.md](users-and-libraries.md))
 ## Cleaning up
 
 **Clean up** (editors) suggests fixes GOtome finds across the library: one
-person under several spellings ("Tolkien, J.R.R." and "J. R. R. Tolkien"),
+person under several spellings ("Brandt, H.K.L." and "H. K. L. Brandt"),
 placeholders a tool left as an author ("Unknown"), an author who is
 really a series, shop additions in titles ("(German Edition)"), and a
-series written into the titles of books that have none ("Rain Wild
-Chronicles 01 - Drachenhüter", "Drachenhüter (Rain Wild Chronicles
+series written into the titles of books that have none ("Sternwanderer
+01 - Leuchtturmwärter", "Leuchtturmwärter (Sternwanderer
 #1)"). A series is suggested only where two books of a library name it
 or a book is in it already; applying one puts the books into it at the
 places their titles say and takes it off their titles.

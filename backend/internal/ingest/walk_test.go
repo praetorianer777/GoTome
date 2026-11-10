@@ -24,10 +24,10 @@ func write(t *testing.T, root, relPath, content string) {
 
 func TestWalkFindsBooksAndNothingElse(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
-	write(t, root, "Dune.EPUB", "dune")
-	write(t, root, "Herbert/Dune/01.mp3", "part one")
-	write(t, root, "Herbert/cover.jpg", "not a book")
-	write(t, root, "Herbert/.hidden.epub", "a hidden file")
+	write(t, root, "Dusk.EPUB", "dusk")
+	write(t, root, "Halden/Dusk/01.mp3", "part one")
+	write(t, root, "Halden/cover.jpg", "not a book")
+	write(t, root, "Halden/.hidden.epub", "a hidden file")
 	write(t, root, ".trash/Old.epub", "in a hidden folder")
 	write(t, root, "@eaDir/Thumb.pdf", "the NAS keeps its own files here")
 	write(t, outside, "Secret.epub", "outside the library")
@@ -46,7 +46,7 @@ func TestWalkFindsBooksAndNothingElse(t *testing.T) {
 	for _, f := range got.files {
 		paths = append(paths, f.relPath+" "+f.format)
 	}
-	want := []string{"Dune.EPUB epub", "Herbert/Dune/01.mp3 mp3"}
+	want := []string{"Dusk.EPUB epub", "Halden/Dusk/01.mp3 mp3"}
 	if !slices.Equal(paths, want) {
 		t.Errorf("walk found %v, want %v", paths, want)
 	}
@@ -88,22 +88,22 @@ func TestWalkGoesOnPastAFolderItCannotRead(t *testing.T) {
 
 func TestHashFile(t *testing.T) {
 	root := t.TempDir()
-	write(t, root, "Dune.epub", "the spice must flow")
-	got, sum, err := hashFile(context.Background(), filepath.Join(root, "Dune.epub"), "Dune.epub", "epub")
+	write(t, root, "Dusk.epub", "the brine must flow")
+	got, sum, err := hashFile(context.Background(), filepath.Join(root, "Dusk.epub"), "Dusk.epub", "epub")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := sha256.Sum256([]byte("the spice must flow"))
+	want := sha256.Sum256([]byte("the brine must flow"))
 	if !bytes.Equal(sum, want[:]) {
 		t.Errorf("hash = %x, want %x", sum, want)
 	}
-	if got.size != 19 || got.relPath != "Dune.epub" {
+	if got.size != 19 || got.relPath != "Dusk.epub" {
 		t.Errorf("got %+v", got)
 	}
 
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, _, err := hashFile(cancelled, filepath.Join(root, "Dune.epub"), "Dune.epub", "epub"); err == nil {
+	if _, _, err := hashFile(cancelled, filepath.Join(root, "Dusk.epub"), "Dusk.epub", "epub"); err == nil {
 		t.Error("a cancelled hash returned no error")
 	}
 }

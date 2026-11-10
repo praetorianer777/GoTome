@@ -1,6 +1,6 @@
 -- +goose Up
 -- Trigram indexes on the compared forms of titles and names, so that a
--- misspelt or half-typed one is found: "sandersen" finds Sanderson. This
+-- misspelt or half-typed one is found: "landorff" finds Landorf. This
 -- is the quick search by title, author and series; searching the text of
 -- the books is another matter.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

@@ -81,8 +81,8 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		}
 		return id
 	}
-	tagged := newBook("Death at La Fenice", []string{"Krimi", "Venedig"})
-	about := newBook("Acqua Alta", nil)
+	tagged := newBook("Death at La Stella", []string{"Krimi", "Venedig"})
+	about := newBook("Alba Alta", nil)
 	a.putVector(about, similar.KindContent, a.genreVector("crime"))
 	var lockedBefore []string
 	if err := a.pool.QueryRow(ctx, `UPDATE books SET locked_fields = '{tags}' WHERE id = $1 RETURNING locked_fields`, tagged).Scan(&lockedBefore); err != nil {
@@ -111,7 +111,7 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		t.Fatalf("suggestions: %d %v", status, out)
 	}
 	first := list[0].(map[string]any)
-	if first["book"].(map[string]any)["title"] != "Acqua Alta" || first["method"] != genres.MethodVector {
+	if first["book"].(map[string]any)["title"] != "Alba Alta" || first["method"] != genres.MethodVector {
 		t.Errorf("suggestion %v", first)
 	}
 	_, all, _ := a.call(editor, http.MethodGet, "/genres/suggestions", nil)
@@ -129,13 +129,13 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		slices.Sort(titles)
 		return titles
 	}
-	if got := filtered(); !slices.Equal(got, []string{"Death at La Fenice"}) {
+	if got := filtered(); !slices.Equal(got, []string{"Death at La Stella"}) {
 		t.Errorf("the filter finds %v before anything was accepted", got)
 	}
 	if status, body, _ := a.call(editor, http.MethodPut, "/books/"+about.String()+"/genres/crime", map[string]any{"state": "accepted"}); status != 204 {
 		t.Fatalf("accept: %d %v", status, body)
 	}
-	if got := filtered(); !slices.Equal(got, []string{"Acqua Alta", "Death at La Fenice"}) {
+	if got := filtered(); !slices.Equal(got, []string{"Alba Alta", "Death at La Stella"}) {
 		t.Errorf("the filter finds %v once accepted", got)
 	}
 
@@ -278,11 +278,11 @@ func TestAMergeKeepsWhatAPersonDecidedAboutGenres(t *testing.T) {
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
 	books := catalog.NewService(a.pool)
 	ctx := context.Background()
-	into, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: "Acqua Alta"})
+	into, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: "Alba Alta"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	from, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: "Acqua Alta (German Edition)"})
+	from, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: "Alba Alta (German Edition)"})
 	if err != nil {
 		t.Fatal(err)
 	}

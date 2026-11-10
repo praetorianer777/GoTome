@@ -95,9 +95,9 @@ func TestAnEbookAndItsAudiobookAreJoinedWhereTheLibraryAsksAndSplitAgain(t *test
 	}
 
 	ebook := add(asking, "Emma", "epub", "text/Emma.epub", "")
-	audio := add(asking, "Emma", "m4b", "audio/Emma.m4b", "Juliet Stevenson")
+	audio := add(asking, "Emma", "m4b", "audio/Emma.m4b", "Helen Marsh")
 	plainEbook := add(plain, "Northanger Abbey", "epub", "text/Northanger.epub", "")
-	plainAudio := add(plain, "Northanger Abbey", "m4b", "audio/Northanger.m4b", "Juliet Stevenson")
+	plainAudio := add(plain, "Northanger Abbey", "m4b", "audio/Northanger.m4b", "Helen Marsh")
 	check(ebook, audio, plainEbook, plainAudio)
 
 	// Both pairs are suggested as an ebook and its audiobook.
@@ -149,7 +149,7 @@ func TestAnEbookAndItsAudiobookAreJoinedWhereTheLibraryAsksAndSplitAgain(t *test
 			narrators = append(narrators, c.Name)
 		}
 	}
-	if !slices.Equal(narrators, []string{"Juliet Stevenson"}) {
+	if !slices.Equal(narrators, []string{"Helen Marsh"}) {
 		t.Errorf("narrators = %v", narrators)
 	}
 	if status, again := detail(admin, audio); status != 200 || len(again.Files) != 2 {
@@ -180,8 +180,8 @@ func TestAnEbookAndItsAudiobookAreJoinedWhereTheLibraryAsksAndSplitAgain(t *test
 	}
 
 	// Two audiobooks for one ebook are not guessed between.
-	second := add(asking, "Persuasion", "m4b", "audio/Persuasion A.m4b", "Juliet Stevenson")
-	third := add(asking, "Persuasion", "m4b", "audio/Persuasion B.m4b", "Karen Savage")
+	second := add(asking, "Persuasion", "m4b", "audio/Persuasion A.m4b", "Helen Marsh")
+	third := add(asking, "Persuasion", "m4b", "audio/Persuasion B.m4b", "Kira Vogt")
 	text := add(asking, "Persuasion", "epub", "text/Persuasion.epub", "")
 	check(second, third, text)
 	if joined, err := a.scans.JoinFormats(ctx, text); err != nil || joined {

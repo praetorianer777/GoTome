@@ -38,7 +38,7 @@ CREATE TABLE books (
     id                  uuid PRIMARY KEY DEFAULT uuidv7(),
     library_id          uuid NOT NULL REFERENCES libraries (id) ON DELETE CASCADE,
     title               text NOT NULL CHECK (btrim(title) <> ''),
-    -- "Hobbit, The": what lists are ordered by.
+    -- "Lantern, The": what lists are ordered by.
     sort_title          text NOT NULL,
     -- The title as it is compared when looking for duplicates.
     title_key           text NOT NULL,

@@ -215,15 +215,15 @@ func TestUploadsJoinTheirBooks(t *testing.T) {
 	pdf := send("Emma.pdf", "a pdf")
 	// Another file under a name that is taken is another book.
 	again := send("Emma.epub", "another epub")
-	part2 := send("Dune - Part 02.mp3", "second part")
-	part1 := send("Dune - Part 01.mp3", "first part")
+	part2 := send("Dusk - Part 02.mp3", "second part")
+	part1 := send("Dusk - Part 01.mp3", "first part")
 	odd := send(`../..\evil/..:name?.EPUB`, "a strange name")
 
 	if epub["bookId"] != pdf["bookId"] || again["bookId"] == epub["bookId"] || part1["bookId"] != part2["bookId"] {
 		t.Errorf("books: epub %v, pdf %v, again %v, parts %v and %v",
 			epub["bookId"], pdf["bookId"], again["bookId"], part1["bookId"], part2["bookId"])
 	}
-	want := []string{"Dune/Dune - Part 01.mp3", "Dune/Dune - Part 02.mp3", "Emma/Emma (2).epub", "Emma/Emma.epub", "Emma/Emma.pdf", "name/name.epub"}
+	want := []string{"Dusk/Dusk - Part 01.mp3", "Dusk/Dusk - Part 02.mp3", "Emma/Emma (2).epub", "Emma/Emma.epub", "Emma/Emma.pdf", "name/name.epub"}
 	if files := libraryFiles(t, root); !slices.Equal(files, want) {
 		t.Errorf("the library holds %v, want %v", files, want)
 	}
@@ -243,7 +243,7 @@ func TestUploadsJoinTheirBooks(t *testing.T) {
 		parts = append(parts, p)
 	}
 	if !slices.Equal(parts, []int32{0, 1}) {
-		t.Errorf("parts of Dune are at %v, want 0 and 1 in the order of their names", parts)
+		t.Errorf("parts of Dusk are at %v, want 0 and 1 in the order of their names", parts)
 	}
 }
 

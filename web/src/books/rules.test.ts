@@ -5,7 +5,7 @@ describe("the rule builder's tree", () => {
 	it("makes the tree the server takes, with names split at commas", () => {
 		const author = {
 			...newRule("author"),
-			text: "Brandon Sanderson, , Robin Hobb ",
+			text: "Bastian Landorf, , Roswitha Hoff ",
 		};
 		const rating = {
 			...newRule("rating"),
@@ -23,7 +23,7 @@ describe("the rule builder's tree", () => {
 				{
 					field: "author",
 					op: "in",
-					values: ["Brandon Sanderson", "Robin Hobb"],
+					values: ["Bastian Landorf", "Roswitha Hoff"],
 				},
 				{ field: "rating", op: "between", values: ["4", ""] },
 				{
@@ -48,7 +48,7 @@ describe("the rule builder's tree", () => {
 	it("reads a tree back as it was written", () => {
 		const tree = JSON.stringify({
 			all: [
-				{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+				{ field: "author", op: "in", values: ["Bastian Landorf"] },
 				{
 					not: {
 						any: [
@@ -62,7 +62,7 @@ describe("the rule builder's tree", () => {
 		expect(treeOf(groupOf(tree))).toBe(
 			JSON.stringify({
 				all: [
-					{ field: "author", op: "in", values: ["Brandon Sanderson"] },
+					{ field: "author", op: "in", values: ["Bastian Landorf"] },
 					{
 						not: {
 							any: [
