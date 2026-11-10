@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-10
+
 ### Added
 
 - A new page, Changes, lists what was merged, replaced or cleaned up, run by
