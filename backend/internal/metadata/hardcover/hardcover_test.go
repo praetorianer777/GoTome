@@ -36,7 +36,7 @@ func web() metadata.Web { return metadata.NewFixtures("testdata", provider()) }
 
 // scarlet is a paperback of A Study in Scarlet, the first book of the
 // Sherlock Holmes series.
-var scarlet = catalog.Identifier{Type: catalog.IDISBN, Value: "9780141199535"}
+var scarlet = catalog.Identifier{Type: catalog.IDISBN, Value: "9780007558049"}
 
 func checkScarlet(t *testing.T, r metadata.Record) {
 	t.Helper()
@@ -182,12 +182,15 @@ func TestTheBooksOfASeries(t *testing.T) {
 	if err != nil || len(got) == 0 {
 		t.Fatalf("BySeries: %d records, %v", len(got), err)
 	}
-	i := slices.IndexFunc(got, func(r metadata.Record) bool { return strings.Contains(r.Title, "Study in Scarlet") })
-	if i < 0 {
-		t.Fatalf("the first book is not among %d", len(got))
+	// The newest of a series this old are translations and collections,
+	// so the first book is one of several at the first place.
+	for _, r := range got {
+		if !strings.Contains(r.Series, "Sherlock Holmes") {
+			t.Errorf("%q is in the series %q", r.Title, r.Series)
+		}
 	}
-	if r := got[i]; !strings.Contains(r.Series, "Sherlock Holmes") || r.SeriesIndex == nil || *r.SeriesIndex != 1 {
-		t.Errorf("series %q, index %v", r.Series, r.SeriesIndex)
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.SeriesIndex != nil && *r.SeriesIndex == 1 }) {
+		t.Errorf("no book of the first place among %d", len(got))
 	}
 }
 
