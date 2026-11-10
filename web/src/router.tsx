@@ -48,6 +48,7 @@ const Wishlist = lazyRouteComponent(() => import("@/routes/wishlist"), "Wishlist
 const Recommendations = lazyRouteComponent(() => import("@/routes/recommendations"), "Recommendations");
 const BookEditPage = lazyRouteComponent(() => import("@/routes/book-edit"), "BookEditPage");
 const FindDetails = lazyRouteComponent(() => import("@/routes/book-find"), "FindDetails");
+const Curation = lazyRouteComponent(() => import("@/routes/curation"), "Curation");
 const Cleanup = lazyRouteComponent(() => import("@/routes/cleanup"), "Cleanup");
 const Genres = lazyRouteComponent(() => import("@/routes/genres"), "Genres");
 const Review = lazyRouteComponent(() => import("@/routes/review"), "Review");
@@ -352,19 +353,31 @@ const adminSettingsRoute = createRoute({
 const reviewRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/review",
+	validateSearch: (search): { book?: string } => ({
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
 			throw redirect({ to: "/" });
 		}
 	},
-	component: Review,
+	component: loads(Review, function ReviewPage() {
+		const navigate = reviewRoute.useNavigate();
+		return (
+			<Review
+				book={reviewRoute.useSearch().book}
+				onBook={(book, replace) => navigate({ search: { book }, replace })}
+			/>
+		);
+	}),
 });
 
 const cleanupRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/cleanup",
-	validateSearch: (search): { kind?: CleanupKind } => ({
+	validateSearch: (search): { kind?: CleanupKind; book?: string } => ({
 		kind: oneOf(CLEANUP_KINDS, search.kind),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
 	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
@@ -377,6 +390,10 @@ const cleanupRoute = createRoute({
 			<Cleanup
 				kind={cleanupRoute.useSearch().kind ?? "authors"}
 				onKind={(kind) => navigate({ search: { kind } })}
+				book={cleanupRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
 			/>
 		);
 	}),
@@ -385,8 +402,9 @@ const cleanupRoute = createRoute({
 const genresRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/genres",
-	validateSearch: (search): { genre?: Genre } => ({
+	validateSearch: (search): { genre?: Genre; book?: string } => ({
 		genre: oneOf(GENRES, search.genre),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
 	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
@@ -399,6 +417,10 @@ const genresRoute = createRoute({
 			<Genres
 				genre={genresRoute.useSearch().genre}
 				onGenre={(genre) => navigate({ search: { genre } })}
+				book={genresRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
 			/>
 		);
 	}),
@@ -531,6 +553,19 @@ const jobsRoute = createRoute({
 	component: Jobs,
 });
 
+const curationRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/curation",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Curation, function CurationPage() {
+		return <Curation />;
+	}),
+});
+
 const trashRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/trash",
@@ -583,7 +618,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

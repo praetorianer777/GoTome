@@ -135,8 +135,10 @@ func readCases() map[string][]readCase {
 		// TestADescriptionFindsTheNearestBooksTheViewerSees and
 		// TestPassagesFindTheBooksTheyAreFromOnlyWhereTheyAreSeen.
 		// Not by the title, which a twin would be ranked by otherwise.
-		"searchDescribed": {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
-		"listCleanup":     {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"searchDescribed":  {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
+		"listCleanup":      {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"listCurationRuns": {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
+		"getCurationRun":   {{path: "/curation/runs/{curationRun}", control: "insider"}},
 		"listGenreSuggestions": {
 			{path: "/genres/suggestions", control: "insider"},
 			{path: "/genres/suggestions", query: q("genre", "crime"), control: "insider"},
@@ -333,13 +335,20 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		VALUES ($1, 'crime', 'automatic', 'vector', 0.2)`, book); err != nil {
 		t.Fatal(err)
 	}
+	// A run of the secret book's library, which the book's details name.
+	var run string
+	if err := a.pool.QueryRow(ctx, `WITH r AS (INSERT INTO curation_runs (kind, state) VALUES ('duplicates', 'done') RETURNING id)
+		INSERT INTO curation_actions (run_id, library_id, kind, books, before, after)
+		SELECT r.id, $2::uuid, 'edit', ARRAY[$1::uuid], '{}', '{}' FROM r RETURNING run_id::text`, book, vault).Scan(&run); err != nil {
+		t.Fatal(err)
+	}
 	// The list of people shows either spelling of the secret's author, by how
 	// the mark sorts.
 	markers := []string{secret["title"], secret["author"], mark + ", Abditus", secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.
-	owned := map[string]string{"neighbour": near["bookId"].(string)}
+	owned := map[string]string{"neighbour": near["bookId"].(string), "curationRun": run}
 	// A shelf's rules are its owner's own words, which they may share; so
 	// that they tell nothing, the shelves here match the book by rating.
 	rated := `{"field":"rating","op":"in","values":["5"]}`

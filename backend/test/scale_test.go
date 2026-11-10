@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/perf"
@@ -348,6 +349,19 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			       CASE WHEN i % 4 > 0 THEN timestamptz '2020-01-01' + i * interval '3 hours' END,
 			       i % 5 = 0, i < 50, timestamptz '2020-01-01' + i * interval '3 hours', now()
 			FROM feed_trackers t, generate_series(0, 4999) i`},
+		// What the clean-up finds besides spellings, titles and series: a
+		// value a tool left in place of an author on 600 books, and an
+		// author who is the name of a series, on some of its books.
+		{sql: `INSERT INTO authors (name, sort_name, name_key) VALUES ('Unknown', 'Unknown', 'unknown'), ('N/A', 'N/A', 'n a')`},
+		{sql: `INSERT INTO book_contributors (book_id, author_id, role, position)
+			SELECT b.id, a.id, 'author', 5 FROM scale_books b, authors a WHERE a.name_key IN ('unknown', 'n a') AND b.n % 160 = 9 + (a.name_key = 'n a')::int`},
+		{sql: `INSERT INTO authors (name, sort_name, name_key)
+			SELECT s.name, s.name, s.name_key FROM series s
+			WHERE s.id IN (SELECT series_id FROM books WHERE series_id IS NOT NULL GROUP BY series_id ORDER BY count(*) DESC, series_id LIMIT 2)`},
+		{sql: `INSERT INTO book_contributors (book_id, author_id, role, position)
+			SELECT b.id, a.id, 'author', 6 FROM books b
+			JOIN series s ON s.id = b.series_id
+			JOIN authors a ON a.name_key = s.name_key`},
 		{sql: `ANALYZE`},
 	}
 }
@@ -483,6 +497,8 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 		writePlans(t, dir, catcher)
 	}
 
+	cleanupTakesOneSuggestion(t, a, admin, catcher)
+
 	var table strings.Builder
 	table.WriteString("\n| View | Administrator | Member | Reads every book |\n|---|---:|---:|---|\n")
 	for _, v := range views {
@@ -517,6 +533,64 @@ func writePlans(t *testing.T, dir string, catcher *planCatcher) {
 		name := strings.ReplaceAll(view, " ", "-") + ".json"
 		if err := os.WriteFile(filepath.Join(dir, name), out, 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+// cleanupTakesOneSuggestion applies one suggestion of each kind and
+// dismisses another, as the clean-up page does when a button is clicked:
+// each must take under scaleBudget and read no table of scannedWhole from
+// end to end, as it would if it worked out every suggestion of its kind.
+func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *planCatcher) {
+	t.Helper()
+	for _, kind := range cleanup.Kinds {
+		status, body, _ := a.call(who, http.MethodGet, "/cleanup?kind="+kind+"&limit=3", nil)
+		if status != http.StatusOK {
+			t.Fatalf("clean-up %s: %d %v", kind, status, body)
+		}
+		suggestions, _ := body["suggestions"].([]any)
+		if len(suggestions) < 2 {
+			t.Fatalf("the seed has %d clean-up suggestions of kind %s, want at least 2", len(suggestions), kind)
+		}
+		subject := func(i int) string { return suggestions[i].(map[string]any)["subject"].(string) }
+		for _, act := range []struct {
+			name, path string
+			req        map[string]any
+			want       int
+		}{
+			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{map[string]any{"subject": subject(0)}}}, http.StatusAccepted},
+			{"dismiss", "/cleanup/dismiss", map[string]any{"kind": kind, "subject": subject(1)}, http.StatusNoContent},
+		} {
+			key := "clean-up " + act.name + " " + kind
+			catcher.watch(key)
+			began := time.Now()
+			status, out, _ := a.call(who, http.MethodPost, act.path, act.req)
+			took := time.Since(began)
+			catcher.watch("")
+			if status != act.want {
+				t.Fatalf("%s: %d %v", key, status, out)
+			}
+			found := map[string]bool{}
+			catcher.mu.Lock()
+			for _, plan := range catcher.plans[key] {
+				wholeScans(plan, found)
+			}
+			catcher.mu.Unlock()
+			if took > scaleBudget {
+				t.Errorf("%s: %s, want at most %s", key, took.Round(time.Millisecond), scaleBudget)
+			}
+			for rel := range found {
+				t.Errorf("%s reads all of %s", key, rel)
+			}
+			if took > scaleBudget {
+				catcher.mu.Lock()
+				for _, plan := range catcher.plans[key] {
+					out, _ := json.Marshal(plan)
+					t.Logf("%s plan: %.3000s", key, out)
+				}
+				catcher.mu.Unlock()
+			}
+			t.Logf("%s: %d ms", key, took.Milliseconds())
 		}
 	}
 }

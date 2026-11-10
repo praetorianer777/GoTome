@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/config"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
@@ -337,6 +338,10 @@ func serve() error {
 	scans.OnFilesChanged = duplicates.EnqueueTx
 	scans.OnDescribed = duplicates.EnqueueTx
 	changes := bulk.NewService(pool, scans, matches, log)
+	curations := curation.NewService(pool)
+	curations.Hooks = scans.CurationHooks()
+	scans.Curation = curations
+	changes.Curation = curations
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
 	follows.Events = events
@@ -500,6 +505,7 @@ func serve() error {
 		Sync:       progressSync,
 		Releases:   follows,
 		Cleanup:    fixes,
+		Curation:   curations,
 		Index:      searchIndex,
 
 		Notifications: notify.NewService(pool),

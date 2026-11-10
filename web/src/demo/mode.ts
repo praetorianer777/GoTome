@@ -9,6 +9,7 @@ const NOT_IN_THE_DEMO = [
 	/^\/trash/,
 	/^\/review/,
 	/^\/cleanup/,
+	/^\/curation/,
 	/^\/genres/,
 	/^\/bulk\//,
 	/^\/books\/[^/]+\/(edit|find)$/,

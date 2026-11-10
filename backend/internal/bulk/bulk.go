@@ -20,6 +20,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -104,6 +105,9 @@ type Service struct {
 	log     *slog.Logger
 	// Queue is set once the job runner exists.
 	Queue Queue
+	// Curation, when set, gets a run for each clean-up (StartEach) and an
+	// action, with the state of the book before, for each book it changes.
+	Curation *curation.Service
 }
 
 // NewService returns a Service. Its Queue must be set before Start is
@@ -180,6 +184,11 @@ func (s *Service) StartEach(ctx context.Context, scope library.Scope, changes []
 		if err := q.AddBulkChangeBookChanges(ctx, sqlc.AddBulkChangeBookChangesParams{BulkChangeID: id, BookIds: ids, Changes: data}); err != nil {
 			return err
 		}
+		if s.Curation != nil {
+			if _, err := s.Curation.StartRun(ctx, tx, curation.KindCleanup, scope.Viewer, id); err != nil {
+				return err
+			}
+		}
 		_, err = s.Queue.InsertTx(ctx, tx, Args{BulkChangeID: id}, jobs.InsertOpts{
 			Queue: jobs.QueueMetadata, MaxAttempts: jobAttempts,
 		})
@@ -209,6 +218,11 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 	var fix fixChange
 	if err := json.Unmarshal(row.Change, &fix); err != nil {
 		return false, err
+	}
+	if run, automatic, ok, err := s.Curation.RunOfBulkChange(ctx, id); err != nil {
+		return false, err
+	} else if ok {
+		ctx = curation.WithRun(ctx, run, automatic)
 	}
 	started := time.Now()
 	for time.Since(started) < budget {
@@ -244,6 +258,9 @@ func (s *Service) finish(ctx context.Context, row sqlc.BulkChange) error {
 		if err != nil || n == 0 {
 			return err
 		}
+		if err := s.Curation.FinishBulkChange(ctx, tx, row.ID); err != nil {
+			return err
+		}
 		counts, err := q.CountBulkOutcomes(ctx, row.ID)
 		if err != nil {
 			return err
@@ -274,9 +291,24 @@ func (s *Service) one(ctx context.Context, action string, scope library.Scope, c
 	switch action {
 	case ActionEdit:
 		err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+			var pending *curation.Pending
+			if curation.InRun(ctx) {
+				if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{book}); err != nil {
+					return err
+				}
+				var err error
+				if pending, err = s.Curation.Begin(ctx, tx, curation.SetEdit, book); err != nil {
+					return err
+				}
+			}
 			changed, err := s.ingest.ChangeTx(ctx, tx, scope, book, change)
 			if err != nil {
 				return err
+			}
+			if changed.Values || changed.Locks {
+				if err := pending.Done(ctx, tx, curation.Record{Kind: curation.ActionEdit}); err != nil {
+					return err
+				}
 			}
 			outcome := OutcomeUnchanged
 			switch {

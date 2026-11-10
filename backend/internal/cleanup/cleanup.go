@@ -138,19 +138,19 @@ func NewService(pool *pgxpool.Pool, bulk Starter) *Service {
 }
 
 // source is the SQL function that finds a kind, with its arguments after
-// the viewer's two.
+// the viewer's two and the subjects (nil: all of them).
 func source(kind string) (string, []any, error) {
 	switch kind {
 	case KindAuthors:
-		return "cleanup_author_spellings($1, $2)", nil, nil
+		return "cleanup_author_spellings($1, $2, $3)", nil, nil
 	case KindPlaceholders:
-		return "cleanup_placeholder_authors($1, $2, $3)", []any{placeholderAuthors}, nil
+		return "cleanup_placeholder_authors($1, $2, $3, $4)", []any{placeholderAuthors}, nil
 	case KindClashes:
-		return "cleanup_name_clashes($1, $2)", nil, nil
+		return "cleanup_name_clashes($1, $2, $3)", nil, nil
 	case KindTitles:
-		return "cleanup_titles($1, $2)", nil, nil
+		return "cleanup_titles($1, $2, $3)", nil, nil
 	case KindSeries:
-		return "cleanup_title_series($1, $2)", nil, nil
+		return "cleanup_title_series($1, $2, $3)", nil, nil
 	}
 	return "", nil, ErrKind
 }
@@ -158,11 +158,17 @@ func source(kind string) (string, []any, error) {
 // List returns a page of the suggestions of a kind that nobody dismissed,
 // after the cursor when one is given.
 func (s *Service) List(ctx context.Context, scope library.Scope, kind string, after *Cursor, limit int) (Page, error) {
+	return s.list(ctx, scope, kind, nil, after, limit)
+}
+
+// list is List for the given subjects only, or all of them when subjects is
+// nil.
+func (s *Service) list(ctx context.Context, scope library.Scope, kind string, subjects []string, after *Cursor, limit int) (Page, error) {
 	from, extra, err := source(kind)
 	if err != nil {
 		return Page{}, err
 	}
-	args := append([]any{scope.Viewer, scope.SeesAll}, extra...)
+	args := append([]any{scope.Viewer, scope.SeesAll, subjects}, extra...)
 	n := len(args)
 	args = append(args, kind, limit+1)
 	keyset := ""
@@ -277,7 +283,7 @@ func (s *Service) Counts(ctx context.Context, scope library.Scope) (map[string]i
 		if err != nil {
 			return nil, err
 		}
-		args := append([]any{scope.Viewer, scope.SeesAll}, extra...)
+		args := append([]any{scope.Viewer, scope.SeesAll, []string(nil)}, extra...)
 		args = append(args, kind)
 		var n int
 		err = s.pool.QueryRow(ctx, fmt.Sprintf(`
@@ -292,9 +298,20 @@ WHERE NOT EXISTS (SELECT 1 FROM cleanup_dismissals d
 	return out, nil
 }
 
-// all returns every suggestion of a kind nobody dismissed, by subject.
-func (s *Service) all(ctx context.Context, scope library.Scope, kind string) (map[string]Suggestion, error) {
-	page, err := s.List(ctx, scope, kind, nil, 1<<30)
+// find returns the suggestions of a kind nobody dismissed, by subject: those
+// of the given subjects, or every one when subjects is nil.
+func (s *Service) find(ctx context.Context, scope library.Scope, kind string, subjects []string) (map[string]Suggestion, error) {
+	if subjects != nil && kind == KindTitles {
+		// Their subjects are book IDs, which the SQL function casts.
+		valid := []string{}
+		for _, id := range subjects {
+			if _, err := uuid.Parse(id); err == nil {
+				valid = append(valid, id)
+			}
+		}
+		subjects = valid
+	}
+	page, err := s.list(ctx, scope, kind, subjects, nil, 1<<30)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +325,7 @@ func (s *Service) all(ctx context.Context, scope library.Scope, kind string) (ma
 // Dismiss keeps a suggestion off the page while what was found stays as it
 // is.
 func (s *Service) Dismiss(ctx context.Context, scope library.Scope, kind, subject string) error {
-	found, err := s.all(ctx, scope, kind)
+	found, err := s.find(ctx, scope, kind, []string{subject})
 	if err != nil {
 		return err
 	}
@@ -340,7 +357,14 @@ type Applied struct {
 // the books the viewer sees, as a person's edit, and leaves locked fields
 // as they are.
 func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, picks []Pick) (Applied, error) {
-	found, err := s.all(ctx, scope, kind)
+	var subjects []string
+	if picks != nil {
+		subjects = make([]string, 0, len(picks))
+		for _, p := range picks {
+			subjects = append(subjects, p.Subject)
+		}
+	}
+	found, err := s.find(ctx, scope, kind, subjects)
 	if err != nil {
 		return Applied{}, err
 	}

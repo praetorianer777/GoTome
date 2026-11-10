@@ -32,8 +32,14 @@ ORDER BY f.trashed_at DESC, f.id DESC;
 
 -- name: ListExpiredTrash :many
 -- Not of a library whose folder cannot be written now: each would fail.
+-- Not what an automatic curation run trashed until a person confirmed the
+-- run, and then not before the retention has passed since.
 SELECT f.id FROM book_files f JOIN libraries l ON l.id = f.library_id
 WHERE f.trashed_at < sqlc.arg(before)::timestamptz AND l.unwritable_since IS NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM curation_actions a JOIN curation_runs r ON r.id = a.run_id
+      WHERE r.automatic AND f.id = ANY(a.trashed_files) AND a.state = 'done'
+        AND (r.state NOT IN ('confirmed', 'undone') OR r.confirmed_at >= sqlc.arg(before)::timestamptz))
 ORDER BY f.trashed_at;
 
 -- name: GetTrashedFile :one

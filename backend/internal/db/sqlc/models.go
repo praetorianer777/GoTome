@@ -237,6 +237,39 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type CurationAction struct {
+	ID           uuid.UUID
+	RunID        uuid.UUID
+	LibraryID    uuid.UUID
+	Kind         string
+	Rule         *string
+	Reason       string
+	Books        []uuid.UUID
+	TrashedFiles []uuid.UUID
+	Before       []byte
+	After        []byte
+	State        string
+	Note         string
+	CreatedAt    time.Time
+	UndoneAt     *time.Time
+	UndoneBy     *uuid.UUID
+}
+
+type CurationRun struct {
+	ID           uuid.UUID
+	Kind         string
+	Rule         *string
+	StartedBy    *uuid.UUID
+	DryRun       bool
+	Automatic    bool
+	State        string
+	BulkChangeID *uuid.UUID
+	CreatedAt    time.Time
+	FinishedAt   *time.Time
+	ConfirmedAt  *time.Time
+	UndoneAt     *time.Time
+}
+
 type Delivery struct {
 	ID          uuid.UUID
 	DeviceID    uuid.UUID

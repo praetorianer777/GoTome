@@ -6,6 +6,40 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A new page, Changes, lists what was merged, replaced or cleaned up, run by
+  run, with each book's details before and after. A run, or one change of
+  it, can be undone: the merged book comes back with its files, shelves and
+  reading, and files moved to the trash return to their book. A change to a
+  book that was edited since is left as it is and reported.
+- The match review, the genre review and the clean-up page show a book beside
+  the list when you click it (a full-screen view on a phone): cover, names,
+  description, files, tags, a link to its page and "Look inside", which opens
+  the book in its reader without saving a place, a reading session or a
+  status. The open book is in the address, so back closes it.
+- A genre suggestion shows the book's description (folded to a few lines) and
+  tags in its row.
+
+### Changed
+
+- Comparing a found match with a book (review and "Find details online") now
+  lists every field side by side, not only the ones that differ: equal fields
+  are plain, differing ones highlighted and ticked as before, empty ones
+  marked. On a phone the two sides are stacked.
+- On a wide window each clean-up suggestion is one row, with its buttons at
+  the right end, instead of three or four lines.
+- On the clean-up page a suggestion goes away as soon as you click it, and
+  comes back with the error if the server refuses; applying or dismissing one
+  no longer works out every suggestion of its kind first.
+
+### Fixed
+
+- The list of authors no longer runs past a phone's screen when a name is
+  very long.
+- On the duplicates page the two "Keep this" buttons of a pair stand at the
+  same height whatever the books' titles say, and the books' details line up.
+
 ## [0.14.1] - 2026-11-10
 
 ### Fixed

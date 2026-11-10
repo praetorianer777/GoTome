@@ -9,6 +9,7 @@ import {
 	useApplyCleanup,
 	useDismissCleanup,
 } from "@/books/cleanup";
+import { BookPanelLayout } from "@/books/book-panel";
 import { FormError } from "@/components/form";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
@@ -25,17 +26,26 @@ const pill =
 export function Cleanup({
 	kind,
 	onKind,
+	book,
+	onBook,
 }: {
 	kind: CleanupKind;
 	onKind: (kind: CleanupKind) => void;
+	book?: string;
+	onBook: (id: string | undefined, replace?: boolean) => void;
 }) {
 	const navigate = useNavigate();
 	const list = useInfiniteQuery(cleanupQuery(kind));
 	const apply = useApplyCleanup();
+	const applyOne = useApplyCleanup();
+	const dismissOne = useDismissCleanup();
 	const [applied, setApplied] = useState<{ id: string; total: number }>();
 	// A fix is made by a job: until it has run, the server still suggests
-	// it, so the page leaves out what was applied here.
+	// it, so the page leaves out what was applied here. A suggestion goes
+	// as soon as it is clicked and comes back with the error if the server
+	// refuses.
 	const [gone, setGone] = useState<Set<string>>(new Set());
+	const [failed, setFailed] = useState<Map<string, unknown>>(new Map());
 	const [sure, setSure] = useState(false);
 
 	const pages = list.data?.pages ?? [];
@@ -45,17 +55,42 @@ export function Cleanup({
 		.flatMap((p) => p?.suggestions ?? [])
 		.filter((s) => !gone.has(`${s.kind}:${s.subject}`));
 
-	const done = (
+	const act = (
 		s: CleanupSuggestion,
-		result?: { id: string; total: number },
+		run: () => Promise<{ id: string; total: number } | void | undefined>,
 	) => {
-		setGone((g) => new Set(g).add(`${s.kind}:${s.subject}`));
-		if (result) {
-			setApplied(result);
-		}
+		const key = `${s.kind}:${s.subject}`;
+		setGone((g) => new Set(g).add(key));
+		setFailed((f) => {
+			const next = new Map(f);
+			next.delete(key);
+			return next;
+		});
+		run().then(
+			(result) => {
+				if (result) {
+					setApplied(result);
+				}
+			},
+			(error) => {
+				setGone((g) => {
+					const next = new Set(g);
+					next.delete(key);
+					return next;
+				});
+				setFailed((f) => new Map(f).set(key, error));
+			},
+		);
 	};
+	const onApply = (
+		s: CleanupSuggestion,
+		picks: { subject: string; to?: string }[],
+	) => act(s, () => applyOne.mutateAsync({ kind: s.kind, picks }));
+	const onDismiss = (s: CleanupSuggestion) =>
+		act(s, () => dismissOne.mutateAsync({ kind: s.kind, subject: s.subject }));
 
 	return (
+		<BookPanelLayout bookId={book} onClose={() => onBook(undefined, true)}>
 		<div className="flex flex-col gap-6">
 			<PageHeader title={t("cleanup.title")} intro={t("cleanup.intro")} />
 			<fieldset className="flex flex-wrap gap-2 text-sm">
@@ -85,6 +120,9 @@ export function Cleanup({
 						className="underline"
 					>
 						{t("cleanup.progress")}
+					</Link>{" "}
+					<Link to="/curation" className="underline">
+						{t("cleanup.changes")}
 					</Link>
 				</p>
 			)}
@@ -144,7 +182,10 @@ export function Cleanup({
 					<Suggestion
 						key={`${s.kind}:${s.subject}`}
 						suggestion={s}
-						onDone={done}
+						error={failed.get(`${s.kind}:${s.subject}`)}
+						onApply={onApply}
+						onDismiss={onDismiss}
+						onOpen={(id) => onBook(id)}
 					/>
 				))}
 			</ul>
@@ -159,30 +200,35 @@ export function Cleanup({
 				</button>
 			)}
 		</div>
+		</BookPanelLayout>
 	);
 }
 
 function Suggestion({
 	suggestion: s,
-	onDone,
+	error,
+	onApply,
+	onDismiss,
+	onOpen,
 }: {
 	suggestion: CleanupSuggestion;
-	onDone: (
+	error?: unknown;
+	onApply: (
 		s: CleanupSuggestion,
-		applied?: { id: string; total: number },
+		picks: { subject: string; to?: string }[],
 	) => void;
+	onDismiss: (s: CleanupSuggestion) => void;
+	onOpen: (book: string) => void;
 }) {
-	const apply = useApplyCleanup();
-	const dismiss = useDismissCleanup();
 	const [keep, setKeep] = useState(s.suggested ?? "");
 	const [other, setOther] = useState("");
 	const [own, setOwn] = useState(false);
 	const name = s.found[0]?.name ?? "";
 	const to = own ? other : keep;
-	const busy = apply.isPending || dismiss.isPending;
 
 	return (
-		<li className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+		<li className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 md:flex-row md:items-start md:gap-6 dark:border-slate-800">
+			<div className="flex min-w-0 flex-1 flex-col gap-3 break-words">
 			{s.fix === "merge" && (
 				<fieldset className="flex flex-col gap-1">
 					<legend className="mb-1 font-medium">{t("cleanup.keep")}</legend>
@@ -246,25 +292,21 @@ function Suggestion({
 				</p>
 			)}
 			{s.fix === "retitle" && (
-				<div className="flex flex-col gap-1">
+				<p>
 					{s.book ? (
-						<Link
-							to="/books/$bookId"
-							params={{ bookId: s.book }}
-							className="hover:underline"
+						<button
+							type="button"
+							onClick={() => s.book && onOpen(s.book)}
+							className="text-left hover:underline"
 						>
 							{name}
-						</Link>
+						</button>
 					) : (
 						<span>{name}</span>
-					)}
-					<p>
-						<span className="text-sm text-slate-500">
-							{t("cleanup.retitle")}
-						</span>{" "}
-						<span className="font-medium">{s.suggested}</span>
-					</p>
-				</div>
+					)}{" "}
+					<span className="text-sm text-slate-500">{t("cleanup.retitle")}</span>{" "}
+					<span className="font-medium">{s.suggested}</span>
+				</p>
 			)}
 			{s.fix === "setSeries" && (
 				<div className="flex flex-col gap-2">
@@ -278,13 +320,13 @@ function Suggestion({
 						{s.found.map((f) => (
 							<li key={f.book ?? f.name}>
 								{f.book ? (
-									<Link
-										to="/books/$bookId"
-										params={{ bookId: f.book }}
-										className="hover:underline"
+									<button
+										type="button"
+										onClick={() => f.book && onOpen(f.book)}
+										className="text-left hover:underline"
 									>
 										{f.name}
-									</Link>
+									</button>
 								) : (
 									<span>{f.name}</span>
 								)}{" "}
@@ -306,22 +348,17 @@ function Suggestion({
 					</ul>
 				</div>
 			)}
-			<FormError error={apply.error ?? dismiss.error} />
-			<div className="flex flex-wrap gap-2">
+			<FormError error={error} />
+			</div>
+			<div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
 				<button
 					type="button"
 					className={button}
-					disabled={busy || (s.fix === "merge" && to.trim() === "")}
+					disabled={s.fix === "merge" && to.trim() === ""}
 					onClick={() =>
-						apply.mutate(
-							{
-								kind: s.kind,
-								picks: [
-									{ subject: s.subject, ...(s.fix === "merge" ? { to } : {}) },
-								],
-							},
-							{ onSuccess: (result) => onDone(s, result) },
-						)
+						onApply(s, [
+							{ subject: s.subject, ...(s.fix === "merge" ? { to } : {}) },
+						])
 					}
 				>
 					{t(`cleanup.apply.${s.fix}`)}
@@ -329,13 +366,7 @@ function Suggestion({
 				<button
 					type="button"
 					className={quietButton}
-					disabled={busy}
-					onClick={() =>
-						dismiss.mutate(
-							{ kind: s.kind, subject: s.subject },
-							{ onSuccess: () => onDone(s) },
-						)
-					}
+					onClick={() => onDismiss(s)}
 				>
 					{t("cleanup.dismiss")}
 				</button>

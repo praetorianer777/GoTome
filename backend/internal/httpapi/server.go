@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -124,6 +125,8 @@ type Server struct {
 	Releases *releases.Service
 	// Cleanup suggests fixes for how books are described.
 	Cleanup *cleanup.Service
+	// Curation keeps the runs of changes to books and undoes them.
+	Curation *curation.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service

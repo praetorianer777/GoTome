@@ -1,5 +1,6 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { bookQuery } from "@/books/api";
+import { BookPanelLayout, FoldedText } from "@/books/book-panel";
 import {
 	GENRES,
 	type Genre,
@@ -29,9 +30,14 @@ export function genreName(genre: string): string {
 export function Genres({
 	genre,
 	onGenre,
+	book,
+	onBook,
 }: {
 	genre?: Genre;
 	onGenre: (genre?: Genre) => void;
+	/** The book open beside the list, as the address has it. */
+	book?: string;
+	onBook: (id: string | undefined, replace?: boolean) => void;
 }) {
 	const list = useInfiniteQuery(genreSuggestionsQuery(genre));
 	const pages = list.data?.pages ?? [];
@@ -39,7 +45,26 @@ export function Genres({
 	const suggestions = pages.flatMap((p) => p?.suggestions ?? []);
 	const total = waiting.reduce((sum, w) => sum + w.waiting, 0);
 
+	const ofOpen = book ? suggestions.filter((s) => s.book.id === book) : [];
 	return (
+		<BookPanelLayout
+			bookId={book}
+			onClose={() => onBook(undefined, true)}
+			panel={
+				ofOpen.length > 0 && (
+					<ul className="flex flex-col gap-3" aria-label={t("genres.suggested")}>
+						{ofOpen.map((s) => (
+							<li
+								key={s.genre}
+								className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
+							>
+								<Decision suggestion={s} />
+							</li>
+						))}
+					</ul>
+				)
+			}
+		>
 		<div className="flex flex-col gap-6">
 			<PageHeader title={t("genres.title")} intro={t("genres.intro")} />
 			{(waiting.length > 0 || genre) && (
@@ -80,7 +105,11 @@ export function Genres({
 			)}
 			<ul className="flex flex-col gap-3">
 				{suggestions.map((s) => (
-					<Suggestion key={`${s.book.id}:${s.genre}`} suggestion={s} />
+					<Suggestion
+						key={`${s.book.id}:${s.genre}`}
+						suggestion={s}
+						onOpen={() => onBook(s.book.id)}
+					/>
 				))}
 			</ul>
 			{list.hasNextPage && (
@@ -94,28 +123,51 @@ export function Genres({
 				</button>
 			)}
 		</div>
+		</BookPanelLayout>
 	);
 }
 
-function Suggestion({ suggestion: s }: { suggestion: GenreSuggestion }) {
-	const decide = useDecideGenre();
-	const name = genreName(s.genre);
+function Suggestion({
+	suggestion: s,
+	onOpen,
+}: {
+	suggestion: GenreSuggestion;
+	onOpen: () => void;
+}) {
+	const detail = useQuery({ ...bookQuery(s.book.id), retry: false });
 	return (
 		<li className="flex flex-col gap-2 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
 			<div className="flex flex-col gap-1">
-				<Link
-					to="/books/$bookId"
-					params={{ bookId: s.book.id }}
-					className="font-medium hover:underline"
+				<button
+					type="button"
+					onClick={onOpen}
+					className="self-start text-left font-medium hover:underline"
 				>
 					{s.book.title}
-				</Link>
+				</button>
 				{s.book.authors.length > 0 && (
 					<span className="text-sm text-slate-600 dark:text-slate-400">
 						{s.book.authors.join(", ")}
 					</span>
 				)}
 			</div>
+			{detail.data?.description && <FoldedText text={detail.data.description} />}
+			{detail.data && detail.data.tags.length > 0 && (
+				<p className="text-xs text-slate-500 dark:text-slate-400">
+					{detail.data.tags.join(" · ")}
+				</p>
+			)}
+			<Decision suggestion={s} />
+		</li>
+	);
+}
+
+/** The suggested genre, why it is suggested, and the buttons that decide it. */
+function Decision({ suggestion: s }: { suggestion: GenreSuggestion }) {
+	const decide = useDecideGenre();
+	const name = genreName(s.genre);
+	return (
+		<>
 			<p>
 				<span className="font-medium">{name}</span>{" "}
 				<span className="text-sm text-slate-500">
@@ -157,6 +209,6 @@ function Suggestion({ suggestion: s }: { suggestion: GenreSuggestion }) {
 					{t("genres.reject")}
 				</button>
 			</div>
-		</li>
+		</>
 	);
 }
