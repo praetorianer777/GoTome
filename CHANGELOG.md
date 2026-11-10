@@ -6,8 +6,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
-## [0.13.0] - 2026-11-09
-
 ### Added
 
 - The audiobook player's sleep timer fades the volume down before it stops,
@@ -50,6 +48,28 @@ What changes for someone who runs or uses GOtome. The format follows
   rows that could be several, and the import sets status, stars, finish
   dates, notes and collections for custom shelves; what you set already
   stays, and importing the same file again changes nothing.
+- Administrators are told when a new GOtome release is out: a line in the
+  footer, a notification once per version (you can switch it off on the
+  profile), and the latest version on the overview page with a link to the
+  upgrade guide. GOtome asks GitHub once a day, with no account and no
+  token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
+  turn it off. It never updates itself.
+
+### Fixed
+
+- On a phone every button, field and link is at least 44 pixels high with
+  8 pixels between neighbours, text fields are 16 pixels so iOS no longer
+  zooms into them, and bars at the screen's edge keep clear of the notch and
+  the home indicator.
+- On a 320 pixel wide screen the settings page and the library and search
+  pages with several libraries no longer slide sideways, the search page no
+  longer jumps when its first results arrive, and small links and the rating
+  stars are at least 24 pixels high. The profile no longer shows three
+  filled buttons at once.
+
+## [0.13.0] - 2026-11-09
+
+### Added
 
 - API keys on the profile, for scripts and other programs that use GOtome
   without a browser: give a key a name, the scopes it may use (read the
@@ -57,12 +77,6 @@ What changes for someone who runs or uses GOtome. The format follows
   and an optional expiry. It is shown once, sent as `Authorization:
   Bearer`, and never does more than your role allows. The list shows when
   each was last used; revoking one stops it at once. See `docs/api.md`.
-- Administrators are told when a new GOtome release is out: a line in the
-  footer, a notification once per version (you can switch it off on the
-  profile), and the latest version on the overview page with a link to the
-  upgrade guide. GOtome asks GitHub once a day, with no account and no
-  token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
-  turn it off. It never updates itself.
 - `gotome perf-check` times the main views on your own library and prints a
   table that names none of its books, with the memory in use. It only reads.
 
@@ -82,15 +96,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
-- On a phone every button, field and link is at least 44 pixels high with
-  8 pixels between neighbours, text fields are 16 pixels so iOS no longer
-  zooms into them, and bars at the screen's edge keep clear of the notch and
-  the home indicator.
-- On a 320 pixel wide screen the settings page and the library and search
-  pages with several libraries no longer slide sideways, the search page no
-  longer jumps when its first results arrive, and small links and the rating
-  stars are at least 24 pixels high. The profile no longer shows three
-  filled buttons at once.
 - The dark theme's field and button borders are a little lighter, so they
   stay easy to see over the glass panels, and the library behind the panels
   shows more at night: only its lamps are held down, not the whole picture.
