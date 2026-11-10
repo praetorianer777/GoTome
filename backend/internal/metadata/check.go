@@ -71,6 +71,34 @@ type CheckReport struct {
 	Scores []ScoreBand `json:"scores"`
 	// Thresholds is what All would take at each threshold.
 	Thresholds []ThresholdPoint `json:"thresholds"`
+	// Agreement is what the rule of an automatic run takes: books whose
+	// providers' first candidates name one ISBN or one work.
+	Agreement Agreement `json:"agreement"`
+}
+
+// Agreement counts the sampled books for which two providers' first
+// candidates agree, which an automatic run trusts without a person, and of
+// those how many are the book (carry one of its ISBNs), another edition of
+// it (of its work) or wrong. Titles are never kept.
+type Agreement struct {
+	Accepted int `json:"accepted"`
+	Right    int `json:"right"`
+	SameWork int `json:"sameWork"`
+	Wrong    int `json:"wrong"`
+}
+
+// Agrees says whether two candidates of different providers name one ISBN or
+// one work, which is when an automatic run trusts them.
+func Agrees(a, b Candidate) bool {
+	if a.Provider == b.Provider {
+		return false
+	}
+	for _, x := range a.Identifiers {
+		if x.Type == catalog.IDISBN && slices.Contains(b.Identifiers, x) {
+			return true
+		}
+	}
+	return a.Work != "" && a.Work == b.Work
 }
 
 // Tally counts what one ranking put first, a book each.
@@ -200,7 +228,8 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			works[provider] = w
 			return w, nil
 		}
-		var all []Candidate
+		var all, firstOf []Candidate
+		var firstOutcome []string
 		failed := false
 		for _, p := range providers {
 			tally := perProvider[p.Name()]
@@ -212,6 +241,9 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 				outcome, rank, err = judge(ranked, b.isbns, workOf)
 				if err == nil {
 					tally.add(outcome, rank)
+					if len(ranked) > 0 {
+						firstOf, firstOutcome = append(firstOf, ranked[0]), append(firstOutcome, outcome)
+					}
 					continue
 				}
 			}
@@ -237,6 +269,33 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			lang.add(outcome, rank)
 			if outcome != OutcomeNone {
 				firsts = append(firsts, first{all[0].Score, outcome})
+			}
+		}
+		if !failed {
+			accepted := ""
+			for x := range firstOf {
+				for y := x + 1; y < len(firstOf); y++ {
+					if !Agrees(firstOf[x], firstOf[y]) {
+						continue
+					}
+					// The better of the two stands for the book.
+					for _, o := range []string{firstOutcome[x], firstOutcome[y]} {
+						if accepted == "" || o == OutcomeRight || o == OutcomeSameWork && accepted == OutcomeWrong {
+							accepted = o
+						}
+					}
+				}
+			}
+			if accepted != "" {
+				r.Agreement.Accepted++
+				switch accepted {
+				case OutcomeRight:
+					r.Agreement.Right++
+				case OutcomeSameWork:
+					r.Agreement.SameWork++
+				default:
+					r.Agreement.Wrong++
+				}
 			}
 		}
 		if opts.Progress != nil {

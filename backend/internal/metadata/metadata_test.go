@@ -346,3 +346,22 @@ func TestWorksAreKeptInTheLanguagesAsked(t *testing.T) {
 		t.Errorf("kept %v", titles)
 	}
 }
+
+func TestTwoProvidersAgreeOnOneISBNOrOneWork(t *testing.T) {
+	isbn := catalog.Identifier{Type: catalog.IDISBN, Value: "9780141439587"}
+	a := Candidate{Record: Record{Provider: "openlibrary", Identifiers: []catalog.Identifier{isbn}, Work: "w1"}}
+	for name, c := range map[string]struct {
+		b    Candidate
+		want bool
+	}{
+		"the same ISBN":        {Candidate{Record: Record{Provider: "hardcover", Identifiers: []catalog.Identifier{isbn}}}, true},
+		"the same work":        {Candidate{Record: Record{Provider: "hardcover", Work: "w1"}}, true},
+		"another work":         {Candidate{Record: Record{Provider: "hardcover", Work: "w2"}}, false},
+		"nothing in common":    {Candidate{Record: Record{Provider: "hardcover"}}, false},
+		"one provider's twice": {Candidate{Record: Record{Provider: "openlibrary", Identifiers: []catalog.Identifier{isbn}}}, false},
+	} {
+		if got := Agrees(a, c.b); got != c.want {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
+	}
+}

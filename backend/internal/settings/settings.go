@@ -45,6 +45,13 @@ const (
 	// MatchThreshold is the score from 0.5 to 1 above which a match found
 	// by itself is taken without asking.
 	MatchThreshold = "metadata.matchThreshold"
+	// CurationCleanupKinds lists, comma-separated, the kinds of clean-up
+	// suggestion that a daily run applies by itself (cleanup.AutoKinds).
+	CurationCleanupKinds = "curation.cleanup.kinds"
+	// CurationMatchesAuto is "on" or "off": whether a daily run takes the
+	// fields of matches that providers agree on, and dismisses matches
+	// that contradict the text, by itself.
+	CurationMatchesAuto = "curation.matches.auto"
 	// Providers lists the metadata providers asked, comma-separated.
 	Providers = "metadata.providers"
 	// ContactEmail is the address given to providers that ask whom to
@@ -147,6 +154,8 @@ type Definition struct {
 	Choices []string
 	// Multiple says that the value is a comma-separated list of Choices.
 	Multiple bool
+	// MayBeNone lets a list of Choices be empty.
+	MayBeNone bool
 }
 
 // clean checks a value as typed and returns it as it is kept.
@@ -158,7 +167,7 @@ func (d Definition) clean(value string) (string, error) {
 		}
 		value = checked
 	}
-	if d.Choices == nil {
+	if d.Choices == nil || d.Multiple && d.MayBeNone && value == "" {
 		return value, nil
 	}
 	items := []string{value}
@@ -180,6 +189,8 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
+	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true, MayBeNone: true},
+	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
@@ -690,3 +701,7 @@ func (s *Store) EmbeddingPassages(ctx context.Context) (bool, error) {
 func (s *Store) EmbeddingServer(ctx context.Context) (string, error) {
 	return s.Text(ctx, EmbeddingServer)
 }
+
+// CleanupKinds are the values of CurationCleanupKinds, as cleanup.AutoKinds
+// names them.
+var CleanupKinds = []string{"placeholders", "titles", "authors", "series"}

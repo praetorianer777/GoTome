@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -192,6 +193,8 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Curation.Hooks = a.scans.CurationHooks()
 	a.scans.Curation = a.server.Curation
 	a.server.Bulk.Curation = a.server.Curation
+	a.server.Auto = autocurate.NewService(a.pool, a.server.Curation, a.server.Cleanup, a.scans, a.settings, quiet)
+	a.server.Auto.Queue = queue
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
 	a.server.Imports.Queue = queue

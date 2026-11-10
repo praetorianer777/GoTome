@@ -782,6 +782,41 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `ListExpiredTrash` leaves the files of an automatic run that is not
   confirmed, and until the retention has passed since it was.
 
+## Automatic runs
+
+- `internal/autocurate` (#467) applies by rule what the data decides, as
+  `automatic` runs of `internal/curation` (a `dryRun` run records an action
+  with its reason for each book and changes nothing; it cannot be confirmed
+  or undone). `POST /curation/cleanup {kinds, dryRun}` and `POST
+  /curation/matches {dryRun, provider?, band?}` create the run and queue
+  `curation.auto_cleanup` / `curation.auto_matches`; the daily
+  `curation.daily` starts both for every library (`SeesAll`, no
+  `started_by`; a run that did nothing is deleted) as the settings
+  `curation.cleanup.kinds` and `curation.matches.auto` (off) say. A book with
+  an action of the run is passed by (`curation.Service.HasBook`), so a job
+  cut off and run again does each book once; a pass over matches queues its
+  successor with `After`.
+- Clean-up: `cleanup.Service.Automatic` is the one place that says which
+  suggestions need no person: `placeholders` always, `titles` (the fixed
+  list), `authors` only when `cleanup.SpellingOnly` holds for every spelling
+  (the kept one is reconcile's, by use: `autocurate.PreferredSpelling`),
+  `series` with at least `cleanup.MinSeriesBooks` titles that agree, no two
+  at one place, and the series known to a visible library or a stored
+  provider answer. Clashes are never automatic. A new automatic kind goes
+  into `cleanup.AutoKinds`, `settings.CleanupKinds` and its texts.
+- Matches: `autocurate.Decide` is pure. A match is trusted when it shares an
+  ISBN with the book or another provider's pending match of the book names
+  the same ISBN or `Record.Work`; `reconcile` then decides each field, and a
+  provider's value is taken only for an empty field, a filename guess or the
+  same value untidy. A field in real conflict is left, and the match stays
+  pending (the action's reason names the fields taken and left). A record
+  whose language is not the text's (`book_chunks.lang`, at least
+  `MinTextChunks` chunks and four in five agreeing) or whose year is more
+  than `MaxYearGap` from a file-sourced date is dismissed. `curation.SetMatch`
+  snapshots the book's edit tables and its `metadata_matches`; a group
+  accepted by a person (`provider` and `band`, a tenth of the score) skips the
+  agreement. `match-check` counts the agreement rule (`metadata.Agreement`).
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by

@@ -414,6 +414,12 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 	return get(ctx, sqlc.New(s.pool), scope, id)
 }
 
+// GetTx is Get on a transaction (or any connection) the caller runs, so that
+// it sees what the transaction changed.
+func GetTx(ctx context.Context, db sqlc.DBTX, scope library.Scope, id uuid.UUID) (Book, error) {
+	return get(ctx, sqlc.New(db), scope, id)
+}
+
 func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID) (Book, error) {
 	row, err := q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if errors.Is(err, pgx.ErrNoRows) {

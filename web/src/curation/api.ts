@@ -38,13 +38,22 @@ export function curationRunsQuery(filter: RunFilter) {
 			).data,
 		initialPageParam: "",
 		getNextPageParam: (last) => last?.nextCursor || undefined,
+		// A run goes on after it is asked for: its state is looked at again
+		// until none is running.
+		refetchInterval: (query) =>
+			query.state.data?.pages.some((p) =>
+				p?.runs.some((r) => r.state === "running" || r.state === "planned"),
+			)
+				? 2000
+				: false,
 	});
 }
 
 /** A run's actions, in the order they were made, a page at a time. */
-export function curationActionsQuery(runId: string) {
+export function curationActionsQuery(runId: string, running = false) {
 	return infiniteQueryOptions({
 		queryKey: ["curation", "run", runId],
+		refetchInterval: running ? 2000 : false,
 		queryFn: async ({ pageParam }) =>
 			(
 				await api.GET("/curation/runs/{runId}", {

@@ -11,6 +11,7 @@ import {
 	useRejectMatch,
 } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { AutoMatches } from "@/curation/auto-matches";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { dialogOpen, typing } from "@/lib/keys";
@@ -66,6 +67,7 @@ export function Review({
 		<BookPanelLayout bookId={open} onClose={() => onBook(undefined, true)}>
 		<div className="flex flex-col gap-6">
 			<PageHeader title={t("review.title")} intro={t("review.intro")} />
+			<AutoMatches onOpen={(id) => onBook(id)} />
 			{review.isPending && <Loading />}
 			<FormError error={review.error} />
 			{review.data && books.length === 0 && (

@@ -96,6 +96,49 @@ them are right: the line marked `*` is `metadata.matchThreshold` now.
 Raise the threshold until wrong ones are rare among those taken; what
 falls below it waits on the Review page.
 
+Then, for the rule an automatic run uses on matches (below), how many
+of the sampled books have two sources whose first candidates name one
+ISBN or one work, and how many of those are right, of the same work, or
+wrong. Read it before turning `curation.matches.auto` on: the share of
+wrong among the accepted is what that rule would get wrong on your
+library; only numbers are printed, never titles. It measures the
+agreement between sources; the checks against the text's language and the
+file's year need the text and are not part of it.
+
+## Doing it automatically
+
+Clean-up suggestions and matches that wait for review can be dealt with
+by rule where the data decides, and only there. Every such run is a
+run of the **Changes** page, started by a person or by the daily run the
+settings `curation.cleanup.kinds` and `curation.matches.auto` switch on.
+Its changes are not written into the files until you confirm it; each
+change says which rule made it and why, and can be undone while its books
+are as it left them. A **dry run** records what the rules would do, with
+their reasons, and changes nothing.
+
+Clean-up: a stand-in where an author belongs ("authors_sort",
+"Unknown") is taken off; a shop's addition after a title is cut; one
+person's spellings are made one only when they differ in the order
+around a comma, case, accents, punctuation or initials with and without
+points (the spelling most books use stays); a series written into
+titles is set when at least three titles name it, no two at one place,
+and a visible library has the series or a stored answer of a source names
+it. An author who is the name of a series, or two people with the same
+words in another order, always wait for you. Locked fields stay as they
+are, and only books you may see are changed.
+
+Review: a match is trusted when it shares an ISBN with the book or when
+another source's match for the book names the same ISBN or work. Each
+field is then decided as when two descriptions of a book are
+reconciled: the source's value replaces one that is empty, a guess from
+the file name, or the same value left untidy (a shop's addition on the
+title); a value the book has stays; a real difference stays for you, and
+the match stays on the Review page with only that field open. A match
+whose language is not the language the text was detected in, or whose
+year lies more than two years from the year the file itself gives, is
+dismissed. The rest wait; the Review page groups them by source and score
+and lets you look at a sample and accept the group.
+
 ## Who wins
 
 A field has a source: the file, a metadata source, or a person.

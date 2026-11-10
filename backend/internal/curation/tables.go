@@ -81,7 +81,10 @@ var Tables = []Table{
 		Settled: func(row map[string]any) bool { return row["state"] != "suggested" },
 	},
 	func() Table { t := byBook("book_genre_checks", "book_id"); t.Quiet = true; return t }(),
-	byBook("metadata_matches", "id"),
+	{
+		Name: "metadata_matches", Where: "t.book_id = ANY($1)", PK: []string{"id"}, Keep: true,
+		Settled: func(row map[string]any) bool { return row["state"] != "pending" },
+	},
 	{
 		Name: "duplicate_pairs", Where: "t.book_a = ANY($1) OR t.book_b = ANY($1)", PK: []string{"id"}, Keep: true, Quiet: true,
 	},
@@ -114,6 +117,9 @@ const (
 	SetAll Set = iota
 	// SetEdit is what an edit of one book changes.
 	SetEdit
+	// SetMatch is what taking a record from a match, or dismissing one,
+	// changes: an edit and the book's matches.
+	SetMatch
 )
 
 func (s Set) tables() []Table {
@@ -122,7 +128,7 @@ func (s Set) tables() []Table {
 	}
 	var out []Table
 	for _, t := range Tables {
-		if t.Edit {
+		if t.Edit || s == SetMatch && t.Name == "metadata_matches" {
 			out = append(out, t)
 		}
 	}

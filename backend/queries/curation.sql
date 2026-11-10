@@ -8,7 +8,7 @@ RETURNING id;
 SELECT id, automatic FROM curation_runs WHERE bulk_change_id = $1;
 
 -- name: GetCurationRunForUpdate :one
-SELECT id, automatic, state FROM curation_runs WHERE id = $1 FOR UPDATE;
+SELECT id, automatic, dry_run, state FROM curation_runs WHERE id = $1 FOR UPDATE;
 
 -- name: FinishCurationRun :exec
 UPDATE curation_runs SET state = 'done', finished_at = now() WHERE bulk_change_id = $1 AND state = 'running';
@@ -79,8 +79,10 @@ FOR UPDATE OF a;
 
 -- name: ListCurationActionIDsToUndo :many
 -- The run's actions the viewer sees that are not undone, the last made first.
+-- A dry run changed nothing and has nothing to undo.
 SELECT a.id FROM curation_actions a
 WHERE a.run_id = $1 AND a.state = 'done'
+  AND NOT EXISTS (SELECT 1 FROM curation_runs r WHERE r.id = a.run_id AND r.dry_run)
   AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY a.created_at DESC, a.id DESC;
 
@@ -124,3 +126,10 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.trashed_at, l.root_path, l.w
 FROM book_files f JOIN libraries l ON l.id = f.library_id
 WHERE f.id = ANY(sqlc.arg(ids)::uuid[])
 ORDER BY f.id;
+
+-- name: FinishCurationRunByID :exec
+UPDATE curation_runs SET state = 'done', finished_at = now() WHERE id = $1 AND state = 'running';
+
+-- name: CurationRunHasBook :one
+-- Whether an action of the run is about the book, undone or not.
+SELECT EXISTS (SELECT 1 FROM curation_actions WHERE run_id = $1 AND $2::uuid = ANY(books));

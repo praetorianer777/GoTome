@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -13,6 +13,13 @@ import {
 import { BookPanelLayout } from "@/books/book-panel";
 import { CleanupPreviewList } from "@/books/cleanup-preview";
 import { FormError } from "@/components/form";
+import {
+	AUTO_KINDS,
+	type AutoKind,
+	autoCleanupQuery,
+	useStartAutoCleanup,
+} from "@/curation/auto";
+import { AutoRun } from "@/curation/auto-run";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatCount } from "@/lib/format";
@@ -49,6 +56,11 @@ export function Cleanup({
 	const [gone, setGone] = useState<Set<string>>(new Set());
 	const [failed, setFailed] = useState<Map<string, unknown>>(new Map());
 	const [sure, setSure] = useState(false);
+	const auto = useQuery(autoCleanupQuery);
+	const startAuto = useStartAutoCleanup();
+	const autoOf = AUTO_KINDS.includes(kind as AutoKind)
+		? auto.data?.kinds.find((k) => k.kind === kind)
+		: undefined;
 
 	const pages = list.data?.pages ?? [];
 	const counts = pages[0]?.counts;
@@ -113,6 +125,32 @@ export function Cleanup({
 				))}
 			</fieldset>
 			<p className="max-w-2xl">{t(`cleanup.about.${kind}`)}</p>
+			{autoOf && (
+				<section
+					aria-label={t("auto.cleanup.title")}
+					className="flex max-w-2xl flex-col gap-2 rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+				>
+					<h2 className="font-semibold">{t("auto.cleanup.title")}</h2>
+					<p className="text-sm">{t(`auto.cleanup.rule.${kind as AutoKind}`)}</p>
+					<p>
+						{t("auto.cleanup.count", {
+							suggestions: autoOf.suggestions,
+							books: autoOf.books,
+						})}
+					</p>
+					<AutoRun
+						key={kind}
+						count={autoOf.suggestions}
+						name={t(`auto.cleanup.name.${kind as AutoKind}`)}
+						disabled={autoOf.suggestions === 0}
+						pending={startAuto.isPending}
+						error={startAuto.error}
+						start={(dryRun) =>
+							startAuto.mutateAsync({ kinds: [kind as AutoKind], dryRun })
+						}
+					/>
+				</section>
+			)}
 			{applied && (
 				<p role="status" className="text-sm">
 					{t("cleanup.applying", { count: applied.total })}{" "}
