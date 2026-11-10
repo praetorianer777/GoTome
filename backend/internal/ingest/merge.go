@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -71,7 +72,16 @@ func (s *Service) Merge(ctx context.Context, scope library.Scope, into, from uui
 		if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{into, from}); err != nil {
 			return err
 		}
-		return s.mergeTx(ctx, tx, scope, into, from, fields)
+		pending, err := s.Curation.Begin(ctx, tx, curation.SetAll, into, from)
+		if err != nil {
+			return err
+		}
+		if err := s.mergeTx(ctx, tx, scope, into, from, fields); err != nil {
+			return err
+		}
+		return pending.Done(ctx, tx, curation.Record{
+			RunKind: curation.KindDuplicates, By: scope.Viewer, Kind: curation.ActionMerge,
+		})
 	})
 }
 

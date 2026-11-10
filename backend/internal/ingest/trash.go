@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -40,6 +41,44 @@ var (
 // trashPath is where a trashed file lies.
 func trashPath(root string, id uuid.UUID, relPath string) string {
 	return filepath.Join(root, trashFolder, id.String(), path.Base(relPath))
+}
+
+// TrashPath is where a trashed file lies.
+func TrashPath(root string, id uuid.UUID, relPath string) string { return trashPath(root, id, relPath) }
+
+// CurationHooks are what the service lends curation for undoing actions.
+func (s *Service) CurationHooks() curation.Hooks {
+	return curation.Hooks{TrashPath: TrashPath, AfterUndoTx: s.AfterUndoTx, WriteBackTx: s.WriteBackTx}
+}
+
+// AfterUndoTx follows the undoing of an action on the books: each reads its
+// text again from its primary file where the merge took the chunks away,
+// and its duplicates are looked for.
+func (s *Service) AfterUndoTx(ctx context.Context, tx pgx.Tx, books []uuid.UUID) error {
+	q := sqlc.New(tx)
+	for _, book := range books {
+		primary, _, err := choosePrimaryTx(ctx, q, book)
+		if err != nil {
+			return err
+		}
+		if primary != uuid.Nil {
+			chunks, err := q.ListFileChunks(ctx, primary)
+			if err != nil {
+				return err
+			}
+			if len(chunks) == 0 {
+				if _, err := s.Queue.InsertTx(ctx, tx, ChunkArgs{FileID: primary}, jobs.InsertOpts{
+					Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+		if err := s.filesChangedTx(ctx, tx, book); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Trash moves a file of a writable library the scope sees into the

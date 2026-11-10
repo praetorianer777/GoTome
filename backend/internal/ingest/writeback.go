@@ -18,6 +18,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
@@ -61,8 +62,11 @@ func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e
 // describedTx follows a change to how a book is described: its EPUBs are
 // written and its duplicates looked for again.
 func (s *Service) describedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
-	if _, err := s.WriteBackTx(ctx, tx, id); err != nil {
-		return err
+	// An automatic run's changes reach the files when a person confirms it.
+	if !curation.Deferred(ctx) {
+		if _, err := s.WriteBackTx(ctx, tx, id); err != nil {
+			return err
+		}
 	}
 	if s.OnDescribed == nil {
 		return nil

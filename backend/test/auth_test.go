@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
@@ -187,6 +188,10 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
 	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
+	a.server.Curation = curation.NewService(a.pool)
+	a.server.Curation.Hooks = a.scans.CurationHooks()
+	a.scans.Curation = a.server.Curation
+	a.server.Bulk.Curation = a.server.Curation
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
 	a.server.Imports.Queue = queue

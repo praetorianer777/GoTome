@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A new page, Changes, lists what was merged, replaced or cleaned up, run by
+  run, with each book's details before and after. A run, or one change of
+  it, can be undone: the merged book comes back with its files, shelves and
+  reading, and files moved to the trash return to their book. A change to a
+  book that was edited since is left as it is and reported.
+
 ## [0.14.1] - 2026-11-10
 
 ### Fixed

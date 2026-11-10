@@ -8,6 +8,7 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/", heading: "Library" },
 	{ path: "/search", heading: "Search the text" },
 	{ path: "/duplicates", heading: "Duplicates" },
+	{ path: "/curation", heading: "Changes" },
 	{ path: "/collections", heading: "Collections" },
 	{ path: "/wishlist", heading: "Wishlist" },
 	{ path: "/recommendations", heading: "For you" },
