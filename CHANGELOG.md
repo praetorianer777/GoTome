@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-10
+
 ### Added
 
 - Libraries watch their folders: files put into (or taken out of) a library's
