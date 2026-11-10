@@ -130,7 +130,7 @@ function FacetGroup({
 		: listed.filter((v, i) => i < SHOWN || picked.includes(v.value));
 
 	return (
-		<fieldset className="flex flex-col gap-0.5">
+		<fieldset className="flex min-w-0 flex-col gap-0.5">
 			<legend className="mb-1.5 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
 				{t(FIELD_LABELS[field])}
 			</legend>
