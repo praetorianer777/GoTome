@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-10
+
 ### Added
 
 - Every suggestion on the clean-up page can show its books before and after:
