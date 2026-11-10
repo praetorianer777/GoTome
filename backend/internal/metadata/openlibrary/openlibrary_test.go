@@ -152,23 +152,26 @@ func TestLiveContract(t *testing.T) {
 }
 
 func TestTheWorksOfAnAuthor(t *testing.T) {
-	got, err := New().ByAuthor(context.Background(), web(), "Rothfuss, Patrick")
+	got, err := New().ByAuthor(context.Background(), web(), "Austen, Jane")
 	if err != nil || len(got) == 0 {
 		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
 	}
 	for _, r := range got {
-		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Patrick Rothfuss") }) {
+		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Jane Austen") }) {
 			t.Errorf("%q does not credit the author: %+v", r.Title, r.Contributors)
 		}
 	}
-	i := slices.IndexFunc(got, func(r metadata.Record) bool { return r.Title == "The Name of the Wind" })
+	novels := []string{"Emma", "Pride and Prejudice", "Persuasion", "Sense and Sensibility", "Mansfield Park", "Northanger Abbey"}
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return slices.Contains(novels, r.Title) })
 	if i < 0 {
-		t.Fatalf("his first novel is not among %d works", len(got))
+		t.Fatalf("none of her novels is among %d works", len(got))
 	}
-	if got[i].Published != "2007" {
-		t.Errorf("published %q, want 2007", got[i].Published)
+	// For a book printed for two hundred years Open Library's date is of an
+	// edition, often this year's: that it is read is what counts here.
+	if len(got[i].Published) != 4 {
+		t.Errorf("published %q, want a year", got[i].Published)
 	}
-	if got, err := New().BySeries(context.Background(), web(), "The Kingkiller Chronicle"); err != nil || got != nil {
+	if got, err := New().BySeries(context.Background(), web(), "Sherlock Holmes"); err != nil || got != nil {
 		t.Errorf("OpenLibrary lists a series: %+v, %v", got, err)
 	}
 }

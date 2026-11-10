@@ -8,9 +8,12 @@ trap 'rm -rf "$work"' EXIT
 ffmpeg -v error -f lavfi -i color=c=0x909090:s=60x90 -frames:v 1 "$work/cover.png"
 
 # make <file> <seconds> <cover or nothing>, with the FFMETADATA on stdin.
+# ONLY, a list of file names, makes just those: another FFmpeg encodes the
+# others differently, and their reference would change with them.
 make() {
   file=$1 seconds=$2 cover=${3:-}
   cat >"$work/meta.txt"
+  [ -z "${ONLY:-}" ] || case " $ONLY " in *" $file "*) ;; *) return 0 ;; esac
   set -- -v error -y -f lavfi -i "sine=frequency=440:duration=$seconds" -i "$work/meta.txt"
   [ -z "$cover" ] || set -- "$@" -i "$work/cover.png"
   set -- "$@" -map 0:a -map_metadata 1 -map_chapters 1 -ac 1
@@ -24,14 +27,14 @@ make() {
   ffmpeg "$@" "$file"
 }
 
-make dune.m4b 3 cover <<'META'
+make time-machine.m4b 3 cover <<'META'
 ;FFMETADATA1
-title=Dune
-artist=Frank Herbert
-composer=Scott Brick; Orlagh Cassidy
+title=The Time Machine
+artist=H. G. Wells
+composer=Mara Lind; Tobias Reuter
 genre=Science Fiction
 date=2007-01-01
-comment=The desert planet.
+comment=A traveller builds a machine and goes far into the future.
 [CHAPTER]
 TIMEBASE=1/1000
 START=0
@@ -82,8 +85,8 @@ done
 
 make three-chapters.m4b 3 <<'META'
 ;FFMETADATA1
-title=Dune
-artist=Frank Herbert
+title=The Time Machine
+artist=H. G. Wells
 [CHAPTER]
 TIMEBASE=1/1000
 START=0
