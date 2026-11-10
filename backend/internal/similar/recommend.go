@@ -379,7 +379,6 @@ func (s *Service) Recommend(ctx context.Context, scope library.Scope, limit int)
 // although they are the person's own, and seriesRule says whether a volume
 // of a series is left out while an earlier one is unread.
 func (s *Service) recommend(ctx context.Context, scope library.Scope, spec embed.Spec, p Profile, limit int, keep []uuid.UUID, seriesRule bool) ([]Recommendation, error) {
-	q := sqlc.New(s.pool)
 	contents, metadatas := make([]string, len(p.centres)), make([]string, len(p.centres))
 	for i, c := range p.centres {
 		if c.content != nil {
@@ -389,10 +388,21 @@ func (s *Service) recommend(ctx context.Context, scope library.Scope, spec embed
 			metadatas[i] = Literal(c.metadata)
 		}
 	}
-	rows, err := q.ListRecommended(ctx, sqlc.ListRecommendedParams{
-		Contents: contents, Metadatas: metadatas, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Keep: append([]uuid.UUID{}, keep...), SeriesRule: seriesRule,
-		Max: int32(limit * candidates),
+	q := sqlc.New(s.pool)
+	var rows []sqlc.ListRecommendedRow
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		// The plan's estimated cost passes the thresholds of JIT, whose
+		// compiling takes longer than the scan it speeds up.
+		if _, err := tx.Exec(ctx, "SET LOCAL jit = off"); err != nil {
+			return err
+		}
+		var err error
+		rows, err = sqlc.New(tx).ListRecommended(ctx, sqlc.ListRecommendedParams{
+			Contents: contents, Metadatas: metadatas, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
+			Viewer: scope.Viewer, SeesAll: scope.SeesAll, Keep: append([]uuid.UUID{}, keep...), SeriesRule: seriesRule,
+			Max: int32(limit * candidates),
+		})
+		return err
 	})
 	if err != nil || len(rows) == 0 {
 		return nil, err

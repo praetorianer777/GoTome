@@ -74,58 +74,75 @@ func (q *Queries) ListRecommendationCheckUsers(ctx context.Context, arg ListReco
 }
 
 const listRecommended = `-- name: ListRecommended :many
-WITH centres AS (
+WITH centres AS MATERIALIZED (
     SELECT c.n AS centre,
            NULLIF(($2::text[])[c.n], '')::vector AS content,
            NULLIF(($3::text[])[c.n], '')::vector AS metadata
     FROM generate_series(1, cardinality($2::text[])) c(n)
 ),
-near AS (
-    SELECT v.book_id, c.centre,
-           max(1 - (v.embedding <=> c.content)) FILTER (WHERE v.kind = 'content') AS content,
-           max(1 - (v.embedding <=> c.metadata)) FILTER (WHERE v.kind = 'metadata') AS metadata
-    FROM book_vectors v
-    JOIN books b ON b.id = v.book_id
-    CROSS JOIN centres c
-    WHERE v.model = $4::text AND v.model_version = $5::text
-      AND b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($6::uuid, $7::boolean))
-      AND (b.id = ANY($8::uuid[]) OR NOT EXISTS (
-          SELECT 1 FROM user_books ub
-          WHERE ub.user_id = $6::uuid AND ub.book_id = b.id
-            AND ub.status IN ('completed', 'reading', 'abandoned')))
-      AND NOT EXISTS (
-          SELECT 1 FROM recommendation_dismissals d
-          WHERE d.user_id = $6::uuid AND d.book_id = b.id)
-      AND (NOT $9::boolean OR b.series_id IS NULL OR b.series_index IS NULL
-           OR NOT EXISTS (
-               SELECT 1 FROM books r JOIN user_books ru ON ru.book_id = r.id
-               WHERE ru.user_id = $6::uuid AND ru.status IN ('completed', 'reading', 'abandoned')
-                 AND r.series_id = b.series_id)
-           OR NOT EXISTS (
-               SELECT 1 FROM books e
-               WHERE e.series_id = b.series_id AND e.series_index < b.series_index
-                 AND e.deleted_at IS NULL AND NOT e.placeholder
-                 AND e.library_id IN (SELECT visible_library_ids FROM visible_library_ids($6::uuid, $7::boolean))
-                 AND NOT EXISTS (
-                     SELECT 1 FROM user_books eu
-                     WHERE eu.user_id = $6::uuid AND eu.book_id = e.id
-                       AND eu.status IN ('completed', 'reading', 'abandoned'))))
-    GROUP BY v.book_id, c.centre
+read_series AS MATERIALIZED (
+    SELECT DISTINCT r.series_id
+    FROM user_books ru JOIN books r ON r.id = ru.book_id
+    WHERE ru.user_id = $4::uuid AND ru.status IN ('completed', 'reading', 'abandoned')
+      AND r.series_id IS NOT NULL
 ),
-scored AS (
-    SELECT n.book_id, n.centre,
-           (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
-                 THEN 0.6 * n.content + 0.4 * n.metadata
-                 ELSE coalesce(n.content, n.metadata)
-            END)::float8 AS score
-    FROM near n
+first_open AS MATERIALIZED (
+    SELECT e.series_id, min(e.series_index) AS series_index
+    FROM books e
+    WHERE e.series_id IN (SELECT series_id FROM read_series)
+      AND e.series_index IS NOT NULL AND e.deleted_at IS NULL AND NOT e.placeholder
+      AND e.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean))
+      AND NOT EXISTS (
+          SELECT 1 FROM user_books eu
+          WHERE eu.user_id = $4::uuid AND eu.book_id = e.id
+            AND eu.status IN ('completed', 'reading', 'abandoned'))
+    GROUP BY e.series_id
+),
+visible AS MATERIALIZED (
+    SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean)
+),
+taken AS MATERIALIZED (
+    SELECT ub.book_id FROM user_books ub
+    WHERE ub.user_id = $4::uuid AND ub.status IN ('completed', 'reading', 'abandoned')
+),
+dismissed AS MATERIALIZED (
+    SELECT d.book_id FROM recommendation_dismissals d WHERE d.user_id = $4::uuid
+),
+eligible AS MATERIALIZED (
+    SELECT b.id
+    FROM books b
+    LEFT JOIN first_open f ON $6::boolean AND f.series_id = b.series_id
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND b.library_id IN (SELECT visible_library_ids FROM visible)
+      AND (b.id = ANY($7::uuid[]) OR b.id NOT IN (SELECT book_id FROM taken))
+      AND b.id NOT IN (SELECT book_id FROM dismissed)
+      AND (f.series_index IS NULL OR b.series_index IS NULL OR f.series_index >= b.series_index)
 ),
 best AS (
-    SELECT DISTINCT ON (s.book_id) s.book_id, s.centre::int AS centre, s.score
-    FROM scored s
-    WHERE s.score IS NOT NULL
-    ORDER BY s.book_id, s.score DESC, s.centre
+    SELECT e.id AS book_id, pick.centre, pick.score
+    FROM eligible e
+    LEFT JOIN book_vectors vc ON vc.book_id = e.id AND vc.kind = 'content'
+        AND vc.model = $8::text AND vc.model_version = $9::text
+    LEFT JOIN book_vectors vm ON vm.book_id = e.id AND vm.kind = 'metadata'
+        AND vm.model = $8::text AND vm.model_version = $9::text
+    CROSS JOIN LATERAL (
+        SELECT s.centre::int AS centre, s.score
+        FROM (
+            SELECT c.centre,
+                   (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+                         THEN 0.6 * n.content + 0.4 * n.metadata
+                         ELSE coalesce(n.content, n.metadata)
+                    END)::float8 AS score
+            FROM centres c
+            CROSS JOIN LATERAL (
+                SELECT 1 - (vc.embedding <=> c.content) AS content,
+                       1 - (vm.embedding <=> c.metadata) AS metadata
+            ) n
+        ) s
+        WHERE s.score IS NOT NULL
+        ORDER BY s.score DESC, s.centre
+        LIMIT 1
+    ) pick
 )
 SELECT best.book_id, best.centre, best.score
 FROM best
@@ -137,12 +154,12 @@ type ListRecommendedParams struct {
 	Max          int32
 	Contents     []string
 	Metadatas    []string
-	Model        string
-	ModelVersion string
 	Viewer       uuid.UUID
 	SeesAll      bool
-	Keep         []uuid.UUID
 	SeriesRule   bool
+	Keep         []uuid.UUID
+	Model        string
+	ModelVersion string
 }
 
 type ListRecommendedRow struct {
@@ -160,17 +177,21 @@ type ListRecommendedRow struct {
 // series they read while an earlier one they have not read is in the
 // libraries (series_rule), and keep names books that are left in although
 // they are the viewer's (a check hides books it asks for again).
+// centres is MATERIALIZED so that its text is read into vectors once: inlined,
+// the planner rescans it for every book and parses them again each time. The
+// books left in are found first and the series rule is worked out once per
+// series, not once per book.
 func (q *Queries) ListRecommended(ctx context.Context, arg ListRecommendedParams) ([]ListRecommendedRow, error) {
 	rows, err := q.db.Query(ctx, listRecommended,
 		arg.Max,
 		arg.Contents,
 		arg.Metadatas,
-		arg.Model,
-		arg.ModelVersion,
 		arg.Viewer,
 		arg.SeesAll,
-		arg.Keep,
 		arg.SeriesRule,
+		arg.Keep,
+		arg.Model,
+		arg.ModelVersion,
 	)
 	if err != nil {
 		return nil, err

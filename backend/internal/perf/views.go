@@ -53,6 +53,9 @@ var WholeByDesign = map[string]string{
 	// The exact cosine scan of #66 compares the book with every other one;
 	// at 50,000 books an approximate index is not worth what it costs.
 	"similar books": "compares with every book",
+	// Recommendations compare every book with each centre of the viewer's
+	// taste.
+	"recommendations": "compares with every book",
 	// So does a description, with the vectors of every visible book.
 	"search by description": "compares with every book",
 	// Each library's files are counted and their sizes added up.
