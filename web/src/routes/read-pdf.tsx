@@ -14,6 +14,7 @@ import { t } from "@/i18n";
 import { type KeyBinding, useKeys, usePanelFocus } from "@/lib/keys";
 import { closestPage } from "@/reader/passage";
 import { type OutlineItem, openPdf, type PdfDocument } from "@/reader/pdf";
+import { canSpeak } from "@/reader/speech";
 import "@/reader/text-layer.css";
 
 type Zoom = "width" | number;
@@ -267,6 +268,11 @@ export function PdfReader({
 				<ZoomControls zoom={zoom} onZoom={setZoom} disabled={!doc} />
 				<PageControls page={page} pages={doc?.pages} onGo={go} input={pageInput} />
 			</div>
+			{canSpeak() && (
+				<p className="text-sm text-slate-600 dark:text-slate-400">
+					{t("reader.speakNotPdf")}
+				</p>
+			)}
 			{help && <KeyHelp bindings={bindings} onClose={() => setHelp(false)} />}
 			<p aria-live="polite" className="sr-only">
 				{page !== undefined && title ? t("reader.page", { page, title }) : ""}

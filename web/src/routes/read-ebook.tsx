@@ -22,6 +22,18 @@ import {
 	openEbook,
 } from "@/reader/ebook";
 import type { Found } from "@/reader/passage";
+import {
+	RATES,
+	type Reading,
+	type Speech,
+	canSpeak,
+	listVoices,
+	onVoices,
+	pickVoice,
+	readAloud,
+	storeSpeech,
+	storedSpeech,
+} from "@/reader/speech";
 
 /** How long a place must stay before it is saved. */
 const SAVE_AFTER_MS = 600;
@@ -81,6 +93,17 @@ function startIn(
 		: cfiIn(progress, fileId);
 }
 
+/** The voices this browser has, once it has told of them. */
+function useVoices(): SpeechSynthesisVoice[] {
+	const [voices, setVoices] = useState(listVoices);
+	useEffect(() => {
+		const update = () => setVoices(listVoices());
+		update();
+		return onVoices(update);
+	}, []);
+	return voices;
+}
+
 /** An EPUB, MOBI or AZW3 file of a book, picking up where the person left off. */
 export function EbookReader({
 	bookId,
@@ -110,6 +133,13 @@ export function EbookReader({
 	const toggles = useRef<Partial<Record<Panel, HTMLButtonElement | null>>>({});
 	const panelBox = usePanelFocus(panel);
 	const [further, setFurther] = useState<Progress>();
+	const voices = useVoices();
+	const [speech, setSpeech] = useState<Speech>(storedSpeech);
+	const [reading, setReading] = useState(false);
+	const spoken = useRef<Reading>(undefined);
+	const speechNow = useRef({ voices, speech });
+	speechNow.current = { voices, speech };
+	const speaks = canSpeak() && voices.length > 0;
 	// The place last saved or found saved, which needs no saving again.
 	const kept = useRef<string | undefined>(undefined);
 	const lookNow = useRef(look);
@@ -129,6 +159,34 @@ export function EbookReader({
 		const next = FONT_SIZES[Math.min(Math.max(at + step, 0), FONT_SIZES.length - 1)];
 		if (next) setLook({ ...look, fontSize: next });
 	};
+	const stopReading = () => {
+		spoken.current?.stop();
+		spoken.current = undefined;
+		setReading(false);
+	};
+	const toggleReading = () => {
+		if (!ebook || !speaks) return;
+		if (spoken.current) {
+			stopReading();
+			return;
+		}
+		spoken.current = readAloud(ebook.speech, {
+			language: ebook.language,
+			speech: () => ({
+				voice: pickVoice(
+					speechNow.current.voices,
+					ebook.language,
+					speechNow.current.speech.voice,
+				),
+				rate: speechNow.current.speech.rate,
+			}),
+			onEnd: () => {
+				spoken.current = undefined;
+				setReading(false);
+			},
+		});
+		setReading(true);
+	};
 	const bindings: KeyBinding[] = ebook
 		? [
 				{ keys: ["ArrowLeft"], label: "keys.pageLeft", run: () => void ebook.goLeft() },
@@ -142,6 +200,9 @@ export function EbookReader({
 				{ keys: ["d"], label: "keys.look", run: () => toggle("look") },
 				{ keys: ["+", "="], label: "keys.larger", run: () => resize(1) },
 				{ keys: ["-"], label: "keys.smaller", run: () => resize(-1) },
+				...(speaks
+					? [{ keys: ["r"], label: "keys.speak" as const, run: toggleReading }]
+					: []),
 				{ keys: ["Escape"], label: "keys.closePanel", run: () => show(undefined) },
 				{ keys: ["?"], label: "keys.help", run: () => setHelp(true) },
 			]
@@ -188,6 +249,44 @@ export function EbookReader({
 			opened?.close();
 		};
 	}, [ready, fileId, fileName, keys]);
+
+	useEffect(() => {
+		storeSpeech(speech);
+	}, [speech]);
+
+	useEffect(() => {
+		return () => {
+			spoken.current?.stop();
+			spoken.current = undefined;
+		};
+	}, [ebook]);
+
+	useEffect(() => {
+		if (!reading || !("mediaSession" in navigator)) return;
+		const session = navigator.mediaSession;
+		session.playbackState = "playing";
+		for (const action of ["pause", "stop"] as const) {
+			try {
+				session.setActionHandler(action, () => {
+					spoken.current?.stop();
+					spoken.current = undefined;
+					setReading(false);
+				});
+			} catch {
+				// An action this browser does not know.
+			}
+		}
+		return () => {
+			session.playbackState = "none";
+			for (const action of ["pause", "stop"] as const) {
+				try {
+					session.setActionHandler(action, null);
+				} catch {
+					// An action this browser does not know.
+				}
+			}
+		};
+	}, [reading]);
 
 	useEffect(() => {
 		ebook?.setLook(look);
@@ -283,6 +382,18 @@ export function EbookReader({
 				>
 					{t("reader.look")}
 				</button>
+				{speaks && (
+					<button
+						type="button"
+						className={`${button} min-w-0 max-w-full`}
+						aria-pressed={reading}
+						aria-keyshortcuts="R"
+						disabled={!ebook}
+						onClick={toggleReading}
+					>
+						{t("reader.speak")}
+					</button>
+				)}
 				<button
 					type="button"
 					className={button}
@@ -389,7 +500,16 @@ export function EbookReader({
 						{panel === "search" && ebook && (
 							<BookSearch ebook={ebook} onGo={(cfi) => void ebook.goTo(cfi)} />
 						)}
-						{panel === "look" && <LookControls look={look} onLook={setLook} />}
+						{panel === "look" && (
+							<LookControls
+								look={look}
+								onLook={setLook}
+								speech={speaks ? speech : undefined}
+								voices={voices}
+								language={ebook?.language}
+								onSpeech={setSpeech}
+							/>
+						)}
 					</div>
 				)}
 				<section
@@ -528,9 +648,18 @@ const THEMES: Theme[] = ["light", "sepia", "dark"];
 function LookControls({
 	look,
 	onLook,
+	speech,
+	voices,
+	language,
+	onSpeech,
 }: {
 	look: Look;
 	onLook: (look: Look) => void;
+	/** The voice and speed, when this browser can read aloud. */
+	speech?: Speech;
+	voices: SpeechSynthesisVoice[];
+	language?: string;
+	onSpeech: (speech: Speech) => void;
 }) {
 	const at = FONT_SIZES.indexOf(look.fontSize);
 	return (
@@ -593,6 +722,38 @@ function LookControls({
 					{t("reader.larger")}
 				</button>
 			</div>
+			{speech && (
+				<>
+					<label className="flex flex-col gap-1">
+						<span>{t("reader.voice")}</span>
+						<select
+							value={pickVoice(voices, language, speech.voice)?.voiceURI ?? ""}
+							onChange={(e) => onSpeech({ ...speech, voice: e.target.value })}
+							className={`${control} min-w-0 max-w-full`}
+						>
+							{voices.map((voice) => (
+								<option key={voice.voiceURI} value={voice.voiceURI}>
+									{voice.name} ({voice.lang})
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="flex flex-col gap-1">
+						<span>{t("reader.rate")}</span>
+						<select
+							value={speech.rate}
+							onChange={(e) => onSpeech({ ...speech, rate: Number(e.target.value) })}
+							className={control}
+						>
+							{RATES.map((rate) => (
+								<option key={rate} value={rate}>
+									{t("reader.rateAt", { rate })}
+								</option>
+							))}
+						</select>
+					</label>
+				</>
+			)}
 		</fieldset>
 	);
 }
