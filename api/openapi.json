@@ -12510,12 +12510,16 @@
             "items": {
               "$ref": "#/components/schemas/Warning"
             }
+          },
+          "watches": {
+            "$ref": "#/components/schemas/Watches"
           }
         },
         "required": [
           "memory",
           "postgres",
           "disk",
+          "watches",
           "warnings"
         ]
       },
@@ -13058,6 +13062,9 @@
           "visibility": {
             "type": "string"
           },
+          "watch": {
+            "type": "boolean"
+          },
           "writable": {
             "type": "boolean"
           }
@@ -13068,6 +13075,7 @@
           "mode",
           "writable",
           "joinFormats",
+          "watch",
           "visibility",
           "createdAt",
           "filesPending",
@@ -15424,6 +15432,9 @@
           "visibility": {
             "type": "string"
           },
+          "watch": {
+            "type": "boolean"
+          },
           "writable": {
             "type": "boolean"
           }
@@ -15535,6 +15546,33 @@
         "required": [
           "kind",
           "commands"
+        ]
+      },
+      "Watches": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "limitReached": {
+            "type": "boolean"
+          },
+          "notified": {
+            "type": "integer"
+          },
+          "polled": {
+            "type": "integer"
+          },
+          "watches": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "watches",
+          "limit",
+          "notified",
+          "polled",
+          "limitReached"
         ]
       },
       "WishRequest": {

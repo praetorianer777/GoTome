@@ -311,6 +311,13 @@ export class FakeServer {
 			indexBytes: 300_000_000,
 			needFreeBytes: 11_000_000_000,
 		},
+		watches: {
+			watches: 120,
+			limit: 65_536,
+			notified: 1,
+			polled: 0,
+			limitReached: false,
+		},
 		warnings: [],
 	};
 	work = {
@@ -467,6 +474,7 @@ export class FakeServer {
 			mode: "managed",
 			writable: true,
 			joinFormats: false,
+			watch: true,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",

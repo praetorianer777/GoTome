@@ -160,6 +160,20 @@ function LibraryRow({ library }: { library: Library }) {
 					/>
 					<span>{t("libraries.joinFormats")}</span>
 				</label>
+				<label className="flex min-h-6 items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.watch}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { watch: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.watch")}</span>
+				</label>
 				{external && (
 					<label className="flex min-h-6 items-center gap-2">
 						<input

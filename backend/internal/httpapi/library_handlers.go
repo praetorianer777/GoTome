@@ -21,9 +21,11 @@ type libraryResponse struct {
 	Writable bool      `json:"writable"`
 	// JoinFormats: books of an ebook and its audiobook with the same title
 	// and author are made one by themselves, as a person's merge would.
-	JoinFormats bool      `json:"joinFormats"`
-	Visibility  string    `json:"visibility"`
-	CreatedAt   time.Time `json:"createdAt"`
+	JoinFormats bool `json:"joinFormats"`
+	// Watch: the folder is watched, and scanned soon after files in it change.
+	Watch      bool      `json:"watch"`
+	Visibility string    `json:"visibility"`
+	CreatedAt  time.Time `json:"createdAt"`
 	// RootPath and OwnerID are for those who manage storage. Where the files
 	// lie on the server is nothing a reader needs to be told.
 	RootPath *string    `json:"rootPath,omitempty"`
@@ -95,13 +97,15 @@ type updateLibraryRequest struct {
 	// JoinFormats, on, makes one book of an ebook and its audiobook of the
 	// same title and author in this library, by itself.
 	JoinFormats *bool `json:"joinFormats,omitempty"`
+	// Watch, on, scans the folder soon after files in it change.
+	Watch *bool `json:"watch,omitempty"`
 }
 
 func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
+		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
@@ -233,7 +237,7 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats})
+	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch})
 	if err != nil {
 		return libraryError(err)
 	}
