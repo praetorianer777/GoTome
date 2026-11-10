@@ -135,14 +135,15 @@ device-fixtures: | $(GO_CACHE) go-toolchain ## Write the device clients' test fi
 
 # The main views on a library of 50,000 books (test/scale_test.go), with the
 # plans of their queries written to .cache/scale-plans, and with the
-# app, which runs inside the test, held to the 2 GB a modest server gives it.
+# app, which runs inside the test, held to the 2 GB and two CPUs a modest
+# server gives it, as the database is (deploy/docker-compose.dev.yml).
 # Without the race detector, which would measure itself. Minutes, so not in
 # the gate.
 .PHONY: scale-test
 scale-test: | $(GO_CACHE) go-toolchain ## Time the main views at 50,000 books and check their plans, against the running stack
 	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
-	$(call go_run,--memory 2g --network $(STACK_NET) -e GOTOME_SCALE=1 -e GOTOME_SCALE_PLANS=/work/.cache/scale-plans \
+	$(call go_run,--memory 2g --cpus 2 --network $(STACK_NET) -e GOTOME_SCALE=1 -e GOTOME_SCALE_PLANS=/work/.cache/scale-plans \
 		-e GOTOME_TEST_DATABASE_URL="postgres://gotome:$$(docker compose exec -T db cat /secrets/db-password)@db:5432/gotome?sslmode=disable") \
 		go test -tags integration -count=1 -timeout 30m -v -run TestTheMainViewsAtFiftyThousandBooks ./test/
 
