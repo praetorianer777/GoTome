@@ -101,6 +101,9 @@ func searchWords(c Context) string {
 }
 
 func duration(d time.Duration) string {
+	if d < time.Millisecond {
+		return d.String()
+	}
 	if d >= 10*time.Second {
 		return fmt.Sprintf("%.1f s", d.Seconds())
 	}

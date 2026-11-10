@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,7 +79,7 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 	var results []Result
 	next := map[string]string{}
 	asked := false
-	over := false
+	var over []string
 	for _, v := range views {
 		r := Result{Name: v.Name, Rows: -1, Whole: WholeByDesign[v.Name]}
 		switch {
@@ -109,7 +110,8 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 		for try := 0; try <= o.Tries; try++ {
 			took, status, body, err := ask(ctx, handler, user, path, o.Timeout)
 			if errors.Is(err, errNoAnswer) {
-				r.Over, r.Not, over = o.Timeout, "over "+duration(o.Timeout), true
+				r.Over, r.Not = o.Timeout, "over "+duration(o.Timeout)
+				over = append(over, strconv.Quote(v.Name))
 				break
 			}
 			if err != nil {
@@ -134,8 +136,8 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 		}
 		results = append(results, r)
 	}
-	if over {
-		return results, ErrOverLimit
+	if len(over) > 0 {
+		return results, fmt.Errorf("%w: %s", ErrOverLimit, strings.Join(over, ", "))
 	}
 	return results, nil
 }

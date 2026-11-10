@@ -106,8 +106,10 @@ names another, and only reads: the database refuses every write on its
 connections, and no job is queued. It is light by design: one request to
 warm up, then the best of three per view, one view at a time with
 `-pause` (half a second) between, and `-timeout` (10 seconds) for each
-request; the first view that fails ends the run, naming the view and the
-status. `-skip "search by description,jobs"` leaves views out, and
+request; a view with no answer in that time is reported as "over 10 s" in its
+row and the run goes on, ending with an error that names those views; the
+first view that answers with a failure ends the run, naming the view and
+the status. `-skip "search by description,jobs"` leaves views out, and
 `search by description` needs the embedding model to run, here or on a
 server. The views marked in the last column read every book, as in the table
 above. The views are the list the scale test asks (`internal/perf`); one the
