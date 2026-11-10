@@ -126,7 +126,9 @@ func Check(address string) error {
 // hostPort is the host and port a URL is dialled at, as the transport
 // names it, or "" for what is not a web address.
 func hostPort(raw string) string {
-	if host, port, err := net.SplitHostPort(strings.TrimSpace(raw)); err == nil && host != "" && port != "" {
+	// A URL splits too ("https://idp.lan" as host "https", port "//idp.lan"),
+	// so only what has no scheme is taken as a host and port.
+	if host, port, err := net.SplitHostPort(strings.TrimSpace(raw)); err == nil && host != "" && port != "" && !strings.Contains(raw, "://") {
 		return strings.ToLower(net.JoinHostPort(host, port))
 	}
 	u, err := url.Parse(strings.TrimSpace(raw))
