@@ -97,8 +97,10 @@ test("an author's two spellings are made one, and a title's addition is left as 
 		expect(buttons[0]?.top).toBe(buttons[1]?.top);
 		expect(row?.height).toBeLessThan(90);
 	}
+	const dismissed = page.waitForResponse("**/api/v1/cleanup/dismiss");
 	await title.getByRole("button", { name: "Leave it" }).click();
 	await expect(title).toHaveCount(0);
+	expect((await dismissed).status()).toBe(204);
 	await page.reload();
 	await expect(
 		page.getByRole("button", { name: /^Title additions:/ }),

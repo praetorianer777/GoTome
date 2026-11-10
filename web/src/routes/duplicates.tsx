@@ -342,7 +342,7 @@ function Pair({
 					{t("duplicates.pairScore", { percent: percent(pair.score) })}
 				</span>
 			</div>
-			<div className="grid gap-3 sm:grid-cols-2">
+			<div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-x-3 sm:gap-y-0">
 				{pair.books.map((book, i) => {
 					const other = pair.books[1 - i];
 					return (
@@ -542,10 +542,12 @@ function BookCard({
 }) {
 	const titleOf = (x: BookSummary) => [x.title, x.subtitle].filter(Boolean).join(": ");
 	const titleDiffers = other !== undefined && titleOf(book) !== titleOf(other);
+	const rows = 1 + FIELDS.length + 1 + (decide && other ? 1 : 0);
 	return (
 		<article
 			aria-label={bookName(book)}
-			className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+			style={{ gridRow: `span ${rows}` }}
+			className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid sm:grid-rows-subgrid sm:gap-y-0 dark:border-slate-800 dark:bg-slate-900"
 		>
 			<div className="flex gap-3">
 				<Link
@@ -571,7 +573,10 @@ function BookCard({
 					{titleDiffers && <span className="sr-only">{t("duplicates.differs")}</span>}
 				</div>
 			</div>
-			<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+			<dl
+				style={{ gridRow: `span ${FIELDS.length + 1}` }}
+				className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 text-sm sm:mt-3 sm:grid-rows-subgrid"
+			>
 				{FIELDS.map((field) => {
 					const value = field.value(book, detail, library);
 					const loading = field.ofDetail === true && detail === undefined;
@@ -621,8 +626,8 @@ function FieldRow({
 }) {
 	return (
 		<>
-			<dt className="text-slate-600 dark:text-slate-400">{t(label)}</dt>
-			<dd className={`min-w-0 ${changed ? differs : ""}`}>
+			<dt className="py-0.5 text-slate-600 dark:text-slate-400">{t(label)}</dt>
+			<dd className={`min-w-0 py-0.5 ${changed ? differs : ""}`}>
 				{children}
 				{changed && <span className="sr-only"> ({t("duplicates.differs")})</span>}
 			</dd>
@@ -694,7 +699,7 @@ function KeepThis({
 	const pending = replace.isPending || merge.isPending;
 	const said = useId();
 	return (
-		<div className="mt-auto flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+		<div className="flex flex-col gap-2 border-t border-slate-200 pt-3 sm:mt-3 dark:border-slate-800">
 			<button
 				type="button"
 				disabled={pending}
