@@ -25,6 +25,26 @@ What changes for someone who runs or uses GOtome. The format follows
   score so you can look at a sample and accept the group. `gotome
   match-check` prints how many of the sampled books the rule would accept
   and how many of those are right.
+- Duplicate pairs the evidence leaves no doubt about can be resolved by
+  GOtome itself. On the Duplicates page each class (same file or same text,
+  nearly the same text, mostly the same text, one book holding the other
+  whole, one holding most of the other) shows its open pairs with a **Dry run**
+  and a **Run**. Books of the same text are made one: the book anyone reads
+  or set a field of by hand survives, the fields are decided one by one
+  (a locked field is never overwritten), and of two files of one format the
+  worse goes to the trash. Books that hold one another stay two and are
+  linked. A dry run lists what would be done and changes nothing; every run
+  shows under Changes and can be undone. The settings
+  `curation.duplicates.classes` (none by default) and
+  `curation.duplicates.onConflict` let a daily run handle new pairs.
+  `gotome duplicate-check` shows what the rules would do with a sample of
+  your pairs, naming no book ([docs/duplicates.md](docs/duplicates.md)).
+
+### Changed
+
+- Undoing a run under Changes is done by a job, so a run of hundreds of
+  merges can be taken back: the button answers at once and the run says
+  how far the undo has got.
 
 ## [0.16.0] - 2026-11-10
 

@@ -9,12 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -31,8 +34,12 @@ const (
 	OutcomeFailed      = "failed"
 )
 
-// ErrRunning is a run that still makes actions.
-var ErrRunning = errors.New("the run is still going")
+var (
+	// ErrRunning is a run that still makes actions.
+	ErrRunning = errors.New("the run is still going")
+	// ErrDryRun is a run that only said what it would do.
+	ErrDryRun = errors.New("the run changed nothing")
+)
 
 // Outcome is what undoing one action came to.
 type Outcome struct {
@@ -62,6 +69,10 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 		}
 		if a.State != "done" {
 			out.State = OutcomeAlready
+			return nil
+		}
+		if a.DryRun {
+			out.State, out.Message = OutcomeNotUndoable, "A dry run changed nothing."
 			return nil
 		}
 		if err := q.HoldLibrariesOfBooks(ctx, a.Books); err != nil {
@@ -203,31 +214,121 @@ type RunOutcome struct {
 	Actions []Outcome `json:"actions"`
 }
 
-// UndoRun undoes each action of the run that the scope sees, the last made
-// first, each in a transaction of its own.
-func (s *Service) UndoRun(ctx context.Context, scope library.Scope, id uuid.UUID) (RunOutcome, error) {
-	q := sqlc.New(s.pool)
-	run, err := q.GetCurationRun(ctx, sqlc.GetCurationRunParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return RunOutcome{}, ErrNotFound
-	}
-	if err != nil {
-		return RunOutcome{}, err
-	}
-	if run.State == StateRunning {
-		return RunOutcome{}, ErrRunning
-	}
-	ids, err := q.ListCurationActionIDsToUndo(ctx, sqlc.ListCurationActionIDsToUndoParams{RunID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
-	if err != nil {
-		return RunOutcome{}, err
-	}
-	out := RunOutcome{RunID: id, Actions: []Outcome{}}
-	for _, aid := range ids {
-		o, err := s.UndoAction(ctx, scope, aid)
-		if err != nil {
-			return out, err
+// undoBudget is how long one pass of an undo works before it hands the rest
+// to the next, so that a run of hundreds of actions does not hold a worker.
+const undoBudget = 20 * time.Second
+
+// undoBatch is how many actions one look into the run's list takes.
+const undoBatch = 50
+
+// RequestUndo asks for the run the scope sees to be undone by its job, and
+// answers at once. Asking again while it is being undone asks for nothing.
+func (s *Service) RequestUndo(ctx context.Context, scope library.Scope, id uuid.UUID) error {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if _, err := q.GetCurationRun(ctx, sqlc.GetCurationRunParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll}); errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		} else if err != nil {
+			return err
 		}
-		out.Actions = append(out.Actions, o)
+		n, err := q.RequestRunUndo(ctx, sqlc.RequestRunUndoParams{ID: id, Viewer: &scope.Viewer, SeesAll: scope.SeesAll})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			flags, err := q.GetCurationRunFlags(ctx, id)
+			switch {
+			case err != nil:
+				return err
+			case flags.Undoing:
+				return nil
+			case flags.DryRun:
+				return ErrDryRun
+			default:
+				return ErrRunning
+			}
+		}
+		_, err = s.Queue.InsertTx(ctx, tx, UndoArgs{RunID: id}, jobs.InsertOpts{
+			Queue: jobs.QueueMetadata, Unique: true, MaxAttempts: undoAttempts,
+		})
+		return err
+	})
+}
+
+// WorkUndo undoes the actions of a run that was asked to be undone, the last
+// made first and each in a transaction of its own, for a while. It says what
+// the pass undid and whether it got to the end. An action left because
+// its books changed since is not tried again by the same request.
+func (s *Service) WorkUndo(ctx context.Context, id uuid.UUID) (RunOutcome, bool, error) {
+	out := RunOutcome{RunID: id, Actions: []Outcome{}}
+	q := sqlc.New(s.pool)
+	run, err := q.GetRunUndo(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && run.UndoRequestedAt == nil {
+		return out, true, nil
 	}
-	return out, nil
+	if err != nil {
+		return out, false, err
+	}
+	scope := library.Scope{SeesAll: run.UndoSeesAll}
+	if run.UndoViewer != nil {
+		scope.Viewer = *run.UndoViewer
+	} else if !scope.SeesAll {
+		return out, true, q.ClearRunUndo(ctx, id)
+	}
+	cursorAt, cursorID := run.UndoCursorAt, run.UndoCursorID
+	started := time.Now()
+	for time.Since(started) < undoBudget {
+		ids, err := q.ListCurationActionIDsToUndo(ctx, sqlc.ListCurationActionIDsToUndoParams{
+			RunID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll, BeforeAt: cursorAt, BeforeID: cursorID, MaxRows: undoBatch,
+		})
+		if err != nil {
+			return out, false, err
+		}
+		if len(ids) == 0 {
+			return out, true, q.ClearRunUndo(ctx, id)
+		}
+		for _, a := range ids {
+			o, err := s.UndoAction(ctx, scope, a.ID)
+			if err != nil {
+				return out, false, err
+			}
+			out.Actions = append(out.Actions, o)
+			at, aid := a.CreatedAt, a.ID
+			cursorAt, cursorID = &at, &aid
+			if err := q.AdvanceRunUndo(ctx, sqlc.AdvanceRunUndoParams{ID: id, UndoCursorAt: cursorAt, UndoCursorID: cursorID}); err != nil {
+				return out, false, err
+			}
+		}
+	}
+	return out, false, nil
+}
+
+const (
+	undoKind     = "curation.undo_run"
+	undoAttempts = 5
+)
+
+// UndoArgs is the job that undoes a run.
+type UndoArgs struct {
+	RunID uuid.UUID `json:"runId"`
+}
+
+// Kind names the job in the queue. It is stored with every job, so it stays.
+func (UndoArgs) Kind() string { return undoKind }
+
+// UndoWorker runs UndoArgs.
+type UndoWorker struct {
+	river.WorkerDefaults[UndoArgs]
+	Service *Service
+}
+
+func (w *UndoWorker) Work(ctx context.Context, job *river.Job[UndoArgs]) error {
+	_, done, err := w.Service.WorkUndo(ctx, job.Args.RunID)
+	if err != nil {
+		return err
+	}
+	if !done {
+		return river.JobSnooze(time.Second)
+	}
+	return nil
 }

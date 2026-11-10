@@ -771,8 +771,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the book) are recorded. `curation.WithRun` puts later rules into a run of
   their own; `curation.Deferred(ctx)` holds the write-back of an automatic run
   until `Confirm`.
-- Undo (`POST /curation/actions/{id}/undo`, `/curation/runs/{id}/undo`) is one
-  transaction per action, holding the books' libraries first: the files the
+- Undo (`POST /curation/actions/{id}/undo`; a run's is the job described under
+  Automatic duplicates) is one transaction per action, holding the books' libraries first: the files the
   action trashed must still lie in the trash (else `notUndoable`); the rows
   now must equal the action's `after` (tables marked `Quiet` or unsettled
   suggestions excepted), else the action is a `conflict` and is left as it
@@ -816,6 +816,40 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   snapshots the book's edit tables and its `metadata_matches`; a group
   accepted by a person (`provider` and `band`, a tenth of the score) skips the
   agreement. `match-check` counts the agreement rule (`metadata.Agreement`).
+
+## Automatic duplicates
+
+- `dedupe.Classify` (#466) gives an open pair its class from its stored
+  evidence, nothing else: `same_text` (sha256 or content evidence),
+  `overlap_high` (Jaccard 0.95 and up), `overlap_mid` (0.8 to 0.95),
+  `contained` (one holds 0.95 of the other, Jaccard under 0.5) and
+  `part_inside` (0.8 to 0.95). The first three merge, the last two keep both
+  books, link them (`book_relations` kind `contains` / `contained_in`, for the
+  smaller ID's book) and set the pair `kept_both`. Linking needs overlap to be
+  all the evidence; an ISBN beside it makes the pair a person's.
+- `internal/autodupe` plans (`PlanFor`: survivor by `Survivor`, fields by
+  `reconcile` with `Merging`, copies to trash by `Copies`) and does it, one
+  action per pair in a `curation_runs` row of rule `auto-duplicates`
+  (`automatic`, so its trash waits for `Confirm`). A merge is
+  `ingest.Service.MergeAutomatically`: the fields taken (and the other's tags
+  and credits added), the copies of a file trashed as `Replace` does, one
+  curation action. A dry run (`curation_runs.dry_run`) records actions that
+  changed nothing (`Service.RecordPlan`, kinds `merge`, `replace`, `link`, and
+  `skip` for a pair left) and cannot be undone or confirmed. Pairs are
+  taken in ID order and the run keeps its place (`resume_after`), so the
+  `duplicates.run` job (queue `metadata`) can snooze; one run goes at a time
+  (advisory lock). `POST /curation/duplicates` queues it; the daily
+  `duplicates.daily` job queues one for `curation.duplicates.classes` as no
+  person's (an administrator's scope that sees every library) and leaves no
+  run behind when it found nothing. `curation.duplicates.onConflict`: `skip`
+  leaves a pair with a field in conflict whole, `mergeAgreeing` merges and
+  the survivor keeps its own value there.
+- Undoing a whole run (`POST /curation/runs/{id}/undo`) is a job (`curation.undo_run`, `Service.RequestUndo` then
+  `WorkUndo`, which remembers the last action it tried in
+  `undo_cursor_*` so a conflict is not retried); it answers 202 and the run
+  says `undoing`. A dry run, of either kind, has nothing to undo.
+- `gotome duplicate-check` (`autodupe.Service.Check`) prints counts and field
+  names for a sample per class, never a title.
 
 ## Metadata providers
 

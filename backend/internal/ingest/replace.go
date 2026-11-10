@@ -24,12 +24,7 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 	if err != nil {
 		return err
 	}
-	type move struct {
-		from, to string
-		library  uuid.UUID
-		root     string
-	}
-	var made []move
+	var made []fileMove
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{keep, gone}); err != nil {
@@ -43,37 +38,11 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 		if err != nil {
 			return err
 		}
-		var pending []move
-		for _, id := range files {
-			f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
-			if err != nil {
-				return err
-			}
-			if !f.Writable {
-				return ErrReadOnly
-			}
-			if len(pending) == 0 {
-				if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
-					return err
-				}
-				if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
-					return err
-				}
-			}
-			if err := q.SetFileTrashed(ctx, sqlc.SetFileTrashedParams{ID: id, By: &scope.Viewer}); err != nil {
-				return err
-			}
-			if err := q.DropFileSignature(ctx, id); err != nil {
-				return err
-			}
-			pending = append(pending, move{
-				from:    filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath)),
-				to:      trashPath(f.RootPath, id, f.RelPath),
-				library: f.LibraryID,
-				root:    f.RootPath,
-			})
+		pending, err := s.trashFilesTx(ctx, tx, scope, files)
+		if err != nil {
+			return err
 		}
-		if err := s.mergeTx(ctx, tx, scope, keep, gone, fields); err != nil {
+		if err := s.mergeTx(ctx, tx, scope, keep, gone, fields, nil); err != nil {
 			return err
 		}
 		if err := q.ProgressByFraction(ctx, keep); err != nil {
@@ -87,23 +56,81 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 		}); err != nil {
 			return err
 		}
-		// Last, so that nothing after them can fail but the commit.
-		for _, m := range pending {
-			made = append(made, m)
-			if err := os.MkdirAll(filepath.Dir(m.to), 0o755); err != nil {
-				return folderError(m.library, m.root, err)
-			}
-			if err := os.Rename(m.from, m.to); err != nil {
-				return folderError(m.library, m.root, err)
-			}
-		}
-		return nil
+		return s.moveFiles(pending, &made)
 	})
 	if err != nil {
-		for _, m := range made {
-			s.moveBack(m.to, m.from)
-			_ = os.Remove(filepath.Dir(m.to))
-		}
+		s.moveFilesBack(made)
 	}
 	return s.noteUnwritable(ctx, err)
+}
+
+// fileMove is a file's move into the trash, made once its record is.
+type fileMove struct {
+	bookID  uuid.UUID
+	from    string
+	to      string
+	library uuid.UUID
+	root    string
+}
+
+// trashFilesTx records the files, of libraries the scope sees and that
+// GOtome may change, as trashed, and says where each is to move to. The
+// moves are made last, by moveFiles, so that nothing after them can fail
+// but the commit.
+func (s *Service) trashFilesTx(ctx context.Context, tx pgx.Tx, scope library.Scope, ids []uuid.UUID) ([]fileMove, error) {
+	q := sqlc.New(tx)
+	var pending []fileMove
+	for _, id := range ids {
+		f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		if err != nil {
+			return nil, err
+		}
+		if !f.Writable {
+			return nil, ErrReadOnly
+		}
+		if len(pending) == 0 {
+			if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+				return nil, err
+			}
+			if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
+				return nil, err
+			}
+		}
+		if err := q.SetFileTrashed(ctx, sqlc.SetFileTrashedParams{ID: id, By: &scope.Viewer}); err != nil {
+			return nil, err
+		}
+		if err := q.DropFileSignature(ctx, id); err != nil {
+			return nil, err
+		}
+		pending = append(pending, fileMove{
+			bookID:  f.BookID,
+			from:    filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath)),
+			to:      trashPath(f.RootPath, id, f.RelPath),
+			library: f.LibraryID,
+			root:    f.RootPath,
+		})
+	}
+	return pending, nil
+}
+
+// moveFiles makes the moves, adding each to made as it is done.
+func (s *Service) moveFiles(pending []fileMove, made *[]fileMove) error {
+	for _, m := range pending {
+		*made = append(*made, m)
+		if err := os.MkdirAll(filepath.Dir(m.to), 0o755); err != nil {
+			return folderError(m.library, m.root, err)
+		}
+		if err := os.Rename(m.from, m.to); err != nil {
+			return folderError(m.library, m.root, err)
+		}
+	}
+	return nil
+}
+
+// moveFilesBack takes back the moves that were made before a record failed.
+func (s *Service) moveFilesBack(made []fileMove) {
+	for _, m := range made {
+		s.moveBack(m.to, m.from)
+		_ = os.Remove(filepath.Dir(m.to))
+	}
 }

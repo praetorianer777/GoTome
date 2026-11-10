@@ -11,6 +11,43 @@ import (
 	"github.com/google/uuid"
 )
 
+const addMissingContributors = `-- name: AddMissingContributors :exec
+INSERT INTO book_contributors (book_id, author_id, role, position)
+SELECT $1::uuid, c.author_id, c.role,
+       ((SELECT coalesce(max(m.position), -1) FROM book_contributors m WHERE m.book_id = $1) + row_number() OVER (ORDER BY c.position))::int
+FROM book_contributors c
+WHERE c.book_id = $2
+  AND NOT EXISTS (SELECT 1 FROM book_contributors m WHERE m.book_id = $1 AND m.author_id = c.author_id AND m.role = c.role)
+ON CONFLICT DO NOTHING
+`
+
+type AddMissingContributorsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The credits of the other book that this one lacks, after its own.
+func (q *Queries) AddMissingContributors(ctx context.Context, arg AddMissingContributorsParams) error {
+	_, err := q.db.Exec(ctx, addMissingContributors, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const addMissingTags = `-- name: AddMissingTags :exec
+INSERT INTO book_tags (book_id, tag_id)
+SELECT $1::uuid, t.tag_id FROM book_tags t WHERE t.book_id = $2
+ON CONFLICT DO NOTHING
+`
+
+type AddMissingTagsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+func (q *Queries) AddMissingTags(ctx context.Context, arg AddMissingTagsParams) error {
+	_, err := q.db.Exec(ctx, addMissingTags, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const copyBookFields = `-- name: CopyBookFields :exec
 UPDATE books s SET
     title               = CASE WHEN 'title' = ANY($1::text[]) THEN l.title ELSE s.title END,

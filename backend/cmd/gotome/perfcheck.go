@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -125,25 +126,28 @@ func perfCheck(args []string) error {
 	defer index.Close()
 	health := resources.NewService(pool)
 	health.Embedding, health.Server = store.Embedding, store.EmbeddingServer
+	autoDuplicates := autodupe.NewService(pool, books, quiet)
+	autoDuplicates.Settings = store
 	server := &httpapi.Server{
-		Log:        quiet,
-		DB:         pool,
-		Auth:       accounts,
-		Settings:   store,
-		Libraries:  libraries,
-		Scans:      scans,
-		Books:      books,
-		Covers:     coverStore,
-		Metadata:   meta,
-		Matches:    matches,
-		Bulk:       changes,
-		Reading:    reading.NewService(pool),
-		Imports:    readimport.NewService(pool, books, quiet),
-		Shelves:    shelves.NewService(pool, books),
-		Search:     search.NewTantivySearch(pool, books, index),
-		Index:      search.NewIndex(pool, quiet, engineVersion),
-		Duplicates: dedupe.NewService(pool, books, quiet),
-		Similar:    vectors,
+		Log:            quiet,
+		DB:             pool,
+		Auth:           accounts,
+		Settings:       store,
+		Libraries:      libraries,
+		Scans:          scans,
+		Books:          books,
+		Covers:         coverStore,
+		Metadata:       meta,
+		Matches:        matches,
+		Bulk:           changes,
+		Reading:        reading.NewService(pool),
+		Imports:        readimport.NewService(pool, books, quiet),
+		Shelves:        shelves.NewService(pool, books),
+		Search:         search.NewTantivySearch(pool, books, index),
+		Index:          search.NewIndex(pool, quiet, engineVersion),
+		Duplicates:     dedupe.NewService(pool, books, quiet),
+		AutoDuplicates: autoDuplicates,
+		Similar:        vectors,
 		Genres: genres.NewService(pool, vectors, func(ctx context.Context) (string, error) {
 			return store.Text(ctx, settings.GenreSuggestions)
 		}, quiet),

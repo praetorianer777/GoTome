@@ -87,6 +87,12 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | overview of a library | 40 ms | 40 ms | counts every book and file |
 | overview: work | 166 ms | 145 ms | counts every book and file |
 
+The duplicate rules (#466) are a job, not a view. The scale test counts the
+classes of the seed's open pairs (`resolvable duplicates`, 24 ms) and runs a
+dry run over 907 of them, 20 pairs of each class mixed, on two CPUs: 21
+seconds, 22 ms a pair. It is held to 150 ms a pair, and no query of it may
+read the books, their files or their chunks from end to end.
+
 With vectors of 1,024 numbers and two CPUs (2026-11-10, #455) the views that
 compare vectors and the facets of the quick search became:
 

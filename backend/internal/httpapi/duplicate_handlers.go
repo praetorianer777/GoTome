@@ -3,12 +3,14 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -249,5 +251,73 @@ func (s *Server) checkDuplicates(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	writeJSON(w, r, http.StatusAccepted, duplicateCheckResult{Books: n})
+	return nil
+}
+
+type duplicateClassCount struct {
+	// Class is one of same_text, overlap_high, overlap_mid, contained and
+	// part_inside.
+	Class string `json:"class" enum:"same_text,overlap_high,overlap_mid,contained,part_inside"`
+	// Pairs is how many open pairs of two books of one library the caller sees
+	// fall in it.
+	Pairs int `json:"pairs"`
+	// Merges says whether the pairs are made one book; else they are kept and
+	// linked.
+	Merges bool `json:"merges"`
+	// Daily says that the settings have the class resolved every day.
+	Daily bool `json:"daily"`
+}
+
+type duplicateClassList struct {
+	Classes []duplicateClassCount `json:"classes"`
+}
+
+type duplicateRunRequest struct {
+	Classes []string `json:"classes" doc:"The classes to resolve, from the list of classes."`
+	DryRun  bool     `json:"dryRun" doc:"Record what would be done, with the reasons, and change nothing."`
+}
+
+type duplicateRunStarted struct {
+	// RunID is the run that records it, to follow on the changes page.
+	RunID uuid.UUID `json:"runId"`
+	// DryRun says that the run only records what it would do.
+	DryRun bool `json:"dryRun"`
+	// Pairs is how many open pairs of the classes it starts with.
+	Pairs int `json:"pairs"`
+}
+
+func (s *Server) listDuplicateClasses(w http.ResponseWriter, r *http.Request) error {
+	scope := library.ScopeOf(*UserFrom(r.Context()))
+	counts, err := s.AutoDuplicates.Counts(r.Context(), scope)
+	if err != nil {
+		return err
+	}
+	daily, err := s.AutoDuplicates.Classes(r.Context())
+	if err != nil {
+		return err
+	}
+	out := duplicateClassList{Classes: make([]duplicateClassCount, len(dedupe.AutoClasses))}
+	for i, c := range dedupe.AutoClasses {
+		out.Classes[i] = duplicateClassCount{Class: c, Pairs: counts[c], Merges: dedupe.Merges(c), Daily: slices.Contains(daily, c)}
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func (s *Server) startDuplicateRun(w http.ResponseWriter, r *http.Request) error {
+	var req duplicateRunRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	started, err := s.AutoDuplicates.Start(r.Context(), library.ScopeOf(*UserFrom(r.Context())), req.Classes, req.DryRun)
+	switch {
+	case errors.Is(err, autodupe.ErrClasses):
+		return ErrValidation(map[string]string{"classes": "Choose at least one of same_text, overlap_high, overlap_mid, contained and part_inside."})
+	case errors.Is(err, autodupe.ErrBusy):
+		return ErrConflict("A run of the duplicate rules is going.")
+	case err != nil:
+		return err
+	}
+	writeJSON(w, r, http.StatusAccepted, duplicateRunStarted{RunID: started.RunID, DryRun: req.DryRun, Pairs: started.Pairs})
 	return nil
 }

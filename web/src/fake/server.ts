@@ -35,6 +35,7 @@ import type { Library, Scan } from "@/libraries/api";
 import type { AutoCleanupCounts, AutoMatchCounts } from "@/curation/auto";
 import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
+import type { CurationAction, CurationRun, DuplicateClassCount } from "@/curation/api";
 import { type DuplicatePair, overlapOf } from "@/duplicates/api";
 import type { TrashedFile } from "@/trash/api";
 import type { LinkedIdentity } from "@/users/api";
@@ -374,6 +375,17 @@ export class FakeServer {
 	mergedInto: Record<string, string> = {};
 	/** Set to refuse replacing, as a folder GOtome cannot write to does. */
 	replaceRefused?: string;
+	/** The classes of pairs the rules resolve, with their open pairs. */
+	autoClasses: DuplicateClassCount[] = [
+		{ class: "same_text", pairs: 3, merges: true, daily: false },
+		{ class: "overlap_high", pairs: 5, merges: true, daily: true },
+		{ class: "overlap_mid", pairs: 0, merges: true, daily: false },
+		{ class: "contained", pairs: 2, merges: false, daily: false },
+		{ class: "part_inside", pairs: 1, merges: false, daily: false },
+	];
+	/** The runs of curation, the newest first, and each one's actions. */
+	runs: CurationRun[] = [];
+	runActions: Record<string, CurationAction[]> = {};
 
 	/** Adds an open pair of two of the books, with its evidence. */
 	withPair(id: string, a: string, b: string, evidence: DuplicatePair["evidence"]): this {
@@ -611,6 +623,42 @@ export class FakeServer {
 					(!q.get("kind") || p.evidence.some((e) => e.kind === q.get("kind"))),
 			);
 			return Response.json({ pairs });
+		}
+		if (path === "/curation/duplicates") {
+			if (request.method === "GET") {
+				return Response.json({ classes: this.autoClasses });
+			}
+			const asked = body as { classes: DuplicateClassCount["class"][]; dryRun: boolean };
+			const pairs = this.autoClasses
+				.filter((c) => asked.classes.includes(c.class))
+				.reduce((n, c) => n + c.pairs, 0);
+			const id = `run-${this.runs.length + 1}`;
+			this.runs.unshift({
+				id, kind: "duplicates", rule: "auto-duplicates", dryRun: asked.dryRun, automatic: true,
+				state: "done", createdAt: "2026-11-10T08:00:00Z", actions: pairs, undone: 0, skipped: 0, undoing: false,
+			});
+			this.runActions[id] = Array.from({ length: pairs }, (_, i) => ({
+				id: `${id}-action-${i + 1}`, runId: id, kind: asked.dryRun ? "replace" : "merge", rule: asked.classes[0],
+				reason: "same bytes or same text; kept one book because it is older", state: "done", trashedFiles: 0,
+				createdAt: "2026-11-10T08:00:00Z",
+				books: [{ id: "book-1", title: "Emma", changes: asked.dryRun ? [] : [{ field: "files", before: "1", after: "2" }] }],
+			}));
+			return Response.json({ runId: id, dryRun: asked.dryRun, pairs }, { status: 202 });
+		}
+		if (path === "/curation/runs") {
+			return Response.json({ runs: this.runs });
+		}
+		const runPath = /^\/curation\/runs\/([^/]+)(\/undo)?$/.exec(path);
+		if (runPath) {
+			const run = this.runs.find((r) => r.id === runPath[1]);
+			if (!run) {
+				return Response.json({ error: { code: "not_found", message: "There is no such run." } }, { status: 404 });
+			}
+			if (runPath[2]) {
+				run.undoing = true;
+				return Response.json({ runId: run.id }, { status: 202 });
+			}
+			return Response.json({ run, actions: this.runActions[run.id] ?? [] });
 		}
 		const replacing = /^\/duplicates\/([^/]+)\/replace$/.exec(path);
 		if (replacing && request.method === "POST") {

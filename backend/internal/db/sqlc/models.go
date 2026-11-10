@@ -256,18 +256,28 @@ type CurationAction struct {
 }
 
 type CurationRun struct {
-	ID           uuid.UUID
-	Kind         string
-	Rule         *string
-	StartedBy    *uuid.UUID
-	DryRun       bool
-	Automatic    bool
-	State        string
-	BulkChangeID *uuid.UUID
-	CreatedAt    time.Time
-	FinishedAt   *time.Time
-	ConfirmedAt  *time.Time
-	UndoneAt     *time.Time
+	ID              uuid.UUID
+	Kind            string
+	Rule            *string
+	StartedBy       *uuid.UUID
+	DryRun          bool
+	Automatic       bool
+	State           string
+	BulkChangeID    *uuid.UUID
+	CreatedAt       time.Time
+	FinishedAt      *time.Time
+	ConfirmedAt     *time.Time
+	UndoneAt        *time.Time
+	Classes         []string
+	ResumeAfter     *uuid.UUID
+	Skipped         int32
+	ScopeViewer     *uuid.UUID
+	ScopeSeesAll    bool
+	UndoRequestedAt *time.Time
+	UndoViewer      *uuid.UUID
+	UndoSeesAll     bool
+	UndoCursorAt    *time.Time
+	UndoCursorID    *uuid.UUID
 }
 
 type Delivery struct {

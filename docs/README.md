@@ -41,6 +41,9 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Your reading history and importing it](importing-reading-history.md):
   books you read but do not own, notes, and the Goodreads and StoryGraph
   import.
+- [Resolving duplicates by themselves](duplicates.md): the classes of
+  duplicate pairs the rules merge or link, dry runs, undo, and measuring
+  them with `gotome duplicate-check`.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
 - [Search index](search-index.md): what is rebuilt when, and by hand.

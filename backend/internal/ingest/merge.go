@@ -76,7 +76,7 @@ func (s *Service) Merge(ctx context.Context, scope library.Scope, into, from uui
 		if err != nil {
 			return err
 		}
-		if err := s.mergeTx(ctx, tx, scope, into, from, fields); err != nil {
+		if err := s.mergeTx(ctx, tx, scope, into, from, fields, nil); err != nil {
 			return err
 		}
 		return pending.Done(ctx, tx, curation.Record{
@@ -124,8 +124,10 @@ func (s *Service) prepareMerge(ctx context.Context, scope library.Scope, into, f
 	return into, from, fields, nil
 }
 
-// mergeTx is the merge, in the transaction given.
-func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, into, from uuid.UUID, fields []string) error {
+// mergeTx is the merge, in the transaction given. Of the fields in union
+// (tags and contributors) the surviving book keeps its own and gains the
+// other's it lacks.
+func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, into, from uuid.UUID, fields, union []string) error {
 	q := sqlc.New(tx)
 	locked, err := q.LockBooksForMerge(ctx, sqlc.LockBooksForMergeParams{
 		Ids: []uuid.UUID{into, from}, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
@@ -158,6 +160,19 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 			return err
 		}
 		if err := q.CopyTags(ctx, sqlc.CopyTagsParams{IntoBook: into, FromBook: from}); err != nil {
+			return err
+		}
+	}
+	if slices.Contains(union, catalog.FieldContributors) && !slices.Contains(fields, catalog.FieldContributors) {
+		if err := q.AddMissingContributors(ctx, sqlc.AddMissingContributorsParams{IntoBook: into, FromBook: from}); err != nil {
+			return err
+		}
+		if err := q.RefreshAuthorSort(ctx, into); err != nil {
+			return err
+		}
+	}
+	if slices.Contains(union, catalog.FieldTags) && !slices.Contains(fields, catalog.FieldTags) {
+		if err := q.AddMissingTags(ctx, sqlc.AddMissingTagsParams{IntoBook: into, FromBook: from}); err != nil {
 			return err
 		}
 	}

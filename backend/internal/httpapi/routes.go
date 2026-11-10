@@ -621,8 +621,19 @@ func (s *Server) routes() []Route {
 		},
 		{
 			Method: http.MethodPost, Path: "/curation/runs/{runId}/undo", ID: "undoCurationRun",
-			Summary: "Undo every action of a run that is not undone; one whose books changed since is left and reported", Tag: "books",
-			Response: curationUndone{}, Permission: auth.MetadataEdit, Handler: s.undoCurationRun,
+			Summary: "Undo every action of a run that is not undone, in a job; one whose books changed since is left and reported on the action. The run says undoing until it is done", Tag: "books",
+			Response: curationUndoQueued{}, Status: http.StatusAccepted, Permission: auth.MetadataEdit, Handler: s.undoCurationRun,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/duplicates", ID: "listDuplicateClasses",
+			Summary: "How many open pairs of duplicates the rules can resolve by themselves, per class, and which classes the settings have them resolve every day", Tag: "books",
+			Response: duplicateClassList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listDuplicateClasses,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/duplicates", ID: "startDuplicateRun",
+			Summary: "Resolve the open pairs of the classes chosen in a job: merge books of the same text, link books that hold one another; a dry run records what it would do and changes nothing", Tag: "books",
+			Request: duplicateRunRequest{}, Response: duplicateRunStarted{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.startDuplicateRun,
 		},
 		{
 			Method: http.MethodPost, Path: "/curation/runs/{runId}/confirm", ID: "confirmCurationRun",

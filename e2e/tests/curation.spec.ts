@@ -55,8 +55,8 @@ test("a merge shows under Changes with its before and after, and undoing the run
 	await expect(action.getByRole("row", { name: "Files Before: 1 After: 2" })).toBeVisible();
 
 	await run.getByRole("button", { name: /^Undo the run of/ }).click();
-	await expect(run.getByRole("status")).toHaveText("1 undone, 0 left as they are.");
-	await expect(run).toContainText("Undone");
+	// A job undoes the run; the page follows it.
+	await expect(run).toContainText("Undone", { timeout: 30_000 });
 
 	for (const [id, title] of [[kept, `Kept ${stamp}`], [merged, `Merged ${stamp}`]] as const) {
 		const book = await (await page.request.get(`/api/v1/books/${id}`)).json();
