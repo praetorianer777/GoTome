@@ -27,6 +27,16 @@ What changes for someone who runs or uses GOtome. The format follows
   lists every field side by side, not only the ones that differ: equal fields
   are plain, differing ones highlighted and ticked as before, empty ones
   marked. On a phone the two sides are stacked.
+- On a wide window each clean-up suggestion is one row, with its buttons at
+  the right end, instead of three or four lines.
+- On the clean-up page a suggestion goes away as soon as you click it, and
+  comes back with the error if the server refuses; applying or dismissing one
+  no longer works out every suggestion of its kind first.
+
+### Fixed
+
+- On the duplicates page the two "Keep this" buttons of a pair stand at the
+  same height whatever the books' titles say, and the books' details line up.
 
 ## [0.14.1] - 2026-11-10
 

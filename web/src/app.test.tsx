@@ -7270,6 +7270,19 @@ describe("cleaning up how books are described", () => {
 		});
 	});
 
+	it("brings a suggestion back with the error when the server refuses it", async () => {
+		const person = userEvent.setup();
+		renderApp("/cleanup?kind=titles");
+		await screen.findByText("Das letzte Evangelium");
+		server.cleanup = server.cleanup.filter((s) => s.kind !== "titles");
+		await person.click(screen.getByRole("button", { name: "Leave it" }));
+		expect(await screen.findByRole("alert")).toHaveTextContent(
+			"There is no such suggestion",
+		);
+		expect(screen.getByText("Das letzte Evangelium")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Leave it" })).toBeEnabled();
+	});
+
 	it("keeps a spelling typed in, of the same name", async () => {
 		const person = userEvent.setup();
 		renderApp("/cleanup");

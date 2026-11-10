@@ -70,3 +70,45 @@ test("a book uploaded twice with other details shows as a pair of cards, and is 
 		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
 	).toBe(204);
 });
+
+test("the two Keep this buttons of a pair line up whatever the titles say", async ({
+	page,
+}, testInfo) => {
+	test.setTimeout(60_000);
+	const stamp = `${testInfo.project.name} ${Date.now()}`;
+	await openSignedIn(page);
+	const created = await page.request.post("/api/v1/libraries", {
+		data: { name: `Buttons ${stamp}`, mode: "managed", visibility: "private" },
+	});
+	const library = (await created.json()).id as string;
+	const long = `Short ${stamp}`;
+	const longer = `The very long title of the other book of this pair, which goes on and on so that the sentence naming it takes many lines ${stamp}`;
+	for (const title of [long, longer]) {
+		await page.request.post(`/api/v1/libraries/${library}/uploads`, {
+			multipart: {
+				file: {
+					name: `${title.slice(0, 40)}.epub`,
+					mimeType: "application/epub+zip",
+					buffer: makeEpub(title, 2, `${title} tag`, false, {
+						1: `Only in ${stamp}.`,
+					}),
+				},
+			},
+		});
+	}
+	await page.setViewportSize({ width: 900, height: 1000 });
+	await expect(async () => {
+		await page.goto(`/duplicates?library=${library}`);
+		await expect(
+			page.getByRole("button", { name: /^Keep this/ }),
+		).toHaveCount(2, { timeout: 2_000 });
+	}).toPass({ timeout: 30_000 });
+	const [a, b] = await page
+		.getByRole("button", { name: /^Keep this/ })
+		.evaluateAll((all) => all.map((x) => x.getBoundingClientRect().top));
+	expect(Math.abs((a ?? 0) - (b ?? 1))).toBeLessThanOrEqual(1);
+
+	expect(
+		(await page.request.delete(`/api/v1/libraries/${library}`)).status(),
+	).toBe(204);
+});
