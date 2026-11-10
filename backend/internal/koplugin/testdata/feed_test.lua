@@ -34,7 +34,7 @@ check("long names cut at a character", long, string.rep("ä", 40) .. ".epub")
 
 local taken = { ["/books/Emma.epub"] = true, ["/books/Emma (2).epub"] = true }
 check("free path", feed.free_path("/books", "Emma.epub", function(p) return taken[p] end), "/books/Emma (3).epub")
-check("free path at once", feed.free_path("/books", "Dune.epub", function(p) return taken[p] end), "/books/Dune.epub")
+check("free path at once", feed.free_path("/books", "Dusk.epub", function(p) return taken[p] end), "/books/Dusk.epub")
 
 check("absolute", feed.absolute("https://books.example.org/gotome", "/api/v1/opds/device/files/1"),
     "https://books.example.org/api/v1/opds/device/files/1")

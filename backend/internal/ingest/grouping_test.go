@@ -188,8 +188,8 @@ func TestCompareNatural(t *testing.T) {
 // every file of a known format lands in exactly one group, and the parts of a
 // group are numbered without gaps.
 func FuzzGroupUnit(f *testing.F) {
-	f.Add("Dusk", "01.mp3\n02.mp3\nDune.epub")
-	f.Add("a/b", "CD1/x.mp3\nDune (1).m4b\nDune (2).m4b\n\x00.pdf")
+	f.Add("Dusk", "01.mp3\n02.mp3\nDusk.epub")
+	f.Add("a/b", "CD1/x.mp3\nDusk (1).m4b\nDusk (2).m4b\n\x00.pdf")
 	f.Fuzz(func(t *testing.T, unit, names string) {
 		var paths []string
 		for _, name := range strings.Split(names, "\n") {
