@@ -9,7 +9,7 @@ screenshots: | $(NPM_CACHE) ## Make docs/screenshots from a fresh stack (make up
 	@[ -f $(STACK_ENV_FILE) ] && docker compose ps --status running --services 2>/dev/null | grep -qx app \
 		|| { echo "The stack for this checkout is not running. Start it with make up, then run this again."; exit 1; }
 	@[ -d $(ROOT)/web/demo/files ] || { echo "No books in web/demo/files: run make sample-books first."; exit 1; }
-	mkdir -p $(SHOTS_DIR)
+	rm -rf $(SHOTS_DIR) && mkdir -p $(SHOTS_DIR)
 	$(DOCKER_PLAYWRIGHT) sh -c '$(E2E_INSTALL) && npx tsc --noEmit && npx playwright test -c playwright.screenshots.config.ts'
 	mkdir -p $(ROOT)/docs/screenshots
 	for f in $(SHOTS_DIR)/*.png; do \

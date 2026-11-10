@@ -26,25 +26,26 @@ your household, each person with their own reading state.
 
 ## Screenshots
 
-Made from a stack holding only public-domain books (`make screenshots`).
+Made from a stack holding only public-domain books (`make screenshots`); click one for its full size.
+Or try it yourself in the [demo](https://praetorianer777.github.io/GoTome/), which runs in your browser with public-domain books, with no server and nothing kept after a reload.
 
 <p align="center">
-  <img src="docs/screenshots/library-light.webp" alt="The library as a grid of covers, in the light colours" width="49%">
-  <img src="docs/screenshots/library-dark.webp" alt="The library as a grid of covers, in the dark colours" width="49%">
+  <a href="docs/screenshots/library-light.webp"><img src="docs/screenshots/library-light.webp" alt="The library as a grid of covers, in the light colours" width="49%"></a>
+  <a href="docs/screenshots/library-dark.webp"><img src="docs/screenshots/library-dark.webp" alt="The library as a grid of covers, in the dark colours" width="49%"></a>
 </p>
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/book-light.webp" alt="A book's page with its details, files and reading state"><br>A book's page</td>
-    <td><img src="docs/screenshots/search-dark.webp" alt="Full-text search results with the matching passages"><br>Search inside the books</td>
+    <td><a href="docs/screenshots/book-light.webp"><img src="docs/screenshots/book-light.webp" alt="A book's page with its details, files and reading state"></a><br>A book's page</td>
+    <td><a href="docs/screenshots/search-dark.webp"><img src="docs/screenshots/search-dark.webp" alt="Full-text search results with the matching passages"></a><br>Search inside the books</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/reader-light.webp" alt="The ebook reader"><br>The reader</td>
-    <td><img src="docs/screenshots/audiobook-dark.webp" alt="The audiobook player with its parts"><br>The audiobook player</td>
+    <td><a href="docs/screenshots/reader-light.webp"><img src="docs/screenshots/reader-light.webp" alt="The ebook reader"></a><br>The reader</td>
+    <td><a href="docs/screenshots/audiobook-dark.webp"><img src="docs/screenshots/audiobook-dark.webp" alt="The audiobook player with its parts"></a><br>The audiobook player</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/book-dark.webp" alt="A book's page in the dark colours"><br>Dark colours</td>
-    <td align="center"><img src="docs/screenshots/phone-library-light.webp" alt="The library on a phone" width="45%"><img src="docs/screenshots/phone-library-dark.webp" alt="The library on a phone, dark" width="45%"><br>On a phone</td>
+    <td><a href="docs/screenshots/book-dark.webp"><img src="docs/screenshots/book-dark.webp" alt="A book's page in the dark colours"></a><br>Dark colours</td>
+    <td align="center"><a href="docs/screenshots/phone-library-light.webp"><img src="docs/screenshots/phone-library-light.webp" alt="The library on a phone" width="45%"></a><a href="docs/screenshots/phone-library-dark.webp"><img src="docs/screenshots/phone-library-dark.webp" alt="The library on a phone, dark" width="45%"></a><br>On a phone</td>
   </tr>
 </table>
 

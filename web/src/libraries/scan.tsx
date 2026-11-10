@@ -37,7 +37,7 @@ function describe(scan: Scan | undefined): string {
 	const changes = CHANGES.filter(([field]) => Number(scan[field]) > 0).map(
 		([field, key]) => t(key, { count: Number(scan[field]) }),
 	);
-	return t("scan.done", {
+	return t(scan.filesSeen === 1 ? "scan.done.one" : "scan.done", {
 		when: at,
 		count: scan.filesSeen,
 		changes: changes.length > 0 ? changes.join(", ") : t("scan.nothingNew"),

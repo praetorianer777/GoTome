@@ -7,6 +7,10 @@ import { ADMIN } from "../fixtures/stack";
 const BOOKS = fileURLToPath(new URL("../../web/demo/files/", import.meta.url));
 const AUDIO = fileURLToPath(new URL("../fixtures/audio/", import.meta.url));
 const OUT = process.env.SHOTS_OUT ?? "/src/.cache/screenshots";
+// The shots show a reader, not the administrator who set the stack up:
+// a reader sees no scan buttons, and the name is the one in the corner.
+// A throwaway account of a local stack that `make clean` removes.
+const READER = { username: "Ada", password: "ada-reads-public-domain-books" };
 
 type Theme = "Light" | "Dark";
 
@@ -16,7 +20,7 @@ async function shoot(page: Page, name: string, theme: Theme): Promise<void> {
 }
 
 async function setTheme(page: Page, theme: Theme): Promise<void> {
-	const menu = await accountMenu(page);
+	const menu = await accountMenu(page, READER.username);
 	await menu.getByLabel("Colours").selectOption({ label: theme });
 	await expect(page.locator("html")).toHaveAttribute(
 		"data-theme",
@@ -28,7 +32,7 @@ async function setTheme(page: Page, theme: Theme): Promise<void> {
 async function signInFresh(page: Page): Promise<void> {
 	await page.goto("/");
 	await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-	await signIn(page);
+	await signIn(page, READER);
 	await expect(
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
@@ -66,7 +70,7 @@ test("the screenshots of the README", async ({ browser, page }) => {
 	for (const l of before.libraries) await page.request.delete(`/api/v1/libraries/${l.id}`);
 
 	const created = await page.request.post("/api/v1/libraries", {
-		data: { name: "Public domain", mode: "managed", visibility: "private" },
+		data: { name: "Public domain", mode: "managed", visibility: "shared" },
 	});
 	expect(created.status()).toBe(201);
 	const library = (await created.json()).id as string;
@@ -136,6 +140,13 @@ test("the screenshots of the README", async ({ browser, page }) => {
 		)
 		.toBe(true);
 
+	const made = await page.request.post("/api/v1/users", {
+		data: { ...READER, role: "reader" },
+	});
+	expect([201, 409]).toContain(made.status());
+	await page.context().clearCookies();
+	await signInFresh(page);
+
 	const id = (key: string): string => ids[key] as string;
 	const status = (book: string, body: object) =>
 		page.request.put(`/api/v1/books/${book}/reading`, { data: body });
@@ -170,8 +181,6 @@ test("the screenshots of the README", async ({ browser, page }) => {
 	for (const key of ["b-war", "b-twenty"])
 		await status(id(key), { status: "wishlist" });
 
-	await page.context().clearCookies();
-	await signInFresh(page);
 	await page.setViewportSize({ width: 1440, height: 900 });
 
 	const found = page.getByRole("region", { name: "Books found" });
@@ -241,6 +250,4 @@ test("the screenshots of the README", async ({ browser, page }) => {
 		await shoot(p, "phone-book", theme);
 	}
 	await phone.close();
-
-	await page.request.delete(`/api/v1/libraries/${library}`);
 });

@@ -1339,6 +1339,7 @@ export const de: Record<MessageKey, string> = {
 	"scan.queued": "Wartet auf das Durchsuchen …",
 	"scan.running": "Wird durchsucht …",
 	"scan.done": "Durchsucht am {when}: {count} Dateien, {changes}.",
+	"scan.done.one": "Durchsucht am {when}: eine Datei, {changes}.",
 	"scan.failed": "Das Durchsuchen am {when} ist fehlgeschlagen. {error}",
 	"scan.nothingNew": "nichts Neues",
 	"scan.added": "{count} neu",
