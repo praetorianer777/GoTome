@@ -1819,7 +1819,6 @@ export const en = {
 	"curation.outcome.failed": "Could not be undone: {message}",
 	"curation.undoing": "Undoing: {undone} of {count} changes undone so far.",
 	"curation.stateUndoing": "Undoing",
-	"curation.dryRun": "Dry run",
 	"curation.dryHint": "A dry run says what would be done and changes nothing.",
 	"curation.skipped": "{count} left for a person",
 	"curation.ruleDuplicates": "Duplicates, resolved by the rules",

@@ -1838,7 +1838,6 @@ export const de: Record<MessageKey, string> = {
 	"curation.outcome.failed": "Konnte nicht rückgängig gemacht werden: {message}",
 	"curation.undoing": "Wird rückgängig gemacht: {undone} von {count} Änderungen bisher.",
 	"curation.stateUndoing": "Wird rückgängig gemacht",
-	"curation.dryRun": "Probelauf",
 	"curation.dryHint": "Ein Probelauf sagt, was getan würde, und ändert nichts.",
 	"curation.skipped": "{count} für dich übrig",
 	"curation.ruleDuplicates": "Dubletten, durch die Regeln gelöst",
