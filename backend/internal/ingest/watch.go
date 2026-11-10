@@ -66,6 +66,8 @@ type Watcher struct {
 	Tick      time.Duration
 	// Polling makes every library polled, as on a file system that cannot notify.
 	Polling bool
+	// addWatch replaces inotify_add_watch in tests.
+	addWatch func(fd int, path string, mask uint32) (int, error)
 
 	mu     sync.Mutex
 	status WatchStatus
@@ -171,6 +173,9 @@ func (w *Watcher) defaults() {
 	if w.Log == nil {
 		w.Log = slog.Default()
 	}
+	if w.addWatch == nil {
+		w.addWatch = unix.InotifyAddWatch
+	}
 }
 
 func readEvents(in *os.File, out chan<- []rawEvent) {
@@ -269,7 +274,7 @@ func (w *Watcher) addTree(ctx context.Context, lib *watchedLibrary, dir string) 
 		if full != lib.Root && skippedFolder(d.Name()) {
 			return filepath.SkipDir
 		}
-		wd, err := unix.InotifyAddWatch(int(w.in.Fd()), full, watchMask)
+		wd, err := w.addWatch(int(w.in.Fd()), full, watchMask)
 		switch {
 		case err == nil:
 			lib.wds[wd] = full

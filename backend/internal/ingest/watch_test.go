@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"sync"
@@ -129,6 +130,43 @@ func TestPollingSeesAFolderAppearAndAFileGo(t *testing.T) {
 	touch(t, filepath.Join(root, "a", "a.epub"))
 	_, got := startWatcher(t, root, true)
 	if err := os.Remove(filepath.Join(root, "a", "a.epub")); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return got.count() == 1 })
+}
+
+func TestWatcherPollsALibraryTheKernelHasNoWatchesFor(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{"a", "b", "c", "d"} {
+		touch(t, filepath.Join(root, d, "x.epub"))
+	}
+	id := uuid.New()
+	got := &requests{}
+	var taken int
+	w := &Watcher{
+		Targets: func(context.Context) ([]WatchTarget, error) {
+			return []WatchTarget{{ID: id, Root: root}}, nil
+		},
+		Request: got.add, Quiet: 300 * time.Millisecond, PollEvery: 100 * time.Millisecond,
+		SyncEvery: time.Hour, Tick: 20 * time.Millisecond,
+		addWatch: func(fd int, path string, mask uint32) (int, error) {
+			if taken == 3 {
+				return -1, unix.ENOSPC
+			}
+			taken++
+			return unix.InotifyAddWatch(fd, path, mask)
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { w.Run(ctx); close(done) }()
+	t.Cleanup(func() { cancel(); <-done })
+	waitFor(t, func() bool { return w.Status().LimitReached })
+	s := w.Status()
+	if s.Watches != 0 || s.Polled != 1 || s.Notified != 0 {
+		t.Fatalf("status %+v: want no watches kept and the library polled", s)
+	}
+	if err := os.Remove(filepath.Join(root, "d", "x.epub")); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, func() bool { return got.count() == 1 })
