@@ -144,6 +144,7 @@ function statsOf(now: number) {
 		totalPages: sum("pages"),
 		pagesEstimated: true,
 		years: [{ year: 2026, books: library.books.filter((b) => b.status === "completed").length, finishes: 8 }],
+		undated: 0,
 	};
 }
 

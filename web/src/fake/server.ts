@@ -795,6 +795,7 @@ export class FakeServer {
 					totalListeningMinutes: 0,
 					pagesEstimated: false,
 					years: [],
+					undated: 0,
 					history: [],
 				},
 			);

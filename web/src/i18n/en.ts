@@ -873,6 +873,7 @@ export const en = {
 	"stats.years": "Books finished per year",
 	"stats.noYears": "No book read to its end yet.",
 	"stats.finished": "{count} books",
+	"stats.undated": "Completed without a date: {count}, in no year",
 	"stats.finishedAgain": "{count} finished, {books} different books",
 	"stats.history": "Started and finished",
 	"stats.noHistory": "Nothing started yet.",

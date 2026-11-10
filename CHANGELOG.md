@@ -19,6 +19,15 @@ What changes for someone who runs or uses GOtome. The format follows
   approve the sender address in your Amazon account. Only EPUB files up to
   50 MB are sent, unchanged; each send is a job whose outcome is on the book's
   page and in a notification. See `docs/kindle.md`.
+- Books you read but the library does not hold (most of an imported Goodreads
+  or StoryGraph history) now count in what "For you" learns from your taste,
+  and are never recommended themselves. See `docs/similarity.md`.
+- Statistics count the books completed with no finish date, such as those an
+  imported history gave none, apart from the years ("Completed without a
+  date"), without inventing a date for them.
+- Books an imported Goodreads or StoryGraph history adds that the library
+  does not hold are looked up by their ISBN like a new file is, so they get
+  a cover and a description. See `docs/importing-reading-history.md`.
 
 - The audiobook player's sleep timer fades the volume down before it stops,
   can be extended by 15 minutes (a button, or shaking the phone where the

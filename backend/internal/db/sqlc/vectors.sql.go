@@ -140,10 +140,13 @@ func (q *Queries) DeleteBookVector(ctx context.Context, arg DeleteBookVectorPara
 
 const deleteVectorsOfGoneBooks = `-- name: DeleteVectorsOfGoneBooks :execrows
 DELETE FROM book_vectors v USING books b
-WHERE b.id = v.book_id AND (b.deleted_at IS NOT NULL OR b.placeholder)
+WHERE b.id = v.book_id AND (b.deleted_at IS NOT NULL OR (b.placeholder AND NOT EXISTS (
+    SELECT 1 FROM user_books u
+    WHERE u.book_id = b.id AND (u.status = 'completed' OR u.rating IS NOT NULL))))
 `
 
-// Deleted, merged and placeholder books have none.
+// Deleted and merged books have none, nor have placeholders no one read or
+// rated: only those inform a taste profile.
 func (q *Queries) DeleteVectorsOfGoneBooks(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteVectorsOfGoneBooks)
 	if err != nil {
@@ -382,7 +385,10 @@ CROSS JOIN LATERAL (
 ) h
 LEFT JOIN book_vectors mv ON mv.book_id = b.id AND mv.kind = 'metadata' AND mv.model = $3::text
 LEFT JOIN book_vectors cv ON cv.book_id = b.id AND cv.kind = 'content' AND cv.model = $3::text
-WHERE b.deleted_at IS NULL AND NOT b.placeholder AND b.id > $4::uuid
+WHERE b.deleted_at IS NULL AND b.id > $4::uuid
+  AND (NOT b.placeholder OR EXISTS (
+      SELECT 1 FROM user_books u
+      WHERE u.book_id = b.id AND (u.status = 'completed' OR u.rating IS NOT NULL)))
 ORDER BY b.id
 LIMIT $5::int
 `
@@ -408,7 +414,9 @@ type ListBooksToEmbedRow struct {
 // vectors of the model are missing, of another version of it or made from
 // something that has changed since. The content's source is the primary text file as it was
 // chunked (its ID, when, and how it is sampled); a book without one has no
-// content vector, and content_gone says one is still stored.
+// content vector, and content_gone says one is still stored. A placeholder
+// is among them only while someone read or rated it, for the taste profile
+// (a metadata vector alone: it has no text).
 func (q *Queries) ListBooksToEmbed(ctx context.Context, arg ListBooksToEmbedParams) ([]ListBooksToEmbedRow, error) {
 	rows, err := q.db.Query(ctx, listBooksToEmbed,
 		arg.ModelVersion,

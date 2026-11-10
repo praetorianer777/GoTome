@@ -35,7 +35,10 @@ type readingStats struct {
 	PagesEstimated bool `json:"pagesEstimated"`
 	// Years count every time a book was read to its end, a re-read too;
 	// books is how many different ones.
-	Years   []statsYear  `json:"years"`
+	Years []statsYear `json:"years"`
+	// Undated is how many books are completed with no finish date, such as
+	// those an import of a history without dates made; they are in no year.
+	Undated int          `json:"undated"`
 	History []statsEvent `json:"history"`
 }
 
@@ -94,6 +97,7 @@ func (s *Server) getStats(w http.ResponseWriter, r *http.Request) error {
 		TotalReadingMinutes:   int(st.TotalReadingSeconds / 60),
 		TotalListeningMinutes: int(st.TotalListeningSeconds / 60),
 		PagesEstimated:        st.PagesEstimated,
+		Undated:               st.Undated,
 	}
 	for i, d := range st.Days {
 		day := statsDay{

@@ -114,7 +114,7 @@ export function Stats() {
 						<h2 id="stats-years" className="text-lg font-medium">
 							{t("stats.years")}
 						</h2>
-						{data.years.length === 0 ? (
+						{data.years.length === 0 && data.undated === 0 ? (
 							<p className="text-slate-600 dark:text-slate-400">{t("stats.noYears")}</p>
 						) : (
 							<ul className="flex flex-col gap-1">
@@ -126,6 +126,7 @@ export function Stats() {
 											: t("stats.finishedAgain", { count: y.finishes, books: y.books })}
 									</li>
 								))}
+								{data.undated > 0 && <li>{t("stats.undated", { count: data.undated })}</li>}
 							</ul>
 						)}
 					</section>

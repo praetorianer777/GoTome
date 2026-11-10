@@ -220,16 +220,17 @@ FROM (
     ORDER BY coalesce(u.rating, 3) DESC, u.finished_on DESC NULLS LAST, u.book_id
     LIMIT $2::int
 ) ub
-JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
+JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND ($3::boolean OR NOT b.placeholder)
 JOIN book_vectors v ON v.book_id = ub.book_id
-    AND v.model = $3::text AND v.model_version = $4::text
-WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $5::boolean))
+    AND v.model = $4::text AND v.model_version = $5::text
+WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $6::boolean))
 ORDER BY ub.book_id, v.kind
 `
 
 type ListTasteBooksParams struct {
 	Viewer       uuid.UUID
 	Max          int32
+	Unowned      bool
 	Model        string
 	ModelVersion string
 	SeesAll      bool
@@ -245,11 +246,14 @@ type ListTasteBooksRow struct {
 
 // The books the viewer finished or rated that they still see, with their
 // vectors of the model: the best rated first, then the latest finished,
-// up to max. A placeholder has no vectors and is not among them.
+// up to max. A placeholder (a book read but not held) is among them when
+// unowned says so, with the metadata vector it has; it is never recommended
+// (ListRecommended leaves placeholders out).
 func (q *Queries) ListTasteBooks(ctx context.Context, arg ListTasteBooksParams) ([]ListTasteBooksRow, error) {
 	rows, err := q.db.Query(ctx, listTasteBooks,
 		arg.Viewer,
 		arg.Max,
+		arg.Unowned,
 		arg.Model,
 		arg.ModelVersion,
 		arg.SeesAll,

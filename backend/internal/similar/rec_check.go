@@ -39,7 +39,8 @@ type RecommendationReport struct {
 }
 
 // RecommendationConfigs are the ways a check compares: each count of
-// centres, with books of one or two stars left out and counting against.
+// centres, with books of one or two stars left out and counting against,
+// and the default with the books read but not owned left out.
 func RecommendationConfigs() []RecommendationConfig {
 	var out []RecommendationConfig
 	for _, low := range []float64{0, -0.3} {
@@ -53,7 +54,9 @@ func RecommendationConfigs() []RecommendationConfig {
 			out = append(out, RecommendationConfig{Name: name, Taste: t})
 		}
 	}
-	return out
+	t := DefaultTaste
+	t.Unowned = false
+	return append(out, RecommendationConfig{Name: "4 centres, books not owned left out", Taste: t})
 }
 
 // hiddenShare is the one in this many liked books a check hides from the

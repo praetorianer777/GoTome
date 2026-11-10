@@ -888,6 +888,7 @@ export const de: Record<MessageKey, string> = {
 	"stats.years": "Beendete Bücher pro Jahr",
 	"stats.noYears": "Noch kein Buch zu Ende gelesen.",
 	"stats.finished": "Bücher: {count}",
+	"stats.undated": "Ohne Datum beendet: {count}, in keinem Jahr",
 	"stats.finishedAgain": "{count} beendet, {books} verschiedene Bücher",
 	"stats.history": "Begonnen und beendet",
 	"stats.noHistory": "Noch nichts begonnen.",
