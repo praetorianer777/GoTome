@@ -13,6 +13,20 @@ What changes for someone who runs or uses GOtome. The format follows
   it, can be undone: the merged book comes back with its files, shelves and
   reading, and files moved to the trash return to their book. A change to a
   book that was edited since is left as it is and reported.
+- The match review and the genre review show a book beside the list when you
+  click it (a full-screen view on a phone): cover, names, description, files,
+  tags, a link to its page and "Look inside", which opens the book in its
+  reader without saving a place, a reading session or a status. The open book
+  is in the address, so back closes it.
+- A genre suggestion shows the book's description (folded to a few lines) and
+  tags in its row.
+
+### Changed
+
+- Comparing a found match with a book (review and "Find details online") now
+  lists every field side by side, not only the ones that differ: equal fields
+  are plain, differing ones highlighted and ticked as before, empty ones
+  marked. On a phone the two sides are stacked.
 
 ## [0.14.1] - 2026-11-10
 

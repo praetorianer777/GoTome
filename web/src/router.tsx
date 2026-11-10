@@ -353,12 +353,23 @@ const adminSettingsRoute = createRoute({
 const reviewRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/review",
+	validateSearch: (search): { book?: string } => ({
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
 			throw redirect({ to: "/" });
 		}
 	},
-	component: Review,
+	component: loads(Review, function ReviewPage() {
+		const navigate = reviewRoute.useNavigate();
+		return (
+			<Review
+				book={reviewRoute.useSearch().book}
+				onBook={(book, replace) => navigate({ search: { book }, replace })}
+			/>
+		);
+	}),
 });
 
 const cleanupRoute = createRoute({
@@ -386,8 +397,9 @@ const cleanupRoute = createRoute({
 const genresRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/genres",
-	validateSearch: (search): { genre?: Genre } => ({
+	validateSearch: (search): { genre?: Genre; book?: string } => ({
 		genre: oneOf(GENRES, search.genre),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
 	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
@@ -400,6 +412,10 @@ const genresRoute = createRoute({
 			<Genres
 				genre={genresRoute.useSearch().genre}
 				onGenre={(genre) => navigate({ search: { genre } })}
+				book={genresRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
 			/>
 		);
 	}),

@@ -111,6 +111,7 @@ export function EbookReader({
 	fileName,
 	title,
 	find,
+	preview = false,
 }: {
 	bookId: string;
 	fileId: string;
@@ -118,8 +119,10 @@ export function EbookReader({
 	title: string;
 	/** A passage to open at instead of the saved place: a word of it to look for, and its text. */
 	find?: { word: string; passage: string };
+	/** Opens at the start and saves nothing: no place, no session, no status. */
+	preview?: boolean;
 }) {
-	const progress = useQuery(progressQuery(bookId));
+	const progress = useQuery({ ...progressQuery(bookId), enabled: !preview });
 	const queryClient = useQueryClient();
 	const save = useSaveProgress(bookId, "ebook");
 	const { mutate: savePlace } = save;
@@ -209,7 +212,7 @@ export function EbookReader({
 		: [];
 	const keys = useKeys(bindings);
 
-	const ready = !progress.isPending;
+	const ready = preview || !progress.isPending;
 	// The saved place is read once, when the book opens: later saves must
 	// not open it again.
 	const start = useRef<string | undefined>(undefined);
@@ -305,7 +308,7 @@ export function EbookReader({
 	}, [ebook]);
 
 	useEffect(() => {
-		if (!place || finding.current || place.cfi === kept.current) return;
+		if (preview || !place || finding.current || place.cfi === kept.current) return;
 		const timer = setTimeout(() => {
 			kept.current = place.cfi;
 			savePlace(
@@ -326,20 +329,26 @@ export function EbookReader({
 			);
 		}, SAVE_AFTER_MS);
 		return () => clearTimeout(timer);
-	}, [place, fileId, savePlace]);
+	}, [preview, place, fileId, savePlace]);
 
 
 	const furtherCfi = cfiIn(further, fileId);
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex flex-wrap items-center gap-2 text-sm">
-				<Link
-					to="/books/$bookId"
-					params={{ bookId }}
-					className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
-				>
-					{t("reader.back")}
-				</Link>
+				{preview ? (
+					<span role="status" className="font-medium text-candle-strong dark:text-candle">
+						{t("reader.preview")}
+					</span>
+				) : (
+					<Link
+						to="/books/$bookId"
+						params={{ bookId }}
+						className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
+					>
+						{t("reader.back")}
+					</Link>
+				)}
 				<h1 className="mr-auto min-w-0 truncate font-medium">{title}</h1>
 				<button
 					ref={(el) => {

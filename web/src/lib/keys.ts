@@ -94,6 +94,11 @@ export function useModal(): void {
 	}, []);
 }
 
+/** Whether a dialog is open over the page, for keys a view reads itself. */
+export function dialogOpen(): boolean {
+	return document.querySelector('[aria-modal="true"]') !== null;
+}
+
 /** Runs the binding the key press is for; true when there was one. */
 export function runKey(e: KeyboardEvent, bindings: KeyBinding[]): boolean {
 	if (modals > 0 || e.defaultPrevented || pressing(e)) return false;
