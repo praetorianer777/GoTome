@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Comparing a found match with a book (review and "Find details online") now
+  lists every field side by side, not only the ones that differ: equal fields
+  are plain, differing ones highlighted and ticked as before, empty ones
+  marked. On a phone the two sides are stacked.
+
 ### Added
 
 - The match review and the genre review show a book beside the list when you
