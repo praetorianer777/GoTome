@@ -49,7 +49,10 @@ test("the duplicates page offers a dry run per class, and the dry run shows unde
 	await panel.getByRole("link", { name: "See it under Changes" }).click();
 
 	await expect(page.getByRole("heading", { name: "Changes", level: 1 })).toBeVisible();
-	const run = page.getByRole("list", { name: "Runs" }).getByRole("listitem").first();
+	const run = page
+		.getByRole("list", { name: "Runs" })
+		.getByRole("listitem")
+		.filter({ has: page.getByRole("button", { name: "Hide changes" }) });
 	await expect(run).toContainText("Duplicates, resolved by the rules");
 	await expect(run).toContainText("Dry run");
 	await expect(run).toContainText("Planned, not done", { timeout: 60_000 });
