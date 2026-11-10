@@ -553,13 +553,23 @@ func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *
 			t.Fatalf("the seed has %d clean-up suggestions of kind %s, want at least 2", len(suggestions), kind)
 		}
 		subject := func(i int) string { return suggestions[i].(map[string]any)["subject"].(string) }
+		// A clash that is to choose is applied with the fix chosen, and
+		// previewed with it.
+		fix := ""
+		if suggestions[0].(map[string]any)["fix"] == "choose" {
+			fix = "nameIsSeries"
+		}
+		pick := map[string]any{"subject": subject(0)}
+		if fix != "" {
+			pick["fix"] = fix
+		}
 		for _, act := range []struct {
 			name, path string
 			req        map[string]any
 			want       int
 		}{
-			{"preview", "/cleanup/preview?kind=" + kind + "&subject=" + url.QueryEscape(subject(0)) + "&limit=5", nil, http.StatusOK},
-			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{map[string]any{"subject": subject(0)}}}, http.StatusAccepted},
+			{"preview", "/cleanup/preview?kind=" + kind + "&subject=" + url.QueryEscape(subject(0)) + "&limit=5&fix=" + fix, nil, http.StatusOK},
+			{"apply", "/cleanup/apply", map[string]any{"kind": kind, "picks": []any{pick}}, http.StatusAccepted},
 			{"dismiss", "/cleanup/dismiss", map[string]any{"kind": kind, "subject": subject(1)}, http.StatusNoContent},
 		} {
 			key := "clean-up " + act.name + " " + kind

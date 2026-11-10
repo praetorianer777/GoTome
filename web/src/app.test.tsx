@@ -7363,6 +7363,87 @@ describe("cleaning up how books are described", () => {
 		).toBeVisible();
 	});
 
+	it("asks which the name of a clash is, ticks nothing that takes data away and applies the choice", async () => {
+		const person = userEvent.setup();
+		const clash = (suggested?: "nameIsSeries") => ({
+			kind: "clashes" as const,
+			subject: "kommissar falkner",
+			found: [{ name: "Kommissar Falkner", books: 40 }],
+			fix: "choose" as const,
+			...(suggested ? { suggested } : {}),
+			books: 30,
+		});
+		server.cleanup.push(clash());
+		server.cleanupPreviews["clashes:kommissar falkner:nameIsSeries"] = [
+			{
+				id: "book-1",
+				title: "Kommissar Falkner 2931: Fall 31",
+				fields: [
+					{ name: "series", before: "", after: "Kommissar Falkner #2931" },
+				],
+				evidence: [],
+			},
+		];
+		server.cleanupPreviews["clashes:kommissar falkner:clearSeries"] = [
+			{
+				id: "book-2",
+				title: "Kommissar Falkner 2900: Fall 0",
+				fields: [
+					{ name: "series", before: "Kommissar Falkner #2900", after: "" },
+				],
+				evidence: [],
+			},
+		];
+		renderApp("/cleanup?kind=clashes");
+		await screen.findByText(/is both an author and a series here/);
+		const radios = screen.getAllByRole("radio");
+		expect(radios).toHaveLength(2);
+		expect(radios.some((r) => (r as HTMLInputElement).checked)).toBe(false);
+		const apply = screen.getByRole("button", { name: "Choose which it is" });
+		expect(apply).toBeDisabled();
+
+		const [first, second] = screen.getAllByRole("button", {
+			name: "Show the books",
+		});
+		await person.click(second as HTMLElement);
+		expect(
+			await screen.findByRole("button", { name: "Kommissar Falkner 2900: Fall 0" }),
+		).toBeVisible();
+		expect(screen.getByText("Kommissar Falkner #2900")).toBeInTheDocument();
+		await person.click(first as HTMLElement);
+		expect(
+			await screen.findByText("Kommissar Falkner #2931"),
+		).toBeInTheDocument();
+
+		await person.click(radios[0] as HTMLElement);
+		await person.click(screen.getByRole("button", { name: "Make it the series" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/cleanup/apply")?.body,
+			).toEqual({
+				kind: "clashes",
+				picks: [{ subject: "kommissar falkner", fix: "nameIsSeries" }],
+			}),
+		);
+	});
+
+	it("ticks the fix the titles and the providers point to, and nothing else", async () => {
+		server.cleanup.push({
+			kind: "clashes",
+			subject: "kommissar falkner",
+			found: [{ name: "Kommissar Falkner", books: 40 }],
+			fix: "choose",
+			suggested: "nameIsSeries",
+			books: 30,
+		});
+		renderApp("/cleanup?kind=clashes");
+		await screen.findByText(/is both an author and a series here/);
+		const [series, author] = screen.getAllByRole("radio") as HTMLInputElement[];
+		expect(series?.checked).toBe(true);
+		expect(author?.checked).toBe(false);
+		expect(screen.getByText(/suggested by the titles/)).toBeInTheDocument();
+	});
+
 	it("keeps a spelling typed in, of the same name", async () => {
 		const person = userEvent.setup();
 		renderApp("/cleanup");

@@ -5,8 +5,10 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -203,12 +205,20 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 	for _, s := range list {
 		fixes[found(s)[0]] = s["fix"].(string)
 	}
-	if want := map[string]string{"Kommissar Falkner": "removeAuthor", "Ulrike Weidner": "clearSeries"}; !sameOutcomes(fixes, want) {
+	if want := map[string]string{"Kommissar Falkner": "removeAuthor", "Ulrike Weidner": "choose"}; !sameOutcomes(fixes, want) {
 		t.Errorf("clashes %v, want %v", fixes, want)
 	}
+	// Either fix of a clash takes something away: "apply all" leaves the
+	// one that is to choose.
 	a.applyCleanup(editor, map[string]any{"kind": "clashes"})
-	if cotton := a.book(ids["Kommissar Falkner 2913: Die beste Waffe"]); len(cotton.Authors()) != 0 || cotton.Series != "Kommissar Falkner" {
-		t.Errorf("Kommissar Falkner is the series: %v %q", cotton.Authors(), cotton.Series)
+	if rose := a.book(ids["Todeskind"]); !slices.Equal(rose.Authors(), []string{"Ulrike Weidner"}) || rose.Series != "Ulrike Weidner" {
+		t.Errorf("Ulrike Weidner was changed without a choice: %v %q", rose.Authors(), rose.Series)
+	}
+	a.applyCleanup(editor, map[string]any{
+		"kind": "clashes", "picks": []map[string]string{{"subject": "ulrike weidner", "fix": "clearSeries"}},
+	})
+	if falkner := a.book(ids["Kommissar Falkner 2913: Die beste Waffe"]); len(falkner.Authors()) != 0 || falkner.Series != "Kommissar Falkner" {
+		t.Errorf("Kommissar Falkner is the series: %v %q", falkner.Authors(), falkner.Series)
 	}
 	if rose := a.book(ids["Todeskind"]); !slices.Equal(rose.Authors(), []string{"Ulrike Weidner"}) || rose.Series != "" {
 		t.Errorf("Ulrike Weidner is the author: %v %q", rose.Authors(), rose.Series)
@@ -592,11 +602,11 @@ func TestAPreviewShowsEachBookBeforeAndAfterAsApplyDoesIt(t *testing.T) {
 	if f := previewFields(previewBooks(body)["Ohne Namen"])["contributors"]; f["before"] != "authors_sort" || f["after"] != "" {
 		t.Errorf("a placeholder author: %v", f)
 	}
-	_, body = a.preview(editor, "kind=clashes&subject=karen+rose")
+	_, body = a.preview(editor, "kind=clashes&fix=clearSeries&subject=ulrike+weidner")
 	if f := previewFields(previewBooks(body)["Todeskind"])["series"]; f["before"] != "Ulrike Weidner" || f["after"] != "" {
 		t.Errorf("a series cleared: %v", f)
 	}
-	_, body = a.preview(editor, "kind=clashes&subject=jerry+cotton")
+	_, body = a.preview(editor, "kind=clashes&subject=kommissar+falkner")
 	if f := previewFields(previewBooks(body)["Kommissar Falkner 2913: Die beste Waffe"])["contributors"]; f["before"] != "Kommissar Falkner" || f["after"] != "" {
 		t.Errorf("an author removed: %v", f)
 	}
@@ -698,3 +708,130 @@ func TestAPreviewSaysWhatTheProvidersAreKnownToSayAndAsksNone(t *testing.T) {
 }
 
 func floatPtr(v float64) *float64 { return &v }
+
+func TestAClashThatIsToChooseOffersBothFixesAndNeverTakesTheSeriesByDefault(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
+	books := catalog.NewService(a.pool)
+	ctx := context.Background()
+	ids := map[string]uuid.UUID{}
+	create := func(b catalog.NewBook) {
+		t.Helper()
+		b.LibraryID = lib
+		id, err := books.CreateBook(ctx, b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[b.Title] = id
+	}
+	falkner := []catalog.NewContributor{{Name: "Kommissar Falkner"}}
+	// Forty books by a house name, of which only some carry the
+	// series, as series data from files often does.
+	for i := range 40 {
+		b := catalog.NewBook{Title: fmt.Sprintf("Kommissar Falkner %d: Fall %d", 2900+i, i), Contributors: falkner}
+		switch {
+		case i < 30:
+			b.Series = "Kommissar Falkner"
+			n := float64(2900 + i)
+			b.SeriesIndex = &n
+		case i >= 38:
+			b.Title = fmt.Sprintf("Der Fall Nummer %d", i)
+		}
+		create(b)
+	}
+	// A real author, whose books are mostly in other series.
+	rose := []catalog.NewContributor{{Name: "Ulrike Weidner"}}
+	create(catalog.NewBook{Title: "Todeskind", Series: "Ulrike Weidner", Contributors: rose})
+	for i := range 4 {
+		create(catalog.NewBook{Title: fmt.Sprintf("Weidner Roman %d", i), Series: "Baltimore", Contributors: rose})
+	}
+	// A house name whose titles say nothing, that a provider calls a series.
+	brandt := []catalog.NewContributor{{Name: "Hauptmann Brandt"}}
+	create(catalog.NewBook{Title: "Sternenozean", Series: "Hauptmann Brandt", Contributors: brandt})
+	create(catalog.NewBook{Title: "Der Unsterbliche", Contributors: brandt})
+	create(catalog.NewBook{Title: "Das Atlan-Projekt", Contributors: brandt})
+	record, _ := json.Marshal(metadata.Record{ID: "ru", Title: "Der Unsterbliche", Series: "Hauptmann Brandt"})
+	if _, err := a.pool.Exec(ctx, `INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
+		VALUES ($1, 'shelf', 'ru', 0.9, $2, 'pending')`, ids["Der Unsterbliche"], record); err != nil {
+		t.Fatal(err)
+	}
+
+	list, _ := a.suggestions(editor, "clashes")
+	byName := map[string]map[string]any{}
+	for _, s := range list {
+		byName[found(s)[0]] = s
+	}
+	for name, suggested := range map[string]string{
+		"Kommissar Falkner": "nameIsSeries", "Ulrike Weidner": "clearSeries", "Hauptmann Brandt": "nameIsSeries",
+	} {
+		s := byName[name]
+		if s["fix"] != "choose" || s["suggested"] != suggested {
+			t.Errorf("%s: fix %v, suggested %v, want choose and %s", name, s["fix"], s["suggested"], suggested)
+		}
+	}
+	subject := byName["Kommissar Falkner"]["subject"].(string)
+
+	// Nothing takes data away unasked.
+	for name, req := range map[string]map[string]any{
+		"no fix":         {"kind": "clashes", "picks": []map[string]string{{"subject": subject}}},
+		"an unknown fix": {"kind": "clashes", "picks": []map[string]string{{"subject": subject, "fix": "deleteAll"}}},
+		"another fix":    {"kind": "clashes", "picks": []map[string]string{{"subject": subject, "fix": "removeAuthor"}}},
+	} {
+		if status, body, _ := a.call(editor, http.MethodPost, "/cleanup/apply", req); status != 422 {
+			t.Errorf("%s: %d %v", name, status, body)
+		}
+	}
+	if status, body, _ := a.call(editor, http.MethodPost, "/cleanup/apply", map[string]any{"kind": "clashes"}); status != 404 {
+		t.Errorf("apply all with nothing but clashes to choose: %d %v", status, body)
+	}
+	if status, _ := a.preview(editor, "kind=clashes&subject="+url.QueryEscape(subject)); status != 422 {
+		t.Errorf("a preview without a choice: %d", status)
+	}
+	if got := a.book(ids["Kommissar Falkner 2900: Fall 0"]); got.Series != "Kommissar Falkner" || len(got.Authors()) != 1 {
+		t.Errorf("a book changed without a choice: %q %v", got.Series, got.Authors())
+	}
+
+	// Each choice says what it does to the books, the series' places too.
+	_, body := a.preview(editor, "kind=clashes&fix=clearSeries&limit=200&subject="+url.QueryEscape(subject))
+	if body["total"].(float64) != 30 {
+		t.Errorf("clearing the series changes %v books, want the 30 in it", body["total"])
+	}
+	cleared := previewFields(previewBooks(body)["Kommissar Falkner 2900: Fall 0"])["series"]
+	if cleared["before"] != "Kommissar Falkner #2900" || cleared["after"] != "" {
+		t.Errorf("the places that would be lost: %v", cleared)
+	}
+	_, body = a.preview(editor, "kind=clashes&fix=nameIsSeries&limit=200&subject="+url.QueryEscape(subject))
+	if body["total"].(float64) != 40 {
+		t.Errorf("the name being the series changes %v books, want all 40", body["total"])
+	}
+	shown := previewBooks(body)
+	given := previewFields(shown["Kommissar Falkner 2931: Fall 31"])
+	if given["series"]["before"] != "" || given["series"]["after"] != "Kommissar Falkner #2931" || given["contributors"]["after"] != "" {
+		t.Errorf("a book given the series at the place its title says: %v", given)
+	}
+	if untitled := previewFields(shown["Der Fall Nummer 39"]); untitled["series"]["after"] != "Kommissar Falkner" {
+		t.Errorf("a book whose title says no place: %v", untitled)
+	}
+
+	// The choice made is the one applied.
+	a.applyCleanup(editor, map[string]any{
+		"kind": "clashes", "picks": []map[string]string{{"subject": subject, "fix": "nameIsSeries"}},
+	})
+	for _, title := range []string{"Kommissar Falkner 2900: Fall 0", "Kommissar Falkner 2931: Fall 31", "Der Fall Nummer 39"} {
+		if got := a.book(ids[title]); got.Series != "Kommissar Falkner" || len(got.Authors()) != 0 {
+			t.Errorf("%s: series %q, authors %v", title, got.Series, got.Authors())
+		}
+	}
+	if got := a.book(ids["Kommissar Falkner 2931: Fall 31"]); got.SeriesIndex == nil || *got.SeriesIndex != 2931 {
+		t.Errorf("the place read from the title: %v", got.SeriesIndex)
+	}
+	if got := a.book(ids["Kommissar Falkner 2900: Fall 0"]); got.SeriesIndex == nil || *got.SeriesIndex != 2900 {
+		t.Errorf("the place it had: %v", got.SeriesIndex)
+	}
+	if got := a.book(ids["Todeskind"]); got.Series != "Ulrike Weidner" {
+		t.Errorf("another clash was changed: %q", got.Series)
+	}
+}

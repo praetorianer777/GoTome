@@ -35,6 +35,9 @@ export const cleanupQuery = (kind: CleanupKind) =>
 		getNextPageParam: (last) => last?.nextCursor,
 	});
 
+/** The two fixes of a clash that is to choose. */
+export type ChoosableFix = "nameIsSeries" | "clearSeries";
+
 export type CleanupPreview = components["schemas"]["CleanupPreview"];
 export type CleanupPreviewBook = components["schemas"]["CleanupBook"];
 
@@ -45,10 +48,18 @@ export type CleanupPreviewBook = components["schemas"]["CleanupBook"];
  */
 export const cleanupPreviewQuery = (
 	s: { kind: CleanupKind; subject: string },
-	options: { to?: string; limit: number },
+	options: { to?: string; fix?: string; limit: number },
 ) =>
 	queryOptions({
-		queryKey: ["cleanup", "preview", s.kind, s.subject, options.to, options.limit],
+		queryKey: [
+			"cleanup",
+			"preview",
+			s.kind,
+			s.subject,
+			options.to,
+			options.fix,
+			options.limit,
+		],
 		queryFn: async () =>
 			(
 				await api.GET("/cleanup/preview", {
@@ -58,6 +69,7 @@ export const cleanupPreviewQuery = (
 							subject: s.subject,
 							limit: options.limit,
 							...(options.to ? { to: options.to } : {}),
+							...(options.fix ? { fix: options.fix as ChoosableFix } : {}),
 						},
 					},
 				})
@@ -71,7 +83,7 @@ export function useApplyCleanup() {
 	return useMutation({
 		mutationFn: async (body: {
 			kind: CleanupKind;
-			picks?: { subject: string; to?: string }[];
+			picks?: { subject: string; to?: string; fix?: ChoosableFix }[];
 		}) => (await api.POST("/cleanup/apply", { body })).data,
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleanup"] }),
 	});

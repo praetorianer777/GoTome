@@ -1475,7 +1475,7 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.about.placeholders":
 		"Werte, die ein Programm anstelle eines Autorennamens hinterlassen hat. Anwenden entfernt sie von den Büchern.",
 	"cleanup.about.clashes":
-		"Ein Autor mit demselben Namen wie die Reihe seiner Bücher, also ist eines von beiden falsch. Wo jedes Buch in der Reihe ist, ist der Name die Reihe; wo nur einige es sind, ist er der Autor.",
+		"Ein Autor mit demselben Namen wie die Reihe seiner Bücher, also ist eines von beiden falsch. Wo jedes Buch in der Reihe ist, ist der Name die Reihe. Wo nur einige es sind, kann es beides sein (ein Hausname ist eine Reihe, deren Bücher die Reihe oft nicht tragen): Sie wählen und sehen vorher, was jede Wahl mit jedem Buch macht. Es wird nichts für Sie gewählt, außer wo die Titel oder ein Anbieter in eine Richtung weisen; dann ist es nur vorausgewählt.",
 	"cleanup.about.titles":
 		"Was ein Shop einem Titel hinzugefügt hat: die verkaufte Ausgabe oder das Genre nach einem Doppelpunkt oder Gedankenstrich.",
 	"cleanup.about.series":
@@ -1487,12 +1487,17 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.otherName": "Eine andere Schreibweise",
 	"cleanup.placeholder": "„{name}“ ist kein Name.",
 	"cleanup.removeAuthor": "{name} ist die Reihe dieser Bücher, nicht ihr Autor.",
-	"cleanup.clearSeries": "{name} ist der Autor; bei einigen Büchern steht der Name auch als Reihe.",
+	"cleanup.clash.some": "{name} ist hier Autor und Reihe zugleich: Bei {series} von {all} Büchern steht der Name auch als Reihe. Was stimmt?",
+	"cleanup.clash.nameIsSeries": "{name} ist die Reihe. Den Autor von allen Büchern entfernen und den Büchern ohne Reihe die Reihe geben, an der Stelle, die ihr Titel nennt.",
+	"cleanup.clash.clearSeries": "{name} ist der Autor. Die Bücher aus der Reihe dieses Namens nehmen; ihre Stellen darin gehen verloren.",
+	"cleanup.clash.suggested": "vorgeschlagen nach den Titeln und den Angaben der Anbieter",
 	"cleanup.retitle": "wird zu",
 	"cleanup.series": "Reihe „{name}“",
 	"cleanup.seriesPlace": "{position}: {title}",
 	"cleanup.apply.merge": "Diese Schreibweise verwenden",
 	"cleanup.apply.removeAuthor": "Autor entfernen",
+	"cleanup.apply.nameIsSeries": "Zur Reihe machen",
+	"cleanup.apply.choose": "Auswählen, was stimmt",
 	"cleanup.apply.clearSeries": "Aus der Reihe nehmen",
 	"cleanup.apply.retitle": "Titel ändern",
 	"cleanup.apply.setSeries": "In die Reihe aufnehmen",

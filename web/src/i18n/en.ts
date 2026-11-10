@@ -1459,7 +1459,7 @@ export const en = {
 	"cleanup.about.placeholders":
 		"Values a tool left where an author's name belongs. Applying takes them off the books.",
 	"cleanup.about.clashes":
-		"An author with the same name as the series of their books, so one of the two is wrong. Where every book is in the series, the name is the series; where only some are, it is the author.",
+		"An author with the same name as the series of their books, so one of the two is wrong. Where every book is in the series, the name is the series. Where only some are, it could be either (house names are series whose books often lack the series): you choose, and see what each choice does to every book first. Nothing is chosen for you except where the titles or a provider point one way, and then it is only ticked beforehand.",
 	"cleanup.about.titles":
 		"What a shop added to a title: the edition it sold, or the genre after a colon or a dash.",
 	"cleanup.about.series":
@@ -1471,12 +1471,17 @@ export const en = {
 	"cleanup.otherName": "Another spelling",
 	"cleanup.placeholder": "“{name}” is not a name.",
 	"cleanup.removeAuthor": "{name} is the series of these books, not their author.",
-	"cleanup.clearSeries": "{name} is the author; some of their books have the name as their series too.",
+	"cleanup.clash.some": "{name} is both an author and a series here: {series} of their {all} books have the name as their series. Which is it?",
+	"cleanup.clash.nameIsSeries": "{name} is the series. Remove the author from every book and give the books without the series the series, at the place their title says.",
+	"cleanup.clash.clearSeries": "{name} is the author. Take the books out of the series of that name; the places they have in it are lost.",
+	"cleanup.clash.suggested": "suggested by the titles and what providers say",
 	"cleanup.retitle": "becomes",
 	"cleanup.series": "Series “{name}”",
 	"cleanup.seriesPlace": "{position}: {title}",
 	"cleanup.apply.merge": "Use this spelling",
 	"cleanup.apply.removeAuthor": "Remove the author",
+	"cleanup.apply.nameIsSeries": "Make it the series",
+	"cleanup.apply.choose": "Choose which it is",
 	"cleanup.apply.clearSeries": "Take them out of the series",
 	"cleanup.apply.retitle": "Change the title",
 	"cleanup.apply.setSeries": "Put them into the series",

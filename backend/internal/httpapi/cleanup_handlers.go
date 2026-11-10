@@ -44,8 +44,16 @@ type cleanupSuggestion struct {
 	// Fix is what applying it does: merge the spellings into Suggested,
 	// remove the author from the books, retitle the book to Suggested, or
 	// put the books into the series Suggested at the places their titles
-	// say, under the titles without the series.
-	Fix       string `json:"fix" enum:"merge,removeAuthor,clearSeries,retitle,setSeries"`
+	// say, under the titles without the series. A clash of an author with
+	// a series of the same name, where only some of the author's books are
+	// in it, is "choose": the pick says which the name is, "nameIsSeries"
+	// (the author goes from every book, and the books without the series
+	// get it, at the places their titles say) or "clearSeries" (the books
+	// leave the series). A preview of a choice carries the one chosen.
+	Fix string `json:"fix" enum:"merge,removeAuthor,retitle,setSeries,choose,nameIsSeries,clearSeries"`
+	// Suggested is the spelling to keep, the title or the series; for a
+	// fix to choose, the fix the titles and the providers' answers point
+	// to, if any.
 	Suggested string `json:"suggested,omitempty"`
 	// Books is how many books it is about.
 	Books int `json:"books"`
@@ -75,12 +83,16 @@ type cleanupPick struct {
 	// To is, for an author, the spelling to keep when it is not the one
 	// suggested: any spelling of the same name, in any order of its words.
 	To string `json:"to,omitempty"`
+	// Fix is, for a suggestion whose fix is to choose, the one chosen:
+	// nameIsSeries or clearSeries. Without it such a suggestion is refused,
+	// and one that is not to choose accepts only its own fix.
+	Fix string `json:"fix,omitempty"`
 }
 
 type cleanupApplyRequest struct {
 	Kind string `json:"kind"`
 	// Picks are the suggestions to apply; left out, every one of the kind
-	// that nobody dismissed.
+	// that nobody dismissed, except those whose fix is to choose.
 	Picks []cleanupPick `json:"picks,omitempty"`
 }
 
@@ -100,6 +112,7 @@ type cleanupPreviewQuery struct {
 	Kind    string `query:"kind" enum:"authors,placeholders,clashes,titles,series" doc:"The kind of the suggestion."`
 	Subject string `query:"subject" doc:"The suggestion's subject, as the list says."`
 	To      string `query:"to" doc:"For an author, the spelling to keep when it is not the one suggested."`
+	Fix     string `query:"fix" enum:"nameIsSeries,clearSeries" doc:"For a suggestion whose fix is to choose, the fix to show; required then."`
 	Offset  int    `query:"offset" doc:"How many books to skip."`
 	Limit   int    `query:"limit" doc:"How many books to show, at most 200; 5 when left out."`
 }
@@ -225,7 +238,7 @@ func (s *Server) previewCleanup(w http.ResponseWriter, r *http.Request) error {
 		limit = min(q.Limit, maxCleanupPage)
 	}
 	preview, err := s.Cleanup.Preview(r.Context(), library.ScopeOf(*UserFrom(r.Context())), q.Kind, q.Subject,
-		cleanup.Options{To: q.To, Offset: q.Offset, Limit: limit})
+		cleanup.Options{To: q.To, Fix: q.Fix, Offset: q.Offset, Limit: limit})
 	var invalid catalog.EditError
 	switch {
 	case errors.Is(err, cleanup.ErrNotFound):
@@ -267,7 +280,7 @@ func (s *Server) applyCleanup(w http.ResponseWriter, r *http.Request) error {
 	if req.Picks != nil {
 		picks = make([]cleanup.Pick, len(req.Picks))
 		for i, p := range req.Picks {
-			picks[i] = cleanup.Pick{Subject: p.Subject, To: p.To}
+			picks[i] = cleanup.Pick{Subject: p.Subject, To: p.To, Fix: p.Fix}
 		}
 	}
 	applied, err := s.Cleanup.Apply(r.Context(), library.ScopeOf(*UserFrom(r.Context())), req.Kind, picks)

@@ -24,17 +24,20 @@ const quiet =
 export function CleanupPreviewList({
 	suggestion,
 	to,
+	fix,
 	open,
 	onOpen,
 }: {
 	suggestion: { kind: CleanupKind; subject: string };
 	to?: string;
+	/** For a clash that is to choose, the fix to show. */
+	fix?: string;
 	open: boolean;
 	onOpen: (book: string) => void;
 }) {
 	const [limit, setLimit] = useState(SHOWN);
 	const preview = useQuery({
-		...cleanupPreviewQuery(suggestion, { to, limit }),
+		...cleanupPreviewQuery(suggestion, { to, fix, limit }),
 		enabled: open,
 	});
 	const data = preview.data;

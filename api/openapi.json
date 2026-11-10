@@ -2738,6 +2738,18 @@
             }
           },
           {
+            "name": "fix",
+            "in": "query",
+            "description": "For a suggestion whose fix is to choose, the fix to show; required then.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "nameIsSeries",
+                "clearSeries"
+              ]
+            }
+          },
+          {
             "name": "offset",
             "in": "query",
             "description": "How many books to skip.",
@@ -11561,6 +11573,9 @@
       "CleanupPick": {
         "type": "object",
         "properties": {
+          "fix": {
+            "type": "string"
+          },
           "subject": {
             "type": "string"
           },
@@ -11611,7 +11626,9 @@
               "removeAuthor",
               "clearSeries",
               "retitle",
-              "setSeries"
+              "setSeries",
+              "nameIsSeries",
+              "choose"
             ]
           },
           "found": {

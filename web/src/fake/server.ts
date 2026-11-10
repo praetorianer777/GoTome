@@ -2132,12 +2132,16 @@ export class FakeServer {
 			if (!suggestion) {
 				return Response.json({ error: { code: "not_found", message: "There is no such suggestion; it may have been dealt with." } }, { status: 404 });
 			}
-			const books = this.cleanupPreviews[`${kind}:${subject}`] ?? [];
+			const fix = query.get("fix");
+			const books =
+				this.cleanupPreviews[`${kind}:${subject}:${fix}`] ??
+				this.cleanupPreviews[`${kind}:${subject}`] ??
+				[];
 			const offset = Number(query.get("offset") ?? 0);
 			const limit = Number(query.get("limit") ?? 5);
 			return Response.json({ suggestion, total: books.length, books: books.slice(offset, offset + limit) });
 		}
-		const req = body as { kind: CleanupKind; subject?: string; picks?: { subject: string; to?: string }[] };
+		const req = body as { kind: CleanupKind; subject?: string; picks?: { subject: string; to?: string; fix?: string }[] };
 		const chosen = this.cleanup.filter(
 			(s) =>
 				s.kind === req.kind &&

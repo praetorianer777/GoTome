@@ -29,8 +29,9 @@ const (
 
 // Options say which suggestion's fix a preview shows and how much of it.
 type Options struct {
-	// To is that of a Pick.
-	To string
+	// To and Fix are those of a Pick.
+	To  string
+	Fix string
 	// Offset and Limit page the books.
 	Offset int
 	Limit  int
@@ -88,7 +89,7 @@ func (s *Service) Preview(ctx context.Context, scope library.Scope, kind, subjec
 	if !ok {
 		return Preview{}, ErrNotFound
 	}
-	if sg, err = pickFix(kind, sg, Pick{Subject: subject, To: o.To}); err != nil {
+	if sg, err = pickFix(kind, sg, Pick{Subject: subject, To: o.To, Fix: o.Fix}); err != nil {
 		return Preview{}, err
 	}
 	changes, err := s.changes(ctx, scope, kind, []Suggestion{sg})
@@ -241,4 +242,87 @@ func verdictOf(agrees bool) string {
 		return VerdictAgrees
 	}
 	return VerdictDiffers
+}
+
+// suggestClashes sets, on each clash that is to choose, the fix that the
+// titles of the author's books and the matches kept for them point to, or
+// leaves none. It is one look at the author's books for all of them.
+func (s *Service) suggestClashes(ctx context.Context, scope library.Scope, list []Suggestion) error {
+	var names []string
+	for _, sg := range list {
+		if sg.Fix == FixChoose {
+			names = append(names, sg.Subject)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	q := sqlc.New(s.pool)
+	credits, err := q.ListCleanupCredits(ctx, sqlc.ListCleanupCreditsParams{
+		PersonKeys: []string{}, NameKeys: names, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return err
+	}
+	ids := make([]uuid.UUID, 0, len(credits))
+	for _, cr := range credits {
+		ids = append(ids, cr.BookID)
+	}
+	matches, err := q.ListMatchRecords(ctx, sqlc.ListMatchRecordsParams{BookIds: ids, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return err
+	}
+	records := map[uuid.UUID][]metadata.Record{}
+	for _, m := range matches {
+		var r metadata.Record
+		if json.Unmarshal(m.Record, &r) == nil {
+			records[m.BookID] = append(records[m.BookID], r)
+		}
+	}
+
+	type tally struct{ series, author, others int }
+	tallies := map[string]*tally{}
+	for _, cr := range credits {
+		t := tallies[cr.NameKey]
+		if t == nil {
+			t = &tally{}
+			tallies[cr.NameKey] = t
+		}
+		if cr.SeriesKey != "" && cr.SeriesKey != cr.NameKey {
+			t.others++
+		}
+		var series, author bool
+		if cr.SeriesKey != cr.NameKey {
+			if place, ok := SeriesInTitle(cr.Title); ok && catalog.Key(place.Series) == cr.NameKey {
+				series = true
+			}
+		}
+		for _, r := range records[cr.BookID] {
+			if catalog.Key(r.Series) == cr.NameKey {
+				series = true
+			} else if slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return catalog.Key(c.Name) == cr.NameKey }) {
+				author = true
+			}
+		}
+		if series {
+			t.series++
+		}
+		if author {
+			t.author++
+		}
+	}
+	for i, sg := range list {
+		t := tallies[sg.Subject]
+		if sg.Fix != FixChoose || t == nil {
+			continue
+		}
+		switch {
+		case t.series > 0 && t.series >= t.author:
+			list[i].Suggested = FixNameIsSeries
+		case t.author > t.series,
+			t.others > 0 && sg.Books*2 < sg.Found[0].Books:
+			list[i].Suggested = FixClearSeries
+		}
+	}
+	return nil
 }

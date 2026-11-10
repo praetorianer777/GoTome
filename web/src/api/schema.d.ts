@@ -3376,6 +3376,7 @@ export interface components {
             title?: string;
         };
         CleanupPick: {
+            fix?: string;
             subject: string;
             to?: string;
         };
@@ -3389,7 +3390,7 @@ export interface components {
             book?: string;
             books: number;
             /** @enum {string} */
-            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle" | "setSeries";
+            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle" | "setSeries" | "nameIsSeries" | "choose";
             found: components["schemas"]["CleanupName"][];
             /** @enum {string} */
             kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
@@ -6488,6 +6489,8 @@ export interface operations {
                 subject?: string;
                 /** @description For an author, the spelling to keep when it is not the one suggested. */
                 to?: string;
+                /** @description For a suggestion whose fix is to choose, the fix to show; required then. */
+                fix?: "nameIsSeries" | "clearSeries";
                 /** @description How many books to skip. */
                 offset?: number;
                 /** @description How many books to show, at most 200; 5 when left out. */
