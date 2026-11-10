@@ -41,6 +41,7 @@ What changes for someone who runs or uses GOtome. The format follows
 - `gotome perf-check` reports a view that does not answer within its time
   limit as "over 10 s" in its row, fails at the end, and times the views after
   it, instead of stopping there.
+- On a phone, the wishlist's lookup results no longer squeeze their text into a narrow column: the buttons now sit below the text.
 
 ## [0.15.0] - 2026-11-10
 
