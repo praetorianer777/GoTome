@@ -23,64 +23,6 @@
     "CoverBytes": 0,
     "CoverSHA256": ""
   },
-  "time-machine.m4b": {
-    "Metadata": {
-      "Title": "The Time Machine",
-      "Subtitle": "",
-      "Description": "A traveller builds a machine and goes far into the future.",
-      "Language": "und",
-      "Published": "2007",
-      "Publisher": "",
-      "Series": "",
-      "SeriesIndex": null,
-      "PageCount": null,
-      "Contributors": [
-        {
-          "Name": "H. G. Wells",
-          "SortName": "",
-          "Role": "author"
-        },
-        {
-          "Name": "Mara Lind",
-          "SortName": "",
-          "Role": "narrator"
-        },
-        {
-          "Name": "Tobias Reuter",
-          "SortName": "",
-          "Role": "narrator"
-        }
-      ],
-      "Tags": [
-        "Science Fiction"
-      ],
-      "Identifiers": null,
-      "CoverKey": "",
-      "Format": ""
-    },
-    "DurationMS": 3000,
-    "Track": null,
-    "Disc": null,
-    "Chapters": [
-      {
-        "Title": "Opening Credits",
-        "StartMS": 0,
-        "EndMS": 500
-      },
-      {
-        "Title": "Book One",
-        "StartMS": 500,
-        "EndMS": 2000
-      },
-      {
-        "Title": "Book Two",
-        "StartMS": 2000,
-        "EndMS": 3000
-      }
-    ],
-    "CoverBytes": 193,
-    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
-  },
   "emma.flac": {
     "Metadata": {
       "Title": "Emma",
@@ -431,5 +373,63 @@
     ],
     "CoverBytes": 0,
     "CoverSHA256": ""
+  },
+  "time-machine.m4b": {
+    "Metadata": {
+      "Title": "The Time Machine",
+      "Subtitle": "",
+      "Description": "A traveller builds a machine and goes far into the future.",
+      "Language": "und",
+      "Published": "2007",
+      "Publisher": "",
+      "Series": "",
+      "SeriesIndex": null,
+      "PageCount": null,
+      "Contributors": [
+        {
+          "Name": "H. G. Wells",
+          "SortName": "",
+          "Role": "author"
+        },
+        {
+          "Name": "Mara Lind",
+          "SortName": "",
+          "Role": "narrator"
+        },
+        {
+          "Name": "Tobias Reuter",
+          "SortName": "",
+          "Role": "narrator"
+        }
+      ],
+      "Tags": [
+        "Science Fiction"
+      ],
+      "Identifiers": null,
+      "CoverKey": "",
+      "Format": ""
+    },
+    "DurationMS": 3000,
+    "Track": null,
+    "Disc": null,
+    "Chapters": [
+      {
+        "Title": "Opening Credits",
+        "StartMS": 0,
+        "EndMS": 500
+      },
+      {
+        "Title": "Book One",
+        "StartMS": 500,
+        "EndMS": 2000
+      },
+      {
+        "Title": "Book Two",
+        "StartMS": 2000,
+        "EndMS": 3000
+      }
+    ],
+    "CoverBytes": 193,
+    "CoverSHA256": "fabe3bb8644a391d3920ffbd25531c17ac1046b1bfeeffba601bcaa71493090d"
   }
 }
