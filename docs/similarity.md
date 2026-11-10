@@ -111,7 +111,12 @@ the books a person said they are not interested in.
   and latest. Weights: 5 stars 1.0, 4 stars 0.7, 3 stars 0.3, finished
   without stars 0.4. Books of one or two stars are left out (weight 0). With
   fewer than three such books there is no profile and nothing is shown.
-  Books read but not owned have no vectors and so cannot take part.
+  Books read but not owned (placeholders, such as most of an imported
+  Goodreads history) count too, with a metadata vector made from what the
+  import or a lookup gave them: GOtome makes one for a placeholder only
+  while someone finished or rated it. It has no text, so no content vector.
+  A placeholder takes part in nobody's profile but its reader's, and is
+  never recommended, shown as a similar book or found by description.
 - **Centres, not one mean.** The books they liked are cut into at most four
   groups by the cosine of their metadata vectors (centres that are one taste
   are joined, and a centre needs two books), so someone who reads crime and
@@ -135,8 +140,11 @@ about a fifth of them (chosen by a hash of person and book, so the split is
 the same each time), builds the profile from the rest and counts how many
 hidden books come back among the first 10 and 20 recommendations. It tries
 one to four centres, with books of one or two stars left out and with them
-counting against (weight -0.3), and prints recall@10 and recall@20 for each.
-It changes nothing.
+counting against (weight -0.3), and, for four centres, with the books read
+but not owned left out of the profile; it prints recall@10 and recall@20 for
+each. The books it hides are owned ones (a placeholder is never recommended,
+so its return cannot be counted), so the last line shows what the books not
+owned add to finding the others back. It changes nothing.
 
 The defaults above are the issue's starting point. The numbers for a real
 library are for its owner to run and write down here; the check was made on

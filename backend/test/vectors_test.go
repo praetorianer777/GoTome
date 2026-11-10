@@ -335,3 +335,41 @@ func TestTheRealModelEmbedsABook(t *testing.T) {
 		t.Errorf("Emma's text is no nearer its own metadata (%.3f) than another book's (%.3f)", near, far)
 	}
 }
+
+func TestAPlaceholderSomeoneReadGetsOnlyAMetadataVector(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	a.embedAll()
+	if got := a.storedVectors(a.wish); len(got) != 0 {
+		t.Fatalf("a placeholder no one read has %v", kinds(got))
+	}
+	if _, err := a.pool.Exec(context.Background(),
+		`INSERT INTO user_books (user_id, book_id, status) VALUES ($1, $2, 'completed')`, a.adminID, a.wish); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	if got := kinds(a.storedVectors(a.wish)); !slices.Equal(got, []string{"metadata"}) {
+		t.Fatalf("the placeholder someone read has %v", got)
+	}
+
+	library := a.bare
+	if titles := a.similarTitles(a.admin, library); slices.Contains(titles, "Sanditon") {
+		t.Errorf("a placeholder is a similar book: %v", titles)
+	}
+	status, out, _ := a.call(a.admin, http.MethodGet, "/search/similar?q=Sanditon", nil)
+	if status == 200 {
+		for _, b := range out["books"].([]any) {
+			if b.(map[string]any)["title"] == "Sanditon" {
+				t.Errorf("a placeholder is found by description: %v", out)
+			}
+		}
+	}
+
+	if _, err := a.pool.Exec(context.Background(), `DELETE FROM user_books WHERE book_id = $1`, a.wish); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	if got := a.storedVectors(a.wish); len(got) != 0 {
+		t.Errorf("once no one has read it the placeholder has %v", kinds(got))
+	}
+}

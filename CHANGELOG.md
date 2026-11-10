@@ -8,6 +8,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Books you read but the library does not hold (most of an imported Goodreads
+  or StoryGraph history) now count in what "For you" learns from your taste,
+  and are never recommended themselves. See `docs/similarity.md`.
 - Statistics count the books completed with no finish date, such as those an
   imported history gave none, apart from the years ("Completed without a
   date"), without inventing a date for them.

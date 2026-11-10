@@ -1,7 +1,9 @@
 -- name: ListTasteBooks :many
 -- The books the viewer finished or rated that they still see, with their
 -- vectors of the model: the best rated first, then the latest finished,
--- up to max. A placeholder has no vectors and is not among them.
+-- up to max. A placeholder (a book read but not held) is among them when
+-- unowned says so, with the metadata vector it has; it is never recommended
+-- (ListRecommended leaves placeholders out).
 SELECT ub.book_id, ub.status, ub.rating, v.kind, v.embedding::text AS embedding
 FROM (
     SELECT u.book_id, u.status, u.rating, u.finished_on
@@ -10,7 +12,7 @@ FROM (
     ORDER BY coalesce(u.rating, 3) DESC, u.finished_on DESC NULLS LAST, u.book_id
     LIMIT sqlc.arg(max)::int
 ) ub
-JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
+JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND (sqlc.arg(unowned)::boolean OR NOT b.placeholder)
 JOIN book_vectors v ON v.book_id = ub.book_id
     AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
 WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))

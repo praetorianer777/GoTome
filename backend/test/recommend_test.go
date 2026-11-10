@@ -239,12 +239,46 @@ func TestTheRecommendationCheckHidesBooksAndCountsHowManyComeBack(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.People != 1 || report.Hidden == 0 || len(report.Results) != 8 {
+	if report.People != 1 || report.Hidden == 0 || len(report.Results) != 9 {
 		t.Fatalf("report: %+v", report)
 	}
 	for _, res := range report.Results {
 		if res.Recall20 < 0.99 {
 			t.Errorf("%s: only %.2f of the hidden books came back", res.Name, res.Recall20)
 		}
+	}
+}
+
+func TestBooksReadButNotOwnedCountInTheTasteAndAreNeverRecommended(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	open := uuid.MustParse(a.library(admin, "Open", "shared"))
+	r := recommendable{a, open}
+	crime := func(w float32) []float32 { return direction(map[int]float32{0: 1, 3: w}) }
+
+	a.rate(reader, r.book(t, "Crime One", "", "", 0, crime(0)), 5)
+	a.rate(reader, r.book(t, "Crime Two", "", "", 0, crime(0.1)), 5)
+	crimeNext := r.book(t, "Crime Next", "", "", 0, crime(0.05))
+	r.book(t, "Romance", "", "", 0, direction(map[int]float32{2: 1}))
+	if has, _, _ := a.recommended(reader); has {
+		t.Fatal("two books are a profile")
+	}
+
+	notOwned := r.book(t, "Crime Not Owned", "", "", 0, crime(0.2))
+	a.pool.Exec(context.Background(), `UPDATE books SET placeholder = true WHERE id = $1`, notOwned)
+	a.rate(reader, notOwned, 5)
+	has, titles, _ := a.recommended(reader)
+	if !has || !slices.Contains(titles, "Crime Next") || slices.Contains(titles, "Crime Not Owned") {
+		t.Errorf("a book read but not owned makes the third: %v %v", has, titles)
+	}
+	if titles[0] != "Crime Next" {
+		t.Errorf("crime comes first: %v", titles)
+	}
+	_ = crimeNext
+
+	if has, _, _ := a.recommended(admin); has {
+		t.Error("another person's books are in the profile")
 	}
 }
