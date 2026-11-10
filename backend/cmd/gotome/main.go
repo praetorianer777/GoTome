@@ -612,7 +612,12 @@ func recommendCheck(ctx context.Context, vectors *similar.Service, minRated int,
 		out.SetIndent("", "  ")
 		return out.Encode(r)
 	}
-	fmt.Printf("People asked about  %d, %d books hidden in all\n\n", r.People, r.Hidden)
+	if r.People == 0 {
+		fmt.Printf("Nobody has %d or more books rated 4 or 5 stars, so there is nothing to measure.\n"+
+			"Rate books, or import a reading history, then run this again; -min-rated asks for fewer.\n", minRated)
+		return nil
+	}
+	fmt.Printf("People asked about %d, %d books hidden in all\n\n", r.People, r.Hidden)
 	fmt.Printf("%-40s %8s %10s %10s\n", "Configuration", "Hidden", "Recall@10", "Recall@20")
 	for _, c := range r.Results {
 		fmt.Printf("%-40s %8d %9.1f%% %9.1f%%\n", c.Name, c.Hidden, 100*c.Recall10, 100*c.Recall20)

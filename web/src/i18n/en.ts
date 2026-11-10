@@ -1322,6 +1322,7 @@ export const en = {
 	"scan.queued": "Waiting to be scanned…",
 	"scan.running": "Scanning…",
 	"scan.done": "Scanned {when}: {count} files, {changes}.",
+	"scan.done.one": "Scanned {when}: one file, {changes}.",
 	"scan.failed": "The scan on {when} failed. {error}",
 	"scan.nothingNew": "nothing new",
 	"scan.added": "{count} new",

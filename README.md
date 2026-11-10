@@ -24,12 +24,72 @@ your household, each person with their own reading state.
 - Readers, editors and administrators; shared and private libraries;
   single sign-on through OpenID Connect
 
+## Screenshots
+
+Made from a stack holding only public-domain books (`make screenshots`); click one for its full size.
+Or try it yourself in the [demo](https://praetorianer777.github.io/GoTome/), which runs in your browser with public-domain books, with no server and nothing kept after a reload.
+
+<p align="center">
+  <a href="docs/screenshots/library-light.webp"><img src="docs/screenshots/library-light.webp" alt="The library as a grid of covers, in the light colours" width="49%"></a>
+  <a href="docs/screenshots/library-dark.webp"><img src="docs/screenshots/library-dark.webp" alt="The library as a grid of covers, in the dark colours" width="49%"></a>
+</p>
+
+<table>
+  <tr>
+    <td><a href="docs/screenshots/book-light.webp"><img src="docs/screenshots/book-light.webp" alt="A book's page with its details, files and reading state"></a><br>A book's page</td>
+    <td><a href="docs/screenshots/search-dark.webp"><img src="docs/screenshots/search-dark.webp" alt="Full-text search results with the matching passages"></a><br>Search inside the books</td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/reader-light.webp"><img src="docs/screenshots/reader-light.webp" alt="The ebook reader"></a><br>The reader</td>
+    <td><a href="docs/screenshots/audiobook-dark.webp"><img src="docs/screenshots/audiobook-dark.webp" alt="The audiobook player with its parts"></a><br>The audiobook player</td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/book-dark.webp"><img src="docs/screenshots/book-dark.webp" alt="A book's page in the dark colours"></a><br>Dark colours</td>
+    <td align="center"><a href="docs/screenshots/phone-library-light.webp"><img src="docs/screenshots/phone-library-light.webp" alt="The library on a phone" width="45%"></a><a href="docs/screenshots/phone-library-dark.webp"><img src="docs/screenshots/phone-library-dark.webp" alt="The library on a phone, dark" width="45%"></a><br>On a phone</td>
+  </tr>
+</table>
+
 ## Stack
 
 Go backend, React and Tailwind CSS frontend, PostgreSQL. A deployment is two
 containers: the app and the database.
 
-## Running it
+## Quick start
+
+You need Linux with Docker and Docker Compose v2. Everything a deployment
+needs is the folder `deploy`:
+
+```bash
+git clone https://github.com/praetorianer777/GoTome.git
+cd GoTome/deploy
+cp .env.example .env   # optional: pin the version, change the port
+docker compose up -d
+```
+
+Open <http://localhost:8080>; the first visit asks you to create the
+administrator. Then make a library, from a folder you mount into the app
+container or from uploads, as [getting started](docs/getting-started.md)
+walks through.
+
+## Performance on a real library
+
+Measured with `gotome perf-check` ([docs/performance.md](docs/performance.md))
+on GOtome 0.13.0 with 48,560 books, 3.19 million text chunks and bge-m3
+vectors for every book, on 2 CPUs and 14.5 GiB of memory:
+
+| What | Time |
+| --- | --- |
+| Library lists, filters, authors, series, a book's page, duplicates, reviews | 1 to 80 ms |
+| Facets of the whole library | 628 ms |
+| Quick search | 303 ms |
+| Full-text search | 523 ms |
+| Similar books | 2.1 s |
+| Facets of quick-search matches | 1.8 s |
+| Phrase search | 1.3 s |
+
+The last three are being worked on ([#456](https://github.com/praetorianer777/GoTome/issues/456)).
+
+## Running it in detail
 
 Each release publishes the image for amd64 and arm64 as
 `ghcr.io/praetorianer777/gotome`. Everything a deployment needs is the folder
@@ -58,6 +118,13 @@ the [configuration reference](docs/configuration.md),
 
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;
 see [CLAUDE.md](CLAUDE.md). `./run-tests.sh` is the gate that must pass before a push.
+
+## How it is made
+
+Most of GOtome's code is written by AI agents (Claude) under the direction of
+one maintainer. Every change still passes the same gate: the push gate
+(`./run-tests.sh`), CI in four browsers, the visibility tests every route must
+pass, and the scale, backup and upgrade tests.
 
 ## Security
 
