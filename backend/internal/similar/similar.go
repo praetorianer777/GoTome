@@ -497,7 +497,7 @@ func pickAmong(books []traits, near []traits, limit int) []uuid.UUID {
 
 // isCopy reports whether two books are one with an author in common: the
 // same title once a shop's additions are off, or one the other's with a
-// subtitle after a colon ("Rauklands Sohn" and "Rauklands Sohn: Raukland
+// subtitle after a colon ("Brennholds Sohn" and "Brennholds Sohn: Brennhold
 // Trilogie"). Two titles that both have a subtitle of their own after the
 // same words are two books, as the volumes of a series often are.
 func isCopy(a, b traits) bool {

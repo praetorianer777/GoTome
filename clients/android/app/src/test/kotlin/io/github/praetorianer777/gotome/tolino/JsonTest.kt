@@ -10,18 +10,18 @@ class JsonTest {
     @Test
     fun readsAPageOfBooks() {
         val (books, next) = Json.bookList(
-            """{"books":[{"id":"0192f0a0-0000-7000-8000-0000000000b1","libraryId":"l","title":"Der Weitseher","authors":["Robin Hobb"],
-               "series":"Fitz","seriesIndex":1,"formats":["epub","mobi"],"addedAt":"2026-10-01T10:00:00Z",
+            """{"books":[{"id":"0192f0a0-0000-7000-8000-0000000000b1","libraryId":"l","title":"Der Leuchtfeuerwart","authors":["Roswitha Hoff"],
+               "series":"Mira","seriesIndex":1,"formats":["epub","mobi"],"addedAt":"2026-10-01T10:00:00Z",
                "status":"unread","placeholder":false}],"nextCursor":"c2"}""",
         )
         assertEquals("c2", next)
-        assertEquals(BookSummary("0192f0a0-0000-7000-8000-0000000000b1", "Der Weitseher", listOf("Robin Hobb"), "Fitz", 1.0, listOf("epub", "mobi"), "2026-10-01T10:00:00Z"), books.single())
+        assertEquals(BookSummary("0192f0a0-0000-7000-8000-0000000000b1", "Der Leuchtfeuerwart", listOf("Roswitha Hoff"), "Mira", 1.0, listOf("epub", "mobi"), "2026-10-01T10:00:00Z"), books.single())
     }
 
     @Test
     fun readsSearchHitsAndTheCount() {
         val hits = Json.searchHits(
-            """{"books":[{"id":"0192f0a0-0000-7000-8000-0000000000b2","libraryId":"l","title":"Der Schattenbote","authors":["Robin Hobb"],
+            """{"books":[{"id":"0192f0a0-0000-7000-8000-0000000000b2","libraryId":"l","title":"Der Nebelbote","authors":["Roswitha Hoff"],
                "formats":["epub"],"addedAt":"2026-10-01T10:00:00Z","match":"title","placeholder":false}]}""",
         )
         assertEquals(listOf("0192f0a0-0000-7000-8000-0000000000b2"), hits.map { it.id })

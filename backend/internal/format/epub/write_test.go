@@ -149,10 +149,10 @@ var newCover = &Cover{MediaType: "image/jpeg", Data: []byte("\xff\xd8\xffnew-cov
 
 var described = Metadata{
 	Title:    "Words of Radiance",
-	Subtitle: "Book Two <of> the Stormlight Archive",
+	Subtitle: "Book Two <of> the Beacon Archive",
 	Contributors: []Contributor{
-		{Name: "Brandon Sanderson", FileAs: "Sanderson, Brandon", Role: "aut"},
-		{Name: "Kate Reading", Role: "nrt"},
+		{Name: "Bastian Landorf", FileAs: "Landorf, Bastian", Role: "aut"},
+		{Name: "Karin Ridder", Role: "nrt"},
 	},
 	Language:    "en-GB",
 	Identifiers: []Identifier{{"isbn", "9780765326362"}, {"asin", "B00DA6YEKS"}, {"isbn", "978-3-16-148410-0"}},
@@ -160,7 +160,7 @@ var described = Metadata{
 	Published:   "2014-03",
 	Description: "Szeth & Kaladin.\n\nA second paragraph.",
 	Subjects:    []string{"Fantasy", "Épique"},
-	Series:      "Stormlight",
+	Series:      "Beacon",
 	SeriesIndex: index(2.5),
 }
 
@@ -183,7 +183,7 @@ func TestRewriteEPUB3(t *testing.T) {
 	if !slices.Equal(md.Identifiers, wantIDs) {
 		t.Errorf("identifiers = %+v", md.Identifiers)
 	}
-	if !slices.Equal(md.Subjects, described.Subjects) || md.Series != "Stormlight" || md.SeriesIndex == nil || *md.SeriesIndex != 2.5 {
+	if !slices.Equal(md.Subjects, described.Subjects) || md.Series != "Beacon" || md.SeriesIndex == nil || *md.SeriesIndex != 2.5 {
 		t.Errorf("subjects %v, series %q %v", md.Subjects, md.Series, md.SeriesIndex)
 	}
 	if after.Cover == nil || !bytes.Equal(after.Cover.Data, newCover.Data) {

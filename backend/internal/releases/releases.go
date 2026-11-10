@@ -104,7 +104,7 @@ type Tracker struct {
 }
 
 // subjectKey is what a name is compared by: an author's in the order the
-// providers write names, so that "Cornwell, Bernard" is Bernard Cornwell.
+// providers write names, so that "Devlin, Gerald" is Gerald Devlin.
 func subjectKey(kind, name string) string {
 	if kind == KindAuthor {
 		name = metadata.NaturalName(name)

@@ -26,8 +26,8 @@ class ReaderLogTest {
             ReaderLog.parse("D/EpubView( 2245): notifyPageChanged(): page position = 0.2509080748812517"),
         )
         assertEquals(
-            ReaderEvent.Opened("/storage/emulated/0/Books/GOtome/Hobb-Der_Weitseher-1a2b3c4d.epub"),
-            ReaderLog.parse("D/HomeActivity\$DeliverableClickListener( 2245): startReader - book: Der Weitseher, path: /storage/emulated/0/Books/GOtome/Hobb-Der_Weitseher-1a2b3c4d.epub"),
+            ReaderEvent.Opened("/storage/emulated/0/Books/GOtome/Hoff-Der_Leuchtfeuerwart-1a2b3c4d.epub"),
+            ReaderLog.parse("D/HomeActivity\$DeliverableClickListener( 2245): startReader - book: Der Leuchtfeuerwart, path: /storage/emulated/0/Books/GOtome/Hoff-Der_Leuchtfeuerwart-1a2b3c4d.epub"),
         )
     }
 

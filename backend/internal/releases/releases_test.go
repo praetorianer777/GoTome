@@ -57,8 +57,8 @@ func TestATitleIsComparedWithoutWhatProvidersAdd(t *testing.T) {
 			t.Errorf("%q: %q", title, got)
 		}
 	}
-	if titleKey("(1984)") != "1984" {
-		t.Errorf("a title that is all brackets is kept: %q", titleKey("(1984)"))
+	if titleKey("(1957)") != "1957" {
+		t.Errorf("a title that is all brackets is kept: %q", titleKey("(1957)"))
 	}
 }
 

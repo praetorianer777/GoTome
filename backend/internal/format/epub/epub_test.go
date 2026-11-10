@@ -55,14 +55,14 @@ const epub3OPF = `<?xml version="1.0" encoding="UTF-8"?>
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="pub-id">urn:isbn:978-3-16-148410-0</dc:identifier>
     <dc:identifier>urn:uuid:123e4567-e89b-12d3-a456-426614174000</dc:identifier>
-    <dc:title id="t1">The Way of   Kings</dc:title>
+    <dc:title id="t1">The Path of   Lanterns</dc:title>
     <meta refines="#t1" property="title-type">main</meta>
-    <dc:title id="t2">Book One of the Stormlight Archive</dc:title>
+    <dc:title id="t2">Book One of the Beacon Archive</dc:title>
     <meta refines="#t2" property="title-type">subtitle</meta>
-    <dc:creator id="c1">Brandon Sanderson</dc:creator>
+    <dc:creator id="c1">Bastian Landorf</dc:creator>
     <meta refines="#c1" property="role" scheme="marc:relators">aut</meta>
-    <meta refines="#c1" property="file-as">Sanderson, Brandon</meta>
-    <dc:contributor id="c2">Michael Kramer</dc:contributor>
+    <meta refines="#c1" property="file-as">Landorf, Bastian</meta>
+    <dc:contributor id="c2">Markus Lindner</dc:contributor>
     <meta refines="#c2" property="role" scheme="marc:relators">nrt</meta>
     <dc:language>en-US</dc:language>
     <dc:publisher>Tor Books</dc:publisher>
@@ -70,7 +70,7 @@ const epub3OPF = `<?xml version="1.0" encoding="UTF-8"?>
     <dc:description>&lt;p&gt;Roshar is a world of &lt;b&gt;stone&lt;/b&gt; &amp;amp; storms.&lt;/p&gt;</dc:description>
     <dc:subject>Fantasy</dc:subject>
     <dc:subject>Epic</dc:subject>
-    <meta property="belongs-to-collection" id="s1">The Stormlight Archive</meta>
+    <meta property="belongs-to-collection" id="s1">The Beacon Archive</meta>
     <meta refines="#s1" property="collection-type">series</meta>
     <meta refines="#s1" property="group-position">1</meta>
   </metadata>
@@ -98,7 +98,7 @@ func epub3(t testing.TB) []byte {
 		entry{"OEBPS/nav.xhtml", `<html xmlns:epub="http://www.idpf.org/2007/ops"><body>
 			<nav epub:type="landmarks"><a href="text/ch1.xhtml">Start</a></nav>
 			<nav epub:type="toc"><ol>
-				<li><a href="text/ch1.xhtml">Prelude to the <em>Stormlight</em> Archive</a></li>
+				<li><a href="text/ch1.xhtml">Prelude to the <em>Beacon</em> Archive</a></li>
 				<li><a href="text/ch1.xhtml#part2">A section inside it</a></li>
 				<li><a href="text/ch%202.xhtml">Stormblessed</a></li>
 			</ol></nav></body></html>`},
@@ -120,15 +120,15 @@ func epub3(t testing.TB) []byte {
 func TestEPUB3Metadata(t *testing.T) {
 	md := parse(t, epub3(t)).Metadata
 
-	if md.Version != "3.0" || md.Title != "The Way of Kings" || md.Subtitle != "Book One of the Stormlight Archive" {
+	if md.Version != "3.0" || md.Title != "The Path of Lanterns" || md.Subtitle != "Book One of the Beacon Archive" {
 		t.Errorf("version %q, title %q, subtitle %q", md.Version, md.Title, md.Subtitle)
 	}
-	if got := md.Authors(); len(got) != 1 || got[0] != "Brandon Sanderson" {
+	if got := md.Authors(); len(got) != 1 || got[0] != "Bastian Landorf" {
 		t.Errorf("authors = %v", got)
 	}
 	if len(md.Contributors) != 2 ||
-		md.Contributors[0] != (Contributor{"Brandon Sanderson", "Sanderson, Brandon", "aut"}) ||
-		md.Contributors[1] != (Contributor{"Michael Kramer", "", "nrt"}) {
+		md.Contributors[0] != (Contributor{"Bastian Landorf", "Landorf, Bastian", "aut"}) ||
+		md.Contributors[1] != (Contributor{"Markus Lindner", "", "nrt"}) {
 		t.Errorf("contributors = %+v", md.Contributors)
 	}
 	wantIDs := []Identifier{{"isbn", "978-3-16-148410-0"}, {"uuid", "123e4567-e89b-12d3-a456-426614174000"}}
@@ -144,7 +144,7 @@ func TestEPUB3Metadata(t *testing.T) {
 	if strings.Join(md.Subjects, ",") != "Fantasy,Epic" {
 		t.Errorf("subjects = %v", md.Subjects)
 	}
-	if md.Series != "The Stormlight Archive" || md.SeriesIndex == nil || *md.SeriesIndex != 1 {
+	if md.Series != "The Beacon Archive" || md.SeriesIndex == nil || *md.SeriesIndex != 1 {
 		t.Errorf("series %q index %v", md.Series, md.SeriesIndex)
 	}
 }
@@ -164,7 +164,7 @@ func TestEPUB3TextAndChapters(t *testing.T) {
 	if ch1.Text != wantText {
 		t.Errorf("chapter 1 text:\n%q\nwant:\n%q", ch1.Text, wantText)
 	}
-	if ch1.Title != "Prelude to the Stormlight Archive" || ch1.Href != "OEBPS/text/ch1.xhtml" {
+	if ch1.Title != "Prelude to the Beacon Archive" || ch1.Href != "OEBPS/text/ch1.xhtml" {
 		t.Errorf("chapter 1 title %q href %q", ch1.Title, ch1.Href)
 	}
 	if ch2.Title != "Stormblessed" || ch2.Href != "OEBPS/text/ch 2.xhtml" || ch2.Text != "Chapter heading\n\nSecond chapter." {

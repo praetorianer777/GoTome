@@ -79,12 +79,12 @@ func TestTheSpellingsOfOneAuthorAreMergedIntoTheOneChosen(t *testing.T) {
 	books := catalog.NewService(a.pool)
 	ids := map[string]uuid.UUID{}
 	for _, b := range []struct{ lib, title, author string }{
-		{open, "Das letzte Evangelium", "Goldstein, Barbara"},
-		{open, "Der vergessene Papst", "Goldstein, Barbara"},
-		{open, "Die Kardinälin", "Barbara Goldstein"},
-		{open, "Mort", "Terry Pratchett"},
+		{open, "Das stille Archiv", "Weidner, Ulrike"},
+		{open, "Der verschollene Abt", "Weidner, Ulrike"},
+		{open, "Die Gräfin", "Ulrike Weidner"},
+		{open, "Marl", "Tomas Prendell"},
 		// A book of a library the editor does not see.
-		{hidden, "Die Evangelistin", "Goldstein, Barbara"},
+		{hidden, "Die Schreiberin", "Weidner, Ulrike"},
 	} {
 		id, err := books.CreateBook(context.Background(), catalog.NewBook{
 			LibraryID: uuid.MustParse(b.lib), Title: b.title,
@@ -104,10 +104,10 @@ func TestTheSpellingsOfOneAuthorAreMergedIntoTheOneChosen(t *testing.T) {
 		t.Fatalf("the editor's suggestions: %v %v", list, counts)
 	}
 	s := list[0]
-	if got := found(s); !slices.Equal(got, []string{"Goldstein, Barbara", "Barbara Goldstein"}) {
+	if got := found(s); !slices.Equal(got, []string{"Weidner, Ulrike", "Ulrike Weidner"}) {
 		t.Errorf("the spellings the editor sees: %v", got)
 	}
-	if s["subject"] != "barbara goldstein" || s["fix"] != "merge" || s["suggested"] != "Goldstein, Barbara" || s["books"].(float64) != 3 {
+	if s["subject"] != "ulrike weidner" || s["fix"] != "merge" || s["suggested"] != "Weidner, Ulrike" || s["books"].(float64) != 3 {
 		t.Errorf("the suggestion: %v", s)
 	}
 	if list, _ := a.suggestions(admin, "authors"); len(list) != 1 || list[0]["books"].(float64) != 4 {
@@ -115,40 +115,40 @@ func TestTheSpellingsOfOneAuthorAreMergedIntoTheOneChosen(t *testing.T) {
 	}
 
 	if status, body, _ := a.call(editor, http.MethodPost, "/cleanup/apply", map[string]any{
-		"kind": "authors", "picks": []map[string]string{{"subject": "barbara goldstein", "to": "Terry Pratchett"}},
+		"kind": "authors", "picks": []map[string]string{{"subject": "ulrike weidner", "to": "Tomas Prendell"}},
 	}); status != 422 {
 		t.Errorf("another person's name as the spelling: %d %v", status, body)
 	}
 	if status, _, _ := a.call(editor, http.MethodPost, "/cleanup/apply", map[string]any{
-		"kind": "authors", "picks": []map[string]string{{"subject": "terry pratchett"}},
+		"kind": "authors", "picks": []map[string]string{{"subject": "tomas prendell"}},
 	}); status != 404 {
 		t.Errorf("a suggestion there is not: %d", status)
 	}
 
 	// The spelling the editor keeps is the less used one.
 	status := a.applyCleanup(editor, map[string]any{
-		"kind": "authors", "picks": []map[string]string{{"subject": "barbara goldstein", "to": "Barbara  Goldstein"}},
+		"kind": "authors", "picks": []map[string]string{{"subject": "ulrike weidner", "to": "Ulrike  Weidner"}},
 	})
-	want := map[string]string{"Das letzte Evangelium": "changed", "Der vergessene Papst": "changed"}
+	want := map[string]string{"Das stille Archiv": "changed", "Der verschollene Abt": "changed"}
 	if got := outcomes(status); !sameOutcomes(got, want) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
-	for _, title := range []string{"Das letzte Evangelium", "Der vergessene Papst", "Die Kardinälin"} {
+	for _, title := range []string{"Das stille Archiv", "Der verschollene Abt", "Die Gräfin"} {
 		book := a.book(ids[title])
-		if !slices.Equal(book.Authors(), []string{"Barbara Goldstein"}) || len(book.Contributors) != 2 {
+		if !slices.Equal(book.Authors(), []string{"Ulrike Weidner"}) || len(book.Contributors) != 2 {
 			t.Errorf("%s: %+v", title, book.Contributors)
 		}
 	}
-	if !slices.Contains(a.book(ids["Das letzte Evangelium"]).Locked, catalog.FieldContributors) {
+	if !slices.Contains(a.book(ids["Das stille Archiv"]).Locked, catalog.FieldContributors) {
 		t.Error("a merge is a person's edit, and locks the authors")
 	}
-	if got := a.book(ids["Die Evangelistin"]).Authors(); !slices.Equal(got, []string{"Goldstein, Barbara"}) {
+	if got := a.book(ids["Die Schreiberin"]).Authors(); !slices.Equal(got, []string{"Weidner, Ulrike"}) {
 		t.Errorf("the book the editor does not see was changed: %v", got)
 	}
 	if list, counts := a.suggestions(editor, "authors"); len(list) != 0 || counts["authors"].(float64) != 0 {
 		t.Errorf("after the merge: %v %v", list, counts)
 	}
-	if list, _ := a.suggestions(admin, "authors"); len(list) != 1 || !slices.Equal(found(list[0]), []string{"Barbara Goldstein", "Goldstein, Barbara"}) {
+	if list, _ := a.suggestions(admin, "authors"); len(list) != 1 || !slices.Equal(found(list[0]), []string{"Ulrike Weidner", "Weidner, Ulrike"}) {
 		t.Errorf("the administrator's suggestion after the merge: %v", list)
 	}
 }
@@ -167,11 +167,11 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 		{Title: "Anonyme Briefe", Contributors: []catalog.NewContributor{{Name: "Anonymous"}}},
 		{Title: "Kommissar Falkner 2913: Die beste Waffe", Series: "Kommissar Falkner", Contributors: []catalog.NewContributor{{Name: "Kommissar Falkner"}}},
 		{Title: "Kommissar Falkner 2914: Der Tod", Series: "Kommissar Falkner", Contributors: []catalog.NewContributor{{Name: "Kommissar Falkner"}}},
-		{Title: "Todeskind", Series: "Ulrike Weidner", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
-		{Title: "Todesstoß", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
-		{Title: "Das letzte Evangelium: Historischer Roman (German Edition)"},
+		{Title: "Nachtkind", Series: "Ina Sommer", Contributors: []catalog.NewContributor{{Name: "Ina Sommer"}}},
+		{Title: "Nachtstoß", Contributors: []catalog.NewContributor{{Name: "Ina Sommer"}}},
+		{Title: "Das stille Archiv: Historischer Roman (German Edition)"},
 		{Title: "Tod im Moor (Kindle Edition)"},
-		{Title: "Sterbewohl: Kriminalroman"},
+		{Title: "Stillwasser: Kriminalroman"},
 		{Title: "Eifel-Krimi"},
 	} {
 		b.LibraryID = lib
@@ -205,23 +205,23 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 	for _, s := range list {
 		fixes[found(s)[0]] = s["fix"].(string)
 	}
-	if want := map[string]string{"Kommissar Falkner": "removeAuthor", "Ulrike Weidner": "choose"}; !sameOutcomes(fixes, want) {
+	if want := map[string]string{"Kommissar Falkner": "removeAuthor", "Ina Sommer": "choose"}; !sameOutcomes(fixes, want) {
 		t.Errorf("clashes %v, want %v", fixes, want)
 	}
 	// Either fix of a clash takes something away: "apply all" leaves the
 	// one that is to choose.
 	a.applyCleanup(editor, map[string]any{"kind": "clashes"})
-	if rose := a.book(ids["Todeskind"]); !slices.Equal(rose.Authors(), []string{"Ulrike Weidner"}) || rose.Series != "Ulrike Weidner" {
-		t.Errorf("Ulrike Weidner was changed without a choice: %v %q", rose.Authors(), rose.Series)
+	if rose := a.book(ids["Nachtkind"]); !slices.Equal(rose.Authors(), []string{"Ina Sommer"}) || rose.Series != "Ina Sommer" {
+		t.Errorf("Ina Sommer was changed without a choice: %v %q", rose.Authors(), rose.Series)
 	}
 	a.applyCleanup(editor, map[string]any{
-		"kind": "clashes", "picks": []map[string]string{{"subject": "ulrike weidner", "fix": "clearSeries"}},
+		"kind": "clashes", "picks": []map[string]string{{"subject": "ina sommer", "fix": "clearSeries"}},
 	})
 	if falkner := a.book(ids["Kommissar Falkner 2913: Die beste Waffe"]); len(falkner.Authors()) != 0 || falkner.Series != "Kommissar Falkner" {
 		t.Errorf("Kommissar Falkner is the series: %v %q", falkner.Authors(), falkner.Series)
 	}
-	if rose := a.book(ids["Todeskind"]); !slices.Equal(rose.Authors(), []string{"Ulrike Weidner"}) || rose.Series != "" {
-		t.Errorf("Ulrike Weidner is the author: %v %q", rose.Authors(), rose.Series)
+	if rose := a.book(ids["Nachtkind"]); !slices.Equal(rose.Authors(), []string{"Ina Sommer"}) || rose.Series != "" {
+		t.Errorf("Ina Sommer is the author: %v %q", rose.Authors(), rose.Series)
 	}
 
 	list, _ = a.suggestions(editor, "titles")
@@ -232,9 +232,9 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 		subjects[found(s)[0]] = s["subject"].(string)
 	}
 	want := map[string]string{
-		"Das letzte Evangelium: Historischer Roman (German Edition)": "Das letzte Evangelium",
-		"Tod im Moor (Kindle Edition)":                               "Tod im Moor",
-		"Sterbewohl: Kriminalroman":                                  "Sterbewohl",
+		"Das stille Archiv: Historischer Roman (German Edition)": "Das stille Archiv",
+		"Tod im Moor (Kindle Edition)":                           "Tod im Moor",
+		"Stillwasser: Kriminalroman":                             "Stillwasser",
 	}
 	if !sameOutcomes(suggested, want) {
 		t.Errorf("titles %v, want %v", suggested, want)
@@ -256,10 +256,10 @@ func TestPlaceholdersClashesAndTitlesAreSuggestedAppliedAndDismissed(t *testing.
 	}
 
 	// A title locked by hand is left as it is.
-	a.call(editor, http.MethodPatch, "/books/"+ids["Sterbewohl: Kriminalroman"].String(), map[string]any{"locks": map[string]bool{"title": true}})
+	a.call(editor, http.MethodPatch, "/books/"+ids["Stillwasser: Kriminalroman"].String(), map[string]any{"locks": map[string]bool{"title": true}})
 	status := a.applyCleanup(editor, map[string]any{"kind": "titles"})
 	if got, want := outcomes(status), map[string]string{
-		"Das letzte Evangelium": "changed", "Sterbewohl: Kriminalroman": "locked title",
+		"Das stille Archiv": "changed", "Stillwasser: Kriminalroman": "locked title",
 	}; !sameOutcomes(got, want) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
@@ -281,9 +281,9 @@ func TestDuplicatesAndPlaceholdersMeetAcrossTheOrderOfAnAuthorsName(t *testing.T
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
 	books := catalog.NewService(a.pool)
 	var ids []uuid.UUID
-	for _, author := range []string{"Goldstein, Barbara", "Barbara Goldstein"} {
+	for _, author := range []string{"Weidner, Ulrike", "Ulrike Weidner"} {
 		id, err := books.CreateBook(context.Background(), catalog.NewBook{
-			LibraryID: lib, Title: "Die Kardinälin", Contributors: []catalog.NewContributor{{Name: author}},
+			LibraryID: lib, Title: "Die Gräfin", Contributors: []catalog.NewContributor{{Name: author}},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -303,14 +303,14 @@ func TestDuplicatesAndPlaceholdersMeetAcrossTheOrderOfAnAuthorsName(t *testing.T
 		t.Fatal(err)
 	}
 	wish, err := sqlc.New(a.pool).FindPlaceholder(context.Background(), sqlc.FindPlaceholderParams{
-		LibraryID: lib, Isbns: []string{}, TitleKey: catalog.Key("Die Kardinälin"), AuthorKeys: []string{catalog.Key("Barbara Goldstein")},
+		LibraryID: lib, Isbns: []string{}, TitleKey: catalog.Key("Die Gräfin"), AuthorKeys: []string{catalog.Key("Ulrike Weidner")},
 	})
 	if err != nil || wish != ids[0] {
 		t.Errorf("the wish: %v %v", wish, err)
 	}
 
 	// Go's PersonKey and SQL's person_key are one rule.
-	for _, name := range []string{"Goldstein, Barbara", "Horváth, Ödön von", "J.R.R. Tolkien", "李 白", "Zoë  O'Neil-Smith", "a b A"} {
+	for _, name := range []string{"Weidner, Ulrike", "Horváth, Ödön von", "H.K.L. Brandt", "李 白", "Zoë  O'Neil-Smith", "a b A"} {
 		var sql string
 		if err := a.pool.QueryRow(context.Background(), `SELECT person_key($1)`, catalog.Key(name)).Scan(&sql); err != nil {
 			t.Fatal(err)
@@ -325,10 +325,10 @@ func TestTitleAdditionsAreOneRuleInGoAndSQL(t *testing.T) {
 	t.Parallel()
 	a := newApp(t)
 	for _, title := range []string{
-		"Das letzte Evangelium: Historischer Roman (German Edition)", "Rauklands Sohn: Raukland Trilogie (German Edition)",
-		"Der Schwarm - Roman", "Die Abrechnung -Thriller", "Sterbewohl: KRIMINALROMAN", "Das Original - Psycho-Thriller",
-		"The Road: A Novel", "Tod im Moor (Kindle Edition)", "Kurz und gut – Erzählungen", "Ein Sommer – Erzählung",
-		"Eifel-Krimi", "Mordsspaß-Krimi", "Der Roman", "Die Legenden der Albae: Die Vergessenen",
+		"Das stille Archiv: Historischer Roman (German Edition)", "Brennholds Sohn: Brennhold Trilogie (German Edition)",
+		"Der Wirbel - Roman", "Die Abrechnung -Thriller", "Stillwasser: KRIMINALROMAN", "Das Original - Psycho-Thriller",
+		"The Ferry: A Novel", "Tod im Moor (Kindle Edition)", "Kurz und gut – Erzählungen", "Ein Sommer – Erzählung",
+		"Eifel-Krimi", "Mordsspaß-Krimi", "Der Roman", "Die Legenden der Nebelvölker: Die Vergessenen",
 		"Sommerhaus, später: Erzählungen (Gesamtausgabe)", "Romane und Erzählungen", "Ödland",
 	} {
 		var sql bool
@@ -370,43 +370,43 @@ func TestASeriesInTitlesIsSuggestedAppliedAndDismissed(t *testing.T) {
 		}
 		ids[title] = id
 	}
-	add(open, "Rain Wild Chronicles 02 - Drachenkämpfer", "")
-	add(open, "Rain Wild Chronicles 01 - Drachenhüter", "")
-	add(open, "Drachenseele (Rain Wild Chronicles #3)", "")
+	add(open, "Sternwanderer 02 - Wellenbrecher", "")
+	add(open, "Sternwanderer 01 - Leuchtturmwärter", "")
+	add(open, "Nebelglocke (Sternwanderer #3)", "")
 	// Another book of the series, alone in a library the editor does not
 	// see: alone, it is not taken for one.
-	add(hidden, "Rain Wild Chronicles 04 - Drachenblut", "")
+	add(hidden, "Sternwanderer 04 - Sturmlicht", "")
 	// One title alone, but the series is known.
-	add(open, "Die Zwerge", "Die Zwerge")
-	add(open, "Die Zwerge, Band 2: Der Krieg der Zwerge", "")
+	add(open, "Die Glasbläser", "Die Glasbläser")
+	add(open, "Die Glasbläser, Band 2: Der Krieg der Glasbläser", "")
 	// Known only where the editor does not look.
 	add(hidden, "Geheime Reihe", "Geheime Reihe")
 	add(open, "Geheime Reihe 1 - Das Erbe", "")
 	// Alone, and no series of the name: titles, not series.
-	add(open, "Fahrenheit 451 - Ein Klassiker", "")
-	add(open, "Es - Teil 1 - Der Club der Verlierer", "")
-	add(open, "1984 - Roman", "")
+	add(open, "Celsius 212 - Ein Klassiker", "")
+	add(open, "Wo - Teil 1 - Der Club der Wanderer", "")
+	add(open, "1957 - Roman", "")
 	// In a series already.
-	add(open, "Die Zwerge 3 - Die Rache der Zwerge", "Die Zwerge")
+	add(open, "Die Glasbläser 3 - Die Rache der Glasbläser", "Die Glasbläser")
 
 	list, counts := a.suggestions(editor, "series")
 	if counts["series"].(float64) != 2 || len(list) != 2 {
 		t.Fatalf("the editor's suggestions: %v %v", list, counts)
 	}
 	rain, zwerge := list[0], list[1]
-	if rain["subject"] != "rain wild chronicles" || rain["fix"] != "setSeries" || rain["suggested"] != "Rain Wild Chronicles" || rain["books"].(float64) != 3 {
+	if rain["subject"] != "sternwanderer" || rain["fix"] != "setSeries" || rain["suggested"] != "Sternwanderer" || rain["books"].(float64) != 3 {
 		t.Errorf("the series: %v", rain)
 	}
 	if got, want := found(rain), []string{
-		"Rain Wild Chronicles 01 - Drachenhüter", "Rain Wild Chronicles 02 - Drachenkämpfer", "Drachenseele (Rain Wild Chronicles #3)",
+		"Sternwanderer 01 - Leuchtturmwärter", "Sternwanderer 02 - Wellenbrecher", "Nebelglocke (Sternwanderer #3)",
 	}; !slices.Equal(got, want) {
 		t.Errorf("the titles in their order: %v, want %v", got, want)
 	}
 	first := rain["found"].([]any)[0].(map[string]any)
-	if first["book"] != ids["Rain Wild Chronicles 01 - Drachenhüter"].String() || first["position"] != 1.0 || first["title"] != "Drachenhüter" {
+	if first["book"] != ids["Sternwanderer 01 - Leuchtturmwärter"].String() || first["position"] != 1.0 || first["title"] != "Leuchtturmwärter" {
 		t.Errorf("what a title says: %v", first)
 	}
-	if zwerge["subject"] != "die zwerge" || !slices.Equal(found(zwerge), []string{"Die Zwerge, Band 2: Der Krieg der Zwerge"}) {
+	if zwerge["subject"] != "die glasbläser" || !slices.Equal(found(zwerge), []string{"Die Glasbläser, Band 2: Der Krieg der Glasbläser"}) {
 		t.Errorf("the known series: %v", zwerge)
 	}
 	if list, _ := a.suggestions(admin, "series"); len(list) != 3 || list[0]["books"].(float64) != 3 || list[2]["subject"] != "geheime reihe" {
@@ -414,22 +414,22 @@ func TestASeriesInTitlesIsSuggestedAppliedAndDismissed(t *testing.T) {
 	}
 
 	// Dismissed, a suggestion stays away until another book holds the series.
-	if status, _, _ := a.call(editor, http.MethodPost, "/cleanup/dismiss", map[string]any{"kind": "series", "subject": "die zwerge"}); status != 204 {
+	if status, _, _ := a.call(editor, http.MethodPost, "/cleanup/dismiss", map[string]any{"kind": "series", "subject": "die glasbläser"}); status != 204 {
 		t.Fatalf("dismiss: %d", status)
 	}
 	if list, _ := a.suggestions(editor, "series"); len(list) != 1 {
 		t.Errorf("after dismissing: %v", list)
 	}
-	add(open, "Die Zwerge, Band 4: Das Schicksal der Zwerge", "")
+	add(open, "Die Glasbläser, Band 4: Das Schicksal der Glasbläser", "")
 	if list, _ := a.suggestions(editor, "series"); len(list) != 2 {
 		t.Errorf("after another book came: %v", list)
 	}
 
 	// A title locked by hand stays as it is; the book still takes the series.
-	a.call(editor, http.MethodPatch, "/books/"+ids["Drachenseele (Rain Wild Chronicles #3)"].String(), map[string]any{"locks": map[string]bool{"title": true}})
-	status := a.applyCleanup(editor, map[string]any{"kind": "series", "picks": []map[string]string{{"subject": "rain wild chronicles"}}})
+	a.call(editor, http.MethodPatch, "/books/"+ids["Nebelglocke (Sternwanderer #3)"].String(), map[string]any{"locks": map[string]bool{"title": true}})
+	status := a.applyCleanup(editor, map[string]any{"kind": "series", "picks": []map[string]string{{"subject": "sternwanderer"}}})
 	if got, want := outcomes(status), map[string]string{
-		"Drachenhüter": "changed", "Drachenkämpfer": "changed", "Drachenseele (Rain Wild Chronicles #3)": "changed title",
+		"Leuchtturmwärter": "changed", "Wellenbrecher": "changed", "Nebelglocke (Sternwanderer #3)": "changed title",
 	}; !sameOutcomes(got, want) {
 		t.Errorf("outcomes %v, want %v", got, want)
 	}
@@ -437,26 +437,26 @@ func TestASeriesInTitlesIsSuggestedAppliedAndDismissed(t *testing.T) {
 		title string
 		index float64
 	}{
-		"Rain Wild Chronicles 01 - Drachenhüter":   {"Drachenhüter", 1},
-		"Rain Wild Chronicles 02 - Drachenkämpfer": {"Drachenkämpfer", 2},
-		"Drachenseele (Rain Wild Chronicles #3)":   {"Drachenseele (Rain Wild Chronicles #3)", 3},
+		"Sternwanderer 01 - Leuchtturmwärter": {"Leuchtturmwärter", 1},
+		"Sternwanderer 02 - Wellenbrecher":    {"Wellenbrecher", 2},
+		"Nebelglocke (Sternwanderer #3)":      {"Nebelglocke (Sternwanderer #3)", 3},
 	} {
 		book := a.book(ids[title])
-		if book.Title != want.title || book.Series != "Rain Wild Chronicles" || book.SeriesIndex == nil || *book.SeriesIndex != want.index {
+		if book.Title != want.title || book.Series != "Sternwanderer" || book.SeriesIndex == nil || *book.SeriesIndex != want.index {
 			t.Errorf("%s: %q in %q at %v", title, book.Title, book.Series, book.SeriesIndex)
 		}
 		if !slices.Contains(book.Locked, catalog.FieldSeries) {
 			t.Errorf("%s: the series is a person's edit, and locked", title)
 		}
 	}
-	if got := a.book(ids["Rain Wild Chronicles 04 - Drachenblut"]); got.Series != "" {
+	if got := a.book(ids["Sternwanderer 04 - Sturmlicht"]); got.Series != "" {
 		t.Errorf("the book the editor does not see was changed: %q", got.Series)
 	}
-	if list, _ := a.suggestions(editor, "series"); len(list) != 1 || list[0]["subject"] != "die zwerge" {
+	if list, _ := a.suggestions(editor, "series"); len(list) != 1 || list[0]["subject"] != "die glasbläser" {
 		t.Errorf("after applying: %v", list)
 	}
 	// The book of the hidden library is in a known series now.
-	if list, _ := a.suggestions(admin, "series"); len(list) != 3 || list[0]["subject"] != "die zwerge" || list[1]["subject"] != "geheime reihe" || list[2]["subject"] != "rain wild chronicles" {
+	if list, _ := a.suggestions(admin, "series"); len(list) != 3 || list[0]["subject"] != "die glasbläser" || list[1]["subject"] != "geheime reihe" || list[2]["subject"] != "sternwanderer" {
 		t.Errorf("the administrator's suggestions after applying: %v", list)
 	}
 }
@@ -465,17 +465,17 @@ func TestASeriesInATitleIsOneRuleInGoAndSQL(t *testing.T) {
 	t.Parallel()
 	a := newApp(t)
 	for _, title := range []string{
-		"Rain Wild Chronicles 01 - Drachenhüter", "Rain Wild Chronicles 2 – Drachenkämpfer", "Wheel of Time #2: The Great Hunt",
-		"Die Zwerge, Band 3: Das Schicksal der Zwerge", "Die Zwerge Bd. 4 - Die Rache der Zwerge", "Hauptmann Brandt - 2500 - Projekt Saturn",
-		"Kommissar Falkner 2913: Die beste Waffe", "Star Trek - Deep Space Nine 12 - Der Weg", "Die drei ??? Folge 125 - Feuermond",
-		"Der Herr der Ringe (1) - Die Gefährten", "The Expanse Book 1.5: The Butcher of Anderson", "Drachenhüter (Rain Wild Chronicles #1)",
-		"Die Gefährten (Der Herr der Ringe, Band 1)", "Ödland (Die Ödland-Chroniken Teil 2)", "Mord (in Paris) (Kommissar Dupin Nr. 3)",
-		"Es - Teil 1 - Der Club der Verlierer", "Fahrenheit 451 - Ein Roman", "Übel 3 - Ärger", "ÖDLAND 2 - Straße",
-		"1984 - Roman", "2001 - Odyssee im Weltraum", "Berlin 1945 - Das Ende", "Catch22 - Der Roman", "Krieg und Frieden - Teil 1",
-		"Krieg und Frieden, Teil 1", "Teil 2 - Die Rückkehr", "Band 3: Das Ende", "Der Hobbit (Teil 1)", "Drachenhüter (Band 1)",
-		"Die 39 Stufen", "Rain Wild Chronicles 01 Drachenhüter", "Das letzte Evangelium: Historischer Roman (German Edition)",
-		"Sterbewohl: Kriminalroman", "Die Legenden der Albae: Die Vergessenen", "Ocean's 11 - ", "A 1 - 2", "",
-		"  Rain Wild Chronicles 01 - Drachenhüter  ", "Saga 1 - A - Saga 2 - B", "X (Y #1) (Z #2)",
+		"Sternwanderer 01 - Leuchtturmwärter", "Sternwanderer 2 – Wellenbrecher", "Salt Road #2: The Long Crossing",
+		"Die Glasbläser, Band 3: Das Schicksal der Glasbläser", "Die Glasbläser Bd. 4 - Die Rache der Glasbläser", "Hauptmann Brandt - 2500 - Projekt Kupfer",
+		"Kommissar Falkner 2913: Die beste Waffe", "Raumhafen - Station Vier 12 - Der Weg", "Die Spürnasen ??? Folge 125 - Nachtflug",
+		"Das Salzland (1) - Die Brückenbauer", "The Meridian Book 1.5: The Miller of Aldwyn", "Leuchtturmwärter (Sternwanderer #1)",
+		"Die Brückenbauer (Das Salzland, Band 1)", "Ödland (Die Ödland-Chroniken Teil 2)", "Mord (in Paris) (Kommissar Lenz Nr. 3)",
+		"Wo - Teil 1 - Der Club der Wanderer", "Celsius 212 - Ein Roman", "Übel 3 - Ärger", "ÖDLAND 2 - Straße",
+		"1957 - Roman", "2077 - Reise zum Mond", "Hamburg 1923 - Das Ende", "Trap17 - Der Roman", "Stadt und Land - Teil 1",
+		"Stadt und Land, Teil 1", "Teil 2 - Die Rückkehr", "Band 3: Das Ende", "Die Laterne (Teil 1)", "Leuchtturmwärter (Band 1)",
+		"Die 41 Stufen", "Sternwanderer 01 Leuchtturmwärter", "Das stille Archiv: Historischer Roman (German Edition)",
+		"Stillwasser: Kriminalroman", "Die Legenden der Nebelvölker: Die Vergessenen", "Marlow's 7 - ", "A 1 - 2", "",
+		"  Sternwanderer 01 - Leuchtturmwärter  ", "Saga 1 - A - Saga 2 - B", "X (Y #1) (Z #2)",
 	} {
 		var sql, want *string
 		place, ok := cleanup.SeriesInTitle(title)
@@ -532,18 +532,18 @@ func TestAPreviewShowsEachBookBeforeAndAfterAsApplyDoesIt(t *testing.T) {
 	books := catalog.NewService(a.pool)
 	ids := map[string]uuid.UUID{}
 	for _, b := range []catalog.NewBook{
-		{LibraryID: open, Title: "Das letzte Evangelium", Contributors: []catalog.NewContributor{{Name: "Goldstein, Barbara"}}},
-		{LibraryID: open, Title: "Der vergessene Papst", Contributors: []catalog.NewContributor{{Name: "Goldstein, Barbara"}}},
-		{LibraryID: open, Title: "Die Kardinälin", Contributors: []catalog.NewContributor{{Name: "Barbara Goldstein"}}},
-		{LibraryID: open, Title: "Die Gesperrte", Contributors: []catalog.NewContributor{{Name: "Barbara Goldstein"}}},
-		{LibraryID: hidden, Title: "Die Evangelistin", Contributors: []catalog.NewContributor{{Name: "Barbara Goldstein"}}},
+		{LibraryID: open, Title: "Das stille Archiv", Contributors: []catalog.NewContributor{{Name: "Weidner, Ulrike"}}},
+		{LibraryID: open, Title: "Der verschollene Abt", Contributors: []catalog.NewContributor{{Name: "Weidner, Ulrike"}}},
+		{LibraryID: open, Title: "Die Gräfin", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
+		{LibraryID: open, Title: "Die Gesperrte", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
+		{LibraryID: hidden, Title: "Die Schreiberin", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
 		{LibraryID: open, Title: "Ohne Namen", Contributors: []catalog.NewContributor{{Name: "authors_sort"}}},
 		{LibraryID: open, Title: "Kommissar Falkner 2913: Die beste Waffe", Series: "Kommissar Falkner", Contributors: []catalog.NewContributor{{Name: "Kommissar Falkner"}}},
-		{LibraryID: open, Title: "Todeskind", Series: "Ulrike Weidner", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
-		{LibraryID: open, Title: "Todesstoß", Contributors: []catalog.NewContributor{{Name: "Ulrike Weidner"}}},
+		{LibraryID: open, Title: "Nachtkind", Series: "Ina Sommer", Contributors: []catalog.NewContributor{{Name: "Ina Sommer"}}},
+		{LibraryID: open, Title: "Nachtstoß", Contributors: []catalog.NewContributor{{Name: "Ina Sommer"}}},
 		{LibraryID: open, Title: "Tod im Moor (Kindle Edition)"},
-		{LibraryID: open, Title: "Rain Wild Chronicles 01 - Drachenhüter"},
-		{LibraryID: open, Title: "Rain Wild Chronicles 02 - Drachenkämpfer"},
+		{LibraryID: open, Title: "Sternwanderer 01 - Leuchtturmwärter"},
+		{LibraryID: open, Title: "Sternwanderer 02 - Wellenbrecher"},
 	} {
 		id, err := books.CreateBook(context.Background(), b)
 		if err != nil {
@@ -553,48 +553,48 @@ func TestAPreviewShowsEachBookBeforeAndAfterAsApplyDoesIt(t *testing.T) {
 	}
 	a.call(editor, http.MethodPatch, "/books/"+ids["Die Gesperrte"].String(), map[string]any{"locks": map[string]bool{"contributors": true}})
 
-	if status, _ := a.preview(reader, "kind=authors&subject=barbara+goldstein"); status != 403 {
+	if status, _ := a.preview(reader, "kind=authors&subject=ulrike+weidner"); status != 403 {
 		t.Errorf("a reader previews: %d", status)
 	}
-	if status, _ := a.preview(editor, "kind=authors&subject=terry+pratchett"); status != 404 {
+	if status, _ := a.preview(editor, "kind=authors&subject=tomas+prendell"); status != 404 {
 		t.Errorf("a suggestion there is not: %d", status)
 	}
 	if status, _ := a.preview(editor, "kind=colours&subject=x"); status != 422 {
 		t.Errorf("a kind there is not: %d", status)
 	}
 
-	status, body := a.preview(editor, "kind=authors&subject=barbara+goldstein&to=Goldstein,+Barbara")
+	status, body := a.preview(editor, "kind=authors&subject=ulrike+weidner&to=Weidner,+Ulrike")
 	if status != 200 || body["total"].(float64) != 2 {
 		t.Fatalf("the preview: %d %v", status, body)
 	}
 	shown := previewBooks(body)
-	if _, ok := shown["Die Evangelistin"]; ok {
+	if _, ok := shown["Die Schreiberin"]; ok {
 		t.Error("a book of a library the editor does not see is previewed")
 	}
-	moved := previewFields(shown["Die Kardinälin"])["contributors"]
-	if moved["before"] != "Barbara Goldstein" || moved["after"] != "Goldstein, Barbara" || moved["locked"] != nil {
+	moved := previewFields(shown["Die Gräfin"])["contributors"]
+	if moved["before"] != "Ulrike Weidner" || moved["after"] != "Weidner, Ulrike" || moved["locked"] != nil {
 		t.Errorf("the change of a book: %v", moved)
 	}
-	if kept := previewFields(shown["Die Gesperrte"])["contributors"]; kept["locked"] != true || kept["after"] != "Goldstein, Barbara" {
+	if kept := previewFields(shown["Die Gesperrte"])["contributors"]; kept["locked"] != true || kept["after"] != "Weidner, Ulrike" {
 		t.Errorf("a locked book stays: %v", kept)
 	}
-	_, body = a.preview(editor, "kind=authors&subject=barbara+goldstein&to=Goldstein,+Barbara&limit=1")
+	_, body = a.preview(editor, "kind=authors&subject=ulrike+weidner&to=Weidner,+Ulrike&limit=1")
 	if len(body["books"].([]any)) != 1 || body["total"].(float64) != 2 {
 		t.Errorf("a page of the preview: %v", body)
 	}
-	_, body = a.preview(editor, "kind=authors&subject=barbara+goldstein&to=Goldstein,+Barbara&offset=1&limit=5")
+	_, body = a.preview(editor, "kind=authors&subject=ulrike+weidner&to=Weidner,+Ulrike&offset=1&limit=5")
 	if len(body["books"].([]any)) != 1 {
 		t.Errorf("the rest of the preview: %v", body)
 	}
 
 	// What the preview says is what apply does.
 	a.applyCleanup(editor, map[string]any{
-		"kind": "authors", "picks": []map[string]string{{"subject": "barbara goldstein", "to": "Goldstein, Barbara"}},
+		"kind": "authors", "picks": []map[string]string{{"subject": "ulrike weidner", "to": "Weidner, Ulrike"}},
 	})
-	if got := a.book(ids["Die Kardinälin"]).Authors(); !slices.Equal(got, []string{"Goldstein, Barbara"}) {
+	if got := a.book(ids["Die Gräfin"]).Authors(); !slices.Equal(got, []string{"Weidner, Ulrike"}) {
 		t.Errorf("after applying: %v", got)
 	}
-	if got := a.book(ids["Die Gesperrte"]).Authors(); !slices.Equal(got, []string{"Barbara Goldstein"}) {
+	if got := a.book(ids["Die Gesperrte"]).Authors(); !slices.Equal(got, []string{"Ulrike Weidner"}) {
 		t.Errorf("the locked book changed: %v", got)
 	}
 
@@ -602,8 +602,8 @@ func TestAPreviewShowsEachBookBeforeAndAfterAsApplyDoesIt(t *testing.T) {
 	if f := previewFields(previewBooks(body)["Ohne Namen"])["contributors"]; f["before"] != "authors_sort" || f["after"] != "" {
 		t.Errorf("a placeholder author: %v", f)
 	}
-	_, body = a.preview(editor, "kind=clashes&fix=clearSeries&subject=ulrike+weidner")
-	if f := previewFields(previewBooks(body)["Todeskind"])["series"]; f["before"] != "Ulrike Weidner" || f["after"] != "" {
+	_, body = a.preview(editor, "kind=clashes&fix=clearSeries&subject=ina+sommer")
+	if f := previewFields(previewBooks(body)["Nachtkind"])["series"]; f["before"] != "Ina Sommer" || f["after"] != "" {
 		t.Errorf("a series cleared: %v", f)
 	}
 	_, body = a.preview(editor, "kind=clashes&subject=kommissar+falkner")
@@ -614,10 +614,10 @@ func TestAPreviewShowsEachBookBeforeAndAfterAsApplyDoesIt(t *testing.T) {
 	if f := previewFields(previewBooks(body)["Tod im Moor (Kindle Edition)"])["title"]; f["after"] != "Tod im Moor" {
 		t.Errorf("a title: %v", f)
 	}
-	_, body = a.preview(editor, "kind=series&subject=rain+wild+chronicles")
-	drachen := previewFields(previewBooks(body)["Rain Wild Chronicles 01 - Drachenhüter"])
-	if drachen["series"]["after"] != "Rain Wild Chronicles #1" || drachen["title"]["after"] != "Drachenhüter" {
-		t.Errorf("a series in titles: %v", drachen)
+	_, body = a.preview(editor, "kind=series&subject=sternwanderer")
+	sterne := previewFields(previewBooks(body)["Sternwanderer 01 - Leuchtturmwärter"])
+	if sterne["series"]["after"] != "Sternwanderer #1" || sterne["title"]["after"] != "Leuchtturmwärter" {
+		t.Errorf("a series in titles: %v", sterne)
 	}
 
 	// A title locked by hand is shown as staying.
@@ -743,10 +743,10 @@ func TestAClashThatIsToChooseOffersBothFixesAndNeverTakesTheSeriesByDefault(t *t
 		create(b)
 	}
 	// A real author, whose books are mostly in other series.
-	rose := []catalog.NewContributor{{Name: "Ulrike Weidner"}}
-	create(catalog.NewBook{Title: "Todeskind", Series: "Ulrike Weidner", Contributors: rose})
+	rose := []catalog.NewContributor{{Name: "Ina Sommer"}}
+	create(catalog.NewBook{Title: "Nachtkind", Series: "Ina Sommer", Contributors: rose})
 	for i := range 4 {
-		create(catalog.NewBook{Title: fmt.Sprintf("Weidner Roman %d", i), Series: "Baltimore", Contributors: rose})
+		create(catalog.NewBook{Title: fmt.Sprintf("Sommer Roman %d", i), Series: "Marburg", Contributors: rose})
 	}
 	// A house name whose titles say nothing, that a provider calls a series.
 	brandt := []catalog.NewContributor{{Name: "Hauptmann Brandt"}}
@@ -765,7 +765,7 @@ func TestAClashThatIsToChooseOffersBothFixesAndNeverTakesTheSeriesByDefault(t *t
 		byName[found(s)[0]] = s
 	}
 	for name, suggested := range map[string]string{
-		"Kommissar Falkner": "nameIsSeries", "Ulrike Weidner": "clearSeries", "Hauptmann Brandt": "nameIsSeries",
+		"Kommissar Falkner": "nameIsSeries", "Ina Sommer": "clearSeries", "Hauptmann Brandt": "nameIsSeries",
 	} {
 		s := byName[name]
 		if s["fix"] != "choose" || s["suggested"] != suggested {
@@ -831,7 +831,7 @@ func TestAClashThatIsToChooseOffersBothFixesAndNeverTakesTheSeriesByDefault(t *t
 	if got := a.book(ids["Kommissar Falkner 2900: Fall 0"]); got.SeriesIndex == nil || *got.SeriesIndex != 2900 {
 		t.Errorf("the place it had: %v", got.SeriesIndex)
 	}
-	if got := a.book(ids["Todeskind"]); got.Series != "Ulrike Weidner" {
+	if got := a.book(ids["Nachtkind"]); got.Series != "Ina Sommer" {
 		t.Errorf("another clash was changed: %q", got.Series)
 	}
 }

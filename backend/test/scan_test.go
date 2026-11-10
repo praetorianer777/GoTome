@@ -122,8 +122,8 @@ func sum(content string) []byte {
 func TestFirstScanImportsAndGroups(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Herbert/Dune.epub", "dune as epub")
-	f.write("Herbert/Dune.pdf", "dune as pdf")
+	f.write("Halden/Dusk.epub", "dusk as epub")
+	f.write("Halden/Dusk.pdf", "dusk as pdf")
 	f.write("Austen/Emma/02 - Two.mp3", "emma two")
 	f.write("Austen/Emma/01 - One.mp3", "emma one")
 	f.write("Austen/Emma/10 - Ten.mp3", "emma ten")
@@ -141,7 +141,7 @@ func TestFirstScanImportsAndGroups(t *testing.T) {
 		t.Fatalf("%d files, want 6: %v", len(files), files)
 	}
 	for relPath, content := range map[string]string{
-		"Herbert/Dune.epub": "dune as epub", "Herbert/Dune.pdf": "dune as pdf",
+		"Halden/Dusk.epub": "dusk as epub", "Halden/Dusk.pdf": "dusk as pdf",
 		"Austen/Emma/01 - One.mp3": "emma one", "Loose.mobi": "loose",
 	} {
 		if got := files[relPath]; !bytes.Equal(got.SHA256, sum(content)) {
@@ -154,9 +154,9 @@ func TestFirstScanImportsAndGroups(t *testing.T) {
 		}
 	}
 
-	epub, pdf := files["Herbert/Dune.epub"], files["Herbert/Dune.pdf"]
-	if epub.BookID != pdf.BookID || epub.Title != "Dune" || epub.Part != nil {
-		t.Errorf("Dune in two formats: %+v and %+v, want one book called Dune", epub, pdf)
+	epub, pdf := files["Halden/Dusk.epub"], files["Halden/Dusk.pdf"]
+	if epub.BookID != pdf.BookID || epub.Title != "Dusk" || epub.Part != nil {
+		t.Errorf("Dusk in two formats: %+v and %+v, want one book called Dusk", epub, pdf)
 	}
 	for relPath, part := range map[string]int32{
 		"Austen/Emma/01 - One.mp3": 0, "Austen/Emma/02 - Two.mp3": 1, "Austen/Emma/10 - Ten.mp3": 2,
@@ -180,7 +180,7 @@ func TestFirstScanImportsAndGroups(t *testing.T) {
 func TestSecondScanOfAnUnchangedLibraryOnlyWalks(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Herbert/Dune.epub", "dune")
+	f.write("Halden/Dusk.epub", "dusk")
 	f.write("Austen/Emma/01.mp3", "one")
 	f.write("Austen/Emma/02.mp3", "two")
 	f.scan()
@@ -200,7 +200,7 @@ func TestSecondScanOfAnUnchangedLibraryOnlyWalks(t *testing.T) {
 func TestScanNoticesAModifiedFile(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Dune.epub", "first edition")
+	f.write("Dusk.epub", "first edition")
 	f.write("Emma.epub", "emma")
 	f.scan()
 	before := f.files()
@@ -208,18 +208,18 @@ func TestScanNoticesAModifiedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.write("Dune.epub", "second edition, revised")
+	f.write("Dusk.epub", "second edition, revised")
 	res := f.scan()
 	if want := (ingest.Result{Seen: 2, Changed: 1, Hashed: 1, Complete: true}); res != want {
 		t.Fatalf("scan after a change = %+v, want %+v", res, want)
 	}
 	after := f.files()
-	dune := after["Dune.epub"]
-	if dune.ID != before["Dune.epub"].ID || dune.BookID != before["Dune.epub"].BookID {
+	dusk := after["Dusk.epub"]
+	if dusk.ID != before["Dusk.epub"].ID || dusk.BookID != before["Dusk.epub"].BookID {
 		t.Error("the changed file became another file or another book")
 	}
-	if !bytes.Equal(dune.SHA256, sum("second edition, revised")) || dune.ExtractState != "pending" {
-		t.Errorf("changed file: sha256 %x, extraction %s; want the new hash and extraction due again", dune.SHA256, dune.ExtractState)
+	if !bytes.Equal(dusk.SHA256, sum("second edition, revised")) || dusk.ExtractState != "pending" {
+		t.Errorf("changed file: sha256 %x, extraction %s; want the new hash and extraction due again", dusk.SHA256, dusk.ExtractState)
 	}
 	if after["Emma.epub"].ExtractState != "done" {
 		t.Error("the file that did not change lost its extraction")
@@ -245,16 +245,16 @@ func TestScanNoticesAModifiedFile(t *testing.T) {
 func TestScanFollowsAMovedFile(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("inbox/Dune.epub", "dune")
+	f.write("inbox/Dusk.epub", "dusk")
 	f.write("inbox/Emma/01.mp3", "one")
 	f.write("inbox/Emma/02.mp3", "two")
 	f.scan()
 	before := f.files()
 
-	if err := os.MkdirAll(f.path("Herbert"), 0o755); err != nil {
+	if err := os.MkdirAll(f.path("Halden"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(f.path("inbox/Dune.epub"), f.path("Herbert/Dune - Frank Herbert.epub")); err != nil {
+	if err := os.Rename(f.path("inbox/Dusk.epub"), f.path("Halden/Dusk - Henrik Halden.epub")); err != nil {
 		t.Fatal(err)
 	}
 	// A whole folder renamed.
@@ -271,7 +271,7 @@ func TestScanFollowsAMovedFile(t *testing.T) {
 		t.Fatalf("%d files in %d books after the moves, want 3 in 2: %v", len(after), f.count("books"), after)
 	}
 	for from, to := range map[string]string{
-		"inbox/Dune.epub":   "Herbert/Dune - Frank Herbert.epub",
+		"inbox/Dusk.epub":   "Halden/Dusk - Henrik Halden.epub",
 		"inbox/Emma/01.mp3": "Emma by Austen/01.mp3",
 		"inbox/Emma/02.mp3": "Emma by Austen/02.mp3",
 	} {
@@ -284,8 +284,8 @@ func TestScanFollowsAMovedFile(t *testing.T) {
 		}
 	}
 	// What a person called the book stays, whatever the file is called now.
-	if after["Herbert/Dune - Frank Herbert.epub"].Title != "Dune" {
-		t.Errorf("the moved book is now called %q", after["Herbert/Dune - Frank Herbert.epub"].Title)
+	if after["Halden/Dusk - Henrik Halden.epub"].Title != "Dusk" {
+		t.Errorf("the moved book is now called %q", after["Halden/Dusk - Henrik Halden.epub"].Title)
 	}
 }
 
@@ -299,12 +299,12 @@ func equalPart(a, b *int32) bool {
 func TestScanMarksRemovedFilesMissingAndBringsThemBack(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Dune.epub", "dune")
+	f.write("Dusk.epub", "dusk")
 	f.write("Emma.epub", "emma")
 	f.scan()
 	before := f.files()
 
-	if err := os.Remove(f.path("Dune.epub")); err != nil {
+	if err := os.Remove(f.path("Dusk.epub")); err != nil {
 		t.Fatal(err)
 	}
 	res := f.scan()
@@ -312,21 +312,21 @@ func TestScanMarksRemovedFilesMissingAndBringsThemBack(t *testing.T) {
 		t.Fatalf("scan after a removal = %+v, want %+v", res, want)
 	}
 	after := f.files()
-	if len(after) != 2 || !after["Dune.epub"].Missing || after["Emma.epub"].Missing || f.count("books") != 2 {
-		t.Fatalf("after the removal: %v; want both files known, Dune marked missing", after)
+	if len(after) != 2 || !after["Dusk.epub"].Missing || after["Emma.epub"].Missing || f.count("books") != 2 {
+		t.Fatalf("after the removal: %v; want both files known, Dusk marked missing", after)
 	}
 	if res := f.scan(); res.Missing != 0 {
 		t.Errorf("a file already missing was counted again: %+v", res)
 	}
 
 	// The same file comes back, as a restored backup does.
-	f.write("Dune.epub", "dune")
+	f.write("Dusk.epub", "dusk")
 	res = f.scan()
 	if res.Restored != 1 || res.Added != 0 || res.Changed != 0 {
 		t.Fatalf("scan after the file came back = %+v, want one restored", res)
 	}
-	back := f.files()["Dune.epub"]
-	if back.Missing || back.ID != before["Dune.epub"].ID || back.BookID != before["Dune.epub"].BookID {
+	back := f.files()["Dusk.epub"]
+	if back.Missing || back.ID != before["Dusk.epub"].ID || back.BookID != before["Dusk.epub"].BookID {
 		t.Errorf("the file that came back is %+v, want the file it was", back)
 	}
 }
@@ -334,24 +334,24 @@ func TestScanMarksRemovedFilesMissingAndBringsThemBack(t *testing.T) {
 func TestScanAddsANewFormatToTheBookItBelongsTo(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Herbert/Dune.epub", "dune")
+	f.write("Halden/Dusk.epub", "dusk")
 	f.write("Austen/Emma/01.mp3", "one")
 	f.write("Austen/Emma/03.mp3", "three")
 	f.scan()
 
-	f.write("Herbert/Dune.pdf", "dune, typeset")
-	f.write("Herbert/Dune Messiah.epub", "messiah")
+	f.write("Halden/Dusk.pdf", "dusk, typeset")
+	f.write("Halden/Dusk Reckoning.epub", "messiah")
 	f.write("Austen/Emma/02.mp3", "two")
 	res := f.scan()
 	if want := (ingest.Result{Seen: 6, Added: 3, Books: 1, Hashed: 3, Complete: true}); res != want {
 		t.Fatalf("scan = %+v, want %+v", res, want)
 	}
 	files := f.files()
-	if files["Herbert/Dune.pdf"].BookID != files["Herbert/Dune.epub"].BookID {
-		t.Error("the PDF of Dune did not join the book its EPUB is")
+	if files["Halden/Dusk.pdf"].BookID != files["Halden/Dusk.epub"].BookID {
+		t.Error("the PDF of Dusk did not join the book its EPUB is")
 	}
-	if files["Herbert/Dune Messiah.epub"].BookID == files["Herbert/Dune.epub"].BookID {
-		t.Error("Dune Messiah joined Dune")
+	if files["Halden/Dusk Reckoning.epub"].BookID == files["Halden/Dusk.epub"].BookID {
+		t.Error("Dusk Reckoning joined Dusk")
 	}
 	for relPath, part := range map[string]int32{"Austen/Emma/01.mp3": 0, "Austen/Emma/02.mp3": 1, "Austen/Emma/03.mp3": 2} {
 		x := files[relPath]
@@ -364,7 +364,7 @@ func TestScanAddsANewFormatToTheBookItBelongsTo(t *testing.T) {
 func TestScanTouchesNothingWhenTheFolderIsGone(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	f.write("Dune.epub", "dune")
+	f.write("Dusk.epub", "dusk")
 	f.scan()
 
 	// An unmounted disk: the folder is not there at all.
@@ -376,7 +376,7 @@ func TestScanTouchesNothingWhenTheFolderIsGone(t *testing.T) {
 	if !errors.Is(err, ingest.ErrNoFolder) {
 		t.Fatalf("scan of a folder that is gone: %v, want ErrNoFolder", err)
 	}
-	if f.files()["Dune.epub"].Missing {
+	if f.files()["Dusk.epub"].Missing {
 		t.Error("an unmounted folder made its books missing")
 	}
 }
@@ -387,7 +387,7 @@ func TestScanLeavesAloneWhatItCannotSee(t *testing.T) {
 		t.Skip("root reads every folder")
 	}
 	f := newFolder(t)
-	f.write("Open/Dune.epub", "dune")
+	f.write("Open/Dusk.epub", "dusk")
 	f.write("Locked/Emma.epub", "emma")
 	f.scan()
 
@@ -407,7 +407,7 @@ func TestScanLeavesAloneWhatItCannotSee(t *testing.T) {
 func TestScanInPassesReachesTheSameResult(t *testing.T) {
 	t.Parallel()
 	f := newFolder(t)
-	for _, author := range []string{"Austen", "Herbert", "Le Guin", "Woolf"} {
+	for _, author := range []string{"Austen", "Halden", "Lund", "Woolf"} {
 		f.write(author+"/Book.epub", author)
 	}
 	f.scan()
@@ -504,7 +504,7 @@ func TestScanIsAskedForThroughTheAPI(t *testing.T) {
 	reader, _ := a.signedIn("reader", "reader")
 
 	books := t.TempDir()
-	if err := os.WriteFile(filepath.Join(books, "Dune.epub"), []byte("dune"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(books, "Dusk.epub"), []byte("dusk"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	shared := a.externalLibrary(admin, "Shared", "shared", books)

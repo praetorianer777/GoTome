@@ -1,6 +1,6 @@
 -- +goose Up
--- One author under several spellings: "Goldstein, Barbara", "Barbara
--- Goldstein" and "Goldstein Barbara" have the words of their key in common,
+-- One author under several spellings: "Weidner, Ulrike", "Ulrike
+-- Weidner" and "Weidner Ulrike" have the words of their key in common,
 -- only in another order. person_key is those words sorted; whatever matches
 -- an author to another (duplicates, placeholders) compares it, and the
 -- clean-up page offers to make the spellings one.
@@ -62,9 +62,9 @@ END;
 -- +goose StatementEnd
 
 -- An author whose books are in a series of the same name. Where every one
--- of the author's books is, the author is the series ("Jerry Cotton") and
+-- of the author's books is, the author is the series ("Max Falk") and
 -- the value is removeAuthor; where only some are, the series is the author
--- ("Karen Rose") and the value is clearSeries. The books are those of both.
+-- ("Anja Vogel") and the value is clearSeries. The books are those of both.
 -- +goose StatementBegin
 CREATE FUNCTION cleanup_name_clashes(viewer uuid, sees_all boolean)
 RETURNS TABLE (subject text, value text, books integer, names text[], counts integer[])

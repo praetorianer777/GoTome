@@ -182,12 +182,12 @@ func seedVectors(t *testing.T, pool *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	books := []struct{ title, author, series, tag string }{
-		{"Die Evangelistin", "Barbara Goldstein", "Evangelien", "Historischer Roman"},
-		{"Das letzte Evangelium", "Barbara Goldstein", "Evangelien", "Historischer Roman"},
-		{"Die Kardinälin", "Barbara Goldstein", "", "Historischer Roman"},
-		{"Der vergessene Papst", "Barbara Goldstein", "", "Historischer Roman"},
-		{"Die Päpstin", "Barbara Goldstein", "", "Historischer Roman"},
-		{"Die Goldspinnerin", "Gerit Bertram", "", "Historischer Roman"},
+		{"Die Schreiberin", "Ulrike Weidner", "Archivreihe", "Historischer Roman"},
+		{"Das stille Archiv", "Ulrike Weidner", "Archivreihe", "Historischer Roman"},
+		{"Die Gräfin", "Ulrike Weidner", "", "Historischer Roman"},
+		{"Der verschollene Abt", "Ulrike Weidner", "", "Historischer Roman"},
+		{"Die Domherrin", "Ulrike Weidner", "", "Historischer Roman"},
+		{"Die Silberweberin", "Greta Berndt", "", "Historischer Roman"},
 	}
 	model := embed.Specs[embed.DefaultSpec].Model
 	for i, b := range books {
@@ -257,14 +257,14 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 	onDatabase(t, pool)
 	ctx := context.Background()
 	records := filepath.Join(t.TempDir(), "metadata.json")
-	// Der Process is found as itself, Dune as another edition of its work
+	// Der Process is found as itself, Dusk as another edition of its work
 	// (the deluxe edition, which the search does not find, carries its
 	// ISBN), Emma first as an edition nobody says is hers and then as
 	// itself, and the last book not at all.
 	if err := os.WriteFile(records, []byte(`[
 		{"id": "process", "title": "Der Process", "authors": ["Franz Kafka"], "language": "de", "isbns": ["9783596294312"]},
-		{"id": "dune-2019", "work": "dune", "title": "Dune", "authors": ["Frank Herbert"], "language": "en", "isbns": ["9780593099322"]},
-		{"id": "dune-deluxe", "work": "dune", "title": "Dune Deluxe", "authors": ["Frank Herbert"], "isbns": ["9780441013593"]},
+		{"id": "dusk-2019", "work": "dusk", "title": "Dusk", "authors": ["Henrik Halden"], "language": "en", "isbns": ["9781950001057"]},
+		{"id": "dusk-deluxe", "work": "dusk", "title": "Dusk Deluxe", "authors": ["Henrik Halden"], "isbns": ["9780195001013"]},
 		{"id": "emma-other", "title": "Emma", "authors": ["Jane Austen"], "language": "en", "isbns": ["9780306406157"]},
 		{"id": "emma", "title": "Emma", "language": "de", "isbns": ["9780141439587"]}
 	]`), 0o644); err != nil {
@@ -285,7 +285,7 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 	}
 	books := []struct{ title, author, language, isbn string }{
 		{"Der Process", "Franz Kafka", "de", "9783596294312"},
-		{"Dune", "Frank Herbert", "en", "9780441013593"},
+		{"Dusk", "Henrik Halden", "en", "9780195001013"},
 		{"Emma", "Jane Austen", "en", "9780141439587"},
 		{"Nothing Like It", "Nobody Known", "en", "9780141199085"},
 		{"Emma", "Jane Austen", "en", ""},

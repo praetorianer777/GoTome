@@ -49,8 +49,8 @@ func (a *app) filterShelf(admin *http.Client) string {
 	add(catalog.NewBook{Title: "Jane Eyre", Contributors: author("Charlotte Brontë"), Language: "en", Published: "1847",
 		Tags: []string{"Fiction", "Gothic"}}, "mobi")
 	add(catalog.NewBook{Title: "Der Process", Contributors: author("Franz Kafka"), Language: "de", Published: "1925"}, "pdf")
-	add(catalog.NewBook{Title: "Dune", Contributors: author("Frank Herbert"), Language: "en", Published: "1965-08-01",
-		Series: "Dune", Tags: []string{"Science Fiction"}}, "m4b")
+	add(catalog.NewBook{Title: "Dusk", Contributors: author("Henrik Halden"), Language: "en", Published: "1965-08-01",
+		Series: "Dusk", Tags: []string{"Science Fiction"}}, "m4b")
 	add(catalog.NewBook{Title: "Untitled"})
 	return lib
 }
@@ -69,27 +69,27 @@ func TestFilters(t *testing.T) {
 		// Names compare by their key: no accents, case or commas.
 		{`{"field": "author", "op": "in", "values": ["charlotte bronte", "FRANZ KAFKA"]}`, []string{"Der Process", "Jane Eyre"}},
 		{`{"field": "author", "op": "empty"}`, []string{"Untitled"}},
-		{`{"field": "series", "op": "in", "values": ["Dune"]}`, []string{"Dune"}},
+		{`{"field": "series", "op": "in", "values": ["Dusk"]}`, []string{"Dusk"}},
 		{`{"field": "series", "op": "empty"}`, []string{"Der Process", "Jane Eyre", "Persuasion", "Untitled"}},
 		{`{"field": "tag", "op": "in", "values": ["fiction"]}`, []string{"Emma", "Jane Eyre", "Persuasion"}},
 		{`{"field": "tag", "op": "empty"}`, []string{"Der Process", "Untitled"}},
 		// A region is part of its language.
-		{`{"field": "language", "op": "in", "values": ["EN"]}`, []string{"Dune", "Emma", "Jane Eyre", "Persuasion"}},
+		{`{"field": "language", "op": "in", "values": ["EN"]}`, []string{"Dusk", "Emma", "Jane Eyre", "Persuasion"}},
 		{`{"field": "language", "op": "in", "values": ["de-AT"]}`, []string{"Der Process"}},
 		{`{"field": "language", "op": "empty"}`, []string{"Untitled"}},
 		{`{"field": "published", "op": "between", "values": ["1815", "1847"]}`, []string{"Emma", "Jane Eyre", "Persuasion"}},
 		{`{"field": "published", "op": "between", "values": ["", "1816"]}`, []string{"Emma"}},
-		{`{"field": "published", "op": "between", "values": ["1900", ""]}`, []string{"Der Process", "Dune"}},
+		{`{"field": "published", "op": "between", "values": ["1900", ""]}`, []string{"Der Process", "Dusk"}},
 		{`{"field": "published", "op": "empty"}`, []string{"Untitled"}},
 		{`{"field": "format", "op": "in", "values": ["PDF"]}`, []string{"Der Process", "Emma"}},
-		{`{"field": "format", "op": "in", "values": ["m4b", "mobi"]}`, []string{"Dune", "Jane Eyre"}},
+		{`{"field": "format", "op": "in", "values": ["m4b", "mobi"]}`, []string{"Dusk", "Jane Eyre"}},
 		{`{"all": [{"field": "author", "op": "in", "values": ["jane austen"]}, {"field": "format", "op": "in", "values": ["pdf"]}]}`,
 			[]string{"Emma"}},
-		{`{"any": [{"field": "series", "op": "in", "values": ["dune"]}, {"field": "language", "op": "in", "values": ["de"]}]}`,
-			[]string{"Der Process", "Dune"}},
+		{`{"any": [{"field": "series", "op": "in", "values": ["dusk"]}, {"field": "language", "op": "in", "values": ["de"]}]}`,
+			[]string{"Der Process", "Dusk"}},
 		{`{"all": [{"field": "tag", "op": "in", "values": ["fiction"]}, {"not": {"field": "author", "op": "in", "values": ["jane austen"]}}]}`,
 			[]string{"Jane Eyre"}},
-		{`{"all": []}`, []string{"Der Process", "Dune", "Emma", "Jane Eyre", "Persuasion", "Untitled"}},
+		{`{"all": []}`, []string{"Der Process", "Dusk", "Emma", "Jane Eyre", "Persuasion", "Untitled"}},
 	}
 	for _, c := range cases {
 		// By sort title "Der Process" is "Process, Der"; the order is not
@@ -173,8 +173,8 @@ func TestFacets(t *testing.T) {
 	}
 	counts, labels := facetCounts(t, body)
 	want := map[string]map[string]int{
-		"author":    {"jane austen": 2, "charlotte bronte": 1, "franz kafka": 1, "frank herbert": 1},
-		"series":    {"austen novels": 1, "dune": 1},
+		"author":    {"jane austen": 2, "charlotte bronte": 1, "franz kafka": 1, "henrik halden": 1},
+		"series":    {"austen novels": 1, "dusk": 1},
 		"tag":       {"fiction": 3, "classics": 1, "gothic": 1, "science fiction": 1},
 		"language":  {"en": 4, "de": 1},
 		"published": {"1810": 2, "1840": 1, "1920": 1, "1960": 1},
@@ -252,11 +252,11 @@ func TestBooksWithFilesMissingFromTheFolder(t *testing.T) {
 	// Emma keeps her EPUB; Jane Eyre has nothing left; a file in the
 	// trash is not missing, even when the scan no longer finds it there.
 	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET missing_at = now()
-		WHERE rel_path IN ('Emma.pdf', 'Jane Eyre.mobi', 'Dune.m4b', 'Secret.epub')`); err != nil {
+		WHERE rel_path IN ('Emma.pdf', 'Jane Eyre.mobi', 'Dusk.m4b', 'Secret.epub')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := a.pool.Exec(ctx, `UPDATE book_files SET trashed_at = now()
-		WHERE rel_path IN ('Der Process.pdf', 'Dune.m4b')`); err != nil {
+		WHERE rel_path IN ('Der Process.pdf', 'Dusk.m4b')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -264,7 +264,7 @@ func TestBooksWithFilesMissingFromTheFolder(t *testing.T) {
 		`{"field": "files", "op": "in", "values": ["missing"]}`:                 {"Emma", "Jane Eyre"},
 		`{"field": "files", "op": "in", "values": ["none-on-disk"]}`:            {"Jane Eyre"},
 		`{"field": "files", "op": "in", "values": ["missing", "none-on-disk"]}`: {"Emma", "Jane Eyre"},
-		`{"not": {"field": "files", "op": "in", "values": ["missing"]}}`:        {"Der Process", "Dune", "Persuasion", "Untitled"},
+		`{"not": {"field": "files", "op": "in", "values": ["missing"]}}`:        {"Der Process", "Dusk", "Persuasion", "Untitled"},
 	} {
 		got, _ := a.listAll(reader, url.Values{"filter": {filter}})
 		slices.Sort(got)

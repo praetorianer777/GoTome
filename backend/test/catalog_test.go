@@ -86,19 +86,19 @@ func TestBookRoundTrip(t *testing.T) {
 
 	id, err := s.books.CreateBook(ctx, catalog.NewBook{
 		LibraryID:   s.shared,
-		Title:       "  The Way of   Kings ",
-		Subtitle:    "Book One of the Stormlight Archive",
+		Title:       "  The Path of   Lanterns ",
+		Subtitle:    "Book One of the Beacon Archive",
 		Description: "Roshar is a world of stone and storms.",
 		Language:    "en",
 		Published:   "2010-08-31",
 		Publisher:   "Tor Books",
-		Series:      "The Stormlight Archive",
+		Series:      "The Beacon Archive",
 		SeriesIndex: &index,
 		PageCount:   &pages,
 		Contributors: []catalog.NewContributor{
-			{Name: "Brandon Sanderson"},
-			{Name: "Michael Kramer", Role: catalog.RoleNarrator},
-			{Name: "Kate Reading", SortName: "Reading, Kate", Role: catalog.RoleNarrator},
+			{Name: "Bastian Landorf"},
+			{Name: "Markus Lindner", Role: catalog.RoleNarrator},
+			{Name: "Karin Ridder", SortName: "Ridder, Karin", Role: catalog.RoleNarrator},
 		},
 		Tags:        []string{"Fantasy", "Epic", "fantasy", "  "},
 		Identifiers: []catalog.Identifier{{Type: catalog.IDISBN, Value: "9780765326355"}},
@@ -111,23 +111,23 @@ func TestBookRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if book.Title != "The Way of Kings" || book.SortTitle != "Way of Kings, The" || book.Subtitle != "Book One of the Stormlight Archive" {
+	if book.Title != "The Path of Lanterns" || book.SortTitle != "Path of Lanterns, The" || book.Subtitle != "Book One of the Beacon Archive" {
 		t.Errorf("title %q, sort title %q, subtitle %q", book.Title, book.SortTitle, book.Subtitle)
 	}
 	if book.PublishedOn == nil || book.PublishedOn.Format(time.DateOnly) != "2010-08-31" || book.PublishedPrecision != catalog.PrecisionDay {
 		t.Errorf("published %v (%s)", book.PublishedOn, book.PublishedPrecision)
 	}
-	if book.Publisher != "Tor Books" || book.Series != "The Stormlight Archive" || book.SeriesIndex == nil || *book.SeriesIndex != 1 {
+	if book.Publisher != "Tor Books" || book.Series != "The Beacon Archive" || book.SeriesIndex == nil || *book.SeriesIndex != 1 {
 		t.Errorf("publisher %q, series %q #%v", book.Publisher, book.Series, book.SeriesIndex)
 	}
-	if got := book.Authors(); !slices.Equal(got, []string{"Brandon Sanderson"}) {
+	if got := book.Authors(); !slices.Equal(got, []string{"Bastian Landorf"}) {
 		t.Errorf("authors = %v", got)
 	}
 	var credits []string
 	for _, c := range book.Contributors {
 		credits = append(credits, c.Role+":"+c.SortName)
 	}
-	if !slices.Equal(credits, []string{"author:Sanderson, Brandon", "narrator:Kramer, Michael", "narrator:Reading, Kate"}) {
+	if !slices.Equal(credits, []string{"author:Landorf, Bastian", "narrator:Lindner, Markus", "narrator:Ridder, Karin"}) {
 		t.Errorf("credits = %v", credits)
 	}
 	// "Fantasy" and "fantasy" are one tag, under the spelling that came first.
@@ -184,7 +184,7 @@ func TestNamesMeetUnderOneSpelling(t *testing.T) {
 func TestFilesOfABook(t *testing.T) {
 	ctx := context.Background()
 	s := newShelf(t)
-	id, err := s.books.CreateBook(ctx, catalog.NewBook{LibraryID: s.shared, Title: "Dune"})
+	id, err := s.books.CreateBook(ctx, catalog.NewBook{LibraryID: s.shared, Title: "Dusk"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,11 +192,11 @@ func TestFilesOfABook(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 
 	files := []catalog.NewFile{
-		{RelPath: "Herbert/Dune/Dune.epub", Format: "EPUB", Size: 1000, ModifiedAt: now, SHA256: hash("epub"),
+		{RelPath: "Halden/Dusk/Dusk.epub", Format: "EPUB", Size: 1000, ModifiedAt: now, SHA256: hash("epub"),
 			Identifiers: []catalog.Identifier{{Type: catalog.IDISBN, Value: "9780441172719"}}},
-		{RelPath: "Herbert/Dune/Dune.pdf", Format: ".pdf", Size: 2000, ModifiedAt: now},
-		{RelPath: "Herbert/Dune/audio/02.mp3", Format: "mp3", Size: 3000, ModifiedAt: now, PartIndex: part(1)},
-		{RelPath: "Herbert/Dune/audio/01.mp3", Format: "mp3", Size: 3000, ModifiedAt: now, PartIndex: part(0),
+		{RelPath: "Halden/Dusk/Dusk.pdf", Format: ".pdf", Size: 2000, ModifiedAt: now},
+		{RelPath: "Halden/Dusk/audio/02.mp3", Format: "mp3", Size: 3000, ModifiedAt: now, PartIndex: part(1)},
+		{RelPath: "Halden/Dusk/audio/01.mp3", Format: "mp3", Size: 3000, ModifiedAt: now, PartIndex: part(0),
 			Identifiers: []catalog.Identifier{{Type: catalog.IDISBN, Value: "9781427201430"}}},
 	}
 	for _, f := range files {
@@ -215,8 +215,8 @@ func TestFilesOfABook(t *testing.T) {
 	}
 	// Audio parts in playing order, not in the order they were found.
 	want := []string{
-		"audio/mp3/Herbert/Dune/audio/01.mp3", "audio/mp3/Herbert/Dune/audio/02.mp3",
-		"ebook/epub/Herbert/Dune/Dune.epub", "ebook/pdf/Herbert/Dune/Dune.pdf",
+		"audio/mp3/Halden/Dusk/audio/01.mp3", "audio/mp3/Halden/Dusk/audio/02.mp3",
+		"ebook/epub/Halden/Dusk/Dusk.epub", "ebook/pdf/Halden/Dusk/Dusk.pdf",
 	}
 	if !slices.Equal(listed, want) {
 		t.Errorf("files = %v, want %v", listed, want)
@@ -238,7 +238,7 @@ func TestFilesOfABook(t *testing.T) {
 		t.Error("a format GOtome does not know was accepted")
 	}
 	// The same path in another library is another file.
-	otherBook, _ := s.books.CreateBook(ctx, catalog.NewBook{LibraryID: s.private, Title: "Dune"})
+	otherBook, _ := s.books.CreateBook(ctx, catalog.NewBook{LibraryID: s.private, Title: "Dusk"})
 	if _, err := s.books.AddFile(ctx, otherBook, s.private, files[0]); err != nil {
 		t.Errorf("the same path in another library: %v", err)
 	}

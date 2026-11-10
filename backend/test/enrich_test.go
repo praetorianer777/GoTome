@@ -138,7 +138,7 @@ func TestALowConfidenceMatchWaitsForAPerson(t *testing.T) {
 	reader, _ := a.signedIn("reader", "reader")
 	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
 	id, err := catalog.NewService(a.pool).CreateBook(context.Background(), catalog.NewBook{
-		LibraryID: lib, Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Donoghue"}},
+		LibraryID: lib, Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Holloway"}},
 	})
 	if err != nil {
 		t.Fatal(err)

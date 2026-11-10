@@ -9,8 +9,8 @@ class StorageTest {
     @Test
     fun namesAFileInPlainLetters() {
         assertEquals(
-            "Hobb_Robin-Der_Weitseher-1a2b3c4d.epub",
-            Storage.fileName(id, "Der Weitseher", listOf("Hobb, Robin"), "EPUB"),
+            "Hoff_Roswitha-Der_Leuchtfeuerwart-1a2b3c4d.epub",
+            Storage.fileName(id, "Der Leuchtfeuerwart", listOf("Hoff, Roswitha"), "EPUB"),
         )
     }
 
