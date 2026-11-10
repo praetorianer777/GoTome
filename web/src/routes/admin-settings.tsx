@@ -47,6 +47,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.matchThreshold",
 		hint: "settings.matchThreshold.hint",
 	},
+	"curation.cleanup.kinds": {
+		label: "settings.curationCleanupKinds",
+		hint: "settings.curationCleanupKinds.hint",
+	},
+	"curation.matches.auto": {
+		label: "settings.curationMatchesAuto",
+		hint: "settings.curationMatchesAuto.hint",
+	},
 	"metadata.providers": {
 		label: "settings.providers",
 		hint: "settings.providers.hint",

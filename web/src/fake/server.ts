@@ -32,6 +32,7 @@ import type {
 } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
 import type { Library, Scan } from "@/libraries/api";
+import type { AutoCleanupCounts, AutoMatchCounts } from "@/curation/auto";
 import type { Setting } from "@/settings/api";
 import type { Job } from "@/jobs/api";
 import { type DuplicatePair, overlapOf } from "@/duplicates/api";
@@ -349,6 +350,10 @@ export class FakeServer {
 	describable = true;
 	/** What the clean-up page suggests. */
 	cleanup: CleanupSuggestion[] = [];
+	/** What an automatic clean-up would apply, by kind. */
+	autoCleanup: AutoCleanupCounts = { kinds: [] };
+	/** What a rule over the matches would do, and the groups of the rest. */
+	autoMatches: AutoMatchCounts = { accept: 0, settle: 0, dismiss: 0, books: 0, capped: false, groups: [] };
 	/** What applying a clean-up suggestion does to its books, by `kind:subject`. */
 	cleanupPreviews: Record<string, CleanupPreviewBook[]> = {};
 	/** The genres suggested for books that wait for a person. */
@@ -805,6 +810,9 @@ export class FakeServer {
 					history: [],
 				},
 			);
+		}
+		if (path === "/curation/cleanup" || path === "/curation/matches") {
+			return this.answerAuto(path, request.method, body);
 		}
 		if (path === "/cleanup" || path.startsWith("/cleanup/")) {
 			return this.answerCleanup(path, url.searchParams, body);
@@ -2113,6 +2121,17 @@ export class FakeServer {
 		}
 		this.genreSuggestions = this.genreSuggestions.filter((s) => s !== found);
 		return new Response(null, { status: 204 });
+	}
+
+	private answerAuto(path: string, method: string, body: unknown): Response {
+		if (!this.session?.permissions.includes("metadata:edit")) {
+			return Response.json({ error: { code: "forbidden", message: "You may not do this." } }, { status: 403 });
+		}
+		if (method === "GET") {
+			return Response.json(path === "/curation/cleanup" ? this.autoCleanup : this.autoMatches);
+		}
+		const dryRun = (body as { dryRun?: boolean } | undefined)?.dryRun === true;
+		return Response.json({ runId: "run-1", dryRun }, { status: 202 });
 	}
 
 	private answerCleanup(path: string, query: URLSearchParams, body: unknown): Response {

@@ -25,7 +25,7 @@ import { formatDateTime } from "@/lib/format";
 const key = (prefix: string, name: string) => `${prefix}${name}` as MessageKey;
 
 /** What was changed to the books, run by run, with a way back. */
-export function Curation() {
+export function Curation({ run: highlighted }: { run?: string }) {
 	const [filter, setFilter] = useState<RunFilter>({});
 	const runs = useInfiniteQuery(curationRunsQuery(filter));
 	const list = runs.data?.pages.flatMap((p) => p?.runs ?? []) ?? [];
@@ -81,7 +81,7 @@ export function Curation() {
 					className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800"
 				>
 					{list.map((run) => (
-						<Run key={run.id} run={run} />
+						<Run key={run.id} run={run} open={run.id === highlighted} />
 					))}
 				</ul>
 			)}
@@ -99,8 +99,8 @@ export function Curation() {
 	);
 }
 
-function Run({ run }: { run: CurationRun }) {
-	const [open, setOpen] = useState(false);
+function Run({ run, open: opened }: { run: CurationRun; open: boolean }) {
+	const [open, setOpen] = useState(opened);
 	const [result, setResult] = useState<string>();
 	const undo = useUndoRun();
 	const confirm = useConfirmRun();
@@ -109,12 +109,17 @@ function Run({ run }: { run: CurationRun }) {
 	const who = run.rule
 		? t("curation.byRule", { what: kind, rule: run.rule })
 		: t("curation.by", { what: kind, who: run.startedByName ?? "" });
-	const undoable = run.state !== "running" && run.undone < run.actions;
+	const undoable = !run.dryRun && run.state !== "running" && run.undone < run.actions;
 	return (
 		<li aria-label={`${kind} ${when}`} className="flex flex-col gap-3 px-4 py-3 text-sm">
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 				<span className="min-w-0 flex-1 font-medium">{who}</span>
 				<span className="text-slate-600 dark:text-slate-400">{when}</span>
+				{run.dryRun && (
+					<span className="rounded-full border border-slate-300 px-2 py-0.5 dark:border-slate-600">
+						{t("curation.dryRun")}
+					</span>
+				)}
 				<span className="rounded-full border border-slate-300 px-2 py-0.5 dark:border-slate-600">
 					{t(key("curation.state.", run.state))}
 				</span>
@@ -155,7 +160,7 @@ function Run({ run }: { run: CurationRun }) {
 						{t("curation.undoRun")}
 					</button>
 				)}
-				{run.state === "done" && (
+				{run.state === "done" && !run.dryRun && (
 					<button
 						type="button"
 						disabled={confirm.isPending}
@@ -176,7 +181,9 @@ function Run({ run }: { run: CurationRun }) {
 }
 
 function Actions({ run }: { run: CurationRun }) {
-	const pages = useInfiniteQuery(curationActionsQuery(run.id));
+	const pages = useInfiniteQuery(
+		curationActionsQuery(run.id, run.state === "running"),
+	);
 	const actions = pages.data?.pages.flatMap((p) => p?.actions ?? []) ?? [];
 	return (
 		<div className="flex flex-col gap-3">
