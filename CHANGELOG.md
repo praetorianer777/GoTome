@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `gotome perf-check` reports a view that does not answer within its time
+  limit as "over 10 s" in its row, fails at the end, and times the views after
+  it, instead of stopping there.
+
 ## [0.15.0] - 2026-11-10
 
 ### Added

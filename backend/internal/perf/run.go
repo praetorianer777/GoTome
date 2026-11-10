@@ -38,11 +38,20 @@ const (
 	NotAllowed = "not for this person"
 )
 
+// ErrOverLimit is what Measure returns, after the last view, when a view
+// had no answer within its time limit.
+var ErrOverLimit = errors.New("a view took longer than its time limit")
+
+var errNoAnswer = errors.New("no answer in time")
+
 // Result is one view's timing.
 type Result struct {
 	Name string
 	// Not is why the view was not timed, if it was not.
 	Not string
+	// Over is the limit a view did not answer within; Not says so in a
+	// report.
+	Over time.Duration
 	// Best is the shortest of the timed requests.
 	Best time.Duration
 	// Rows is the entries of the longest list in the answer, -1 for an
@@ -53,8 +62,10 @@ type Result struct {
 }
 
 // Measure asks each view of the handler as the user, one at a time: once to
-// warm up, then Tries times, keeping the best. It stops at the first answer
-// that is not a success. An error names the view and the status, never the
+// warm up, then Tries times, keeping the best. A view with no answer
+// within the time limit is recorded as over it and the rest go on; Measure
+// then returns ErrOverLimit. It stops at the first answer that is not a
+// success. An error names the view and the status, never the
 // address or the answer, which can hold names from the library.
 func Measure(ctx context.Context, handler http.Handler, user auth.User, views []View, o Options) ([]Result, error) {
 	if o.Tries < 1 {
@@ -67,6 +78,7 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 	var results []Result
 	next := map[string]string{}
 	asked := false
+	over := false
 	for _, v := range views {
 		r := Result{Name: v.Name, Rows: -1, Whole: WholeByDesign[v.Name]}
 		switch {
@@ -96,6 +108,10 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 		r.Best = time.Hour
 		for try := 0; try <= o.Tries; try++ {
 			took, status, body, err := ask(ctx, handler, user, path, o.Timeout)
+			if errors.Is(err, errNoAnswer) {
+				r.Over, r.Not, over = o.Timeout, "over "+duration(o.Timeout), true
+				break
+			}
 			if err != nil {
 				return results, fmt.Errorf("%q: %w", v.Name, err)
 			}
@@ -118,6 +134,9 @@ func Measure(ctx context.Context, handler http.Handler, user auth.User, views []
 		}
 		results = append(results, r)
 	}
+	if over {
+		return results, ErrOverLimit
+	}
 	return results, nil
 }
 
@@ -130,7 +149,7 @@ func ask(ctx context.Context, handler http.Handler, user auth.User, path string,
 	handler.ServeHTTP(rec, req)
 	took := time.Since(began)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return took, 0, nil, fmt.Errorf("no answer within %s", timeout)
+		return took, 0, nil, errNoAnswer
 	}
 	if ctx.Err() != nil {
 		return took, 0, nil, ctx.Err()
