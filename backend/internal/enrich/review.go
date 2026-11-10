@@ -50,7 +50,7 @@ func (s *Service) Review(ctx context.Context, scope library.Scope, limit int) ([
 	}
 	byBook := map[uuid.UUID][]Match{}
 	for _, row := range rows {
-		m, err := matchOf(row)
+		m, err := MatchOf(row)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -72,7 +72,7 @@ func (s *Service) Pending(ctx context.Context, scope library.Scope, id uuid.UUID
 	if err != nil {
 		return Match{}, err
 	}
-	return matchOf(row)
+	return MatchOf(row)
 }
 
 // Reject dismisses a match. Found again, it stays dismissed.
@@ -93,7 +93,8 @@ func (s *Service) Accepted(ctx context.Context, m Match) error {
 	return q.DismissOtherMatches(ctx, sqlc.DismissOtherMatchesParams{BookID: m.BookID, ID: m.ID})
 }
 
-func matchOf(row sqlc.MetadataMatch) (Match, error) {
+// MatchOf reads a stored match.
+func MatchOf(row sqlc.MetadataMatch) (Match, error) {
 	m := Match{ID: row.ID, BookID: row.BookID, Score: row.Score, State: row.State}
 	if err := json.Unmarshal(row.Record, &m.Record); err != nil {
 		return Match{}, err

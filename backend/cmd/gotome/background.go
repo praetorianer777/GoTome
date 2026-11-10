@@ -7,6 +7,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -43,6 +44,7 @@ type background struct {
 	updates     *updates.Service
 	imports     *readimport.Service
 	kindle      *kindle.Service
+	automatic   *autocurate.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -64,6 +66,9 @@ func (b background) registrations() []registration {
 	return []registration{
 		worker(&enrich.MatchWorker{Service: b.matches}),
 		worker(&bulk.Worker{Service: b.changes}),
+		worker(&autocurate.CleanupWorker{Service: b.automatic}),
+		worker(&autocurate.MatchesWorker{Service: b.automatic}),
+		worker(&autocurate.DailyWorker{Service: b.automatic}),
 		worker(&readimport.Worker{Service: b.imports}),
 		worker(&auth.SweepSessionsWorker{Service: b.accounts}),
 		worker(&ingest.ScanWorker{Service: b.scans}),
@@ -116,6 +121,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		fulltext.Periodic(outboxInterval),
+		autocurate.Periodic(curationInterval),
 	}
 	if scanInterval > 0 {
 		// Also once at start: what changed on disk while GOtome was down is

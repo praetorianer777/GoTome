@@ -78,4 +78,11 @@ func PrintCheck(w io.Writer, r CheckReport) {
 			pct(p.Right+p.SameWork, p.Taken))
 	}
 	t.Flush()
+
+	a := r.Agreement
+	fmt.Fprintln(w, "\nTaken by the rule of an automatic run (two providers' first candidates name one ISBN or one work):")
+	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(t, "books\taccepted\tright\tsame work\twrong\tright or same work\t")
+	fmt.Fprintf(t, "%d\t%d\t%d\t%d\t%d\t%s\t\n", r.Sample, a.Accepted, a.Right, a.SameWork, a.Wrong, pct(a.Right+a.SameWork, a.Accepted))
+	t.Flush()
 }

@@ -3267,6 +3267,182 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/curation/cleanup": {
+      "get": {
+        "operationId": "getAutoCleanup",
+        "summary": "How many suggestions of each kind that the data decides an automatic clean-up would apply to the books the caller sees",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoCleanupCounts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      },
+      "post": {
+        "operationId": "startAutoCleanup",
+        "summary": "Queue an automatic clean-up of the kinds named as a run on the Changes page; a dry run records what it would do and changes nothing",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRunStarted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
+    "/curation/matches": {
+      "get": {
+        "operationId": "getAutoMatches",
+        "summary": "What an automatic pass over the matches that wait would do, and the rest of them by provider and score with a sample of each group",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoMatchCounts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      },
+      "post": {
+        "operationId": "startAutoMatches",
+        "summary": "Queue a run that takes the fields of matches providers agree on and dismisses those that contradict the text, or accepts one group of matches whole; a dry run changes nothing",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRunStarted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/curation/runs": {
       "get": {
         "operationId": "listCurationRuns",
@@ -10584,6 +10760,138 @@
           "key",
           "spellings",
           "books"
+        ]
+      },
+      "AutoCleanupCounts": {
+        "type": "object",
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutoCleanupKind"
+            }
+          }
+        },
+        "required": [
+          "kinds"
+        ]
+      },
+      "AutoCleanupKind": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "suggestions": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "suggestions",
+          "books"
+        ]
+      },
+      "AutoMatchCounts": {
+        "type": "object",
+        "properties": {
+          "accept": {
+            "type": "integer"
+          },
+          "books": {
+            "type": "integer"
+          },
+          "capped": {
+            "type": "boolean"
+          },
+          "dismiss": {
+            "type": "integer"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutoMatchGroup"
+            }
+          },
+          "settle": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accept",
+          "settle",
+          "dismiss",
+          "books",
+          "capped",
+          "groups"
+        ]
+      },
+      "AutoMatchGroup": {
+        "type": "object",
+        "properties": {
+          "band": {
+            "type": "integer"
+          },
+          "matches": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "sample": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewBook"
+            }
+          }
+        },
+        "required": [
+          "provider",
+          "band",
+          "matches",
+          "sample"
+        ]
+      },
+      "AutoRunRequest": {
+        "type": "object",
+        "properties": {
+          "band": {
+            "type": "integer"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dryRun"
+        ]
+      },
+      "AutoRunStarted": {
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "runId",
+          "dryRun"
         ]
       },
       "BookCount": {

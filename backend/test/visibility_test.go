@@ -139,6 +139,8 @@ func readCases() map[string][]readCase {
 		"searchDescribed":  {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
 		"listCleanup":      {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
 		"previewCleanup":   {{path: "/cleanup/preview", query: q("kind", "authors", "subject", "{person}"), control: "insider"}},
+		"getAutoCleanup":   {{path: "/curation/cleanup", why: "counts only; TestAutomaticCleanupAppliesOnlyWhatTheDataDecides holds them to the caller's libraries"}},
+		"getAutoMatches":   {{path: "/curation/matches", control: "insider"}},
 		"listCurationRuns": {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
 		"getCurationRun":   {{path: "/curation/runs/{curationRun}", control: "insider"}},
 		"listGenreSuggestions": {

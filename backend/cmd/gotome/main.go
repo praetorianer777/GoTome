@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -102,6 +103,8 @@ const (
 	// Deletes reach the full-text index's outbox through a trigger, which
 	// queues no job; they are applied this often.
 	outboxInterval = time.Minute
+
+	curationInterval = 24 * time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -345,6 +348,7 @@ func serve() error {
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
 	fixes.Meta = meta
+	autoCurate := autocurate.NewService(pool, curations, fixes, scans, settingStore, log)
 	follows.Events = events
 	follows.Offline = cfg.Offline
 	updateChecks := updates.NewService(pool, settingStore, events, log)
@@ -374,7 +378,7 @@ func serve() error {
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
 		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
-		trashRetention: settingStore.TrashRetention,
+		trashRetention: settingStore.TrashRetention, automatic: autoCurate,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
 	if err != nil {
@@ -393,6 +397,7 @@ func serve() error {
 	passageVectors.Queue = runner
 	events.Queue = runner
 	follows.Queue = runner
+	autoCurate.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -507,6 +512,7 @@ func serve() error {
 		Sync:       progressSync,
 		Releases:   follows,
 		Cleanup:    fixes,
+		Auto:       autoCurate,
 		Curation:   curations,
 		Index:      searchIndex,
 
