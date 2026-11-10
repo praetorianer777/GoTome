@@ -1463,7 +1463,7 @@ export const en = {
 	"cleanup.about.titles":
 		"What a shop added to a title: the edition it sold, or the genre after a colon or a dash.",
 	"cleanup.about.series":
-		"Books without a series whose titles name one, as in “Rain Wild Chronicles 01 - Dragon Keeper” or “Dragon Keeper (Rain Wild Chronicles #1)”. A series is suggested where two books of a library name it, or where it is a series already. Applying puts the books into it at the places their titles say, and takes the series off their titles.",
+		"Books without a series whose titles name one, as in “Sternwanderer 01 - Lighthouse Keeper” or “Lighthouse Keeper (Sternwanderer #1)”. A series is suggested where two books of a library name it, or where it is a series already. Applying puts the books into it at the places their titles say, and takes the series off their titles.",
 	"cleanup.none": "Nothing to suggest here.",
 	"cleanup.books": "Books: {count}",
 	"cleanup.keep": "Spelling to keep",

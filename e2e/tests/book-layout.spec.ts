@@ -5,8 +5,8 @@ import { openSignedIn } from "../fixtures/app";
 const WORD =
 	"Donaudampfschifffahrtsgesellschaftskapitänswitwenrentenversicherung";
 const LONG = {
-	title: `Rain Wild Chronicles 01 - Drachenhüter: ${WORD} und die lange Reise flussaufwärts`,
-	subtitle: `Die Hüter der Drachen ${WORD}`,
+	title: `Sternwanderer 01 - Leuchtturmwärter: ${WORD} und die lange Reise flussaufwärts`,
+	subtitle: `Die Hüter der Leuchttürme ${WORD}`,
 	series: `Die Regenwildnis-Chroniken der Elderlinge ${WORD}`,
 	seriesIndex: 1,
 	publisher: `Penhaligon-Verlag-in-der-Verlagsgruppe-Random-House-GmbH-München-${WORD}`,
@@ -47,7 +47,7 @@ test("a book's page keeps every long value inside its box, on a phone and on a w
 	});
 	expect(created.status()).toBe(201);
 	const { id } = await created.json();
-	const fileName = `Robin_Hobb_-_Rain_Wild_Chronicles_01_-_${WORD}_${stamp.replace(/\W/g, "_")}.pdf`;
+	const fileName = `Roswitha_Hoff_-_Sternwanderer_01_-_${WORD}_${stamp.replace(/\W/g, "_")}.pdf`;
 	const uploaded = await page.request.post(`/api/v1/libraries/${id}/uploads`, {
 		multipart: {
 			file: {
