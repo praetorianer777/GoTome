@@ -8,6 +8,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Books an imported Goodreads or StoryGraph history adds that the library
+  does not hold are looked up by their ISBN like a new file is, so they get
+  a cover and a description. See `docs/importing-reading-history.md`.
 - The audiobook player's sleep timer fades the volume down before it stops,
   can be extended by 15 minutes (a button, or shaking the phone where the
   browser allows it, also just after it stopped), and can start by itself

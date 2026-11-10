@@ -344,6 +344,9 @@ func serve() error {
 	updateChecks.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
 	histories := readimport.NewService(pool, books, log)
+	if !cfg.Offline {
+		histories.Lookup = matches.EnqueueTx
+	}
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {

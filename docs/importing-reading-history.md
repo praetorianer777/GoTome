@@ -49,6 +49,13 @@ preview and nothing is written:
   leave out,
 - the rows with nothing to import, such as a shelf GOtome does not know.
 
+Books the library does not hold are looked up afterwards, by their ISBN
+or else their title and authors, as a file read is: the cover, description
+and what the file lacked are filled in in the background. This needs a
+metadata provider and "Look new books up" (`metadata.autoMatch`) on; without
+a connection to one (`GOTOME_OFFLINE`) nothing is asked and these books keep
+what the file said.
+
 StoryGraph rates in fractions of a star; GOtome rounds them to whole stars
 and says how many it rounded.
 
