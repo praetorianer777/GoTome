@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -32,6 +33,10 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{keep, gone}); err != nil {
+			return err
+		}
+		snapshot, err := s.Curation.Begin(ctx, tx, curation.SetAll, keep, gone)
+		if err != nil {
 			return err
 		}
 		files, err := q.ListLiveBookFiles(ctx, gone)
@@ -75,6 +80,11 @@ func (s *Service) Replace(ctx context.Context, scope library.Scope, keep, gone u
 			return err
 		}
 		if err := q.SetPairReplaced(ctx, sqlc.SetPairReplacedParams{IntoBook: keep, FromBook: gone}); err != nil {
+			return err
+		}
+		if err := snapshot.Done(ctx, tx, curation.Record{
+			RunKind: curation.KindDuplicates, By: scope.Viewer, Kind: curation.ActionReplace, TrashedFiles: files,
+		}); err != nil {
 			return err
 		}
 		// Last, so that nothing after them can fail but the commit.

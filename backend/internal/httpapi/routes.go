@@ -583,6 +583,31 @@ func (s *Server) routes() []Route {
 			Permission: auth.MetadataEdit, Handler: s.dismissCleanup,
 		},
 		{
+			Method: http.MethodGet, Path: "/curation/runs", ID: "listCurationRuns",
+			Summary: "The runs of changes to books that can be undone: merges, replaces and clean-ups, the newest first", Tag: "books",
+			Query: curationRunsQuery{}, Response: curationRunList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCurationRuns,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/runs/{runId}", ID: "getCurationRun",
+			Summary: "A run with its actions in libraries the caller sees, each with the books' details before and after", Tag: "books",
+			Query: curationActionsQuery{}, Response: curationRunDetail{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.getCurationRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/runs/{runId}/undo", ID: "undoCurationRun",
+			Summary: "Undo every action of a run that is not undone; one whose books changed since is left and reported", Tag: "books",
+			Response: curationUndone{}, Permission: auth.MetadataEdit, Handler: s.undoCurationRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/runs/{runId}/confirm", ID: "confirmCurationRun",
+			Summary: "Accept a run: the files it trashed start their time in the trash, and what it changed is written into the files", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.confirmCurationRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/actions/{actionId}/undo", ID: "undoCurationAction",
+			Summary: "Undo one action of a run; if its books changed since it is left and reported", Tag: "books",
+			Response: curationOutcome{}, Permission: auth.MetadataEdit, Handler: s.undoCurationAction,
+		},
+		{
 			Method: http.MethodGet, Path: "/genres/suggestions", ID: "listGenreSuggestions",
 			Summary: "Genres suggested for the books the caller sees that wait for a person, the surest first, with how many wait per genre", Tag: "books",
 			Query: genreSuggestionsQuery{}, Response: genreSuggestions{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listGenreSuggestions,

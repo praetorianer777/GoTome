@@ -913,6 +913,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/curation/actions/{actionId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo one action of a run; if its books changed since it is left and reported */
+        post: operations["undoCurationAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The runs of changes to books that can be undone: merges, replaces and clean-ups, the newest first */
+        get: operations["listCurationRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A run with its actions in libraries the caller sees, each with the books' details before and after */
+        get: operations["getCurationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a run: the files it trashed start their time in the trash, and what it changed is written into the files */
+        post: operations["confirmCurationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo every action of a run that is not undone; one whose books changed since is left and reported */
+        post: operations["undoCurationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deliveries/{deliveryId}": {
         parameters: {
             query?: never;
@@ -3367,6 +3452,79 @@ export interface components {
             catalog: string;
             device: components["schemas"]["DeviceView"];
             token: string;
+        };
+        CurationAction: {
+            books: components["schemas"]["CurationBook"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            note?: string;
+            reason?: string;
+            rule?: string;
+            /** Format: uuid */
+            runId: string;
+            state: string;
+            trashedFiles: number;
+            /** Format: date-time */
+            undoneAt?: string;
+        };
+        CurationBook: {
+            changes: components["schemas"]["CurationFieldChange"][];
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        CurationConflict: {
+            rows: number;
+            table: string;
+        };
+        CurationFieldChange: {
+            after: string;
+            before: string;
+            field: string;
+        };
+        CurationOutcome: {
+            /** Format: uuid */
+            actionId: string;
+            conflicts?: components["schemas"]["CurationConflict"][];
+            message?: string;
+            state: string;
+        };
+        CurationRun: {
+            actions: number;
+            automatic: boolean;
+            /** Format: date-time */
+            confirmedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            dryRun: boolean;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            rule?: string;
+            /** Format: uuid */
+            startedBy?: string;
+            startedByName?: string;
+            state: string;
+            undone: number;
+            /** Format: date-time */
+            undoneAt?: string;
+        };
+        CurationRunDetail: {
+            actions: components["schemas"]["CurationAction"][];
+            nextCursor?: string;
+            run: components["schemas"]["CurationRun"];
+        };
+        CurationRunList: {
+            nextCursor?: string;
+            runs: components["schemas"]["CurationRun"][];
+        };
+        CurationUndone: {
+            actions: components["schemas"]["CurationOutcome"][];
         };
         CurrentUser: {
             email?: string;
@@ -6525,6 +6683,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoCurationAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationOutcome"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCurationRuns: {
+        parameters: {
+            query?: {
+                /** @description Only runs of this kind. */
+                kind?: "duplicates" | "cleanup" | "matches";
+                /** @description Only runs in this state. */
+                state?: "planned" | "running" | "done" | "confirmed" | "undone";
+                /** @description Where the page before ended, as its nextCursor says; runs come newest first. */
+                cursor?: string;
+                /** @description How many runs a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationRunList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCurationRun: {
+        parameters: {
+            query?: {
+                /** @description Where the page before ended, as its nextCursor says; actions come in the order they were made. */
+                cursor?: string;
+                /** @description How many actions a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationRunDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmCurationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoCurationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationUndone"];
                 };
             };
             /** @description The request failed. */

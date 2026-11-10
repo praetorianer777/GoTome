@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -127,6 +128,9 @@ type Service struct {
 	// how a book is described: a new title or author may make it the
 	// duplicate of another.
 	OnDescribed func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// Curation, when set, records merges and replaces as actions of runs,
+	// each with the state of the books before, so that it can be undone.
+	Curation *curation.Service
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.
