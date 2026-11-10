@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- On a wide window each clean-up suggestion is one row, with its buttons at
+  the right end, instead of three or four lines.
+
 ## [0.14.1] - 2026-11-10
 
 ### Fixed

@@ -182,7 +182,8 @@ function Suggestion({
 	const busy = apply.isPending || dismiss.isPending;
 
 	return (
-		<li className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+		<li className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 md:flex-row md:items-start md:gap-6 dark:border-slate-800">
+			<div className="flex min-w-0 flex-1 flex-col gap-3 break-words">
 			{s.fix === "merge" && (
 				<fieldset className="flex flex-col gap-1">
 					<legend className="mb-1 font-medium">{t("cleanup.keep")}</legend>
@@ -246,7 +247,7 @@ function Suggestion({
 				</p>
 			)}
 			{s.fix === "retitle" && (
-				<div className="flex flex-col gap-1">
+				<p>
 					{s.book ? (
 						<Link
 							to="/books/$bookId"
@@ -257,14 +258,10 @@ function Suggestion({
 						</Link>
 					) : (
 						<span>{name}</span>
-					)}
-					<p>
-						<span className="text-sm text-slate-500">
-							{t("cleanup.retitle")}
-						</span>{" "}
-						<span className="font-medium">{s.suggested}</span>
-					</p>
-				</div>
+					)}{" "}
+					<span className="text-sm text-slate-500">{t("cleanup.retitle")}</span>{" "}
+					<span className="font-medium">{s.suggested}</span>
+				</p>
 			)}
 			{s.fix === "setSeries" && (
 				<div className="flex flex-col gap-2">
@@ -307,7 +304,8 @@ function Suggestion({
 				</div>
 			)}
 			<FormError error={apply.error ?? dismiss.error} />
-			<div className="flex flex-wrap gap-2">
+			</div>
+			<div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
 				<button
 					type="button"
 					className={button}

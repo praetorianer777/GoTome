@@ -84,6 +84,19 @@ test("an author's two spellings are made one, and a title's addition is left as 
 		.getByRole("listitem")
 		.filter({ hasText: `Drittes ${stamp} (German Edition)` });
 	await expect(title).toContainText(`becomes Drittes ${stamp}`);
+	if ((page.viewportSize()?.width ?? 0) >= 768) {
+		const row = await title.boundingBox();
+		const buttons = await title.getByRole("button").evaluateAll((all) =>
+			all.map((b) => b.getBoundingClientRect()),
+		);
+		expect(buttons).toHaveLength(2);
+		for (const b of buttons) {
+			expect(b.top).toBeGreaterThanOrEqual(row?.y ?? 0);
+			expect(b.bottom).toBeLessThanOrEqual((row?.y ?? 0) + (row?.height ?? 0));
+		}
+		expect(buttons[0]?.top).toBe(buttons[1]?.top);
+		expect(row?.height).toBeLessThan(90);
+	}
 	await title.getByRole("button", { name: "Leave it" }).click();
 	await expect(title).toHaveCount(0);
 	await page.reload();
