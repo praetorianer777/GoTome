@@ -75,6 +75,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",
 	},
+	"curation.duplicates.classes": {
+		label: "settings.duplicateClasses",
+		hint: "settings.duplicateClasses.hint",
+	},
+	"curation.duplicates.onConflict": {
+		label: "settings.duplicateConflict",
+		hint: "settings.duplicateConflict.hint",
+	},
 	"genres.suggest": {
 		label: "settings.genreSuggestions",
 		hint: "settings.genreSuggestions.hint",

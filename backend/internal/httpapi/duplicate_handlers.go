@@ -280,6 +280,8 @@ type duplicateRunRequest struct {
 type duplicateRunStarted struct {
 	// RunID is the run that records it, to follow on the changes page.
 	RunID uuid.UUID `json:"runId"`
+	// DryRun says that the run only records what it would do.
+	DryRun bool `json:"dryRun"`
 	// Pairs is how many open pairs of the classes it starts with.
 	Pairs int `json:"pairs"`
 }
@@ -316,6 +318,6 @@ func (s *Server) startDuplicateRun(w http.ResponseWriter, r *http.Request) error
 	case err != nil:
 		return err
 	}
-	writeJSON(w, r, http.StatusAccepted, duplicateRunStarted{RunID: started.RunID, Pairs: started.Pairs})
+	writeJSON(w, r, http.StatusAccepted, duplicateRunStarted{RunID: started.RunID, DryRun: req.DryRun, Pairs: started.Pairs})
 	return nil
 }

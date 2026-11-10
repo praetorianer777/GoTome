@@ -6,6 +6,7 @@ import { button, control, Loading, PageHeader } from "@/components/ui";
 import {
 	type CurationAction,
 	type CurationOutcome,
+	isBusy,
 	type CurationRun,
 	curationActionsQuery,
 	curationRunsQuery,
@@ -25,7 +26,7 @@ import { formatDateTime } from "@/lib/format";
 const key = (prefix: string, name: string) => `${prefix}${name}` as MessageKey;
 
 /** What was changed to the books, run by run, with a way back. */
-export function Curation() {
+export function Curation({ run: highlighted }: { run?: string }) {
 	const [filter, setFilter] = useState<RunFilter>({});
 	const runs = useInfiniteQuery(curationRunsQuery(filter));
 	const list = runs.data?.pages.flatMap((p) => p?.runs ?? []) ?? [];
@@ -81,7 +82,7 @@ export function Curation() {
 					className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800"
 				>
 					{list.map((run) => (
-						<Run key={run.id} run={run} />
+						<Run key={run.id} run={run} open={run.id === highlighted} />
 					))}
 				</ul>
 			)}
@@ -99,28 +100,44 @@ export function Curation() {
 	);
 }
 
-function Run({ run }: { run: CurationRun }) {
-	const [open, setOpen] = useState(false);
-	const [result, setResult] = useState<string>();
+function Run({ run, open: opened }: { run: CurationRun; open: boolean }) {
+	const [open, setOpen] = useState(opened);
 	const undo = useUndoRun();
 	const confirm = useConfirmRun();
 	const when = formatDateTime(run.createdAt);
 	const kind = t(key("curation.kind.", run.kind));
-	const who = run.rule
-		? t("curation.byRule", { what: kind, rule: run.rule })
-		: t("curation.by", { what: kind, who: run.startedByName ?? "" });
-	const undoable = run.state !== "running" && run.undone < run.actions;
+	const who =
+		run.rule === "auto-duplicates"
+			? t("curation.ruleDuplicates")
+			: run.rule
+				? t("curation.byRule", { what: kind, rule: run.rule })
+				: t("curation.by", { what: kind, who: run.startedByName ?? "" });
+	const undoable =
+		!run.dryRun && !run.undoing && run.state !== "running" && run.state !== "planned" && run.undone < run.actions;
 	return (
 		<li aria-label={`${kind} ${when}`} className="flex flex-col gap-3 px-4 py-3 text-sm">
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
 				<span className="min-w-0 flex-1 font-medium">{who}</span>
 				<span className="text-slate-600 dark:text-slate-400">{when}</span>
+				{run.dryRun && (
+					<span
+						title={t("curation.dryHint")}
+						className="rounded-full border border-amber-400 px-2 py-0.5 dark:border-amber-600"
+					>
+						{t("curation.dryRun")}
+					</span>
+				)}
 				<span className="rounded-full border border-slate-300 px-2 py-0.5 dark:border-slate-600">
-					{t(key("curation.state.", run.state))}
+					{run.undoing ? t("curation.stateUndoing") : t(key("curation.state.", run.state))}
 				</span>
 			</div>
 			<p className="text-slate-600 dark:text-slate-400">
-				{t("curation.counts", { count: run.actions, undone: run.undone })}
+				{run.undoing
+					? t("curation.undoing", { count: run.actions, undone: run.undone })
+					: run.dryRun
+						? t("curation.planned")
+						: t("curation.counts", { count: run.actions, undone: run.undone })}
+				{run.skipped > 0 && ` · ${t("curation.skipped", { count: run.skipped })}`}
 			</p>
 			<div className="flex flex-wrap gap-2">
 				<button
@@ -136,26 +153,13 @@ function Run({ run }: { run: CurationRun }) {
 						type="button"
 						disabled={undo.isPending}
 						aria-label={t("curation.undoRunNamed", { when })}
-						onClick={() =>
-							undo.mutate(run.id, {
-								onSuccess: (outcomes) => {
-									const undone = outcomes.filter((o) => o.state === "undone").length;
-									setResult(
-										t("curation.runResult", {
-											undone,
-											left: outcomes.length - undone,
-										}),
-									);
-									setOpen(true);
-								},
-							})
-						}
+						onClick={() => undo.mutate(run.id, { onSuccess: () => setOpen(true) })}
 						className={button()}
 					>
 						{t("curation.undoRun")}
 					</button>
 				)}
-				{run.state === "done" && (
+				{run.state === "done" && !run.dryRun && !run.undoing && (
 					<button
 						type="button"
 						disabled={confirm.isPending}
@@ -169,14 +173,13 @@ function Run({ run }: { run: CurationRun }) {
 				)}
 			</div>
 			<FormError error={undo.error ?? confirm.error} />
-			{result && <p role="status">{result}</p>}
 			{open && <Actions run={run} />}
 		</li>
 	);
 }
 
 function Actions({ run }: { run: CurationRun }) {
-	const pages = useInfiniteQuery(curationActionsQuery(run.id));
+	const pages = useInfiniteQuery(curationActionsQuery(run.id, isBusy(run)));
 	const actions = pages.data?.pages.flatMap((p) => p?.actions ?? []) ?? [];
 	return (
 		<div className="flex flex-col gap-3">
@@ -191,7 +194,7 @@ function Actions({ run }: { run: CurationRun }) {
 					className="flex flex-col gap-3"
 				>
 					{actions.map((a) => (
-						<ActionRow key={a.id} action={a} />
+						<ActionRow key={a.id} action={a} dry={run.dryRun} />
 					))}
 				</ul>
 			)}
@@ -231,7 +234,7 @@ function tableLabel(table: string): string {
 	return label in en ? t(label) : table;
 }
 
-function ActionRow({ action }: { action: CurationAction }) {
+function ActionRow({ action, dry }: { action: CurationAction; dry: boolean }) {
 	const undo = useUndoAction();
 	const title = action.books[0]?.title ?? "";
 	return (
@@ -264,7 +267,7 @@ function ActionRow({ action }: { action: CurationAction }) {
 					>
 						{b.title}
 					</Link>
-					{b.changes.length === 0 ? (
+					{dry ? null : b.changes.length === 0 ? (
 						<p className="text-slate-600 dark:text-slate-400">{t("curation.noDetail")}</p>
 					) : (
 						<table className="w-full text-left">
@@ -300,7 +303,7 @@ function ActionRow({ action }: { action: CurationAction }) {
 				</p>
 			)}
 			<FormError error={undo.error} />
-			{action.state === "done" && (
+			{action.state === "done" && !dry && (
 				<button
 					type="button"
 					disabled={undo.isPending}

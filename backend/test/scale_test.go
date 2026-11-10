@@ -315,6 +315,23 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			JOIN scale_books a ON a.n = s * 7
 			JOIN scale_books b ON b.n = s * 7 + 25000`},
 		{sql: `INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, 'title_author', 'scale' FROM duplicate_pairs`},
+		// Pairs of two books of one library that the duplicate rules handle,
+		// a thousand across their five classes (#466).
+		{sql: `CREATE TABLE scale_rule_pairs AS
+			SELECT s, least(a.id, b.id) AS book_a, greatest(a.id, b.id) AS book_b
+			FROM generate_series(0, 999) s
+			JOIN scale_books a ON a.n = 1 + s * 20
+			JOIN scale_books b ON b.n = 1 + s * 20 + 20 * (1 + s % 50)`},
+		{sql: `INSERT INTO duplicate_pairs (book_a, book_b, state, score)
+			SELECT book_a, book_b, 'open', 0.9 FROM scale_rule_pairs ON CONFLICT DO NOTHING`},
+		{sql: `INSERT INTO duplicate_evidence (pair_id, kind, detail)
+			SELECT p.id, CASE WHEN r.s % 5 = 0 THEN 'content' ELSE 'overlap' END,
+			       CASE r.s % 5 WHEN 0 THEN 'cafe'
+			                    WHEN 1 THEN 'jaccard=0.97 a_in_b=0.98 b_in_a=0.99'
+			                    WHEN 2 THEN 'jaccard=0.85 a_in_b=0.90 b_in_a=0.90'
+			                    WHEN 3 THEN 'jaccard=0.20 a_in_b=0.10 b_in_a=0.97'
+			                    ELSE 'jaccard=0.30 a_in_b=0.88 b_in_a=0.10' END
+			FROM scale_rule_pairs r JOIN duplicate_pairs p ON p.book_a = r.book_a AND p.book_b = r.book_b`},
 		{sql: `INSERT INTO metadata_matches (book_id, provider, record_id, score, record, state)
 			SELECT b.id, 'openlibrary', 'OL' || b.n, 0.8, jsonb_build_object('title', bk.title), 'pending'
 			FROM scale_books b JOIN books bk ON bk.id = b.id WHERE b.n % 25 = 3`},
@@ -510,6 +527,7 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 	}
 
 	cleanupTakesOneSuggestion(t, a, admin, catcher)
+	duplicateRulesAtScale(t, a, admin, catcher)
 
 	var table strings.Builder
 	table.WriteString("\n| View | Administrator | Member | Reads every book |\n|---|---:|---:|---|\n")
@@ -619,5 +637,64 @@ func cleanupTakesOneSuggestion(t *testing.T, a *app, who *http.Client, catcher *
 			}
 			t.Logf("%s: %d ms", key, took.Milliseconds())
 		}
+	}
+}
+
+// duplicateRulesAtScale runs the duplicate rules' dry run over the seed's
+// pairs of the five classes. It is a job, not a view, so it is held
+// to a budget per pair rather than to the view's second: a pair needs its
+// two books, their facts and the reconcile of their details, and a thousand
+// of them are worked off in slices of a job. No query of it may read the
+// books, their files or their chunks from end to end.
+func duplicateRulesAtScale(t *testing.T, a *app, who *http.Client, catcher *planCatcher) {
+	t.Helper()
+	const perPair = 150 * time.Millisecond
+	catcher.watch("duplicate rules: counting")
+	began := time.Now()
+	status, body, _ := a.call(who, http.MethodGet, "/curation/duplicates", nil)
+	counted := time.Since(began)
+	catcher.watch("")
+	if status != http.StatusOK {
+		t.Fatalf("classes: %d %v", status, body)
+	}
+	total := 0
+	for _, c := range body["classes"].([]any) {
+		total += int(c.(map[string]any)["pairs"].(float64))
+	}
+	// The seed wishes for some of its books, which the rules leave out.
+	var want int
+	if err := a.pool.QueryRow(context.Background(), `SELECT count(DISTINCT p.id) FROM duplicate_pairs p JOIN duplicate_evidence e ON e.pair_id = p.id
+		JOIN books x ON x.id = p.book_a JOIN books y ON y.id = p.book_b
+		WHERE p.state = 'open' AND e.kind IN ('content', 'overlap') AND NOT x.placeholder AND NOT y.placeholder`).Scan(&want); err != nil {
+		t.Fatal(err)
+	}
+	if total != want || want < 900 {
+		t.Fatalf("the rules count %d pairs, want the seed's %d open ones", total, want)
+	}
+	if counted > scaleBudget {
+		t.Errorf("counting the classes took %s, want at most %s", counted.Round(time.Millisecond), scaleBudget)
+	}
+
+	catcher.watch("duplicate rules: dry run")
+	began = time.Now()
+	run := a.runDuplicates(who, []string{"same_text", "overlap_high", "overlap_mid", "contained", "part_inside"}, true)
+	took := time.Since(began)
+	catcher.watch("")
+	info := a.runInfo(who, run)
+	if info["state"] != "done" || info["actions"] != float64(total) {
+		t.Fatalf("the dry run: %v", info)
+	}
+	catcher.mu.Lock()
+	for _, plan := range catcher.plans["duplicate rules: dry run"] {
+		found := map[string]bool{}
+		wholeScans(plan, found)
+		for rel := range found {
+			t.Errorf("the dry run reads all of %s", rel)
+		}
+	}
+	catcher.mu.Unlock()
+	t.Logf("duplicate rules: counting %d ms; a dry run over %d pairs %s (%d ms a pair)", counted.Milliseconds(), total, took.Round(time.Millisecond), took.Milliseconds()/int64(total))
+	if took > time.Duration(total)*perPair {
+		t.Errorf("the dry run took %s for %d pairs, want at most %s a pair", took.Round(time.Millisecond), total, perPair)
 	}
 }

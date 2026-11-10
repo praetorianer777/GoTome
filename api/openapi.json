@@ -12914,6 +12914,9 @@
       "DuplicateRunStarted": {
         "type": "object",
         "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
           "pairs": {
             "type": "integer"
           },
@@ -12924,6 +12927,7 @@
         },
         "required": [
           "runId",
+          "dryRun",
           "pairs"
         ]
       },

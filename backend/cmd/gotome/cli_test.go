@@ -334,3 +334,88 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 		t.Errorf("an unknown provider: %v", err)
 	}
 }
+
+func TestTheDuplicateCheckSaysWhatTheRulesWouldDoAndNamesNothing(t *testing.T) {
+	pool := dbtest.New(t)
+	onDatabase(t, pool)
+	ctx := context.Background()
+	accounts, err := auth.NewService(pool, auth.DefaultPasswordParams(), auth.DefaultSessionTTL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admin, err := accounts.Setup(ctx, "root", "the-first-password", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lib, err := library.NewService(pool, t.TempDir()).Create(ctx, admin.ID, library.NewLibrary{Name: "Shelf", Mode: "managed", Visibility: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	books := catalog.NewService(pool)
+	add := func(title, author string) string {
+		t.Helper()
+		b, err := books.CreateBook(ctx, catalog.NewBook{
+			LibraryID: lib.ID, Title: title, Contributors: []catalog.NewContributor{{Name: author}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	pair := func(x, y, kind, detail string) {
+		t.Helper()
+		if y < x {
+			x, y = y, x
+		}
+		if _, err := pool.Exec(ctx, `WITH p AS (INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2) RETURNING id)
+			INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, $3, $4 FROM p`, x, y, kind, detail); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pair(add("Der Sternwanderer", "Lena Brandt"), add("Der Sternwanderer", "Lena Brandt"), "content", "ab")
+	pair(add("Die Mondkarte", "Lena Brandt"), add("Das Wetterbuch", "Hanno Vogt"), "overlap", "jaccard=0.97 a_in_b=0.98 b_in_a=0.99")
+	pair(add("Der Atlas", "Hanno Vogt"), add("Der Atlas, Teil eins", "Hanno Vogt"), "overlap", "jaccard=0.20 a_in_b=0.10 b_in_a=0.97")
+
+	out, err := command(t, "", "duplicate-check", "-json")
+	if err != nil {
+		t.Fatalf("duplicate-check: %v\n%s", err, out)
+	}
+	var r struct {
+		OnConflict string
+		Classes    []struct {
+			Class                                string
+			Pairs, Sampled, Merged, Linked, Left int
+			Differing, Reasons                   map[string]int
+		}
+	}
+	if err := json.Unmarshal([]byte(out), &r); err != nil {
+		t.Fatalf("duplicate-check: %v\n%s", err, out)
+	}
+	got := map[string][3]int{}
+	for _, c := range r.Classes {
+		got[c.Class] = [3]int{c.Merged, c.Linked, c.Left}
+	}
+	if r.OnConflict != "skip" || got["same_text"] != [3]int{1, 0, 0} || got["overlap_high"] != [3]int{0, 0, 1} || got["contained"] != [3]int{0, 1, 0} {
+		t.Errorf("duplicate-check: %s", out)
+	}
+	for _, c := range r.Classes {
+		if c.Class == "overlap_high" && (c.Reasons["fields differ"] != 1 || c.Differing["title"] != 1) {
+			t.Errorf("why the pair is left: %+v", c)
+		}
+	}
+	text, err := command(t, "", "duplicate-check", "-n", "5", "-on-conflict", "mergeAgreeing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, title := range []string{"Sternwanderer", "Mondkarte", "Wetterbuch", "Atlas", "Brandt", "Vogt"} {
+		if strings.Contains(text, title) || strings.Contains(out, title) {
+			t.Errorf("the check names %q:\n%s", title, text)
+		}
+	}
+	if !strings.Contains(text, "same_text: 1 open, 1 looked at") || !strings.Contains(text, "merged 1") {
+		t.Errorf("duplicate-check as text:\n%s", text)
+	}
+	if _, err := command(t, "", "duplicate-check", "-on-conflict", "maybe"); err == nil {
+		t.Error("an unknown conflict rule is accepted")
+	}
+}
