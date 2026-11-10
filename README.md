@@ -118,6 +118,13 @@ the [configuration reference](docs/configuration.md),
 Every change belongs to an issue and lives on a branch `<type>/<issue>-<slug>`;
 see [CLAUDE.md](CLAUDE.md). `./run-tests.sh` is the gate that must pass before a push.
 
+## How it is made
+
+Most of GOtome's code is written by AI agents (Claude) under the direction of
+one maintainer. Every change still passes the same gate: the push gate
+(`./run-tests.sh`), CI in four browsers, the visibility tests every route must
+pass, and the scale, backup and upgrade tests.
+
 ## Security
 
 Report vulnerabilities privately, as [SECURITY.md](SECURITY.md) describes.
