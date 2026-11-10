@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A library's last scan of a single file says "one file", not "1 files".
+- `gotome similar-check -recommend` says when nobody has enough books rated
+  4 or 5 stars to measure, instead of printing a table of zeros.
+
 ## [0.14.0] - 2026-11-10
 
 ### Added
