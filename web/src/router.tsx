@@ -375,8 +375,9 @@ const reviewRoute = createRoute({
 const cleanupRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/cleanup",
-	validateSearch: (search): { kind?: CleanupKind } => ({
+	validateSearch: (search): { kind?: CleanupKind; book?: string } => ({
 		kind: oneOf(CLEANUP_KINDS, search.kind),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
 	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
@@ -389,6 +390,10 @@ const cleanupRoute = createRoute({
 			<Cleanup
 				kind={cleanupRoute.useSearch().kind ?? "authors"}
 				onKind={(kind) => navigate({ search: { kind } })}
+				book={cleanupRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
 			/>
 		);
 	}),

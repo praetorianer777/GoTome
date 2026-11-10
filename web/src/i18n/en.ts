@@ -1487,6 +1487,7 @@ export const en = {
 	"cleanup.no": "Cancel",
 	"cleanup.applying": "Being applied to {count} books.",
 	"cleanup.progress": "See how it goes",
+	"cleanup.changes": "Undo it under Changes",
 	"cleanup.more": "Show more",
 	"review.title": "Review matches",
 	"review.intro":

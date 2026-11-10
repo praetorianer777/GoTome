@@ -9,6 +9,7 @@ import {
 	useApplyCleanup,
 	useDismissCleanup,
 } from "@/books/cleanup";
+import { BookPanelLayout } from "@/books/book-panel";
 import { FormError } from "@/components/form";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
@@ -25,9 +26,13 @@ const pill =
 export function Cleanup({
 	kind,
 	onKind,
+	book,
+	onBook,
 }: {
 	kind: CleanupKind;
 	onKind: (kind: CleanupKind) => void;
+	book?: string;
+	onBook: (id: string | undefined, replace?: boolean) => void;
 }) {
 	const navigate = useNavigate();
 	const list = useInfiniteQuery(cleanupQuery(kind));
@@ -85,6 +90,7 @@ export function Cleanup({
 		act(s, () => dismissOne.mutateAsync({ kind: s.kind, subject: s.subject }));
 
 	return (
+		<BookPanelLayout bookId={book} onClose={() => onBook(undefined, true)}>
 		<div className="flex flex-col gap-6">
 			<PageHeader title={t("cleanup.title")} intro={t("cleanup.intro")} />
 			<fieldset className="flex flex-wrap gap-2 text-sm">
@@ -114,6 +120,9 @@ export function Cleanup({
 						className="underline"
 					>
 						{t("cleanup.progress")}
+					</Link>{" "}
+					<Link to="/curation" className="underline">
+						{t("cleanup.changes")}
 					</Link>
 				</p>
 			)}
@@ -176,6 +185,7 @@ export function Cleanup({
 						error={failed.get(`${s.kind}:${s.subject}`)}
 						onApply={onApply}
 						onDismiss={onDismiss}
+						onOpen={(id) => onBook(id)}
 					/>
 				))}
 			</ul>
@@ -190,6 +200,7 @@ export function Cleanup({
 				</button>
 			)}
 		</div>
+		</BookPanelLayout>
 	);
 }
 
@@ -198,6 +209,7 @@ function Suggestion({
 	error,
 	onApply,
 	onDismiss,
+	onOpen,
 }: {
 	suggestion: CleanupSuggestion;
 	error?: unknown;
@@ -206,6 +218,7 @@ function Suggestion({
 		picks: { subject: string; to?: string }[],
 	) => void;
 	onDismiss: (s: CleanupSuggestion) => void;
+	onOpen: (book: string) => void;
 }) {
 	const [keep, setKeep] = useState(s.suggested ?? "");
 	const [other, setOther] = useState("");
@@ -281,13 +294,13 @@ function Suggestion({
 			{s.fix === "retitle" && (
 				<p>
 					{s.book ? (
-						<Link
-							to="/books/$bookId"
-							params={{ bookId: s.book }}
-							className="hover:underline"
+						<button
+							type="button"
+							onClick={() => s.book && onOpen(s.book)}
+							className="text-left hover:underline"
 						>
 							{name}
-						</Link>
+						</button>
 					) : (
 						<span>{name}</span>
 					)}{" "}
@@ -307,13 +320,13 @@ function Suggestion({
 						{s.found.map((f) => (
 							<li key={f.book ?? f.name}>
 								{f.book ? (
-									<Link
-										to="/books/$bookId"
-										params={{ bookId: f.book }}
-										className="hover:underline"
+									<button
+										type="button"
+										onClick={() => f.book && onOpen(f.book)}
+										className="text-left hover:underline"
 									>
 										{f.name}
-									</Link>
+									</button>
 								) : (
 									<span>{f.name}</span>
 								)}{" "}

@@ -1503,6 +1503,7 @@ export const de: Record<MessageKey, string> = {
 	"cleanup.no": "Abbrechen",
 	"cleanup.applying": "Wird auf {count} Bücher angewendet.",
 	"cleanup.progress": "Fortschritt ansehen",
+	"cleanup.changes": "Unter Änderungen rückgängig machen",
 	"cleanup.more": "Mehr anzeigen",
 	"review.title": "Treffer prüfen",
 	"review.intro":

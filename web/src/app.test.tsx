@@ -7254,10 +7254,10 @@ describe("cleaning up how books are described", () => {
 			await screen.findByText("Das letzte Evangelium"),
 		).toBeInTheDocument();
 		expect(
-			screen.getByRole("link", {
+			screen.getByRole("button", {
 				name: "Das letzte Evangelium: Historischer Roman (German Edition)",
 			}),
-		).toHaveAttribute("href", "/books/book-9");
+		).toBeInTheDocument();
 		await person.click(screen.getByRole("button", { name: "Leave it" }));
 		expect(
 			await screen.findByText("Nothing to suggest here."),
@@ -7351,7 +7351,7 @@ describe("cleaning up how books are described", () => {
 			books: 2,
 		});
 		const person = userEvent.setup();
-		renderApp("/cleanup?kind=series");
+		const { router } = renderApp("/cleanup?kind=series");
 		expect(
 			await screen.findByText("Series “Rain Wild Chronicles”"),
 		).toBeInTheDocument();
@@ -7359,10 +7359,14 @@ describe("cleaning up how books are described", () => {
 			screen.getByRole("button", { name: "Series in titles: 1" }),
 		).toHaveAttribute("aria-pressed", "true");
 		expect(
-			screen.getByRole("link", {
+			screen.getByRole("button", {
 				name: "Rain Wild Chronicles 01 - Drachenhüter",
 			}),
-		).toHaveAttribute("href", "/books/book-1");
+		).toBeInTheDocument();
+		await person.click(
+			screen.getByRole("button", { name: "Rain Wild Chronicles 01 - Drachenhüter" }),
+		);
+		expect(router.state.location.search).toEqual({ kind: "series", book: "book-1" });
 		expect(screen.getByText("1: Drachenhüter")).toBeInTheDocument();
 		expect(screen.getByText("2.5: Drachenkämpfer")).toBeInTheDocument();
 		await person.click(
