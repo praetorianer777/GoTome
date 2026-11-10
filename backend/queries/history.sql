@@ -97,9 +97,16 @@ LIMIT sqlc.arg(max_rows);
 -- The years the viewer's reading lies in, for the filter.
 SELECT extract(year FROM coalesce(ub.finished_on, ub.started_on, (ub.updated_at AT TIME ZONE 'UTC')::date))::int AS year
 FROM user_books ub
+-- Each row looks its book up by its key, as ListReading does: as a join,
+-- the planner hashes every book of the library.
+JOIN LATERAL (
+    SELECT 1
+    FROM books bk
+    WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+    OFFSET 0
+) b ON true
 WHERE ub.user_id = sqlc.arg(viewer)::uuid AND ub.status IN ('reading', 'completed', 'abandoned')
-  AND EXISTS (SELECT 1 FROM books bk WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY 1
 ORDER BY 1 DESC;
 

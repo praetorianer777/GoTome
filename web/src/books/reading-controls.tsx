@@ -111,7 +111,7 @@ function Note({ book }: { book: BookDetail }) {
 	const [typed, setTyped] = useState<string>();
 	const text = typed ?? saved;
 	return (
-		<div className="flex flex-col gap-1">
+		<div className="flex flex-col gap-2">
 			<label className="flex flex-col gap-1">
 				<span>{t("reading.note")}</span>
 				<textarea

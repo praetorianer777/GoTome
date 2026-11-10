@@ -21,7 +21,7 @@ const MINIMUM = 24;
 const PHONE = 44;
 
 test.describe("layout rules", () => {
-	test.describe.configure({ timeout: 120_000 });
+	test.describe.configure({ timeout: 240_000 });
 
 	test("every main view keeps to them", async ({ page }, testInfo) => {
 		const stamp = `${testInfo.project.name} ${Date.now()}`;

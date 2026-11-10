@@ -608,9 +608,14 @@ func (q *Queries) PutBookNote(ctx context.Context, arg PutBookNoteParams) error 
 const readingYears = `-- name: ReadingYears :many
 SELECT extract(year FROM coalesce(ub.finished_on, ub.started_on, (ub.updated_at AT TIME ZONE 'UTC')::date))::int AS year
 FROM user_books ub
+JOIN LATERAL (
+    SELECT 1
+    FROM books bk
+    WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+    OFFSET 0
+) b ON true
 WHERE ub.user_id = $1::uuid AND ub.status IN ('reading', 'completed', 'abandoned')
-  AND EXISTS (SELECT 1 FROM books bk WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
 GROUP BY 1
 ORDER BY 1 DESC
 `
@@ -621,6 +626,8 @@ type ReadingYearsParams struct {
 }
 
 // The years the viewer's reading lies in, for the filter.
+// Each row looks its book up by its key, as ListReading does: as a join,
+// the planner hashes every book of the library.
 func (q *Queries) ReadingYears(ctx context.Context, arg ReadingYearsParams) ([]int32, error) {
 	rows, err := q.db.Query(ctx, readingYears, arg.Viewer, arg.SeesAll)
 	if err != nil {
