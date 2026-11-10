@@ -120,7 +120,7 @@ function LanguageChoice() {
 				<select
 					value={chosen}
 					onChange={(e) =>
-						setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
+						void setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
 					}
 					className="w-fit rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
 				>

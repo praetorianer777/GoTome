@@ -28,7 +28,7 @@ export function LanguageSelect() {
 			<select
 				value={chosen}
 				onChange={(e) =>
-					setLocale(
+					void setLocale(
 						e.target.value === "browser" ? null : (e.target.value as Locale),
 					)
 				}
