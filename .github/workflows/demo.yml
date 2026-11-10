@@ -22,10 +22,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The books are fetched here, not kept in the repository; the lock file
-      # holds their hashes, and the fetch fails when one differs.
+      # The books are not kept in the repository; the lock file holds their
+      # hashes and every source is checked against it. In order: the cache of
+      # an earlier run, the sites (which refuse GitHub's runners at times),
+      # and the copy in the release demo-books (docs/demo.md).
+      - name: Restore the sample books
+        uses: actions/cache@v4
+        with:
+          path: web/demo/files
+          key: demo-books-${{ hashFiles('web/demo/sample-books.lock.json') }}
+
       - name: Fetch the sample books
+        id: sites
+        continue-on-error: true
         run: make sample-books
+
+      - name: Fetch the missing books from the release demo-books
+        if: steps.sites.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/demo-books-release
+          gh release download demo-books --repo "$GITHUB_REPOSITORY" \
+            --pattern sample-books.tar --dir .cache/demo-books-release --clobber
+          tar -xf .cache/demo-books-release/sample-books.tar -C .cache/demo-books-release
+          make sample-books SAMPLE_BOOKS_FROM=.cache/demo-books-release
 
       - name: Build the demo
         run: make web-demo
