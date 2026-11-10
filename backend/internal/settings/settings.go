@@ -161,10 +161,9 @@ type Definition struct {
 	// Choices, when set, are the only values the setting takes, after
 	// Check; a page offers them to choose from.
 	Choices []string
-	// Multiple says that the value is a comma-separated list of Choices.
+	// Multiple says that the value is a comma-separated list of Choices;
+	// with no Default it may be empty.
 	Multiple bool
-	// MayBeNone lets a list of Choices be empty.
-	MayBeNone bool
 }
 
 // clean checks a value as typed and returns it as it is kept.
@@ -176,7 +175,7 @@ func (d Definition) clean(value string) (string, error) {
 		}
 		value = checked
 	}
-	if d.Choices == nil || d.Multiple && d.MayBeNone && value == "" {
+	if d.Choices == nil {
 		return value, nil
 	}
 	items := []string{value}
@@ -201,7 +200,7 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true, MayBeNone: true},
+	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true},
 	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
