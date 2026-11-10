@@ -22,6 +22,8 @@ const SEEN = `(el) => {
 		const s = getComputedStyle(e);
 		if (s.display === "none" || s.visibility === "hidden" || s.opacity === "0") return false;
 		if (e.hasAttribute("inert") || e.getAttribute("aria-hidden") === "true") return false;
+		// Text for screen readers alone is clipped to nothing on purpose.
+		if (e.classList.contains("sr-only")) return false;
 		// What a closed disclosure holds is laid out nowhere.
 		if (e.tagName === "DETAILS" && !e.open && el.closest("summary") === null && el !== e && !e.querySelector(":scope > summary")?.contains(el)) return false;
 	}

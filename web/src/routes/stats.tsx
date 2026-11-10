@@ -83,29 +83,31 @@ export function Stats() {
 								{t("stats.legend.listening")}
 							</span>
 						</p>
-						<table className="sr-only">
-							<caption>{t("stats.days")}</caption>
-							<thead>
-								<tr>
-									<th scope="col">{t("stats.column.date")}</th>
-									<th scope="col">{t("stats.column.pages")}</th>
-									<th scope="col">{t("stats.column.reading")}</th>
-									<th scope="col">{t("stats.column.listening")}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{data.days
-									.filter((d) => d.pages || d.readingMinutes || d.listeningMinutes)
-									.map((d) => (
-										<tr key={d.date}>
-											<td>{d.date}</td>
-											<td>{formatCount(d.pages)}</td>
-											<td>{formatCount(d.readingMinutes)}</td>
-											<td>{formatCount(d.listeningMinutes)}</td>
-										</tr>
-									))}
-							</tbody>
-						</table>
+						<div className="sr-only">
+							<table>
+								<caption>{t("stats.days")}</caption>
+								<thead>
+									<tr>
+										<th scope="col">{t("stats.column.date")}</th>
+										<th scope="col">{t("stats.column.pages")}</th>
+										<th scope="col">{t("stats.column.reading")}</th>
+										<th scope="col">{t("stats.column.listening")}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{data.days
+										.filter((d) => d.pages || d.readingMinutes || d.listeningMinutes)
+										.map((d) => (
+											<tr key={d.date}>
+												<td>{d.date}</td>
+												<td>{formatCount(d.pages)}</td>
+												<td>{formatCount(d.readingMinutes)}</td>
+												<td>{formatCount(d.listeningMinutes)}</td>
+											</tr>
+										))}
+								</tbody>
+							</table>
+						</div>
 					</section>
 
 					<section aria-labelledby="stats-years" className="flex flex-col gap-2">
