@@ -95,7 +95,7 @@ export function ReadingHistory() {
 							<Link
 								to="/books/$bookId"
 								params={{ bookId: book.id }}
-								className="line-clamp-1 font-medium hover:underline"
+								className="line-clamp-1 min-h-6 font-medium hover:underline"
 							>
 								{book.title}
 							</Link>

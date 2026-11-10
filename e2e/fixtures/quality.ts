@@ -94,7 +94,10 @@ export async function clippedTextProblems(page: Page): Promise<string[]> {
 			for (let box = el; box && box !== document.body; box = box.parentElement) {
 				const s = getComputedStyle(box);
 				if (!clips(s.overflowY) && !clips(s.overflowX)) continue;
-				if (ellipsis || (clamp && clamp !== "none")) break;
+				// Text cut to a set number of lines, by the box itself or by the one
+				// clamping it (a line of links), is shortened on purpose.
+				const boxClamp = s.getPropertyValue("-webkit-line-clamp");
+				if (ellipsis || (clamp && clamp !== "none") || (boxClamp && boxClamp !== "none") || s.textOverflow === "ellipsis") break;
 				if (clips(s.overflowY) && box.scrollHeight > box.clientHeight + 1 && s.height !== "auto" && box.clientHeight > 0) {
 					found.push(describe(el) + " is cut off by " + describe(box) + " (" + (box.scrollHeight - box.clientHeight) + "px)");
 					break;

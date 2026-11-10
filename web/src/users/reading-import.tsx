@@ -51,19 +51,19 @@ export function ReadingImport() {
 					}
 				}}
 			>
-				<label className="flex flex-col gap-1">
+				<label className="flex min-w-0 max-w-full flex-col gap-1">
 					<span>{t("import.file")}</span>
 					<input
 						type="file"
 						accept=".csv,text/csv"
 						onChange={(e) => setFile(e.target.files?.[0])}
-						className={control}
+						className={`${control} min-w-0 max-w-full pointer-coarse:min-h-11`}
 					/>
 				</label>
 				{(libraries.data?.length ?? 0) > 1 && (
-					<label className="flex flex-col gap-1">
+					<label className="flex min-w-0 max-w-full flex-col gap-1">
 						<span>{t("import.library")}</span>
-						<select value={library} onChange={(e) => setLibrary(e.target.value)} className={control}>
+						<select value={library} onChange={(e) => setLibrary(e.target.value)} className={`${control} min-w-0`}>
 							<option value="">{t("wishlist.libraryAuto")}</option>
 							{libraries.data?.map((l) => (
 								<option key={l.id} value={l.id}>

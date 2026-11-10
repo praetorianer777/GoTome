@@ -146,7 +146,7 @@ function LibraryRow({ library }: { library: Library }) {
 						<option value="private">{t("libraries.visibility.private")}</option>
 					</select>
 				</label>
-				<label className="flex items-center gap-2">
+				<label className="flex min-h-6 items-center gap-2">
 					<input
 						type="checkbox"
 						checked={library.joinFormats}
@@ -161,7 +161,7 @@ function LibraryRow({ library }: { library: Library }) {
 					<span>{t("libraries.joinFormats")}</span>
 				</label>
 				{external && (
-					<label className="flex items-center gap-2">
+					<label className="flex min-h-6 items-center gap-2">
 						<input
 							type="checkbox"
 							checked={library.writable}
@@ -289,12 +289,12 @@ function LibraryMembers({ library }: { library: Library }) {
 			)}
 			{candidates.length > 0 && members.data && (
 				<form onSubmit={submit} className="flex flex-wrap items-center gap-2">
-					<label className="flex items-center gap-2">
+					<label className="flex min-w-0 max-w-full items-center gap-2">
 						<span>{t("libraries.members.person")}</span>
 						<select
 							value={chosen}
 							onChange={(e) => setChosen(e.target.value)}
-							className={control}
+							className={`${control} min-w-0`}
 						>
 							<option value="">{t("libraries.members.choose")}</option>
 							{candidates.map((account) => (

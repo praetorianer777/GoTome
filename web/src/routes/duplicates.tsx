@@ -401,12 +401,12 @@ function Pair({
 						</button>
 					)}
 					{pair.state === "open" && (
-						<label className="flex items-center gap-2 text-sm">
+						<label className="flex min-w-0 max-w-full items-center gap-2 text-sm">
 							<span>{t("duplicates.relation")}</span>
 							<select
 								value={relation}
 								onChange={(e) => setRelation(e.target.value as Relation | "")}
-								className={control}
+								className={`${control} min-w-0`}
 							>
 								<option value="">{t("duplicates.relation.none")}</option>
 								<option value="edition">{t("duplicates.relation.edition")}</option>
@@ -582,7 +582,9 @@ function BookCard({
 					return (
 						<FieldRow key={field.label} label={field.label} changed={changed}>
 							{field.label === "duplicates.field.authors" && book.authors.length > 0 ? (
-								<AuthorLinks book={book} />
+								<span className="[&_a]:inline-block [&_a]:min-h-6">
+									<AuthorLinks book={book} />
+								</span>
 							) : field.label === "duplicates.field.files" && detail ? (
 								<ul className="flex flex-col gap-0.5">
 									{detail.files.map((f) => (
