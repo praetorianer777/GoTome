@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { de } from "./de";
 import { en, type MessageKey } from "./en";
 
 export type { MessageKey };
@@ -8,7 +7,16 @@ export type Locale = "en" | "de";
 
 export const LOCALES: Locale[] = ["en", "de"];
 
-const MESSAGES: Record<Locale, Record<MessageKey, string>> = { en, de };
+type Messages = Record<MessageKey, string>;
+
+// English is bundled as the fallback; the other languages are chunks that
+// load() fetches before the app first renders in them.
+const MESSAGES: Partial<Record<Locale, Messages>> = { en };
+
+const LOADERS: Record<Locale, () => Promise<Messages>> = {
+	en: () => Promise.resolve(en),
+	de: () => import("./de").then((m) => m.de),
+};
 
 const STORAGE_KEY = "gotome.locale";
 
@@ -49,25 +57,51 @@ export function locale(): Locale {
 	return current;
 }
 
+/** Fetches a language's texts, so that choosing it can switch at once. */
+export async function loadLocale(l: Locale): Promise<void> {
+	MESSAGES[l] ??= await LOADERS[l]();
+}
+
 /** Puts the language on the document, for screen readers and hyphenation. */
 export function applyLocale(): void {
 	document.documentElement.lang = current;
 }
 
+function switchTo(next: Locale): void {
+	current = next;
+	applyLocale();
+	for (const listener of listeners) listener();
+}
+
+let wanted: Locale = current;
+
 /**
  * Chooses the language for this browser. Null forgets the choice, which
- * leaves the browser's language in charge again.
+ * leaves the browser's language in charge again. The language is switched to
+ * once its texts have arrived, so no page shows the old one half translated;
+ * the promise settles then.
  */
-export function setLocale(next: Locale | null): void {
+export function setLocale(next: Locale | null): Promise<void> {
 	try {
 		if (next) localStorage.setItem(STORAGE_KEY, next);
 		else localStorage.removeItem(STORAGE_KEY);
 	} catch {
 		// See storedLocale: the choice then lasts for the visit.
 	}
-	current = next ?? browserLocale();
-	applyLocale();
-	for (const listener of listeners) listener();
+	const target = next ?? browserLocale();
+	wanted = target;
+	if (MESSAGES[target]) {
+		switchTo(target);
+		return Promise.resolve();
+	}
+	return loadLocale(target).then(
+		() => {
+			if (wanted === target) switchTo(target);
+		},
+		() => {
+			// Offline or a stale chunk: the app stays in the language it has.
+		},
+	);
 }
 
 /** Whether a language was chosen here rather than taken from the browser. */
@@ -115,7 +149,7 @@ export function t(
 	key: MessageKey,
 	values: Record<string, string | number> = {},
 ): string {
-	return MESSAGES[current][key].replace(
+	return (MESSAGES[current] ?? en)[key].replace(
 		/\{(\w+)\}/g,
 		(placeholder, name: string) => {
 			if (!(name in values)) return placeholder;
