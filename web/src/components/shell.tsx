@@ -51,6 +51,7 @@ export interface NavItem {
 		| "/upload"
 		| "/review"
 		| "/cleanup"
+		| "/curation"
 		| "/genres"
 		| "/collections"
 		| "/wishlist"
@@ -187,6 +188,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "metadata:edit",
 		group: "catalogue",
 		icon: "wand",
+	},
+	{
+		to: "/curation",
+		label: "nav.curation",
+		permission: "metadata:edit",
+		group: "catalogue",
+		icon: "undo",
 	},
 	{
 		to: "/genres",
@@ -638,6 +646,7 @@ export type IconName =
 	| "check"
 	| "copy"
 	| "wand"
+	| "undo"
 	| "tag"
 	| "trash"
 	| "jobs"
@@ -683,6 +692,7 @@ const ICONS: Record<IconName, string[]> = {
 	check: ["M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z", "M8 12l3 3 5-6"],
 	copy: ["M8 8h11v12H8z", "M5 16V4h11"],
 	wand: ["M4 20 15 9", "M17 3v4", "M15 5h4", "M20 10v2", "M19 11h2"],
+	undo: ["M9 8H5V4", "M5 8a8 8 0 1 1-1 8"],
 	trash: ["M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13"],
 	jobs: ["M5 6h14", "M5 12h14", "M5 18h9"],
 	folder: ["M3 6h6l2 2h10v11H3z"],
