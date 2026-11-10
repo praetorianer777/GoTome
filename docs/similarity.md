@@ -49,13 +49,13 @@ magazine).
 
 The first `similar-check` counted as copies only titles equal once a
 shop's additions were off; since #182 it also counts a title that is
-another's with a subtitle ("Rauklands Sohn" and "Rauklands Sohn: Raukland
+another's with a subtitle ("Brennholds Sohn" and "Brennholds Sohn: Brennhold
 Trilogie"), which it found none of among the 300.
 
 The caps fill a list from the nearest 20 times as many books as it shows;
 at 8 times, 146 of the 3,000 places stayed empty, for books of authors
 with hundreds of books. Seen in the lists: a number in a title draws
-other titles with it ("CC-5 streng geheim" and "Schlachthof 5"), which is
+other titles with it ("Station 5 streng geheim" and "Hafen 5"), which is
 the metadata vector's (#184).
 
 ## Searching by description
@@ -64,17 +64,16 @@ the metadata vector's (#184).
 as the search page finds them for someone who sees every library. Tried on
 the owner's library on 2026-10-09 (#183):
 
-- "Ein Kommissar ermittelt in Venedig": Nicolas Remin's Commissario Tron
-  novels, Venedigs Mörder, Venezianische Verwicklungen, Venedig sehen und
-  stehlen; one crime novel set in Bozen.
+- "Ein Kommissar ermittelt in Venedig": Venetian crime novels
+  by several authors; one crime novel set in Bozen.
 - "Familiensaga über drei Generationen auf einem Gutshof in Ostpreußen":
   East Prussian family stories, and memoirs of the flight from it.
 - "Kochbuch mit vegetarischen Rezepten": eight vegetarian and vegan
   cookbooks.
 - "Biografie eines berühmten Komponisten": books about musicians, a
-  Mozart biography, Wagner's works; a dictionary of quotations.
-- "Liebesroman in Cornwall": Cornwall romances and Du Maurier, but first
-  two novels by Bernard Cornwell: the metadata vector holds names, which a
+  composer's biography, a composer's works; a dictionary of quotations.
+- "Liebesroman in Devon": Devon romances, but first
+  two novels by Gerald Devlin: the metadata vector holds names, which a
   word of the description can meet (#184).
 - "a space opera with a war between galactic empires": some science
   fiction among unrelated English books; the library is mostly German.
@@ -87,16 +86,16 @@ bge-m3:
 
 | Description | multilingual-e5-small | bge-m3 |
 |---|---|---|
-| a detective solves murders in Victorian London | Deaver, cat mysteries, Inspector George Gently: English crime, none Victorian | Sherlock Holmes, Rivers of London, Christie, Martha Grimes, Konsalik's Finchley |
-| Raumschiff Abenteuer im fernen Weltall | space adventure pulps | the same kind: Rettungskreuzer Ikarus, Mark Brandis, Lem |
-| cooking Italian pasta at home | pasta, pizza and Mediterranean cookbooks, Paltrow | pasta and Italian cookbooks, one vegetarian one |
-| Liebesroman in Cornwall | two Cornwell novels first | Cornwall romances first, two Cornwell novels after |
-| a space opera with a war between galactic empires | four science fiction books, beside Bobby Fischer and a fantasy novella | six about science fiction: space operas, a war in space, a guide to Star Trek novels |
+| a detective solves murders in Victorian London | cat mysteries and modern English crime, none Victorian | classic detective stories, a modern detective series set in London, a crime novel set in a London suburb |
+| Raumschiff Abenteuer im fernen Weltall | space adventure pulps | the same kind: serial space adventures, a classic science fiction author |
+| cooking Italian pasta at home | pasta, pizza and Mediterranean cookbooks, a celebrity's cookbook | pasta and Italian cookbooks, one vegetarian one |
+| Liebesroman in Devon | two Devlin novels first | Devon romances first, two Devlin novels after |
+| a space opera with a war between galactic empires | four science fiction books, beside a chess biography and a fantasy novella | six about science fiction: space operas, a war in space, a guide to a television franchise's novels |
 | Ein Kommissar ermittelt in Venedig | Venetian crime novels | Venetian crime novels, a Venice guide |
 
 bge-m3 finds what a description means where its words are not the
 books' language, as an English description of a German library; e5 does
-so poorly. A name in the metadata vector still draws Cornwell to Cornwall
+so poorly. A name in the metadata vector still draws Devlin to Devon
 with both (#184). bge-m3 is the model to use where an embedding server can
 run it; e5 stays the one that needs none.
 
