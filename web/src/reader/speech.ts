@@ -11,6 +11,8 @@ export interface Source<S extends Sentence = Sentence> {
 	mark(sentence: S | null): Promise<void>;
 	/** Turns to the next section of the book; false when this was the last. */
 	nextSection(): Promise<boolean>;
+	/** Calls back when the page changes by anything but mark and nextSection. */
+	onMoved(listener: () => void): () => void;
 }
 
 export interface Speech {
@@ -141,6 +143,7 @@ export function readAloud<S extends Sentence>(
 ): Reading {
 	const synth = window.speechSynthesis;
 	let stopped = false;
+	let moved = false;
 	let release: (() => void) | undefined;
 	// Chrome drops an utterance nothing refers to before it has ended, and
 	// never tells.
@@ -165,18 +168,28 @@ export function readAloud<S extends Sentence>(
 			synth.speak(utterance);
 		});
 
+	const unlisten = source.onMoved(() => {
+		moved = true;
+		synth.cancel();
+		release?.();
+	});
+
 	const run = async () => {
 		try {
 			while (!stopped) {
+				moved = false;
 				for (const sentence of source.sentences()) {
-					if (stopped) return;
+					if (stopped || moved) break;
 					await source.mark(sentence);
-					if (stopped) return;
+					if (stopped || moved) break;
 					await say(sentence.text);
 				}
-				if (stopped || !(await source.nextSection())) break;
+				if (stopped) return;
+				if (moved) continue;
+				if (!(await source.nextSection())) break;
 			}
 		} finally {
+			unlisten();
 			await source.mark(null).catch(() => {});
 			if (!stopped) options.onEnd();
 		}

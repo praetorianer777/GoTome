@@ -228,9 +228,20 @@ export async function openEbook(
 	// settles, so every move waits for the one before.
 	let moving: Promise<unknown> = Promise.resolve();
 	let seen: Range | undefined;
+	let own = 0;
+	const movedListeners = new Set<() => void>();
 	view.addEventListener("relocate", (e) => {
 		seen = (e as CustomEvent<View["lastLocation"]>).detail?.range;
+		if (own === 0) for (const listener of movedListeners) listener();
 	});
+	const ownMove = async <R>(move: () => Promise<R>): Promise<R> => {
+		own++;
+		try {
+			return await move();
+		} finally {
+			own--;
+		}
+	};
 	let pieces: Piece[] = [];
 	const marking = () => view.renderer.getContents()[0];
 	const speech: Source<Spoken> = {
@@ -254,7 +265,7 @@ export async function openEbook(
 			const range = now.doc.createRange();
 			range.setStart(...from);
 			range.setEnd(...to);
-			await view.renderer.scrollToAnchor(range);
+			await ownMove(() => view.renderer.scrollToAnchor(range));
 			marking()?.overlayer?.add(SPOKEN_KEY, range, Overlayer.highlight, {
 				color: "#facc15",
 			});
@@ -262,8 +273,12 @@ export async function openEbook(
 		async nextSection() {
 			const at = view.lastLocation?.section;
 			if (!at || at.current + 1 >= at.total) return false;
-			await view.renderer.nextSection();
+			await ownMove(() => view.renderer.nextSection());
 			return true;
+		},
+		onMoved(listener) {
+			movedListeners.add(listener);
+			return () => movedListeners.delete(listener);
 		},
 	};
 	const inTurn =
@@ -301,6 +316,7 @@ export async function openEbook(
 			sentences: speech.sentences,
 			mark: inTurn(speech.mark),
 			nextSection: inTurn(speech.nextSection),
+			onMoved: speech.onMoved,
 		},
 		goTo: inTurn((target: string) => view.goTo(target)),
 		find: inTurn(find),

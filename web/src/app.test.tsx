@@ -91,13 +91,16 @@ vi.mock("@/reader/ebook", () => ({
 			: 0;
 		const chapter = () =>
 			["One", "Two", "Three"][Math.min(Math.floor(at / 4), 2)];
-		const place = () =>
+		const listeners = new Set<() => void>();
+		const place = () => {
+			for (const listener of listeners) listener();
 			options.onPlace({
 				cfi: `epubcfi(/6/${at})`,
 				fraction: at / 10,
 				chapter: chapter(),
 				atEnd: at >= 10,
 			});
+		};
 		const turn = async (step: number) => {
 			at = Math.min(Math.max(at + step, 0), 10);
 			place();
@@ -147,6 +150,10 @@ vi.mock("@/reader/ebook", () => ({
 					ebook.marked.push(sentence?.text ?? null);
 				},
 				nextSection: async () => false,
+				onMoved: (listener: () => void) => {
+					listeners.add(listener);
+					return () => listeners.delete(listener);
+				},
 			},
 			goToFraction: async (fraction: number) => {
 				at = Math.round(fraction * 10);
@@ -5027,6 +5034,27 @@ describe("the EPUB and MOBI reader", () => {
 		await person.click(button);
 		await person.click(screen.getByRole("link", { name: "Back to the book" }));
 		await waitFor(() => expect(spoken.cancelled).toBe(2));
+	});
+
+	it("follows a page turned while reading aloud and does not go back to the sentence", async () => {
+		const person = userEvent.setup();
+		installSpeech([{ name: "Hans", voiceURI: "de-hans", lang: "de-DE" }]);
+		const said: string[] = [];
+		vi.spyOn(speechSynthesis, "speak").mockImplementation((u) => {
+			said.push((u as unknown as { text: string }).text);
+		});
+		withBook("epub", "Persuasion.epub");
+		renderApp("/books/book-1/read/file-1");
+		expect(await screen.findByText("0%")).toBeInTheDocument();
+		const button = screen.getByRole("button", { name: "Read aloud" });
+		await waitFor(() => expect(button).toBeEnabled());
+		await person.click(button);
+		await waitFor(() => expect(said).toEqual(["Satz eins bei 0."]));
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		await waitFor(() => expect(said).toEqual(["Satz eins bei 0.", "Satz eins bei 1."]));
+		expect(spoken.cancelled).toBeGreaterThan(0);
+		expect(button).toHaveAttribute("aria-pressed", "true");
+		expect(await screen.findByText("10%")).toBeInTheDocument();
 	});
 
 	it("leaves read aloud out where the browser has no voices", async () => {

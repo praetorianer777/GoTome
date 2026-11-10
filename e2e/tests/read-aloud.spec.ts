@@ -113,6 +113,7 @@ test("read aloud speaks the book's sentences in order and stops on the second pr
 		.toBeGreaterThan(1);
 	const said = await page.evaluate(() => (window as unknown as { said: string[] }).said);
 	expect(said[0]).toContain("Chapter 1");
+	expect(new Set(said).size).toBe(said.length);
 	await button.click();
 	await expect(button).toHaveAttribute("aria-pressed", "false");
 	const count = await page.evaluate(() => (window as unknown as { said: string[] }).said.length);
