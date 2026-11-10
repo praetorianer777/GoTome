@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/form";
 import { button, control, Loading, PageHeader } from "@/components/ui";
 import {
@@ -179,7 +179,16 @@ function Run({ run, open: opened }: { run: CurationRun; open: boolean }) {
 }
 
 function Actions({ run }: { run: CurationRun }) {
-	const pages = useInfiniteQuery(curationActionsQuery(run.id, isBusy(run)));
+	const busy = isBusy(run);
+	const pages = useInfiniteQuery(curationActionsQuery(run.id, busy));
+	const { refetch } = pages;
+	const wasBusy = useRef(busy);
+	// The last poll can fall before the job's last action; asking once more
+	// when the run stops being busy shows the whole of it.
+	useEffect(() => {
+		if (wasBusy.current && !busy) void refetch();
+		wasBusy.current = busy;
+	}, [busy, refetch]);
 	const actions = pages.data?.pages.flatMap((p) => p?.actions ?? []) ?? [];
 	return (
 		<div className="flex flex-col gap-3">
