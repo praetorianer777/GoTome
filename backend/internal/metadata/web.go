@@ -87,6 +87,7 @@ type Service struct {
 	pool      *pgxpool.Pool
 	providers []Provider
 	webs      map[string]Web
+	cached    map[string]Web
 	language  func(context.Context) string
 	enabled   func(context.Context) []string
 	// tokenKey signs cover tokens. It is new with every start: a token is
@@ -98,10 +99,11 @@ type Service struct {
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
+	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, cached: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
 	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)
+		s.cached[p.Name()] = &web{provider: p.Name(), pool: pool, cacheOnly: true}
 	}
 	return s
 }
@@ -123,6 +125,8 @@ type web struct {
 	client   *http.Client
 	pool     *pgxpool.Pool
 	limit    *spacer
+	// cacheOnly answers from provider_records and never asks the provider.
+	cacheOnly bool
 	// last is how the latest request that reached the provider ended.
 	last atomic.Pointer[Outcome]
 }
@@ -181,6 +185,9 @@ func (w *web) get(ctx context.Context, r Request, asked *bool) ([]byte, error) {
 		}
 	}
 
+	if w.cacheOnly {
+		return nil, ErrNotFound
+	}
 	if len(r.SecretQuery) > 0 {
 		q := u.Query()
 		for k, vs := range r.SecretQuery {

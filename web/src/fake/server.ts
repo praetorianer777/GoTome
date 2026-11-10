@@ -11,7 +11,11 @@ import type {
 } from "@/notifications/api";
 import type { SmartShelf, SmartShelfRequest } from "@/books/smart-shelves";
 import type { BulkRequest, BulkResult, BulkStatus } from "@/books/bulk";
-import type { CleanupKind, CleanupSuggestion } from "@/books/cleanup";
+import type {
+	CleanupKind,
+	CleanupPreviewBook,
+	CleanupSuggestion,
+} from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
@@ -345,6 +349,8 @@ export class FakeServer {
 	describable = true;
 	/** What the clean-up page suggests. */
 	cleanup: CleanupSuggestion[] = [];
+	/** What applying a clean-up suggestion does to its books, by `kind:subject`. */
+	cleanupPreviews: Record<string, CleanupPreviewBook[]> = {};
 	/** The genres suggested for books that wait for a person. */
 	genreSuggestions: GenreSuggestion[] = [];
 	/** The bulk changes asked for, each finished as soon as it is asked for. */
@@ -2118,6 +2124,18 @@ export class FakeServer {
 		if (path === "/cleanup") {
 			const kind = query.get("kind") ?? "authors";
 			return Response.json({ suggestions: this.cleanup.filter((s) => s.kind === kind), counts });
+		}
+		if (path === "/cleanup/preview") {
+			const kind = query.get("kind") as CleanupKind;
+			const subject = query.get("subject") ?? "";
+			const suggestion = this.cleanup.find((s) => s.kind === kind && s.subject === subject);
+			if (!suggestion) {
+				return Response.json({ error: { code: "not_found", message: "There is no such suggestion; it may have been dealt with." } }, { status: 404 });
+			}
+			const books = this.cleanupPreviews[`${kind}:${subject}`] ?? [];
+			const offset = Number(query.get("offset") ?? 0);
+			const limit = Number(query.get("limit") ?? 5);
+			return Response.json({ suggestion, total: books.length, books: books.slice(offset, offset + limit) });
 		}
 		const req = body as { kind: CleanupKind; subject?: string; picks?: { subject: string; to?: string }[] };
 		const chosen = this.cleanup.filter(

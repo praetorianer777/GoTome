@@ -42,11 +42,10 @@ type cleanupSuggestion struct {
 	// order of their places in it.
 	Found []cleanupName `json:"found"`
 	// Fix is what applying it does: merge the spellings into Suggested,
-	// remove the author from the books, take the books out of the series of
-	// the author's name, retitle the book to Suggested, or put the books
-	// into the series Suggested at the places their titles say, under the
-	// titles without the series.
-	Fix       string `json:"fix"`
+	// remove the author from the books, retitle the book to Suggested, or
+	// put the books into the series Suggested at the places their titles
+	// say, under the titles without the series.
+	Fix       string `json:"fix" enum:"merge,removeAuthor,clearSeries,retitle,setSeries"`
 	Suggested string `json:"suggested,omitempty"`
 	// Books is how many books it is about.
 	Books int `json:"books"`
@@ -97,9 +96,57 @@ type cleanupDismissRequest struct {
 	Subject string `json:"subject"`
 }
 
+type cleanupPreviewQuery struct {
+	Kind    string `query:"kind" enum:"authors,placeholders,clashes,titles,series" doc:"The kind of the suggestion."`
+	Subject string `query:"subject" doc:"The suggestion's subject, as the list says."`
+	To      string `query:"to" doc:"For an author, the spelling to keep when it is not the one suggested."`
+	Offset  int    `query:"offset" doc:"How many books to skip."`
+	Limit   int    `query:"limit" doc:"How many books to show, at most 200; 5 when left out."`
+}
+
+// cleanupField is a field of a book as the fix leaves it.
+type cleanupField struct {
+	// Name is title, series or contributors.
+	Name   string `json:"name"`
+	Before string `json:"before"`
+	After  string `json:"after"`
+	// Locked says the field stays as it is, as a person locked it; After is
+	// what it would be otherwise.
+	Locked bool `json:"locked,omitempty"`
+}
+
+// cleanupEvidence is what a provider said about a book, which backs the
+// suggestion up or not. It is only shown.
+type cleanupEvidence struct {
+	Provider string `json:"provider"`
+	// Source is match (a match found for the book) or cached (an answer the
+	// providers gave for one of its identifiers and still keep).
+	Source string `json:"source" enum:"match,cached"`
+	// Field is what Value is: series, title or authors.
+	Field   string `json:"field" enum:"series,title,authors"`
+	Value   string `json:"value"`
+	Verdict string `json:"verdict,omitempty" enum:"agrees,differs"`
+}
+
+type cleanupBook struct {
+	ID       uuid.UUID         `json:"id"`
+	Title    string            `json:"title"`
+	CoverKey string            `json:"coverKey,omitempty"`
+	Fields   []cleanupField    `json:"fields"`
+	Evidence []cleanupEvidence `json:"evidence"`
+}
+
+type cleanupPreview struct {
+	Suggestion cleanupSuggestion `json:"suggestion"`
+	// Total is how many books the fix changes, Books those from offset on.
+	Total int           `json:"total"`
+	Books []cleanupBook `json:"books"`
+}
+
 const (
-	defaultCleanupPage = 50
-	maxCleanupPage     = 200
+	defaultCleanupPreview = 5
+	defaultCleanupPage    = 50
+	maxCleanupPage        = 200
 )
 
 func (s *Server) listCleanup(w http.ResponseWriter, r *http.Request) error {
@@ -145,17 +192,67 @@ func (s *Server) listCleanup(w http.ResponseWriter, r *http.Request) error {
 		out.NextCursor = strconv.Itoa(page.Next.Books) + "_" + page.Next.Subject
 	}
 	for i, sg := range page.Suggestions {
-		cs := cleanupSuggestion{
-			Kind: sg.Kind, Subject: sg.Subject, Fix: sg.Fix, Suggested: sg.Suggested,
-			Books: sg.Books, Book: sg.BookID, Found: make([]cleanupName, len(sg.Found)),
+		out.Suggestions[i] = cleanupSuggestionOf(sg)
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func cleanupSuggestionOf(sg cleanup.Suggestion) cleanupSuggestion {
+	cs := cleanupSuggestion{
+		Kind: sg.Kind, Subject: sg.Subject, Fix: sg.Fix, Suggested: sg.Suggested,
+		Books: sg.Books, Book: sg.BookID, Found: make([]cleanupName, len(sg.Found)),
+	}
+	for j, n := range sg.Found {
+		cs.Found[j] = cleanupName{Name: n.Name, Books: n.Books, Book: n.Book}
+		if n.Place != nil {
+			cs.Found[j].Position, cs.Found[j].Title = &n.Place.Position, n.Place.Title
 		}
-		for j, n := range sg.Found {
-			cs.Found[j] = cleanupName{Name: n.Name, Books: n.Books, Book: n.Book}
-			if n.Place != nil {
-				cs.Found[j].Position, cs.Found[j].Title = &n.Place.Position, n.Place.Title
-			}
+	}
+	return cs
+}
+
+func (s *Server) previewCleanup(w http.ResponseWriter, r *http.Request) error {
+	var q cleanupPreviewQuery
+	if err := decodeQuery(r, &q); err != nil {
+		return err
+	}
+	if q.Subject == "" {
+		return ErrValidation(map[string]string{"subject": "Name the suggestion."})
+	}
+	limit := defaultCleanupPreview
+	if q.Limit > 0 {
+		limit = min(q.Limit, maxCleanupPage)
+	}
+	preview, err := s.Cleanup.Preview(r.Context(), library.ScopeOf(*UserFrom(r.Context())), q.Kind, q.Subject,
+		cleanup.Options{To: q.To, Offset: q.Offset, Limit: limit})
+	var invalid catalog.EditError
+	switch {
+	case errors.Is(err, cleanup.ErrNotFound):
+		return ErrNotFound("There is no such suggestion; it may have been dealt with.")
+	case errors.Is(err, cleanup.ErrKind):
+		return ErrValidation(map[string]string{"kind": "Use authors, placeholders, clashes, titles or series."})
+	case errors.As(err, &invalid):
+		return ErrValidation(invalid)
+	case err != nil:
+		return err
+	}
+	out := cleanupPreview{
+		Suggestion: cleanupSuggestionOf(preview.Suggestion), Total: preview.Total,
+		Books: make([]cleanupBook, len(preview.Books)),
+	}
+	for i, b := range preview.Books {
+		cb := cleanupBook{
+			ID: b.ID, Title: b.Title, CoverKey: b.CoverKey,
+			Fields: make([]cleanupField, len(b.Fields)), Evidence: make([]cleanupEvidence, len(b.Evidence)),
 		}
-		out.Suggestions[i] = cs
+		for j, f := range b.Fields {
+			cb.Fields[j] = cleanupField{Name: f.Name, Before: f.Before, After: f.After, Locked: f.Locked}
+		}
+		for j, e := range b.Evidence {
+			cb.Evidence[j] = cleanupEvidence{Provider: e.Provider, Source: e.Source, Field: e.Field, Value: e.Value, Verdict: e.Verdict}
+		}
+		out.Books[i] = cb
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

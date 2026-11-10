@@ -1,5 +1,6 @@
 import {
 	infiniteQueryOptions,
+	queryOptions,
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -32,6 +33,36 @@ export const cleanupQuery = (kind: CleanupKind) =>
 				})
 			).data,
 		getNextPageParam: (last) => last?.nextCursor,
+	});
+
+export type CleanupPreview = components["schemas"]["CleanupPreview"];
+export type CleanupPreviewBook = components["schemas"]["CleanupBook"];
+
+/**
+ * What applying one suggestion does to the first `limit` of its books, and
+ * what the providers are known to say about them. Asked when a suggestion is
+ * opened, so the list stays light.
+ */
+export const cleanupPreviewQuery = (
+	s: { kind: CleanupKind; subject: string },
+	options: { to?: string; limit: number },
+) =>
+	queryOptions({
+		queryKey: ["cleanup", "preview", s.kind, s.subject, options.to, options.limit],
+		queryFn: async () =>
+			(
+				await api.GET("/cleanup/preview", {
+					params: {
+						query: {
+							kind: s.kind,
+							subject: s.subject,
+							limit: options.limit,
+							...(options.to ? { to: options.to } : {}),
+						},
+					},
+				})
+			).data,
+		placeholderData: (previous) => previous,
 	});
 
 /** Applies suggestions, or every one of a kind when picks are left out. */

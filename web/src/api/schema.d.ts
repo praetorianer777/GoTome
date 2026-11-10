@@ -825,6 +825,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cleanup/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What applying one suggested fix does to each of its books, and what the providers are known to say about them */
+        get: operations["previewCleanup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/collections": {
         parameters: {
             query?: never;
@@ -3312,6 +3329,14 @@ export interface components {
             kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
             picks?: components["schemas"]["CleanupPick"][];
         };
+        CleanupBook: {
+            coverKey?: string;
+            evidence: components["schemas"]["CleanupEvidence"][];
+            fields: components["schemas"]["CleanupField"][];
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
         CleanupCounts: {
             authors: number;
             clashes: number;
@@ -3323,6 +3348,19 @@ export interface components {
             /** @enum {string} */
             kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
             subject: string;
+        };
+        CleanupEvidence: {
+            field: string;
+            provider: string;
+            source: string;
+            value: string;
+            verdict?: string;
+        };
+        CleanupField: {
+            after: string;
+            before: string;
+            locked?: boolean;
+            name: string;
         };
         CleanupList: {
             counts: components["schemas"]["CleanupCounts"];
@@ -3340,6 +3378,11 @@ export interface components {
         CleanupPick: {
             subject: string;
             to?: string;
+        };
+        CleanupPreview: {
+            books: components["schemas"]["CleanupBook"][];
+            suggestion: components["schemas"]["CleanupSuggestion"];
+            total: number;
         };
         CleanupSuggestion: {
             /** Format: uuid */
@@ -6424,6 +6467,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewCleanup: {
+        parameters: {
+            query?: {
+                /** @description The kind of the suggestion. */
+                kind?: "authors" | "placeholders" | "clashes" | "titles" | "series";
+                /** @description The suggestion's subject, as the list says. */
+                subject?: string;
+                /** @description For an author, the spelling to keep when it is not the one suggested. */
+                to?: string;
+                /** @description How many books to skip. */
+                offset?: number;
+                /** @description How many books to show, at most 200; 5 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
+                };
             };
             /** @description The request failed. */
             default: {

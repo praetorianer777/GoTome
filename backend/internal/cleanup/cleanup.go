@@ -23,6 +23,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 )
 
 // The kinds of suggestion.
@@ -56,7 +57,7 @@ const (
 	FixSetSeries    = "setSeries"
 )
 
-// Fixes lists every fix.
+// Fixes lists every fix a suggestion can be applied with.
 var Fixes = []string{FixMerge, FixRemoveAuthor, FixClearSeries, FixRetitle, FixSetSeries}
 
 // placeholderAuthors are the keys of what tools write when they have no
@@ -128,13 +129,17 @@ type Starter interface {
 
 // Service finds and applies suggestions.
 type Service struct {
-	pool *pgxpool.Pool
-	bulk Starter
+	pool  *pgxpool.Pool
+	bulk  Starter
+	books *catalog.Service
+	// Meta, when set, adds to a preview what the providers answered before
+	// and still keep in provider_records.
+	Meta *metadata.Service
 }
 
 // NewService returns a Service.
 func NewService(pool *pgxpool.Pool, bulk Starter) *Service {
-	return &Service{pool: pool, bulk: bulk}
+	return &Service{pool: pool, bulk: bulk, books: catalog.NewService(pool)}
 }
 
 // source is the SQL function that finds a kind, with its arguments after
@@ -379,15 +384,9 @@ func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, p
 		if !ok {
 			continue
 		}
-		if p.To != "" {
-			if kind != KindAuthors {
-				return Applied{}, catalog.EditError{"to": "Only an author's spelling can be chosen."}
-			}
-			to := strings.Join(strings.Fields(p.To), " ")
-			if catalog.PersonKey(to) != sg.Subject {
-				return Applied{}, catalog.EditError{"to": "Choose a spelling of the same name."}
-			}
-			sg.Suggested = to
+		sg, err := pickFix(kind, sg, p)
+		if err != nil {
+			return Applied{}, err
 		}
 		chosen = append(chosen, sg)
 	}
@@ -405,6 +404,22 @@ func (s *Service) Apply(ctx context.Context, scope library.Scope, kind string, p
 	}
 	id, err := s.bulk.StartEach(ctx, scope, changes)
 	return Applied{BulkChangeID: id, Books: len(changes)}, err
+}
+
+// pickFix brings a suggestion to what a pick asks for: the spelling of an
+// author to keep. It refuses what does not fit.
+func pickFix(kind string, sg Suggestion, p Pick) (Suggestion, error) {
+	if p.To != "" {
+		if kind != KindAuthors {
+			return sg, catalog.EditError{"to": "Only an author's spelling can be chosen."}
+		}
+		to := strings.Join(strings.Fields(p.To), " ")
+		if catalog.PersonKey(to) != sg.Subject {
+			return sg, catalog.EditError{"to": "Choose a spelling of the same name."}
+		}
+		sg.Suggested = to
+	}
+	return sg, nil
 }
 
 // changes turns suggestions into the change of each book they touch, one

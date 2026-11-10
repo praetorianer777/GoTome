@@ -92,14 +92,24 @@ test("an author's two spellings are made one, and a title's addition is left as 
 			.evaluateAll((all) =>
 			all.map((b) => b.getBoundingClientRect()),
 		);
-		expect(buttons).toHaveLength(2);
+		expect(buttons).toHaveLength(3);
 		for (const b of buttons) {
 			expect(b.top).toBeGreaterThanOrEqual(row?.y ?? 0);
 			expect(b.bottom).toBeLessThanOrEqual((row?.y ?? 0) + (row?.height ?? 0));
 		}
 		expect(buttons[0]?.top).toBe(buttons[1]?.top);
+		expect(buttons[1]?.top).toBe(buttons[2]?.top);
 		expect(row?.height).toBeLessThan(90);
 	}
+	await title.getByRole("button", { name: "Show the books" }).click();
+	await expect(title.locator("del")).toHaveText(
+		`Drittes ${stamp} (German Edition)`,
+	);
+	await expect(title.locator("ins")).toHaveText(`Drittes ${stamp}`);
+	await expect(title.getByText("Books this changes: 1")).toBeVisible();
+	await expect(title.getByText(/No provider answer is kept/)).toBeVisible();
+	await title.getByRole("button", { name: "Hide the books" }).click();
+	await expect(title.locator("del")).toHaveCount(0);
 	const dismissed = page.waitForResponse("**/api/v1/cleanup/dismiss");
 	await title.getByRole("button", { name: "Leave it" }).click();
 	await expect(title).toHaveCount(0);

@@ -7283,6 +7283,86 @@ describe("cleaning up how books are described", () => {
 		expect(screen.getByRole("button", { name: "Leave it" })).toBeEnabled();
 	});
 
+	it("shows each book of a suggestion before and after, with what providers say", async () => {
+		const person = userEvent.setup();
+		const book = (n: number) => ({
+			id: `book-${n}`,
+			title: `Goldstein book ${n}`,
+			fields: [
+				{
+					name: "contributors" as const,
+					before: "Barbara Goldstein",
+					after: "Goldstein, Barbara",
+				},
+				{
+					name: "title" as const,
+					before: "Locked title",
+					after: "Other title",
+					locked: true,
+				},
+			],
+			evidence:
+				n === 1
+					? [
+							{
+								provider: "hardcover",
+								source: "match" as const,
+								field: "authors" as const,
+								value: "Goldstein, Barbara",
+								verdict: "agrees" as const,
+							},
+							{
+								provider: "openlibrary",
+								source: "cached" as const,
+								field: "authors" as const,
+								value: "B. Goldstein",
+								verdict: "differs" as const,
+							},
+						]
+					: [],
+		});
+		server.cleanupPreviews["authors:barbara goldstein"] = [
+			1, 2, 3, 4, 5, 6, 7,
+		].map(book);
+		renderApp("/cleanup");
+		await screen.findByText("Spelling to keep");
+		expect(
+			server.requests.some((r) => r.path === "/cleanup/preview"),
+		).toBe(false);
+		const item = screen
+			.getAllByRole("listitem")
+			.find((li) => within(li).queryByText("Spelling to keep"));
+		if (!item) throw new Error("no suggestion");
+		await person.click(
+			within(item).getByRole("button", { name: "Show the books" }),
+		);
+		expect(
+			await within(item).findByRole("button", { name: "Goldstein book 5" }),
+		).toBeVisible();
+		expect(
+			within(item).queryByRole("button", { name: "Goldstein book 6" }),
+		).toBeNull();
+		expect(
+			within(item).getAllByText("Barbara Goldstein", { selector: "del" }),
+		).toHaveLength(5);
+		expect(
+			within(item).getAllByText("Goldstein, Barbara", { selector: "ins" }),
+		).toHaveLength(5);
+		expect(within(item).getAllByText("Locked title")).toHaveLength(5);
+		expect(
+			within(item).getAllByText(/Locked, stays as it is/),
+		).toHaveLength(5);
+		expect(within(item).getByText(/agrees/)).toBeInTheDocument();
+		expect(within(item).getByText(/differs/)).toBeInTheDocument();
+		expect(within(item).getByText("Hardcover says:")).toBeInTheDocument();
+		await person.click(
+			within(item).getByRole("button", { name: "and 2 more" }),
+		);
+		expect(
+			await within(item).findByRole("button", { name: "Goldstein book 7" }),
+		).toBeVisible();
+	});
+
 	it("keeps a spelling typed in, of the same name", async () => {
 		const person = userEvent.setup();
 		renderApp("/cleanup");

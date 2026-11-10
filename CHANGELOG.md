@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Every suggestion on the clean-up page can show its books before and after:
+  each book with the fields the fix changes, the old value struck through and
+  the new one beside it, and the fields you locked marked as staying. The
+  first five show, "and n more" shows the rest. Beside each book it says what
+  a provider is already known to say about it (a match kept for the book, or
+  an answer cached from an earlier lookup by its ISBN) and whether that
+  agrees with the suggestion. Nothing is asked of a provider for this.
+
 ## [0.15.0] - 2026-11-10
 
 ### Added

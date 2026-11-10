@@ -10,6 +10,7 @@ import {
 	useDismissCleanup,
 } from "@/books/cleanup";
 import { BookPanelLayout } from "@/books/book-panel";
+import { CleanupPreviewList } from "@/books/cleanup-preview";
 import { FormError } from "@/components/form";
 import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
@@ -223,6 +224,7 @@ function Suggestion({
 	const [keep, setKeep] = useState(s.suggested ?? "");
 	const [other, setOther] = useState("");
 	const [own, setOwn] = useState(false);
+	const [showBooks, setShowBooks] = useState(false);
 	const name = s.found[0]?.name ?? "";
 	const to = own ? other : keep;
 
@@ -348,6 +350,12 @@ function Suggestion({
 					</ul>
 				</div>
 			)}
+			<CleanupPreviewList
+				suggestion={s}
+				to={s.fix === "merge" && to.trim() !== "" ? to : undefined}
+				open={showBooks}
+				onOpen={onOpen}
+			/>
 			<FormError error={error} />
 			</div>
 			<div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
@@ -362,6 +370,14 @@ function Suggestion({
 					}
 				>
 					{t(`cleanup.apply.${s.fix}`)}
+				</button>
+				<button
+					type="button"
+					aria-expanded={showBooks}
+					className={quietButton}
+					onClick={() => setShowBooks(!showBooks)}
+				>
+					{showBooks ? t("cleanup.preview.hide") : t("cleanup.preview.show")}
 				</button>
 				<button
 					type="button"
