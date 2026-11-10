@@ -63,19 +63,19 @@ func TestCheckAudioSaysWhatDiffers(t *testing.T) {
 
 func TestM4BWithChapters(t *testing.T) {
 	needFFmpeg(t)
-	got, err := extractAudio(context.Background(), filepath.Join(audioFiles, "dune.m4b"))
+	got, err := extractAudio(context.Background(), filepath.Join(audioFiles, "time-machine.m4b"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	m := got.Metadata
-	if m.Title != "Dune" || m.Published != "2007" || m.Description != "The desert planet." || strings.Join(m.Tags, "|") != "Science Fiction" {
+	if m.Title != "The Time Machine" || m.Published != "2007" || m.Description != "A traveller builds a machine and goes far into the future." || strings.Join(m.Tags, "|") != "Science Fiction" {
 		t.Errorf("metadata = %+v", m)
 	}
 	var credits []string
 	for _, c := range m.Contributors {
 		credits = append(credits, c.Role+": "+c.Name)
 	}
-	if want := "author: Frank Herbert|narrator: Scott Brick|narrator: Orlagh Cassidy"; strings.Join(credits, "|") != want {
+	if want := "author: H. G. Wells|narrator: Mara Lind|narrator: Tobias Reuter"; strings.Join(credits, "|") != want {
 		t.Errorf("credits = %v, want %s", credits, want)
 	}
 	if got.DurationMS == nil || *got.DurationMS < 2900 || *got.DurationMS > 3100 {

@@ -23,11 +23,11 @@
     "CoverBytes": 0,
     "CoverSHA256": ""
   },
-  "dune.m4b": {
+  "time-machine.m4b": {
     "Metadata": {
-      "Title": "Dune",
+      "Title": "The Time Machine",
       "Subtitle": "",
-      "Description": "The desert planet.",
+      "Description": "A traveller builds a machine and goes far into the future.",
       "Language": "und",
       "Published": "2007",
       "Publisher": "",
@@ -36,17 +36,17 @@
       "PageCount": null,
       "Contributors": [
         {
-          "Name": "Frank Herbert",
+          "Name": "H. G. Wells",
           "SortName": "",
           "Role": "author"
         },
         {
-          "Name": "Scott Brick",
+          "Name": "Mara Lind",
           "SortName": "",
           "Role": "narrator"
         },
         {
-          "Name": "Orlagh Cassidy",
+          "Name": "Tobias Reuter",
           "SortName": "",
           "Role": "narrator"
         }
@@ -388,7 +388,7 @@
   },
   "three-chapters.m4b": {
     "Metadata": {
-      "Title": "Dune",
+      "Title": "The Time Machine",
       "Subtitle": "",
       "Description": "",
       "Language": "und",
@@ -399,7 +399,7 @@
       "PageCount": null,
       "Contributors": [
         {
-          "Name": "Frank Herbert",
+          "Name": "H. G. Wells",
           "SortName": "",
           "Role": "author"
         }

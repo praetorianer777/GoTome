@@ -492,7 +492,7 @@ func TestAudiobooksAreRead(t *testing.T) {
 	for _, n := range []string{"1", "2", "3"} {
 		copyAudio(t, "part-"+n+".mp3", filepath.Join(books, "Austen", "Emma "+n+".mp3"))
 	}
-	copyAudio(t, "three-chapters.m4b", filepath.Join(books, "Herbert", "Dune.m4b"))
+	copyAudio(t, "three-chapters.m4b", filepath.Join(books, "Wells", "The Time Machine.m4b"))
 
 	id := a.externalLibrary(admin, "Audio", "shared", books)
 	a.scanNow(id)
@@ -527,9 +527,9 @@ func TestAudiobooksAreRead(t *testing.T) {
 		t.Errorf("the book of the parts: %q by %v", book.Title, book.Authors())
 	}
 
-	dune := files["Herbert/Dune.m4b"]
+	machine := files["Wells/The Time Machine.m4b"]
 	var chapters []string
-	rows, err = a.pool.Query(ctx, "SELECT title || ' ' || start_ms || '-' || end_ms FROM audio_chapters WHERE file_id = $1 ORDER BY position", dune.ID)
+	rows, err = a.pool.Query(ctx, "SELECT title || ' ' || start_ms || '-' || end_ms FROM audio_chapters WHERE file_id = $1 ORDER BY position", machine.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,9 +542,9 @@ func TestAudiobooksAreRead(t *testing.T) {
 		t.Errorf("chapters = %v, want %v", chapters, want)
 	}
 	// Reading the file again gives the same chapters, not twice as many.
-	a.extract(dune.ID)
+	a.extract(machine.ID)
 	var n int
-	a.pool.QueryRow(ctx, "SELECT count(*) FROM audio_chapters WHERE file_id = $1", dune.ID).Scan(&n)
+	a.pool.QueryRow(ctx, "SELECT count(*) FROM audio_chapters WHERE file_id = $1", machine.ID).Scan(&n)
 	if n != 3 {
 		t.Errorf("%d chapters after reading the file again, want 3", n)
 	}
