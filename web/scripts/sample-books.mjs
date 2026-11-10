@@ -3,11 +3,14 @@
 // demo/covers. Every file is checked against demo/sample-books.lock.json;
 // a book that has no entry yet is recorded there, so the first run pins the
 // hashes and a later run, or a later download, must match them.
-import { createHash } from "node:crypto";
+// `--from <dir>` reads <dir>/<id>.epub first, as a file already in demo/files
+// is; only what is missing or does not match the lock is downloaded (three
+// tries each, and a failure says its cause).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateRawSync } from "node:zlib";
+import { obtainBook, sha256 } from "./sample-books-fetch.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const files = join(root, "demo/files");
@@ -22,7 +25,12 @@ const lock = existsSync(lockPath)
 mkdirSync(files, { recursive: true });
 mkdirSync(covers, { recursive: true });
 
-const sha256 = (data) => createHash("sha256").update(data).digest("hex");
+const fromAt = process.argv.indexOf("--from");
+const from = fromAt > 0 ? process.argv[fromAt + 1] : undefined;
+if (fromAt > 0 && !from) {
+	console.error("--from needs a directory");
+	process.exit(2);
+}
 
 // The entries of a zip, read from its central directory, so nothing but
 // node is needed.
@@ -72,15 +80,7 @@ for (const book of library.books) {
 	const target = join(files, `${book.id}.epub`);
 	let data;
 	try {
-		if (existsSync(target)) {
-			data = readFileSync(target);
-		} else {
-			const res = await fetch(book.source.url, {
-				headers: { "user-agent": "GOtome-demo-sample-books" },
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			data = Buffer.from(await res.arrayBuffer());
-		}
+		({ data } = await obtainBook(book, { files, from, lock }));
 		const hash = sha256(data);
 		const known = lock[book.id];
 		if (known && known.sha256 !== hash) {
