@@ -78,7 +78,7 @@ export function AutoDuplicates() {
 										class: t(key("duplicates.auto.class.", c.class)),
 									})}
 									onClick={() => setAsking(c)}
-									className={button("primary")}
+									className={button()}
 								>
 									{t("duplicates.auto.run")}
 								</button>

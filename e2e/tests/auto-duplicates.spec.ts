@@ -37,14 +37,14 @@ test("the duplicates page offers a dry run per class, and the dry run shows unde
 	const same = panel.getByRole("listitem", { name: "Same file or same text" });
 	await expect(same).toContainText("Made one book");
 	await expect(same).toContainText(/\d+ open pairs/);
-	await expect(panel.getByRole("button", { name: "Run: Same file or same text" })).toBeEnabled();
-	await panel.getByRole("button", { name: "Run: Same file or same text" }).click();
+	await expect(panel.getByRole("button", { name: "Run: Same file or same text", exact: true })).toBeEnabled();
+	await panel.getByRole("button", { name: "Run: Same file or same text", exact: true }).click();
 	const dialog = page.getByRole("alertdialog");
 	await expect(dialog).toContainText(/Resolve \d+ pairs: Same file or same text\?/);
 	await dialog.getByRole("button", { name: "Cancel" }).click();
 	await expect(dialog).toBeHidden();
 
-	await panel.getByRole("button", { name: "Dry run: Same file or same text" }).click();
+	await panel.getByRole("button", { name: "Dry run: Same file or same text", exact: true }).click();
 	await expect(panel.getByRole("status")).toContainText("The dry run has started.");
 	await panel.getByRole("link", { name: "See it under Changes" }).click();
 
@@ -54,7 +54,6 @@ test("the duplicates page offers a dry run per class, and the dry run shows unde
 	await expect(run).toContainText("Dry run");
 	await expect(run).toContainText("Planned, not done", { timeout: 60_000 });
 	await expect(run.getByRole("button", { name: /^Undo the run of/ })).toHaveCount(0);
-	await run.getByRole("button", { name: "Show changes" }).click();
 	const actions = run.getByRole("list", { name: "Changes of the run" }).getByRole("listitem");
 	await expect(actions.first()).toBeVisible();
 	await expect(run.getByRole("button", { name: /^Undo the change to/ })).toHaveCount(0);
