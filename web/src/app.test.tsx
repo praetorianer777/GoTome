@@ -3082,6 +3082,56 @@ describe("reviewing matches", () => {
 	});
 
 
+	it("lays every field of the book beside the match's and marks how each stands", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Emma", {
+				publisher: "Penguin",
+				published: "2003",
+				pageCount: 400,
+				contributors: [{ name: "Jane Austen", role: "author" }],
+			});
+		server.review = [
+			{
+				book: server.books[0] as BookDetail,
+				matches: [
+					{
+						matchId: "m1",
+						provider: "openlibrary",
+						id: "m1",
+						score: 0.9,
+						title: "Emma",
+						publisher: "Penguin",
+						published: "2010",
+						contributors: [{ name: "Jane Austen", role: "author" as const }],
+						tags: [],
+						identifiers: [],
+						fields: { published: { suggested: true, reason: "sameEdition" } },
+					},
+				],
+			},
+		];
+		renderApp("/review");
+		await screen.findByText("1 books wait.");
+
+		const row = (field: string) =>
+			screen.getByText(field, { selector: "span" }).closest("tr") as HTMLElement;
+		expect(row("Title")).toHaveAttribute("data-standing", "same");
+		expect(row("Publisher")).toHaveAttribute("data-standing", "same");
+		expect(row("Published")).toHaveAttribute("data-standing", "differs");
+		expect(row("Pages")).toHaveAttribute("data-standing", "theirsEmpty");
+		expect(row("Subtitle")).toHaveAttribute("data-standing", "bothEmpty");
+		expect(within(row("Subtitle")).getAllByText("empty")).toHaveLength(2);
+		expect(
+			within(row("Published")).getByRole("checkbox", { name: "Take Published" }),
+		).toBeChecked();
+		expect(
+			screen.queryByRole("checkbox", { name: "Take Title" }),
+		).not.toBeInTheDocument();
+	});
+
 	function withPanelBook() {
 		server
 			.withAccount("Edith", "a long password", "editor")

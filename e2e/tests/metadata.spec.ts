@@ -60,6 +60,16 @@ test("details found online are compared with the book's, the fields worth taking
 	// The title the file gives stays; what the book lacks is taken.
 	await ticked(page, "Title", false);
 	await expect(compare).toContainText("Would replace what the file says");
+	// Every field is listed, the ones that differ marked, the empty ones too.
+	for (const field of ["Subtitle", "People", "Series", "Language", "Pages"]) {
+		await expect(compare.getByText(field, { exact: true })).toBeVisible();
+	}
+	await expect(compare.locator('tr[data-standing="differs"]').first()).toBeVisible();
+	await expect(compare.locator('tr[data-standing="bothEmpty"]').first()).toContainText("empty");
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+	);
+	expect(overflow).toBeLessThanOrEqual(0);
 	await ticked(page, "Description", true);
 	await ticked(page, "Publisher", true);
 	await page.getByRole("button", { name: "Take what is ticked" }).click();
