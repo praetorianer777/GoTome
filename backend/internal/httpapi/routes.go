@@ -331,6 +331,26 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.takeBackDelivery,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/kindle", ID: "getKindle",
+			Summary: "Whether books can be sent to a Kindle by e-mail, the address they come from and the caller's Kindle address", Tag: "auth",
+			Response: kindleStatus{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.getKindle,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/kindle", ID: "putKindle",
+			Summary: "Set the caller's Kindle address, or remove it with an empty one", Tag: "auth",
+			Request: kindleAddress{}, Response: kindleStatus{}, Permission: auth.PersonalManage, Handler: s.putKindle,
+		},
+		{
+			Method: http.MethodPost, Path: "/kindle/sends", ID: "sendToKindle",
+			Summary: "Send the EPUBs of books to the caller's Kindle by e-mail, one job each: by IDs, or a library and filter", Tag: "books",
+			Request: sendRequest{}, Response: kindleResult{}, Permission: auth.PersonalManage, Handler: s.sendToKindle,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/kindle", ID: "listBookKindleSends",
+			Summary: "The caller's latest sends of the book to their Kindle, with their outcome", Tag: "books",
+			Response: kindleSendList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookKindleSends,
+		},
+		{
 			Method: http.MethodGet, Path: "/device", ID: "getThisDevice",
 			Summary: "The device that asks, and whom its token signs in; only for a device's token", Tag: "auth",
 			Response: thisDevice{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Devices: true, Handler: s.getThisDevice,

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/url"
 	"slices"
 	"strconv"
@@ -109,6 +110,20 @@ const (
 	// OIDCLinkByEmail is "on" or "off": whether a first sign-in takes the
 	// account of the address the provider says it has verified.
 	OIDCLinkByEmail = "oidc.linkByEmail"
+	// MailHost and MailPort are the SMTP server books are sent through to
+	// a Kindle (#412), the only host GOtome ever sends mail to; unset, the
+	// feature is off.
+	MailHost = "mail.host"
+	MailPort = "mail.port"
+	// MailSecurity is "starttls", "tls" (the whole connection is TLS) or
+	// "none". Mail is not sent, and the password not offered, without TLS
+	// unless it is "none".
+	MailSecurity = "mail.security"
+	MailUser     = "mail.user"
+	MailPassword = "mail.password"
+	// MailSender is the From address, the one each person approves at
+	// Amazon.
+	MailSender = "mail.sender"
 )
 
 // maxValueLen bounds a value; no key or token comes near it.
@@ -188,7 +203,16 @@ var Definitions = []Definition{
 	{Key: OIDCDefaultRole, Kind: KindText, Default: "reader", Check: role, Choices: Roles},
 	{Key: OIDCSignup, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: OIDCLinkByEmail, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
+	{Key: MailHost, Kind: KindText, Check: mailHost},
+	{Key: MailPort, Kind: KindText, Default: "587", Check: port},
+	{Key: MailSecurity, Kind: KindText, Default: "starttls", Check: onlyChoices, Choices: MailSecurities},
+	{Key: MailUser, Kind: KindText},
+	{Key: MailPassword, Kind: KindSecret},
+	{Key: MailSender, Kind: KindText, Check: email},
 }
+
+// MailSecurities are the values of MailSecurity.
+var MailSecurities = []string{"starttls", "tls", "none"}
 
 // OnOff are the choices of a setting that is on or off.
 var OnOff = []string{"on", "off"}
@@ -321,6 +345,26 @@ func (s *Store) Items(ctx context.Context, key string) ([]string, error) {
 }
 
 // days is a whole number of days, from one to ten years.
+// mailHost is a host name or address without scheme, port or path.
+func mailHost(v string) (string, error) {
+	if v == "" || len(v) > 253 || strings.ContainsAny(v, " \t/@?#,;\"<>") || strings.Contains(v, "://") ||
+		(strings.Contains(v, ":") && net.ParseIP(strings.Trim(v, "[]")) == nil) {
+		return "", errors.New("Give the mail server's name, such as smtp.example.org, without a port.")
+	}
+	return strings.ToLower(strings.Trim(v, "[]")), nil
+}
+
+func port(v string) (string, error) {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 1 || n > 65535 {
+		return "", errors.New("Give a port from 1 to 65535.")
+	}
+	return strconv.Itoa(n), nil
+}
+
+// onlyChoices leaves a value to the Choices that follow it.
+func onlyChoices(v string) (string, error) { return strings.ToLower(v), nil }
+
 func days(v string) (string, error) {
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil || n < 1 || n > 3650 {

@@ -135,6 +135,21 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.oidcLinkByEmail",
 		hint: "settings.oidcLinkByEmail.hint",
 	},
+	"mail.host": { label: "settings.mailHost", hint: "settings.mailHost.hint" },
+	"mail.port": { label: "settings.mailPort", hint: "settings.mailPort.hint" },
+	"mail.security": {
+		label: "settings.mailSecurity",
+		hint: "settings.mailSecurity.hint",
+	},
+	"mail.user": { label: "settings.mailUser", hint: "settings.mailUser.hint" },
+	"mail.password": {
+		label: "settings.mailPassword",
+		hint: "settings.mailPassword.hint",
+	},
+	"mail.sender": {
+		label: "settings.mailSender",
+		hint: "settings.mailSender.hint",
+	},
 };
 
 /** Values hints may name: the address the identity provider sends people back to. */
@@ -149,6 +164,7 @@ const SECTIONS: { id: string; title: MessageKey; prefixes: string[] }[] = [
 	{ id: "embedding", title: "settings.section.embedding", prefixes: ["embedding.", "search."] },
 	{ id: "genres", title: "settings.section.genres", prefixes: ["genres."] },
 	{ id: "trash", title: "settings.section.trash", prefixes: ["trash."] },
+	{ id: "mail", title: "settings.section.mail", prefixes: ["mail."] },
 ];
 const OTHER = { id: "other", title: "settings.section.other" as MessageKey };
 

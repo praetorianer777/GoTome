@@ -89,7 +89,7 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, arg DeleteUserSessions
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, s.last_seen_at AS session_last_seen_at
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, s.last_seen_at AS session_last_seen_at
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1
@@ -113,6 +113,7 @@ type GetSessionUserRow struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	HistoryLibraryID  *uuid.UUID
+	KindleAddress     *string
 	SessionLastSeenAt time.Time
 }
 
@@ -131,6 +132,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, arg GetSessionUserParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
+		&i.KindleAddress,
 		&i.SessionLastSeenAt,
 	)
 	return i, err

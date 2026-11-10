@@ -40,6 +40,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -356,7 +357,10 @@ func serve() error {
 	}
 	defer textIndex.Close()
 	ready.Set(httpapi.CheckSearchIndex, textIndex.Check)
+	mailing := kindle.NewService(pool, settingStore, books, log)
+	mailing.Offline = cfg.Offline
 	workers := background{
+		kindle:   mailing,
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
 		vectors: vectors, genres: genreService, passages: passageVectors,
@@ -368,6 +372,7 @@ func serve() error {
 		return err
 	}
 	scans.Queue = runner
+	mailing.Queue = runner
 	matches.Queue = runner
 	changes.Queue = runner
 	histories.Queue = runner
@@ -482,6 +487,7 @@ func serve() error {
 		Updates:    updateChecks,
 		Checks:     checks,
 		Deliveries: deliveries.NewService(pool),
+		Kindle:     mailing,
 		Pairing:    pairing.NewService(pool),
 		Kobo:       kobo.NewService(pool),
 		Sync:       progressSync,

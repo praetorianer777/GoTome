@@ -7396,6 +7396,82 @@ describe("sending to an e-reader", () => {
 	});
 });
 
+describe("sending to a Kindle", () => {
+	const epub = {
+		id: "file-1",
+		kind: "ebook" as const,
+		format: "epub",
+		name: "Persuasion.epub",
+		size: 1_400_000,
+		missing: false,
+		drm: false,
+		extractState: "done" as const,
+	};
+
+	it("offers nothing on a book's page while no mail server is set up", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		await screen.findByRole("region", { name: "E-readers" });
+		expect(screen.queryByRole("region", { name: "Kindle" })).not.toBeInTheDocument();
+	});
+
+	it("keeps the address from the profile, and refuses one that is not a Kindle's", async () => {
+		const person = userEvent.setup();
+		server.kindle.available = true;
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
+		renderApp("/profile");
+		const field = await screen.findByLabelText(/Kindle e-mail address/);
+		await person.type(field, "rita@example.org");
+		await person.click(screen.getByRole("button", { name: "Save address" }));
+		expect(
+			await screen.findByText(/Give the address of your Kindle/),
+		).toBeInTheDocument();
+		expect(server.kindle.address).toBe("");
+
+		await person.clear(field);
+		await person.type(field, "rita_1@kindle.com");
+		await person.click(screen.getByRole("button", { name: "Save address" }));
+		await waitFor(() => expect(server.kindle.address).toBe("rita_1@kindle.com"));
+	});
+
+	it("sends a book from its page and says where the approved sender is needed", async () => {
+		const person = userEvent.setup();
+		server.kindle.available = true;
+		server.kindle.address = "rita_1@kindle.com";
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Kindle" }));
+		expect(section.getByText(/library@example\.org/)).toBeInTheDocument();
+		await person.click(section.getByRole("button", { name: "Send to Kindle" }));
+		expect(
+			await section.findByText("On its way to rita_1@kindle.com"),
+		).toBeInTheDocument();
+		expect(server.kindleSends).toHaveLength(1);
+
+		await person.click(section.getByRole("button", { name: "Send to Kindle" }));
+		expect(await section.findByText("It is already on its way.")).toBeInTheDocument();
+		expect(server.kindleSends).toHaveLength(1);
+	});
+
+	it("asks for an address first", async () => {
+		server.kindle.available = true;
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		renderApp("/books/book-1");
+		const section = within(await screen.findByRole("region", { name: "Kindle" }));
+		expect(section.queryByRole("button", { name: "Send to Kindle" })).not.toBeInTheDocument();
+		expect(section.getByRole("link", { name: "Add it on your profile." })).toBeInTheDocument();
+	});
+});
+
 describe("the overview", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
