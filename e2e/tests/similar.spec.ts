@@ -91,7 +91,7 @@ test("a book's page shows the books most like it, whose genres are suggested for
 	await page.goto("/genres");
 	const suggestion = (title: string) =>
 		page.getByRole("listitem").filter({
-			has: page.getByRole("link", { name: title, exact: true }),
+			has: page.getByRole("button", { name: title, exact: true }),
 		});
 	await expect(suggestion(accepted)).toContainText(
 		"Fantasy from the books most like it",

@@ -35,6 +35,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- The list of authors no longer runs past a phone's screen when a name is
+  very long.
 - On the duplicates page the two "Keep this" buttons of a pair stand at the
   same height whatever the books' titles say, and the books' details line up.
 

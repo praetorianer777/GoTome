@@ -86,7 +86,10 @@ test("an author's two spellings are made one, and a title's addition is left as 
 	await expect(title).toContainText(`becomes Drittes ${stamp}`);
 	if ((page.viewportSize()?.width ?? 0) >= 768) {
 		const row = await title.boundingBox();
-		const buttons = await title.getByRole("button").evaluateAll((all) =>
+		const buttons = await title
+			.getByRole("button")
+			.filter({ hasNotText: `Drittes ${stamp}` })
+			.evaluateAll((all) =>
 			all.map((b) => b.getBoundingClientRect()),
 		);
 		expect(buttons).toHaveLength(2);
