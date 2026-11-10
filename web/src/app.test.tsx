@@ -4037,6 +4037,7 @@ describe("reading statistics", () => {
 				{ year: 2026, finishes: 1, books: 1 },
 				{ year: 2025, finishes: 2, books: 1 },
 			],
+			undated: 2,
 			history: [
 				{
 					bookId: "book-1",
@@ -4062,6 +4063,9 @@ describe("reading statistics", () => {
 		).toBeInTheDocument();
 		expect(
 			screen.getByText(/2 finished, 1 different books/),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText("Completed without a date: 2, in no year"),
 		).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Emma" })).toHaveAttribute(
 			"href",

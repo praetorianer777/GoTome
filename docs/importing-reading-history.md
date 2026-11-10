@@ -69,6 +69,12 @@ and says how many it rounded.
 | custom shelves (Goodreads) and tags (StoryGraph) | collections of the same names |
 | review | your private note |
 
+A book read with no date in the file is completed all the same, and shows
+in **Your reading** without a year. It has no finish, so it counts in no
+year of **Statistics** (GOtome does not make a date up, neither today's nor
+the import's); the statistics say how many books are "Completed without a
+date" under the years. The same goes for any book you mark completed by hand.
+
 What you already set stays: a status other than unread or want to read, a
 rating, a finish date or a note is not replaced unless you tick "Replace
 what I already set". Importing the same file again changes nothing. A book

@@ -173,6 +173,15 @@ func TestAnImportIsPreviewedThenSetAndRunningItAgainChangesNothing(t *testing.T)
 	if len(years) != 3 {
 		t.Errorf("finishes count in their years: %v", years)
 	}
+	if stats["undated"] != 0.0 {
+		t.Errorf("every imported read has its date: %v", stats["undated"])
+	}
+	if status, body, _ := a.call(reader, http.MethodPut, "/books/"+emma1.String()+"/reading", map[string]any{"status": "completed"}); status != http.StatusOK {
+		t.Fatalf("completing: %d %v", status, body)
+	}
+	if _, stats, _ = a.call(reader, http.MethodGet, "/me/stats?tz=UTC", nil); stats["undated"] != 1.0 || len(stats["years"].([]any)) != 3 {
+		t.Errorf("a book completed with no date is counted apart: %v", stats)
+	}
 	_, shelves, _ := a.call(reader, http.MethodGet, "/collections", nil)
 	names := []string{}
 	for _, c := range shelves["collections"].([]any) {

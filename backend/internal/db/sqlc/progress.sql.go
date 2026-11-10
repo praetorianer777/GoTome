@@ -486,3 +486,28 @@ func (q *Queries) StartSession(ctx context.Context, arg StartSessionParams) erro
 	)
 	return err
 }
+
+const undatedFinishes = `-- name: UndatedFinishes :one
+SELECT count(*)
+FROM user_books ub
+JOIN books b ON b.id = ub.book_id
+WHERE ub.user_id = $1
+  AND ub.status = 'completed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id)
+`
+
+type UndatedFinishesParams struct {
+	UserID  uuid.UUID
+	SeesAll bool
+}
+
+// Books a person has as completed that no finish is recorded for: an import
+// of a read book with no date. They are in no year, and no date is made up.
+func (q *Queries) UndatedFinishes(ctx context.Context, arg UndatedFinishesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, undatedFinishes, arg.UserID, arg.SeesAll)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}

@@ -91,6 +91,18 @@ WHERE rf.user_id = sqlc.arg(user_id)
 GROUP BY 1
 ORDER BY 1 DESC;
 
+-- name: UndatedFinishes :one
+-- Books a person has as completed that no finish is recorded for: an import
+-- of a read book with no date. They are in no year, and no date is made up.
+SELECT count(*)
+FROM user_books ub
+JOIN books b ON b.id = ub.book_id
+WHERE ub.user_id = sqlc.arg(user_id)
+  AND ub.status = 'completed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id);
+
 -- name: ReadingHistory :many
 -- When a person began and finished books, the latest first. Each event
 -- finds its book by its key: a person's events are a few thousand at most,

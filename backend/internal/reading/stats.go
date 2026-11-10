@@ -59,7 +59,10 @@ type Stats struct {
 	// whose pages are worked out from the length of its text.
 	PagesEstimated bool
 	Years          []Year
-	History        []Event
+	// Undated counts the books completed with no finish recorded, which an
+	// import of a book read without a date leaves.
+	Undated int
+	History []Event
 }
 
 // Stats counts what the scope's user read and listened to, from their
@@ -117,6 +120,11 @@ func (s *Service) Stats(ctx context.Context, scope library.Scope, days int, zone
 	for _, y := range years {
 		out.Years = append(out.Years, Year{Year: int(y.Year), Finishes: int(y.Finishes), Books: int(y.Books)})
 	}
+	undated, err := q.UndatedFinishes(ctx, sqlc.UndatedFinishesParams{UserID: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Stats{}, err
+	}
+	out.Undated = int(undated)
 	history, err := q.ReadingHistory(ctx, sqlc.ReadingHistoryParams{UserID: scope.Viewer, Tz: zone, SeesAll: scope.SeesAll, MaxRows: maxHistory})
 	if err != nil {
 		return Stats{}, err

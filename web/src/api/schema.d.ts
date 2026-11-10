@@ -4059,6 +4059,7 @@ export interface components {
             totalListeningMinutes: number;
             totalPages: number;
             totalReadingMinutes: number;
+            undated: number;
             years: components["schemas"]["StatsYear"][];
         };
         RebuildResult: {

@@ -14159,6 +14159,9 @@
           "totalReadingMinutes": {
             "type": "integer"
           },
+          "undated": {
+            "type": "integer"
+          },
           "years": {
             "type": "array",
             "items": {
@@ -14176,6 +14179,7 @@
           "totalListeningMinutes",
           "pagesEstimated",
           "years",
+          "undated",
           "history"
         ]
       },

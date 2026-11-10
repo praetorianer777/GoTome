@@ -8,6 +8,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Statistics count the books completed with no finish date, such as those an
+  imported history gave none, apart from the years ("Completed without a
+  date"), without inventing a date for them.
 - Books an imported Goodreads or StoryGraph history adds that the library
   does not hold are looked up by their ISBN like a new file is, so they get
   a cover and a description. See `docs/importing-reading-history.md`.
