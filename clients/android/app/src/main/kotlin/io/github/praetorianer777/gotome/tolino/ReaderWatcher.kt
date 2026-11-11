@@ -12,6 +12,7 @@ import android.net.Network as AndroidNetwork
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -31,7 +32,8 @@ class ReaderWatcher : Service() {
     private val main = Handler(Looper.getMainLooper())
     private val store = Handler(Looper.getMainLooper())
     private val raise = StoreRaise()
-    private val liveness = Liveness(System::currentTimeMillis, STALL_AFTER)
+    // Uptime stops while the Tolino sleeps, as the probes do: a night asleep is no silence.
+    private val liveness = Liveness(SystemClock::uptimeMillis, STALL_AFTER)
     private val tracker = ReadingTracker()
     private lateinit var prefs: Prefs
     private lateinit var db: Db
