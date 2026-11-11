@@ -931,6 +931,12 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the sample with every score there is (`Variants`) and reports the
   calibration. `Check` and `Train` ask through `gather`, once, and rank
   with `evaluate`.
+  `profiles.go` ships `german` (learned on a German library, 1,000 books):
+  it is the score of a library mostly in German until its own is learned.
+  A learned score is the probability of the exact ISBN, so `enrich` keeps
+  matches for review from `Service.ReviewFloor` (0.2; 0.5 for the hand-set
+  score), and `metadata.matchThreshold` is the owner's to move to what
+  Measure's table says.
 - A candidate's description is one more feature, `description` (#491): for
   a book looked up by its title that has a content vector, the first three
   descriptions of at least 60 characters of each provider's answer are

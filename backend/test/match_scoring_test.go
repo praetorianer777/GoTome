@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
 )
 
 // isbnFor is a valid ISBN-13 for the nth book.
@@ -204,5 +205,39 @@ func TestTheMatchScoreIsLearnedMeasuredExportedAndImported(t *testing.T) {
 
 	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{"metadata.scoreWeights": "nonsense"}}); status != http.StatusUnprocessableEntity {
 		t.Errorf("an unknown choice of weights: %d", status)
+	}
+}
+
+func TestALibraryInGermanStartsWithTheShippedWeightsUntilItHasLearnedItsOwn(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := uuid.MustParse(a.library(admin, "Regal", "shared"))
+	ctx := context.Background()
+	for _, language := range []string{"de", "de-AT", "de", "en"} {
+		if _, err := catalog.NewService(a.pool).CreateBook(ctx, catalog.NewBook{
+			LibraryID: lib, Title: "Ein Buch " + uuid.NewString(), Language: language,
+			Contributors: []catalog.NewContributor{{Name: "Ada Quill"}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a.server.Metadata = metadata.NewService(a.pool, []metadata.Provider{lampProvider{}}, metadata.Options{
+		AllowPrivate: true,
+		Weights:      func(ctx context.Context) string { v, _ := a.settings.Text(ctx, settings.ScoreWeights); return v },
+	})
+	using := func() string {
+		_, body, _ := a.call(admin, http.MethodGet, "/metadata/scoring", nil)
+		s, _ := body["using"].(string)
+		return s
+	}
+	if got := using(); got != "profile:german" {
+		t.Errorf("a library mostly in German ranks with %q", got)
+	}
+	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{settings.ScoreWeights: "handSet"}}); status != 200 {
+		t.Fatalf("setting the weights: %d", status)
+	}
+	if got := using(); got != "handSet" {
+		t.Errorf("the hand-set weights, when chosen: %q", got)
 	}
 }

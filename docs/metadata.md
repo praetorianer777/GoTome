@@ -187,6 +187,32 @@ hand-set ones), the hand-set ones, or an imported file's.
 `metadata.learnScore` learns once a week, where at least 500 books have
 an ISBN, through the cache.
 
+**What it found on a library in German** (1,000 books with an ISBN looked
+up without it at the DNB and Open Library; 810 to fit, 190 held out; the
+score ranks the held-out books' candidates):
+
+| the first candidate | hand-set | learned |
+|---|---|---|
+| the book itself (its ISBN) | 76 (40%) | 86 (45%) |
+| another edition of it | 46 (24%) | 36 (19%) |
+| another book | 9 (5%) | 12 (6%) |
+| nothing found | 55 (29%) | 55 (29%) |
+| log loss of the candidates, held out | - | 0.346 |
+
+The hand-set score is no probability: its 0.95 and above took 79 of the
+190 books, of which 50 carry the ISBN and 27 are another edition (63%
+and 34%), where it says 99%. The learned score is: the first candidates it
+puts between 0.7 and 0.8 are the book 82% of the time, between 0.8 and
+0.9 90%, as it predicts or a little better. It is less sure, since an
+edition that is not the ISBN's counts against it: no candidate reaches
+0.95, 0.7 takes 33 books of which 29 are the book itself, 3 another
+edition and 1 another book (88%), and 0.5 takes 68, of which 54 (79%).
+With the learned weights, lower `metadata.matchThreshold` to what your
+own table says (the setting is yours; GOtome does not move it), and note
+that matches that wait for review are kept from 0.2 on, since a
+probability of the exact ISBN is low for an edition that is good enough
+to look at.
+
 **What the book is about.** Where embedding is on and a book has been
 embedded, a candidate found by title also counts by its description: the
 descriptions of the first three candidates of each source (long enough

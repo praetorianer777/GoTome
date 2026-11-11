@@ -42,14 +42,14 @@ type example struct {
 	right    bool
 }
 
-// fitRidge is the strength of the pull of the weights towards zero. It
+// DefaultRidge is the strength of the pull of the weights towards zero. It
 // keeps a feature that is always set with the label from growing without
 // end, which a small sample makes likely, and is no stronger than that.
-const fitRidge = 1.0
+const DefaultRidge = 1.0
 
 // fit finds the weights of a logistic regression by Newton's method, the
 // bias excepted from the ridge.
-func fit(examples []example) Weights {
+func fit(examples []example, ridge float64) Weights {
 	index := map[string]int{}
 	var names []string
 	for _, e := range examples {
@@ -93,8 +93,8 @@ func fit(examples []example) Weights {
 			if name == FeatureBias {
 				continue
 			}
-			grad[i] += fitRidge * w[i]
-			hess[i][i] += fitRidge
+			grad[i] += ridge * w[i]
+			hess[i][i] += ridge
 		}
 		// A little on every diagonal keeps the system solvable where a
 		// feature never varies.

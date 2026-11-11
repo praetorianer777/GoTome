@@ -34,8 +34,10 @@ type TrainOptions struct {
 	Providers []string
 	// Threshold is metadata.matchThreshold, to mark in the report.
 	Threshold float64
-	Start     func(books int, estimate time.Duration)
-	Progress  func(done, of int)
+	// Ridge is the pull of the weights towards zero; zero is DefaultRidge.
+	Ridge    float64
+	Start    func(books int, estimate time.Duration)
+	Progress func(done, of int)
 }
 
 // WeightRow is one feature's weight, the hand-set one beside the learned.
@@ -169,8 +171,12 @@ func (s *Service) Train(ctx context.Context, opts TrainOptions) (TrainReport, er
 		r.Shares[p] = round2(n / float64(r.Candidates))
 	}
 
+	ridge := opts.Ridge
+	if ridge <= 0 {
+		ridge = DefaultRidge
+	}
 	trainExamples := examplesOf(train)
-	partial := fit(trainExamples)
+	partial := fit(trainExamples, ridge)
 	r.LogLossTrain, r.LogLossTest = partial.logLoss(trainExamples), partial.logLoss(examplesOf(test))
 	for _, c := range []struct {
 		dst   *Variant
@@ -185,7 +191,7 @@ func (s *Service) Train(ctx context.Context, opts TrainOptions) (TrainReport, er
 		c.dst.Scores, c.dst.Thresholds, c.dst.Calibration = bandsOf(ev.firsts, opts.Threshold)
 	}
 
-	final := fit(all)
+	final := fit(all, ridge)
 	for name, w := range final {
 		row := WeightRow{Feature: name, Learned: w}
 		if h, ok := handSet[name]; ok {

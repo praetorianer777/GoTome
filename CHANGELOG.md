@@ -24,11 +24,21 @@ What changes for someone who runs or uses GOtome. The format follows
   `metadata.learnScore` (off) learns again every week.
 - The learned weights can be exported as a small file that holds numbers
   only (no title, author, ISBN or path), and a file someone shared can be
-  imported and measured on your library before you use it.
+  imported and measured on your library before you use it. A release
+  brings starting weights for a library in German, learned on one: a
+  library whose books are mostly in German ranks with them until it has
+  learned its own.
 - Where books have been embedded, a candidate found by title also counts
   by its description: how near it is to the book's own text is one more
   thing the learned score weighs, which tells another book of the same
   author and a like title from the book itself.
+
+### Changed
+
+- With learned weights a match is a probability, which is lower for an
+  edition that is not the exact ISBN than the hand-set score was: raise
+  or lower `metadata.matchThreshold` to what the table of Measure says,
+  and matches that wait for review are kept from 0.2 instead of 0.5.
 
 ## [0.18.0] - 2026-11-11
 

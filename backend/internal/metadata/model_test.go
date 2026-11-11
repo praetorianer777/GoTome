@@ -25,7 +25,7 @@ func TestFitFindsWhatSeparatesTheRightFromTheWrong(t *testing.T) {
 			right:    title+0.2*(rng.Float64()-0.5) > 0.6,
 		})
 	}
-	w := fit(examples)
+	w := fit(examples, DefaultRidge)
 	if w[FeatureTitle] < 5 {
 		t.Errorf("the title separates the two and weighs %.2f", w[FeatureTitle])
 	}
@@ -57,11 +57,11 @@ func TestFitSurvivesFeaturesThatNeverVaryAndPerfectSeparation(t *testing.T) {
 	for i := range 40 {
 		examples = append(examples, example{features: map[string]float64{FeatureBias: 1, FeatureTitleExact: 1, FeatureTitle: float64(i % 2)}, right: i%2 == 1})
 	}
-	w := fit(examples)
+	w := fit(examples, DefaultRidge)
 	if err := w.Valid(); err != nil || w[FeatureTitle] <= 0 {
 		t.Errorf("%v %v", w, err)
 	}
-	if len(fit(nil)) != 0 {
+	if len(fit(nil, DefaultRidge)) != 0 {
 		t.Error("nothing to fit gives weights")
 	}
 }

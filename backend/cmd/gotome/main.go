@@ -885,6 +885,7 @@ func matchTrain(args []string) error {
 	n := flags.Int("n", metadata.DefaultLearnBooks, "how many books with an ISBN to look up at most")
 	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
 	asJSON := flags.Bool("json", false, "print the report as JSON")
+	ridge := flags.Float64("ridge", metadata.DefaultRidge, "how strongly the weights are pulled towards zero; more keeps rare features from taking chance for a rule")
 	export := flags.String("export", "", "write the learned weights, as they are kept, to this file as JSON for sharing, instead of learning")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -906,7 +907,7 @@ func matchTrain(args []string) error {
 		return os.WriteFile(*export, append(encoded, '\n'), 0o600)
 	}
 	opts := metadata.TrainOptions{
-		Books: *n,
+		Books: *n, Ridge: *ridge,
 		Start: func(books int, estimate time.Duration) {
 			fmt.Fprintf(os.Stderr, "Looking up %d books; about %s at the providers' pace, less for answers in the cache.\n",
 				books, estimate.Round(time.Second))

@@ -377,3 +377,15 @@ func (s *Service) describe(ctx context.Context, book catalog.Book, records []Rec
 	}
 	return out
 }
+
+// ReviewFloor is the score below which a candidate is not worth a person's
+// look. The hand-set score puts every plausible edition above a half; a
+// learned score is the probability of the exact ISBN, which other editions
+// of the book rarely reach, so a candidate that is the book one time in five
+// is still shown.
+func (s *Service) ReviewFloor(ctx context.Context) float64 {
+	if set, _ := s.scorers(ctx); set.using == ScoreHandSet {
+		return 0.5
+	}
+	return 0.2
+}
