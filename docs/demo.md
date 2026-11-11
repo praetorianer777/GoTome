@@ -66,9 +66,12 @@ ones are the least certain.
 Standard Ebooks at times refuses GitHub's runners while it serves other
 machines, so `demo.yml` has three sources, each checked against the lock file:
 
-1. The cache (`actions/cache` on `web/demo/files`, keyed by the hash of the
-   lock file). It is saved when a run ends well, so a changed lock file starts
-   from nothing.
+1. The cache (on `web/demo/files`, keyed by the hash of the lock file). A
+   run restores only caches of its own ref or of `main`, and `demo.yml` runs on
+   tags, so `demo-books.yml` saves it from `main` (on a push that changes the
+   lock file or the fetch scripts, and by hand), only once every book matches
+   the lock; `demo.yml` only restores it. A changed lock file starts from
+   nothing until that run has finished.
 2. The sites, as above.
 3. The release `demo-books` of this repository (a prerelease, one asset
    `sample-books.tar` of the EPUBs, all CC0 or public domain). The workflow

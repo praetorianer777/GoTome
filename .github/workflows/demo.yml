@@ -25,9 +25,10 @@ jobs:
       # The books are not kept in the repository; the lock file holds their
       # hashes and every source is checked against it. In order: the cache of
       # an earlier run, the sites (which refuse GitHub's runners at times),
-      # and the copy in the release demo-books (docs/demo.md).
+      # and the copy in the release demo-books (docs/demo.md). The cache is
+      # saved by demo-books.yml on main, the only ref a tag can read (#493).
       - name: Restore the sample books
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: web/demo/files
           key: demo-books-${{ hashFiles('web/demo/sample-books.lock.json') }}
