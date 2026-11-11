@@ -344,13 +344,15 @@ func (p *Provider) ByAuthor(ctx context.Context, web metadata.Web, name string) 
 }
 
 // BySeries lists the books the catalogue puts in the series (MARC 490, 800
-// and 830), newest first.
+// and 830), newest first. The SRU interface has no index of series; `tit`
+// searches the series title too, and books that only bear the name in
+// their title are dropped.
 func (p *Provider) BySeries(ctx context.Context, web metadata.Web, name string) ([]metadata.Record, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil
 	}
-	found, err := p.query(ctx, web, "rei="+quote(name), worksResults, true)
+	found, err := p.query(ctx, web, "tit="+quote(name), worksResults, true)
 	if err != nil {
 		return nil, err
 	}
