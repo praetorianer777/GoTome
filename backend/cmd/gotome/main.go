@@ -24,6 +24,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -102,6 +104,8 @@ const (
 	// Deletes reach the full-text index's outbox through a trigger, which
 	// queues no job; they are applied this often.
 	outboxInterval = time.Minute
+
+	curationInterval = 24 * time.Hour
 )
 
 const usage = `Usage: gotome <command>
@@ -118,6 +122,7 @@ Commands:
   similar-check  Measure the similar books of a sample of the library, or with -recommend the recommendations (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
   match-check    Measure how often a lookup by title and author finds the book (-h for options)
+  duplicate-check Show what the duplicate rules would do with a sample of the open pairs, naming nothing (-h for options)
   perf-check     Time the main views on this installation's library, naming nothing of it (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
   version        Print the version
@@ -158,6 +163,8 @@ func run(args []string) error {
 		return genreCheck(args[1:])
 	case "match-check":
 		return matchCheck(args[1:])
+	case "duplicate-check":
+		return duplicateCheck(args[1:])
 	case "perf-check":
 		return perfCheck(args[1:])
 	case "openapi":
@@ -342,9 +349,14 @@ func serve() error {
 	curations.Hooks = scans.CurationHooks()
 	scans.Curation = curations
 	changes.Curation = curations
+	autoDupes := autodupe.NewService(pool, books, log)
+	autoDupes.Ingest = scans
+	autoDupes.Curation = curations
+	autoDupes.Settings = settingStore
 	follows := releases.NewService(pool, meta, log)
 	fixes := cleanup.NewService(pool, changes)
 	fixes.Meta = meta
+	autoCurate := autocurate.NewService(pool, curations, fixes, scans, settingStore, log)
 	follows.Events = events
 	follows.Offline = cfg.Offline
 	updateChecks := updates.NewService(pool, settingStore, events, log)
@@ -371,10 +383,10 @@ func serve() error {
 	workers := background{
 		kindle:   mailing,
 		accounts: accounts, matches: matches, changes: changes, scans: scans,
-		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates,
+		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
 		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
-		trashRetention: settingStore.TrashRetention,
+		trashRetention: settingStore.TrashRetention, automatic: autoCurate,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
 	if err != nil {
@@ -387,12 +399,15 @@ func serve() error {
 	histories.Queue = runner
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
+	autoDupes.Queue = runner
+	curations.Queue = runner
 	vectors.Queue = runner
 	go vectors.Warm(ctx)
 	genreService.Queue = runner
 	passageVectors.Queue = runner
 	events.Queue = runner
 	follows.Queue = runner
+	autoCurate.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -475,40 +490,42 @@ func serve() error {
 	}
 	go watcher.Run(ctx)
 	server := &httpapi.Server{
-		Log:        log,
-		DB:         pool,
-		Ready:      ready,
-		Auth:       accounts,
-		SSO:        sso.NewService(pool, accounts, settingStore),
-		Logins:     httpapi.NewLoginLimits(time.Now),
-		Libraries:  libraries,
-		Settings:   settingStore,
-		Scans:      scans,
-		Books:      books,
-		Covers:     coverStore,
-		Metadata:   meta,
-		Matches:    matches,
-		Bulk:       changes,
-		Reading:    readingService,
-		Imports:    histories,
-		Shelves:    shelves.NewService(pool, books),
-		Search:     search.NewTantivySearch(pool, books, textIndex.Index()),
-		Duplicates: duplicates,
-		Similar:    vectors,
-		Genres:     genreService,
-		Stats:      stats.NewService(pool, vectors),
-		Resources:  health,
-		Updates:    updateChecks,
-		Checks:     checks,
-		Deliveries: deliveries.NewService(pool),
-		Kindle:     mailing,
-		Pairing:    pairing.NewService(pool),
-		Kobo:       kobo.NewService(pool),
-		Sync:       progressSync,
-		Releases:   follows,
-		Cleanup:    fixes,
-		Curation:   curations,
-		Index:      searchIndex,
+		Log:            log,
+		DB:             pool,
+		Ready:          ready,
+		Auth:           accounts,
+		SSO:            sso.NewService(pool, accounts, settingStore),
+		Logins:         httpapi.NewLoginLimits(time.Now),
+		Libraries:      libraries,
+		Settings:       settingStore,
+		Scans:          scans,
+		Books:          books,
+		Covers:         coverStore,
+		Metadata:       meta,
+		Matches:        matches,
+		Bulk:           changes,
+		Reading:        readingService,
+		Imports:        histories,
+		Shelves:        shelves.NewService(pool, books),
+		Search:         search.NewTantivySearch(pool, books, textIndex.Index()),
+		Duplicates:     duplicates,
+		Similar:        vectors,
+		Genres:         genreService,
+		Stats:          stats.NewService(pool, vectors),
+		Resources:      health,
+		Updates:        updateChecks,
+		Checks:         checks,
+		Deliveries:     deliveries.NewService(pool),
+		Kindle:         mailing,
+		Pairing:        pairing.NewService(pool),
+		Kobo:           kobo.NewService(pool),
+		Sync:           progressSync,
+		Releases:       follows,
+		Cleanup:        fixes,
+		Auto:           autoCurate,
+		Curation:       curations,
+		AutoDuplicates: autoDupes,
+		Index:          searchIndex,
 
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,
@@ -828,6 +845,63 @@ func matchCheck(args []string) error {
 		return out.Encode(r)
 	}
 	metadata.PrintCheck(os.Stdout, r)
+	return nil
+}
+
+// duplicateCheck says what the duplicate rules would do with a sample of the
+// open pairs of each class, changing nothing and naming nothing of the
+// library.
+func duplicateCheck(args []string) error {
+	flags := flag.NewFlagSet("duplicate-check", flag.ContinueOnError)
+	n := flags.Int("n", 100, "how many open pairs of each class to look at at most")
+	conflict := flags.String("on-conflict", "", "skip or mergeAgreeing (default: what curation.duplicates.onConflict says)")
+	asJSON := flags.Bool("json", false, "print the report as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := cfg.RequireSecretKey(); err != nil {
+		return err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	store, err := settings.Open(ctx, pool, box)
+	if err != nil {
+		return err
+	}
+	if *conflict == "" {
+		if *conflict, err = store.Text(ctx, settings.DuplicateConflict); err != nil {
+			return err
+		}
+	}
+	if *conflict != "skip" && *conflict != autodupe.MergeAgreeing {
+		return errors.New("-on-conflict is skip or mergeAgreeing")
+	}
+	service := autodupe.NewService(pool, catalog.NewService(pool), log)
+	service.Settings = store
+	r, err := service.Check(ctx, library.Scope{SeesAll: true}, *n, *conflict == autodupe.MergeAgreeing)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	autodupe.PrintCheck(os.Stdout, r)
 	return nil
 }
 

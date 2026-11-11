@@ -556,13 +556,16 @@ const jobsRoute = createRoute({
 const curationRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/curation",
+	validateSearch: (search): { run?: string } => ({
+		run: typeof search.run === "string" && search.run ? search.run : undefined,
+	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
 			throw redirect({ to: "/" });
 		}
 	},
 	component: loads(Curation, function CurationPage() {
-		return <Curation />;
+		return <Curation run={curationRoute.useSearch().run} />;
 	}),
 });
 

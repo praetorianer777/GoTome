@@ -8132,3 +8132,148 @@ describe("pausing the embedding", () => {
 		).not.toBeInTheDocument();
 	});
 });
+
+describe("applying clean-ups and reviewing matches by rule", () => {
+	beforeEach(() => {
+		vi.stubGlobal("EventSource", undefined);
+		server
+			.withAccount("Rita", "a long password", "editor")
+			.signedInAs("Rita")
+			.withLibrary("Novels");
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("counts what a kind would apply by itself, and does a dry run before the run it asks about", async () => {
+		const person = userEvent.setup();
+		server.cleanup = [
+			{
+				kind: "titles",
+				subject: "book-9",
+				found: [{ name: "Das stille Archiv (German Edition)", books: 1 }],
+				fix: "retitle",
+				suggested: "Das stille Archiv",
+				books: 1,
+				book: "book-9",
+			},
+		];
+		server.autoCleanup = {
+			kinds: [
+				{ kind: "titles", suggestions: 12, books: 12 },
+				{ kind: "authors", suggestions: 0, books: 0 },
+			],
+		};
+		renderApp("/cleanup?kind=titles");
+		const panel = await screen.findByRole("region", { name: "Apply by itself" });
+		expect(panel).toHaveTextContent("12 suggestions on 12 books");
+
+		await person.click(
+			within(panel).getByRole("button", { name: "Dry run: title additions" }),
+		);
+		expect(await within(panel).findByRole("status")).toHaveTextContent(
+			"The dry run is queued",
+		);
+		expect(
+			within(panel).getByRole("link", { name: "See it under Changes" }),
+		).toHaveAttribute("href", "/curation?run=run-1");
+		expect(
+			server.requests.find((r) => r.path === "/curation/cleanup" && r.method === "POST")?.body,
+		).toEqual({ kinds: ["titles"], dryRun: true });
+
+		await person.click(
+			within(panel).getByRole("button", { name: "Run: title additions" }),
+		);
+		expect(panel).toHaveTextContent("Run it on 12?");
+		await person.click(
+			within(panel).getByRole("button", { name: "Yes, run it on 12" }),
+		);
+		await waitFor(() =>
+			expect(
+				server.requests.filter((r) => r.path === "/curation/cleanup" && r.method === "POST").at(-1)
+					?.body,
+			).toEqual({ kinds: ["titles"], dryRun: false }),
+		);
+	});
+
+	it("offers nothing to run where the rule takes nothing, and no panel for clashes", async () => {
+		const person = userEvent.setup();
+		server.autoCleanup = { kinds: [{ kind: "authors", suggestions: 0, books: 0 }] };
+		renderApp("/cleanup?kind=authors");
+		const panel = await screen.findByRole("region", { name: "Apply by itself" });
+		expect(
+			within(panel).getByRole("button", { name: "Run: author spellings" }),
+		).toBeDisabled();
+		await person.click(screen.getByRole("button", { name: /^Authors that are series/ }));
+		await waitFor(() =>
+			expect(screen.queryByRole("region", { name: "Apply by itself" })).toBeNull(),
+		);
+	});
+
+	it("groups the matches that wait, and accepts a group only after its sample was shown", async () => {
+		const person = userEvent.setup();
+		server.withBook("Emma");
+		const book = server.books[0] as BookDetail;
+		const sample = {
+			book,
+			matches: [
+				{
+					matchId: "m1",
+					provider: "openlibrary",
+					id: "m1",
+					score: 0.84,
+					title: "Emma",
+					publisher: "Penguin",
+					contributors: [{ name: "Jane Austen", role: "author" as const }],
+					tags: [],
+					identifiers: [],
+				},
+			],
+		};
+		server.review = [sample];
+		server.autoMatches = {
+			accept: 4,
+			settle: 3,
+			dismiss: 2,
+			books: 9,
+			capped: false,
+			groups: [{ provider: "openlibrary", band: 8, matches: 31, sample: [sample] }],
+		};
+		renderApp("/review");
+		const rule = await screen.findByRole("region", { name: "Review by rule" });
+		expect(rule).toHaveTextContent(
+			"Would take fields from 4 matches (3 wholly) and dismiss 2, of 9 books.",
+		);
+		const group = within(rule).getByRole("listitem", { name: "openlibrary, score 80 to 89%" });
+		expect(group).toHaveTextContent("Matches: 31");
+		expect(
+			within(group).getByRole("button", { name: "Accept the group: openlibrary, score 80 to 89%" }),
+		).toBeDisabled();
+
+		await person.click(within(group).getByRole("button", { name: "Show a sample" }));
+		expect(await within(group).findByRole("button", { name: "Emma" })).toBeInTheDocument();
+		expect(within(group).getByText(/84% match/)).toBeInTheDocument();
+		await person.click(
+			within(group).getByRole("button", { name: "Accept the group: openlibrary, score 80 to 89%" }),
+		);
+		expect(group).toHaveTextContent("Run it on 31?");
+		await person.click(within(group).getByRole("button", { name: "Yes, run it on 31" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/curation/matches" && r.method === "POST")?.body,
+			).toEqual({ dryRun: false, provider: "openlibrary", band: 8 }),
+		);
+	});
+
+	it("does a dry run over the matches", async () => {
+		const person = userEvent.setup();
+		server.autoMatches = { accept: 1, settle: 1, dismiss: 0, books: 1, capped: true, groups: [] };
+		renderApp("/review");
+		const rule = await screen.findByRole("region", { name: "Review by rule" });
+		expect(rule).toHaveTextContent("among the first 1 books");
+		await person.click(within(rule).getByRole("button", { name: "Dry run: matches" }));
+		await waitFor(() =>
+			expect(
+				server.requests.find((r) => r.path === "/curation/matches" && r.method === "POST")?.body,
+			).toEqual({ dryRun: true }),
+		);
+	});
+});

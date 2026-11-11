@@ -20,6 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
@@ -190,8 +192,16 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
 	a.server.Curation = curation.NewService(a.pool)
 	a.server.Curation.Hooks = a.scans.CurationHooks()
+	a.server.Curation.Queue = queue
 	a.scans.Curation = a.server.Curation
 	a.server.Bulk.Curation = a.server.Curation
+	a.server.Auto = autocurate.NewService(a.pool, a.server.Curation, a.server.Cleanup, a.scans, a.settings, quiet)
+	a.server.Auto.Queue = queue
+	a.server.AutoDuplicates = autodupe.NewService(a.pool, a.server.Books, quiet)
+	a.server.AutoDuplicates.Ingest = a.scans
+	a.server.AutoDuplicates.Curation = a.server.Curation
+	a.server.AutoDuplicates.Queue = queue
+	a.server.AutoDuplicates.Settings = a.settings
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
 	a.server.Imports.Queue = queue

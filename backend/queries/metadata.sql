@@ -90,3 +90,51 @@ SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precis
 FROM sample s
 JOIN books b ON b.id = s.id
 ORDER BY md5(b.id::text), b.id;
+
+-- name: ListReviewBooksAfter :many
+-- The books with matches waiting that the viewer may see, after a book, by
+-- ID, for a run that works through them in batches.
+SELECT DISTINCT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.id > sqlc.arg(after_id)::uuid
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY b.id
+LIMIT sqlc.arg(max_books);
+
+-- name: ListMatchGroups :many
+-- The matches that wait, of books the viewer may see, by provider and band:
+-- the tenth of the score they lie in (0.9 and over is 9).
+SELECT m.provider, LEAST(floor(m.score * 10), 9)::int AS band, count(*)::int AS matches
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY 1, 2
+ORDER BY 1, 2 DESC;
+
+-- name: ListMatchGroupSample :many
+-- Some of the matches of a group, the best fitting first.
+SELECT m.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending' AND m.provider = sqlc.arg(provider)
+  AND LEAST(floor(m.score * 10), 9)::int = sqlc.arg(band)::int
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY m.score DESC, m.id
+LIMIT sqlc.arg(max_rows);
+
+-- name: ListTextLanguages :many
+-- The languages the chunks of a book were detected in, and how many each.
+SELECT lang, count(*)::int AS chunks FROM book_chunks
+WHERE book_id = $1 AND lang <> ''
+GROUP BY lang ORDER BY count(*) DESC;
+
+-- name: DeleteEmptyCurationRun :exec
+-- A scheduled run that found nothing to do leaves no trace.
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id);

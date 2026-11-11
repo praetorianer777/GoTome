@@ -33,6 +33,8 @@ import {
 	button as uiButton,
 } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
+import { isDemo } from "@/demo/mode";
+import { AutoDuplicates } from "@/duplicates/auto";
 import { MergeForm } from "@/duplicates/merge-form";
 import { formatDate, formatDuration, formatSize } from "@/lib/format";
 import { type Library, librariesQuery } from "@/libraries/api";
@@ -121,6 +123,7 @@ export function Duplicates({
 	return (
 		<div className="flex flex-col gap-6">
 			<PageHeader title={t("duplicates.title")} intro={t("duplicates.intro")} />
+			{canAct && !isDemo && <AutoDuplicates />}
 			<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
 				<fieldset className="flex items-center gap-2">
 					<legend className="sr-only">{t("duplicates.state")}</legend>

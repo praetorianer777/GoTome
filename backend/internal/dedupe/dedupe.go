@@ -354,6 +354,14 @@ const RelationFormat = "format"
 // narrators.
 const RelationRecording = "recording"
 
+// The relations of a pair of which one book holds the other's text, as
+// the smaller ID of the two stands to the other: RelationContains if it
+// holds it, RelationContainedIn if it is held.
+const (
+	RelationContains    = "contains"
+	RelationContainedIn = "contained_in"
+)
+
 // ErrRelation is a relation that is not one of Relations.
 var ErrRelation = errors.New("no such relation")
 

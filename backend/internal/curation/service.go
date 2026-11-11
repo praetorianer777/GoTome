@@ -9,9 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -27,6 +29,10 @@ const (
 	ActionMerge   = "merge"
 	ActionReplace = "replace"
 	ActionEdit    = "edit"
+	// ActionLink keeps two books and relates them.
+	ActionLink = "link"
+	// ActionSkip is a pair a dry run would leave for a person.
+	ActionSkip = "skip"
 )
 
 // The states of a run.
@@ -57,10 +63,16 @@ type Hooks struct {
 	WriteBackTx func(ctx context.Context, tx pgx.Tx, book uuid.UUID) (int, error)
 }
 
+// Queue is what runs jobs: an undo is one.
+type Queue interface {
+	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
+}
+
 // Service keeps runs and actions, and undoes them.
 type Service struct {
 	pool  *pgxpool.Pool
 	Hooks Hooks
+	Queue Queue
 }
 
 // NewService returns a Service.
@@ -182,6 +194,42 @@ func (s *Service) StartRun(ctx context.Context, tx pgx.Tx, kind string, by uuid.
 	})
 }
 
+// RunSpec says what run to make.
+type RunSpec struct {
+	Kind string
+	// Rule names the rule of an automatic run.
+	Rule string
+	// By is the person who asked for it; nil for a run on a schedule.
+	By *uuid.UUID
+	// Automatic runs keep their writes into files until confirmed.
+	Automatic bool
+	// DryRun records what would be done and changes nothing.
+	DryRun bool
+}
+
+// CreateRunTx makes a run, running, for actions to be recorded into with
+// WithRun.
+func (s *Service) CreateRunTx(ctx context.Context, tx pgx.Tx, spec RunSpec) (uuid.UUID, error) {
+	var rule *string
+	if spec.Rule != "" {
+		rule = &spec.Rule
+	}
+	return sqlc.New(tx).CreateCurationRun(ctx, sqlc.CreateCurationRunParams{
+		Kind: spec.Kind, Rule: rule, StartedBy: spec.By, Automatic: spec.Automatic, DryRun: spec.DryRun, State: StateRunning,
+	})
+}
+
+// FinishRun marks a run done once no more actions are to come.
+func (s *Service) FinishRun(ctx context.Context, id uuid.UUID) error {
+	return sqlc.New(s.pool).FinishCurationRunByID(ctx, id)
+}
+
+// HasBook says whether an action of the run is about the book already, so
+// that a run cut off and run again does each book once.
+func (s *Service) HasBook(ctx context.Context, tx pgx.Tx, run, book uuid.UUID) (bool, error) {
+	return sqlc.New(tx).CurationRunHasBook(ctx, sqlc.CurationRunHasBookParams{RunID: run, Column2: book})
+}
+
 // RunOfBulkChange is the run a bulk change's actions are recorded into, if
 // it has one.
 func (s *Service) RunOfBulkChange(ctx context.Context, bulkChange uuid.UUID) (uuid.UUID, bool, bool, error) {
@@ -221,7 +269,7 @@ func (s *Service) Confirm(ctx context.Context, scope library.Scope, id uuid.UUID
 		if err != nil {
 			return err
 		}
-		if run.State != StateDone {
+		if run.State != StateDone || run.DryRun {
 			return ErrNotConfirmable
 		}
 		if _, err := q.ConfirmCurationRun(ctx, id); err != nil {
@@ -246,3 +294,18 @@ func (s *Service) Confirm(ctx context.Context, scope library.Scope, id uuid.UUID
 func marshal(s Snapshot) ([]byte, error) { return json.Marshal(s) }
 
 func jsonUnmarshal(data []byte, v any) error { return json.Unmarshal(data, v) }
+
+// RecordPlan records into the run, as a dry run does, what a rule would do
+// to the books, which it does not do: an action with its reason and no
+// changes.
+func (s *Service) RecordPlan(ctx context.Context, run, library uuid.UUID, kind, rule, reason string, books ...uuid.UUID) error {
+	var r *string
+	if rule != "" {
+		r = &rule
+	}
+	_, err := sqlc.New(s.pool).InsertCurationAction(ctx, sqlc.InsertCurationActionParams{
+		RunID: run, LibraryID: library, Kind: kind, Rule: r, Reason: reason,
+		Books: books, TrashedFiles: []uuid.UUID{}, Before: []byte("{}"), After: []byte("{}"),
+	})
+	return err
+}

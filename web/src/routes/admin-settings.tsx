@@ -47,6 +47,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.matchThreshold",
 		hint: "settings.matchThreshold.hint",
 	},
+	"curation.cleanup.kinds": {
+		label: "settings.curationCleanupKinds",
+		hint: "settings.curationCleanupKinds.hint",
+	},
+	"curation.matches.auto": {
+		label: "settings.curationMatchesAuto",
+		hint: "settings.curationMatchesAuto.hint",
+	},
 	"metadata.providers": {
 		label: "settings.providers",
 		hint: "settings.providers.hint",
@@ -74,6 +82,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 	"embedding.server": {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",
+	},
+	"curation.duplicates.classes": {
+		label: "settings.duplicateClasses",
+		hint: "settings.duplicateClasses.hint",
+	},
+	"curation.duplicates.onConflict": {
+		label: "settings.duplicateConflict",
+		hint: "settings.duplicateConflict.hint",
 	},
 	"genres.suggest": {
 		label: "settings.genreSuggestions",

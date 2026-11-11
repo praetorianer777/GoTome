@@ -141,6 +141,15 @@ See [metadata.md](metadata.md).
 | `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked: `openlibrary`, `crossref` and `hardcover`, separated by commas (a box each on the page). Leave one out to stop asking it; at least one stays. |
 | `metadata.contactEmail` | Contact address for sources | none | An e-mail address given to sources that ask whom to write to about the requests they get. CrossRef serves requests with one faster. It is not stored with the answers. |
 
+### Automatic clean-up and review
+
+See [metadata.md](metadata.md#doing-it-automatically). Both are off until you turn them on; a person can always start the same runs from the **Clean-up** and **Review** pages.
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `curation.cleanup.kinds` | Clean-ups to apply by themselves | none | The kinds of clean-up suggestion a daily run applies without asking, separated by commas (a box each on the page): `placeholders` (a tool's stand-in where an author belongs), `titles` (a shop's addition after a title), `authors` (one person written in another order, case, accents or initials only) and `series` (a series that at least three titles name, with no two at one place, and that a visible library or a stored provider answer knows). Other suggestions, such as an author who is also a series, are never applied by themselves. Each run is a run on the **Changes** page that can be undone. |
+| `curation.matches.auto` | Review matches by themselves | `off` | `on` lets a daily run take fields of the matches that wait: where two sources agree (one ISBN or one work) or the match shares the book's ISBN, a source's value replaces one that is empty, only a guess from the file name, or untidy; a field in real conflict stays for you, with the match. It dismisses matches whose language is not the text's or whose year is more than two years from the file's own date. It is a run on the **Changes** page that can be undone. |
+
 ### Updates
 
 | Key | On the page | Default | What it does |
@@ -175,6 +184,8 @@ See [genres.md](genres.md).
 | Key | On the page | Default | What it does |
 |---|---|---|---|
 | `genres.suggest` | Genres for books | `off` | How books are given genres of GOtome's fixed list: `off` writes none; `tags` gives each book the genres its tags mean; `vector`, `neighbours` and `combined` also suggest genres from what a book is about, from the books most like it, or the second and, where it cannot tell, the first, for review under **Genres**. Use `neighbours` ([genres.md](genres.md)). The last three need similar books worked out; measure them with `gotome genre-check` first. A book's tags are never changed. |
+| `curation.duplicates.classes` | Duplicates resolved by themselves | empty | Which classes of open duplicate pairs the rules handle every day without being asked, comma-separated, from `same_text`, `overlap_high`, `overlap_mid`, `contained` and `part_inside`. Empty handles none. The first three merge, the other two keep both books and link them; a run can be undone under **Changes** ([duplicates.md](duplicates.md)). Measure with `gotome duplicate-check` first. |
+| `curation.duplicates.onConflict` | A pair whose books differ | `skip` | What a run does with a pair whose books differ in a field no rule can decide: `skip` leaves it whole for a person; `mergeAgreeing` merges it, takes what agrees and keeps the surviving book's value of the rest. |
 
 ### Signing in
 

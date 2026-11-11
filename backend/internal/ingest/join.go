@@ -59,7 +59,7 @@ func (s *Service) JoinFormats(ctx context.Context, bookID uuid.UUID) (bool, erro
 		if _, err := q.RecordJoin(ctx, sqlc.RecordJoinParams{IntoBook: into, FromBook: from, FileIds: files}); err != nil {
 			return err
 		}
-		if err := s.mergeTx(ctx, tx, everyone, into, from, fields); err != nil {
+		if err := s.mergeTx(ctx, tx, everyone, into, from, fields, nil); err != nil {
 			return err
 		}
 		if err := q.AddNarrators(ctx, sqlc.AddNarratorsParams{IntoBook: into, FromBook: from}); err != nil {

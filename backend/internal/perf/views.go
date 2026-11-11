@@ -117,6 +117,7 @@ func Views(p Params) []View {
 		View{Name: "book", Path: "/books/" + p.Book}.need(p.Book),
 		View{Name: "similar books", Path: "/books/" + p.SimilarBook + "/similar"}.need(p.SimilarBook),
 		{Name: "duplicates", Path: "/duplicates"},
+		{Name: "resolvable duplicates", Path: "/curation/duplicates"},
 		{Name: "review", Path: "/matches"},
 		View{Name: "collection", Path: "/collections/" + p.Collection}.need(p.Collection),
 		View{Name: "smart shelf", Path: "/smart-shelves/" + p.Shelf + "/books"}.need(p.Shelf),

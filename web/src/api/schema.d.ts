@@ -947,6 +947,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/curation/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many suggestions of each kind that the data decides an automatic clean-up would apply to the books the caller sees */
+        get: operations["getAutoCleanup"];
+        put?: never;
+        /** Queue an automatic clean-up of the kinds named as a run on the Changes page; a dry run records what it would do and changes nothing */
+        post: operations["startAutoCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many open pairs of duplicates the rules can resolve by themselves, per class, and which classes the settings have them resolve every day */
+        get: operations["listDuplicateClasses"];
+        put?: never;
+        /** Resolve the open pairs of the classes chosen in a job: merge books of the same text, link books that hold one another; a dry run records what it would do and changes nothing */
+        post: operations["startDuplicateRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an automatic pass over the matches that wait would do, and the rest of them by provider and score with a sample of each group */
+        get: operations["getAutoMatches"];
+        put?: never;
+        /** Queue a run that takes the fields of matches providers agree on and dismisses those that contradict the text, or accepts one group of matches whole; a dry run changes nothing */
+        post: operations["startAutoMatches"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/curation/runs": {
         parameters: {
             query?: never;
@@ -1007,7 +1061,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Undo every action of a run that is not undone; one whose books changed since is left and reported */
+        /** Undo every action of a run that is not undone, in a job; one whose books changed since is left and reported on the action. The run says undoing until it is done */
         post: operations["undoCurationRun"];
         delete?: never;
         options?: never;
@@ -3116,6 +3170,39 @@ export interface components {
             name: string;
             spellings: string[];
         };
+        AutoCleanupCounts: {
+            kinds: components["schemas"]["AutoCleanupKind"][];
+        };
+        AutoCleanupKind: {
+            books: number;
+            kind: string;
+            suggestions: number;
+        };
+        AutoMatchCounts: {
+            accept: number;
+            books: number;
+            capped: boolean;
+            dismiss: number;
+            groups: components["schemas"]["AutoMatchGroup"][];
+            settle: number;
+        };
+        AutoMatchGroup: {
+            band: number;
+            matches: number;
+            provider: string;
+            sample: components["schemas"]["ReviewBook"][];
+        };
+        AutoRunRequest: {
+            band?: number;
+            dryRun: boolean;
+            kinds?: string[];
+            provider?: string;
+        };
+        AutoRunStarted: {
+            dryRun: boolean;
+            /** Format: uuid */
+            runId: string;
+        };
         BookCount: {
             count: number;
         };
@@ -3550,10 +3637,12 @@ export interface components {
             id: string;
             kind: string;
             rule?: string;
+            skipped: number;
             /** Format: uuid */
             startedBy?: string;
             startedByName?: string;
             state: string;
+            undoing: boolean;
             undone: number;
             /** Format: date-time */
             undoneAt?: string;
@@ -3567,8 +3656,9 @@ export interface components {
             nextCursor?: string;
             runs: components["schemas"]["CurationRun"][];
         };
-        CurationUndone: {
-            actions: components["schemas"]["CurationOutcome"][];
+        CurationUndoQueued: {
+            /** Format: uuid */
+            runId: string;
         };
         CurrentUser: {
             email?: string;
@@ -3678,6 +3768,15 @@ export interface components {
         DuplicateCheckResult: {
             books: number;
         };
+        DuplicateClassCount: {
+            class: string;
+            daily: boolean;
+            merges: boolean;
+            pairs: number;
+        };
+        DuplicateClassList: {
+            classes: components["schemas"]["DuplicateClassCount"][];
+        };
         DuplicateEvidence: {
             detail: string;
             /** @enum {string} */
@@ -3701,6 +3800,16 @@ export interface components {
             score: number;
             /** @enum {string} */
             state: "open" | "kept_both" | "merged" | "replaced";
+        };
+        DuplicateRunRequest: {
+            classes: string[];
+            dryRun: boolean;
+        };
+        DuplicateRunStarted: {
+            dryRun: boolean;
+            pairs: number;
+            /** Format: uuid */
+            runId: string;
         };
         EditBookRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -6813,6 +6922,192 @@ export interface operations {
             };
         };
     };
+    getAutoCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoCleanupCounts"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startAutoCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDuplicateClasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateClassList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startDuplicateRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAutoMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoMatchCounts"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startAutoMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listCurationRuns: {
         parameters: {
             query?: {
@@ -6927,13 +7222,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Accepted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CurationUndone"];
+                    "application/json": components["schemas"]["CurationUndoQueued"];
                 };
             };
             /** @description The request failed. */

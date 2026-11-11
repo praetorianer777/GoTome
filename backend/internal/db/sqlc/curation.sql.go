@@ -12,6 +12,45 @@ import (
 	"github.com/google/uuid"
 )
 
+const advanceDuplicatesRun = `-- name: AdvanceDuplicatesRun :exec
+UPDATE curation_runs SET resume_after = $1, skipped = skipped + $2::int WHERE id = $3
+`
+
+type AdvanceDuplicatesRunParams struct {
+	AfterID *uuid.UUID
+	Skipped int32
+	ID      uuid.UUID
+}
+
+func (q *Queries) AdvanceDuplicatesRun(ctx context.Context, arg AdvanceDuplicatesRunParams) error {
+	_, err := q.db.Exec(ctx, advanceDuplicatesRun, arg.AfterID, arg.Skipped, arg.ID)
+	return err
+}
+
+const advanceRunUndo = `-- name: AdvanceRunUndo :exec
+UPDATE curation_runs SET undo_cursor_at = $2, undo_cursor_id = $3 WHERE id = $1
+`
+
+type AdvanceRunUndoParams struct {
+	ID           uuid.UUID
+	UndoCursorAt *time.Time
+	UndoCursorID *uuid.UUID
+}
+
+func (q *Queries) AdvanceRunUndo(ctx context.Context, arg AdvanceRunUndoParams) error {
+	_, err := q.db.Exec(ctx, advanceRunUndo, arg.ID, arg.UndoCursorAt, arg.UndoCursorID)
+	return err
+}
+
+const clearRunUndo = `-- name: ClearRunUndo :exec
+UPDATE curation_runs SET undo_requested_at = NULL WHERE id = $1
+`
+
+func (q *Queries) ClearRunUndo(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearRunUndo, id)
+	return err
+}
+
 const confirmCurationRun = `-- name: ConfirmCurationRun :execrows
 UPDATE curation_runs SET state = 'confirmed', confirmed_at = now() WHERE id = $1 AND state = 'done'
 `
@@ -56,6 +95,66 @@ func (q *Queries) CreateCurationRun(ctx context.Context, arg CreateCurationRunPa
 	return id, err
 }
 
+const createDuplicatesRun = `-- name: CreateDuplicatesRun :one
+INSERT INTO curation_runs (kind, rule, started_by, automatic, dry_run, state, classes, scope_viewer, scope_sees_all)
+VALUES ('duplicates', $1, $2, true, $3, 'planned',
+        $4::text[], $5, $6)
+RETURNING id
+`
+
+type CreateDuplicatesRunParams struct {
+	Rule         *string
+	StartedBy    *uuid.UUID
+	DryRun       bool
+	Classes      []string
+	ScopeViewer  *uuid.UUID
+	ScopeSeesAll bool
+}
+
+// A run of the duplicates rules, waiting for its job.
+func (q *Queries) CreateDuplicatesRun(ctx context.Context, arg CreateDuplicatesRunParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createDuplicatesRun,
+		arg.Rule,
+		arg.StartedBy,
+		arg.DryRun,
+		arg.Classes,
+		arg.ScopeViewer,
+		arg.ScopeSeesAll,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const curationRunHasBook = `-- name: CurationRunHasBook :one
+SELECT EXISTS (SELECT 1 FROM curation_actions WHERE run_id = $1 AND $2::uuid = ANY(books))
+`
+
+type CurationRunHasBookParams struct {
+	RunID   uuid.UUID
+	Column2 uuid.UUID
+}
+
+// Whether an action of the run is about the book, undone or not.
+func (q *Queries) CurationRunHasBook(ctx context.Context, arg CurationRunHasBookParams) (bool, error) {
+	row := q.db.QueryRow(ctx, curationRunHasBook, arg.RunID, arg.Column2)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const dropEmptySystemRun = `-- name: DropEmptySystemRun :exec
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL
+  AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)
+`
+
+// A run nobody started that found nothing to do leaves no trace.
+func (q *Queries) DropEmptySystemRun(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, dropEmptySystemRun, id)
+	return err
+}
+
 const finishCurationRun = `-- name: FinishCurationRun :exec
 UPDATE curation_runs SET state = 'done', finished_at = now() WHERE bulk_change_id = $1 AND state = 'running'
 `
@@ -65,9 +164,38 @@ func (q *Queries) FinishCurationRun(ctx context.Context, bulkChangeID *uuid.UUID
 	return err
 }
 
+const finishCurationRunByID = `-- name: FinishCurationRunByID :exec
+UPDATE curation_runs SET state = 'done', finished_at = now() WHERE id = $1 AND state = 'running'
+`
+
+func (q *Queries) FinishCurationRunByID(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, finishCurationRunByID, id)
+	return err
+}
+
+const finishDuplicatesRun = `-- name: FinishDuplicatesRun :exec
+UPDATE curation_runs SET state = 'done', finished_at = now() WHERE id = $1 AND state = 'running'
+`
+
+func (q *Queries) FinishDuplicatesRun(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, finishDuplicatesRun, id)
+	return err
+}
+
+const firstActiveAdmin = `-- name: FirstActiveAdmin :one
+SELECT id FROM users WHERE role = 'admin' AND disabled_at IS NULL ORDER BY created_at, id LIMIT 1
+`
+
+func (q *Queries) FirstActiveAdmin(ctx context.Context) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, firstActiveAdmin)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getCurationActionForUpdate = `-- name: GetCurationActionForUpdate :one
 SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before, a.after, a.state, a.created_at,
-       r.automatic, r.state AS run_state
+       r.automatic, r.state AS run_state, r.dry_run
 FROM curation_actions a
 JOIN curation_runs r ON r.id = a.run_id
 WHERE a.id = $1
@@ -94,6 +222,7 @@ type GetCurationActionForUpdateRow struct {
 	CreatedAt    time.Time
 	Automatic    bool
 	RunState     string
+	DryRun       bool
 }
 
 // An action in a library the viewer sees, locked.
@@ -113,13 +242,14 @@ func (q *Queries) GetCurationActionForUpdate(ctx context.Context, arg GetCuratio
 		&i.CreatedAt,
 		&i.Automatic,
 		&i.RunState,
+		&i.DryRun,
 	)
 	return i, err
 }
 
 const getCurationRun = `-- name: GetCurationRun :one
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
-       r.created_at, r.finished_at, r.confirmed_at, r.undone_at,
+       r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS actions,
        (SELECT count(*) FROM curation_actions a
@@ -152,6 +282,8 @@ type GetCurationRunRow struct {
 	FinishedAt    *time.Time
 	ConfirmedAt   *time.Time
 	UndoneAt      *time.Time
+	Skipped       int32
+	Undoing       bool
 	Actions       int32
 	Undone        int32
 }
@@ -172,26 +304,51 @@ func (q *Queries) GetCurationRun(ctx context.Context, arg GetCurationRunParams) 
 		&i.FinishedAt,
 		&i.ConfirmedAt,
 		&i.UndoneAt,
+		&i.Skipped,
+		&i.Undoing,
 		&i.Actions,
 		&i.Undone,
 	)
 	return i, err
 }
 
+const getCurationRunFlags = `-- name: GetCurationRunFlags :one
+SELECT dry_run, state, undo_requested_at IS NOT NULL AS undoing FROM curation_runs WHERE id = $1
+`
+
+type GetCurationRunFlagsRow struct {
+	DryRun  bool
+	State   string
+	Undoing interface{}
+}
+
+func (q *Queries) GetCurationRunFlags(ctx context.Context, id uuid.UUID) (GetCurationRunFlagsRow, error) {
+	row := q.db.QueryRow(ctx, getCurationRunFlags, id)
+	var i GetCurationRunFlagsRow
+	err := row.Scan(&i.DryRun, &i.State, &i.Undoing)
+	return i, err
+}
+
 const getCurationRunForUpdate = `-- name: GetCurationRunForUpdate :one
-SELECT id, automatic, state FROM curation_runs WHERE id = $1 FOR UPDATE
+SELECT id, automatic, state, dry_run FROM curation_runs WHERE id = $1 FOR UPDATE
 `
 
 type GetCurationRunForUpdateRow struct {
 	ID        uuid.UUID
 	Automatic bool
 	State     string
+	DryRun    bool
 }
 
 func (q *Queries) GetCurationRunForUpdate(ctx context.Context, id uuid.UUID) (GetCurationRunForUpdateRow, error) {
 	row := q.db.QueryRow(ctx, getCurationRunForUpdate, id)
 	var i GetCurationRunForUpdateRow
-	err := row.Scan(&i.ID, &i.Automatic, &i.State)
+	err := row.Scan(
+		&i.ID,
+		&i.Automatic,
+		&i.State,
+		&i.DryRun,
+	)
 	return i, err
 }
 
@@ -209,6 +366,76 @@ func (q *Queries) GetCurationRunOfBulkChange(ctx context.Context, bulkChangeID *
 	var i GetCurationRunOfBulkChangeRow
 	err := row.Scan(&i.ID, &i.Automatic)
 	return i, err
+}
+
+const getDuplicatesRunToWork = `-- name: GetDuplicatesRunToWork :one
+SELECT id, state, dry_run, classes, resume_after, scope_viewer, scope_sees_all, started_by
+FROM curation_runs WHERE id = $1 AND kind = 'duplicates'
+`
+
+type GetDuplicatesRunToWorkRow struct {
+	ID           uuid.UUID
+	State        string
+	DryRun       bool
+	Classes      []string
+	ResumeAfter  *uuid.UUID
+	ScopeViewer  *uuid.UUID
+	ScopeSeesAll bool
+	StartedBy    *uuid.UUID
+}
+
+func (q *Queries) GetDuplicatesRunToWork(ctx context.Context, id uuid.UUID) (GetDuplicatesRunToWorkRow, error) {
+	row := q.db.QueryRow(ctx, getDuplicatesRunToWork, id)
+	var i GetDuplicatesRunToWorkRow
+	err := row.Scan(
+		&i.ID,
+		&i.State,
+		&i.DryRun,
+		&i.Classes,
+		&i.ResumeAfter,
+		&i.ScopeViewer,
+		&i.ScopeSeesAll,
+		&i.StartedBy,
+	)
+	return i, err
+}
+
+const getRunUndo = `-- name: GetRunUndo :one
+SELECT id, undo_requested_at, undo_viewer, undo_sees_all, undo_cursor_at, undo_cursor_id FROM curation_runs WHERE id = $1
+`
+
+type GetRunUndoRow struct {
+	ID              uuid.UUID
+	UndoRequestedAt *time.Time
+	UndoViewer      *uuid.UUID
+	UndoSeesAll     bool
+	UndoCursorAt    *time.Time
+	UndoCursorID    *uuid.UUID
+}
+
+func (q *Queries) GetRunUndo(ctx context.Context, id uuid.UUID) (GetRunUndoRow, error) {
+	row := q.db.QueryRow(ctx, getRunUndo, id)
+	var i GetRunUndoRow
+	err := row.Scan(
+		&i.ID,
+		&i.UndoRequestedAt,
+		&i.UndoViewer,
+		&i.UndoSeesAll,
+		&i.UndoCursorAt,
+		&i.UndoCursorID,
+	)
+	return i, err
+}
+
+const hasActiveDuplicatesRun = `-- name: HasActiveDuplicatesRun :one
+SELECT EXISTS (SELECT 1 FROM curation_runs WHERE kind = 'duplicates' AND automatic AND state IN ('planned', 'running'))
+`
+
+func (q *Queries) HasActiveDuplicatesRun(ctx context.Context) (bool, error) {
+	row := q.db.QueryRow(ctx, hasActiveDuplicatesRun)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const insertCurationAction = `-- name: InsertCurationAction :one
@@ -248,32 +475,51 @@ func (q *Queries) InsertCurationAction(ctx context.Context, arg InsertCurationAc
 }
 
 const listCurationActionIDsToUndo = `-- name: ListCurationActionIDsToUndo :many
-SELECT a.id FROM curation_actions a
+SELECT a.id, a.created_at FROM curation_actions a
 WHERE a.run_id = $1 AND a.state = 'done'
+  AND NOT EXISTS (SELECT 1 FROM curation_runs r WHERE r.id = a.run_id AND r.dry_run)
   AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND ($4::timestamptz IS NULL OR (a.created_at, a.id) < ($4::timestamptz, $5::uuid))
 ORDER BY a.created_at DESC, a.id DESC
+LIMIT $6
 `
 
 type ListCurationActionIDsToUndoParams struct {
-	RunID   uuid.UUID
-	Viewer  uuid.UUID
-	SeesAll bool
+	RunID    uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+	BeforeAt *time.Time
+	BeforeID *uuid.UUID
+	MaxRows  int32
 }
 
-// The run's actions the viewer sees that are not undone, the last made first.
-func (q *Queries) ListCurationActionIDsToUndo(ctx context.Context, arg ListCurationActionIDsToUndoParams) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listCurationActionIDsToUndo, arg.RunID, arg.Viewer, arg.SeesAll)
+type ListCurationActionIDsToUndoRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+// The run's actions the viewer sees that are not undone, the last made
+// first, before the one an earlier try of an undo stopped at.
+func (q *Queries) ListCurationActionIDsToUndo(ctx context.Context, arg ListCurationActionIDsToUndoParams) ([]ListCurationActionIDsToUndoRow, error) {
+	rows, err := q.db.Query(ctx, listCurationActionIDsToUndo,
+		arg.RunID,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []uuid.UUID{}
+	items := []ListCurationActionIDsToUndoRow{}
 	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
+		var i ListCurationActionIDsToUndoRow
+		if err := rows.Scan(&i.ID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
-		items = append(items, id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -426,7 +672,7 @@ func (q *Queries) ListCurationRunBooks(ctx context.Context, runID uuid.UUID) ([]
 
 const listCurationRuns = `-- name: ListCurationRuns :many
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
-       r.created_at, r.finished_at, r.confirmed_at, r.undone_at,
+       r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS actions,
        (SELECT count(*) FROM curation_actions a
@@ -467,6 +713,8 @@ type ListCurationRunsRow struct {
 	FinishedAt    *time.Time
 	ConfirmedAt   *time.Time
 	UndoneAt      *time.Time
+	Skipped       int32
+	Undoing       bool
 	Actions       int32
 	Undone        int32
 }
@@ -504,6 +752,8 @@ func (q *Queries) ListCurationRuns(ctx context.Context, arg ListCurationRunsPara
 			&i.FinishedAt,
 			&i.ConfirmedAt,
 			&i.UndoneAt,
+			&i.Skipped,
+			&i.Undoing,
 			&i.Actions,
 			&i.Undone,
 		); err != nil {
@@ -592,6 +842,28 @@ func (q *Queries) ListFilesToRestore(ctx context.Context, ids []uuid.UUID) ([]Li
 	return items, nil
 }
 
+const requestRunUndo = `-- name: RequestRunUndo :execrows
+UPDATE curation_runs SET undo_requested_at = now(), undo_viewer = $1, undo_sees_all = $2,
+    undo_cursor_at = NULL, undo_cursor_id = NULL
+WHERE id = $3 AND undo_requested_at IS NULL AND NOT dry_run AND state NOT IN ('planned', 'running')
+`
+
+type RequestRunUndoParams struct {
+	Viewer  *uuid.UUID
+	SeesAll bool
+	ID      uuid.UUID
+}
+
+// Asks for the run to be undone by its job; not while it still makes
+// actions, not twice, and not for a dry run, which changed nothing.
+func (q *Queries) RequestRunUndo(ctx context.Context, arg RequestRunUndoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, requestRunUndo, arg.Viewer, arg.SeesAll, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setCurationActionNote = `-- name: SetCurationActionNote :exec
 UPDATE curation_actions SET note = $2 WHERE id = $1
 `
@@ -630,5 +902,14 @@ WHERE r.id = $1 AND r.state <> 'undone' AND r.state <> 'running'
 // A run all of whose actions are undone is undone.
 func (q *Queries) SettleCurationRun(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, settleCurationRun, id)
+	return err
+}
+
+const startDuplicatesRun = `-- name: StartDuplicatesRun :exec
+UPDATE curation_runs SET state = 'running' WHERE id = $1 AND state = 'planned'
+`
+
+func (q *Queries) StartDuplicatesRun(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, startDuplicatesRun, id)
 	return err
 }

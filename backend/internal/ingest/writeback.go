@@ -45,18 +45,22 @@ var errWrittenMeanwhile = errors.New("the file was written by another job meanwh
 // that it travels with the files, and the book's duplicates looked for
 // again.
 func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
-			return err
-		}
-		if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
-			return err
-		}
-		if !e.ChangesValues() {
-			return nil
-		}
-		return s.describedTx(ctx, tx, id)
-	})
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return s.EditTx(ctx, tx, scope, id, e) })
+}
+
+// EditTx is Edit inside a transaction the caller runs. It must come first in
+// that transaction, as it holds the book's library (HoldLibrary).
+func (s *Service) EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
+	if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+		return err
+	}
+	if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
+		return err
+	}
+	if !e.ChangesValues() {
+		return nil
+	}
+	return s.describedTx(ctx, tx, id)
 }
 
 // describedTx follows a change to how a book is described: its EPUBs are

@@ -228,3 +228,18 @@ WHERE sqlc.arg(book_id) IN (r.book_a, r.book_b) AND r.kind = 'recording'
   AND o.deleted_at IS NULL
   AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY o.title, o.id;
+
+-- name: AddMissingContributors :exec
+-- The credits of the other book that this one lacks, after its own.
+INSERT INTO book_contributors (book_id, author_id, role, position)
+SELECT sqlc.arg(into_book)::uuid, c.author_id, c.role,
+       ((SELECT coalesce(max(m.position), -1) FROM book_contributors m WHERE m.book_id = sqlc.arg(into_book)) + row_number() OVER (ORDER BY c.position))::int
+FROM book_contributors c
+WHERE c.book_id = sqlc.arg(from_book)
+  AND NOT EXISTS (SELECT 1 FROM book_contributors m WHERE m.book_id = sqlc.arg(into_book) AND m.author_id = c.author_id AND m.role = c.role)
+ON CONFLICT DO NOTHING;
+
+-- name: AddMissingTags :exec
+INSERT INTO book_tags (book_id, tag_id)
+SELECT sqlc.arg(into_book)::uuid, t.tag_id FROM book_tags t WHERE t.book_id = sqlc.arg(from_book)
+ON CONFLICT DO NOTHING;

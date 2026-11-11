@@ -6,6 +6,46 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Clean-ups where the data decides can be applied at once. On the clean-up
+  page each such kind (a tool's stand-in as author, a shop's addition to a
+  title, one person's name spelled differently only in order, case, accents
+  or initials, a series that at least three titles name) says how many
+  suggestions it would apply and has a **Dry run** and a **Run** button. The
+  run is on the Changes page with the reason of each change, can be undone,
+  and writes nothing into the files until you confirm it. With the new
+  setting `curation.cleanup.kinds` a daily run does the same.
+- The Review page takes over what is plain: with `curation.matches.auto` on
+  (off to begin with) a daily run takes fields from matches that two sources
+  agree on or that share the book's ISBN, leaves a field in real conflict for
+  you and keeps the match, and dismisses matches in another language than the
+  text or years from the file's date. The page shows what the rule would do
+  with **Dry run** and **Run**, and groups the other matches by source and
+  score so you can look at a sample and accept the group. `gotome
+  match-check` prints how many of the sampled books the rule would accept
+  and how many of those are right.
+- Duplicate pairs the evidence leaves no doubt about can be resolved by
+  GOtome itself. On the Duplicates page each class (same file or same text,
+  nearly the same text, mostly the same text, one book holding the other
+  whole, one holding most of the other) shows its open pairs with a **Dry run**
+  and a **Run**. Books of the same text are made one: the book anyone reads
+  or set a field of by hand survives, the fields are decided one by one
+  (a locked field is never overwritten), and of two files of one format the
+  worse goes to the trash. Books that hold one another stay two and are
+  linked. A dry run lists what would be done and changes nothing; every run
+  shows under Changes and can be undone. The settings
+  `curation.duplicates.classes` (none by default) and
+  `curation.duplicates.onConflict` let a daily run handle new pairs.
+  `gotome duplicate-check` shows what the rules would do with a sample of
+  your pairs, naming no book ([docs/duplicates.md](docs/duplicates.md)).
+
+### Changed
+
+- Undoing a run under Changes is done by a job, so a run of hundreds of
+  merges can be taken back: the button answers at once and the run says
+  how far the undo has got.
+
 ## [0.16.0] - 2026-11-10
 
 ### Added

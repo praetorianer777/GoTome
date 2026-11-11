@@ -41,12 +41,18 @@ test("a merge shows under Changes with its before and after, and undoing the run
 	await form.getByRole("button", { name: `Merge into Kept ${stamp}` }).click();
 	await expect(pairs.getByRole("listitem", { name: said })).toBeHidden();
 
-	await page.goto("/curation");
+	// Other specs make runs on this stack at the same time, so the page
+	// is opened at the one this merge made.
+	const made = await (await page.request.get("/api/v1/curation/runs")).json();
+	const mine = made.runs.find((r: { kind: string; dryRun: boolean }) => r.kind === "duplicates" && !r.dryRun);
+	await page.goto(`/curation?run=${mine.id}`);
 	await expect(page.getByRole("heading", { name: "Changes", level: 1 })).toBeVisible();
-	const run = page.getByRole("list", { name: "Runs" }).getByRole("listitem").first();
+	const run = page
+		.getByRole("list", { name: "Runs" })
+		.getByRole("listitem")
+		.filter({ has: page.getByRole("button", { name: "Hide changes" }) });
 	await expect(run).toContainText("Duplicates, by");
 	await expect(run).toContainText("Done");
-	await run.getByRole("button", { name: "Show changes" }).click();
 	const action = run.getByRole("list", { name: "Changes of the run" }).getByRole("listitem").first();
 	await expect(action).toContainText("Merged");
 	const title = action.getByRole("row", { name: /^Title/ });
@@ -55,8 +61,8 @@ test("a merge shows under Changes with its before and after, and undoing the run
 	await expect(action.getByRole("row", { name: "Files Before: 1 After: 2" })).toBeVisible();
 
 	await run.getByRole("button", { name: /^Undo the run of/ }).click();
-	await expect(run.getByRole("status")).toHaveText("1 undone, 0 left as they are.");
-	await expect(run).toContainText("Undone");
+	// A job undoes the run; the page follows it.
+	await expect(run).toContainText("Undone", { timeout: 30_000 });
 
 	for (const [id, title] of [[kept, `Kept ${stamp}`], [merged, `Merged ${stamp}`]] as const) {
 		const book = await (await page.request.get(`/api/v1/books/${id}`)).json();

@@ -48,6 +48,17 @@ func (q *Queries) CountReviewBooks(ctx context.Context, arg CountReviewBooksPara
 	return count, err
 }
 
+const deleteEmptyCurationRun = `-- name: DeleteEmptyCurationRun :exec
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)
+`
+
+// A scheduled run that found nothing to do leaves no trace.
+func (q *Queries) DeleteEmptyCurationRun(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteEmptyCurationRun, id)
+	return err
+}
+
 const dismissOtherMatches = `-- name: DismissOtherMatches :exec
 UPDATE metadata_matches SET state = 'dismissed', updated_at = now()
 WHERE book_id = $1 AND id <> $2 AND state = 'pending'
@@ -180,6 +191,97 @@ func (q *Queries) ListMatchCheckBooks(ctx context.Context, maxBooks int32) ([]Li
 	return items, nil
 }
 
+const listMatchGroupSample = `-- name: ListMatchGroupSample :many
+SELECT m.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending' AND m.provider = $1
+  AND LEAST(floor(m.score * 10), 9)::int = $2::int
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+ORDER BY m.score DESC, m.id
+LIMIT $5
+`
+
+type ListMatchGroupSampleParams struct {
+	Provider string
+	Band     int32
+	Viewer   uuid.UUID
+	SeesAll  bool
+	MaxRows  int32
+}
+
+// Some of the matches of a group, the best fitting first.
+func (q *Queries) ListMatchGroupSample(ctx context.Context, arg ListMatchGroupSampleParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listMatchGroupSample,
+		arg.Provider,
+		arg.Band,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchGroups = `-- name: ListMatchGroups :many
+SELECT m.provider, LEAST(floor(m.score * 10), 9)::int AS band, count(*)::int AS matches
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+GROUP BY 1, 2
+ORDER BY 1, 2 DESC
+`
+
+type ListMatchGroupsParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type ListMatchGroupsRow struct {
+	Provider string
+	Band     int32
+	Matches  int32
+}
+
+// The matches that wait, of books the viewer may see, by provider and band:
+// the tenth of the score they lie in (0.9 and over is 9).
+func (q *Queries) ListMatchGroups(ctx context.Context, arg ListMatchGroupsParams) ([]ListMatchGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listMatchGroups, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchGroupsRow{}
+	for rows.Next() {
+		var i ListMatchGroupsRow
+		if err := rows.Scan(&i.Provider, &i.Band, &i.Matches); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingMatches = `-- name: ListPendingMatches :many
 SELECT id, book_id, provider, record_id, score, record, state, created_at, updated_at FROM metadata_matches
 WHERE book_id = ANY($1::uuid[]) AND state = 'pending'
@@ -249,6 +351,84 @@ func (q *Queries) ListReviewBooks(ctx context.Context, arg ListReviewBooksParams
 			return nil, err
 		}
 		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReviewBooksAfter = `-- name: ListReviewBooksAfter :many
+SELECT DISTINCT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.id > $1::uuid
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+ORDER BY b.id
+LIMIT $4
+`
+
+type ListReviewBooksAfterParams struct {
+	AfterID  uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+	MaxBooks int32
+}
+
+// The books with matches waiting that the viewer may see, after a book, by
+// ID, for a run that works through them in batches.
+func (q *Queries) ListReviewBooksAfter(ctx context.Context, arg ListReviewBooksAfterParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listReviewBooksAfter,
+		arg.AfterID,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.MaxBooks,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTextLanguages = `-- name: ListTextLanguages :many
+SELECT lang, count(*)::int AS chunks FROM book_chunks
+WHERE book_id = $1 AND lang <> ''
+GROUP BY lang ORDER BY count(*) DESC
+`
+
+type ListTextLanguagesRow struct {
+	Lang   string
+	Chunks int32
+}
+
+// The languages the chunks of a book were detected in, and how many each.
+func (q *Queries) ListTextLanguages(ctx context.Context, bookID uuid.UUID) ([]ListTextLanguagesRow, error) {
+	rows, err := q.db.Query(ctx, listTextLanguages, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTextLanguagesRow{}
+	for rows.Next() {
+		var i ListTextLanguagesRow
+		if err := rows.Scan(&i.Lang, &i.Chunks); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

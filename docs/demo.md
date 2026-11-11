@@ -47,13 +47,44 @@ from `e2e/fixtures/books` and an audiobook of two tones from
 EPUBs and their covers, a few hundred kilobytes each (the cover is taken as it
 lies in the EPUB; resizing them to small WebP is a follow-up).
 
-`make sample-books` (the owner, or CI, as it reaches the internet) downloads
-each `source.url` and checks the file against `web/demo/sample-books.lock.json`.
+`make sample-books` (the owner, or CI, as it reaches the internet) takes each
+`source.url` and checks the file against `web/demo/sample-books.lock.json`.
 Where there is no entry yet it records the SHA-256 and size, so the first run
-pins the hashes: commit the file, and every later fetch must match. A URL that
-does not answer is reported and the rest go on. The download addresses (`source.url`, the pages below with the EPUB's
-name added) were written without being fetched, so the first run may find some
-wrong; the Kafka and Gutenberg ones are the least certain.
+pins the hashes: commit the file, and every later fetch must match. A file
+already in `web/demo/files` is kept if it matches. Each download is tried three
+times with a growing pause, and a failure says its cause (`ETIMEDOUT`, a TLS
+error, the HTTP status), not only "fetch failed". A book that cannot be had is
+reported and the rest go on. `make sample-books SAMPLE_BOOKS_FROM=<dir>`
+(a directory in the checkout) reads `<dir>/<id>.epub` first, where it matches
+the lock file, and downloads only what is missing. The download addresses
+(`source.url`, the pages below with the EPUB's name added) were written without
+being fetched, so the first run may find some wrong; the Kafka and Gutenberg
+ones are the least certain.
+
+## Where CI gets the books
+
+Standard Ebooks at times refuses GitHub's runners while it serves other
+machines, so `demo.yml` has three sources, each checked against the lock file:
+
+1. The cache (`actions/cache` on `web/demo/files`, keyed by the hash of the
+   lock file). It is saved when a run ends well, so a changed lock file starts
+   from nothing.
+2. The sites, as above.
+3. The release `demo-books` of this repository (a prerelease, one asset
+   `sample-books.tar` of the EPUBs, all CC0 or public domain). The workflow
+   downloads it with `gh release download` only when the sites failed, and
+   `make sample-books SAMPLE_BOOKS_FROM=…` uses the books that match.
+
+The owner makes or refreshes that copy from their own machine, after
+`make sample-books` has fetched and verified every book:
+
+```
+make demo-books-release
+```
+
+It checks each file in `web/demo/files` against the lock file again, packs
+them into `.cache/sample-books.tar` and creates or updates the release (needs
+`gh` signed in). Run it again after the lock file changes.
 
 LibriVox audiobooks are not in the list yet: they need a short clip cut with
 FFmpeg and a `files` entry with `durationMs`, which a person chooses.

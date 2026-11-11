@@ -47,6 +47,11 @@ type curationRun struct {
 	// them are undone.
 	Actions int `json:"actions"`
 	Undone  int `json:"undone"`
+	// Skipped is how many pairs a duplicates run left for a person.
+	Skipped int `json:"skipped"`
+	// Undoing is set while the run's job undoes it; Undone then counts how
+	// far it has got.
+	Undoing bool `json:"undoing"`
 }
 
 type curationRunList struct {
@@ -70,7 +75,7 @@ type curationBook struct {
 type curationAction struct {
 	ID    uuid.UUID `json:"id"`
 	RunID uuid.UUID `json:"runId"`
-	Kind  string    `json:"kind" enum:"merge,replace,edit"`
+	Kind  string    `json:"kind" enum:"merge,replace,edit,link,skip"`
 	// Rule and Reason say why an automatic rule did it.
 	Rule   string         `json:"rule,omitempty"`
 	Reason string         `json:"reason,omitempty"`
@@ -104,15 +109,15 @@ type curationOutcome struct {
 	Conflicts []curationConflict `json:"conflicts,omitempty"`
 }
 
-type curationUndone struct {
-	Actions []curationOutcome `json:"actions"`
+type curationUndoQueued struct {
+	RunID uuid.UUID `json:"runId"`
 }
 
 func runOf(r curation.Run) curationRun {
 	return curationRun{
 		ID: r.ID, Kind: r.Kind, Rule: r.Rule, StartedBy: r.StartedBy, StartedByName: r.StartedByName,
 		DryRun: r.DryRun, Automatic: r.Automatic, State: r.State, CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
-		ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: r.Actions, Undone: r.Undone,
+		ConfirmedAt: r.ConfirmedAt, UndoneAt: r.UndoneAt, Actions: r.Actions, Undone: r.Undone, Skipped: r.Skipped, Undoing: r.Undoing,
 	}
 }
 
@@ -195,20 +200,18 @@ func (s *Server) undoCurationRun(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err := s.Curation.UndoRun(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
+	err = s.Curation.RequestUndo(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	switch {
 	case errors.Is(err, curation.ErrNotFound):
 		return ErrNotFound("There is no such run.")
 	case errors.Is(err, curation.ErrRunning):
 		return ErrConflict("The run is still going.")
+	case errors.Is(err, curation.ErrDryRun):
+		return ErrConflict("A dry run changed nothing, so there is nothing to undo.")
 	case err != nil:
 		return err
 	}
-	res := curationUndone{Actions: make([]curationOutcome, len(out.Actions))}
-	for i, o := range out.Actions {
-		res.Actions[i] = outcomeOf(o)
-	}
-	writeJSON(w, r, http.StatusOK, res)
+	writeJSON(w, r, http.StatusAccepted, curationUndoQueued{RunID: id})
 	return nil
 }
 
