@@ -594,6 +594,7 @@ export const en = {
 	"overview.withoutCover": "Books without a cover",
 	"overview.withoutAuthor": "Books without an author",
 	"overview.withoutText": "Ebooks whose text was not read",
+	"overview.isbnFromText": "Books with an ISBN from their imprint page",
 	"overview.withMissingFiles": "{count} books have files missing from the library folder",
 	"overview.withEreaderFindings": "{count} books have EPUBs that may be slow or troublesome on e-readers",
 	"overview.formats": "Files by format",
@@ -1086,6 +1087,7 @@ export const en = {
 	"searchIndex.intro":
 		"Read the text again once GOtome reads a format better; rebuild the index if it seems to miss books. GOtome rebuilds it by itself when an update changes how it is stored. Both read the books' files; search keeps working meanwhile, with what it has.",
 	"searchIndex.known": "Books whose text search knows: {indexed} of {files}.",
+	"searchIndex.rereading": "Texts read again: {done} of {files}. Until then, search answers with the earlier reading of the other {waiting}.",
 	"searchIndex.rebuilding": "The index is being built again from the books' files; until a book is read again, searches find what the index has of it.",
 	"searchIndex.rereadAll": "Read all text again",
 	"searchIndex.rereadLibrary": "Read this library's text again for search",

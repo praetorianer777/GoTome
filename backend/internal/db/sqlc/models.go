@@ -714,6 +714,12 @@ type Tag struct {
 	NameKey string
 }
 
+type TextIsbnLookup struct {
+	BookID   uuid.UUID
+	Isbn     string
+	QueuedAt time.Time
+}
+
 type Tracker struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID

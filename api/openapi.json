@@ -14140,6 +14140,9 @@
               "$ref": "#/components/schemas/Count"
             }
           },
+          "isbnFromText": {
+            "type": "integer"
+          },
           "languages": {
             "type": "array",
             "items": {
@@ -14194,6 +14197,7 @@
           "withoutCover",
           "withoutAuthor",
           "withoutText",
+          "isbnFromText",
           "withMissingFiles",
           "withEreaderFindings",
           "formats",
@@ -14603,12 +14607,16 @@
           },
           "rebuilding": {
             "type": "boolean"
+          },
+          "rereading": {
+            "type": "integer"
           }
         },
         "required": [
           "files",
           "indexed",
           "rebuilding",
+          "rereading",
           "engine"
         ]
       },

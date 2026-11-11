@@ -66,6 +66,10 @@ type IndexStatus struct {
 	// Rebuilding says files are being read again for the index; until each
 	// is, searches find what the index has of it.
 	Rebuilding bool `json:"rebuilding"`
+	// Rereading is how many of Files wait to be read again (an update that
+	// reads text anew clears what says they were); their earlier reading
+	// still answers searches meanwhile.
+	Rereading int `json:"rereading"`
 	// Engine is the full-text engine's version.
 	Engine string `json:"engine"`
 }
@@ -80,7 +84,7 @@ func (x *Index) Status(ctx context.Context, scope library.Scope, libraryID *uuid
 		if err != nil {
 			return err
 		}
-		out.Files, out.Indexed = int(counts.Files), int(counts.InApp)
+		out.Files, out.Indexed, out.Rereading = int(counts.Files), int(counts.InApp), int(counts.Rereading)
 		return tx.QueryRow(ctx, `
 			SELECT EXISTS (SELECT 1 FROM river_job WHERE kind = ANY($1)
 			               AND state IN ('available', 'pending', 'retryable', 'running', 'scheduled'))`,

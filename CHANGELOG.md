@@ -6,6 +6,24 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A book that has an ISBN only from its imprint page is looked up by it, once
+  per ISBN: an hourly pass queues those not yet looked up, among them the
+  books that got one while their text was read again after 0.19.0. It runs
+  while `metadata.autoMatch` is on; turned on later, it catches up. With
+  `metadata.matchThreshold` at 1 only a source that has the same ISBN fills
+  gaps, and everything else waits on the Review page.
+- The overview counts the books with an ISBN from their imprint page.
+
+### Fixed
+
+- While texts are read again after an update, the search index's status says
+  how many are done and that search answers with the earlier reading of the
+  rest, instead of counting only those read again as known to search; and
+  the overview no longer counts the books waiting to be read again as ebooks
+  whose text was not read.
+
 ## [0.19.0] - 2026-11-11
 
 ### Added

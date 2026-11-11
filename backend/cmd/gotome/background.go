@@ -71,6 +71,7 @@ func worker[T river.JobArgs](w river.Worker[T]) registration {
 func (b background) registrations() []registration {
 	return []registration{
 		worker(&enrich.MatchWorker{Service: b.matches}),
+		worker(&enrich.TextISBNWorker{Service: b.matches}),
 		worker(&metadata.RunWorker{Service: b.meta}),
 		worker(&metadata.AutoLearnWorker{Service: b.meta}),
 		worker(&bulk.Worker{Service: b.changes}),
@@ -124,6 +125,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		metadata.AutoLearnPeriodic(autoLearnInterval),
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
+		jobs.Every(enrich.TextISBNInterval, true, enrich.TextISBNArgs{}, jobs.QueueMetadata),
 		jobs.Every(autodupe.DailyInterval, true, autodupe.DailyArgs{}, jobs.QueueDefault),
 		similar.Periodic(embedInterval),
 		similar.RemovePeriodic(removeModelsInterval),

@@ -24,9 +24,12 @@ UPDATE book_files SET chunked_at = NULL, indexed_at = NULL WHERE chunked_at IS N
 
 -- name: CountChunked :one
 -- How many of the visible books' primary text files, of a library when
--- named, there are, how many of them are chunked, and how many the
--- full-text index has been given.
-SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS in_app
+-- named, there are, how many of them are chunked, how many the full-text
+-- index has been given, and how many wait to be read again while their
+-- earlier chunks still answer.
+SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS in_app,
+       count(*) FILTER (WHERE f.chunked_at IS NULL
+                          AND EXISTS (SELECT 1 FROM book_chunks c WHERE c.file_id = f.id)) AS rereading
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))

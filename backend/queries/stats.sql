@@ -2,7 +2,8 @@
 -- What the books the viewer sees hold, of one library when named: the
 -- counts of the statistics page.
 WITH vb AS (
-    SELECT b.id, b.series_id, b.publisher_id, b.cover_key, b.primary_text_file_id
+    SELECT b.id, b.series_id, b.publisher_id, b.cover_key, b.primary_text_file_id,
+           b.field_sources->>'identifiers' = 'text' AS isbn_from_text
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
       AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
@@ -29,7 +30,10 @@ SELECT (SELECT count(*) FROM vb)::int AS books,
             SELECT 1 FROM book_contributors c WHERE c.book_id = vb.id AND c.role = 'author'))::int AS without_author,
        (SELECT count(*) FROM vb
         WHERE EXISTS (SELECT 1 FROM vf WHERE vf.book_id = vb.id AND vf.kind = 'ebook')
-          AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.id = vb.primary_text_file_id AND f.chunked_at IS NOT NULL))::int AS without_text,
+          -- A text waiting to be read again still has its earlier chunks.
+          AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.id = vb.primary_text_file_id
+                          AND (f.chunked_at IS NOT NULL OR EXISTS (SELECT 1 FROM book_chunks c WHERE c.file_id = f.id))))::int AS without_text,
+       (SELECT count(*) FROM vb WHERE isbn_from_text)::int AS isbn_from_text,
        (SELECT count(DISTINCT book_id) FROM vf WHERE missing_at IS NOT NULL)::int AS with_missing_files,
        (SELECT count(DISTINCT book_id) FROM vf WHERE cardinality(ereader_findings) > 0)::int AS with_ereader_findings;
 
