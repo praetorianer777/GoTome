@@ -60,7 +60,9 @@ func (m Metadata) Authors() []string {
 }
 
 type opfPackage struct {
-	Version  string `xml:"version,attr"`
+	Version string `xml:"version,attr"`
+	// UniqueID names the identifier that keys obfuscated fonts.
+	UniqueID string `xml:"unique-identifier,attr"`
 	Metadata struct {
 		Titles       []opfText    `xml:"title"`
 		Creators     []opfCreator `xml:"creator"`

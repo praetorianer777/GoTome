@@ -3460,7 +3460,7 @@ export interface components {
             books?: string[];
             change?: components["schemas"]["BulkChange"];
             filter?: string;
-            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
             library?: string;
         };
         BulkResult: {
@@ -4077,12 +4077,13 @@ export interface components {
             withoutText: number;
         };
         FixRequest: {
-            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
         };
         FixResult: {
             documentsRepaired: number;
             documentsSplit: number;
             fontsRemoved: number;
+            fontsSubset: number;
             imagesScaled: number;
             itemsRemoved: number;
             partsAdded: number;

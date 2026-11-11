@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"golang.org/x/image/draw"
@@ -45,28 +46,27 @@ var (
 // removeFonts takes the embedded fonts out: their entries, their manifest
 // items, the @font-face rules of the style sheets and documents, and their
 // entries in encryption.xml. Text falls back to the reader's own fonts.
-func (fx *fixer) removeFonts() error {
+func (fx *fixer) removeFonts() error { return fx.removeFontsWhere(nil) }
+
+// removeFontsWhere takes out the fonts for which only is true, every font
+// when it is nil. With a choice, only the @font-face rules that name those
+// fonts go.
+func (fx *fixer) removeFontsWhere(only func(entry string) bool) error {
 	l, err := fx.layout()
 	if err != nil {
 		return err
 	}
-	fonts := map[string]bool{}
-	ids := map[string]bool{}
-	var sheets []string
-	for _, it := range l.items {
-		switch {
-		case it.entry == "" || !fx.exists(it.entry):
-		case isFont(it.mediaType, it.entry):
-			fonts[it.entry] = true
-			ids[it.attrs["id"]] = true
-		case it.mediaType == "text/css" || strings.HasSuffix(strings.ToLower(it.entry), ".css") ||
-			(&opfItem{MediaType: it.mediaType, Href: it.entry}).isDocument():
-			sheets = append(sheets, it.entry)
+	fonts, ids, sheets := fx.collectFonts(l)
+	if only != nil {
+		for name := range fonts {
+			if !only(name) {
+				delete(fonts, name)
+			}
 		}
-	}
-	for _, f := range fx.zr.File {
-		if !strings.HasSuffix(f.Name, "/") && isFont("", f.Name) && !fx.removed[f.Name] {
-			fonts[f.Name] = true
+		for _, it := range l.items {
+			if !fonts[it.entry] {
+				delete(ids, it.attrs["id"])
+			}
 		}
 	}
 	if len(fonts) == 0 {
@@ -77,7 +77,18 @@ func (fx *fixer) removeFonts() error {
 		if err != nil || !bytes.Contains(bytes.ToLower(data), []byte("@font-face")) {
 			continue
 		}
-		fx.set(name, fontFace.ReplaceAll(data, nil))
+		if only == nil {
+			fx.set(name, fontFace.ReplaceAll(data, nil))
+			continue
+		}
+		fx.set(name, fontFace.ReplaceAllFunc(data, func(rule []byte) []byte {
+			for _, face := range parseFontFaces(string(rule), name) {
+				if slices.ContainsFunc(face.urls, func(u string) bool { return fonts[u] }) {
+					return nil
+				}
+			}
+			return rule
+		}))
 	}
 	if enc := fx.a.find(encryptionPath); enc != nil {
 		data, err := fx.a.read(enc.Name)
@@ -109,6 +120,30 @@ func (fx *fixer) removeFonts() error {
 	}
 	fx.fixed.FontsRemoved += len(fonts)
 	return nil
+}
+
+// collectFonts finds the embedded fonts the fixes kept, listed in the
+// manifest or not, the manifest ids of those that are, and the style
+// sheets and documents that may declare them.
+func (fx *fixer) collectFonts(l *packageLayout) (fonts, ids map[string]bool, sheets []string) {
+	fonts, ids = map[string]bool{}, map[string]bool{}
+	for _, it := range l.items {
+		switch {
+		case it.entry == "" || !fx.exists(it.entry):
+		case isFont(it.mediaType, it.entry):
+			fonts[it.entry] = true
+			ids[it.attrs["id"]] = true
+		case it.mediaType == "text/css" || strings.HasSuffix(strings.ToLower(it.entry), ".css") ||
+			(&opfItem{MediaType: it.mediaType, Href: it.entry}).isDocument():
+			sheets = append(sheets, it.entry)
+		}
+	}
+	for _, f := range fx.zr.File {
+		if !strings.HasSuffix(f.Name, "/") && isFont("", f.Name) && !fx.removed[f.Name] {
+			fonts[f.Name] = true
+		}
+	}
+	return fonts, ids, sheets
 }
 
 const (

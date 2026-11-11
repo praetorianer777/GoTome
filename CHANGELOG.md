@@ -6,6 +6,20 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Embedded fonts that make an EPUB heavy for an e-reader can be shrunk instead
+  of removed: "Shrink the fonts" on the book's page and in "Fix for
+  e-readers" keeps each TrueType font, cut down to the characters the book
+  uses, so a typeface the book relies on stays at a fraction of its size.
+  Fonts it cannot cut (OpenType with CFF outlines, WOFF2) stay as they are
+  unless the fonts are still over 1 MB, when they are removed.
+
+### Changed
+
+- "Fix for e-readers" with "Everything found" shrinks the fonts rather than
+  removing them.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

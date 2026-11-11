@@ -74,6 +74,13 @@ const (
 // Findings are every finding, in order.
 var Findings = []string{LargeDocument, LargeFonts, LargeImage, MissingResources, MalformedDocument, BrokenTOC}
 
+// SubsetFonts is not a finding but a way to fix LargeFonts: keep the fonts,
+// cut down to the characters the book uses, instead of removing them.
+const SubsetFonts = "subset-fonts"
+
+// Fixes are what Fix does: a fix for each finding, and SubsetFonts.
+var Fixes = append(slices.Clone(Findings), SubsetFonts)
+
 // The limits past which a file is slow on an e-reader. They are set from
 // a sample of a real library (#233) and are meant to be tuned with books
 // a reader is known to be slow on.

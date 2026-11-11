@@ -196,6 +196,7 @@ filter **On e-readers** finds every such book.
 |---|---|---|
 | One chapter file holds several megabytes | **Split into chapters** | Splits it at its chapters, or else between paragraphs, into parts of at most 260 KB, with the table of contents and links following. |
 | Images of tens of megapixels, or megabytes each | **Scale the images down** | Scales JPEG and PNG images to at most 1600 pixels on their longer side. |
+| Embedded fonts of megabytes | **Shrink the fonts** | Cuts each TrueType font (also as WOFF, or scrambled as the EPUB standard allows) down to the characters of the chapters that use it, plus ASCII and common punctuation, and keeps it under its name. Kerning and ligature tables go, as they refer to the glyphs that are gone. A font it cannot cut (OpenType with CFF outlines, WOFF2) stays; if the fonts still take more than 1 MB, those are removed. |
 | Embedded fonts of megabytes | **Remove the fonts** | Removes the fonts; the e-reader uses its own. |
 | Files the EPUB lists but lacks | **Repair the list of files** | Takes what is missing out of the EPUB's list. |
 | Chapter files that are not well-formed XHTML, which some readers (the Tolino's among them) refuse | **Repair the chapter files** | Writes each such file again as well-formed XHTML, only where its text stays the same. |

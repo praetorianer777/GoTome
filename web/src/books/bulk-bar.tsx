@@ -21,6 +21,7 @@ import {
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
 import { useSendToDevice } from "@/books/deliveries";
 import { kindleQuery, skippedText, useSendToKindle } from "@/books/kindle";
+import { type Fix, fixesFor } from "@/books/ereader";
 import { EREADER_FINDINGS } from "@/books/rules";
 import { useQueue } from "@/player/queue";
 import { FormError } from "@/components/form";
@@ -214,8 +215,8 @@ export function BulkBar({
 							"fix",
 							undefined,
 							e.target.value === "all"
-								? [...EREADER_FINDINGS]
-								: [e.target.value as (typeof EREADER_FINDINGS)[number]],
+								? EREADER_FINDINGS.map((f) => (f === "large-fonts" ? "subset-fonts" : f))
+								: [e.target.value as Fix],
 						)
 					}
 					className={control}
@@ -224,7 +225,7 @@ export function BulkBar({
 						{t("bulk.fix")}
 					</option>
 					<option value="all">{t("bulk.fix.all")}</option>
-					{EREADER_FINDINGS.map((f) => (
+					{EREADER_FINDINGS.flatMap(fixesFor).map((f) => (
 						<option key={f} value={f}>
 							{t(`fix.${f}`)}
 						</option>

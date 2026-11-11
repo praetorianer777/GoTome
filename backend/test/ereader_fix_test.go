@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
+	"github.com/praetorianer777/gotome/backend/internal/format/fontsubset"
 )
 
 // heavyEPUB is the bytes of an EPUB with every finding.
@@ -93,7 +94,7 @@ func TestAFixMakesAnEPUBLighterAndCanBeUndone(t *testing.T) {
 	if status, _ := fix(reader, fileID, epub.LargeFonts); status != 403 {
 		t.Errorf("a reader fixes: %d", status)
 	}
-	if status, body := fix(editor, fileID, "subset-fonts"); status != 422 {
+	if status, body := fix(editor, fileID, "shrink-fonts"); status != 422 {
 		t.Errorf("an unknown fix: %d %v", status, body)
 	}
 
@@ -283,5 +284,52 @@ func TestABulkFixMakesTheFilteredBooksLighter(t *testing.T) {
 	var trashed int
 	if err := a.pool.QueryRow(ctx, `SELECT count(*) FROM book_files WHERE trashed_at IS NOT NULL`).Scan(&trashed); err != nil || trashed != 2 {
 		t.Errorf("%d originals in the trash: %v", trashed, err)
+	}
+}
+
+func TestAFixCanKeepTheFontsCutDownToTheBook(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	lib := a.library(admin, "Shelf", "shared")
+	path := filepath.Join(t.TempDir(), "fonts.epub")
+	writeEPUBParts(t, path, "Der Lindenhof",
+		epubPart{id: "ch", name: "ch.xhtml", mediaType: "application/xhtml+xml", read: true, content: xhtml("Der Lindenhof", "<p>Die Linden blühten über dem Hof.</p>")},
+		epubPart{id: "css", name: "style.css", mediaType: "text/css", content: `@font-face { font-family: "Serif"; src: url(fonts/serif.ttf); }
+body { font-family: "Serif"; }`},
+		epubPart{id: "f1", name: "fonts/serif.ttf", mediaType: "application/vnd.ms-opentype", content: string(fontsubset.Synthetic(30000))})
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, up := a.upload(admin, lib, "Der Lindenhof.epub", original)
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, up)
+	}
+	fileID := up["fileId"].(string)
+	a.extract(uuid.MustParse(fileID))
+	if s := a.fileState(fileID); !slices.Equal(s.findings, []string{epub.LargeFonts}) {
+		t.Fatalf("before the fix: %+v", s)
+	}
+	status, body, _ := a.call(editor, http.MethodPost, "/files/"+fileID+"/fix", map[string]any{"findings": []string{epub.SubsetFonts}})
+	if status != 200 || body["fontsSubset"] != 1.0 || body["fontsRemoved"] != 0.0 {
+		t.Fatalf("subsetting the fonts: %d %v", status, body)
+	}
+	if s := a.fileState(fileID); s.findings == nil || len(s.findings) != 0 {
+		t.Errorf("findings after the fix: %+v", s)
+	}
+	var relPath string
+	var root string
+	if err := a.pool.QueryRow(context.Background(), `SELECT f.rel_path, l.root_path FROM book_files f JOIN libraries l ON l.id = f.library_id WHERE f.id = $1`, fileID).Scan(&relPath, &root); err != nil {
+		t.Fatal(err)
+	}
+	fixed, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := epub.Measure(bytes.NewReader(fixed), int64(len(fixed)))
+	if err != nil || m.Fonts != 1 || m.FontBytes > 20_000 {
+		t.Errorf("the fixed file: %+v, %v", m, err)
 	}
 }

@@ -22,7 +22,9 @@ type Fixed struct {
 	PartsAdded     int `json:"partsAdded"`
 	// ImagesScaled are the images scaled down or recompressed.
 	ImagesScaled int `json:"imagesScaled"`
-	// FontsRemoved are the embedded fonts taken out.
+	// FontsSubset are the embedded fonts cut down to the characters the
+	// book uses, FontsRemoved those taken out.
+	FontsSubset  int `json:"fontsSubset"`
 	FontsRemoved int `json:"fontsRemoved"`
 	// ItemsRemoved are the manifest items without a file taken out.
 	ItemsRemoved int `json:"itemsRemoved"`
@@ -38,7 +40,7 @@ type Fixed struct {
 
 // Any reports whether anything was changed.
 func (f Fixed) Any() bool {
-	return f.DocumentsSplit+f.ImagesScaled+f.FontsRemoved+f.ItemsRemoved+
+	return f.DocumentsSplit+f.ImagesScaled+f.FontsSubset+f.FontsRemoved+f.ItemsRemoved+
 		f.DocumentsRepaired+f.TocEntriesRemoved+f.TocEntriesRepointed > 0
 }
 
@@ -60,7 +62,9 @@ type fixer struct {
 // Fix copies the EPUB from r to w with what makes it slow or troublesome
 // on an e-reader fixed, each finding of epub.Findings by its own step:
 // LargeDocument splits content documents, LargeImage scales images down,
-// LargeFonts removes embedded fonts, MissingResources takes manifest items
+// LargeFonts removes embedded fonts and SubsetFonts, another fix of the same
+// finding, cuts them down to the characters the book uses (and removes only
+// those that cannot be cut or stay over the limit), MissingResources takes manifest items
 // whose file is missing out of the manifest and spine, MalformedDocument
 // writes documents that are not well formed again as XHTML, and BrokenTOC
 // takes entries of the tables of contents out that lead nowhere. A step
@@ -69,7 +73,7 @@ type fixer struct {
 // nothing, and Fixed says so; w is then written all the same.
 func Fix(r io.ReaderAt, size int64, w io.Writer, findings []string, modified time.Time) (Fixed, error) {
 	for _, f := range findings {
-		if !slices.Contains(Findings, f) {
+		if !slices.Contains(Fixes, f) {
 			return Fixed{}, fmt.Errorf("no fix for %q", f)
 		}
 	}
@@ -108,10 +112,14 @@ func Fix(r io.ReaderAt, size int64, w io.Writer, findings []string, modified tim
 		{MalformedDocument, fx.repairDocuments},
 		{BrokenTOC, fx.repairTOC},
 		{LargeFonts, fx.removeFonts},
+		{SubsetFonts, fx.subsetFonts},
 		{LargeImage, fx.scaleImages},
 		{LargeDocument, fx.splitDocuments},
 	}
 	for _, s := range steps {
+		if s.finding == LargeFonts && slices.Contains(findings, SubsetFonts) {
+			continue
+		}
 		if slices.Contains(findings, s.finding) {
 			if err := s.run(); err != nil {
 				return Fixed{}, err
