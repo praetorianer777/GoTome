@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { serverPath } from "@/base";
 import {
 	safeRedirect,
 	signInMethodsQuery,
@@ -31,7 +32,7 @@ export function Login({ redirect, sso }: { redirect?: string; sso?: string }) {
 			{ username, password },
 			// Pushed as an address, not as a route: where the person was going
 			// may carry a query string and a fragment.
-			{ onSuccess: () => router.history.push(returnTo) },
+			{ onSuccess: () => router.history.push(serverPath(returnTo)) },
 		);
 	}
 

@@ -57,11 +57,7 @@ func loggedPath(path string) string {
 
 // koboBase is the address the reader's requests go to, its token in it.
 func koboBase(r *http.Request) string {
-	scheme := "http"
-	if overTLS(r) {
-		scheme = "https"
-	}
-	return scheme + "://" + r.Host + koboPrefix + chi.URLParam(r, "token")
+	return publicBase(r) + koboPrefix + chi.URLParam(r, "token")
 }
 
 func koboClient(device uuid.UUID) string { return "kobo:" + device.String() }

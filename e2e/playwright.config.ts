@@ -1,10 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 import { BASE_URL } from "./fixtures/stack";
 
+// make test-e2e-subpath runs tests/subpath.spec.ts alone, against a stack
+// started with GOTOME_BASE_PATH set to the same value. Every other run leaves
+// that spec out: its addresses lie below the prefix, the other specs' do not.
+const SUB_PATH = process.env.E2E_BASE_PATH ?? "";
+const notSubPath = /subpath\.spec\.ts$/;
+
 // The push gate runs the tests tagged @smoke in Chromium. CI runs everything
 // in every project: make test-e2e FULL=1.
 export default defineConfig({
 	testDir: "./tests",
+	testIgnore: SUB_PATH ? undefined : notSubPath,
 	outputDir: "./test-results",
 	fullyParallel: true,
 	forbidOnly: Boolean(process.env.CI),
@@ -36,7 +43,15 @@ export default defineConfig({
 		actionTimeout: 5_000,
 		navigationTimeout: 10_000,
 	},
-	projects: [
+	projects: SUB_PATH
+		? [
+				{
+					name: "subpath",
+					testMatch: notSubPath,
+					use: { ...devices["Desktop Chrome"], baseURL: BASE_URL + SUB_PATH, storageState: undefined },
+				},
+			]
+		: [
 		// Creates the first account through the setup page when the stack is
 		// fresh. Every other project needs that account, and only one browser
 		// can be the one that creates it.

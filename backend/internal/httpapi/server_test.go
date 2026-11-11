@@ -218,3 +218,36 @@ func TestWebAppAnswersWhatIsNotTheAPI(t *testing.T) {
 		t.Error("the probe was answered by the web app")
 	}
 }
+
+func TestUnderABasePathOnlyThePrefixAnswersAndTheHandlersSeeTheRoot(t *testing.T) {
+	var seen, prefix string
+	h := underBase("/gotome/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen, prefix = r.URL.Path, basePrefix(r)
+	}))
+	for path, want := range map[string]int{
+		"/gotome/api/v1/x": 200, "/gotome/": 200, "/api/v1/x": 404, "/gotomeother/": 404, "/gotome": 308,
+		HealthPath: 200, ReadyPath: 200,
+	} {
+		rec := do(t, h, http.MethodGet, path)
+		if rec.Code != want {
+			t.Errorf("GET %s: %d, want %d", path, rec.Code, want)
+		}
+	}
+	do(t, h, http.MethodGet, "/gotome/api/v1/x")
+	if seen != "/api/v1/x" || prefix != "/gotome" {
+		t.Errorf("the handler saw %q under %q", seen, prefix)
+	}
+}
+
+func TestAddressesTheServerWritesCarryTheBasePath(t *testing.T) {
+	var got string
+	h := underBase("/gotome/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { got = callbackURL(r) }))
+	req := httptest.NewRequest(http.MethodGet, "http://books.example/gotome/api/v1/auth/oidc/start", nil)
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if want := "http://books.example/gotome/api/v1/auth/oidc/callback"; got != want {
+		t.Errorf("callback = %q, want %q", got, want)
+	}
+	if got := basePrefix(httptest.NewRequest(http.MethodGet, "/", nil)); got != "" {
+		t.Errorf("without a base path: %q", got)
+	}
+}

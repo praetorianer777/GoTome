@@ -273,6 +273,12 @@ The notification count is a stream that stays open. GOtome tells nginx not
 to buffer it and sends something every so often, so nothing is needed for
 it.
 
+### Under a path instead of a host name
+
+To serve GOtome at `https://example.org/gotome/` beside other sites, set
+`GOTOME_BASE_PATH=/gotome/` and keep the prefix in the proxy
+([reverse-proxy-sub-path.md](reverse-proxy-sub-path.md)).
+
 ### Trust the proxy
 
 Behind a proxy, every request comes from the proxy's address. Unless

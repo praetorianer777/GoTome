@@ -108,7 +108,17 @@ func opdsFeed(r *http.Request, title, kind string, updated time.Time) opds.Feed 
 	return f
 }
 
-func writeFeed(w http.ResponseWriter, kind string, f opds.Feed) error {
+func writeFeed(w http.ResponseWriter, r *http.Request, kind string, f opds.Feed) error {
+	if prefix := basePrefix(r); prefix != "" {
+		for i := range f.Links {
+			f.Links[i].Href = prefix + f.Links[i].Href
+		}
+		for _, e := range f.Entries {
+			for i := range e.Links {
+				e.Links[i].Href = prefix + e.Links[i].Href
+			}
+		}
+	}
 	// A feed of books changed when the latest of them did.
 	for _, e := range f.Entries {
 		if time.Time(e.Updated).After(time.Time(f.Updated)) {
@@ -149,12 +159,12 @@ func (s *Server) opdsRoot(w http.ResponseWriter, r *http.Request) error {
 		navEntry("reading", "Reading", "The books you are reading.", status(catalog.StatusReading), opds.AcquisitionType),
 		navEntry("wishlist", "Want to read", "The books you want to read.", status(catalog.StatusWishlist), opds.AcquisitionType),
 	)
-	return writeFeed(w, opds.NavigationType, f)
+	return writeFeed(w, r, opds.NavigationType, f)
 }
 
 func (s *Server) opdsSearchDescription(w http.ResponseWriter, r *http.Request) error {
 	var buf bytes.Buffer
-	d := opds.NewSearch("GOtome", "Search the books by title, author or series.", opdsHref("/search", nil)+"?q={searchTerms}")
+	d := opds.NewSearch("GOtome", "Search the books by title, author or series.", withBase(r, opdsHref("/search", nil))+"?q={searchTerms}")
 	if err := d.Write(&buf); err != nil {
 		return err
 	}
@@ -181,7 +191,7 @@ func (s *Server) opdsSearch(w http.ResponseWriter, r *http.Request) error {
 	if f.Entries, err = s.opdsEntries(r.Context(), scope, books); err != nil {
 		return err
 	}
-	return writeFeed(w, opds.AcquisitionType, f)
+	return writeFeed(w, r, opds.AcquisitionType, f)
 }
 
 func (s *Server) opdsBooks(w http.ResponseWriter, r *http.Request) error {
@@ -233,7 +243,7 @@ func (s *Server) opdsBooks(w http.ResponseWriter, r *http.Request) error {
 		next.Set("after", page.Next)
 		f.Links = append(f.Links, opds.Link{Rel: "next", Href: opdsHref("/books", next), Type: opds.AcquisitionType})
 	}
-	return writeFeed(w, opds.AcquisitionType, f)
+	return writeFeed(w, r, opds.AcquisitionType, f)
 }
 
 // nameOf is the name among the books' whose key is the one asked for, as
@@ -281,7 +291,7 @@ func (s *Server) opdsNames(list string) HandlerFunc {
 		if page.Next != "" {
 			f.Links = append(f.Links, opds.Link{Rel: "next", Href: opdsHref("/"+list, url.Values{"after": {page.Next}}), Type: opds.NavigationType})
 		}
-		return writeFeed(w, opds.NavigationType, f)
+		return writeFeed(w, r, opds.NavigationType, f)
 	}
 }
 
@@ -311,7 +321,7 @@ func (s *Server) opdsShelves(w http.ResponseWriter, r *http.Request) error {
 		f.Entries = append(f.Entries, navEntry("smart-shelf:"+sh.ID.String(), sh.Name, books(sh.Books),
 			opdsHref("/smart-shelves/"+sh.ID.String(), nil), opds.AcquisitionType))
 	}
-	return writeFeed(w, opds.NavigationType, f)
+	return writeFeed(w, r, opds.NavigationType, f)
 }
 
 func (s *Server) opdsCollection(w http.ResponseWriter, r *http.Request) error {
@@ -344,7 +354,7 @@ func (s *Server) opdsCollection(w http.ResponseWriter, r *http.Request) error {
 	if to < len(ids) {
 		f.Links = append(f.Links, opds.Link{Rel: "next", Href: opdsHref("/collections/"+id.String(), url.Values{"page": {strconv.Itoa(page + 1)}}), Type: opds.AcquisitionType})
 	}
-	return writeFeed(w, opds.AcquisitionType, f)
+	return writeFeed(w, r, opds.AcquisitionType, f)
 }
 
 func (s *Server) opdsSmartShelf(w http.ResponseWriter, r *http.Request) error {
@@ -375,7 +385,7 @@ func (s *Server) opdsSmartShelf(w http.ResponseWriter, r *http.Request) error {
 	if page.Next != "" {
 		f.Links = append(f.Links, opds.Link{Rel: "next", Href: opdsHref("/smart-shelves/"+id.String(), url.Values{"after": {page.Next}}), Type: opds.AcquisitionType})
 	}
-	return writeFeed(w, opds.AcquisitionType, f)
+	return writeFeed(w, r, opds.AcquisitionType, f)
 }
 
 // opdsEntries are the books as an acquisition feed lists them: a link to

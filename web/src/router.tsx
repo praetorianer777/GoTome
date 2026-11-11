@@ -11,6 +11,7 @@ import {
 	type RouteComponent,
 	useRouteContext,
 } from "@tanstack/react-router";
+import { BASE_PATH } from "@/base";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
 import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
 import { GENRES, type Genre } from "@/books/genres";
@@ -635,7 +636,7 @@ export function makeRouter(queryClient: QueryClient, history?: RouterHistory) {
 		defaultPreload: false,
 		scrollRestoration: true,
 		// The demo lives under the Pages project's path, not at the root.
-		basepath: isDemo ? import.meta.env.BASE_URL : undefined,
+		basepath: isDemo ? import.meta.env.BASE_URL : BASE_PATH === "/" ? undefined : BASE_PATH,
 	});
 }
 

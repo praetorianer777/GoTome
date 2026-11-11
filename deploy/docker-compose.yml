@@ -50,6 +50,7 @@ services:
       # The reverse proxies whose forwarded client address is believed, as
       # addresses or CIDR ranges; empty believes none.
       GOTOME_TRUSTED_PROXIES: ${GOTOME_TRUSTED_PROXIES:-}
+      GOTOME_BASE_PATH: ${GOTOME_BASE_PATH:-}
       GOTOME_DATABASE_URL: postgres://gotome@db:5432/gotome?sslmode=disable
       GOTOME_DATABASE_PASSWORD_FILE: /secrets/db-password
       # Encrypts the secrets kept in the database, such as provider keys.

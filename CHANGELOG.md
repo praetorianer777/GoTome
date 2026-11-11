@@ -13,6 +13,13 @@ What changes for someone who runs or uses GOtome. The format follows
   includes German titles publishers have announced, with the month they are
   due, so following an author shows them under New books. Add `dnb` to the
   setting `metadata.providers` to use it; it is not asked by default.
+
+- GOtome can be served under a path of a shared host name, such as
+  `https://example.org/gotome/`: set `GOTOME_BASE_PATH=/gotome/` and have the
+  proxy pass the prefix on. The web app, the API, the OPDS catalogue, Kobo and
+  KOReader addresses, the KOReader plugin download, the cookies and the single
+  sign-on redirect address follow it. The new page
+  `docs/reverse-proxy-sub-path.md` has Caddy, nginx and Traefik examples.
 - Clean-ups where the data decides can be applied at once. On the clean-up
   page each such kind (a tool's stand-in as author, a shop's addition to a
   title, one person's name spelled differently only in order, case, accents

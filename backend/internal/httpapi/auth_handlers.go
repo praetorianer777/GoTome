@@ -185,7 +185,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
 		Value:    token,
-		Path:     "/",
+		Path:     withBase(r, "/"),
 		MaxAge:   int(cookieLifetime.Seconds()),
 		HttpOnly: true,
 		Secure:   overTLS(r),
@@ -196,7 +196,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
-		Path:     "/",
+		Path:     withBase(r, "/"),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   overTLS(r),

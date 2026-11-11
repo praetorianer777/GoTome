@@ -140,6 +140,9 @@ type Server struct {
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler
+	// BasePath is the path the server is served under, such as /gotome/;
+	// empty or "/" at the root.
+	BasePath string
 }
 
 // Routes is the handler for every path the server answers.
@@ -155,7 +158,7 @@ func (s *Server) Routes() http.Handler {
 		api.Use(sameOrigin, s.authenticate)
 		mount(api, s.routes())
 	})
-	return r
+	return underBase(s.BasePath, r)
 }
 
 // mount puts the routes of a table on the router, each behind its permission.

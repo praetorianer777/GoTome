@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { API_BASE } from "@/api/client";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { t } from "@/i18n";
 import { formatDate } from "@/lib/format";
@@ -48,7 +49,7 @@ export function Devices({ username }: { username: string }) {
 			<p className="text-slate-600 dark:text-slate-400">
 				{t("devices.plugin")}{" "}
 				<a
-					href="/api/v1/koreader/plugin.zip"
+					href={`${API_BASE}/koreader/plugin.zip`}
 					download
 					className="text-brand-strong hover:underline dark:text-brand"
 				>
@@ -167,7 +168,7 @@ export function Devices({ username }: { username: string }) {
 						<dd className="break-all font-mono">{created.token}</dd>
 						<dt>{t("devices.kobo")}</dt>
 						<dd className="break-all font-mono">
-							api_endpoint={window.location.origin}/api/v1/kobo/{created.token}
+							api_endpoint={window.location.origin}{API_BASE}/kobo/{created.token}
 						</dd>
 					</dl>
 					<p className="text-sm text-slate-600 dark:text-slate-400">

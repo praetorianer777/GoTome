@@ -10,6 +10,8 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Configuration reference](configuration.md): every `GOTOME_*`
   environment variable and every setting on the Settings page, with its
   default.
+- [Under a sub-path](reverse-proxy-sub-path.md): `https://example.org/gotome/`
+  instead of a host name of its own, with Caddy, nginx and Traefik.
 - [NAS, arm64 and little memory](platforms.md): what differs on a NAS, a
   Raspberry Pi or a small machine, and the "This machine" panel.
 - [Backing up, restoring and upgrading](backup-and-upgrade.md).
