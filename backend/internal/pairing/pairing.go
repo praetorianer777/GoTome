@@ -153,12 +153,12 @@ func (s *Service) Waiting(ctx context.Context, userID uuid.UUID) ([]Waiting, err
 }
 
 // Decide accepts or declines one of the user's waiting requests.
-func (s *Service) Decide(ctx context.Context, userID, id uuid.UUID, accept bool) error {
+func (s *Service) Decide(ctx context.Context, userID, id uuid.UUID, accept, canUpload bool) error {
 	state := StateDeclined
 	if accept {
 		state = StateAccepted
 	}
-	n, err := sqlc.New(s.pool).DecideDeviceRequest(ctx, sqlc.DecideDeviceRequestParams{ID: id, UserID: &userID, State: state})
+	n, err := sqlc.New(s.pool).DecideDeviceRequest(ctx, sqlc.DecideDeviceRequestParams{ID: id, UserID: &userID, State: state, CanUpload: canUpload && accept})
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (s *Service) Collect(ctx context.Context, id uuid.UUID, secret string) (Ans
 			if err != nil {
 				return err
 			}
-			_, token, err := auth.CreateDeviceTx(ctx, tx, *req.UserID, req.DeviceName)
+			_, token, err := auth.CreateDeviceTx(ctx, tx, *req.UserID, req.DeviceName, req.CanUpload)
 			if err != nil {
 				return err
 			}

@@ -1235,6 +1235,9 @@ export const en = {
 	"devices.kobo": "For a Kobo reader, the line in its config",
 	"devices.once":
 		"The token is shown only now. If it is lost, revoke the device and add it again.",
+	"devices.canUpload": "Allow this device to upload books",
+	"devices.canUploadNamed": "Allow {name} to upload books",
+	"devices.mayUpload": "May upload books",
 	"devices.books": "Books on {name}",
 	"apiKeys.title": "API keys",
 	"apiKeys.intro":

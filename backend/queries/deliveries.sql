@@ -83,3 +83,30 @@ SET delivered_at = coalesce(deliveries.delivered_at, now());
 -- name: ForgetOnDevice :exec
 -- The book is no longer on the device, or no longer waits for it.
 DELETE FROM deliveries WHERE device_id = $1 AND book_id = $2;
+
+-- name: MatchDeviceFiles :many
+-- The visible books that have a live file with one of the hashes, one book
+-- for each hash, recorded as on the device in the same statement.
+WITH hits AS (
+    SELECT DISTINCT ON (m.hash) m.hash, m.book_id, m.file_id
+    FROM (
+        SELECT h.hash, f.book_id, f.id AS file_id
+        FROM unnest(sqlc.arg(hashes)::bytea[]) AS h(hash)
+        JOIN book_files f ON f.sha256 = h.hash AND f.trashed_at IS NULL
+        UNION ALL
+        SELECT h.hash, f.book_id, f.id
+        FROM unnest(sqlc.arg(hashes)::bytea[]) AS h(hash)
+        JOIN book_files f ON f.original_sha256 = h.hash AND f.trashed_at IS NULL
+    ) m
+    JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
+    WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+    ORDER BY m.hash, m.file_id
+), recorded AS (
+    INSERT INTO deliveries (device_id, book_id, delivered_at)
+    SELECT sqlc.arg(device_id), x.book_id, now()
+    FROM (SELECT DISTINCT book_id FROM hits) x
+    ON CONFLICT (device_id, book_id) DO UPDATE
+    SET delivered_at = coalesce(deliveries.delivered_at, now())
+    RETURNING book_id
+)
+SELECT hits.hash::bytea AS hash, hits.book_id, hits.file_id FROM hits;

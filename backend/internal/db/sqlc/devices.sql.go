@@ -25,9 +25,9 @@ func (q *Queries) CountWaitingDeviceRequests(ctx context.Context, userID *uuid.U
 }
 
 const createDevice = `-- name: CreateDevice :one
-INSERT INTO devices (user_id, name, token_hash, sync_key_hash)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, created_at, last_used_at
+INSERT INTO devices (user_id, name, token_hash, sync_key_hash, can_upload)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, created_at, last_used_at, can_upload
 `
 
 type CreateDeviceParams struct {
@@ -35,6 +35,7 @@ type CreateDeviceParams struct {
 	Name        string
 	TokenHash   []byte
 	SyncKeyHash []byte
+	CanUpload   bool
 }
 
 type CreateDeviceRow struct {
@@ -42,6 +43,7 @@ type CreateDeviceRow struct {
 	Name       string
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
+	CanUpload  bool
 }
 
 func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (CreateDeviceRow, error) {
@@ -50,6 +52,7 @@ func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Cre
 		arg.Name,
 		arg.TokenHash,
 		arg.SyncKeyHash,
+		arg.CanUpload,
 	)
 	var i CreateDeviceRow
 	err := row.Scan(
@@ -57,6 +60,7 @@ func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Cre
 		&i.Name,
 		&i.CreatedAt,
 		&i.LastUsedAt,
+		&i.CanUpload,
 	)
 	return i, err
 }
@@ -96,19 +100,25 @@ func (q *Queries) CreateDeviceRequest(ctx context.Context, arg CreateDeviceReque
 }
 
 const decideDeviceRequest = `-- name: DecideDeviceRequest :execrows
-UPDATE device_requests SET state = $3
+UPDATE device_requests SET state = $3, can_upload = $4
 WHERE id = $1 AND user_id = $2 AND state = 'pending' AND expires_at > now()
 `
 
 type DecideDeviceRequestParams struct {
-	ID     uuid.UUID
-	UserID *uuid.UUID
-	State  string
+	ID        uuid.UUID
+	UserID    *uuid.UUID
+	State     string
+	CanUpload bool
 }
 
 // Accepts or declines a request of the user's that still waits.
 func (q *Queries) DecideDeviceRequest(ctx context.Context, arg DecideDeviceRequestParams) (int64, error) {
-	result, err := q.db.Exec(ctx, decideDeviceRequest, arg.ID, arg.UserID, arg.State)
+	result, err := q.db.Exec(ctx, decideDeviceRequest,
+		arg.ID,
+		arg.UserID,
+		arg.State,
+		arg.CanUpload,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -130,6 +140,17 @@ func (q *Queries) DeleteUserDevice(ctx context.Context, arg DeleteUserDevicePara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deviceMayUpload = `-- name: DeviceMayUpload :one
+SELECT can_upload FROM devices WHERE id = $1
+`
+
+func (q *Queries) DeviceMayUpload(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, deviceMayUpload, id)
+	var can_upload bool
+	err := row.Scan(&can_upload)
+	return can_upload, err
 }
 
 const dropOldDeviceRequests = `-- name: DropOldDeviceRequests :exec
@@ -305,7 +326,7 @@ func (q *Queries) GetSyncKeyUser(ctx context.Context, arg GetSyncKeyUserParams) 
 }
 
 const listUserDevices = `-- name: ListUserDevices :many
-SELECT id, name, created_at, last_used_at
+SELECT id, name, created_at, last_used_at, can_upload
 FROM devices
 WHERE user_id = $1
 ORDER BY created_at
@@ -316,6 +337,7 @@ type ListUserDevicesRow struct {
 	Name       string
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
+	CanUpload  bool
 }
 
 func (q *Queries) ListUserDevices(ctx context.Context, userID uuid.UUID) ([]ListUserDevicesRow, error) {
@@ -332,6 +354,7 @@ func (q *Queries) ListUserDevices(ctx context.Context, userID uuid.UUID) ([]List
 			&i.Name,
 			&i.CreatedAt,
 			&i.LastUsedAt,
+			&i.CanUpload,
 		); err != nil {
 			return nil, err
 		}
@@ -400,7 +423,7 @@ func (q *Queries) SetDeviceRequestState(ctx context.Context, arg SetDeviceReques
 }
 
 const takeDeviceRequest = `-- name: TakeDeviceRequest :one
-SELECT id, user_id, device_name, state, (expires_at <= now())::boolean AS expired
+SELECT id, user_id, device_name, state, can_upload, (expires_at <= now())::boolean AS expired
 FROM device_requests WHERE id = $1 AND secret_hash = $2
 FOR UPDATE
 `
@@ -415,6 +438,7 @@ type TakeDeviceRequestRow struct {
 	UserID     *uuid.UUID
 	DeviceName string
 	State      string
+	CanUpload  bool
 	Expired    bool
 }
 
@@ -428,6 +452,7 @@ func (q *Queries) TakeDeviceRequest(ctx context.Context, arg TakeDeviceRequestPa
 		&i.UserID,
 		&i.DeviceName,
 		&i.State,
+		&i.CanUpload,
 		&i.Expired,
 	)
 	return i, err

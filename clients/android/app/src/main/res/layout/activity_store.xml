@@ -66,6 +66,14 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:text="@string/on_tolino_tab" />
+
+        <Button
+            android:id="@+id/not_in_gotome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/own_tab" />
     </LinearLayout>
 
     <GridLayout

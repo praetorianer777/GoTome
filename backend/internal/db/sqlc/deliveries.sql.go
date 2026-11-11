@@ -200,6 +200,72 @@ func (q *Queries) MarkDelivered(ctx context.Context, arg MarkDeliveredParams) (i
 	return result.RowsAffected(), nil
 }
 
+const matchDeviceFiles = `-- name: MatchDeviceFiles :many
+WITH hits AS (
+    SELECT DISTINCT ON (m.hash) m.hash, m.book_id, m.file_id
+    FROM (
+        SELECT h.hash, f.book_id, f.id AS file_id
+        FROM unnest($1::bytea[]) AS h(hash)
+        JOIN book_files f ON f.sha256 = h.hash AND f.trashed_at IS NULL
+        UNION ALL
+        SELECT h.hash, f.book_id, f.id
+        FROM unnest($1::bytea[]) AS h(hash)
+        JOIN book_files f ON f.original_sha256 = h.hash AND f.trashed_at IS NULL
+    ) m
+    JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
+    WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+    ORDER BY m.hash, m.file_id
+), recorded AS (
+    INSERT INTO deliveries (device_id, book_id, delivered_at)
+    SELECT $4, x.book_id, now()
+    FROM (SELECT DISTINCT book_id FROM hits) x
+    ON CONFLICT (device_id, book_id) DO UPDATE
+    SET delivered_at = coalesce(deliveries.delivered_at, now())
+    RETURNING book_id
+)
+SELECT hits.hash::bytea AS hash, hits.book_id, hits.file_id FROM hits
+`
+
+type MatchDeviceFilesParams struct {
+	Hashes   [][]byte
+	Viewer   uuid.UUID
+	SeesAll  bool
+	DeviceID uuid.UUID
+}
+
+type MatchDeviceFilesRow struct {
+	Hash   []byte
+	BookID uuid.UUID
+	FileID uuid.UUID
+}
+
+// The visible books that have a live file with one of the hashes, one book
+// for each hash, recorded as on the device in the same statement.
+func (q *Queries) MatchDeviceFiles(ctx context.Context, arg MatchDeviceFilesParams) ([]MatchDeviceFilesRow, error) {
+	rows, err := q.db.Query(ctx, matchDeviceFiles,
+		arg.Hashes,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.DeviceID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchDeviceFilesRow{}
+	for rows.Next() {
+		var i MatchDeviceFilesRow
+		if err := rows.Scan(&i.Hash, &i.BookID, &i.FileID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ownsDevice = `-- name: OwnsDevice :one
 SELECT EXISTS (SELECT 1 FROM devices WHERE id = $1 AND user_id = $2)
 `

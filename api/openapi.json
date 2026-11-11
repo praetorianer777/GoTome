@@ -231,6 +231,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptDeviceRequestBody"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "No Content"
@@ -4041,6 +4051,56 @@
         "x-permission": "personal:manage"
       }
     },
+    "/device/matches": {
+      "post": {
+        "operationId": "matchDeviceFiles",
+        "summary": "Which visible books have a file with one of the SHA-256 hashes of the files the device holds; they are recorded as on the device; only for a device's token",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceFilesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceFileMatches"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/device/requests": {
       "post": {
         "operationId": "requestDevice",
@@ -4133,6 +4193,56 @@
           }
         },
         "x-permission": "public"
+      }
+    },
+    "/device/uploads": {
+      "post": {
+        "operationId": "uploadFromDevice",
+        "summary": "Store a book file the device holds in the account's upload library, if the device was allowed to upload (the book is then put on the device with PUT /device/books/{bookId}); only for a device's token",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadForm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Uploaded"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "books:upload"
       }
     },
     "/devices/{deviceId}/books": {
@@ -10852,6 +10962,14 @@
           "message"
         ]
       },
+      "AcceptDeviceRequestBody": {
+        "type": "object",
+        "properties": {
+          "canUpload": {
+            "type": "boolean"
+          }
+        }
+      },
       "AcceptMatchRequest": {
         "type": "object",
         "properties": {
@@ -12841,6 +12959,9 @@
       "CreateDeviceRequest": {
         "type": "object",
         "properties": {
+          "canUpload": {
+            "type": "boolean"
+          },
           "name": {
             "type": "string"
           }
@@ -13368,6 +13489,55 @@
           "secret"
         ]
       },
+      "DeviceFileMatch": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sha256": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "bookId",
+          "fileId"
+        ]
+      },
+      "DeviceFileMatches": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceFileMatch"
+            }
+          }
+        },
+        "required": [
+          "matches"
+        ]
+      },
+      "DeviceFilesRequest": {
+        "type": "object",
+        "properties": {
+          "hashes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hashes"
+        ]
+      },
       "DeviceList": {
         "type": "object",
         "properties": {
@@ -13470,9 +13640,29 @@
           "expiresAt"
         ]
       },
+      "DeviceUpload": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowed"
+        ]
+      },
       "DeviceView": {
         "type": "object",
         "properties": {
+          "canUpload": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -13492,7 +13682,8 @@
         "required": [
           "id",
           "name",
-          "createdAt"
+          "createdAt",
+          "canUpload"
         ]
       },
       "Disk": {
@@ -17551,13 +17742,17 @@
           "device": {
             "$ref": "#/components/schemas/DeviceView"
           },
+          "upload": {
+            "$ref": "#/components/schemas/DeviceUpload"
+          },
           "username": {
             "type": "string"
           }
         },
         "required": [
           "device",
-          "username"
+          "username",
+          "upload"
         ]
       },
       "ThresholdPoint": {

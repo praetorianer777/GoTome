@@ -35,6 +35,7 @@ class ReaderWatcher : Service() {
     private val tracker = ReadingTracker()
     private lateinit var prefs: Prefs
     private lateinit var db: Db
+    private lateinit var own: OwnDb
 
     /** Everything that may wait (database, preferences, files) runs here, never on the log's thread. */
     private val work = Executors.newSingleThreadExecutor { r -> Thread(r, "reader-work").apply { isDaemon = true } }
@@ -52,6 +53,7 @@ class ReaderWatcher : Service() {
         super.onCreate()
         prefs = Prefs(this)
         db = Db.of(this)
+        own = OwnDb.of(this)
         val channel = NotificationChannel(CHANNEL, getString(R.string.watcher_channel), NotificationManager.IMPORTANCE_MIN)
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         startForeground(1, Notification.Builder(this, CHANNEL)
@@ -180,7 +182,7 @@ class ReaderWatcher : Service() {
         prefs.readerSeenAt = now
         when (val reading = tracker.on(event)) {
             is Reading.Opened -> opened = reading.path
-            is Reading.Moved -> db.deliveredAt(reading.path)?.let { book ->
+            is Reading.Moved -> bookAt(reading.path)?.let { book ->
                 val fraction = fraction(reading) ?: return
                 if (opened == reading.path) {
                     opened = null
@@ -193,11 +195,14 @@ class ReaderWatcher : Service() {
             }
             is Reading.Closed -> {
                 JumpService.instance?.withdraw()
-                if (db.deliveredAt(reading.path) != null) send(now)
+                if (bookAt(reading.path) != null) send(now)
             }
             null -> Unit
         }
     }
+
+    /** A book the app delivered, or one of the Tolino's own that GOtome has. */
+    private fun bookAt(path: String): Delivered? = db.deliveredAt(path) ?: own.matchedAt(path)
 
     /** Asks GOtome for the book's position when online, else goes by the last sync. */
     private fun offerJump(book: Delivered, reading: Reading.Moved) {
