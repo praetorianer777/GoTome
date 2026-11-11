@@ -285,6 +285,20 @@ func (q *Queries) DeleteFileIdentifiers(ctx context.Context, fileID *uuid.UUID) 
 	return err
 }
 
+const deleteFileIdentifiersOfType = `-- name: DeleteFileIdentifiersOfType :exec
+DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2
+`
+
+type DeleteFileIdentifiersOfTypeParams struct {
+	FileID *uuid.UUID
+	Type   string
+}
+
+func (q *Queries) DeleteFileIdentifiersOfType(ctx context.Context, arg DeleteFileIdentifiersOfTypeParams) error {
+	_, err := q.db.Exec(ctx, deleteFileIdentifiersOfType, arg.FileID, arg.Type)
+	return err
+}
+
 const getPublisher = `-- name: GetPublisher :one
 SELECT id, name, name_key FROM publishers WHERE id = $1
 `

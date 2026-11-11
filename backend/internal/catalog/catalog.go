@@ -108,6 +108,9 @@ const (
 	SourceFilename = "filename"
 	// SourceManual is a value a person typed.
 	SourceManual = "manual"
+	// SourceText is a value read from the printed imprint of a book's text,
+	// worth less than anything a file's metadata says.
+	SourceText = "text"
 )
 
 // NewFile is a file found on disk or uploaded.

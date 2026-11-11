@@ -205,3 +205,6 @@ SELECT file_id, position, title, start_ms, end_ms
 FROM audio_chapters
 WHERE file_id = ANY(sqlc.arg(file_ids)::uuid[])
 ORDER BY file_id, position;
+
+-- name: DeleteFileIdentifiersOfType :exec
+DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2;

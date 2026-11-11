@@ -6,6 +6,17 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A book whose file names no ISBN gets the one printed on its imprint page,
+  looked for after the word ISBN in the first and last pages of an EPUB or
+  PDF, so it can be looked up by ISBN. An ISBN marked as the e-book's comes
+  first; a list of other titles is not taken. The publisher and the year
+  printed there (`© 2019 Beispielverlag`, `1. Auflage 2019`) fill those
+  fields where the book has none. Nothing a file's metadata, a provider or a
+  person set is replaced. Books already in the library are read again for it
+  in the background after the update.
+
 ## [0.18.0] - 2026-11-11
 
 ### Added

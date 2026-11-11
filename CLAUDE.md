@@ -520,6 +520,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   under Debian's full FFmpeg by `make-files.sh`. Its `reference.json` is what
   came of them there; `gotome audio-check`, in `make stack-check`, and
   `TestAudioReadsAsTheReferenceSays` hold every build to it.
+- What a book prints about itself (#488): `ingest.ImprintOf` reads an ISBN
+  (after the word ISBN, checksum valid; an e-book's first, a print edition's
+  last; a document naming more than four is a list of other titles, and the
+  last six documents count only for a single one), the publisher and the year
+  from the first and last six documents or pages. `catalog.ApplyImprintTx`
+  gives them to the book as source `text`, only where nothing else said
+  anything (no ISBN at all, no publisher, no date; no lock); a file's own
+  metadata replaces them. It runs with extraction and with `ingest.chunk_file`,
+  so a raise of `ChunkVersion` reads existing books for it.
 - When two files of one book say different things, the format decides: EPUB over
   MOBI and AZW3 over PDF (`formatRanks` in `catalog`); within a rank, the file
   read first.
