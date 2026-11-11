@@ -61,6 +61,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- The **Not interested** button under a recommendation is tall enough to tap
+  easily.
 - A book card on the library page no longer grows wider than a narrow screen
   when its author or series name is very long or its "Completed" and star
   rating do not fit side by side: the names are cut off with an ellipsis and

@@ -112,11 +112,24 @@ export async function clippedTextProblems(page: Page): Promise<string[]> {
 			}
 			if (!layer) leaves.push(el);
 		}
+		// What of a box shows: its rectangle cut to every box around it that
+		// clips, so text an ellipsis cuts off lies over nothing.
+		const shown = (el) => {
+			const r = el.getBoundingClientRect();
+			let left = r.left, top = r.top, right = r.right, bottom = r.bottom;
+			for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+				const s = getComputedStyle(up);
+				const c = up.getBoundingClientRect();
+				if (s.overflowX === "hidden" || s.overflowX === "clip") { left = Math.max(left, c.left); right = Math.min(right, c.right); }
+				if (s.overflowY === "hidden" || s.overflowY === "clip") { top = Math.max(top, c.top); bottom = Math.min(bottom, c.bottom); }
+			}
+			return { left, top, right, bottom };
+		};
 		for (const [i, a] of leaves.entries()) {
-			const ra = a.getBoundingClientRect();
+			const ra = shown(a);
 			for (const b of leaves.slice(i + 1)) {
 				if (a.contains(b) || b.contains(a)) continue;
-				const rb = b.getBoundingClientRect();
+				const rb = shown(b);
 				const across = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
 				const down = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
 				// More than a line's leading, so a box that only touches is not a hit.
