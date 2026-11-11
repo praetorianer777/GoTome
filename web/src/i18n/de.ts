@@ -1469,6 +1469,7 @@ export const de: Record<MessageKey, string> = {
 	"book.ereader.malformed-document": "Kapiteldateien, die kein wohlgeformtes XHTML sind und die manche Reader ablehnen: {count}",
 	"book.ereader.broken-toc": "Einträge im Inhaltsverzeichnis, die ins Leere führen: {count}",
 	"fix.large-document": "In Kapitel teilen",
+	"fix.subset-fonts": "Schriften verkleinern",
 	"fix.large-fonts": "Schriften entfernen",
 	"fix.large-image": "Bilder verkleinern",
 	"fix.missing-resources": "Dateiliste reparieren",

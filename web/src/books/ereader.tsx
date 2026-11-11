@@ -7,6 +7,12 @@ import { formatSize } from "@/lib/format";
 
 type BookFile = components["schemas"]["BookFile"];
 type Finding = components["schemas"]["EreaderCheck"]["findings"][number];
+export type Fix = components["schemas"]["FixRequest"]["findings"][number];
+
+/** The ways to fix a finding: the fonts can be cut down to the book's characters or removed. */
+export function fixesFor(finding: Finding): Fix[] {
+	return finding === "large-fonts" ? ["subset-fonts", "large-fonts"] : [finding];
+}
 
 /** What each finding says about the file, from its measures. */
 function findingText(finding: Finding, check: components["schemas"]["EreaderCheck"]): string {
@@ -38,7 +44,7 @@ function findingText(finding: Finding, check: components["schemas"]["EreaderChec
 export function useFixFile() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async ({ id, findings }: { id: string; findings: Finding[] }) =>
+		mutationFn: async ({ id, findings }: { id: string; findings: Fix[] }) =>
 			(
 				await api.POST("/files/{fileId}/fix", {
 					params: { path: { fileId: id } },
@@ -76,17 +82,20 @@ export function EReaderFindings({ file, canFix }: { file: BookFile; canFix: bool
 						{findings.map((finding) => (
 							<li key={finding}>
 								{findingText(finding, check)}
-								{canFix && !file.missing && (
-									<button
-										type="button"
-										className={fixButton}
-										disabled={fix.isPending}
-										aria-label={t("fix.named", { fix: t(`fix.${finding}`), name: file.name })}
-										onClick={() => fix.mutate({ id: file.id, findings: [finding] })}
-									>
-										{t(`fix.${finding}`)}
-									</button>
-								)}
+								{canFix &&
+									!file.missing &&
+									fixesFor(finding).map((option) => (
+										<button
+											key={option}
+											type="button"
+											className={fixButton}
+											disabled={fix.isPending}
+											aria-label={t("fix.named", { fix: t(`fix.${option}`), name: file.name })}
+											onClick={() => fix.mutate({ id: file.id, findings: [option] })}
+										>
+											{t(`fix.${option}`)}
+										</button>
+									))}
 							</li>
 						))}
 					</ul>

@@ -11974,7 +11974,8 @@
                 "large-image",
                 "missing-resources",
                 "malformed-document",
-                "broken-toc"
+                "broken-toc",
+                "subset-fonts"
               ]
             }
           },
@@ -14409,7 +14410,8 @@
                 "large-image",
                 "missing-resources",
                 "malformed-document",
-                "broken-toc"
+                "broken-toc",
+                "subset-fonts"
               ]
             }
           }
@@ -14428,6 +14430,9 @@
             "type": "integer"
           },
           "fontsRemoved": {
+            "type": "integer"
+          },
+          "fontsSubset": {
             "type": "integer"
           },
           "imagesScaled": {
@@ -14450,6 +14455,7 @@
           "documentsSplit",
           "partsAdded",
           "imagesScaled",
+          "fontsSubset",
           "fontsRemoved",
           "itemsRemoved",
           "documentsRepaired",

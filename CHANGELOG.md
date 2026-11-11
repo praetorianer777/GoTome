@@ -13,6 +13,17 @@ What changes for someone who runs or uses GOtome. The format follows
   arrives, and the store has a tab "Nicht in GOtome" with the rest, each with
   "Zu GOtome hochladen". Uploading needs an account that may upload books and
   a device added with "Allow this device to upload books" on the profile.
+- Embedded fonts that make an EPUB heavy for an e-reader can be shrunk instead
+  of removed: "Shrink the fonts" on the book's page and in "Fix for
+  e-readers" keeps each TrueType and OpenType (CFF) font, cut down to the
+  characters the book uses, so a typeface the book relies on stays at a fraction of its size.
+  Fonts it cannot cut (WOFF2, or damaged ones) stay as they are
+  unless the fonts are still over 1 MB, when they are removed.
+
+### Changed
+
+- "Fix for e-readers" with "Everything found" shrinks the fonts rather than
+  removing them.
 
 ### Fixed
 

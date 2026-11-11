@@ -719,11 +719,13 @@ export class FakeServer {
 				return Response.json({ error: { code: "not_found", message: "There is no such file." } }, { status: 404 });
 			}
 			this.fixes.push({ file: file.id, findings });
-			file.ereader.findings = file.ereader.findings.filter((f) => !findings.includes(f));
+			const fixed = findings.map((f) => (f === "subset-fonts" ? "large-fonts" : f));
+			file.ereader.findings = file.ereader.findings.filter((f) => !fixed.includes(f));
 			return Response.json({
 				documentsSplit: findings.includes("large-document") ? 1 : 0,
 				partsAdded: findings.includes("large-document") ? 4 : 0,
 				imagesScaled: findings.includes("large-image") ? 1 : 0,
+				fontsSubset: findings.includes("subset-fonts") ? 8 : 0,
 				fontsRemoved: findings.includes("large-fonts") ? 8 : 0,
 				itemsRemoved: findings.includes("missing-resources") ? 1 : 0,
 				documentsRepaired: findings.includes("malformed-document") ? 2 : 0,
@@ -2141,9 +2143,10 @@ export class FakeServer {
 				book.fields.tags = { source: "manual", locked: true };
 			}
 			if (req.action === "fix") {
+				const fixed = (req.findings ?? []).map((x) => (x === "subset-fonts" ? "large-fonts" : x));
 				for (const f of book.files) {
-					if (f.ereader?.findings.some((x) => req.findings?.includes(x))) {
-						f.ereader.findings = f.ereader.findings.filter((x) => !req.findings?.includes(x));
+					if (f.ereader?.findings.some((x) => fixed.includes(x))) {
+						f.ereader.findings = f.ereader.findings.filter((x) => !fixed.includes(x));
 						changed = true;
 					}
 				}

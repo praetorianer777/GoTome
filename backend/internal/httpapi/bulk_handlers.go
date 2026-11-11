@@ -81,8 +81,8 @@ func (s *Server) startBulk(w http.ResponseWriter, r *http.Request) error {
 		return ErrValidation(map[string]string{"findings": "Only a fix takes findings."})
 	}
 	for _, f := range req.Findings {
-		if !slices.Contains(epub.Findings, f) {
-			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a finding; one is %s.", f, strings.Join(epub.Findings, ", "))})
+		if !slices.Contains(epub.Fixes, f) {
+			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a fix; one is %s.", f, strings.Join(epub.Fixes, ", "))})
 		}
 	}
 	var change catalog.Change

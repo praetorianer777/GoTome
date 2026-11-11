@@ -568,8 +568,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   mending tables of contents (an entry whose document is missing goes,
   or points at the first entry below it that leads somewhere; one whose
   fragment is missing points at its document; a table is changed only
-  when it parses after and keeps every entry that led somewhere). Fonts
-  are not subset: there is no font writer to do it with. `ingest.Service.Fix` is the one writer:
+  when it parses after and keeps every entry that led somewhere). The
+  fix `epub.SubsetFonts` (`subset-fonts`, another way to fix `large-fonts`;
+  `epub.Fixes` is the findings and it) cuts TrueType (glyf) and OpenType (CFF) fonts, plain, WOFF or
+  obfuscated (IDPF and Adobe, keyed by the package's unique identifier,
+  scrambled again under the same name), down to the characters of the
+  documents whose style sheets declare them plus a safety set
+  (`fix_fonts.go`), with `internal/format/fontsubset`, a writer of our own:
+  a glyf font is renumbered (cmap, hmtx, loca and post rewritten); a CFF
+  font (`fontsubset/cff.go`) keeps its glyph numbers, empties the other
+  glyphs' charstrings, stubs the subroutines no kept glyph calls (found by
+  following charstrings, `seac` accents through the Standard Encoding),
+  blanks unused strings and drops the glyphs after the last one kept. Tables
+  keyed by glyph (GSUB, GPOS, kern, ...) are dropped; the result is
+  checked against the original with x/image's reader before it replaces
+  anything. WOFF2, collections and fonts it cannot read stay, and are removed only while the
+  fonts together are still past `MaxFontBytes`. `ingest.Service.Fix` is the one writer:
   written beside the file and read back, then in one transaction the
   original goes into the trash as a file of its own (`<name>
   (original).epub`, `AddTrashedOriginal`) and the fixed file takes its
