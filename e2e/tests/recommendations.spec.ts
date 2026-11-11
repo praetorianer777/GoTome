@@ -17,6 +17,7 @@ function summary(id: string, title: string, libraryId: string) {
 		status: "unread",
 		placeholder: false,
 		filesMissing: false,
+		ereaderFindings: [],
 	};
 }
 

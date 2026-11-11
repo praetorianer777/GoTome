@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/filter"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -111,6 +113,9 @@ type bookSummary struct {
 	// FilesMissing is a book all of whose files a scan no longer found in
 	// the library's folder: it cannot be opened, downloaded or sent.
 	FilesMissing bool `json:"filesMissing"`
+	// EReaderFindings are what may make the book's EPUBs slow or
+	// troublesome on an e-reader, each once.
+	EReaderFindings []string `json:"ereaderFindings"`
 }
 
 type bookList struct {
@@ -311,8 +316,18 @@ func summaryOf(b catalog.Summary) bookSummary {
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors, AuthorKeys: authorKeys,
 		Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
 		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
-		Placeholder: b.Placeholder, FilesMissing: b.FilesMissing,
+		Placeholder: b.Placeholder, FilesMissing: b.FilesMissing, EReaderFindings: orderedFindings(b.EReaderFindings),
 	}
+}
+
+func orderedFindings(found []string) []string {
+	out := []string{}
+	for _, kind := range epub.Findings {
+		if slices.Contains(found, kind) {
+			out = append(out, kind)
+		}
+	}
+	return out
 }
 
 type searchQuery struct {

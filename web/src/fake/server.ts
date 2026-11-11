@@ -273,6 +273,7 @@ export class FakeServer {
 		withoutText: 15,
 		withMissingFiles: 0,
 		withEreaderFindings: 0,
+		ereaderKinds: [] as { name: string; count: number }[],
 		formats: [
 			{ name: "epub", count: 1100, bytes: 2_000_000_000 },
 			{ name: "pdf", count: 400, bytes: 1_400_000_000 },
@@ -3114,6 +3115,7 @@ function summaryOf(b: BookDetail): BookSummary {
 		rating: b.reading.rating,
 		placeholder: b.placeholder,
 		filesMissing: b.files.length > 0 && b.files.every((f) => f.missing),
+		ereaderFindings: [...new Set(b.files.flatMap((f) => f.ereader?.findings ?? []))],
 	};
 }
 

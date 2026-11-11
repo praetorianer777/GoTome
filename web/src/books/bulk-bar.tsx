@@ -26,6 +26,7 @@ import { EREADER_FINDINGS } from "@/books/rules";
 import { useQueue } from "@/player/queue";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
+import { librariesQuery } from "@/libraries/api";
 import { ownDevicesQuery } from "@/users/api";
 
 const quietButton =
@@ -42,6 +43,7 @@ export function BulkBar({
 	count,
 	canEdit,
 	all,
+	library,
 	selection,
 	onSelectAll,
 	onClear,
@@ -50,6 +52,8 @@ export function BulkBar({
 	/** Whether the person may change the books themselves, not only their own status. */
 	canEdit: boolean;
 	all: boolean;
+	/** The library the list is limited to, if any. */
+	library?: string;
 	selection: Pick<BulkRequest, "books" | "library" | "filter">;
 	onSelectAll: () => void;
 	onClear: () => void;
@@ -66,6 +70,10 @@ export function BulkBar({
 	const kindle = useQuery(kindleQuery);
 	const sendKindle = useSendToKindle();
 	const queue = useQueue();
+	const libraries = useQuery(librariesQuery);
+	const readOnly = (libraries.data ?? []).some(
+		(l) => !l.writable && (!library || l.id === library),
+	);
 	const none = !all && count === 0;
 	const run = (action: BulkAction, change?: BulkRequest["change"], findings?: BulkRequest["findings"]) =>
 		start.mutate(
@@ -264,6 +272,9 @@ export function BulkBar({
 			<FormError error={sendKindle.error} />
 			<FormError error={send.error} />
 			<FormError error={collect.error} />
+			{canEdit && readOnly && (
+				<p className="text-slate-700 dark:text-slate-300">{t("bulk.fix.readOnly")}</p>
+			)}
 			<FormError error={setStatus.error} />
 			{!editing && <FormError error={start.error} />}
 			{editing && (

@@ -37,6 +37,19 @@ SELECT (SELECT count(*) FROM vb)::int AS books,
        (SELECT count(DISTINCT book_id) FROM vf WHERE missing_at IS NOT NULL)::int AS with_missing_files,
        (SELECT count(DISTINCT book_id) FROM vf WHERE cardinality(ereader_findings) > 0)::int AS with_ereader_findings;
 
+-- name: EreaderFindingCounts :many
+-- The viewer's books with each e-reader finding, in an EPUB that is not
+-- in the trash; a book with two findings counts under both.
+SELECT finding::text AS finding, count(DISTINCT f.book_id)::int AS books
+FROM book_files f
+JOIN books b ON b.id = f.book_id
+CROSS JOIN LATERAL unnest(f.ereader_findings) AS finding
+WHERE cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
+GROUP BY finding;
+
 -- name: FilesByFormat :many
 -- The viewer's files by format, the most first.
 SELECT f.format, count(*)::int AS files, COALESCE(sum(f.size_bytes), 0)::bigint AS bytes
