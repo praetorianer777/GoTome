@@ -170,6 +170,15 @@ merged "Change the API (#16)" Fixed "The API." && git commit -q --allow-empty -m
 FAKE_BRANCHES="16=fix/16-api" ./release.sh >/dev/null 2>&1
 check "a break from 1.0 on is a major release" "$(cat VERSION)" "2.0.0"
 
+sandbox auto-break-long
+echo "1.4.2" > VERSION && git commit -q -am "1.4.2" && git tag -a v1.4.2 -m v1.4.2 && git push -q origin main v1.4.2
+# More than a pipe holds after the footer, so git log is still writing when
+# grep finds it.
+for n in 1 2 3; do git commit -q --allow-empty -m "Long $n" -m "$(head -c 60000 /dev/zero | tr '\0' 'x' | fold -w 70)"; done
+merged "Change the API (#18)" Fixed "The API." && git commit -q --allow-empty -m "Follow-up" -m "BREAKING CHANGE: the API moved" && git push -q origin main
+FAKE_BRANCHES="18=fix/18-api" ./release.sh >/dev/null 2>&1
+check "a break before a long log is still a major release" "$(cat VERSION)" "2.0.0"
+
 sandbox auto-mention
 merged "Explain breaks (#17)" Fixed "Docs." && git commit -q --allow-empty -m "Note" -m "A BREAKING CHANGE footer makes a major release." && git push -q origin main
 FAKE_BRANCHES="17=fix/17-docs" ./release.sh >/dev/null 2>&1
