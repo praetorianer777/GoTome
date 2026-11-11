@@ -15,7 +15,7 @@ var basePathKey basePathKeyType
 // at the root, which is what the routes and the web app are written for, and
 // answers every other path as not found. The probes stay at the root as
 // well: the container's health check asks the process itself, not a proxy.
-// A proxy must pass the prefix on (docs/reverse-proxy.md).
+// A proxy must pass the prefix on (docs/reverse-proxy-sub-path.md).
 func underBase(base string, h http.Handler) http.Handler {
 	if base == "" || base == "/" {
 		return h
