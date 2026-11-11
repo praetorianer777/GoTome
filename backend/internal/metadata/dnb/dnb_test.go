@@ -218,7 +218,7 @@ func TestBySeriesKeepsTheBooksOfThatSeries(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].Title != "Eins" {
 		t.Fatalf("BySeries: %+v, %v", got, err)
 	}
-	if q := web.cql(t); q != `rei="Beispielreihe"` {
+	if q := web.cql(t); q != `tit="Beispielreihe"` {
 		t.Errorf("query %q", q)
 	}
 }
@@ -274,7 +274,29 @@ func TestLiveContract(t *testing.T) {
 	if err != nil || len(got) == 0 {
 		t.Fatalf("Search: %+v, %v", got, err)
 	}
-	if i := slices.IndexFunc(got, func(r metadata.Record) bool { return r.Title == "Effi Briest" && r.Language == "de" }); i < 0 {
-		t.Errorf("Effi Briest is not among %d results", len(got))
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return r.Title == "Effi Briest" && r.Language == "de" })
+	if i < 0 {
+		t.Fatalf("Effi Briest is not among %d results", len(got))
+	}
+
+	var isbn catalog.Identifier
+	for _, r := range got {
+		if j := slices.IndexFunc(r.Identifiers, func(id catalog.Identifier) bool { return id.Type == catalog.IDISBN }); j >= 0 {
+			isbn = r.Identifiers[j]
+			break
+		}
+	}
+	if isbn.Value == "" {
+		t.Fatal("no edition of the search names an ISBN")
+	}
+	found, err := p.Lookup(context.Background(), metadata.LiveWeb(p), isbn)
+	if err != nil || len(found) == 0 || !slices.Contains(found[0].Identifiers, isbn) {
+		t.Errorf("Lookup(%s): %+v, %v", isbn.Value, found, err)
+	}
+
+	const series = "Theodor Fontane Trilogie"
+	books, err := p.BySeries(context.Background(), metadata.LiveWeb(p), series)
+	if err != nil || len(books) == 0 {
+		t.Errorf("BySeries(%q): %+v, %v", series, books, err)
 	}
 }
