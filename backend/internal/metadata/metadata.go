@@ -213,6 +213,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			continue
 		}
 		web := s.webs[p.Name()]
+		searched := false
 		records, err := func() ([]Record, error) {
 			var records []Record
 			for _, id := range ids {
@@ -225,6 +226,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			if len(records) > 0 {
 				return records, nil
 			}
+			searched = true
 			records, err := p.Search(ctx, web, q)
 			if errors.Is(err, ErrNotFound) {
 				return nil, nil
@@ -241,7 +243,12 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 		for i := range records {
 			records[i].Provider = p.Name()
 		}
-		cosines := s.describe(ctx, book, records)
+		// Only a book looked up by its title needs its candidates told
+		// apart by what they are about.
+		cosines := make([]*float64, len(records))
+		if searched {
+			cosines = s.describe(ctx, book, records)
+		}
 		for i, r := range records {
 			found = append(found, Candidate{Record: r, Score: score(book, r, scoreInput{rank: i, cosine: cosines[i]})})
 		}

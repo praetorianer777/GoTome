@@ -25,6 +25,10 @@ What changes for someone who runs or uses GOtome. The format follows
 - The learned weights can be exported as a small file that holds numbers
   only (no title, author, ISBN or path), and a file someone shared can be
   imported and measured on your library before you use it.
+- Where books have been embedded, a candidate found by title also counts
+  by its description: how near it is to the book's own text is one more
+  thing the learned score weighs, which tells another book of the same
+  author and a like title from the book itself.
 
 ## [0.18.0] - 2026-11-11
 

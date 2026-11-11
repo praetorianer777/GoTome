@@ -931,6 +931,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the sample with every score there is (`Variants`) and reports the
   calibration. `Check` and `Train` ask through `gather`, once, and rank
   with `evaluate`.
+- A candidate's description is one more feature, `description` (#491): for
+  a book looked up by its title that has a content vector, the first three
+  descriptions of at least 60 characters of each provider's answer are
+  embedded as queries with the model's prefix and their cosine to the
+  book's content vector is the feature, centred and scaled
+  (`Service.Describe`, set to `similar.Service.CompareToBook`; the vectors
+  of descriptions are kept in memory by the hash of model and text). It is
+  nil, and the feature absent, where the book has no content vector,
+  embedding is off, the model cannot run, or the record has no description.
+  `match-check` and `match-train` take `-descriptions=false` to measure
+  without it.
 
 ## Reading state
 

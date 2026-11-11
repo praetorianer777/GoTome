@@ -11,6 +11,34 @@ import (
 	"github.com/google/uuid"
 )
 
+const cosineToBookContent = `-- name: CosineToBookContent :one
+SELECT (1 - (v.embedding <=> CAST($1 AS vector)))::float8 AS cosine
+FROM book_vectors v
+WHERE v.book_id = $2::uuid AND v.kind = 'content'
+  AND v.model = $3::text AND v.model_version = $4::text
+`
+
+type CosineToBookContentParams struct {
+	Query        string
+	BookID       uuid.UUID
+	Model        string
+	ModelVersion string
+}
+
+// The cosine of a text's vector to a book's content vector of the model;
+// no row where the book has none.
+func (q *Queries) CosineToBookContent(ctx context.Context, arg CosineToBookContentParams) (float64, error) {
+	row := q.db.QueryRow(ctx, cosineToBookContent,
+		arg.Query,
+		arg.BookID,
+		arg.Model,
+		arg.ModelVersion,
+	)
+	var cosine float64
+	err := row.Scan(&cosine)
+	return cosine, err
+}
+
 const countEmbedded = `-- name: CountEmbedded :one
 SELECT count(*)::int AS books,
        count(f.id)::int AS with_text,
@@ -211,6 +239,27 @@ SELECT coalesce(book_metadata_text($1::uuid), '')::text
 func (q *Queries) GetBookMetadataText(ctx context.Context, bookID uuid.UUID) (string, error) {
 	row := q.db.QueryRow(ctx, getBookMetadataText, bookID)
 	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const hasBookContentVector = `-- name: HasBookContentVector :one
+SELECT EXISTS (
+    SELECT 1 FROM book_vectors v
+    WHERE v.book_id = $1::uuid AND v.kind = 'content'
+      AND v.model = $2::text AND v.model_version = $3::text
+)::boolean
+`
+
+type HasBookContentVectorParams struct {
+	BookID       uuid.UUID
+	Model        string
+	ModelVersion string
+}
+
+func (q *Queries) HasBookContentVector(ctx context.Context, arg HasBookContentVectorParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasBookContentVector, arg.BookID, arg.Model, arg.ModelVersion)
+	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
 }

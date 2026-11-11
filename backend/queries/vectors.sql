@@ -266,3 +266,18 @@ DELETE FROM unused_embedding_models WHERE name = $1;
 -- Another model was chosen in its place just now.
 INSERT INTO unused_embedding_models (name) VALUES ($1)
 ON CONFLICT (name) DO UPDATE SET since = now();
+
+-- name: CosineToBookContent :one
+-- The cosine of a text's vector to a book's content vector of the model;
+-- no row where the book has none.
+SELECT (1 - (v.embedding <=> CAST(sqlc.arg(query) AS vector)))::float8 AS cosine
+FROM book_vectors v
+WHERE v.book_id = sqlc.arg(book_id)::uuid AND v.kind = 'content'
+  AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text;
+
+-- name: HasBookContentVector :one
+SELECT EXISTS (
+    SELECT 1 FROM book_vectors v
+    WHERE v.book_id = sqlc.arg(book_id)::uuid AND v.kind = 'content'
+      AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
+)::boolean;

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
@@ -198,7 +199,7 @@ func (s *Service) Train(ctx context.Context, opts TrainOptions) (TrainReport, er
 		}
 	}
 	slices.SortFunc(r.Weights, func(a, b WeightRow) int {
-		return compareStrings(a.Feature, b.Feature)
+		return strings.Compare(a.Feature, b.Feature)
 	})
 	if err := s.saveProfile(ctx, slotLearned, newProfile(final, len(sample), r.Languages, r.Shares)); err != nil {
 		return r, err
@@ -207,13 +208,3 @@ func (s *Service) Train(ctx context.Context, opts TrainOptions) (TrainReport, er
 }
 
 func round2(v float64) float64 { return float64(int(v*100+0.5)) / 100 }
-
-func compareStrings(a, b string) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
-	}
-	return 0
-}

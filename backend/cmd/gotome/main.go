@@ -297,6 +297,7 @@ func serve() error {
 		}
 	}
 	vectors := similar.NewService(pool, settingStore.Embedding, opener, log)
+	meta.Describe = vectors.CompareToBook
 	vectors.Probe = similar.ServerProbe(similar.OnnxProbe(onnx), settingStore.EmbeddingServer)
 	vectors.Passages = scans.Passages
 	vectors.ModelDir = cfg.ModelDir
@@ -788,7 +789,7 @@ func genreCheck(args []string) error {
 
 // matchEnvironment opens what the match commands work with: the
 // metadata service and the settings.
-func matchEnvironment() (ctx context.Context, meta *metadata.Service, store *settings.Store, done func(), err error) {
+func matchEnvironment(descriptions bool) (ctx context.Context, meta *metadata.Service, store *settings.Store, done func(), err error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -820,6 +821,11 @@ func matchEnvironment() (ctx context.Context, meta *metadata.Service, store *set
 		done()
 		return nil, nil, nil, nil, err
 	}
+	if descriptions {
+		vectors := checkVectors(cfg, pool, store, log)
+		vectors.WaitForModel = true
+		meta.Describe = vectors.CompareToBook
+	}
 	return ctx, meta, store, done, nil
 }
 
@@ -828,13 +834,14 @@ func matchEnvironment() (ctx context.Context, meta *metadata.Service, store *set
 // It asks the providers, at their pace and through the answer cache.
 func matchCheck(args []string) error {
 	flags := flag.NewFlagSet("match-check", flag.ContinueOnError)
+	descriptions := flags.Bool("descriptions", true, "compare each candidate's description with the book's own vectors, where the book has them")
 	n := flags.Int("n", 100, "how many books with an ISBN to look up at most")
 	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
 	asJSON := flags.Bool("json", false, "print the report as JSON")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	ctx, meta, store, done, err := matchEnvironment()
+	ctx, meta, store, done, err := matchEnvironment(*descriptions)
 	if err != nil {
 		return err
 	}
@@ -874,6 +881,7 @@ func matchCheck(args []string) error {
 // and keeps the weights, printing numbers only.
 func matchTrain(args []string) error {
 	flags := flag.NewFlagSet("match-train", flag.ContinueOnError)
+	descriptions := flags.Bool("descriptions", true, "compare each candidate's description with the book's own vectors, where the book has them")
 	n := flags.Int("n", metadata.DefaultLearnBooks, "how many books with an ISBN to look up at most")
 	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
 	asJSON := flags.Bool("json", false, "print the report as JSON")
@@ -881,7 +889,7 @@ func matchTrain(args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	ctx, meta, store, done, err := matchEnvironment()
+	ctx, meta, store, done, err := matchEnvironment(*descriptions)
 	if err != nil {
 		return err
 	}

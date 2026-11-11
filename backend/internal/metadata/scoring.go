@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
+
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
@@ -268,7 +271,7 @@ func (s *Service) Scoring(ctx context.Context) (ScoringStatus, error) {
 		return st, err
 	}
 	st.Using = set.using
-	if name, ok := cutPrefix(set.using, "profile:"); ok {
+	if name, ok := strings.CutPrefix(set.using, "profile:"); ok {
 		st.Profile = name
 	}
 	q := sqlc.New(s.pool)
@@ -322,13 +325,6 @@ func (s *Service) Scoring(ctx context.Context) (ScoringStatus, error) {
 	return st, nil
 }
 
-func cutPrefix(s, prefix string) (string, bool) {
-	if len(s) >= len(prefix) && s[:len(prefix)] == prefix {
-		return s[len(prefix):], true
-	}
-	return s, false
-}
-
 // newProfile is what a learning makes of its weights.
 func newProfile(w Weights, books int, languages, providers map[string]float64) Profile {
 	return Profile{
@@ -337,10 +333,47 @@ func newProfile(w Weights, books int, languages, providers map[string]float64) P
 	}
 }
 
-var errRunBusy = fmt.Errorf("a run of this kind is waiting or running")
+// How a candidate's description is compared with the book's text: only
+// descriptions long enough to say what the book is about, and only the
+// first few of each provider's answer, as every one costs an embedding.
+const (
+	describeTop      = 3
+	describeMinRunes = 60
+	describeMaxRunes = 1500
+)
 
-// describe works out how near each record's description is to the book's
-// text, for the records that can be compared; the others get nil.
-func (s *Service) describe(_ context.Context, _ catalog.Book, records []Record) []*float64 {
-	return make([]*float64, len(records))
+// describe works out how near the descriptions of a provider's first
+// records are to the book's text, where the book has a content vector;
+// the other records, and all of them where that cannot be worked out,
+// get nil.
+func (s *Service) describe(ctx context.Context, book catalog.Book, records []Record) []*float64 {
+	out := make([]*float64, len(records))
+	if s.Describe == nil || book.ID == uuid.Nil {
+		return out
+	}
+	taken := map[string]int{}
+	var at []int
+	var texts []string
+	for i, r := range records {
+		d := strings.TrimSpace(r.Description)
+		if utf8.RuneCountInString(d) < describeMinRunes || taken[r.Provider] >= describeTop {
+			continue
+		}
+		taken[r.Provider]++
+		if utf8.RuneCountInString(d) > describeMaxRunes {
+			d = string([]rune(d)[:describeMaxRunes])
+		}
+		at, texts = append(at, i), append(texts, d)
+	}
+	if len(texts) == 0 {
+		return out
+	}
+	cosines, err := s.Describe(ctx, book.ID, texts)
+	if err != nil || len(cosines) != len(texts) {
+		return out
+	}
+	for j, i := range at {
+		out[i] = cosines[j]
+	}
+	return out
 }

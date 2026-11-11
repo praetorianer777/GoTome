@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -102,6 +103,11 @@ type Service struct {
 	learnScore     func(context.Context) bool
 	// Queue is set once the job runner exists.
 	Queue Queue
+	// Describe, when set, says how near texts are to a book's own text, as
+	// cosines of their vectors to its content vector, nil where that cannot
+	// be said (similar.Service.CompareToBook). A candidate's description
+	// is one more feature of the learned score.
+	Describe func(ctx context.Context, bookID uuid.UUID, texts []string) ([]*float64, error)
 	// tokenKey signs cover tokens. It is new with every start: a token is
 	// good for as long as the page that holds it.
 	tokenKey []byte

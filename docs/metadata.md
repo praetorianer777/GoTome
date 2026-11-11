@@ -187,6 +187,19 @@ hand-set ones), the hand-set ones, or an imported file's.
 `metadata.learnScore` learns once a week, where at least 500 books have
 an ISBN, through the cache.
 
+**What the book is about.** Where embedding is on and a book has been
+embedded, a candidate found by title also counts by its description: the
+descriptions of the first three candidates of each source (long enough
+to say something) are embedded like a search query and their cosine to
+the book's own text vector is one more feature of the score. It helps to
+tell another book of the same author and a like title from the book
+itself. Nothing is compared where the book has no vector, the candidate
+no description, or embedding is off; books looked up by ISBN are never
+compared; the vectors of descriptions are kept in memory by the hash of
+the text, not stored. `match-check` and `match-train` take
+`-descriptions=false` to measure without it. The learned weights decide
+how much it counts: the hand-set score does not use it.
+
 **Sharing what was learned, never the books.** *Export weights* writes a
 small JSON file: the weights, the version of the feature set, the
 version of GOtome, how many books were learned from and the shares of

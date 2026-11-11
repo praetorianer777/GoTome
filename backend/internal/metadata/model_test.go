@@ -1,10 +1,15 @@
 package metadata
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 )
@@ -170,5 +175,46 @@ func TestAShippedProfileFitsALibraryByItsLanguages(t *testing.T) {
 		if err := s.profile.Check(); err != nil {
 			t.Errorf("shipped profile %s: %v", s.name, err)
 		}
+	}
+}
+
+func TestOnlyTheFirstFewLongDescriptionsOfAProviderAreCompared(t *testing.T) {
+	long := strings.Repeat("A detective walks the canals of an old city. ", 4)
+	records := []Record{
+		{Provider: "a", Description: "short"},
+		{Provider: "a", Description: long},
+		{Provider: "a", Description: long + "1"},
+		{Provider: "a", Description: long + "2"},
+		{Provider: "a", Description: long + "3"},
+		{Provider: "b", Description: long + "4"},
+		{Provider: "b"},
+	}
+	var asked []string
+	s := &Service{Describe: func(_ context.Context, book uuid.UUID, texts []string) ([]*float64, error) {
+		asked = texts
+		out := make([]*float64, len(texts))
+		for i := range out {
+			out[i] = ptr(0.5 + float64(i)/100)
+		}
+		return out, nil
+	}}
+	got := s.describe(context.Background(), catalog.Book{ID: uuid.New()}, records)
+	if len(asked) != 4 {
+		t.Fatalf("asked about %d texts", len(asked))
+	}
+	var set []int
+	for i, c := range got {
+		if c != nil {
+			set = append(set, i)
+		}
+	}
+	if !slices.Equal(set, []int{1, 2, 3, 5}) {
+		t.Errorf("compared records %v", set)
+	}
+	if got := (&Service{}).describe(context.Background(), catalog.Book{ID: uuid.New()}, records); slices.ContainsFunc(got, func(c *float64) bool { return c != nil }) {
+		t.Error("nothing is compared without a way to")
+	}
+	if got := s.describe(context.Background(), catalog.Book{}, records); slices.ContainsFunc(got, func(c *float64) bool { return c != nil }) {
+		t.Error("a book without an ID has no vectors")
 	}
 }
