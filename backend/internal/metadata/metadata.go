@@ -278,6 +278,13 @@ func lookupIDs(book catalog.Book) []catalog.Identifier {
 			ids = append(ids, id.Identifier)
 		}
 	}
+	if len(ids) == 0 {
+		for _, isbn := range book.PrintISBNs {
+			if id, ok := catalog.NormalizeIdentifier(catalog.IDISBN, isbn); ok && len(ids) < maxLookups {
+				ids = append(ids, id)
+			}
+		}
+	}
 	// Papers and many scholarly books have a DOI and no ISBN.
 	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
 		ids = append(ids, book.Identifiers[i].Identifier)

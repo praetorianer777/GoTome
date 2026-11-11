@@ -208,3 +208,11 @@ ORDER BY file_id, position;
 
 -- name: DeleteFileIdentifiersOfType :exec
 DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2;
+
+-- name: SetFileTextPrintISBN :exec
+UPDATE book_files SET text_print_isbn = $2 WHERE id = $1 AND text_print_isbn IS DISTINCT FROM $2;
+
+-- name: ListBookTextPrintISBNs :many
+SELECT DISTINCT text_print_isbn::text FROM book_files
+WHERE book_id = $1 AND text_print_isbn IS NOT NULL AND trashed_at IS NULL
+ORDER BY 1;

@@ -11,11 +11,14 @@ What changes for someone who runs or uses GOtome. The format follows
 - A book whose file names no ISBN gets the one printed on its imprint page,
   looked for after the word ISBN in the first and last pages of an EPUB or
   PDF, so it can be looked up by ISBN. An ISBN marked as the e-book's comes
-  first; a list of other titles is not taken. The publisher and the year
-  printed there (`© 2019 Beispielverlag`, `1. Auflage 2019`) fill those
-  fields where the book has none. Nothing a file's metadata, a provider or a
-  person set is replaced. Books already in the library are read again for it
-  in the background after the update.
+  first; a list of other titles is not taken. One that stands only beside
+  "Print" or "Taschenbuch" is another edition's: it is asked about when the
+  book is looked up but never stored as the book's ISBN. The publisher and
+  the year printed there (`© 2019 Beispielverlag`, `1. Auflage 2019`) fill
+  those fields where the book has none. Nothing a file's metadata, a
+  provider or a person set is replaced. The first start after the update
+  reads the text of every book again in the background, which keeps the CPU
+  busy for hours on a large library.
 
 ## [0.18.0] - 2026-11-11
 

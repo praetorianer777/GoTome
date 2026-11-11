@@ -16,7 +16,10 @@ import (
 // Imprint is what a book's text prints about it: the ISBN as stored, the
 // publisher's name and the year, each empty where the text does not say.
 type Imprint struct {
-	ISBN      string
+	ISBN string
+	// PrintISBN is one the text names only beside a print edition. It is
+	// never stored as the book's identifier, only asked about at a lookup.
+	PrintISBN string
 	Publisher string
 	Year      string
 }
@@ -38,6 +41,13 @@ func ApplyImprintTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, format str
 	sources := map[string]string{}
 	if err := json.Unmarshal(book.FieldSources, &sources); err != nil {
 		return fmt.Errorf("field sources of book %s: %w", book.ID, err)
+	}
+	var printISBN *string
+	if id, ok := NormalizeIdentifier(IDISBN, im.PrintISBN); ok {
+		printISBN = &id.Value
+	}
+	if err := q.SetFileTextPrintISBN(ctx, sqlc.SetFileTextPrintISBNParams{ID: fileID, TextPrintIsbn: printISBN}); err != nil {
+		return err
 	}
 	free := func(field string, empty bool) bool {
 		if slices.Contains(book.LockedFields, field) {

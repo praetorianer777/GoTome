@@ -43,9 +43,14 @@ func ImprintOf(sections []Section) catalog.Imprint {
 		head, tail = sections[:imprintEdge], sections[len(sections)-imprintEdge:]
 	}
 	var imprint catalog.Imprint
-	imprint.ISBN = isbnOf(head, false)
-	if imprint.ISBN == "" {
-		imprint.ISBN = isbnOf(tail, true)
+	isbn, kind := isbnOf(head, false)
+	if isbn == "" {
+		isbn, kind = isbnOf(tail, true)
+	}
+	if kind == isbnPrint {
+		imprint.PrintISBN = isbn
+	} else {
+		imprint.ISBN = isbn
 	}
 	for _, group := range [][]Section{head, tail} {
 		for _, s := range group {
@@ -73,10 +78,10 @@ const (
 
 // isbnOf picks the book's own ISBN among those the documents print after the
 // word ISBN: an e-book's first, then an unlabelled one, then a print
-// edition's. A document that names many is a list of other titles. When
+// edition's, which is reported as such. A document that names many is a list of other titles. When
 // alone is set, only a single ISBN counts, as at the end of a book it is as
 // likely an advertisement as the imprint.
-func isbnOf(group []Section, alone bool) string {
+func isbnOf(group []Section, alone bool) (string, int) {
 	var found []isbnFound
 	for _, s := range group {
 		found = append(found, isbnsIn(s.Text)...)
@@ -86,16 +91,16 @@ func isbnOf(group []Section, alone bool) string {
 		distinct[f.value] = true
 	}
 	if len(distinct) == 0 || (alone && len(distinct) > 1) {
-		return ""
+		return "", isbnPlain
 	}
 	for _, kind := range []int{isbnEbook, isbnPlain, isbnPrint} {
 		for _, f := range found {
 			if f.kind == kind {
-				return f.value
+				return f.value, kind
 			}
 		}
 	}
-	return ""
+	return "", isbnPlain
 }
 
 func isbnsIn(text string) []isbnFound {

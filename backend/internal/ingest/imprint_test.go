@@ -24,7 +24,7 @@ func TestImprintOf(t *testing.T) {
 		{"bad checksum", sec("x", "ISBN 978-0-306-40615-8"), ""},
 		{"e-book beats print", sec("x", "ISBN 978-1-86197-271-2 (Print)\nISBN 978-0-306-40615-7 (E-Book)"), "9780306406157"},
 		{"e-book label before", sec("x", "Print ISBN 978-1-86197-271-2 ISBN E-Book: 978-0-306-40615-7"), "9780306406157"},
-		{"print used when alone", sec("x", "Taschenbuch ISBN 978-0-306-40615-7"), "9780306406157"},
+		{"print alone is not the book's", sec("x", "Taschenbuch ISBN 978-0-306-40615-7"), ""},
 		{"print after unlabelled", sec("x", "ISBN 978-1-86197-271-2 Taschenbuch\nISBN 978-0-306-40615-7"), "9780306406157"},
 		{"list of other titles", sec("x", "ISBN 978-0-306-40615-7 ISBN 978-1-86197-271-2 ISBN 978-0-14-044913-6 ISBN 978-0-19-953556-9 ISBN 978-0-7432-7356-5"), ""},
 		{"head wins over tail", append(sec("x", "ISBN 978-0-306-40615-7"), append(make([]Section, 20), sec("ISBN 978-1-86197-271-2")...)...), "9780306406157"},
@@ -54,5 +54,16 @@ func TestImprintPublisherAndYear(t *testing.T) {
 		if got.Publisher != c.publisher || got.Year != c.year {
 			t.Errorf("%q: got publisher %q year %q, want %q %q", c.text, got.Publisher, got.Year, c.publisher, c.year)
 		}
+	}
+}
+
+func TestAPrintISBNIsKeptApart(t *testing.T) {
+	im := ImprintOf(sec("x", "Taschenbuch ISBN 978-0-306-40615-7"))
+	if im.ISBN != "" || im.PrintISBN != "9780306406157" {
+		t.Errorf("ISBN %q, print %q; want the print one apart", im.ISBN, im.PrintISBN)
+	}
+	im = ImprintOf(sec("x", "ISBN 978-1-86197-271-2 (Print)\nISBN 978-0-306-40615-7 (E-Book)"))
+	if im.ISBN != "9780306406157" || im.PrintISBN != "" {
+		t.Errorf("ISBN %q, print %q; want the e-book's", im.ISBN, im.PrintISBN)
 	}
 }

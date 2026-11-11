@@ -521,8 +521,11 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   came of them there; `gotome audio-check`, in `make stack-check`, and
   `TestAudioReadsAsTheReferenceSays` hold every build to it.
 - What a book prints about itself (#488): `ingest.ImprintOf` reads an ISBN
-  (after the word ISBN, checksum valid; an e-book's first, a print edition's
-  last; a document naming more than four is a list of other titles, and the
+  (after the word ISBN, checksum valid; an e-book's first, an unlabelled one
+  next; one beside Print/Taschenbuch only is `Imprint.PrintISBN`, kept in
+  `book_files.text_print_isbn` as `Book.PrintISBNs`, asked about by
+  `metadata.lookupIDs` when the book has no ISBN and never stored as an
+  identifier, nor taken from a record by `enrich.gaps`; a document naming more than four is a list of other titles, and the
   last six documents count only for a single one), the publisher and the year
   from the first and last six documents or pages. `catalog.ApplyImprintTx`
   gives them to the book as source `text`, only where nothing else said

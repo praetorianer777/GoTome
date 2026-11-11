@@ -56,3 +56,35 @@ func TestTheImprintFillsWhatTheFileDoesNotSay(t *testing.T) {
 		t.Errorf("identifiers = %+v, want none added to a locked field", book.Identifiers)
 	}
 }
+
+func TestAPrintISBNOfTheImprintIsNotStored(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	books := t.TempDir()
+	writeEPUB(t, filepath.Join(books, "pride.epub"), `<dc:title>Pride</dc:title><dc:creator>Austen</dc:creator>`, nil,
+		"Taschenbuch ISBN 978-0-306-40615-7", "Chapter one.")
+	id := a.externalLibrary(admin, "Shelf", "shared", books)
+	a.scanNow(id)
+	file := a.shelfFiles()["pride.epub"]
+	a.extract(file.ID)
+
+	book := a.book(file.BookID)
+	if len(book.Identifiers) != 0 {
+		t.Errorf("identifiers = %+v, want none: the print edition's ISBN is not the book's", book.Identifiers)
+	}
+	if len(book.PrintISBNs) != 1 || book.PrintISBNs[0] != "9780306406157" {
+		t.Errorf("print ISBNs = %v, want the one the text names, for the lookup", book.PrintISBNs)
+	}
+
+	writeEPUB(t, filepath.Join(books, "pride.epub"), `<dc:title>Pride</dc:title><dc:creator>Austen</dc:creator>`, nil,
+		"ISBN 978-1-86197-271-2 (E-Book) ISBN 978-0-306-40615-7 (Print)", "Chapter one, longer.")
+	a.scanNow(id)
+	a.extract(file.ID)
+	book = a.book(file.BookID)
+	if len(book.Identifiers) != 1 || book.Identifiers[0].Value != "9781861972712" || len(book.PrintISBNs) != 0 {
+		t.Errorf("identifiers %+v, print ISBNs %v; want the e-book's stored and no print one kept", book.Identifiers, book.PrintISBNs)
+	}
+	_ = ctx
+}
