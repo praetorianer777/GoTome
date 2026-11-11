@@ -28,8 +28,9 @@ What changes for someone who runs or uses GOtome. The format follows
   brings starting weights for a library in German, learned on one: a
   library whose books are mostly in German ranks with them until it has
   learned its own.
-- Where books have been embedded, a candidate found by title also counts
-  by its description: how near it is to the book's own text is one more
+- Where books have been embedded and a source returns a description with
+  its search results (Hardcover, CrossRef), a candidate found by title
+  also counts by its description: how near it is to the book's own text is one more
   thing the learned score weighs, which tells another book of the same
   author and a like title from the book itself.
 

@@ -217,14 +217,22 @@ to look at.
 embedded, a candidate found by title also counts by its description: the
 descriptions of the first three candidates of each source (long enough
 to say something) are embedded like a search query and their cosine to
-the book's own text vector is one more feature of the score. It helps to
-tell another book of the same author and a like title from the book
-itself. Nothing is compared where the book has no vector, the candidate
-no description, or embedding is off; books looked up by ISBN are never
-compared; the vectors of descriptions are kept in memory by the hash of
-the text, not stored. `match-check` and `match-train` take
-`-descriptions=false` to measure without it. The learned weights decide
-how much it counts: the hand-set score does not use it.
+the book's own text vector is one more feature of the score. It is meant
+to tell another book of the same author and a like title from the book
+itself. Only some sources return a description with a search: Hardcover
+and CrossRef do; the DNB and Open Library give one only for a lookup by
+ISBN, so for books looked up there by title the feature is absent and its
+learned weight stays zero. Nothing is compared where the book has no
+vector, the candidate no description, or embedding is off; books looked
+up by ISBN are never compared; the vectors of descriptions are kept in
+memory by the hash of the text, not stored. `match-check` and
+`match-train` take `-descriptions=false` to measure without it and
+`-embedded` to sample only books that have been embedded. The learned
+weights decide how much it counts: the hand-set score does not use it.
+On a German library looked up at the DNB, Open Library and CrossRef
+(about 290 embedded books) CrossRef's abstracts gave the feature to a
+few candidates and it learned a weight near zero: no gain could be
+measured. Hardcover, which describes most of its books, was not asked.
 
 **Sharing what was learned, never the books.** *Export weights* writes a
 small JSON file: the weights, the version of the feature set, the
