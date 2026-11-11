@@ -4472,8 +4472,20 @@ describe("importing a reading history", () => {
 		matched: 1,
 		new: 3,
 		ambiguous: 1,
+		maybe: 1,
 		skipped: 1,
 		roundedRatings: 2,
+		maybes: [
+			{
+				row: 4,
+				title: "Die Abenteuer des Sherlock Holmes",
+				authors: ["Arthur Conan Doyle"],
+				candidates: [
+					{ id: "b-3", libraryId: "lib-1", title: "The Adventures of Sherlock Holmes", authors: ["Arthur Conan Doyle"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+				],
+				skip: false,
+			},
+		],
 		ambiguities: [
 			{
 				row: 3,
@@ -4513,6 +4525,15 @@ describe("importing a reading history", () => {
 		await waitFor(() =>
 			expect(server.requests.find((r) => r.path === "/me/reading-imports/imp-1/rows/3")?.body).toEqual({
 				book: "b-2",
+			}),
+		);
+		expect(section.getByText("1 rows that look like a book of your libraries")).toBeInTheDocument();
+		const maybe = within(section.getByRole("group", { name: "Is Die Abenteuer des Sherlock Holmes one of these?" }));
+		expect(maybe.getByRole("radio", { name: "No, a book I read but do not own" })).toBeChecked();
+		await person.click(maybe.getByRole("radio", { name: /The Adventures of Sherlock Holmes/ }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/me/reading-imports/imp-1/rows/4")?.body).toEqual({
+				book: "b-3",
 			}),
 		);
 		await person.click(section.getByRole("button", { name: "Import" }));
@@ -8274,6 +8295,33 @@ describe("applying clean-ups and reviewing matches by rule", () => {
 			expect(
 				server.requests.find((r) => r.path === "/curation/matches" && r.method === "POST")?.body,
 			).toEqual({ dryRun: true }),
+		);
+	});
+});
+
+describe("joining a book read but not owned to the library's book", () => {
+	it("moves the reading to the book picked and can take it back", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] })
+			.withBook("Emma (Penguin Classics)", { placeholder: true, reading: { status: "completed" } });
+		renderApp("/books/book-2");
+		await person.click(await screen.findByRole("button", { name: "This is a book of the library" }));
+		await person.type(screen.getByRole("searchbox", { name: "Find the library's book" }), "emma");
+		await person.click(await screen.findByRole("button", { name: "Join to Emma" }));
+		await waitFor(() =>
+			expect(server.requests.find((r) => r.path === "/books/book-2/join-library-book")?.body).toEqual({
+				book: "book-1",
+			}),
+		);
+		const notice = await screen.findByRole("status");
+		expect(notice).toHaveTextContent("was joined to this one");
+		await person.click(within(notice).getByRole("button", { name: "Undo" }));
+		await waitFor(() =>
+			expect(server.requests.some((r) => r.path === "/placeholder-joins/join-book-2/undo")).toBe(true),
 		);
 	});
 });

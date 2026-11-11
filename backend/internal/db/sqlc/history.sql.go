@@ -82,7 +82,7 @@ func (q *Queries) AddReadingImportRow(ctx context.Context, arg AddReadingImportR
 const chooseReadingImportRow = `-- name: ChooseReadingImportRow :execrows
 UPDATE reading_import_rows r
 SET book_id = $1, skip = $2
-WHERE r.import_id = $3 AND r.row_no = $4 AND r.match = 'ambiguous'
+WHERE r.import_id = $3 AND r.row_no = $4 AND r.match IN ('ambiguous', 'maybe')
   AND ($2::boolean OR $1::uuid = ANY(r.candidates))
 `
 
@@ -461,25 +461,27 @@ SELECT b.id,
                WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY($1::text[])) AS by_isbn
 FROM books b
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND ($2::boolean OR NOT b.placeholder)
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
   AND (
     EXISTS (SELECT 1 FROM book_identifiers i
             WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY($1::text[]))
-    OR (b.title_key = $4::text AND cardinality($5::text[]) > 0
+    OR (b.title_key = $5::text AND cardinality($6::text[]) > 0
         AND EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                     WHERE c.book_id = b.id AND c.role = 'author'
-                      AND a.person_key = ANY($5::text[])))
+                      AND a.person_key = ANY($6::text[])))
   )
 ORDER BY 2 DESC, b.placeholder, b.created_at, b.id
 LIMIT 6
 `
 
 type MatchImportBooksParams struct {
-	Isbns      []string
-	Viewer     uuid.UUID
-	SeesAll    bool
-	TitleKey   string
-	PersonKeys []string
+	Isbns            []string
+	WithPlaceholders bool
+	Viewer           uuid.UUID
+	SeesAll          bool
+	TitleKey         string
+	PersonKeys       []string
 }
 
 type MatchImportBooksRow struct {
@@ -487,12 +489,13 @@ type MatchImportBooksRow struct {
 	ByIsbn bool
 }
 
-// The books of libraries the viewer sees, placeholders included, that an
+// The books of libraries the viewer sees, placeholders too if asked, that an
 // imported row may be: those with one of its ISBNs first, else those with
 // its title and an author.
 func (q *Queries) MatchImportBooks(ctx context.Context, arg MatchImportBooksParams) ([]MatchImportBooksRow, error) {
 	rows, err := q.db.Query(ctx, matchImportBooks,
 		arg.Isbns,
+		arg.WithPlaceholders,
 		arg.Viewer,
 		arg.SeesAll,
 		arg.TitleKey,

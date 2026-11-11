@@ -8,6 +8,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A book you read but do not own is joined to the library's book once that
+  book gains an ISBN, or its title or authors change to fit it (an edit, a
+  lookup, Fetch details, a clean-up, a file read): your status, stars, dates,
+  note and collections move to it and the history shows the book once. The
+  join is on the Changes page and can be undone. On a book you read but do not
+  own, **This is a book of the library** does the same by hand, with an undo.
+  The import preview lists rows that look like a book of the library
+  (a translation, a retitled edition) as "maybe" for you to accept.
 - Clean-ups where the data decides can be applied at once. On the clean-up
   page each such kind (a tool's stand-in as author, a shop's addition to a
   title, one person's name spelled differently only in order, case, accents

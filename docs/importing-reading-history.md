@@ -47,7 +47,16 @@ preview and nothing is written:
 - how many it does not hold, which become books you read but do not own,
 - the rows that could be several books, for you to pick the right one or
   leave out,
+- the rows that look like a book of your libraries without being one by
+  ISBN or title: a translation, another title or subtitle. They are
+  "maybe" rows: GOtome offers the books whose title is similar and which
+  have an author in common, and you take one or leave the row as a book you
+  read but do not own (which it stays unless you pick),
 - the rows with nothing to import, such as a shelf GOtome does not know.
+
+Run **Fetch details** on the library first (Bulk changes on the library
+page): ISBNs make most rows match, and a book whose title was only guessed
+from its file name matches once its real title is known.
 
 Books the library does not hold are looked up afterwards, by their ISBN
 or else their title and authors, as a file read is: the cover, description
@@ -79,3 +88,19 @@ What you already set stays: a status other than unread or want to read, a
 rating, a finish date or a note is not replaced unless you tick "Replace
 what I already set". Importing the same file again changes nothing. A book
 read more than once with a single date counts once.
+
+## When the library's book comes later
+
+A book you read but do not own is joined to the library's book by itself
+when that book gains an ISBN, a title or authors that fit it by the same rule
+as an import (the ISBN, else the title and an author), as long as it is the
+only book that fits for everyone who reads it and each of them sees its
+library. Your status, stars, dates, finishes, note and collections move to
+it, keeping the further status, the earlier start and the later finish where
+both had one. The join is on the **Changes** page and can be undone there.
+
+If GOtome does not see that two books are one, open the book you read
+but do not own and choose **This is a book of the library**, search for the
+library's book and pick it. Right after, the library's book offers **Undo**.
+A book that others also read is joined for all of them, and only if each of
+them sees the book you pick.
