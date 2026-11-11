@@ -102,8 +102,13 @@ export const ownDevicesQuery = queryOptions({
 
 export function useCreateDevice() {
 	return useMutation({
-		mutationFn: async (name: string) =>
-			(await api.POST("/auth/devices", { body: { name } })).data,
+		mutationFn: async ({
+			name,
+			canUpload,
+		}: {
+			name: string;
+			canUpload: boolean;
+		}) => (await api.POST("/auth/devices", { body: { name, canUpload } })).data,
 		onSuccess: useInvalidate(ownDevicesQuery.queryKey),
 	});
 }
@@ -205,10 +210,21 @@ export function useDecideDeviceRequest() {
 	const requests = useInvalidate(deviceRequestsQuery.queryKey);
 	const devices = useInvalidate(ownDevicesQuery.queryKey);
 	return useMutation({
-		mutationFn: async ({ id, accept }: { id: string; accept: boolean }) => {
+		mutationFn: async ({
+			id,
+			accept,
+			canUpload = false,
+		}: {
+			id: string;
+			accept: boolean;
+			canUpload?: boolean;
+		}) => {
 			const path = { params: { path: { requestId: id } } };
 			await (accept
-				? api.POST("/auth/device-requests/{requestId}/accept", path)
+				? api.POST("/auth/device-requests/{requestId}/accept", {
+						...path,
+						body: { canUpload },
+					})
 				: api.POST("/auth/device-requests/{requestId}/decline", path));
 		},
 		onSuccess: () => {

@@ -125,6 +125,7 @@ export class FakeServer {
 		name: string;
 		createdAt: string;
 		lastUsedAt?: string;
+		canUpload?: boolean;
 	}[] = [];
 	/** The signed-in person's API keys. */
 	apiKeys: {
@@ -2482,6 +2483,7 @@ export class FakeServer {
 					id: `d-${this.devices.length + 1}`,
 					name: request.deviceName,
 					createdAt: "2026-01-04T08:00:00Z",
+					canUpload: body.canUpload === true,
 				});
 			}
 			return new Response(null, { status: 204 });
@@ -2530,6 +2532,7 @@ export class FakeServer {
 				id: `d-${this.devices.length + 1}`,
 				name,
 				createdAt: "2026-01-04T08:00:00Z",
+				canUpload: body.canUpload === true,
 			};
 			this.devices.push(device);
 			return Response.json(

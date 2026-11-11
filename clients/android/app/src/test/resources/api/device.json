@@ -3,8 +3,13 @@
     "id": "0192f0a0-0000-7000-8000-000000000006",
     "name": "Tolino",
     "createdAt": "2026-10-11T12:00:00Z",
-    "lastUsedAt": "2026-10-11T12:00:00Z"
+    "lastUsedAt": "2026-10-11T12:00:00Z",
+    "canUpload": false
   },
-  "username": "steve"
+  "username": "steve",
+  "upload": {
+    "allowed": false,
+    "reason": "token"
+  }
 }
 

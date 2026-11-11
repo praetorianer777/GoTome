@@ -39,11 +39,14 @@ type Device struct {
 	Name       string
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
+	// CanUpload is whether the device's token may upload books, as its
+	// owner chose when making it (#211).
+	CanUpload bool
 }
 
 // CreateDevice makes a device for the user and returns the token it signs
 // in with. The token is the only copy: the database keeps its hashes.
-func (s *Service) CreateDevice(ctx context.Context, userID uuid.UUID, name string) (Device, string, error) {
+func (s *Service) CreateDevice(ctx context.Context, userID uuid.UUID, name string, canUpload bool) (Device, string, error) {
 	name = strings.TrimSpace(name)
 	switch {
 	case name == "":
@@ -51,31 +54,31 @@ func (s *Service) CreateDevice(ctx context.Context, userID uuid.UUID, name strin
 	case utf8.RuneCountInString(name) > MaxDeviceNameLen:
 		return Device{}, "", &ValidationError{Fields: map[string]string{"name": "A device's name has at most 80 characters."}}
 	}
-	return createDevice(ctx, sqlc.New(s.pool), userID, name)
+	return createDevice(ctx, sqlc.New(s.pool), userID, name, canUpload)
 }
 
 // CreateDeviceTx is CreateDevice in the transaction, for a device made as
 // part of another change: a request accepted and collected.
-func CreateDeviceTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, name string) (Device, string, error) {
+func CreateDeviceTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, name string, canUpload bool) (Device, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || utf8.RuneCountInString(name) > MaxDeviceNameLen {
 		return Device{}, "", &ValidationError{Fields: map[string]string{"name": "A device's name has 1 to 80 characters."}}
 	}
-	return createDevice(ctx, sqlc.New(tx), userID, name)
+	return createDevice(ctx, sqlc.New(tx), userID, name, canUpload)
 }
 
-func createDevice(ctx context.Context, q *sqlc.Queries, userID uuid.UUID, name string) (Device, string, error) {
+func createDevice(ctx context.Context, q *sqlc.Queries, userID uuid.UUID, name string, canUpload bool) (Device, string, error) {
 	token, err := newDeviceToken()
 	if err != nil {
 		return Device{}, "", err
 	}
 	row, err := q.CreateDevice(ctx, sqlc.CreateDeviceParams{
-		UserID: userID, Name: name, TokenHash: hashToken(token), SyncKeyHash: hashToken(SyncKey(token)),
+		UserID: userID, Name: name, TokenHash: hashToken(token), SyncKeyHash: hashToken(SyncKey(token)), CanUpload: canUpload,
 	})
 	if err != nil {
 		return Device{}, "", err
 	}
-	return Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt}, token, nil
+	return Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload}, token, nil
 }
 
 // Devices lists the user's devices, the oldest first.
@@ -86,9 +89,18 @@ func (s *Service) Devices(ctx context.Context, userID uuid.UUID) ([]Device, erro
 	}
 	out := make([]Device, len(rows))
 	for i, row := range rows {
-		out[i] = Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt}
+		out[i] = Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload}
 	}
 	return out, nil
+}
+
+// DeviceMayUpload is whether the device's owner allowed it to upload books.
+func (s *Service) DeviceMayUpload(ctx context.Context, deviceID uuid.UUID) (bool, error) {
+	ok, err := sqlc.New(s.pool).DeviceMayUpload(ctx, deviceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return ok, err
 }
 
 // DeleteDevice revokes one of the user's devices: its token signs nobody in

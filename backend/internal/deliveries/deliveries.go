@@ -121,6 +121,29 @@ func (s *Service) OnDevice(ctx context.Context, scope library.Scope, deviceID, b
 	return nil
 }
 
+// Matched is a book a file's hash found.
+type Matched struct {
+	SHA256 []byte
+	BookID uuid.UUID
+}
+
+// Match finds, among the hashes of files a device holds, the visible books
+// that have a file of that hash, and records them as on the device. A hash
+// that no visible book has, or no book at all, is not in the answer.
+func (s *Service) Match(ctx context.Context, scope library.Scope, deviceID uuid.UUID, hashes [][]byte) ([]Matched, error) {
+	rows, err := sqlc.New(s.pool).MatchDeviceFiles(ctx, sqlc.MatchDeviceFilesParams{
+		Hashes: hashes, Viewer: scope.Viewer, SeesAll: scope.SeesAll, DeviceID: deviceID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Matched, len(rows))
+	for i, r := range rows {
+		out[i] = Matched{SHA256: r.Hash, BookID: r.BookID}
+	}
+	return out, nil
+}
+
 // OffDevice forgets the book on the device: taken off it, or no longer to
 // be sent there.
 func (s *Service) OffDevice(ctx context.Context, deviceID, bookID uuid.UUID) error {

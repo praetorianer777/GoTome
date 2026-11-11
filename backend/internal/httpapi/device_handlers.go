@@ -17,6 +17,8 @@ type deviceView struct {
 	Name       string     `json:"name"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	// CanUpload is whether the device's token may upload books.
+	CanUpload bool `json:"canUpload"`
 }
 
 type deviceList struct {
@@ -25,6 +27,8 @@ type deviceList struct {
 
 type createDeviceRequest struct {
 	Name string `json:"name"`
+	// CanUpload lets the device's token upload books, if the account may.
+	CanUpload bool `json:"canUpload,omitempty"`
 }
 
 type createdDevice struct {
@@ -37,7 +41,7 @@ type createdDevice struct {
 }
 
 func viewOf(d auth.Device) deviceView {
-	return deviceView{ID: d.ID, Name: d.Name, CreatedAt: d.CreatedAt, LastUsedAt: d.LastUsedAt}
+	return deviceView{ID: d.ID, Name: d.Name, CreatedAt: d.CreatedAt, LastUsedAt: d.LastUsedAt, CanUpload: d.CanUpload}
 }
 
 func (s *Server) listOwnDevices(w http.ResponseWriter, r *http.Request) error {
@@ -58,7 +62,7 @@ func (s *Server) createOwnDevice(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	device, token, err := s.Auth.CreateDevice(r.Context(), UserFrom(r.Context()).ID, req.Name)
+	device, token, err := s.Auth.CreateDevice(r.Context(), UserFrom(r.Context()).ID, req.Name, req.CanUpload)
 	var invalid *auth.ValidationError
 	if errors.As(err, &invalid) {
 		return ErrValidation(invalid.Fields)

@@ -2536,7 +2536,11 @@ describe("profile", () => {
 
 		await person.clear(devices.getByLabelText("Name of the device"));
 		await person.type(devices.getByLabelText("Name of the device"), "Tolino");
+		await person.click(
+			devices.getByLabelText("Allow this device to upload books"),
+		);
 		await person.click(devices.getByRole("button", { name: "Add a device" }));
+		await waitFor(() => expect(server.devices[0]?.canUpload).toBe(true));
 		const created = await devices.findByRole("status");
 		expect(created).toHaveTextContent("Tolino is added.");
 		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);

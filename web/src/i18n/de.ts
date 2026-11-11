@@ -1254,6 +1254,9 @@ export const de: Record<MessageKey, string> = {
 	"devices.kobo": "Für einen Kobo-Reader die Zeile in seiner Konfiguration",
 	"devices.once":
 		"Das Token wird nur jetzt angezeigt. Geht es verloren, das Gerät widerrufen und erneut hinzufügen.",
+	"devices.canUpload": "Dieses Gerät darf Bücher hochladen",
+	"devices.canUploadNamed": "{name} darf Bücher hochladen",
+	"devices.mayUpload": "Darf Bücher hochladen",
 	"devices.books": "Bücher auf {name}",
 	"apiKeys.title": "API-Schlüssel",
 	"apiKeys.intro":

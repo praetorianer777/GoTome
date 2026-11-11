@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
+  Tolino: those GOtome has count as on the device, so their reading progress
+  arrives, and the store has a tab "Nicht in GOtome" with the rest, each with
+  "Zu GOtome hochladen". Uploading needs an account that may upload books and
+  a device added with "Allow this device to upload books" on the profile.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

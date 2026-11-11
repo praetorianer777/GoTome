@@ -283,7 +283,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/accept", ID: "acceptDeviceRequest",
 			Summary: "Accept a device's request: its app then collects the token of a new device", Tag: "auth",
-			Permission: auth.SignedIn, Handler: s.acceptDeviceRequest,
+			Request: acceptDeviceRequestBody{}, Permission: auth.SignedIn, Handler: s.acceptDeviceRequest,
 		},
 		{
 			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/decline", ID: "declineDeviceRequest",
@@ -365,6 +365,18 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPut, Path: "/device/books/{bookId}", ID: "putOnDevice",
 			Summary: "Record that the device that asks has the book; only for a device's token", Tag: "auth",
 			Permission: auth.PersonalManage, Devices: true, Handler: s.putOnDevice,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/matches", ID: "matchDeviceFiles",
+			Summary: "Which visible books have a file with one of the SHA-256 hashes of the files the device holds; they are recorded as on the device; only for a device's token", Tag: "auth",
+			Request: deviceFilesRequest{}, Response: deviceFileMatches{}, Reads: ReadsLibraries,
+			Permission: auth.PersonalManage, Devices: true, Handler: s.matchDeviceFiles,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/uploads", ID: "uploadFromDevice",
+			Summary: "Store a book file the device holds in the account's upload library, if the device was allowed to upload (the book is then put on the device with PUT /device/books/{bookId}); only for a device's token", Tag: "auth",
+			Consumes: "multipart/form-data", Request: uploadForm{}, Response: ingest.Uploaded{},
+			Permission: auth.BooksUpload, Devices: true, Handler: s.uploadFromDevice,
 		},
 		{
 			Method: http.MethodDelete, Path: "/device/books/{bookId}", ID: "takeOffDevice",
