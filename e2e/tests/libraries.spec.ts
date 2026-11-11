@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { chooseLibrary, mainNav, openSignedIn } from "../fixtures/app";
 
 test("an administrator adds a library, sees it, and removes it again", async ({ page }, testInfo) => {

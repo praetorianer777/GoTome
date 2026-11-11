@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { accountMenu, mainNav, openSignedIn, signIn } from "../fixtures/app";
 
 test("an account is added, used, and disabled again", async ({

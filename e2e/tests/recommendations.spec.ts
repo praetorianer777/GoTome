@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 // The stack runs offline without an embedding model, so it has no vectors to

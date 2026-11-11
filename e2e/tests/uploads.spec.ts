@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { chooseUploadLibrary, openSignedIn } from "../fixtures/app";
 
 test("a book is uploaded, found in the library, and not taken twice", async ({

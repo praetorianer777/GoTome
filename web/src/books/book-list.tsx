@@ -28,7 +28,7 @@ function Standing({ book }: { book: BookSummary }) {
 		return null;
 	}
 	return (
-		<span className="flex gap-2 text-sm text-slate-600 dark:text-slate-400">
+		<span className="flex flex-wrap gap-x-2 text-sm text-slate-600 dark:text-slate-400">
 			{book.status !== "unread" && (
 				<span
 					className={
@@ -192,13 +192,13 @@ function GridCard({
 					size="small"
 					className={`transition duration-200 group-hover:-translate-y-1 dark:group-hover:shadow-glow motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 ${book.status === "reading" ? "shadow-candle" : ""}`}
 				/>
-				<span className="line-clamp-2 font-medium leading-snug group-hover:text-brand-strong dark:group-hover:text-brand">
+				<span className="line-clamp-2 font-medium leading-snug break-words group-hover:text-brand-strong dark:group-hover:text-brand">
 					{book.title}
 				</span>
 			</Link>
 			<div className="flex flex-col gap-0.5">
 				{book.authors.length > 0 && (
-					<span className="line-clamp-1 text-sm text-slate-600 dark:text-slate-400">
+					<span className="block truncate text-sm text-slate-600 dark:text-slate-400">
 						<AuthorLinks book={book} />
 					</span>
 				)}

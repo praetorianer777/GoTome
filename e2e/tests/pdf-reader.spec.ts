@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 import { makePdf } from "../fixtures/pdf";
 

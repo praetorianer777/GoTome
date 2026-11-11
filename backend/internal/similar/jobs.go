@@ -61,6 +61,12 @@ func (w *EmbedWorker) Timeout(*river.Job[EmbedArgs]) time.Duration { return pass
 
 func (w *EmbedWorker) Work(ctx context.Context, _ *river.Job[EmbedArgs]) error {
 	complete, err := w.Service.Embed(ctx, time.Now().Add(passBudget), 0)
+	if err == nil && complete {
+		// A book chunked while this pass ran, with an ID before the one the
+		// pass had reached, asked for a pass that this one's uniqueness
+		// swallowed, and would wait for the hourly one.
+		complete, err = w.Service.Embed(ctx, time.Now().Add(passBudget), 1)
+	}
 	switch {
 	case errors.Is(err, ErrUnavailable):
 		w.Service.log.Warn("books are not embedded", "error", err)

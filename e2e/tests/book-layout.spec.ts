@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 
 // Names as long as some books carry, and words no line can hold.

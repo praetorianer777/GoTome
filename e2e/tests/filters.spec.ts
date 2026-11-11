@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 
 test("the books are narrowed by a filter, which the address keeps", async ({

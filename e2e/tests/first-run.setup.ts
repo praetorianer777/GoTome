@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { ADMIN } from "../fixtures/stack";
 
 // The gate's stack is always fresh, so there this walks the setup page. On a
