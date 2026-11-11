@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a token is saved encrypted and never shown again", async ({

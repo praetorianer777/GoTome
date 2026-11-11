@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { bookFrame, openSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 import { newLibrary, uploadEpub } from "../fixtures/library";

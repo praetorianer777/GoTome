@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { chooseUploadLibrary, openSignedIn, signIn } from "../fixtures/app";
 
 test("an upload past the quota is refused and says why", async ({

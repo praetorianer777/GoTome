@@ -4,9 +4,9 @@ import {
 	expect,
 	type Page,
 	type TestInfo,
-	test,
 	request as playwrightRequest,
 } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn, signIn } from "../fixtures/app";
 import { makePdf } from "../fixtures/pdf";
 

@@ -1,4 +1,5 @@
-import { expect as base, test } from "@playwright/test";
+import { expect as base } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 
 // The list of books is answered here, as a library of this many would: no

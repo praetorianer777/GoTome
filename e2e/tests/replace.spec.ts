@@ -1,4 +1,5 @@
-import { type Locator, type Page, expect, test } from "@playwright/test";
+import { type Locator, type Page, expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 

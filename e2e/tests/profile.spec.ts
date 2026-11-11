@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { makeAccount, signedIn } from "../fixtures/accounts";
 import { accountMenu, openSignedIn } from "../fixtures/app";
 

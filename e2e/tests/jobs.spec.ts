@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a file that cannot be read shows on the jobs page and its book, and is read again", async ({ page }, testInfo) => {

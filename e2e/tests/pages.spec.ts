@@ -1,4 +1,5 @@
-import { expect, type Response, test } from "@playwright/test";
+import { expect, type Response } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 import { VIEWS } from "../fixtures/views";
 

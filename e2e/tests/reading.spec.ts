@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 /** Opens the library's filters, which a phone keeps behind a button. */
