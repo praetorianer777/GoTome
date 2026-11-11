@@ -155,11 +155,90 @@ func TestSearchAsksByTitleAndAuthor(t *testing.T) {
 	if err != nil || got != nil {
 		t.Fatalf("Search: %+v, %v", got, err)
 	}
-	if q := web.cql(t); q != `tit="Effi Briest" and per="Theodor Fontane"` {
-		t.Errorf("query %q", q)
+	if q := web.cql(t); q != `woe="Effi" and woe="Briest" and woe="Fontane"` {
+		t.Errorf("last query %q", q)
+	}
+	u, _ := url.Parse(web.asked[0].URL)
+	if q := u.Query().Get("query"); q != `tit="Effi Briest" and per="Theodor Fontane"` {
+		t.Errorf("first query %q", q)
 	}
 	if got, err := New().Search(context.Background(), web, metadata.Query{Title: " "}); got != nil || err != nil {
 		t.Errorf("no title: %+v, %v", got, err)
+	}
+}
+
+// byQuery answers each request by its query, an empty result for the rest.
+type byQuery struct {
+	answers map[string][]byte
+	asked   []string
+}
+
+func (b *byQuery) Get(_ context.Context, r metadata.Request) ([]byte, error) {
+	u, err := url.Parse(r.URL)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query().Get("query")
+	b.asked = append(b.asked, q)
+	if a, ok := b.answers[q]; ok {
+		return a, nil
+	}
+	return sru(), nil
+}
+
+func TestSearchAsksAgainWhenNothingIsFound(t *testing.T) {
+	q := metadata.Query{Title: "Effi Briest: Roman (Beispielreihe 3)", Authors: []string{"Fontane, Theodor"}}
+	rec := sru(marcRecord(field("245", "0", "a", "Effi Briest")))
+	cases := []struct {
+		name   string
+		answer string
+		asked  []string
+	}{
+		{"short title", `tit="Effi Briest" and per="Theodor Fontane"`, []string{
+			`tit="Effi Briest: Roman (Beispielreihe 3)" and per="Theodor Fontane"`,
+			`tit="Effi Briest" and per="Theodor Fontane"`}},
+		{"last name", `tit="Effi Briest" and per="Fontane"`, []string{
+			`tit="Effi Briest: Roman (Beispielreihe 3)" and per="Theodor Fontane"`,
+			`tit="Effi Briest" and per="Theodor Fontane"`,
+			`tit="Effi Briest" and per="Fontane"`}},
+		{"words", `woe="Effi" and woe="Briest" and woe="Fontane"`, []string{
+			`tit="Effi Briest: Roman (Beispielreihe 3)" and per="Theodor Fontane"`,
+			`tit="Effi Briest" and per="Theodor Fontane"`,
+			`tit="Effi Briest" and per="Fontane"`,
+			`woe="Effi" and woe="Briest" and woe="Fontane"`}},
+	}
+	for _, c := range cases {
+		web := &byQuery{answers: map[string][]byte{c.answer: rec}}
+		got, err := New().Search(context.Background(), web, q)
+		if err != nil || len(got) != 1 || !slices.Equal(web.asked, c.asked) {
+			t.Errorf("%s: %+v, %v, asked %q", c.name, got, err, web.asked)
+		}
+	}
+	web := &byQuery{answers: map[string][]byte{`tit="Effi Briest: Roman (Beispielreihe 3)" and per="Theodor Fontane"`: rec}}
+	if _, err := New().Search(context.Background(), web, q); err != nil || len(web.asked) != 1 {
+		t.Errorf("a found book is asked again: %q, %v", web.asked, err)
+	}
+	web = &byQuery{}
+	if _, err := New().Search(context.Background(), web, metadata.Query{Title: "Effi Briest", Authors: []string{"Fontane"}}); err != nil || len(web.asked) != 2 {
+		t.Errorf("a plain title repeats a question: %q", web.asked)
+	}
+}
+
+func TestShortTitle(t *testing.T) {
+	for in, want := range map[string]string{
+		"Effi Briest":                   "Effi Briest",
+		"Effi Briest : Roman":           "Effi Briest",
+		"Effi Briest: Roman":            "Effi Briest",
+		"Effi Briest - Roman":           "Effi Briest",
+		"Effi Briest (Beispielreihe 3)": "Effi Briest",
+		"Effi Briest [Neuausgabe]":      "Effi Briest",
+		"Beispielreihe, Band 3":         "Beispielreihe",
+		"Kapitel 451":                   "Kapitel 451",
+		": Roman":                       ": Roman",
+	} {
+		if got := shortTitle(in); got != want {
+			t.Errorf("shortTitle(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
@@ -246,6 +325,14 @@ func TestSearchAnswersAsRecorded(t *testing.T) {
 		t.Fatalf("the book is not among %d results", len(got))
 	} else if got[i].Language != "de" || len(got[i].Identifiers) == 0 || got[i].Contributors[0].Name != "Theodor Fontane" {
 		t.Errorf("record = %+v", got[i])
+	}
+}
+
+func TestSearchAsksAgainAsRecorded(t *testing.T) {
+	got, err := New().Search(context.Background(), web(), metadata.Query{Title: "Der Stechlin - Roman in einem Band (Beispielreihe 2)", Authors: []string{"Fontane, Theodor"}})
+	recorded(t, err)
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return strings.Contains(r.Title, "Stechlin") }) {
+		t.Fatalf("the book is not among %d results", len(got))
 	}
 }
 
