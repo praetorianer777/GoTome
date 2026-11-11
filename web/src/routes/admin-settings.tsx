@@ -13,6 +13,7 @@ import { button, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { en } from "@/i18n/en";
 import { formatDate } from "@/lib/format";
+import { API_BASE } from "@/api/client";
 import { type Setting, settingsQuery, useUpdateSettings } from "@/settings/api";
 import {
 	EmbeddingModelField,
@@ -170,7 +171,7 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 
 /** Values hints may name: the address the identity provider sends people back to. */
 function hintValues() {
-	return { callback: `${window.location.origin}/api/v1/auth/oidc/callback` };
+	return { callback: `${window.location.origin}${API_BASE}/auth/oidc/callback` };
 }
 
 /** The page's sections, each with the settings whose keys start so. */

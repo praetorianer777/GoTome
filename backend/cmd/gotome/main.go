@@ -529,7 +529,8 @@ func serve() error {
 
 		Notifications: notify.NewService(pool),
 		NotifyHub:     hub,
-		Web:           webui.Handler(),
+		Web:           webui.HandlerAt(cfg.BasePath),
+		BasePath:      cfg.BasePath,
 
 		TrustedProxies: cfg.TrustedProxies,
 	}

@@ -73,6 +73,9 @@ type Config struct {
 	// TestEmbeddings embeds with vectors made from the words of each text
 	// instead of a model, for the browser tests; never in an installation.
 	TestEmbeddings bool
+	// BasePath is the path GOtome is served under, such as /gotome/; "/"
+	// when it has the host to itself. Always starts and ends with a slash.
+	BasePath string
 	// TrustedProxies are the reverse proxies whose forwarded client address
 	// and scheme are believed; none believes no forwarded address.
 	TrustedProxies []netip.Prefix
@@ -140,6 +143,10 @@ func load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
 	}
 	var err error
+	base := get("GOTOME_BASE_PATH", "/")
+	if cfg.BasePath, err = NormalizeBasePath(base); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_BASE_PATH is %q, want a path such as /gotome/: %w", base, err)
+	}
 	cfg.ModelDir = get("GOTOME_MODEL_DIR", filepath.Join(cfg.DataDir, "models"))
 	if !filepath.IsAbs(cfg.ModelDir) {
 		return Config{}, fmt.Errorf("GOTOME_MODEL_DIR is %q, want a full path such as %s", cfg.ModelDir, filepath.Join(DefaultDataDir, "models"))
@@ -196,6 +203,34 @@ func load(getenv func(string) string) (Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// NormalizeBasePath makes a path GOtome is served under start and end with
+// one slash. It refuses what is not a plain path: a scheme or host, a query,
+// dot segments, empty segments or characters a browser would encode.
+func NormalizeBasePath(p string) (string, error) {
+	p = strings.TrimSpace(p)
+	if p == "" || p == "/" {
+		return "/", nil
+	}
+	if strings.Contains(p, "://") || strings.HasPrefix(p, "//") {
+		return "", errors.New("it must be a path, not an address with a scheme or host")
+	}
+	segments := strings.Split(strings.Trim(p, "/"), "/")
+	for _, seg := range segments {
+		switch {
+		case seg == "":
+			return "", errors.New("it must not hold empty segments")
+		case seg == "." || seg == "..":
+			return "", errors.New("it must not hold . or .. segments")
+		}
+		for _, r := range seg {
+			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)) {
+				return "", fmt.Errorf("it may hold only letters, digits and - . _ ~, not %q", r)
+			}
+		}
+	}
+	return "/" + strings.Join(segments, "/") + "/", nil
 }
 
 // parseProxies reads addresses and CIDR ranges separated by commas or

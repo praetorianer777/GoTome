@@ -66,7 +66,7 @@ func (s *Server) createOwnDevice(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, r, http.StatusCreated, createdDevice{Device: viewOf(device), Token: token, Catalog: opdsPath})
+	writeJSON(w, r, http.StatusCreated, createdDevice{Device: viewOf(device), Token: token, Catalog: withBase(r, opdsPath)})
 	return nil
 }
 
@@ -89,12 +89,8 @@ func (s *Server) deleteOwnDevice(w http.ResponseWriter, r *http.Request) error {
 // getKOReaderPlugin sends the KOReader plugin as a zip, told the address
 // the browser used as its server.
 func (s *Server) getKOReaderPlugin(w http.ResponseWriter, r *http.Request) error {
-	scheme := "http"
-	if overTLS(r) {
-		scheme = "https"
-	}
 	var buf bytes.Buffer
-	if err := koplugin.Zip(&buf, scheme+"://"+r.Host); err != nil {
+	if err := koplugin.Zip(&buf, publicBase(r)); err != nil {
 		return err
 	}
 	h := w.Header()

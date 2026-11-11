@@ -26,6 +26,22 @@ function foliateWithoutPdf(): Plugin {
 	};
 }
 
+// The server writes the path it is served under into these two tags (see
+// internal/webui), so one build serves any path: the assets and icons are
+// relative to the base element, the app's router and API client read the
+// meta tag.
+function serverBase(): Plugin {
+	return {
+		name: "server-base",
+		transformIndexHtml() {
+			return [
+				{ tag: "base", attrs: { href: "/" }, injectTo: "head-prepend" },
+				{ tag: "meta", attrs: { name: "gotome-base", content: "/" }, injectTo: "head-prepend" },
+			];
+		},
+	};
+}
+
 const webRoot = fileURLToPath(new URL(".", import.meta.url));
 
 interface DemoBook {
@@ -84,11 +100,12 @@ function demoAssets(outDir: string): Plugin {
 
 export default defineConfig(({ mode }) => ({
 	// The demo is a Pages project site; the path is the repository's name.
-	base: mode === "demo" ? (process.env.DEMO_BASE ?? "/GoTome/") : "/",
+	base: mode === "demo" ? (process.env.DEMO_BASE ?? "/GoTome/") : "./",
 	plugins: [
 		react(),
 		tailwindcss(),
 		foliateWithoutPdf(),
+		...(mode === "demo" ? [] : [serverBase()]),
 		...(mode === "demo" ? [demoAssets("dist-demo")] : []),
 	],
 	resolve: {

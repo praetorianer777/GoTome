@@ -253,7 +253,7 @@ func (s *Server) opdsDevice(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
-	return writeFeed(w, opds.AcquisitionType, f)
+	return writeFeed(w, r, opds.AcquisitionType, f)
 }
 
 // opdsDeviceDownload is the device's own address of a file's download.

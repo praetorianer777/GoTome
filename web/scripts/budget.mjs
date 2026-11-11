@@ -19,10 +19,10 @@ const LIMITS = {
 
 const html = readFileSync(`${dist}/index.html`, "utf8");
 const named = [
-	...html.matchAll(/<script[^>]*\ssrc="(\/assets\/[^"]+)"/g),
-	...html.matchAll(/<link[^>]*rel="modulepreload"[^>]*\shref="(\/assets\/[^"]+)"/g),
-	...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*\shref="(\/assets\/[^"]+)"/g),
-].map((m) => m[1]);
+	...html.matchAll(/<script[^>]*\ssrc="(\.?\/assets\/[^"]+)"/g),
+	...html.matchAll(/<link[^>]*rel="modulepreload"[^>]*\shref="(\.?\/assets\/[^"]+)"/g),
+	...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*\shref="(\.?\/assets\/[^"]+)"/g),
+].map((m) => m[1].replace(/^\./, ""));
 const main = named[0];
 if (!main) {
 	console.error("budget: index.html names no entry script");
