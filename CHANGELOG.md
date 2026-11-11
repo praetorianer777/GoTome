@@ -27,6 +27,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- Deleting a library while duplicate checks, text signing or embedding of
+  its books were running could fail with an error instead of removing it.
 - Read aloud no longer says a sentence twice when the page settles after it
   has turned to the sentence.
 - GOtome for Tolino: the store comes up again from the "GOtome" book after the

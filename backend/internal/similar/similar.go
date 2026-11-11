@@ -311,6 +311,9 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Sp
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{r.BookID}); err != nil {
+			return err
+		}
 		for _, m := range out {
 			if err := q.PutBookVector(ctx, sqlc.PutBookVectorParams{
 				BookID: r.BookID, Kind: m.kind, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
