@@ -73,7 +73,7 @@ class StoreActivity : Activity() {
             finish()
             return
         }
-        db = Db(this)
+        db = Db.of(this)
         api = Api(prefs)
         covers = Covers(this)
         setContentView(R.layout.activity_store)
@@ -97,6 +97,7 @@ class StoreActivity : Activity() {
         findViewById<Button>(R.id.settings).setOnClickListener { startActivity(Intent(this, SetupActivity::class.java)) }
         findViewById<Button>(R.id.sync).setOnClickListener { syncNow() }
         for ((m, tab) in tabs) tab.setOnClickListener { open(m) }
+        findViewById<Button>(R.id.not_in_gotome).setOnClickListener { startActivity(Intent(this, OwnFilesActivity::class.java)) }
 
         val swipe = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
@@ -111,6 +112,7 @@ class StoreActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        visible = true
         if (!prefs.signedIn) return
         ReaderWatcher.start(this)
         SyncJob.schedule(this)
@@ -129,6 +131,7 @@ class StoreActivity : Activity() {
     }
 
     override fun onPause() {
+        visible = false
         if (prefs.signedIn) runCatching {
             getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(online)
         }
@@ -298,6 +301,10 @@ class StoreActivity : Activity() {
         private const val PER_PAGE = 9
         private const val RESYNC = 15 * 60 * 1000L
         private const val READABLE_FILTER = """{"field":"format","op":"in","values":["epub","pdf"]}"""
+
+        /** Whether the store is the screen now; the watcher checks it after bringing the store up. */
+        @Volatile var visible = false
+            private set
 
         /** Over the reader app, from the watcher, when the "GOtome" book was opened. */
         fun bringUp(context: Context) {

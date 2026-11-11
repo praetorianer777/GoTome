@@ -6,6 +6,42 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
+  Tolino: those GOtome has count as on the device, so their reading progress
+  arrives, and the store has a tab "Nicht in GOtome" with the rest, each with
+  "Zu GOtome hochladen". Uploading needs an account that may upload books and
+  a device added with "Allow this device to upload books" on the profile.
+- Embedded fonts that make an EPUB heavy for an e-reader can be shrunk instead
+  of removed: "Shrink the fonts" on the book's page and in "Fix for
+  e-readers" keeps each TrueType and OpenType (CFF) font, cut down to the
+  characters the book uses, so a typeface the book relies on stays at a fraction of its size.
+  Fonts it cannot cut (WOFF2, or damaged ones) stay as they are
+  unless the fonts are still over 1 MB, when they are removed.
+
+### Changed
+
+- "Fix for e-readers" with "Everything found" shrinks the fonts rather than
+  removing them.
+
+### Fixed
+
+- Read aloud no longer says a sentence twice when the page settles after it
+  has turned to the sentence.
+- GOtome for Tolino: the store comes up again from the "GOtome" book after the
+  app has run for hours. Reading the reader's log no longer waits on the
+  database or the network, and the app restarts the log reader when it has
+  heard nothing for three minutes.
+- GOtome for Tolino: the store is brought up once the reader has shown the
+  book, and again if the reader's viewer covered it, instead of at a fixed
+  moment that the viewer could miss.
+- GOtome for Tolino: the app finds the newest release with its APK, looks for
+  it even when GOtome cannot be reached, no longer offers the version it
+  already is, and hands a new version to Android's installer by itself.
+- GOtome for Tolino: the database is opened once, so Android no longer reports
+  leaked SQLite connections.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

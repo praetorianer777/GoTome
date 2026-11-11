@@ -85,4 +85,18 @@
     <string name="update_not_app">Der Download ist nicht GOtome für Tolino</string>
     <string name="update_not_newer">Der Download ist nicht neuer als diese App</string>
     <string name="update_other_key">Der Download ist mit einem anderen Schlüssel signiert als diese App. Eine mit make android-install installierte App wird erst nach adb uninstall durch ein Release ersetzt (siehe README).</string>
+    <string name="own_tab">Nicht in GOtome</string>
+    <string name="own_title">Auf diesem Tolino, nicht in GOtome</string>
+    <string name="own_upload">Zu GOtome hochladen</string>
+    <string name="own_none">Jedes Buch ohne DRM auf diesem Tolino ist in GOtome</string>
+    <string name="own_checking">Schaut sich die eigenen Bücher des Tolino an (%1$d von %2$d)…</string>
+    <string name="own_goes_to">Hochgeladen wird in die Bibliothek %1$s.</string>
+    <string name="own_no_token">Dieser Tolino durfte beim Hinzufügen in GOtome nicht hochladen. Füge ihn in deinem Profil erneut hinzu, mit erlaubtem Hochladen.</string>
+    <string name="own_no_role">Dein Konto in GOtome darf keine Bücher hochladen.</string>
+    <string name="own_no_library">GOtome hat keine verwaltete Bibliothek für hochgeladene Bücher. Ein Administrator kann eine anlegen.</string>
+    <string name="own_quota">Dein Speicherplatz in GOtome ist voll, es kann nichts hochgeladen werden.</string>
+    <string name="own_no_upload">GOtome nimmt von diesem Tolino keine Uploads an.</string>
+    <string name="own_uploading">Lädt %1$s hoch…</string>
+    <string name="own_uploaded">%1$s ist in GOtome und auf diesem Tolino.</string>
+    <string name="own_upload_failed">Hochladen fehlgeschlagen: %1$s</string>
 </resources>

@@ -2536,7 +2536,11 @@ describe("profile", () => {
 
 		await person.clear(devices.getByLabelText("Name of the device"));
 		await person.type(devices.getByLabelText("Name of the device"), "Tolino");
+		await person.click(
+			devices.getByLabelText("Allow this device to upload books"),
+		);
 		await person.click(devices.getByRole("button", { name: "Add a device" }));
+		await waitFor(() => expect(server.devices[0]?.canUpload).toBe(true));
 		const created = await devices.findByRole("status");
 		expect(created).toHaveTextContent("Tolino is added.");
 		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);
@@ -6217,6 +6221,35 @@ describe("fixing EPUBs for e-readers", () => {
 		).toBeInTheDocument();
 	});
 
+	it("offers to shrink the fonts to the characters the book uses beside removing them", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [heavy()] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(
+			await files.findByRole("button", {
+				name: "Remove the fonts in Schwalbenturm.epub",
+			}),
+		).toBeInTheDocument();
+		await person.click(
+			files.getByRole("button", {
+				name: "Shrink the fonts in Schwalbenturm.epub",
+			}),
+		);
+		expect(server.fixes).toEqual([
+			{ file: "tower", findings: ["subset-fonts"] },
+		]);
+		await waitFor(() =>
+			expect(
+				files.queryByText("8 embedded fonts take 3.5 MB"),
+			).not.toBeInTheDocument(),
+		);
+	});
+
 	it("names broken chapter files and a broken table of contents and repairs them", async () => {
 		const person = userEvent.setup();
 		const file = {
@@ -6307,7 +6340,7 @@ describe("fixing EPUBs for e-readers", () => {
 			action: "fix",
 			findings: [
 				"large-document",
-				"large-fonts",
+				"subset-fonts",
 				"large-image",
 				"missing-resources",
 				"malformed-document",

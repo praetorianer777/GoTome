@@ -11,11 +11,12 @@ import java.io.File
  */
 class Sync(private val context: Context) {
     private val prefs = Prefs(context)
-    private val db = Db(context)
+    private val db = Db.of(context)
     private val api = Api(prefs)
 
     /** Syncs, telling [progress] what it is doing in words for the person. */
     fun run(progress: (String) -> Unit = {}) = synchronized(LOCK) {
+        lookForUpdate()
         if (!prefs.signedIn) return
         // Deleted in the Tolino library, it would leave the store without its way in.
         runCatching { LauncherBook.ensure(context) }
@@ -23,15 +24,28 @@ class Sync(private val context: Context) {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
             deliverQueue(progress)
+            runCatching { OwnBooks(context, db, api).sync(progress) { id -> runCatching { fetchPosition(id) } } }
+                .onFailure { Log.w(TAG, "looking at the Tolino's own books failed", it) }
             report()
             fetchPositions()
-            runCatching { Updates(context).check() }.onFailure { Log.w(TAG, "looking for an update failed", it) }
             prefs.lastSync = System.currentTimeMillis()
             prefs.lastError = null
         } catch (e: Exception) {
             Log.w(TAG, "sync failed", e)
             prefs.lastError = e.message ?: e.javaClass.simpleName
         }
+    }
+
+    /**
+     * Needs GitHub and no GOtome, so it comes first: a GOtome that cannot be
+     * reached, or a book that fails, must not keep the app from updating.
+     */
+    private fun lookForUpdate() {
+        runCatching {
+            val updates = Updates(context)
+            updates.check()
+            updates.installFound()
+        }.onFailure { Log.w(TAG, "looking for an update failed", it) }
     }
 
     /**

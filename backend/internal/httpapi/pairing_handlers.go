@@ -114,20 +114,32 @@ func (s *Server) listDeviceRequests(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
+// acceptDeviceRequestBody is optional: without it the device may not upload.
+type acceptDeviceRequestBody struct {
+	// CanUpload lets the new device's token upload books, if the account may.
+	CanUpload bool `json:"canUpload,omitempty"`
+}
+
 func (s *Server) acceptDeviceRequest(w http.ResponseWriter, r *http.Request) error {
-	return s.decideDeviceRequest(w, r, true)
+	var body acceptDeviceRequestBody
+	if r.ContentLength != 0 {
+		if err := decodeJSON(w, r, &body); err != nil {
+			return err
+		}
+	}
+	return s.decideDeviceRequest(w, r, true, body.CanUpload)
 }
 
 func (s *Server) declineDeviceRequest(w http.ResponseWriter, r *http.Request) error {
-	return s.decideDeviceRequest(w, r, false)
+	return s.decideDeviceRequest(w, r, false, false)
 }
 
-func (s *Server) decideDeviceRequest(w http.ResponseWriter, r *http.Request, accept bool) error {
+func (s *Server) decideDeviceRequest(w http.ResponseWriter, r *http.Request, accept, canUpload bool) error {
 	id, err := pathID(r, "requestId", "request")
 	if err != nil {
 		return err
 	}
-	err = s.Pairing.Decide(r.Context(), UserFrom(r.Context()).ID, id, accept)
+	err = s.Pairing.Decide(r.Context(), UserFrom(r.Context()).ID, id, accept, canUpload)
 	if errors.Is(err, pairing.ErrNotFound) {
 		return ErrNotFound("There is no such request waiting.")
 	}

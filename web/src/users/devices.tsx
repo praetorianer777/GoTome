@@ -32,12 +32,22 @@ export function Devices({ username }: { username: string }) {
 	const create = useCreateDevice();
 	const remove = useDeleteDevice();
 	const [name, setName] = useState("");
+	const [canUpload, setCanUpload] = useState(false);
+	const [uploading, setUploading] = useState<Set<string>>(new Set());
 	const created = create.data;
 	const errors = fieldErrors(create.error);
 
 	function submit(e: FormEvent) {
 		e.preventDefault();
-		create.mutate(name, { onSuccess: () => setName("") });
+		create.mutate(
+			{ name, canUpload },
+			{
+				onSuccess: () => {
+					setName("");
+					setCanUpload(false);
+				},
+			},
+		);
 	}
 
 	return (
@@ -86,13 +96,30 @@ export function Devices({ username }: { username: string }) {
 							<p className="text-sm text-slate-600 dark:text-slate-400">
 								{t("devices.requestHint")}
 							</p>
+							<label className="flex items-center gap-2 text-sm">
+								<input
+									type="checkbox"
+									checked={uploading.has(r.id)}
+									onChange={(e) => {
+										const next = new Set(uploading);
+										if (e.target.checked) next.add(r.id);
+										else next.delete(r.id);
+										setUploading(next);
+									}}
+								/>
+								{t("devices.canUploadNamed", { name: r.deviceName })}
+							</label>
 							<div className="flex gap-3">
 								<button
 									type="button"
 									disabled={decide.isPending}
 									onClick={() =>
 										decide.mutate(
-											{ id: r.id, accept: true },
+											{
+												id: r.id,
+												accept: true,
+												canUpload: uploading.has(r.id),
+											},
 											{
 												onSuccess: () =>
 													setAccepted((devices.data?.length ?? 0) + 1),
@@ -131,6 +158,11 @@ export function Devices({ username }: { username: string }) {
 							>
 								{d.name}
 							</Link>
+							{d.canUpload && (
+								<span className="text-sm text-slate-600 dark:text-slate-400">
+									{t("devices.mayUpload")}
+								</span>
+							)}
 							<span className="text-sm text-slate-600 dark:text-slate-400">
 								{d.lastUsedAt
 									? t("devices.lastUsed", { date: formatDate(d.lastUsedAt) })
@@ -184,6 +216,14 @@ export function Devices({ username }: { username: string }) {
 					error={errors.name}
 					required
 				/>
+				<label className="flex items-center gap-2 pb-2 text-sm">
+					<input
+						type="checkbox"
+						checked={canUpload}
+						onChange={(e) => setCanUpload(e.target.checked)}
+					/>
+					{t("devices.canUpload")}
+				</label>
 				<SubmitButton pending={create.isPending} kind="secondary">
 					{t("devices.add")}
 				</SubmitButton>

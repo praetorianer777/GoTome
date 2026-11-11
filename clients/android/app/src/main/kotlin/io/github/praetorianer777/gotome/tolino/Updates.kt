@@ -8,6 +8,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.util.Log
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -31,6 +32,18 @@ class Updates(private val context: Context) {
         val release = latest(get(BuildConfig.RELEASES))
         prefs.updateCheckedAt = now
         prefs.update = release?.takeIf { newer(it.version, BuildConfig.VERSION_NAME) }
+    }
+
+    /**
+     * Installs a release found by [check] once per version without being asked:
+     * Android's installer still asks the person to confirm. A person who declines
+     * has the button on the setup page.
+     */
+    fun installFound() {
+        val release = prefs.update ?: return
+        if (prefs.installTried == release.version || !Network.online(context)) return
+        prefs.installTried = release.version
+        install(release)
     }
 
     /** Downloads the release, checks it, and hands it to the installer. */
@@ -113,6 +126,7 @@ class Updates(private val context: Context) {
                     context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
                 PackageInstaller.STATUS_SUCCESS -> Prefs(context).update = null
+                PackageInstaller.STATUS_FAILURE_ABORTED -> Unit
                 else -> {
                     val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
                     Log.w(TAG, "update not installed: $message")
@@ -132,9 +146,22 @@ class Updates(private val context: Context) {
         @Suppress("DEPRECATION")
         private const val SIGNATURES = PackageManager.GET_SIGNATURES
 
-        /** The release's APK, as release.yml names it; null when it has none. */
+        /**
+         * The newest release that has its APK, as release.yml names it; null when
+         * none has. [body] is a list of releases, or one release. Looking at the list
+         * rather than GitHub's "latest" keeps a release without the APK from hiding
+         * the one before it.
+         */
         fun latest(body: String): Release? {
-            val o = JSONObject(body)
+            val text = body.trimStart()
+            if (!text.startsWith("[")) return release(JSONObject(text))
+            val all = JSONArray(text)
+            return (0 until all.length()).mapNotNull { all.optJSONObject(it)?.let(::release) }
+                .filter { parts(it.version) != null }
+                .maxWithOrNull { a, b -> if (a.version == b.version) 0 else if (newer(a.version, b.version)) 1 else -1 }
+        }
+
+        private fun release(o: JSONObject): Release? {
             if (o.optBoolean("draft") || o.optBoolean("prerelease")) return null
             val version = o.optString("tag_name").removePrefix("v")
             if (!VERSION.matches(version)) return null

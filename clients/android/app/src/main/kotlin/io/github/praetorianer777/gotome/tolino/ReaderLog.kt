@@ -8,6 +8,9 @@ sealed interface ReaderEvent {
     /** A page was turned; where the new page begins, in Adobe's pages (see [AdobePages]). */
     data class Page(val position: Double) : ReaderEvent
 
+    /** The viewer drew the book's first screen: it is on top now and nothing else will cover it. */
+    data object Shown : ReaderEvent
+
     /** The book was closed, at a location in Adobe's notation. */
     data class Closed(val location: String) : ReaderEvent
 }
@@ -27,9 +30,13 @@ object ReaderLog {
         "BasicViewerActivity",
     )
 
+    /** The app's own tag: a line it logs and reads back shows that the whole way from logd works. */
+    const val PROBE = "GOtomeProbe"
+
     private val startReader = Regex("""startReader - book: .*, path: (/.+\.(?i:epub|pdf))$""")
     private val openDocument = Regex("""openDocument: file://(/.+\.(?i:epub|pdf))$""")
     private val page = Regex("""notifyPageChanged\(\): page position = ([0-9.Ee+-]+)$""")
+    private val shown = Regex("""openDocument: screen begin: """)
     private val closed = Regex("""TableDeliverable\.BOOKMARK_POSITION:= (\S+)$""")
 
     fun parse(line: String): ReaderEvent? {
@@ -41,6 +48,7 @@ object ReaderLog {
             return if (position.isFinite() && position >= 0) ReaderEvent.Page(position) else null
         }
         closed.find(text)?.let { return ReaderEvent.Closed(it.groupValues[1]) }
+        if (shown.containsMatchIn(text)) return ReaderEvent.Shown
         return null
     }
 }
@@ -63,10 +71,44 @@ class ReadingTracker {
             current = event.path
             Reading.Opened(event.path)
         }
+        ReaderEvent.Shown -> null
         is ReaderEvent.Page -> current?.let { Reading.Moved(it, event.position) }
         is ReaderEvent.Closed -> current?.let {
             current = null
             Reading.Closed(it)
         }
     }
+}
+
+/**
+ * Whether the log reader still hears anything. The app logs a probe line of its
+ * own every minute and reads it back, so silence means the reader is stuck, not
+ * that nobody is reading: the log is then followed anew.
+ */
+class Liveness(private val clock: () -> Long, private val silence: Long) {
+    @Volatile private var heardAt = clock()
+
+    fun heard() {
+        heardAt = clock()
+    }
+
+    fun stalled(): Boolean = clock() - heardAt > silence
+
+    /** Counts the restart as a sign of life, so that a restart is not followed by another at once. */
+    fun restarted() = heard()
+}
+
+/**
+ * Brings the store up once per opening of the "GOtome" book: when the viewer has
+ * drawn its first screen, and once earlier if the log is slow to say so.
+ * The one that takes the arming is the one that raises it again.
+ */
+class StoreRaise {
+    private var armed = false
+
+    @Synchronized fun arm() {
+        armed = true
+    }
+
+    @Synchronized fun take(): Boolean = armed.also { armed = false }
 }

@@ -297,6 +297,7 @@ type Device struct {
 	SyncKeyHash []byte
 	CreatedAt   time.Time
 	LastUsedAt  *time.Time
+	CanUpload   bool
 }
 
 type DeviceRequest struct {
@@ -309,6 +310,7 @@ type DeviceRequest struct {
 	State      string
 	CreatedAt  time.Time
 	ExpiresAt  time.Time
+	CanUpload  bool
 }
 
 type DuplicateEvidence struct {

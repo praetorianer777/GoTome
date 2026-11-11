@@ -1,10 +1,10 @@
 -- name: CreateDevice :one
-INSERT INTO devices (user_id, name, token_hash, sync_key_hash)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, created_at, last_used_at;
+INSERT INTO devices (user_id, name, token_hash, sync_key_hash, can_upload)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, created_at, last_used_at, can_upload;
 
 -- name: ListUserDevices :many
-SELECT id, name, created_at, last_used_at
+SELECT id, name, created_at, last_used_at, can_upload
 FROM devices
 WHERE user_id = $1
 ORDER BY created_at;
@@ -58,13 +58,13 @@ ORDER BY created_at;
 
 -- name: DecideDeviceRequest :execrows
 -- Accepts or declines a request of the user's that still waits.
-UPDATE device_requests SET state = sqlc.arg(state)
+UPDATE device_requests SET state = sqlc.arg(state), can_upload = sqlc.arg(can_upload)
 WHERE id = $1 AND user_id = $2 AND state = 'pending' AND expires_at > now();
 
 -- name: TakeDeviceRequest :one
 -- The request the app asks about with its secret, locked while it is
 -- answered, and whether its time is up.
-SELECT id, user_id, device_name, state, (expires_at <= now())::boolean AS expired
+SELECT id, user_id, device_name, state, can_upload, (expires_at <= now())::boolean AS expired
 FROM device_requests WHERE id = $1 AND secret_hash = $2
 FOR UPDATE;
 
@@ -79,3 +79,6 @@ SELECT u.*, d.id AS device_id, d.last_used_at AS device_last_used_at
 FROM devices d
 JOIN users u ON u.id = d.user_id
 WHERE d.token_hash = $1 AND u.disabled_at IS NULL;
+
+-- name: DeviceMayUpload :one
+SELECT can_upload FROM devices WHERE id = $1;

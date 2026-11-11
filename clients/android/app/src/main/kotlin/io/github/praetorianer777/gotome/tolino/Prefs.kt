@@ -77,11 +77,20 @@ class Prefs(context: Context) {
         get() = p.getLong("updateCheckedAt", 0)
         set(value) = p.edit().putLong("updateCheckedAt", value).apply()
 
-    /** A newer release of the app, once found; null while there is none. */
+    /** The release an install was last started for, so that the installer asks once per version. */
+    var installTried: String?
+        get() = p.getString("installTried", null)
+        set(value) = p.edit().putString("installTried", value).apply()
+
+    /**
+     * A newer release of the app, once found; null while there is none. An update
+     * installed since it was found leaves it behind, as the app is stopped for it.
+     */
     var update: Release?
         get() {
             val version = p.getString("updateVersion", null) ?: return null
-            return Release(version, p.getString("updateApk", null) ?: return null)
+            val release = Release(version, p.getString("updateApk", null) ?: return null)
+            return release.takeIf { Updates.newer(it.version, BuildConfig.VERSION_NAME) }
         }
         set(value) = p.edit().putString("updateVersion", value?.version).putString("updateApk", value?.apk).apply()
 

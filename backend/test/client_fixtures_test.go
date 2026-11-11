@@ -4,6 +4,8 @@ package test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -196,6 +198,10 @@ func TestTheDeviceClientsFixturesAreTheServersAnswers(t *testing.T) {
 	tolino("books-count", device, http.MethodGet, "/books/count?filter="+readable, nil, 200)
 	tolino("books-search", device, http.MethodGet, "/books/search?q=pride&limit=50", nil, 200)
 	tolino("book", device, http.MethodGet, "/books/"+pride, nil, 200)
+	prideHash := sha256.Sum256(append([]byte("PK\x03\x04"), bytes.Repeat([]byte("pride "), 100)...))
+	tolino("device-matches", device, http.MethodPost, "/device/matches", map[string]any{"hashes": []string{
+		hex.EncodeToString(prideHash[:]), hex.EncodeToString(make([]byte, 32)),
+	}}, 200)
 
 	progress := "/books/" + pride + "/progress/ebook"
 	tolino("progress-none", device, http.MethodGet, "/books/"+pride+"/progress", nil, 200)

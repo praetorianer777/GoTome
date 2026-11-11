@@ -17,7 +17,7 @@ data class Unsent(val bookId: String, val fileId: String, val fraction: Double, 
  * and GOtome's positions in those books as of the last sync, so that a jump can
  * be offered offline. The library itself stays on the server.
  */
-class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 5) {
+class Db private constructor(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 5) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE delivered (book_id TEXT PRIMARY KEY, file_id TEXT NOT NULL,
@@ -210,5 +210,14 @@ class Db(context: Context) : SQLiteOpenHelper(context, "gotome.db", null, 5) {
 
     companion object {
         private const val SEP = "\u001f"
+        @Volatile private var shared: Db? = null
+
+        /**
+         * The one helper of the process: each helper keeps its own connection pool,
+         * and a pool nobody closes is reported as leaked by the garbage collector.
+         */
+        fun of(context: Context): Db = shared ?: synchronized(this) {
+            shared ?: Db(context.applicationContext).also { shared = it }
+        }
     }
 }

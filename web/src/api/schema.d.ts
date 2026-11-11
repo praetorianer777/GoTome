@@ -1155,6 +1155,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/device/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Which visible books have a file with one of the SHA-256 hashes of the files the device holds; they are recorded as on the device; only for a device's token */
+        post: operations["matchDeviceFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/device/requests": {
         parameters: {
             query?: never;
@@ -1183,6 +1200,23 @@ export interface paths {
         put?: never;
         /** Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once */
         post: operations["collectDeviceToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store a book file the device holds in the account's upload library, if the device was allowed to upload (the book is then put on the device with PUT /device/books/{bookId}); only for a device's token */
+        post: operations["uploadFromDevice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3192,6 +3226,9 @@ export interface components {
             message: string;
             requestId?: string;
         };
+        AcceptDeviceRequestBody: {
+            canUpload?: boolean;
+        };
         AcceptMatchRequest: {
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
@@ -3460,7 +3497,7 @@ export interface components {
             books?: string[];
             change?: components["schemas"]["BulkChange"];
             filter?: string;
-            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
             library?: string;
         };
         BulkResult: {
@@ -3716,6 +3753,7 @@ export interface components {
             username: string;
         };
         CreateDeviceRequest: {
+            canUpload?: boolean;
             name: string;
         };
         CreateLibraryRequest: {
@@ -3865,6 +3903,19 @@ export interface components {
         DeviceCollect: {
             secret: string;
         };
+        DeviceFileMatch: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId: string;
+            sha256: string;
+        };
+        DeviceFileMatches: {
+            matches: components["schemas"]["DeviceFileMatch"][];
+        };
+        DeviceFilesRequest: {
+            hashes: string[];
+        };
         DeviceList: {
             devices: components["schemas"]["DeviceView"][];
         };
@@ -3894,7 +3945,13 @@ export interface components {
             id: string;
             secret: string;
         };
+        DeviceUpload: {
+            allowed: boolean;
+            library?: string;
+            reason?: string;
+        };
         DeviceView: {
+            canUpload: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: uuid */
@@ -4077,12 +4134,13 @@ export interface components {
             withoutText: number;
         };
         FixRequest: {
-            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
         };
         FixResult: {
             documentsRepaired: number;
             documentsSplit: number;
             fontsRemoved: number;
+            fontsSubset: number;
             imagesScaled: number;
             itemsRemoved: number;
             partsAdded: number;
@@ -4981,6 +5039,7 @@ export interface components {
         };
         ThisDevice: {
             device: components["schemas"]["DeviceView"];
+            upload: components["schemas"]["DeviceUpload"];
             username: string;
         };
         ThresholdPoint: {
@@ -5300,7 +5359,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptDeviceRequestBody"];
+            };
+        };
         responses: {
             /** @description No Content */
             204: {
@@ -7703,6 +7766,39 @@ export interface operations {
             };
         };
     };
+    matchDeviceFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceFilesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceFileMatches"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     requestDevice: {
         parameters: {
             query?: never;
@@ -7758,6 +7854,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeviceAnswer"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadFromDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadForm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Uploaded"];
                 };
             };
             /** @description The request failed. */

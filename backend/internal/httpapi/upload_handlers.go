@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -38,6 +39,11 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.storeUpload(w, r, lib, scope, user)
+}
+
+// storeUpload streams the multipart form's file into the managed library.
+func (s *Server) storeUpload(w http.ResponseWriter, r *http.Request, lib library.Library, scope library.Scope, user *auth.User) error {
 	if lib.Mode != library.ModeManaged {
 		return ErrConflict("Books can only be uploaded into a managed library. Put files for an external library into its folder, and scan it.")
 	}

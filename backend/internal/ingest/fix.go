@@ -227,7 +227,7 @@ func originalPath(ctx context.Context, q *sqlc.Queries, libraryID uuid.UUID, roo
 // Fix does, and says how many it changed. A file of a read-only library is
 // an error; one in which there turned out to be nothing to fix is not.
 func (s *Service) FixBook(ctx context.Context, scope library.Scope, bookID uuid.UUID, findings []string) (int, error) {
-	files, err := sqlc.New(s.pool).ListFilesToFix(ctx, sqlc.ListFilesToFixParams{BookID: bookID, Findings: findings})
+	files, err := sqlc.New(s.pool).ListFilesToFix(ctx, sqlc.ListFilesToFixParams{BookID: bookID, Findings: findingsOf(findings)})
 	if err != nil {
 		return 0, err
 	}
@@ -237,7 +237,7 @@ func (s *Service) FixBook(ctx context.Context, scope library.Scope, bookID uuid.
 		if err != nil {
 			return n, err
 		}
-		own := slices.DeleteFunc(slices.Clone(findings), func(x string) bool { return !slices.Contains(f.EreaderFindings, x) })
+		own := slices.DeleteFunc(slices.Clone(findings), func(x string) bool { return !slices.Contains(f.EreaderFindings, findingOf(x)) })
 		switch _, err := s.Fix(ctx, scope, id, own); {
 		case errors.Is(err, ErrNothingToFix):
 		case err != nil:
@@ -247,4 +247,21 @@ func (s *Service) FixBook(ctx context.Context, scope library.Scope, bookID uuid.
 		}
 	}
 	return n, nil
+}
+
+// findingOf is the finding a fix is for: subsetting the fonts fixes the
+// same one as removing them.
+func findingOf(fix string) string {
+	if fix == epub.SubsetFonts {
+		return epub.LargeFonts
+	}
+	return fix
+}
+
+func findingsOf(fixes []string) []string {
+	out := make([]string, len(fixes))
+	for i, f := range fixes {
+		out[i] = findingOf(f)
+	}
+	return out
 }

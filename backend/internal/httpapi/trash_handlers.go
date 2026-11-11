@@ -148,7 +148,8 @@ func (s *Server) listTrash(w http.ResponseWriter, r *http.Request) error {
 }
 
 // fixRequest names what to fix in a file, of the findings its ereader
-// check names.
+// check names; subset-fonts fixes large-fonts by keeping the fonts, cut down
+// to the characters the book uses, instead of removing them.
 type fixRequest struct {
 	Findings []string `json:"findings"`
 }
@@ -159,6 +160,7 @@ type fixResult struct {
 	DocumentsSplit int `json:"documentsSplit"`
 	PartsAdded     int `json:"partsAdded"`
 	ImagesScaled   int `json:"imagesScaled"`
+	FontsSubset    int `json:"fontsSubset"`
 	FontsRemoved   int `json:"fontsRemoved"`
 	ItemsRemoved   int `json:"itemsRemoved"`
 	// DocumentsRepaired are documents written again as well-formed XHTML.
@@ -183,8 +185,8 @@ func (s *Server) fixFile(w http.ResponseWriter, r *http.Request) error {
 		return ErrValidation(map[string]string{"findings": "Say what to fix."})
 	}
 	for _, f := range req.Findings {
-		if !slices.Contains(epub.Findings, f) {
-			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a finding; one is %s.", f, strings.Join(epub.Findings, ", "))})
+		if !slices.Contains(epub.Fixes, f) {
+			return ErrValidation(map[string]string{"findings": fmt.Sprintf("%q is not a fix; one is %s.", f, strings.Join(epub.Fixes, ", "))})
 		}
 	}
 	fixed, err := s.Scans.Fix(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id, req.Findings)

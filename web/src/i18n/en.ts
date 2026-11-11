@@ -1235,6 +1235,9 @@ export const en = {
 	"devices.kobo": "For a Kobo reader, the line in its config",
 	"devices.once":
 		"The token is shown only now. If it is lost, revoke the device and add it again.",
+	"devices.canUpload": "Allow this device to upload books",
+	"devices.canUploadNamed": "Allow {name} to upload books",
+	"devices.mayUpload": "May upload books",
 	"devices.books": "Books on {name}",
 	"apiKeys.title": "API keys",
 	"apiKeys.intro":
@@ -1450,6 +1453,7 @@ export const en = {
 	"book.ereader.malformed-document": "Chapter files that are not well-formed XHTML, which some readers refuse: {count}",
 	"book.ereader.broken-toc": "Entries of the table of contents that lead nowhere: {count}",
 	"fix.large-document": "Split into chapters",
+	"fix.subset-fonts": "Shrink the fonts",
 	"fix.large-fonts": "Remove the fonts",
 	"fix.large-image": "Scale the images down",
 	"fix.missing-resources": "Repair the list of files",

@@ -290,6 +290,8 @@ func (s *Server) opdsDeviceFile(w http.ResponseWriter, r *http.Request) error {
 type thisDevice struct {
 	Device   deviceView `json:"device"`
 	Username string     `json:"username"`
+	// Upload says whether the device may upload books now, and if not why.
+	Upload deviceUpload `json:"upload"`
 }
 
 // getThisDevice tells a device's app whom its token signs in.
@@ -305,7 +307,11 @@ func (s *Server) getThisDevice(w http.ResponseWriter, r *http.Request) error {
 	}
 	for _, d := range devices {
 		if d.ID == device {
-			writeJSON(w, r, http.StatusOK, thisDevice{Device: viewOf(d), Username: user.Username})
+			upload, _, err := s.uploadStatus(r, device)
+			if err != nil {
+				return err
+			}
+			writeJSON(w, r, http.StatusOK, thisDevice{Device: viewOf(d), Username: user.Username, Upload: upload})
 			return nil
 		}
 	}

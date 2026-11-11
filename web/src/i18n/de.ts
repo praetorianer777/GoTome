@@ -1254,6 +1254,9 @@ export const de: Record<MessageKey, string> = {
 	"devices.kobo": "Für einen Kobo-Reader die Zeile in seiner Konfiguration",
 	"devices.once":
 		"Das Token wird nur jetzt angezeigt. Geht es verloren, das Gerät widerrufen und erneut hinzufügen.",
+	"devices.canUpload": "Dieses Gerät darf Bücher hochladen",
+	"devices.canUploadNamed": "{name} darf Bücher hochladen",
+	"devices.mayUpload": "Darf Bücher hochladen",
 	"devices.books": "Bücher auf {name}",
 	"apiKeys.title": "API-Schlüssel",
 	"apiKeys.intro":
@@ -1466,6 +1469,7 @@ export const de: Record<MessageKey, string> = {
 	"book.ereader.malformed-document": "Kapiteldateien, die kein wohlgeformtes XHTML sind und die manche Reader ablehnen: {count}",
 	"book.ereader.broken-toc": "Einträge im Inhaltsverzeichnis, die ins Leere führen: {count}",
 	"fix.large-document": "In Kapitel teilen",
+	"fix.subset-fonts": "Schriften verkleinern",
 	"fix.large-fonts": "Schriften entfernen",
 	"fix.large-image": "Bilder verkleinern",
 	"fix.missing-resources": "Dateiliste reparieren",

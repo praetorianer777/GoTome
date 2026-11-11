@@ -29,6 +29,14 @@ The GOtome for Tolino app can instead ask to be added: it shows a
 four-digit code, and your profile (and a notification) shows the request
 with the same code to **Accept** or **Decline**.
 
+When you add a device (or accept a request), **Allow this device to upload
+books** lets the GOtome for Tolino app upload files of its own to GOtome
+([the app's page](../clients/android/README.md#books-already-on-the-tolino)). Only
+accounts that may upload books can use it, within their storage quota. The
+files go into a managed library you own, else the first managed library you
+see by name; with none, the app says so. The choice is made when the device
+is added; to change it, revoke the device and add it again.
+
 A device sees the books you see, and nothing else of your account: its
 token opens the catalogue, downloads, covers and reading progress, not the
 rest of GOtome. Wrong tokens are refused for a while after a few tries.
