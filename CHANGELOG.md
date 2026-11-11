@@ -8,6 +8,26 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+### Changed
+
+- The Deutsche Nationalbibliothek is asked again when the exact title and
+  author find no book: with the title cut at a colon, dash or bracket and
+  without a volume number, with the author's last name alone, and with the
+  words of both anywhere in the record. Books it knew under another
+  spelling of title or author are now found.
+- With learned weights a match is a probability, which is lower for an
+  edition that is not the exact ISBN than the hand-set score was: raise
+  or lower `metadata.matchThreshold` to what the table of Measure says,
+  and matches that wait for review are kept from 0.2 instead of 0.5.
+
+### Fixed
+
+- A book card on the library page no longer grows wider than a narrow screen
+  when its author or series name is very long or its "Completed" and star
+  rating do not fit side by side: the names are cut off with an ellipsis and
+  the standing wraps.
+- A book chunked while the embedding pass was running no longer waits for the
+  next hourly pass before its similar books appear.
 - A book whose file names no ISBN gets the one printed on its imprint page,
   looked for after the word ISBN in the first and last pages of an EPUB or
   PDF, so it can be looked up by ISBN. An ISBN marked as the e-book's comes
@@ -19,23 +39,31 @@ What changes for someone who runs or uses GOtome. The format follows
   provider or a person set is replaced. The first start after the update
   reads the text of every book again in the background, which keeps the CPU
   busy for hours on a large library.
-
-### Changed
-
-- The Deutsche Nationalbibliothek is asked again when the exact title and
-  author find no book: with the title cut at a colon, dash or bracket and
-  without a volume number, with the author's last name alone, and with the
-  words of both anywhere in the record. Books it knew under another
-  spelling of title or author are now found.
-
-### Fixed
-
-- A book card on the library page no longer grows wider than a narrow screen
-  when its author or series name is very long or its "Completed" and star
-  rating do not fit side by side: the names are cut off with an ellipsis and
-  the standing wraps.
-- A book chunked while the embedding pass was running no longer waits for the
-  next hourly pass before its similar books appear.
+- GOtome can learn how sure a match is from your own books. Books with an
+  ISBN are looked up without it, and the weights of the score (title,
+  authors, year, language, publisher, pages, series, kind of edition,
+  which source) are fitted to which candidates were right, so that a
+  threshold of 0.95 takes matches that are right 95 times in 100 on your
+  library. On the settings page, under Book details, **Measure** and
+  **Learn from my library** run in the background with their progress and
+  show their results as tables: what comes first, what each threshold
+  takes, the hand-set weights beside the learned ones, and how well the
+  score's figures match what was found. `gotome match-train` does the
+  same from the command line, and `gotome match-check` ranks with every
+  score side by side. The setting `metadata.scoreWeights` chooses
+  between the learned, the hand-set and imported weights, and
+  `metadata.learnScore` (off) learns again every week.
+- The learned weights can be exported as a small file that holds numbers
+  only (no title, author, ISBN or path), and a file someone shared can be
+  imported and measured on your library before you use it. A release
+  brings starting weights for a library in German, learned on one: a
+  library whose books are mostly in German ranks with them until it has
+  learned its own.
+- Where books have been embedded and a source returns a description with
+  its search results (Hardcover, CrossRef), a candidate found by title
+  also counts by its description: how near it is to the book's own text is one more
+  thing the learned score weighs, which tells another book of the same
+  author and a like title from the book itself.
 
 ## [0.18.0] - 2026-11-11
 

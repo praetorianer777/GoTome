@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/kindle"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
 	"github.com/praetorianer777/gotome/backend/internal/readimport"
@@ -32,6 +33,7 @@ import (
 type background struct {
 	accounts    *auth.Service
 	matches     *enrich.Service
+	meta        *metadata.Service
 	changes     *bulk.Service
 	scans       *ingest.Service
 	searchIndex *search.Index
@@ -69,6 +71,8 @@ func worker[T river.JobArgs](w river.Worker[T]) registration {
 func (b background) registrations() []registration {
 	return []registration{
 		worker(&enrich.MatchWorker{Service: b.matches}),
+		worker(&metadata.RunWorker{Service: b.meta}),
+		worker(&metadata.AutoLearnWorker{Service: b.meta}),
 		worker(&bulk.Worker{Service: b.changes}),
 		worker(&autocurate.CleanupWorker{Service: b.automatic}),
 		worker(&autocurate.MatchesWorker{Service: b.automatic}),
@@ -117,6 +121,7 @@ func (b background) workers() *jobs.Workers {
 // only when scanInterval is set.
 func schedules(scanInterval time.Duration) []jobs.Schedule {
 	periodic := []jobs.Schedule{
+		metadata.AutoLearnPeriodic(autoLearnInterval),
 		jobs.Every(sessionSweepInterval, true, auth.SweepSessionsArgs{}, jobs.QueueDefault),
 		jobs.Every(trashPurgeInterval, true, ingest.PurgeTrashArgs{}, jobs.QueueDefault),
 		jobs.Every(autodupe.DailyInterval, true, autodupe.DailyArgs{}, jobs.QueueDefault),

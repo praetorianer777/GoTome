@@ -1,3 +1,4 @@
+import type { components } from "@/api/schema";
 import type { CurrentUser, SignInMethods } from "@/auth/session";
 import type { BookDetail, BookSummary, ListedBook, NamedEntry, NameHit, TextHit } from "@/books/api";
 import type {
@@ -483,6 +484,15 @@ export class FakeServer {
 			choices: ["on", "off"],
 		},
 	];
+	/** The match score as the settings page shows it; a run starts waiting and is finished by the test. */
+	scoring: components["schemas"]["ScoringStatus"] = {
+		weights: "learned",
+		using: "handSet",
+		booksWithIsbn: 1200,
+		learnFrom: 500,
+	};
+	/** The weights imported, as the page sent them. */
+	importedWeights: unknown;
 	/** What was uploaded, by content, to find a file sent twice. */
 	private uploaded = new Map<string, Uploaded>();
 
@@ -1313,6 +1323,9 @@ export class FakeServer {
 				body as Record<string, unknown>,
 				refuse,
 			);
+		}
+		if (path.startsWith("/metadata/scoring")) {
+			return this.answerScoring(path, method, body, refuse);
 		}
 		if (path === "/settings") {
 			return this.answerSettings(
@@ -2683,6 +2696,58 @@ export class FakeServer {
 			}
 		}
 		return Response.json({ settings: this.settings });
+	}
+
+	private answerScoring(
+		path: string,
+		method: string,
+		body: unknown,
+		refuse: (
+			status: number,
+			code: string,
+			message: string,
+			fields?: Record<string, string>,
+		) => Response,
+	): Response {
+		if (!this.session?.permissions.includes("settings:manage")) {
+			return refuse(403, "forbidden", "You do not have permission to do that.");
+		}
+		const now = new Date().toISOString();
+		switch (`${method} ${path}`) {
+			case "GET /metadata/scoring":
+				return Response.json(this.scoring);
+			case "POST /metadata/scoring/measure":
+			case "POST /metadata/scoring/learn": {
+				const run = { state: "queued", done: 0, total: 0, estimateSeconds: 0, startedAt: now };
+				if (path.endsWith("measure")) {
+					this.scoring.measure = run;
+				} else {
+					this.scoring.learn = run;
+				}
+				return new Response(null, { status: 202 });
+			}
+			case "PUT /metadata/scoring/import": {
+				const file = body as { featureVersion?: number };
+				if (file.featureVersion !== 1) {
+					return refuse(422, "validation_failed", "Some fields need attention.", {
+						file: "the weights are of another version of the features: it is of version 2, this GOtome uses 1.",
+					});
+				}
+				this.importedWeights = body;
+				this.scoring.imported = {
+					learnedAt: now,
+					books: 800,
+					gotomeVersion: "0.19.0",
+					languages: {},
+					providers: {},
+				};
+				return new Response(null, { status: 204 });
+			}
+			case "DELETE /metadata/scoring/import":
+				this.scoring.imported = undefined;
+				return new Response(null, { status: 204 });
+		}
+		return refuse(404, "not_found", "There is nothing here.");
 	}
 
 	/**

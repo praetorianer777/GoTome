@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -77,6 +78,12 @@ type Options struct {
 	// Enabled names the providers to ask, read on every search. Nil asks
 	// them all.
 	Enabled func(context.Context) []string
+	// Weights reads the setting that says which weights rank candidates:
+	// ScoreHandSet, ScoreLearned or ScoreImported. Nil is learned.
+	Weights func(context.Context) string
+	// MatchThreshold and LearnScore read the settings of that name.
+	MatchThreshold func(context.Context) float64
+	LearnScore     func(context.Context) bool
 	// AllowPrivate lets requests reach addresses inside the server's own
 	// network. Only tests set it, for a provider served on the loopback.
 	AllowPrivate bool
@@ -84,12 +91,23 @@ type Options struct {
 
 // Service asks the providers and ranks what they say.
 type Service struct {
-	pool      *pgxpool.Pool
-	providers []Provider
-	webs      map[string]Web
-	cached    map[string]Web
-	language  func(context.Context) string
-	enabled   func(context.Context) []string
+	pool           *pgxpool.Pool
+	providers      []Provider
+	webs           map[string]Web
+	cached         map[string]Web
+	language       func(context.Context) string
+	enabled        func(context.Context) []string
+	weights        func(context.Context) string
+	models         modelCache
+	matchThreshold func(context.Context) float64
+	learnScore     func(context.Context) bool
+	// Queue is set once the job runner exists.
+	Queue Queue
+	// Describe, when set, says how near texts are to a book's own text, as
+	// cosines of their vectors to its content vector, nil where that cannot
+	// be said (similar.Service.CompareToBook). A candidate's description
+	// is one more feature of the learned score.
+	Describe func(ctx context.Context, bookID uuid.UUID, texts []string) ([]*float64, error)
 	// tokenKey signs cover tokens. It is new with every start: a token is
 	// good for as long as the page that holds it.
 	tokenKey []byte
@@ -99,7 +117,7 @@ type Service struct {
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, cached: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
+	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, cached: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, weights: opts.Weights, matchThreshold: opts.MatchThreshold, learnScore: opts.LearnScore, tokenKey: make([]byte, 32)}
 	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)

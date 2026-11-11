@@ -43,9 +43,8 @@ const (
 	// busyWait is how long a match waits for providers that asked to be
 	// left alone.
 	busyWait = 15 * time.Minute
-	// keepAtLeast is the score below which a match is not even worth a
-	// person's look; pendingPerBook how many of the rest are kept.
-	keepAtLeast    = 0.5
+	// pendingPerBook is how many matches below the threshold, those worth a
+	// person's look (metadata.Service.ReviewFloor), are kept.
 	pendingPerBook = 3
 	matchAttempts  = 5
 )
@@ -173,12 +172,13 @@ func (s *Service) Fetch(ctx context.Context, bookID uuid.UUID) (string, error) {
 		_, err = s.record(ctx, sqlc.New(s.pool), bookID, best, StateApplied)
 		return outcome, err
 	}
+	floor := s.meta.ReviewFloor(ctx)
 	outcome := OutcomeNotFound
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		fresh := false
 		for i, c := range found {
-			if i == pendingPerBook || c.Score < keepAtLeast {
+			if i == pendingPerBook || c.Score < floor {
 				break
 			}
 			inserted, err := s.record(ctx, q, bookID, c, StatePending)

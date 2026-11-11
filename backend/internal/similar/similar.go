@@ -136,6 +136,11 @@ type Service struct {
 	Probe Probe
 	// queries embeds the descriptions Describe is asked about.
 	queries queries
+	// compared remembers the vectors CompareToBook made.
+	compared comparedTexts
+	// WaitForModel makes CompareToBook wait for a model that is loading
+	// instead of answering ErrLoading, for a command that measures.
+	WaitForModel bool
 	// Passages reads a file's chunks at positions from the file, which is
 	// where their text is kept (ingest.Service.Passages).
 	Passages func(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error)

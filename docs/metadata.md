@@ -147,6 +147,106 @@ On the library above it took 49 of 200 books: 36 the book's own edition,
 13 another edition of it, none another book. Turn it on only where your
 numbers say the same.
 
+## Learning the score from your library
+
+The score that ranks candidates was set by hand: how much the title,
+the authors, the year, the language, the publisher, the pages, the
+series and its place, and the kind of edition count. A library's books
+that have an ISBN are labelled examples of how well that works: look up
+without the ISBN, the candidate that carries it is right. `gotome
+match-train` fits a logistic regression on them, so that the score
+becomes a probability: a threshold of 0.95 then takes matches that are
+right 95 times in 100 on your library, which the calibration table of
+`match-check` shows (what a score predicts against what was found).
+
+```
+docker compose exec app gotome match-train -n 1000
+```
+
+It looks a sample up as `match-check` does (the same sample, the same
+cache, the same pace; `-providers` and `-json` too), computes for every
+candidate the features the score uses (title likeness, authors in
+common, year, language, publisher, pages, series and place, kind of
+edition, which source, and the place in the source's answer), and fits
+the weights on four fifths of the books. It prints the weights beside
+the hand-set ones, and, on the fifth held out, the hand-set and the
+learned score side by side: what comes first, what each threshold takes
+and how much of it is right, and the calibration. The weights it keeps
+are then fitted on all of the sample, and stored in the database (not in
+a file), per installation. Without enough right candidates (30) or
+books to hold some out (10) it keeps nothing.
+
+The same two commands are on the settings page, under **Book details**:
+**Measure** (`match-check`) and **Learn from my library** (`match-train`)
+each run in the background with their progress ("312 of 1,000 books
+looked up", the time left at the sources' pace), and show their last
+result as tables. `metadata.scoreWeights` chooses which weights rank a
+lookup: the learned ones (the default; without any, the starting weights
+shipped for the languages of the library, and without those the
+hand-set ones), the hand-set ones, or an imported file's.
+`metadata.learnScore` learns once a week, where at least 500 books have
+an ISBN, through the cache.
+
+**What it found on a library in German** (1,000 books with an ISBN looked
+up without it at the DNB and Open Library; 810 to fit, 190 held out; the
+score ranks the held-out books' candidates):
+
+| the first candidate | hand-set | learned |
+|---|---|---|
+| the book itself (its ISBN) | 76 (40%) | 86 (45%) |
+| another edition of it | 46 (24%) | 36 (19%) |
+| another book | 9 (5%) | 12 (6%) |
+| nothing found | 55 (29%) | 55 (29%) |
+| log loss of the candidates, held out | - | 0.346 |
+
+The hand-set score is no probability: its 0.95 and above took 79 of the
+190 books, of which 50 carry the ISBN and 27 are another edition (63%
+and 34%), where it says 99%. The learned score is: the first candidates it
+puts between 0.7 and 0.8 are the book 82% of the time, between 0.8 and
+0.9 90%, as it predicts or a little better. It is less sure, since an
+edition that is not the ISBN's counts against it: no candidate reaches
+0.95, 0.7 takes 33 books of which 29 are the book itself, 3 another
+edition and 1 another book (88%), and 0.5 takes 68, of which 54 (79%).
+With the learned weights, lower `metadata.matchThreshold` to what your
+own table says (the setting is yours; GOtome does not move it), and note
+that matches that wait for review are kept from 0.2 on, since a
+probability of the exact ISBN is low for an edition that is good enough
+to look at.
+
+**What the book is about.** Where embedding is on and a book has been
+embedded, a candidate found by title also counts by its description: the
+descriptions of the first three candidates of each source (long enough
+to say something) are embedded like a search query and their cosine to
+the book's own text vector is one more feature of the score. It is meant
+to tell another book of the same author and a like title from the book
+itself. Only some sources return a description with a search: Hardcover
+and CrossRef do; the DNB and Open Library give one only for a lookup by
+ISBN, so for books looked up there by title the feature is absent and its
+learned weight stays zero. Nothing is compared where the book has no
+vector, the candidate no description, or embedding is off; books looked
+up by ISBN are never compared; the vectors of descriptions are kept in
+memory by the hash of the text, not stored. `match-check` and
+`match-train` take `-descriptions=false` to measure without it and
+`-embedded` to sample only books that have been embedded. The learned
+weights decide how much it counts: the hand-set score does not use it.
+On a German library looked up at the DNB, Open Library and CrossRef
+(about 290 embedded books) CrossRef's abstracts gave the feature to a
+few candidates and it learned a weight near zero: no gain could be
+measured. Hardcover, which describes most of its books, was not asked.
+
+**Sharing what was learned, never the books.** *Export weights* writes a
+small JSON file: the weights, the version of the feature set, the
+version of GOtome, how many books were learned from and the shares of
+languages and providers. It has no title, author, ISBN, path or ID; read
+it before you pass it on. *Import weights* keeps such a file beside your
+own, refused when it was made for another version of the features, and
+**Measure** then ranks the sample with it too, so that you see how it
+does on your library before you choose it with `metadata.scoreWeights`.
+GOtome never sends anything anywhere itself. Starting weights for a kind
+of library are built into a release from files that were shared; a new
+installation uses the one that fits the languages of its books until it
+has learned its own.
+
 ## Doing it automatically
 
 Clean-up suggestions and matches that wait for review can be dealt with

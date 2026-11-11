@@ -6,6 +6,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
@@ -469,6 +470,37 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPatch, Path: "/settings", ID: "updateSettings",
 			Summary: "Change settings, all or none; an empty or null value unsets one", Tag: "settings",
 			Request: updateSettingsRequest{}, Response: settingList{}, Permission: auth.SettingsManage, Handler: s.updateSettings,
+		},
+
+		{
+			Method: http.MethodGet, Path: "/metadata/scoring", ID: "getMatchScoring",
+			Summary: "Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports", Tag: "settings",
+			Response: metadata.ScoringStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getScoring,
+		},
+		{
+			Method: http.MethodPost, Path: "/metadata/scoring/measure", ID: "measureMatchScoring",
+			Summary: "Look a sample of the books with an ISBN up without it and count how often the first candidate is the book (match-check), as a background job", Tag: "settings",
+			Request: scoringRun{}, Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.requestScoringRun(false),
+		},
+		{
+			Method: http.MethodPost, Path: "/metadata/scoring/learn", ID: "learnMatchScoring",
+			Summary: "Learn the match score from the library's books with an ISBN (match-train), as a background job", Tag: "settings",
+			Request: scoringRun{}, Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.requestScoringRun(true),
+		},
+		{
+			Method: http.MethodGet, Path: "/metadata/scoring/export", ID: "exportMatchScoring",
+			Summary: "The learned weights as a file to read and share: weights and counts, nothing of the books", Tag: "settings",
+			Response: metadata.Profile{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.exportScoring,
+		},
+		{
+			Method: http.MethodPut, Path: "/metadata/scoring/import", ID: "importMatchScoring",
+			Summary: "Keep a file of weights someone shared, to measure beside the others; refused for another version of the features", Tag: "settings",
+			Request: metadata.Profile{}, Permission: auth.SettingsManage, Handler: s.importScoring,
+		},
+		{
+			Method: http.MethodDelete, Path: "/metadata/scoring/import", ID: "deleteImportedMatchScoring",
+			Summary: "Forget the imported weights", Tag: "settings",
+			Permission: auth.SettingsManage, Handler: s.deleteImportedScoring,
 		},
 
 		{

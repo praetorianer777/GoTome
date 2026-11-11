@@ -8132,6 +8132,246 @@
         "x-permission": "personal:manage"
       }
     },
+    "/metadata/scoring": {
+      "get": {
+        "operationId": "getMatchScoring",
+        "summary": "Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports",
+        "tags": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoringStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
+    "/metadata/scoring/export": {
+      "get": {
+        "operationId": "exportMatchScoring",
+        "summary": "The learned weights as a file to read and share: weights and counts, nothing of the books",
+        "tags": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
+    "/metadata/scoring/import": {
+      "delete": {
+        "operationId": "deleteImportedMatchScoring",
+        "summary": "Forget the imported weights",
+        "tags": [
+          "settings"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      },
+      "put": {
+        "operationId": "importMatchScoring",
+        "summary": "Keep a file of weights someone shared, to measure beside the others; refused for another version of the features",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Profile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
+    "/metadata/scoring/learn": {
+      "post": {
+        "operationId": "learnMatchScoring",
+        "summary": "Learn the match score from the library's books with an ISBN (match-train), as a background job",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoringRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
+    "/metadata/scoring/measure": {
+      "post": {
+        "operationId": "measureMatchScoring",
+        "summary": "Look a sample of the books with an ISBN up without it and count how often the first candidate is the book (match-check), as a background job",
+        "tags": [
+          "settings"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoringRun"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "settings:manage"
+      }
+    },
     "/metadata/search": {
       "get": {
         "operationId": "searchMetadata",
@@ -10734,6 +10974,33 @@
           "users"
         ]
       },
+      "Agreement": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "integer"
+          },
+          "edition": {
+            "type": "integer"
+          },
+          "right": {
+            "type": "integer"
+          },
+          "sameWork": {
+            "type": "integer"
+          },
+          "wrong": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "right",
+          "sameWork",
+          "edition",
+          "wrong"
+        ]
+      },
       "ApiKeyList": {
         "type": "object",
         "properties": {
@@ -11707,6 +11974,37 @@
           "books"
         ]
       },
+      "CalibrationBand": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "found": {
+            "type": "number"
+          },
+          "from": {
+            "type": "number"
+          },
+          "predicted": {
+            "type": "number"
+          },
+          "right": {
+            "type": "integer"
+          },
+          "to": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "count",
+          "right",
+          "predicted",
+          "found"
+        ]
+      },
       "CandidateList": {
         "type": "object",
         "properties": {
@@ -11859,6 +12157,83 @@
           "status",
           "message",
           "checkedAt"
+        ]
+      },
+      "CheckReport": {
+        "type": "object",
+        "properties": {
+          "agreement": {
+            "$ref": "#/components/schemas/Agreement"
+          },
+          "all": {
+            "$ref": "#/components/schemas/Tally"
+          },
+          "books": {
+            "type": "integer"
+          },
+          "editions": {
+            "$ref": "#/components/schemas/Agreement"
+          },
+          "perLanguage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tally"
+            }
+          },
+          "perProvider": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tally"
+            }
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample": {
+            "type": "integer"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreBand"
+            }
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThresholdPoint"
+            }
+          },
+          "using": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variant"
+            }
+          }
+        },
+        "required": [
+          "books",
+          "sample",
+          "providers",
+          "threshold",
+          "all",
+          "perProvider",
+          "perLanguage",
+          "scores",
+          "thresholds",
+          "agreement",
+          "editions",
+          "using",
+          "variants"
         ]
       },
       "CleanupApplied": {
@@ -15463,6 +15838,50 @@
           "needBytes"
         ]
       },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "featureVersion": {
+            "type": "integer"
+          },
+          "format": {
+            "type": "string"
+          },
+          "gotomeVersion": {
+            "type": "string"
+          },
+          "languages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "providers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "weights": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "featureVersion",
+          "gotomeVersion",
+          "books",
+          "languages",
+          "providers",
+          "weights"
+        ]
+      },
       "ProgressSaved": {
         "type": "object",
         "properties": {
@@ -16134,6 +16553,41 @@
           "total"
         ]
       },
+      "RunStatus": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "estimateSeconds": {
+            "type": "integer"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state",
+          "done",
+          "total",
+          "estimateSeconds",
+          "startedAt"
+        ]
+      },
       "Scan": {
         "type": "object",
         "properties": {
@@ -16201,6 +16655,89 @@
           "filesMissing",
           "filesSkipped",
           "booksAdded"
+        ]
+      },
+      "ScoreBand": {
+        "type": "object",
+        "properties": {
+          "edition": {
+            "type": "integer"
+          },
+          "from": {
+            "type": "number"
+          },
+          "right": {
+            "type": "integer"
+          },
+          "sameWork": {
+            "type": "integer"
+          },
+          "to": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "right",
+          "sameWork",
+          "edition",
+          "wrong"
+        ]
+      },
+      "ScoringRun": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          }
+        }
+      },
+      "ScoringStatus": {
+        "type": "object",
+        "properties": {
+          "booksWithIsbn": {
+            "type": "integer"
+          },
+          "imported": {
+            "$ref": "#/components/schemas/WeightsInfo"
+          },
+          "learn": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "learnFrom": {
+            "type": "integer"
+          },
+          "learnReport": {
+            "$ref": "#/components/schemas/TrainReport"
+          },
+          "learned": {
+            "$ref": "#/components/schemas/WeightsInfo"
+          },
+          "measure": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "measureReport": {
+            "$ref": "#/components/schemas/CheckReport"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "using": {
+            "type": "string"
+          },
+          "weights": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "weights",
+          "using",
+          "booksWithIsbn",
+          "learnFrom"
         ]
       },
       "SearchHit": {
@@ -16865,6 +17402,56 @@
           "usedBytes"
         ]
       },
+      "Tally": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "edition": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "missing": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "none": {
+            "type": "integer"
+          },
+          "ranks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "right": {
+            "type": "integer"
+          },
+          "sameWork": {
+            "type": "integer"
+          },
+          "wrong": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "books",
+          "right",
+          "sameWork",
+          "edition",
+          "wrong",
+          "none",
+          "failed",
+          "ranks",
+          "missing"
+        ]
+      },
       "TextBook": {
         "type": "object",
         "properties": {
@@ -16965,6 +17552,37 @@
           "username"
         ]
       },
+      "ThresholdPoint": {
+        "type": "object",
+        "properties": {
+          "edition": {
+            "type": "integer"
+          },
+          "right": {
+            "type": "integer"
+          },
+          "sameWork": {
+            "type": "integer"
+          },
+          "taken": {
+            "type": "integer"
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "wrong": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "threshold",
+          "taken",
+          "right",
+          "sameWork",
+          "edition",
+          "wrong"
+        ]
+      },
       "Tracker": {
         "type": "object",
         "properties": {
@@ -17010,6 +17628,85 @@
         },
         "required": [
           "trackers"
+        ]
+      },
+      "TrainReport": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "candidates": {
+            "type": "integer"
+          },
+          "handSet": {
+            "$ref": "#/components/schemas/Variant"
+          },
+          "languages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "learned": {
+            "$ref": "#/components/schemas/Variant"
+          },
+          "logLossTest": {
+            "type": "number"
+          },
+          "logLossTrain": {
+            "type": "number"
+          },
+          "providerShares": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "right": {
+            "type": "integer"
+          },
+          "sample": {
+            "type": "integer"
+          },
+          "testBooks": {
+            "type": "integer"
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "trainBooks": {
+            "type": "integer"
+          },
+          "weights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeightRow"
+            }
+          }
+        },
+        "required": [
+          "books",
+          "sample",
+          "trainBooks",
+          "testBooks",
+          "candidates",
+          "right",
+          "providers",
+          "threshold",
+          "logLossTrain",
+          "logLossTest",
+          "weights",
+          "handSet",
+          "learned",
+          "languages",
+          "providerShares"
         ]
       },
       "TrashList": {
@@ -17224,6 +17921,42 @@
           "role"
         ]
       },
+      "Variant": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "$ref": "#/components/schemas/Tally"
+          },
+          "calibration": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalibrationBand"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreBand"
+            }
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThresholdPoint"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "all",
+          "scores",
+          "thresholds",
+          "calibration"
+        ]
+      },
       "Warning": {
         "type": "object",
         "properties": {
@@ -17267,6 +18000,58 @@
           "notified",
           "polled",
           "limitReached"
+        ]
+      },
+      "WeightRow": {
+        "type": "object",
+        "properties": {
+          "feature": {
+            "type": "string"
+          },
+          "handSet": {
+            "type": "number"
+          },
+          "learned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "feature",
+          "learned"
+        ]
+      },
+      "WeightsInfo": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "gotomeVersion": {
+            "type": "string"
+          },
+          "languages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "learnedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "providers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "learnedAt",
+          "books",
+          "gotomeVersion",
+          "languages",
+          "providers"
         ]
       },
       "WishRequest": {

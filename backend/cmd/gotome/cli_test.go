@@ -336,6 +336,28 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 	}
 }
 
+func TestTheMatchTrainKeepsNothingWhereTheBooksGiveTooLittleToLearnFrom(t *testing.T) {
+	pool := dbtest.New(t)
+	onDatabase(t, pool)
+	records := filepath.Join(t.TempDir(), "metadata.json")
+	if err := os.WriteFile(records, []byte(`[]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOTOME_TEST_METADATA", records)
+
+	_, err := command(t, "", "match-train", "-n", "10")
+	if err == nil || !strings.Contains(err.Error(), "do not give enough right candidates") {
+		t.Errorf("match-train on a library without books: %v", err)
+	}
+	if _, err := command(t, "", "match-train", "-export", filepath.Join(t.TempDir(), "weights.json")); err == nil || !strings.Contains(err.Error(), "nothing has been learned") {
+		t.Errorf("an export before a learning: %v", err)
+	}
+	var kept int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM match_score_models").Scan(&kept); err != nil || kept != 0 {
+		t.Errorf("weights kept: %d %v", kept, err)
+	}
+}
+
 func TestTheDuplicateCheckSaysWhatTheRulesWouldDoAndNamesNothing(t *testing.T) {
 	pool := dbtest.New(t)
 	onDatabase(t, pool)
