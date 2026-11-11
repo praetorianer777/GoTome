@@ -1,8 +1,11 @@
-// Package fontsubset cuts a TrueType font down to the characters a book
-// uses. It reads sfnt files with glyf outlines and WOFF files that wrap
-// them, keeps the glyphs the characters map to (and what composite glyphs
-// are made of), and writes the font again with a new cmap, so that it keeps
-// its look at a fraction of its size. Layout tables keyed by glyph (GSUB,
+// Package fontsubset cuts a font down to the characters a book uses. It
+// reads sfnt files with glyf outlines and with CFF outlines (OpenType), and
+// WOFF files that wrap them. A TrueType font keeps the glyphs the characters
+// map to (and what composite glyphs are made of) under new numbers. A CFF
+// font keeps its glyph numbers: the other glyphs become an empty charstring,
+// subroutines no kept glyph calls become a bare return, and glyphs after the
+// last one kept go. Both get a new cmap, so that the font keeps its look at
+// a fraction of its size. Layout tables keyed by glyph (GSUB,
 // GPOS, kern, ...) are dropped: an e-reader needs the glyphs, not the
 // shaping.
 package fontsubset
@@ -47,7 +50,7 @@ func IsFont(data []byte) bool {
 		return false
 	}
 	switch string(data[:4]) {
-	case "\x00\x01\x00\x00", "true", "wOFF":
+	case "\x00\x01\x00\x00", "true", "OTTO", "wOFF":
 		return true
 	}
 	return false
@@ -99,7 +102,7 @@ func readFont(b []byte) (tableSet, bool, error) {
 		return tableSet{}, false, ErrCorrupt
 	}
 	switch string(b[:4]) {
-	case "\x00\x01\x00\x00", "true":
+	case "\x00\x01\x00\x00", "true", "OTTO":
 		t, err := readSFNT(b)
 		return t, false, err
 	case "wOFF":
@@ -160,12 +163,16 @@ func readWOFF(b []byte) (tableSet, error) {
 }
 
 func checkOutlines(t tableSet) (tableSet, error) {
-	if string(t.flavor[:]) == "OTTO" {
-		return t, ErrUnsupported
+	cff := string(t.flavor[:]) == "OTTO"
+	required := []string{"head", "maxp", "cmap", "hhea", "hmtx"}
+	if cff {
+		required = append(required, "CFF ")
+	} else {
+		required = append(required, "glyf", "loca")
 	}
-	for _, tag := range []string{"head", "maxp", "cmap", "loca", "glyf", "hhea", "hmtx"} {
+	for _, tag := range required {
 		if _, ok := t.data[tag]; !ok {
-			if _, cff := t.data["CFF "]; cff || tag == "glyf" || tag == "loca" {
+			if tag == "CFF " || tag == "glyf" || tag == "loca" {
 				return t, ErrUnsupported
 			}
 			return t, ErrCorrupt
@@ -175,6 +182,9 @@ func checkOutlines(t tableSet) (tableSet, error) {
 }
 
 func subsetTables(src tableSet, runes []rune) (map[string][]byte, error) {
+	if string(src.flavor[:]) == "OTTO" {
+		return subsetCFF(src, runes)
+	}
 	head, _ := src.get("head")
 	maxp, _ := src.get("maxp")
 	hhea, _ := src.get("hhea")
@@ -410,7 +420,10 @@ func parseCmap(cmap []byte) (map[rune]uint16, error) {
 	if len(cmap) < 4+8*n {
 		return nil, ErrCorrupt
 	}
-	best, bestScore := -1, 0
+	// The subtable is chosen as golang.org/x/image/font/sfnt does, so that
+	// Verify compares what a reader would see: the widest encoding, the
+	// first of equal width.
+	best, bestWidth, symbol, mac := -1, 0, false, false
 	for i := range n {
 		rec := cmap[4+8*i:]
 		platform, encoding := big.Uint16(rec), big.Uint16(rec[2:])
@@ -419,21 +432,20 @@ func parseCmap(cmap []byte) (map[rune]uint16, error) {
 			return nil, ErrCorrupt
 		}
 		format := big.Uint16(cmap[off:])
-		if format != 4 && format != 12 {
+		width := 0
+		switch {
+		case platform == 0 && encoding == 3, platform == 3 && (encoding == 0 || encoding == 1):
+			width = 2
+		case platform == 0 && encoding == 4, platform == 3 && encoding == 10:
+			width = 4
+		case platform == 1 && encoding == 0 && format == 0:
+			width = 1
+		}
+		if width <= bestWidth || (format != 0 && format != 4 && format != 6 && format != 12) {
 			continue
 		}
-		score := 0
-		switch {
-		case platform == 3 && encoding == 10, platform == 0 && encoding == 4:
-			score = 4
-		case platform == 3 && encoding == 1:
-			score = 3
-		case platform == 0:
-			score = 2
-		}
-		if score > bestScore {
-			best, bestScore = off, score
-		}
+		best, bestWidth = off, width
+		symbol, mac = platform == 3 && encoding == 0, platform == 1
 	}
 	if best < 0 {
 		return nil, ErrUnsupported
@@ -461,6 +473,30 @@ func parseCmap(cmap []byte) (map[rune]uint16, error) {
 				if g := glyph + c - first; g != 0 {
 					chars[rune(c)] = uint16(g)
 				}
+			}
+		}
+		return chars, nil
+	}
+	if format := big.Uint16(sub); format == 0 || format == 6 {
+		first, count, at := 0, 256, 6
+		if format == 6 {
+			if len(sub) < 10 {
+				return nil, ErrCorrupt
+			}
+			first, count, at = int(big.Uint16(sub[6:])), int(big.Uint16(sub[8:])), 10
+		}
+		if len(sub) < at+count*(1+int(format)/6) {
+			return nil, ErrCorrupt
+		}
+		for i := range count {
+			var g uint16
+			if format == 0 {
+				g = uint16(sub[6+i])
+			} else {
+				g = big.Uint16(sub[at+2*i:])
+			}
+			if c := first + i; g != 0 && (!mac || c < 0x80) {
+				chars[rune(c)] = g
 			}
 		}
 		return chars, nil
@@ -495,6 +531,9 @@ func parseCmap(cmap []byte) (map[rune]uint16, error) {
 			}
 			if g != 0 {
 				chars[rune(c)] = g
+				if symbol && c >= 0xF000 && c <= 0xF0FF {
+					chars[rune(c-0xF000)] = g
+				}
 			}
 		}
 	}

@@ -224,3 +224,27 @@ func TestFixLeavesAnObfuscatedFontItCannotUnscramble(t *testing.T) {
 		t.Error("the font changed")
 	}
 }
+
+func TestFixSubsetsOpenTypeFontsWithCFFOutlinesToo(t *testing.T) {
+	serif, other := fontsubset.SyntheticCFF(5000), fontsubset.SyntheticCFF(2000)
+	data := fontEPUB(t, []entry{{"OEBPS/fonts/serif.ttf", string(serif)}, {"OEBPS/fonts/other.ttf", string(other)}})
+	written, fixed := fix(t, data, SubsetFonts)
+	if fixed.FontsSubset != 2 || fixed.FontsRemoved != 0 {
+		t.Fatalf("fixed %+v", fixed)
+	}
+	for name, original := range map[string][]byte{"OEBPS/fonts/serif.ttf": serif, "OEBPS/fonts/other.ttf": other} {
+		out := []byte(entryText(t, written, name))
+		f, _ := glyphsIn(t, out)
+		if len(out)*5 > len(original) {
+			t.Errorf("%s: %d bytes from %d", name, len(out), len(original))
+		}
+		for _, r := range bookText {
+			if !mapsRune(t, f, r) {
+				t.Errorf("%s: %q is gone", name, r)
+			}
+		}
+		if err := fontsubset.Verify(original, out, []rune(bookText)); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}

@@ -208,9 +208,7 @@ func TestSubsetOfAWOFFIsAWOFF(t *testing.T) {
 }
 
 func TestSubsetLeavesWhatItCannotReadAlone(t *testing.T) {
-	cff := append([]byte("OTTO"), make([]byte, 40)...)
 	for name, font := range map[string][]byte{
-		"CFF":        cff,
 		"WOFF2":      append([]byte("wOF2"), make([]byte, 40)...),
 		"collection": append([]byte("ttcf"), make([]byte, 40)...),
 	} {
