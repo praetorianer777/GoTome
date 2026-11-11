@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-11
+
 ### Added
 
 - A book whose file names no ISBN gets the one printed on its imprint page,
