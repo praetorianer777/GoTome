@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-11
+
 ### Added
 
 - GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
