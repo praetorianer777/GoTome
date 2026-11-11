@@ -76,7 +76,7 @@ func TestADevicesFilesAreMatchedToTheBooksItsOwnerSees(t *testing.T) {
 	status, out := match(device, hexSum(open), hexSum(secret), unknown)
 	matches, _ := out["matches"].([]any)
 	if status != 200 || len(matches) != 1 ||
-		matches[0].(map[string]any)["bookId"] != upOpen["bookId"] || matches[0].(map[string]any)["sha256"] != hexSum(open) {
+		matches[0].(map[string]any)["bookId"] != upOpen["bookId"] || matches[0].(map[string]any)["sha256"] != hexSum(open) || matches[0].(map[string]any)["fileId"] != upOpen["fileId"] {
 		t.Fatalf("matches: %d %v", status, out)
 	}
 

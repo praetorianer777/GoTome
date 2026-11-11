@@ -13496,13 +13496,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "sha256": {
             "type": "string"
           }
         },
         "required": [
           "sha256",
-          "bookId"
+          "bookId",
+          "fileId"
         ]
       },
       "DeviceFileMatches": {

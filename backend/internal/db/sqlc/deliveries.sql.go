@@ -202,7 +202,7 @@ func (q *Queries) MarkDelivered(ctx context.Context, arg MarkDeliveredParams) (i
 
 const matchDeviceFiles = `-- name: MatchDeviceFiles :many
 WITH hits AS (
-    SELECT DISTINCT ON (m.hash) m.hash, m.book_id
+    SELECT DISTINCT ON (m.hash) m.hash, m.book_id, m.file_id
     FROM (
         SELECT h.hash, f.book_id, f.id AS file_id
         FROM unnest($1::bytea[]) AS h(hash)
@@ -223,7 +223,7 @@ WITH hits AS (
     SET delivered_at = coalesce(deliveries.delivered_at, now())
     RETURNING book_id
 )
-SELECT hits.hash::bytea AS hash, hits.book_id FROM hits
+SELECT hits.hash::bytea AS hash, hits.book_id, hits.file_id FROM hits
 `
 
 type MatchDeviceFilesParams struct {
@@ -236,6 +236,7 @@ type MatchDeviceFilesParams struct {
 type MatchDeviceFilesRow struct {
 	Hash   []byte
 	BookID uuid.UUID
+	FileID uuid.UUID
 }
 
 // The visible books that have a live file with one of the hashes, one book
@@ -254,7 +255,7 @@ func (q *Queries) MatchDeviceFiles(ctx context.Context, arg MatchDeviceFilesPara
 	items := []MatchDeviceFilesRow{}
 	for rows.Next() {
 		var i MatchDeviceFilesRow
-		if err := rows.Scan(&i.Hash, &i.BookID); err != nil {
+		if err := rows.Scan(&i.Hash, &i.BookID, &i.FileID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

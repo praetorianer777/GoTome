@@ -23,6 +23,8 @@ class Sync(private val context: Context) {
             progress(context.getString(R.string.sending_progress))
             sendProgress()
             deliverQueue(progress)
+            runCatching { OwnBooks(context, db, api).sync(progress) { id -> runCatching { fetchPosition(id) } } }
+                .onFailure { Log.w(TAG, "looking at the Tolino's own books failed", it) }
             report()
             fetchPositions()
             runCatching { Updates(context).check() }.onFailure { Log.w(TAG, "looking for an update failed", it) }

@@ -24,6 +24,9 @@ type deviceFilesRequest struct {
 type deviceFileMatch struct {
 	SHA256 string    `json:"sha256"`
 	BookID uuid.UUID `json:"bookId"`
+	// FileID is the file of the book that has the hash, which reading
+	// progress is saved against.
+	FileID uuid.UUID `json:"fileId"`
 }
 
 type deviceFileMatches struct {
@@ -60,7 +63,7 @@ func (s *Server) matchDeviceFiles(w http.ResponseWriter, r *http.Request) error 
 	}
 	out := deviceFileMatches{Matches: make([]deviceFileMatch, len(matched))}
 	for i, m := range matched {
-		out.Matches[i] = deviceFileMatch{SHA256: hex.EncodeToString(m.SHA256), BookID: m.BookID}
+		out.Matches[i] = deviceFileMatch{SHA256: hex.EncodeToString(m.SHA256), BookID: m.BookID, FileID: m.FileID}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

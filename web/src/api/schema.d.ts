@@ -3906,6 +3906,8 @@ export interface components {
         DeviceFileMatch: {
             /** Format: uuid */
             bookId: string;
+            /** Format: uuid */
+            fileId: string;
             sha256: string;
         };
         DeviceFileMatches: {

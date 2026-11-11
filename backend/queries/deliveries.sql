@@ -88,7 +88,7 @@ DELETE FROM deliveries WHERE device_id = $1 AND book_id = $2;
 -- The visible books that have a live file with one of the hashes, one book
 -- for each hash, recorded as on the device in the same statement.
 WITH hits AS (
-    SELECT DISTINCT ON (m.hash) m.hash, m.book_id
+    SELECT DISTINCT ON (m.hash) m.hash, m.book_id, m.file_id
     FROM (
         SELECT h.hash, f.book_id, f.id AS file_id
         FROM unnest(sqlc.arg(hashes)::bytea[]) AS h(hash)
@@ -109,4 +109,4 @@ WITH hits AS (
     SET delivered_at = coalesce(deliveries.delivered_at, now())
     RETURNING book_id
 )
-SELECT hits.hash::bytea AS hash, hits.book_id FROM hits;
+SELECT hits.hash::bytea AS hash, hits.book_id, hits.file_id FROM hits;

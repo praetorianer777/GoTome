@@ -125,6 +125,7 @@ func (s *Service) OnDevice(ctx context.Context, scope library.Scope, deviceID, b
 type Matched struct {
 	SHA256 []byte
 	BookID uuid.UUID
+	FileID uuid.UUID
 }
 
 // Match finds, among the hashes of files a device holds, the visible books
@@ -139,7 +140,7 @@ func (s *Service) Match(ctx context.Context, scope library.Scope, deviceID uuid.
 	}
 	out := make([]Matched, len(rows))
 	for i, r := range rows {
-		out[i] = Matched{SHA256: r.Hash, BookID: r.BookID}
+		out[i] = Matched{SHA256: r.Hash, BookID: r.BookID, FileID: r.FileID}
 	}
 	return out, nil
 }

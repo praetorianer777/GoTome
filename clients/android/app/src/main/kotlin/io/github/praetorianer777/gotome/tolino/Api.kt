@@ -67,6 +67,26 @@ class Api(private val prefs: Prefs) {
         }
     }
 
+    /** Sends [file] as the multipart form field `file` that GOtome's uploads take, streaming it. */
+    fun upload(path: String, file: File, name: String = file.name): String {
+        val boundary = "gotome" + java.util.UUID.randomUUID().toString().replace("-", "")
+        val safeName = name.replace(Regex("[\\r\\n\"]"), "_")
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"$safeName\"\r\n" +
+            "Content-Type: application/octet-stream\r\n\r\n"
+        val tail = "\r\n--$boundary--\r\n"
+        val conn = open("POST", path)
+        conn.doOutput = true
+        conn.readTimeout = 300_000
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        conn.setFixedLengthStreamingMode(head.toByteArray().size + file.length() + tail.toByteArray().size)
+        conn.outputStream.use { out ->
+            out.write(head.toByteArray())
+            file.inputStream().use { it.copyTo(out) }
+            out.write(tail.toByteArray())
+        }
+        return read(conn)
+    }
+
     fun bytes(path: String): ByteArray? {
         val conn = open("GET", path)
         return if (conn.responseCode == 200) conn.inputStream.use { it.readBytes() } else null

@@ -97,6 +97,7 @@ class StoreActivity : Activity() {
         findViewById<Button>(R.id.settings).setOnClickListener { startActivity(Intent(this, SetupActivity::class.java)) }
         findViewById<Button>(R.id.sync).setOnClickListener { syncNow() }
         for ((m, tab) in tabs) tab.setOnClickListener { open(m) }
+        findViewById<Button>(R.id.not_in_gotome).setOnClickListener { startActivity(Intent(this, OwnFilesActivity::class.java)) }
 
         val swipe = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
