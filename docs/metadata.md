@@ -32,7 +32,22 @@ which are asked; leave one out to stop it.
 With `metadata.autoMatch` on (the default), every book is looked up once
 its file is read: by its ISBNs and its DOI, and by title and author where
 those find nothing. Each candidate gets a score: 1 for a shared
-identifier, at most 0.99 for title, author and year alone.
+identifier, at most 0.99 otherwise. The title counts most, then the
+authors, the year and the language. Where both the book and the
+candidate say it, further signals add to or take from the score: a
+different language multiplies it by 0.6 (a translation is not the book),
+a page count within 10% (at least 15 pages) adds a little and one 40%
+off takes a little, as does the same publisher or a different one, the
+same series, and within it the same position (a different position takes
+10 points: the next volume is not this book). A side that says nothing
+about a signal changes nothing. Among equal scores, candidates in the
+book's own language come first.
+
+The weights of these signals (named constants in
+`backend/internal/metadata/score.go`) are set by reasoning and await
+numbers from `gotome match-check`: run it before and after on your own
+library (below) and move them if the share of wrong first candidates
+or the sureness at the threshold does not improve.
 
 - A best candidate at or above `metadata.matchThreshold` (0.95) is taken,
   but only to fill gaps: empty fields, a title that was only the file

@@ -232,8 +232,31 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			found = append(found, Candidate{Record: r, Score: Score(book, r)})
 		}
 	}
-	slices.SortStableFunc(found, func(a, b Candidate) int { return cmp.Compare(b.Score, a.Score) })
-	return found, errors.Join(errs...)
+	lang := book.Language
+	if lang == "" {
+		lang = q.Language
+	}
+	return sortCandidates(found, lang), errors.Join(errs...)
+}
+
+// sortCandidates puts the best score first, and among equal scores the
+// records in the language wanted before the others.
+func sortCandidates(c []Candidate, lang string) []Candidate {
+	wanted := baseLanguage(lang)
+	own := func(x Candidate) bool { return wanted != "" && baseLanguage(x.Language) == wanted }
+	slices.SortStableFunc(c, func(a, b Candidate) int {
+		if d := cmp.Compare(b.Score, a.Score); d != 0 {
+			return d
+		}
+		switch {
+		case own(a) && !own(b):
+			return -1
+		case own(b) && !own(a):
+			return 1
+		}
+		return 0
+	})
+	return c
 }
 
 // lookupIDs are the identifiers a book is looked up by: its ISBNs, and a

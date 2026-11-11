@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -255,7 +254,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			failed = true
 		}
 		lang := perLanguage[languageOf(b.book.Language)]
-		outcome, rank, err := judge(sortCandidates(all), b.isbns, workOf)
+		outcome, rank, err := judge(sortCandidates(all, b.book.Language), b.isbns, workOf)
 		if err != nil && ctx.Err() != nil {
 			return CheckReport{}, ctx.Err()
 		}
@@ -404,12 +403,7 @@ func (s *Service) searchRanked(ctx context.Context, p Provider, book catalog.Boo
 		r.Provider = p.Name()
 		out = append(out, Candidate{Record: r, Score: Score(book, r)})
 	}
-	return sortCandidates(out), nil
-}
-
-func sortCandidates(c []Candidate) []Candidate {
-	slices.SortStableFunc(c, func(a, b Candidate) int { return cmp.Compare(b.Score, a.Score) })
-	return c
+	return sortCandidates(out, book.Language), nil
 }
 
 // worksOf are the works a provider says the ISBNs belong to, by looking

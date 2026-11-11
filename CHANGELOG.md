@@ -47,6 +47,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- Looking a book up without an ISBN ranks candidates better: a candidate in
+  another language than the book is scored much lower, and page count,
+  publisher, series and place in the series count where both know them, so
+  a translation or the next volume is less often taken as the book. Among
+  equal scores the book's own language comes first.
 - Undoing a run under Changes is done by a job, so a run of hundreds of
   merges can be taken back: the button answers at once and the run says
   how far the undo has got.
