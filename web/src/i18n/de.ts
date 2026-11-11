@@ -1338,6 +1338,7 @@ export const de: Record<MessageKey, string> = {
 	"settingChoice.metadata.providers.openlibrary": "Open Library",
 	"settingChoice.metadata.providers.crossref": "Crossref",
 	"settingChoice.metadata.providers.hardcover": "Hardcover",
+	"settingChoice.metadata.providers.dnb": "Deutsche Nationalbibliothek",
 	"settingChoice.oidc.defaultRole.admin": "Administrator",
 	"settingChoice.oidc.defaultRole.editor": "Redakteur",
 	"settingChoice.oidc.defaultRole.reader": "Leser",

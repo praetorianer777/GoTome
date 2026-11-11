@@ -51,6 +51,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/canned"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/dnb"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -921,6 +922,7 @@ func metadataService(cfg config.Config, pool *pgxpool.Pool, settingStore *settin
 			}
 			return token
 		}),
+		dnb.New(),
 	}
 	if cfg.Offline {
 		providers = nil

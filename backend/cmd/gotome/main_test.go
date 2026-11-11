@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/dnb"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
 	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -12,7 +13,7 @@ import (
 
 // The setting offers the providers serve registers, and no other.
 func TestTheProvidersSettingNamesTheRegisteredProviders(t *testing.T) {
-	registered := []string{openlibrary.Name, crossref.Name, hardcover.Name}
+	registered := []string{openlibrary.Name, crossref.Name, hardcover.Name, dnb.Name}
 	if !slices.Equal(registered, settings.ProviderNames) {
 		t.Errorf("serve registers %v, the setting offers %v", registered, settings.ProviderNames)
 	}

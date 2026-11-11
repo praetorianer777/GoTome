@@ -1319,6 +1319,7 @@ export const en = {
 	"settingChoice.metadata.providers.openlibrary": "Open Library",
 	"settingChoice.metadata.providers.crossref": "Crossref",
 	"settingChoice.metadata.providers.hardcover": "Hardcover",
+	"settingChoice.metadata.providers.dnb": "German National Library",
 	"settingChoice.oidc.defaultRole.admin": "Administrator",
 	"settingChoice.oidc.defaultRole.editor": "Editor",
 	"settingChoice.oidc.defaultRole.reader": "Reader",

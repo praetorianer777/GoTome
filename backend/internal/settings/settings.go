@@ -269,7 +269,7 @@ var OnOff = []string{"on", "off"}
 
 // ProviderNames are the metadata providers Providers may name, as each
 // provider's Name says.
-var ProviderNames = []string{"openlibrary", "crossref", "hardcover"}
+var ProviderNames = []string{"openlibrary", "crossref", "hardcover", "dnb"}
 
 // Roles are the values of OIDCDefaultRole: a role, or none to refuse.
 var Roles = []string{"admin", "editor", "reader", "none"}

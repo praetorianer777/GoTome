@@ -138,7 +138,7 @@ See [metadata.md](metadata.md).
 | `metadata.hardcoverToken` | Hardcover API token | none (secret) | The API token of your Hardcover account (hardcover.app, account settings, API). Without one Hardcover is not asked. |
 | `metadata.autoMatch` | Look up new books by themselves | `on` | `on` looks every book up once its file is read; a match sure enough fills in what the book lacks, any other waits on the **Review** page. `off` leaves lookups to the book page and bulk changes. |
 | `metadata.matchThreshold` | Sure enough to take without asking | `0.95` | The score, from 0.5 to 1, from which a match found by itself is taken without review. A shared ISBN or DOI scores 1; title, author and year alone at most 0.99. |
-| `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked: `openlibrary`, `crossref` and `hardcover`, separated by commas (a box each on the page). Leave one out to stop asking it; at least one stays. |
+| `metadata.providers` | Sources to ask | `openlibrary,crossref,hardcover` | The sources asked: `openlibrary`, `crossref`, `hardcover` and `dnb` (the German National Library, not asked unless named), separated by commas (a box each on the page). Leave one out to stop asking it; at least one stays. |
 | `metadata.contactEmail` | Contact address for sources | none | An e-mail address given to sources that ask whom to write to about the requests they get. CrossRef serves requests with one faster. It is not stored with the answers. |
 
 ### Automatic clean-up and review

@@ -11,6 +11,7 @@ sources on the internet. Nothing a person typed is ever overwritten.
 | [Open Library](https://openlibrary.org) | `openlibrary` | none | Books by ISBN, title and author; covers; the works of an author. |
 | [CrossRef](https://www.crossref.org) | `crossref` | none; a contact address helps | Scholarly books and papers, by DOI or ISBN. Set `metadata.contactEmail`: CrossRef serves requests that name one faster. |
 | [Hardcover](https://hardcover.app) | `hardcover` | `metadata.hardcoverToken` | Current fiction, series and their order, the books of an author or a series. Without a token it is not asked. |
+| [Deutsche Nationalbibliothek](https://www.dnb.de) | `dnb` | none | Books in German, by ISBN, title and author; the books of an author or a series, including titles announced by publishers with the month they are due. Not asked unless `metadata.providers` names it. |
 
 To get a Hardcover token: sign in at hardcover.app, open the account
 settings, **API**, and copy the token. Paste it into **Hardcover API
@@ -18,7 +19,8 @@ token** on GOtome's Settings page. Like every secret it is stored
 encrypted and not shown again.
 
 GOtome asks each source at a polite pace (Open Library every 400 ms,
-CrossRef every 350 ms, Hardcover about once a second, as each asks), and
+CrossRef every 350 ms, Hardcover and the Deutsche Nationalbibliothek about
+once a second, as each asks), and
 keeps each answer for 30 days, so a lookup repeated soon asks nobody.
 Keys are never part of what is kept.
 
