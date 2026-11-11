@@ -834,6 +834,7 @@ func matchEnvironment(descriptions bool) (ctx context.Context, meta *metadata.Se
 // It asks the providers, at their pace and through the answer cache.
 func matchCheck(args []string) error {
 	flags := flag.NewFlagSet("match-check", flag.ContinueOnError)
+	embedded := flags.Bool("embedded", false, "sample only books that have been embedded, to measure what descriptions add")
 	descriptions := flags.Bool("descriptions", true, "compare each candidate's description with the book's own vectors, where the book has them")
 	n := flags.Int("n", 100, "how many books with an ISBN to look up at most")
 	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
@@ -847,7 +848,7 @@ func matchCheck(args []string) error {
 	}
 	defer done()
 	opts := metadata.CheckOptions{
-		Books: *n,
+		Books: *n, EmbeddedOnly: *embedded,
 		Start: func(books int, estimate time.Duration) {
 			fmt.Fprintf(os.Stderr, "Looking up %d books; about %s at the providers' pace, less for answers in the cache.\n",
 				books, estimate.Round(time.Second))
@@ -881,6 +882,7 @@ func matchCheck(args []string) error {
 // and keeps the weights, printing numbers only.
 func matchTrain(args []string) error {
 	flags := flag.NewFlagSet("match-train", flag.ContinueOnError)
+	embedded := flags.Bool("embedded", false, "sample only books that have been embedded, to measure what descriptions add")
 	descriptions := flags.Bool("descriptions", true, "compare each candidate's description with the book's own vectors, where the book has them")
 	n := flags.Int("n", metadata.DefaultLearnBooks, "how many books with an ISBN to look up at most")
 	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
@@ -907,7 +909,7 @@ func matchTrain(args []string) error {
 		return os.WriteFile(*export, append(encoded, '\n'), 0o600)
 	}
 	opts := metadata.TrainOptions{
-		Books: *n, Ridge: *ridge,
+		Books: *n, Ridge: *ridge, EmbeddedOnly: *embedded,
 		Start: func(books int, estimate time.Duration) {
 			fmt.Fprintf(os.Stderr, "Looking up %d books; about %s at the providers' pace, less for answers in the cache.\n",
 				books, estimate.Round(time.Second))

@@ -34,6 +34,8 @@ type TrainOptions struct {
 	Providers []string
 	// Threshold is metadata.matchThreshold, to mark in the report.
 	Threshold float64
+	// EmbeddedOnly samples only books that have a content vector.
+	EmbeddedOnly bool
 	// Ridge is the pull of the weights towards zero; zero is DefaultRidge.
 	Ridge    float64
 	Start    func(books int, estimate time.Duration)
@@ -123,7 +125,7 @@ func (s *Service) Train(ctx context.Context, opts TrainOptions) (TrainReport, er
 	if err != nil {
 		return TrainReport{}, err
 	}
-	rows, err := q.ListMatchCheckBooks(ctx, int32(max(opts.Books, 0)))
+	rows, err := q.ListMatchCheckBooks(ctx, sqlc.ListMatchCheckBooksParams{MaxBooks: int32(max(opts.Books, 0)), EmbeddedOnly: opts.EmbeddedOnly})
 	if err != nil {
 		return TrainReport{}, err
 	}

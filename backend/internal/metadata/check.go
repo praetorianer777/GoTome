@@ -51,6 +51,9 @@ type CheckOptions struct {
 	Providers []string
 	// Threshold is metadata.matchThreshold as it is set now.
 	Threshold float64
+	// EmbeddedOnly samples only books that have a content vector, to
+	// measure what a description's nearness adds.
+	EmbeddedOnly bool
 	// Start is told, before the first request, how many books will be
 	// looked up and about how long that takes at the providers' pace.
 	Start func(books int, estimate time.Duration)
@@ -435,7 +438,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 	if err != nil {
 		return CheckReport{}, err
 	}
-	rows, err := q.ListMatchCheckBooks(ctx, int32(max(opts.Books, 0)))
+	rows, err := q.ListMatchCheckBooks(ctx, sqlc.ListMatchCheckBooksParams{MaxBooks: int32(max(opts.Books, 0)), EmbeddedOnly: opts.EmbeddedOnly})
 	if err != nil {
 		return CheckReport{}, err
 	}

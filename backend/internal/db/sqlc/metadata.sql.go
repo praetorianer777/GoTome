@@ -202,8 +202,10 @@ WITH sample AS (
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
       AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+      AND (NOT $1::boolean
+           OR EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'))
     ORDER BY md5(b.id::text), b.id
-    LIMIT $1
+    LIMIT $2
 )
 SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
        b.page_count, b.series_index, p.name AS publisher, sr.name AS series,
@@ -219,6 +221,11 @@ LEFT JOIN publishers p ON p.id = b.publisher_id
 LEFT JOIN series sr ON sr.id = b.series_id
 ORDER BY md5(b.id::text), b.id
 `
+
+type ListMatchCheckBooksParams struct {
+	EmbeddedOnly bool
+	MaxBooks     int32
+}
 
 type ListMatchCheckBooksRow struct {
 	ID                 uuid.UUID
@@ -240,8 +247,8 @@ type ListMatchCheckBooksRow struct {
 // gives the same one each time; the names and ISBNs are read for it alone,
 // with what tells one edition from another (publisher, pages, series,
 // the kinds of its files).
-func (q *Queries) ListMatchCheckBooks(ctx context.Context, maxBooks int32) ([]ListMatchCheckBooksRow, error) {
-	rows, err := q.db.Query(ctx, listMatchCheckBooks, maxBooks)
+func (q *Queries) ListMatchCheckBooks(ctx context.Context, arg ListMatchCheckBooksParams) ([]ListMatchCheckBooksRow, error) {
+	rows, err := q.db.Query(ctx, listMatchCheckBooks, arg.EmbeddedOnly, arg.MaxBooks)
 	if err != nil {
 		return nil, err
 	}

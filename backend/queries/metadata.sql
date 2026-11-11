@@ -81,6 +81,8 @@ WITH sample AS (
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
       AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+      AND (NOT sqlc.arg(embedded_only)::boolean
+           OR EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'))
     ORDER BY md5(b.id::text), b.id
     LIMIT sqlc.arg(max_books)
 )
