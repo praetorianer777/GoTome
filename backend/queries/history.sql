@@ -111,7 +111,7 @@ GROUP BY 1
 ORDER BY 1 DESC;
 
 -- name: MatchImportBooks :many
--- The books of libraries the viewer sees, placeholders included, that an
+-- The books of libraries the viewer sees, placeholders too if asked, that an
 -- imported row may be: those with one of its ISBNs first, else those with
 -- its title and an author.
 SELECT b.id,
@@ -119,6 +119,7 @@ SELECT b.id,
                WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY(sqlc.arg(isbns)::text[])) AS by_isbn
 FROM books b
 WHERE b.deleted_at IS NULL
+  AND (sqlc.arg(with_placeholders)::boolean OR NOT b.placeholder)
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (
     EXISTS (SELECT 1 FROM book_identifiers i
@@ -154,7 +155,7 @@ SELECT * FROM reading_import_rows WHERE import_id = $1 ORDER BY row_no;
 -- name: ChooseReadingImportRow :execrows
 UPDATE reading_import_rows r
 SET book_id = sqlc.narg(book_id), skip = sqlc.arg(skip)
-WHERE r.import_id = sqlc.arg(import_id) AND r.row_no = sqlc.arg(row_no) AND r.match = 'ambiguous'
+WHERE r.import_id = sqlc.arg(import_id) AND r.row_no = sqlc.arg(row_no) AND r.match IN ('ambiguous', 'maybe')
   AND (sqlc.arg(skip)::boolean OR sqlc.narg(book_id)::uuid = ANY(r.candidates));
 
 -- name: StartReadingImport :execrows

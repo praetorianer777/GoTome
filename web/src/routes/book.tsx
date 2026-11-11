@@ -13,6 +13,7 @@ import { CollectionPicker } from "@/books/collection-picker";
 import { EReaderFindings } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
+import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
@@ -238,6 +239,9 @@ function BookPage({ book }: { book: BookDetail }) {
 							{t("book.placeholder")}
 						</p>
 					)}
+
+					{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
+					{personal && <JoinedNotice book={book.id} />}
 
 					{personal && <ReadingControls book={book} />}
 

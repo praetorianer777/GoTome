@@ -109,7 +109,9 @@ function Run({ run, open: opened }: { run: CurationRun; open: boolean }) {
 	const who =
 		run.rule === "auto-duplicates"
 			? t("curation.ruleDuplicates")
-			: run.rule
+			: run.rule === "join-placeholder"
+				? t("curation.ruleJoinPlaceholder")
+				: run.rule
 				? t("curation.byRule", { what: kind, rule: run.rule })
 				: t("curation.by", { what: kind, who: run.startedByName ?? "" });
 	const undoable =

@@ -1126,9 +1126,10 @@ export class FakeServer {
 		}
 		if (method === "PUT") {
 			const choice = body as { book?: string; skip?: boolean };
-			preview.ambiguities = preview.ambiguities.map((a) =>
-				a.row === row ? { ...a, choice: choice.book, skip: Boolean(choice.skip) } : a,
-			);
+			const answered = (a: ReadingImport["ambiguities"][number]) =>
+				a.row === row ? { ...a, choice: choice.book, skip: Boolean(choice.skip) } : a;
+			preview.ambiguities = preview.ambiguities.map(answered);
+			preview.maybes = preview.maybes.map(answered);
 			return new Response(null, { status: 204 });
 		}
 		return Response.json(preview);
@@ -1429,6 +1430,22 @@ export class FakeServer {
 				if (p.books.some((b) => b.id === gone.id)) p.state = "merged";
 			}
 			return Response.json(into);
+		}
+		const joining = /^\/books\/([^/]+)\/join-library-book$/.exec(path);
+		if (joining && method === "POST") {
+			const { book } = body as { book: string };
+			const placeholder = this.books.find((b) => b.id === joining[1] && b.placeholder);
+			const into = this.books.find((b) => b.id === book && !b.placeholder);
+			if (!placeholder || !into) {
+				return Response.json({ error: { code: "not_found", message: "There is no such book." } }, { status: 404 });
+			}
+			into.reading = placeholder.reading;
+			this.books = this.books.filter((b) => b !== placeholder);
+			this.mergedInto[placeholder.id] = into.id;
+			return Response.json({ book: into.id, actionId: `join-${placeholder.id}` });
+		}
+		if (/^\/placeholder-joins\/[^/]+\/undo$/.test(path) && method === "POST") {
+			return Response.json({ actionId: path.split("/")[2], state: "undone" });
 		}
 		const old = /^\/books\/([^/]+)$/.exec(path);
 		if (method === "GET" && old?.[1] && this.mergedInto[old[1]]) {

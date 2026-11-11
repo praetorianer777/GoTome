@@ -2083,6 +2083,66 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/join-library-book": {
+      "post": {
+        "operationId": "joinPlaceholder",
+        "summary": "Say that a book read but not owned is a book of the library, and move everyone's reading of it there",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceholderJoinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceholderJoin"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/kindle": {
       "get": {
         "operationId": "listBookKindleSends",
@@ -3548,7 +3608,8 @@
               "enum": [
                 "duplicates",
                 "cleanup",
-                "matches"
+                "matches",
+                "placeholders"
               ]
             }
           },
@@ -8841,6 +8902,56 @@
           }
         ],
         "x-permission": "library:read"
+      }
+    },
+    "/placeholder-joins/{actionId}/undo": {
+      "post": {
+        "operationId": "undoPlaceholderJoin",
+        "summary": "Take back a join of a book read but not owned that the caller made",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "actionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurationOutcome"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/releases": {
@@ -15261,6 +15372,35 @@
           "bytes"
         ]
       },
+      "PlaceholderJoin": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "book",
+          "actionId"
+        ]
+      },
+      "PlaceholderJoinRequest": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "book"
+        ]
+      },
       "PlayQueue": {
         "type": "object",
         "properties": {
@@ -15589,6 +15729,15 @@
           "matched": {
             "type": "integer"
           },
+          "maybe": {
+            "type": "integer"
+          },
+          "maybes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportAmbiguity"
+            }
+          },
           "new": {
             "type": "integer"
           },
@@ -15633,9 +15782,11 @@
           "matched",
           "new",
           "ambiguous",
+          "maybe",
           "skipped",
           "roundedRatings",
           "ambiguities",
+          "maybes",
           "skippedRows",
           "outcomes"
         ]

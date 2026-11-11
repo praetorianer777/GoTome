@@ -139,12 +139,17 @@ type readingImport struct {
 	Matched   int       `json:"matched"`
 	New       int       `json:"new"`
 	Ambiguous int       `json:"ambiguous"`
+	Maybe     int       `json:"maybe"`
 	Skipped   int       `json:"skipped"`
 	// RoundedRatings counts ratings of a fraction of a star, rounded to
 	// whole stars.
 	RoundedRatings int               `json:"roundedRatings"`
 	Ambiguities    []importAmbiguity `json:"ambiguities"`
-	SkippedRows    []importSkipped   `json:"skippedRows"`
+	// Maybes are rows no book fits by ISBN or title that look like one or
+	// more: Choice is the book taken, Skip says the row stays a book not
+	// owned, which it is when neither is set.
+	Maybes      []importAmbiguity `json:"maybes"`
+	SkippedRows []importSkipped   `json:"skippedRows"`
 	// Outcomes counts the rows by what the import came to: created,
 	// changed, unchanged, skipped, failed.
 	Outcomes map[string]int `json:"outcomes"`
@@ -153,8 +158,8 @@ type readingImport struct {
 func importOf(i readimport.Import) readingImport {
 	out := readingImport{
 		ID: i.ID, Source: i.Source, State: i.State, Library: i.Library, Overwrite: i.Overwrite, Total: i.Total,
-		Matched: i.Matched, New: i.New, Ambiguous: i.Ambiguous, Skipped: i.Skipped, RoundedRatings: i.RoundedRatings,
-		Ambiguities: make([]importAmbiguity, len(i.Ambiguities)), SkippedRows: make([]importSkipped, len(i.SkippedRows)),
+		Matched: i.Matched, New: i.New, Ambiguous: i.Ambiguous, Maybe: i.Maybe, Skipped: i.Skipped, RoundedRatings: i.RoundedRatings,
+		Ambiguities: make([]importAmbiguity, len(i.Ambiguities)), Maybes: make([]importAmbiguity, len(i.Maybes)), SkippedRows: make([]importSkipped, len(i.SkippedRows)),
 		Outcomes: i.Outcomes,
 	}
 	for n, a := range i.Ambiguities {
@@ -163,6 +168,13 @@ func importOf(i readimport.Import) readingImport {
 			c[k] = summaryOf(b)
 		}
 		out.Ambiguities[n] = importAmbiguity{Row: a.Row, Title: a.Title, Authors: a.Authors, Candidates: c, Choice: a.Choice, Skip: a.Skip}
+	}
+	for n, a := range i.Maybes {
+		c := make([]bookSummary, len(a.Candidates))
+		for k, b := range a.Candidates {
+			c[k] = summaryOf(b)
+		}
+		out.Maybes[n] = importAmbiguity{Row: a.Row, Title: a.Title, Authors: a.Authors, Candidates: c, Choice: a.Choice, Skip: a.Skip}
 	}
 	for n, k := range i.SkippedRows {
 		out.SkippedRows[n] = importSkipped{Row: k.Row, Title: k.Title, Message: k.Message}

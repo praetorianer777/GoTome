@@ -72,6 +72,9 @@ func (s *Service) describedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) erro
 			return err
 		}
 	}
+	if err := s.queuePlaceholderJoinTx(ctx, tx, id); err != nil {
+		return err
+	}
 	if s.OnDescribed == nil {
 		return nil
 	}

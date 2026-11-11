@@ -85,6 +85,7 @@ export function ReadingImport() {
 						<li>{t("import.matched", { count: shown.matched })}</li>
 						<li>{t("import.new", { count: shown.new })}</li>
 						<li>{t("import.ambiguous", { count: shown.ambiguous })}</li>
+						{shown.maybe > 0 && <li>{t("import.maybe", { count: shown.maybe })}</li>}
 						<li>{t("import.skipped", { count: shown.skipped })}</li>
 					</ul>
 					{shown.roundedRatings > 0 && (
@@ -122,6 +123,34 @@ export function ReadingImport() {
 										onChange={() => choose.mutate({ row: a.row, skip: true })}
 									/>
 									<span>{t("import.skipRow")}</span>
+								</label>
+							</fieldset>
+						))}
+					{shown.state === "preview" &&
+						shown.maybes.map((a) => (
+							<fieldset key={a.row} className="flex min-w-0 flex-col gap-1 rounded-md border border-slate-200 p-2 dark:border-slate-800">
+								<legend className="px-1">{t("import.maybePick", { title: a.title })}</legend>
+								{a.candidates.map((c) => (
+									<label key={c.id} className="flex min-w-0 items-center gap-2">
+										<input
+											type="radio"
+											name={`maybe-${a.row}`}
+											checked={a.choice === c.id}
+											onChange={() => choose.mutate({ row: a.row, book: c.id })}
+										/>
+										<span className="min-w-0 break-words">
+											{[c.title, c.authors.join(", "), c.publishedYear].filter(Boolean).join(" · ")}
+										</span>
+									</label>
+								))}
+								<label className="flex min-w-0 items-center gap-2">
+									<input
+										type="radio"
+										name={`maybe-${a.row}`}
+										checked={!a.choice}
+										onChange={() => choose.mutate({ row: a.row, skip: true })}
+									/>
+									<span>{t("import.notOwned")}</span>
 								</label>
 							</fieldset>
 						))}

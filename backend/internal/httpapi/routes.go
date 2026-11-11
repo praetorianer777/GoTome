@@ -667,6 +667,16 @@ func (s *Server) routes() []Route {
 			Request: mergeRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.mergeBooks,
 		},
 		{
+			Method: http.MethodPost, Path: "/books/{bookId}/join-library-book", ID: "joinPlaceholder",
+			Summary: "Say that a book read but not owned is a book of the library, and move everyone's reading of it there", Tag: "books",
+			Request: placeholderJoinRequest{}, Response: placeholderJoin{}, Permission: auth.PersonalManage, Handler: s.joinPlaceholder,
+		},
+		{
+			Method: http.MethodPost, Path: "/placeholder-joins/{actionId}/undo", ID: "undoPlaceholderJoin",
+			Summary: "Take back a join of a book read but not owned that the caller made", Tag: "books",
+			Response: curationOutcome{}, Permission: auth.PersonalManage, Handler: s.undoPlaceholderJoin,
+		},
+		{
 			Method: http.MethodPost, Path: "/joins/{joinId}/undo", ID: "undoJoin",
 			Summary: "Split a book the library made of an ebook and its audiobook into the two again", Tag: "books",
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.undoJoin,
