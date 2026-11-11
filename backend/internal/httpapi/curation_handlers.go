@@ -12,7 +12,7 @@ import (
 )
 
 type curationRunsQuery struct {
-	Kind   string `query:"kind" enum:"duplicates,cleanup,matches" doc:"Only runs of this kind."`
+	Kind   string `query:"kind" enum:"duplicates,cleanup,matches,placeholders" doc:"Only runs of this kind."`
 	State  string `query:"state" enum:"planned,running,done,confirmed,undone" doc:"Only runs in this state."`
 	Cursor string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; runs come newest first."`
 	Limit  int    `query:"limit" doc:"How many runs a page holds, at most 200; 50 when left out."`

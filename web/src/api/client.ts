@@ -1,4 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch";
+import { serverPath } from "@/base";
 import type { components, paths } from "./schema";
 
 /**
@@ -7,7 +8,7 @@ import type { components, paths } from "./schema";
  */
 
 /** Where the API lives, on the origin that serves the app. */
-export const API_BASE = "/api/v1";
+export const API_BASE = serverPath("/api/v1");
 
 let assetResolver: ((path: string) => string) | undefined;
 

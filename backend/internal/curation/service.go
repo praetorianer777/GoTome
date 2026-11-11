@@ -22,6 +22,9 @@ const (
 	KindDuplicates = "duplicates"
 	KindCleanup    = "cleanup"
 	KindMatches    = "matches"
+	// KindPlaceholders is the joining of a book read but not owned to the
+	// library's book.
+	KindPlaceholders = "placeholders"
 )
 
 // What an action did.
@@ -128,7 +131,7 @@ func (s *Service) Begin(ctx context.Context, tx pgx.Tx, set Set, books ...uuid.U
 // Record is what was done, for Done to record.
 type Record struct {
 	// RunKind and By name the run to make when the context has none: a
-	// person's own.
+	// person's own, or, with no By, the rule's.
 	RunKind string
 	By      uuid.UUID
 	Kind    string
@@ -155,8 +158,16 @@ func (p *Pending) Done(ctx context.Context, tx pgx.Tx, a Record) error {
 	}
 	run, ok := ctx.Value(runKey{}).(runInfo)
 	if !ok {
+		var by *uuid.UUID
+		if a.By != uuid.Nil {
+			by = &a.By
+		}
+		var rule *string
+		if a.Rule != "" && by == nil {
+			rule = &a.Rule
+		}
 		id, err := q.CreateCurationRun(ctx, sqlc.CreateCurationRunParams{
-			Kind: a.RunKind, StartedBy: &a.By, State: StateDone,
+			Kind: a.RunKind, Rule: rule, StartedBy: by, State: StateDone,
 		})
 		if err != nil {
 			return err

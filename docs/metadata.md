@@ -11,6 +11,7 @@ sources on the internet. Nothing a person typed is ever overwritten.
 | [Open Library](https://openlibrary.org) | `openlibrary` | none | Books by ISBN, title and author; covers; the works of an author. |
 | [CrossRef](https://www.crossref.org) | `crossref` | none; a contact address helps | Scholarly books and papers, by DOI or ISBN. Set `metadata.contactEmail`: CrossRef serves requests that name one faster. |
 | [Hardcover](https://hardcover.app) | `hardcover` | `metadata.hardcoverToken` | Current fiction, series and their order, the books of an author or a series. Without a token it is not asked. |
+| [Deutsche Nationalbibliothek](https://www.dnb.de) | `dnb` | none | Books in German, by ISBN, title and author; the books of an author or a series, including titles announced by publishers with the month they are due. Not asked unless `metadata.providers` names it. |
 
 To get a Hardcover token: sign in at hardcover.app, open the account
 settings, **API**, and copy the token. Paste it into **Hardcover API
@@ -18,7 +19,8 @@ token** on GOtome's Settings page. Like every secret it is stored
 encrypted and not shown again.
 
 GOtome asks each source at a polite pace (Open Library every 400 ms,
-CrossRef every 350 ms, Hardcover about once a second, as each asks), and
+CrossRef every 350 ms, Hardcover and the Deutsche Nationalbibliothek about
+once a second, as each asks), and
 keeps each answer for 30 days, so a lookup repeated soon asks nobody.
 Keys are never part of what is kept.
 
@@ -30,7 +32,22 @@ which are asked; leave one out to stop it.
 With `metadata.autoMatch` on (the default), every book is looked up once
 its file is read: by its ISBNs and its DOI, and by title and author where
 those find nothing. Each candidate gets a score: 1 for a shared
-identifier, at most 0.99 for title, author and year alone.
+identifier, at most 0.99 otherwise. The title counts most, then the
+authors, the year and the language. Where both the book and the
+candidate say it, further signals add to or take from the score: a
+different language multiplies it by 0.6 (a translation is not the book),
+a page count within 10% (at least 15 pages) adds a little and one 40%
+off takes a little, as does the same publisher or a different one, the
+same series, and within it the same position (a different position takes
+10 points: the next volume is not this book). A side that says nothing
+about a signal changes nothing. Among equal scores, candidates in the
+book's own language come first.
+
+The weights of these signals (named constants in
+`backend/internal/metadata/score.go`) are set by reasoning and await
+numbers from `gotome match-check`: run it before and after on your own
+library (below) and move them if the share of wrong first candidates
+or the sureness at the threshold does not improve.
 
 - A best candidate at or above `metadata.matchThreshold` (0.95) is taken,
   but only to fill gaps: empty fields, a title that was only the file

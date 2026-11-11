@@ -111,7 +111,7 @@ func (s *Server) startSSO(w http.ResponseWriter, r *http.Request, returnTo strin
 		return ErrUnavailable("The identity provider cannot be reached. Try again later.")
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name: stateCookie, Value: state, Path: APIPrefix + "/auth/oidc", MaxAge: int((10 * time.Minute).Seconds()),
+		Name: stateCookie, Value: state, Path: withBase(r, APIPrefix+"/auth/oidc"), MaxAge: int((10 * time.Minute).Seconds()),
 		HttpOnly: true, Secure: overTLS(r), SameSite: http.SameSiteLaxMode,
 	})
 	writeJSON(w, r, http.StatusOK, ssoRedirect{URL: target})
@@ -130,7 +130,7 @@ func (s *Server) ssoCallback(w http.ResponseWriter, r *http.Request) error {
 		browserState = c.Value
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name: stateCookie, Path: APIPrefix + "/auth/oidc", MaxAge: -1, HttpOnly: true, Secure: overTLS(r), SameSite: http.SameSiteLaxMode,
+		Name: stateCookie, Path: withBase(r, APIPrefix+"/auth/oidc"), MaxAge: -1, HttpOnly: true, Secure: overTLS(r), SameSite: http.SameSiteLaxMode,
 	})
 	cb := sso.Callback{
 		State: q.State, Code: q.Code, Issuer: q.Iss, Error: q.Error, BrowserState: browserState,
@@ -140,7 +140,7 @@ func (s *Server) ssoCallback(w http.ResponseWriter, r *http.Request) error {
 		cb.Viewer = &user.ID
 	}
 	if s.SSO == nil {
-		http.Redirect(w, r, "/login?sso=off", http.StatusFound)
+		http.Redirect(w, r, withBase(r, "/login?sso=off"), http.StatusFound)
 		return nil
 	}
 	out, err := s.SSO.Finish(r.Context(), cb)
@@ -153,15 +153,15 @@ func (s *Server) ssoCallback(w http.ResponseWriter, r *http.Request) error {
 		if out.Linked {
 			page = out.ReturnTo
 		}
-		http.Redirect(w, r, page+"?sso="+reason, http.StatusFound)
+		http.Redirect(w, r, withBase(r, page+"?sso="+reason), http.StatusFound)
 		return nil
 	}
 	if out.Linked {
-		http.Redirect(w, r, out.ReturnTo+"?sso=linked", http.StatusFound)
+		http.Redirect(w, r, withBase(r, out.ReturnTo+"?sso=linked"), http.StatusFound)
 		return nil
 	}
 	setSessionCookie(w, r, out.Token)
-	http.Redirect(w, r, out.ReturnTo, http.StatusFound)
+	http.Redirect(w, r, withBase(r, out.ReturnTo), http.StatusFound)
 	return nil
 }
 
@@ -224,7 +224,7 @@ func callbackURL(r *http.Request) string {
 	if overTLS(r) {
 		scheme = "https"
 	}
-	return (&url.URL{Scheme: scheme, Host: r.Host, Path: APIPrefix + callbackPath}).String()
+	return (&url.URL{Scheme: scheme, Host: r.Host, Path: withBase(r, APIPrefix+callbackPath)}).String()
 }
 
 // appPath is a path of the web app to send someone to, or "/": never

@@ -111,7 +111,7 @@ func (s *Service) prepareMerge(ctx context.Context, scope library.Scope, into, f
 	if into == from {
 		return into, from, nil, ErrMergeSelf
 	}
-	if survivor.LibraryID != merged.LibraryID {
+	if survivor.LibraryID != merged.LibraryID && !merged.Placeholder {
 		return into, from, nil, ErrMergeLibraries
 	}
 	fields := slices.Clone(take)
@@ -138,7 +138,11 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 	if len(locked) != 2 {
 		return catalog.ErrNotFound
 	}
-	if locked[0].LibraryID != locked[1].LibraryID {
+	// A placeholder has no files to leave behind in a folder, so it may
+	// join a book of another library.
+	if locked[0].LibraryID != locked[1].LibraryID && !slices.ContainsFunc(locked, func(b sqlc.LockBooksForMergeRow) bool {
+		return b.ID == from && b.Placeholder
+	}) {
 		return ErrMergeLibraries
 	}
 	if err := q.CopyBookFields(ctx, sqlc.CopyBookFieldsParams{Fields: fields, IntoBook: into, FromBook: from}); err != nil {

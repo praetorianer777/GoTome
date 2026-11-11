@@ -19,9 +19,10 @@ var plugin embed.FS
 // plugins folder as it is.
 const Folder = "gotome.koplugin"
 
-// origin is a server address a plugin may be told: a scheme, a host and a
-// port, nothing a Lua string would have to escape.
-var origin = regexp.MustCompile(`^https?://[A-Za-z0-9.\-]+(:\d+)?$|^https?://\[[0-9A-Fa-f:.]+\](:\d+)?$`)
+// origin is a server address a plugin may be told: a scheme, a host, a
+// port and the path GOtome is served under, nothing a Lua string would have
+// to escape.
+var origin = regexp.MustCompile(`^https?://([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])(:\d+)?(/[A-Za-z0-9._~\-]+)*$`)
 
 // Zip writes the plugin as a zip. server, the address the browser used,
 // becomes the plugin's default server where it is a plain address.

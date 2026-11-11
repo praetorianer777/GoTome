@@ -1003,6 +1003,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   is only what a scan made (no lock, no manual or provider value, nobody's
   state), the book's files move to the placeholder and the scan's book is
   merged into it (`merged_into_id`).
+- A placeholder joins the library's book later (#459): `queuePlaceholderJoinTx`
+  (from `describedTx` and extraction) queues `ingest.join_placeholders` when
+  `ListPlaceholdersOfBook` finds one by ISBN, else title key and an author;
+  `ingest.Service.JoinPlaceholders` merges it through `mergeTx` (a placeholder
+  may join a book of another library) as a curation action of a run of kind
+  `placeholders`, only if every reader of the placeholder sees the book and,
+  for the rule's own join, `catalog.MatchBooks` (the import's rule) finds that
+  book alone for each of them. `POST /books/{id}/join-library-book` is the
+  person's own join (`JoinPlaceholder`, undone through
+  `POST /placeholder-joins/{actionId}/undo`). An import row with no strict match
+  but a similar title and a shared author is `maybe` (`MaybeImportBooks`).
 
 ## Collections
 

@@ -638,6 +638,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/join-library-book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say that a book read but not owned is a book of the library, and move everyone's reading of it there */
+        post: operations["joinPlaceholder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/kindle": {
         parameters: {
             query?: never;
@@ -2610,6 +2627,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/placeholder-joins/{actionId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take back a join of a book read but not owned that the caller made */
+        post: operations["undoPlaceholderJoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/releases": {
         parameters: {
             query?: never;
@@ -4336,6 +4370,16 @@ export interface components {
             withPassages: number;
             withText: number;
         };
+        PlaceholderJoin: {
+            /** Format: uuid */
+            actionId: string;
+            /** Format: uuid */
+            book: string;
+        };
+        PlaceholderJoinRequest: {
+            /** Format: uuid */
+            book: string;
+        };
         PlayQueue: {
             books: string[];
         };
@@ -4427,6 +4471,8 @@ export interface components {
             /** Format: uuid */
             library: string;
             matched: number;
+            maybe: number;
+            maybes: components["schemas"]["ImportAmbiguity"][];
             new: number;
             outcomes: {
                 [key: string]: number;
@@ -6223,6 +6269,41 @@ export interface operations {
             };
         };
     };
+    joinPlaceholder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceholderJoinRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceholderJoin"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listBookKindleSends: {
         parameters: {
             query?: never;
@@ -7112,7 +7193,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only runs of this kind. */
-                kind?: "duplicates" | "cleanup" | "matches";
+                kind?: "duplicates" | "cleanup" | "matches" | "placeholders";
                 /** @description Only runs in this state. */
                 state?: "planned" | "running" | "done" | "confirmed" | "undone";
                 /** @description Where the page before ended, as its nextCursor says; runs come newest first. */
@@ -10410,6 +10491,37 @@ export interface operations {
                 };
                 content: {
                     "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoPlaceholderJoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationOutcome"];
                 };
             };
             /** @description The request failed. */

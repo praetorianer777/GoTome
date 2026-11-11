@@ -28,7 +28,11 @@ const (
 	MatchBook      = "book"
 	MatchNew       = "new"
 	MatchAmbiguous = "ambiguous"
-	MatchSkipped   = "skipped"
+	// MatchMaybe is a row no book fits by ISBN or title, but one or more
+	// look like it; the person says, and the answer left alone is a book
+	// not owned.
+	MatchMaybe   = "maybe"
+	MatchSkipped = "skipped"
 )
 
 // What an import came to for a row.
@@ -121,12 +125,17 @@ type Import struct {
 	Matched   int
 	New       int
 	Ambiguous int
-	Skipped   int
+	// Maybe counts the rows that look like a book of the libraries.
+	Maybe   int
+	Skipped int
 	// RoundedRatings counts ratings of a fraction of a star, rounded to
 	// whole stars.
 	RoundedRatings int
 	Ambiguities    []Ambiguity
-	SkippedRows    []Skipped
+	// Maybes are the rows counted in Maybe, with the books they look like.
+	// Choice is the book taken; Skip says the row stays a book not owned.
+	Maybes      []Ambiguity
+	SkippedRows []Skipped
 	// Outcomes counts the rows by what the import came to, once it runs.
 	Outcomes map[string]int
 }
@@ -237,32 +246,38 @@ func match(ctx context.Context, q *sqlc.Queries, scope library.Scope, row Row) (
 			keys = append(keys, k)
 		}
 	}
-	found, err := q.MatchImportBooks(ctx, sqlc.MatchImportBooksParams{
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Isbns: nonNil(row.ISBNs),
-		TitleKey: catalog.Key(row.MatchTitle()), PersonKeys: keys,
-	})
+	pick, err := catalog.MatchBooks(ctx, q, scope, row.ISBNs, catalog.Key(row.MatchTitle()), keys, true)
 	if err != nil {
 		return matched{}, err
 	}
-	var byISBN, byTitle []uuid.UUID
-	for _, f := range found {
-		if f.ByIsbn {
-			byISBN = append(byISBN, f.ID)
-		} else {
-			byTitle = append(byTitle, f.ID)
-		}
-	}
-	pick := byISBN
-	if len(pick) == 0 {
-		pick = byTitle
-	}
 	switch len(pick) {
 	case 0:
-		return matched{kind: MatchNew}, nil
+		return maybe(ctx, q, scope, row, keys)
 	case 1:
 		return matched{kind: MatchBook, book: &pick[0]}, nil
 	}
 	return matched{kind: MatchAmbiguous, candidates: pick}, nil
+}
+
+// similarEnough is the trigram similarity of two title keys from which a
+// book is offered as a maybe.
+const similarEnough = 0.4
+
+func maybe(ctx context.Context, q *sqlc.Queries, scope library.Scope, row Row, personKeys []string) (matched, error) {
+	title := catalog.Key(row.MatchTitle())
+	if title == "" || len(personKeys) == 0 {
+		return matched{kind: MatchNew}, nil
+	}
+	ids, err := q.MaybeImportBooks(ctx, sqlc.MaybeImportBooksParams{
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, PersonKeys: personKeys, TitleKey: title, MinSimilarity: similarEnough,
+	})
+	if err != nil {
+		return matched{}, err
+	}
+	if len(ids) == 0 {
+		return matched{kind: MatchNew}, nil
+	}
+	return matched{kind: MatchMaybe, candidates: ids}, nil
 }
 
 // Get returns an import the scope's user made, with the books they may
@@ -282,7 +297,7 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (I
 	}
 	out := Import{
 		ID: imp.ID, Source: imp.Source, State: StatePreview, Library: imp.LibraryID, Overwrite: imp.Overwrite,
-		CreatedAt: imp.CreatedAt, Total: len(rows), Ambiguities: []Ambiguity{}, SkippedRows: []Skipped{}, Outcomes: map[string]int{},
+		CreatedAt: imp.CreatedAt, Total: len(rows), Ambiguities: []Ambiguity{}, Maybes: []Ambiguity{}, SkippedRows: []Skipped{}, Outcomes: map[string]int{},
 	}
 	switch {
 	case imp.FinishedAt != nil:
@@ -307,6 +322,15 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (I
 			if len(out.SkippedRows) < listed {
 				out.SkippedRows = append(out.SkippedRows, Skipped{Row: int(r.RowNo), Title: r.Title, Message: skipMessage(r)})
 			}
+		case MatchMaybe:
+			out.Maybe++
+			summaries, err := s.books.Summaries(ctx, scope, r.Candidates)
+			if err != nil {
+				return Import{}, err
+			}
+			out.Maybes = append(out.Maybes, Ambiguity{
+				Row: int(r.RowNo), Title: r.Title, Authors: r.Authors, Candidates: summaries, Choice: r.BookID, Skip: r.Skip,
+			})
 		case MatchAmbiguous:
 			out.Ambiguous++
 			summaries, err := s.books.Summaries(ctx, scope, r.Candidates)
@@ -444,7 +468,7 @@ func (s *Service) one(ctx context.Context, imp sqlc.ReadingImport, row sqlc.Read
 
 func (s *Service) write(ctx context.Context, tx pgx.Tx, scope library.Scope, imp sqlc.ReadingImport, row sqlc.ReadingImportRow) (outcome, message string, book *uuid.UUID, err error) {
 	q := sqlc.New(tx)
-	if row.Match == MatchSkipped || row.Skip || row.Status == nil {
+	if row.Match == MatchSkipped || row.Skip && row.Match != MatchMaybe || row.Status == nil {
 		return OutcomeSkipped, "Left out.", nil, nil
 	}
 	if row.Match == MatchAmbiguous && row.BookID == nil {

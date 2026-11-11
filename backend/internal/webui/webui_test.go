@@ -195,3 +195,17 @@ func TestAFileWithoutCopiesDoesNotVary(t *testing.T) {
 		t.Errorf("body %q, headers %v", rec.Body, rec.Header())
 	}
 }
+
+func TestTellsThePageItsBasePath(t *testing.T) {
+	fs := built()
+	fs["index.html"] = &fstest.MapFile{Data: []byte(`<head><base href="/"><meta name="gotome-base" content="/"></head>`)}
+	fs["index.html.gz"] = &fstest.MapFile{Data: []byte("not the page")}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/books/42", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	NewAt(fs, "/gotome/").ServeHTTP(rec, req)
+	want := `<head><base href="/gotome/"><meta name="gotome-base" content="/gotome/"></head>`
+	if rec.Body.String() != want || rec.Header().Get("Content-Encoding") != "" {
+		t.Errorf("got %q (%q), want %q", rec.Body, rec.Header().Get("Content-Encoding"), want)
+	}
+}
