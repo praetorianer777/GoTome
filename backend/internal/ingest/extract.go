@@ -230,6 +230,9 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
 			return err
 		}
+		if err := catalog.ApplyImprintTx(ctx, tx, fileID, file.Format, ImprintOf(got.Sections)); err != nil {
+			return err
+		}
 		if err := s.queuePlaceholderJoinTx(ctx, tx, bookID); err != nil {
 			return err
 		}

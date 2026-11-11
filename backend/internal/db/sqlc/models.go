@@ -127,6 +127,7 @@ type BookFile struct {
 	IndexedAt        *time.Time
 	MeasuresVersion  *int16
 	WriteBackPending bool
+	TextPrintIsbn    *string
 }
 
 type BookGenre struct {

@@ -130,6 +130,24 @@ func TestCandidatesLookUpByISBNThenSearch(t *testing.T) {
 	}
 }
 
+func TestAPrintISBNOfTheTextIsAskedAboutButNotTheBooks(t *testing.T) {
+	srv := newProviderServer(t)
+	s := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{AllowPrivate: true})
+
+	book := emmaBook(false)
+	book.PrintISBNs = []string{"9780141439587"}
+	got, err := s.Candidates(context.Background(), book)
+	if err != nil || len(got) != 1 || got[0].ID != "emma-1815" {
+		t.Fatalf("by the print ISBN: %+v, %v", got, err)
+	}
+	if got[0].Score >= 1 {
+		t.Errorf("score %v: a print ISBN of the text is not an identifier the book shares", got[0].Score)
+	}
+	if asked := srv.requests(); !slices.Equal(asked, []string{"/isbn/9780141439587?"}) {
+		t.Errorf("asked %v", asked)
+	}
+}
+
 func TestOnlyEnabledProvidersAreAsked(t *testing.T) {
 	srv := newProviderServer(t)
 	enabled := []string{"other"}

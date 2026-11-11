@@ -108,6 +108,9 @@ const (
 	SourceFilename = "filename"
 	// SourceManual is a value a person typed.
 	SourceManual = "manual"
+	// SourceText is a value read from the printed imprint of a book's text,
+	// worth less than anything a file's metadata says.
+	SourceText = "text"
 )
 
 // NewFile is a file found on disk or uploaded.
@@ -178,7 +181,11 @@ type Book struct {
 	Contributors       []Contributor
 	Tags               []string
 	Identifiers        []BookIdentifier
-	Files              []File
+	// PrintISBNs are ISBNs the text of the book's files names beside a print
+	// edition. They are another edition's, not the book's: a lookup asks about
+	// them when the book has no ISBN, and nothing stores them.
+	PrintISBNs []string
+	Files      []File
 	// CoverKey names the cover in the cover store; empty without one.
 	CoverKey string
 	AddedAt  time.Time
@@ -484,6 +491,9 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		book.Identifiers = append(book.Identifiers, BookIdentifier{
 			Identifier: Identifier{Type: ident.Type, Value: ident.Value}, FileID: ident.FileID,
 		})
+	}
+	if book.PrintISBNs, err = q.ListBookTextPrintISBNs(ctx, id); err != nil {
+		return Book{}, err
 	}
 	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
 		return Book{}, err

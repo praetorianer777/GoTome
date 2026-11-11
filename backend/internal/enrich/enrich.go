@@ -261,6 +261,10 @@ func (s *Service) gaps(ctx context.Context, book catalog.Book, r metadata.Record
 	}
 	added := false
 	for _, id := range r.Identifiers {
+		// A print edition's ISBN was only asked about; the book is not it.
+		if id.Type == catalog.IDISBN && slices.Contains(book.PrintISBNs, id.Value) {
+			continue
+		}
 		if !slices.Contains(all, id) {
 			own, all, added = append(own, id), append(all, id), true
 		}

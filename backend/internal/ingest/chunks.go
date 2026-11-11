@@ -262,6 +262,9 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 		if err != nil || primary == nil || *primary != fileID {
 			return err
 		}
+		if err := catalog.ApplyImprintTx(ctx, tx, fileID, file.Format, ImprintOf(got.Sections)); err != nil {
+			return err
+		}
 		return s.writeChunksTx(ctx, tx, file.BookID, file.LibraryID, fileID, file.Format, lang, got.Sections)
 	})
 }
@@ -297,8 +300,9 @@ func (s *Service) queueChunking(ctx context.Context, ids []uuid.UUID) error {
 
 // ChunkVersion names how text is cut into chunks. Raising it when
 // textproc or the extractors' text changes makes the next start read the
-// text of every book again (CheckChunkVersion).
-const ChunkVersion = "1"
+// text of every book again (CheckChunkVersion). 2: the imprint is read
+// from the text with it (#488).
+const ChunkVersion = "2"
 
 // chunkVersionName is the row of index_versions that holds ChunkVersion.
 const chunkVersionName = "chunks"

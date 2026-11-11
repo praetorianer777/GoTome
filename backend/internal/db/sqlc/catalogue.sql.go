@@ -179,7 +179,7 @@ INSERT INTO book_files (
     sha256, original_sha256, part_index, uploaded_by
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10)
-RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending
+RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending, text_print_isbn
 `
 
 type CreateBookFileParams struct {
@@ -244,6 +244,7 @@ func (q *Queries) CreateBookFile(ctx context.Context, arg CreateBookFileParams) 
 		&i.IndexedAt,
 		&i.MeasuresVersion,
 		&i.WriteBackPending,
+		&i.TextPrintIsbn,
 	)
 	return i, err
 }
@@ -282,6 +283,20 @@ DELETE FROM book_identifiers WHERE file_id = $1
 
 func (q *Queries) DeleteFileIdentifiers(ctx context.Context, fileID *uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteFileIdentifiers, fileID)
+	return err
+}
+
+const deleteFileIdentifiersOfType = `-- name: DeleteFileIdentifiersOfType :exec
+DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2
+`
+
+type DeleteFileIdentifiersOfTypeParams struct {
+	FileID *uuid.UUID
+	Type   string
+}
+
+func (q *Queries) DeleteFileIdentifiersOfType(ctx context.Context, arg DeleteFileIdentifiersOfTypeParams) error {
+	_, err := q.db.Exec(ctx, deleteFileIdentifiersOfType, arg.FileID, arg.Type)
 	return err
 }
 
@@ -516,7 +531,7 @@ func (q *Queries) ListBookContributors(ctx context.Context, bookID uuid.UUID) ([
 }
 
 const listBookFiles = `-- name: ListBookFiles :many
-SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending FROM book_files
+SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending, text_print_isbn FROM book_files
 WHERE book_id = $1 AND trashed_at IS NULL
 ORDER BY kind, part_index NULLS FIRST, rel_path
 `
@@ -565,6 +580,7 @@ func (q *Queries) ListBookFiles(ctx context.Context, bookID uuid.UUID) ([]BookFi
 			&i.IndexedAt,
 			&i.MeasuresVersion,
 			&i.WriteBackPending,
+			&i.TextPrintIsbn,
 		); err != nil {
 			return nil, err
 		}
@@ -641,6 +657,32 @@ func (q *Queries) ListBookTags(ctx context.Context, bookID uuid.UUID) ([]ListBoo
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookTextPrintISBNs = `-- name: ListBookTextPrintISBNs :many
+SELECT DISTINCT text_print_isbn::text FROM book_files
+WHERE book_id = $1 AND text_print_isbn IS NOT NULL AND trashed_at IS NULL
+ORDER BY 1
+`
+
+func (q *Queries) ListBookTextPrintISBNs(ctx context.Context, bookID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listBookTextPrintISBNs, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var text_print_isbn string
+		if err := rows.Scan(&text_print_isbn); err != nil {
+			return nil, err
+		}
+		items = append(items, text_print_isbn)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -807,6 +849,20 @@ type SetBookLocksParams struct {
 
 func (q *Queries) SetBookLocks(ctx context.Context, arg SetBookLocksParams) error {
 	_, err := q.db.Exec(ctx, setBookLocks, arg.ID, arg.LockedFields)
+	return err
+}
+
+const setFileTextPrintISBN = `-- name: SetFileTextPrintISBN :exec
+UPDATE book_files SET text_print_isbn = $2 WHERE id = $1 AND text_print_isbn IS DISTINCT FROM $2
+`
+
+type SetFileTextPrintISBNParams struct {
+	ID            uuid.UUID
+	TextPrintIsbn *string
+}
+
+func (q *Queries) SetFileTextPrintISBN(ctx context.Context, arg SetFileTextPrintISBNParams) error {
+	_, err := q.db.Exec(ctx, setFileTextPrintISBN, arg.ID, arg.TextPrintIsbn)
 	return err
 }
 
