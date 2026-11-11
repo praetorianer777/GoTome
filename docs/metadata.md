@@ -181,9 +181,10 @@ The same two commands are on the settings page, under **Book details**:
 each run in the background with their progress ("312 of 1,000 books
 looked up", the time left at the sources' pace), and show their last
 result as tables. `metadata.scoreWeights` chooses which weights rank a
-lookup: the learned ones (the default; without any, the starting weights
-shipped for the languages of the library, and without those the
-hand-set ones), the hand-set ones, or an imported file's.
+lookup: the hand-set ones (the default, so an update changes nothing),
+the learned ones (without any, the starting weights shipped for the
+languages of the library, and without those the hand-set ones), or an
+imported file's.
 `metadata.learnScore` learns once a week, where at least 500 books have
 an ISBN, through the cache.
 
@@ -243,9 +244,9 @@ own, refused when it was made for another version of the features, and
 **Measure** then ranks the sample with it too, so that you see how it
 does on your library before you choose it with `metadata.scoreWeights`.
 GOtome never sends anything anywhere itself. Starting weights for a kind
-of library are built into a release from files that were shared; a new
-installation uses the one that fits the languages of its books until it
-has learned its own.
+of library are built into a release from files that were shared; with
+`learned` chosen, an installation uses the one that fits the languages
+of its books until it has learned its own.
 
 ## Doing it automatically
 

@@ -141,6 +141,14 @@ func TestTheMatchScoreIsLearnedMeasuredExportedAndImported(t *testing.T) {
 	}
 
 	_, body, _ = a.call(admin, http.MethodGet, "/metadata/scoring", nil)
+	if body["using"] != "handSet" {
+		t.Errorf("learning switched the weights by itself: %v", body["using"])
+	}
+	// Learned weights are used only once someone chooses them.
+	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{"metadata.scoreWeights": "learned"}}); status != http.StatusOK {
+		t.Fatalf("choosing the learned weights: %d", status)
+	}
+	_, body, _ = a.call(admin, http.MethodGet, "/metadata/scoring", nil)
 	learned, _ := body["learned"].(map[string]any)
 	run, _ := body["learn"].(map[string]any)
 	report, _ := body["learnReport"].(map[string]any)

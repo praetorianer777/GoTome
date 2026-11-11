@@ -30,15 +30,18 @@ What changes for someone who runs or uses GOtome. The format follows
   takes, the hand-set weights beside the learned ones, and how well the
   score's figures match what was found. `gotome match-train` does the
   same from the command line, and `gotome match-check` ranks with every
-  score side by side. The setting `metadata.scoreWeights` chooses
-  between the learned, the hand-set and imported weights, and
-  `metadata.learnScore` (off) learns again every week.
+  score side by side. Nothing changes until you choose: the setting
+  `metadata.scoreWeights` stays on the hand-set weights, and `learned`
+  or `imported` switches; a learned score seldom gives another edition
+  0.95, so lower `metadata.matchThreshold` to what Measure shows (about
+  0.7 on a German library measured). `metadata.learnScore` (off) learns
+  again every week.
 - The learned weights can be exported as a small file that holds numbers
   only (no title, author, ISBN or path), and a file someone shared can be
   imported and measured on your library before you use it. A release
-  brings starting weights for a library in German, learned on one: a
-  library whose books are mostly in German ranks with them until it has
-  learned its own.
+  brings starting weights for a library in German, learned on one: with
+  `learned` chosen, a library whose books are mostly in German ranks with
+  them until it has learned its own.
 - Where books have been embedded and a source returns a description with
   its search results (Hardcover, CrossRef), a candidate found by title
   also counts by its description: how near it is to the book's own text is one more
@@ -52,10 +55,9 @@ What changes for someone who runs or uses GOtome. The format follows
   without a volume number, with the author's last name alone, and with the
   words of both anywhere in the record. Books it knew under another
   spelling of title or author are now found.
-- With learned weights a match is a probability, which is lower for an
-  edition that is not the exact ISBN than the hand-set score was: raise
-  or lower `metadata.matchThreshold` to what the table of Measure says,
-  and matches that wait for review are kept from 0.2 instead of 0.5.
+- With learned weights chosen, matches that wait for review are kept
+  from a score of 0.2 instead of 0.5, as their score is a probability of
+  the exact edition.
 
 ### Fixed
 

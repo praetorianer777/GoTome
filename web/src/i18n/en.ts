@@ -1863,7 +1863,7 @@ export const en = {
 	"demo.note.body": "This part of GOtome writes to a library or changes the server, which the demo does not have. Install GOtome to use it.",
 	"demo.note.back": "Back to the library",
 	"settings.scoreWeights": "Weights that rank candidates",
-	"settings.scoreWeights.hint": "The learned weights are those learned from this library's books with an ISBN, else the starting weights shipped for its languages, else the hand-set ones. Imported weights are a file someone shared, measured below first.",
+	"settings.scoreWeights.hint": "Hand-set is how GOtome ranked before it could learn. The learned weights are those learned from this library's books with an ISBN, else the starting weights shipped for its languages. Their score is a probability that seldom reaches 0.95 for another edition: when you choose them, set the match threshold to what Measure shows, about 0.7. Imported weights are a file someone shared, measured below first.",
 	"settings.learnScore": "Learn the weights every week",
 	"settings.learnScore.hint": "Once a week, where at least 500 books have an ISBN, they are looked up again without it, through the cache, and the weights learned from them.",
 	"settingChoice.metadata.scoreWeights.learned": "Learned (else shipped, else hand-set)",

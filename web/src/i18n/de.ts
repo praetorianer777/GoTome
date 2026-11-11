@@ -1882,7 +1882,7 @@ export const de: Record<MessageKey, string> = {
 	"demo.note.body": "Dieser Teil von GOtome schreibt in eine Bibliothek oder ändert den Server, den die Demo nicht hat. Installiere GOtome, um ihn zu nutzen.",
 	"demo.note.back": "Zurück zur Bibliothek",
 	"settings.scoreWeights": "Gewichte, nach denen Treffer gereiht werden",
-	"settings.scoreWeights.hint": "Die gelernten Gewichte stammen aus den Büchern dieser Bibliothek mit ISBN, sonst sind es die mitgelieferten Startgewichte für ihre Sprachen, sonst die von Hand gesetzten. Importierte Gewichte sind eine Datei, die jemand geteilt hat; sie wird unten zuerst gemessen.",
+	"settings.scoreWeights.hint": "Von Hand gesetzt ist, wie GOtome reihte, bevor es lernen konnte. Die gelernten Gewichte stammen aus den Büchern dieser Bibliothek mit ISBN, sonst sind es die mitgelieferten Startgewichte für ihre Sprachen. Ihre Bewertung ist eine Wahrscheinlichkeit, die für eine andere Ausgabe selten 0,95 erreicht: Wenn Sie sie wählen, setzen Sie die Schwelle für Treffer auf das, was Messen zeigt, etwa 0,7. Importierte Gewichte sind eine Datei, die jemand geteilt hat; sie wird unten zuerst gemessen.",
 	"settings.learnScore": "Die Gewichte jede Woche lernen",
 	"settings.learnScore.hint": "Einmal die Woche werden, wo mindestens 500 Bücher eine ISBN haben, diese ohne sie über den Zwischenspeicher neu nachgeschlagen und die Gewichte daraus gelernt.",
 	"settingChoice.metadata.scoreWeights.learned": "Gelernt (sonst mitgeliefert, sonst von Hand)",

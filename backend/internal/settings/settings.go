@@ -212,7 +212,7 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
-	{Key: ScoreWeights, Kind: KindText, Default: "learned", Check: scoreWeights, Choices: ScoreWeightChoices},
+	{Key: ScoreWeights, Kind: KindText, Default: "handSet", Check: scoreWeights, Choices: ScoreWeightChoices},
 	{Key: LearnScore, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true},
 	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
