@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
@@ -86,8 +87,11 @@ func NewService(pool *pgxpool.Pool, books *catalog.Service, log *slog.Logger) *S
 // back, and an open pair left with none goes. A book that is deleted,
 // merged or only wished for has no duplicates.
 func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{bookID}); err != nil {
+			return err
+		}
 		found, err := q.FindDuplicateEvidence(ctx, bookID)
 		if err != nil {
 			return err
@@ -97,6 +101,13 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 			return err
 		}
 		found = append(found, shared...)
+		held := []uuid.UUID{bookID}
+		for _, f := range found {
+			held = append(held, f.Other)
+		}
+		if err := q.HoldLibrariesOfBooks(ctx, held); err != nil {
+			return err
+		}
 		pairs := map[uuid.UUID]uuid.UUID{}
 		var others []uuid.UUID
 		var ev sqlc.AddDuplicateEvidenceParams
@@ -145,6 +156,12 @@ func (s *Service) Check(ctx context.Context, bookID uuid.UUID) error {
 		}
 		return nil
 	})
+	// A library deleted after the evidence was read takes its books with it,
+	// and the pair that pointed at one has nothing left to check.
+	if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return nil
+	}
+	return err
 }
 
 // newPairsTx tells of the pairs the book's check made, to those who see

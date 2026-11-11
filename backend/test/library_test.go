@@ -440,3 +440,36 @@ func TestALibraryIsDeletedWhileOneOfItsFilesGoesToTheTrash(t *testing.T) {
 		t.Errorf("deleting the library: %d", status)
 	}
 }
+
+// A duplicate check inserts pairs of books and their evidence while the
+// delete of the library removes the same books; held between the two, the
+// check deadlocked with the delete or pointed a pair at a book already gone
+// (#498).
+func TestALibraryIsDeletedWhileItsBooksAreCheckedForDuplicates(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	for round := range 3 {
+		lib := a.library(admin, fmt.Sprintf("Shelf %d", round), "shared")
+		var books []uuid.UUID
+		for range 12 {
+			books = append(books, a.bookBy(lib, "Emma", "Jane Austen"))
+		}
+		errs := make(chan error, len(books))
+		var wg sync.WaitGroup
+		for _, b := range books {
+			wg.Go(func() { errs <- a.server.Duplicates.Check(t.Context(), b) })
+		}
+		status, body, _ := a.call(admin, http.MethodDelete, "/libraries/"+lib, nil)
+		wg.Wait()
+		close(errs)
+		if status != http.StatusNoContent {
+			t.Fatalf("round %d: deleting the library: %d %v", round, status, body)
+		}
+		for err := range errs {
+			if err != nil {
+				t.Errorf("round %d: a check beside the delete: %v", round, err)
+			}
+		}
+	}
+}

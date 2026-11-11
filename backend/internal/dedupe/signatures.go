@@ -127,6 +127,9 @@ func (s *Service) SignFile(ctx context.Context, bookID, fileID uuid.UUID) error 
 		return err
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := sqlc.New(tx).HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		primary, err := sqlc.New(tx).GetPrimaryTextFile(ctx, bookID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
