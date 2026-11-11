@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-11
+
 ### Added
 
 - The Deutsche Nationalbibliothek can be asked for book details: by ISBN,
