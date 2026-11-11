@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Read aloud no longer says a sentence twice when the page settles after it
+  has turned to the sentence.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

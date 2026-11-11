@@ -205,3 +205,50 @@ export function readAloud<S extends Sentence>(
 		},
 	};
 }
+
+/** How long after the reader's own move a relocate is taken for its aftermath. */
+export const SETTLE_MS = 600;
+
+/**
+ * Tells the person's moves from the reader's own. foliate-js can relocate
+ * once more after an own move has resolved (layout settling, a late scroll);
+ * that one still holds the sentence being read, or comes within a moment of
+ * the move, and must not restart the reading.
+ */
+export function moveGuard(
+	holds: (visible: Range, marked: Range) => boolean = (visible, marked) =>
+		visible.compareBoundaryPoints(Range.START_TO_START, marked) <= 0 &&
+		visible.compareBoundaryPoints(Range.END_TO_END, marked) >= 0,
+	now: () => number = () => performance.now(),
+) {
+	let own = 0;
+	let lastOwn = Number.NEGATIVE_INFINITY;
+	let marked: Range | undefined;
+	return {
+		async own<R>(move: () => Promise<R>): Promise<R> {
+			own++;
+			try {
+				return await move();
+			} finally {
+				own--;
+				lastOwn = now();
+			}
+		},
+		mark(range: Range | undefined) {
+			marked = range;
+		},
+		/** Whether a relocate to `visible` is the person's move. */
+		personal(visible: Range | undefined): boolean {
+			if (own > 0) return false;
+			if (now() - lastOwn < SETTLE_MS) return false;
+			if (marked && visible) {
+				try {
+					if (holds(visible, marked)) return false;
+				} catch {
+					// Ranges of different documents: the page has changed.
+				}
+			}
+			return true;
+		},
+	};
+}
