@@ -67,7 +67,9 @@ bump_of_changes() {
     done
     [[ -n "$types" ]] && counts="$(sort <<< "${types%$'\n'}" | uniq -c | awk '{printf "%s%d %s", (NR>1 ? ", " : ""), $1, $2}')"
   fi
-  if git log --format=%B "${LAST_TAG:+$LAST_TAG..}HEAD" | grep -qE '^BREAKING[ -]CHANGE:' || [[ " $sections" == *" Removed "* ]]; then
+  # grep reads all of the log: with -q it would stop at the first match,
+  # git log would die writing the rest, and pipefail would make it no break.
+  if git log --format=%B "${LAST_TAG:+$LAST_TAG..}HEAD" | grep -E '^BREAKING[ -]CHANGE:' >/dev/null || [[ " $sections" == *" Removed "* ]]; then
     kind=major; why="a breaking change"
   elif grep -qx feat <<< "$types" || [[ " $sections" =~ \ (Added|Changed|Deprecated)\  ]]; then
     kind=minor; why="new or changed features"
