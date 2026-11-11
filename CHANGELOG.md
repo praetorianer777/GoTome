@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- The Deutsche Nationalbibliothek can be asked for book details: by ISBN,
+  by title and author, and for the books of an author or a series, which
+  includes German titles publishers have announced, with the month they are
+  due, so following an author shows them under New books. Add `dnb` to the
+  setting `metadata.providers` to use it; it is not asked by default.
 - Clean-ups where the data decides can be applied at once. On the clean-up
   page each such kind (a tool's stand-in as author, a shop's addition to a
   title, one person's name spelled differently only in order, case, accents
@@ -42,6 +47,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- Looking a book up without an ISBN ranks candidates better: a candidate in
+  another language than the book is scored much lower, and page count,
+  publisher, series and place in the series count where both know them, so
+  a translation or the next volume is less often taken as the book. Among
+  equal scores the book's own language comes first.
 - Undoing a run under Changes is done by a job, so a run of hundreds of
   merges can be taken back: the button answers at once and the run says
   how far the undo has got.
