@@ -52,6 +52,10 @@ const (
 	// fields of matches that providers agree on, and dismisses matches
 	// that contradict the text, by itself.
 	CurationMatchesAuto = "curation.matches.auto"
+	// CurationMatchesEdition is "on" or "off": whether an automatic run
+	// trusts one provider's record that has the book's title, an author
+	// and its publisher, without a second provider agreeing.
+	CurationMatchesEdition = "curation.matches.edition"
 	// Providers lists the metadata providers asked, comma-separated.
 	Providers = "metadata.providers"
 	// ContactEmail is the address given to providers that ask whom to
@@ -202,6 +206,7 @@ var Definitions = []Definition{
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
 	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true},
 	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
+	{Key: CurationMatchesEdition, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},

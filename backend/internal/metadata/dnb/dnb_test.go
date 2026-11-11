@@ -300,3 +300,16 @@ func TestLiveContract(t *testing.T) {
 		t.Errorf("BySeries(%q): %+v, %v", series, books, err)
 	}
 }
+
+func TestTheMediumIsReadFromTheCarrier(t *testing.T) {
+	for _, c := range []struct{ carrier, media, want string }{
+		{"Online-Ressource", "Computermedien", metadata.MediumEbook},
+		{"Band", "ohne Hilfsmittel zu benutzen", metadata.MediumPrint},
+		{"Audiodisk", "audio", metadata.MediumAudio},
+		{"", "", ""},
+	} {
+		if got := medium(c.carrier, c.media); got != c.want {
+			t.Errorf("medium(%q, %q) = %q, want %q", c.carrier, c.media, got, c.want)
+		}
+	}
+}

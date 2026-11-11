@@ -1762,6 +1762,8 @@ export const en = {
 	"settings.curationCleanupKinds.hint": "Once a day the suggestions of these kinds that the data decides are applied; each run is listed under Changes, can be undone, and writes nothing into the files until you confirm it. None by default.",
 	"settings.curationMatchesAuto": "Review matches by themselves",
 	"settings.curationMatchesAuto.hint": "Once a day, fields of matches that sources agree on are taken and matches that contradict the text are dismissed, as a run under Changes that can be undone. The rest still waits for you.",
+	"settings.curationMatchesEdition": "Trust one source's record of the edition",
+	"settings.curationMatchesEdition.hint": "Automatic runs also take a match no second source agrees on when it has the book's title, an author and the publisher of the file, and its year is at most one off: for German books, often only the Deutsche Nationalbibliothek knows them. gotome match-check shows how often that is right on your library before you turn it on.",
 	"settingChoice.curation.cleanup.kinds.placeholders": "Placeholder authors",
 	"settingChoice.curation.cleanup.kinds.titles": "Title additions",
 	"settingChoice.curation.cleanup.kinds.authors": "Author spellings",

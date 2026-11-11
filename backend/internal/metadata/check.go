@@ -19,7 +19,11 @@ const (
 	// OutcomeSameWork is another edition of the book: the provider says
 	// the record and the book's ISBN belong to one work.
 	OutcomeSameWork = "sameWork"
-	OutcomeWrong    = "wrong"
+	// OutcomeEdition is a record of the book's title and an author of it
+	// that names neither its ISBN nor its work: most often another
+	// edition, as for a provider that names no works (the DNB).
+	OutcomeEdition = "edition"
+	OutcomeWrong   = "wrong"
 	// OutcomeNone is a ranking without any candidate.
 	OutcomeNone = "none"
 )
@@ -73,6 +77,10 @@ type CheckReport struct {
 	// Agreement is what the rule of an automatic run takes: books whose
 	// providers' first candidates name one ISBN or one work.
 	Agreement Agreement `json:"agreement"`
+	// Editions is what an automatic run takes with
+	// curation.matches.edition on as well: books one of whose providers'
+	// first candidates is SameEdition, where no two agree.
+	Editions Agreement `json:"editions"`
 }
 
 // Agreement counts the sampled books for which two providers' first
@@ -83,7 +91,22 @@ type Agreement struct {
 	Accepted int `json:"accepted"`
 	Right    int `json:"right"`
 	SameWork int `json:"sameWork"`
+	Edition  int `json:"edition"`
 	Wrong    int `json:"wrong"`
+}
+
+func (a *Agreement) add(outcome string) {
+	a.Accepted++
+	switch outcome {
+	case OutcomeRight:
+		a.Right++
+	case OutcomeSameWork:
+		a.SameWork++
+	case OutcomeEdition:
+		a.Edition++
+	default:
+		a.Wrong++
+	}
 }
 
 // Agrees says whether two candidates of different providers name one ISBN or
@@ -106,14 +129,15 @@ type Tally struct {
 	Books    int    `json:"books"`
 	Right    int    `json:"right"`
 	SameWork int    `json:"sameWork"`
+	Edition  int    `json:"edition"`
 	Wrong    int    `json:"wrong"`
 	None     int    `json:"none"`
 	// Failed are the books a provider failed to answer about, counted
 	// nowhere else.
 	Failed int `json:"failed"`
-	// Ranks counts, of the books whose first candidate is wrong, the
-	// place of the first that is right or of the same work; Missing those
-	// with no such candidate at all.
+	// Ranks counts, of the books whose first candidate is wrong or another
+	// edition, the place of the first that is right or of the same work;
+	// Missing those with no such candidate at all.
 	Ranks   map[int]int `json:"ranks"`
 	Missing int         `json:"missing"`
 }
@@ -124,6 +148,7 @@ type ScoreBand struct {
 	To       float64 `json:"to"`
 	Right    int     `json:"right"`
 	SameWork int     `json:"sameWork"`
+	Edition  int     `json:"edition"`
 	Wrong    int     `json:"wrong"`
 }
 
@@ -134,6 +159,7 @@ type ThresholdPoint struct {
 	Taken     int     `json:"taken"`
 	Right     int     `json:"right"`
 	SameWork  int     `json:"sameWork"`
+	Edition   int     `json:"edition"`
 	Wrong     int     `json:"wrong"`
 }
 
@@ -146,8 +172,12 @@ func (t *Tally) add(outcome string, rank int) {
 		t.SameWork++
 	case OutcomeNone:
 		t.None++
-	case OutcomeWrong:
-		t.Wrong++
+	case OutcomeWrong, OutcomeEdition:
+		if outcome == OutcomeWrong {
+			t.Wrong++
+		} else {
+			t.Edition++
+		}
 		if rank == 0 {
 			t.Missing++
 		} else {
@@ -237,7 +267,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 				all = append(all, ranked...)
 				var outcome string
 				var rank int
-				outcome, rank, err = judge(ranked, b.isbns, workOf)
+				outcome, rank, err = judge(ranked, b, workOf)
 				if err == nil {
 					tally.add(outcome, rank)
 					if len(ranked) > 0 {
@@ -254,7 +284,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			failed = true
 		}
 		lang := perLanguage[languageOf(b.book.Language)]
-		outcome, rank, err := judge(sortCandidates(all, b.book.Language), b.isbns, workOf)
+		outcome, rank, err := judge(sortCandidates(all, b.book.Language), b, workOf)
 		if err != nil && ctx.Err() != nil {
 			return CheckReport{}, ctx.Err()
 		}
@@ -279,21 +309,24 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 					}
 					// The better of the two stands for the book.
 					for _, o := range []string{firstOutcome[x], firstOutcome[y]} {
-						if accepted == "" || o == OutcomeRight || o == OutcomeSameWork && accepted == OutcomeWrong {
+						if accepted == "" || outcomeRank[o] > outcomeRank[accepted] {
 							accepted = o
 						}
 					}
 				}
 			}
 			if accepted != "" {
-				r.Agreement.Accepted++
-				switch accepted {
-				case OutcomeRight:
-					r.Agreement.Right++
-				case OutcomeSameWork:
-					r.Agreement.SameWork++
-				default:
-					r.Agreement.Wrong++
+				r.Agreement.add(accepted)
+			} else {
+				edition := ""
+				for x, c := range firstOf {
+					if SameEdition(b.book, c.Record) && (edition == "" || outcomeRank[firstOutcome[x]] < outcomeRank[edition]) {
+						// The worse of two stands: either might be taken.
+						edition = firstOutcome[x]
+					}
+				}
+				if edition != "" {
+					r.Editions.add(edition)
 				}
 			}
 		}
@@ -308,12 +341,14 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 		r.PerLanguage = append(r.PerLanguage, *perLanguage[l])
 	}
 
-	count := func(outcome string, right, same, wrong *int) {
+	count := func(outcome string, right, same, edition, wrong *int) {
 		switch outcome {
 		case OutcomeRight:
 			*right++
 		case OutcomeSameWork:
 			*same++
+		case OutcomeEdition:
+			*edition++
 		default:
 			*wrong++
 		}
@@ -325,7 +360,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 		for _, f := range firsts {
 			hundredths := int(f.score*100 + 1e-9)
 			if hundredths >= edges[i] && (hundredths < edges[i+1] || edges[i+1] == 100) {
-				count(f.outcome, &band.Right, &band.SameWork, &band.Wrong)
+				count(f.outcome, &band.Right, &band.SameWork, &band.Edition, &band.Wrong)
 			}
 		}
 		r.Scores = append(r.Scores, band)
@@ -340,7 +375,7 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 		for _, f := range firsts {
 			if f.score >= t-1e-9 {
 				p.Taken++
-				count(f.outcome, &p.Right, &p.SameWork, &p.Wrong)
+				count(f.outcome, &p.Right, &p.SameWork, &p.Edition, &p.Wrong)
 			}
 		}
 		r.Thresholds = append(r.Thresholds, p)
@@ -428,34 +463,39 @@ func (s *Service) worksOf(ctx context.Context, provider string, isbns []string) 
 	return works, nil
 }
 
-// judge says what a ranking put first and, where that is wrong, at which
-// place, from 1, the first candidate that is the book or of its work
-// stands; 0 for none. It asks for a provider's works only when a
-// candidate of it does not carry one of the ISBNs.
-func judge(ranked []Candidate, isbns []string, workOf func(string) (map[string]bool, error)) (string, int, error) {
+// outcomeRank orders outcomes from the book itself down to a wrong one.
+var outcomeRank = map[string]int{OutcomeWrong: 1, OutcomeEdition: 2, OutcomeSameWork: 3, OutcomeRight: 4}
+
+// judge says what a ranking put first and, where that is not the book or
+// of its work, at which place, from 1, the first candidate that is stands;
+// 0 for none. It asks for a provider's works only when a candidate of it
+// does not carry one of the ISBNs.
+func judge(ranked []Candidate, b checkBook, workOf func(string) (map[string]bool, error)) (string, int, error) {
 	if len(ranked) == 0 {
 		return OutcomeNone, 0, nil
 	}
 	classify := func(c Candidate) (string, error) {
 		for _, id := range c.Identifiers {
-			if id.Type == catalog.IDISBN && slices.Contains(isbns, id.Value) {
+			if id.Type == catalog.IDISBN && slices.Contains(b.isbns, id.Value) {
 				return OutcomeRight, nil
 			}
 		}
-		if c.Work == "" {
-			return OutcomeWrong, nil
+		if c.Work != "" {
+			works, err := workOf(c.Provider)
+			if err != nil {
+				return "", err
+			}
+			if works[c.Work] {
+				return OutcomeSameWork, nil
+			}
 		}
-		works, err := workOf(c.Provider)
-		if err != nil {
-			return "", err
-		}
-		if works[c.Work] {
-			return OutcomeSameWork, nil
+		if SameBook(b.book, c.Record) {
+			return OutcomeEdition, nil
 		}
 		return OutcomeWrong, nil
 	}
 	outcome, err := classify(ranked[0])
-	if err != nil || outcome != OutcomeWrong {
+	if err != nil || outcome == OutcomeRight || outcome == OutcomeSameWork || outcome == OutcomeNone {
 		return outcome, 0, err
 	}
 	for i, c := range ranked[1:] {
@@ -463,15 +503,27 @@ func judge(ranked []Candidate, isbns []string, workOf func(string) (map[string]b
 		if err != nil {
 			return "", 0, err
 		}
-		if o != OutcomeWrong {
-			return OutcomeWrong, i + 2, nil
+		if o == OutcomeRight || o == OutcomeSameWork {
+			return outcome, i + 2, nil
 		}
 	}
-	return OutcomeWrong, 0, nil
+	return outcome, 0, nil
 }
 
 func sampleBook(row sqlc.ListMatchCheckBooksRow) checkBook {
-	b := catalog.Book{ID: row.ID, Title: row.Title, PublishedOn: row.PublishedOn}
+	b := catalog.Book{
+		ID: row.ID, Title: row.Title, PublishedOn: row.PublishedOn,
+		PageCount: row.PageCount, SeriesIndex: row.SeriesIndex,
+	}
+	if row.Publisher != nil {
+		b.Publisher = *row.Publisher
+	}
+	for _, kind := range row.Kinds {
+		b.Files = append(b.Files, catalog.File{Kind: kind})
+	}
+	if row.Series != nil {
+		b.Series = *row.Series
+	}
 	if row.Subtitle != nil {
 		b.Subtitle = *row.Subtitle
 	}

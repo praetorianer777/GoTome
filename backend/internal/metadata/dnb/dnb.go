@@ -253,6 +253,8 @@ func (m marc) record() metadata.Record {
 		r.Language = languageTag(f[35:38])
 	}
 
+	r.Medium = medium(m.first("338", "a"), m.first("337", "a"))
+
 	if match := pages.FindAllStringSubmatch(m.first("300", "a"), -1); len(match) > 0 {
 		if n, err := strconv.Atoi(match[len(match)-1][1]); err == nil && n > 0 && n < 100000 {
 			n32 := int32(n)
@@ -399,4 +401,19 @@ func (p *Provider) query(ctx context.Context, web metadata.Web, cql string, rows
 		}
 	}
 	return out, nil
+}
+
+// medium reads what an edition is from its carrier (MARC 338) and media
+// type (337), in the RDA terms the DNB writes in German.
+func medium(carrier, media string) string {
+	c, t := strings.ToLower(carrier), strings.ToLower(media)
+	switch {
+	case strings.Contains(t, "audio") || strings.Contains(c, "audio"):
+		return metadata.MediumAudio
+	case strings.Contains(c, "online") || strings.Contains(t, "computer"):
+		return metadata.MediumEbook
+	case c == "band" || strings.Contains(t, "ohne hilfsmittel"):
+		return metadata.MediumPrint
+	}
+	return ""
 }
