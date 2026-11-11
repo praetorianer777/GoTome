@@ -42,6 +42,12 @@ const (
 	publisherDiff = -0.01
 	seriesSame    = 0.02
 	seriesDiff    = -0.03
+	// mediumSame and mediumDiff compare what the record's edition is with
+	// the book's files: of one publisher, year and title, the e-book and
+	// the hardback are told apart by this alone, and an EPUB carries the
+	// e-book's ISBN.
+	mediumSame = 0.02
+	mediumDiff = -0.03
 	// positionSame and positionDiff apply within one series: volume 3 is
 	// not volume 4.
 	positionSame = 0.02
@@ -79,7 +85,7 @@ func Score(book catalog.Book, r Record) float64 {
 		score *= languageMismatch
 	}
 	score += pagesAdjust(book.PageCount, r.PageCount) + publisherAdjust(book.Publisher, r.Publisher) +
-		seriesAdjust(book, r)
+		seriesAdjust(book, r) + mediumAdjust(book, r)
 	return max(0, min(score, bestWithoutIdentifier))
 }
 
@@ -98,6 +104,80 @@ func pagesAdjust(a, b *int32) float64 {
 		return pagesFar
 	}
 	return 0
+}
+
+// SameBook says whether a record is of the book's title, its words as
+// keys with or without either side's subtitle, by an author of the book:
+// the book itself or another edition of it, whatever its identifiers.
+func SameBook(book catalog.Book, r Record) bool {
+	titles := func(title, subtitle string) []string {
+		if subtitle == "" {
+			return []string{title}
+		}
+		return []string{title, title + " " + subtitle}
+	}
+	same := false
+	for _, a := range titles(book.Title, book.Subtitle) {
+		for _, b := range titles(r.Title, r.Subtitle) {
+			if len(words(a)) > 0 && similarity(a, b) == 1 {
+				same = true
+			}
+		}
+	}
+	if !same {
+		return false
+	}
+	for _, mine := range book.Authors() {
+		for _, c := range r.Contributors {
+			if (c.Role == "" || c.Role == catalog.RoleAuthor) && sameAuthor(mine, c.Name) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// SameEdition says whether a record is the book's edition as far as its
+// description tells: SameBook, the same publisher (both must name one),
+// and, where both give a year, at most a year apart.
+func SameEdition(book catalog.Book, r Record) bool {
+	if publisherAdjust(book.Publisher, r.Publisher) != publisherSame || !SameBook(book, r) {
+		return false
+	}
+	ya, oka := year(book.Published())
+	yb, okb := year(r.Published)
+	return !oka || !okb || ya-yb <= 1 && yb-ya <= 1
+}
+
+// mediumAdjust compares the record's medium with the kind of the book's
+// files: a book of ebook files only against an e-book or a printed
+// edition, of audio files only against an audio edition. A book of both,
+// or of none, or a record that does not say, changes nothing.
+func mediumAdjust(book catalog.Book, r Record) float64 {
+	if r.Medium == "" {
+		return 0
+	}
+	kinds := map[string]bool{}
+	for _, f := range book.Files {
+		if !f.Missing {
+			kinds[f.Kind] = true
+		}
+	}
+	var mine string
+	switch {
+	case len(kinds) != 1:
+		return 0
+	case kinds[catalog.KindEbook]:
+		mine = MediumEbook
+	case kinds[catalog.KindAudio]:
+		mine = MediumAudio
+	default:
+		return 0
+	}
+	if mine == r.Medium {
+		return mediumSame
+	}
+	return mediumDiff
 }
 
 // publisherAdjust compares publishers by key; one containing the other

@@ -56,6 +56,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.curationMatchesAuto",
 		hint: "settings.curationMatchesAuto.hint",
 	},
+	"curation.matches.edition": {
+		label: "settings.curationMatchesEdition",
+		hint: "settings.curationMatchesEdition.hint",
+	},
 	"metadata.providers": {
 		label: "settings.providers",
 		hint: "settings.providers.hint",

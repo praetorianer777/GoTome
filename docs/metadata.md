@@ -39,15 +39,30 @@ different language multiplies it by 0.6 (a translation is not the book),
 a page count within 10% (at least 15 pages) adds a little and one 40%
 off takes a little, as does the same publisher or a different one, the
 same series, and within it the same position (a different position takes
-10 points: the next volume is not this book). A side that says nothing
-about a signal changes nothing. Among equal scores, candidates in the
-book's own language come first.
+10 points: the next volume is not this book), and the same medium as the
+book's files (an e-book against an EPUB) or another one (the hardback).
+A side that says nothing about a signal changes nothing. Among equal
+scores, candidates in the book's own language come first.
 
-The weights of these signals (named constants in
-`backend/internal/metadata/score.go`) are set by reasoning and await
-numbers from `gotome match-check`: run it before and after on your own
-library (below) and move them if the share of wrong first candidates
-or the sureness at the threshold does not improve.
+The weights are named constants in `backend/internal/metadata/score.go`.
+Most sources' searches answer works, not editions, and give no language,
+publisher, pages or medium to compare: the signals tell editions apart
+where a source lists them, as the Deutsche Nationalbibliothek does.
+Measured on 200 German books of a private library with an ISBN, looked
+up without it at the DNB and Open Library (2026-11-11):
+
+| | before | after |
+|---|---|---|
+| first candidate the book's own edition | 30% | 32% |
+| another edition of the book first | (counted as wrong) | 20% |
+| another book first | 30% (with the editions) | 6% |
+| at 0.95: taken, own edition / another edition / another book | 77: 45 / – / 32 | 77: 50 / 25 / 0, and 2 of its work |
+
+For a library mostly in German, put `dnb` first in `metadata.providers`
+(`dnb,openlibrary,hardcover`): on that library Open Library, CrossRef and
+Hardcover put the book's own edition first for one book in a hundred,
+and another book for most. CrossRef knows scholarly books only; leave it
+out of a library of fiction.
 
 - A best candidate at or above `metadata.matchThreshold` (0.95) is taken,
   but only to fill gaps: empty fields, a title that was only the file
@@ -101,12 +116,15 @@ first candidate is:
 - **same work**: another edition of the book: looked up by the book's
   ISBN, the source names the same work (Open Library's work, Hardcover's
   book). Taking it fills gaps with what that edition says.
-- **wrong**: another book, or an edition the source does not tie to the
-  book's ISBN.
+- **edition**: the book's title and one of its authors, but neither its
+  ISBN nor its work: most often another edition, as from a source that
+  names no works (the DNB). Its description is the book's; its ISBN,
+  cover and page count may be another edition's.
+- **wrong**: another book.
 - **nothing** found, or **failed** (the source did not answer; counted
   nowhere else).
 
-Then where the book stood in the ranking when a wrong one was first, the
+Then where the book stood in the ranking when another edition or a wrong one was first, the
 first candidate's score in bands for right and wrong ones, and at each
 threshold how many first candidates a lookup would take and how many of
 them are right: the line marked `*` is `metadata.matchThreshold` now.
@@ -121,6 +139,13 @@ wrong among the accepted is what that rule would get wrong on your
 library; only numbers are printed, never titles. It measures the
 agreement between sources; the checks against the text's language and the
 file's year need the text and are not part of it.
+
+Last, what `curation.matches.edition` would take as well: books where no
+two sources agree but one source's first candidate has the book's title,
+an author of it and the file's publisher, with a year at most one off.
+On the library above it took 49 of 200 books: 36 the book's own edition,
+13 another edition of it, none another book. Turn it on only where your
+numbers say the same.
 
 ## Doing it automatically
 

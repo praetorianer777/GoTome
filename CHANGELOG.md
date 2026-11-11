@@ -6,6 +6,25 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The setting `curation.matches.edition` (off to begin with) lets automatic
+  match runs take a match no second source confirms when it has the book's
+  title, an author and the publisher of the file, and a year at most one
+  off. For German books the Deutsche Nationalbibliothek is often the only
+  source that knows them. `gotome match-check` shows what it would take on
+  your library and how much of it is right.
+
+### Changed
+
+- Looking a book up ranks its editions better: of one title, author and
+  publisher, the e-book comes before the printed edition when the book's
+  files are e-books, as the Deutsche Nationalbibliothek says which is
+  which. `gotome match-check` counts another edition of the book apart
+  from another book, and weighs the book's publisher, pages and series as
+  a lookup does; `docs/metadata.md` has the numbers and advises putting
+  `dnb` first for a library mostly in German.
+
 ## [0.17.0] - 2026-11-11
 
 ### Added

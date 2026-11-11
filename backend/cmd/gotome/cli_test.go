@@ -259,8 +259,9 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 	records := filepath.Join(t.TempDir(), "metadata.json")
 	// Der Process is found as itself, Dusk as another edition of its work
 	// (the deluxe edition, which the search does not find, carries its
-	// ISBN), Emma first as an edition nobody says is hers and then as
-	// itself, and the last book not at all.
+	// ISBN), Emma first as another edition of her title and author that
+	// nobody ties to her ISBN and then as itself, and the last book not at
+	// all.
 	if err := os.WriteFile(records, []byte(`[
 		{"id": "process", "title": "Der Process", "authors": ["Franz Kafka"], "language": "de", "isbns": ["9783596294312"]},
 		{"id": "dusk-2019", "work": "dusk", "title": "Dusk", "authors": ["Henrik Halden"], "language": "en", "isbns": ["9781950001057"]},
@@ -312,7 +313,7 @@ func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {
 		t.Fatalf("match-check: %v\n%s", err, out)
 	}
 	all := r.All
-	if r.Books != 4 || r.Sample != 4 || all.Books != 4 || all.Right != 1 || all.SameWork != 1 || all.Wrong != 1 ||
+	if r.Books != 4 || r.Sample != 4 || all.Books != 4 || all.Right != 1 || all.SameWork != 1 || all.Edition != 1 || all.Wrong != 0 ||
 		all.None != 1 || all.Failed != 0 || all.Ranks[2] != 1 || all.Missing != 0 {
 		t.Errorf("match-check: %+v", r)
 	}

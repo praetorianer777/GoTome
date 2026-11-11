@@ -1781,6 +1781,8 @@ export const de: Record<MessageKey, string> = {
 	"settings.curationCleanupKinds.hint": "Einmal am Tag werden die Vorschläge dieser Arten angewendet, die die Daten entscheiden; jeder Lauf steht unter Änderungen, lässt sich rückgängig machen und schreibt nichts in die Dateien, bis Sie ihn bestätigen. Standardmäßig keine.",
 	"settings.curationMatchesAuto": "Treffer von selbst prüfen",
 	"settings.curationMatchesAuto.hint": "Einmal am Tag werden Felder von Treffern übernommen, auf die sich Quellen einigen, und Treffer verworfen, die dem Text widersprechen, als Lauf unter Änderungen, der sich rückgängig machen lässt. Der Rest wartet weiter auf Sie.",
+	"settings.curationMatchesEdition": "Einer Quelle die Ausgabe glauben",
+	"settings.curationMatchesEdition.hint": "Automatische Läufe übernehmen auch einen Treffer, den keine zweite Quelle bestätigt, wenn er Titel, einen Autor und den Verlag der Datei hat und sein Jahr höchstens eins abweicht: deutsche Bücher kennt oft nur die Deutsche Nationalbibliothek. gotome match-check zeigt, wie oft das in Ihrer Bibliothek stimmt, bevor Sie es einschalten.",
 	"settingChoice.curation.cleanup.kinds.placeholders": "Platzhalter-Autoren",
 	"settingChoice.curation.cleanup.kinds.titles": "Titelzusätze",
 	"settingChoice.curation.cleanup.kinds.authors": "Autorenschreibweisen",

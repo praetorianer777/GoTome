@@ -45,6 +45,10 @@ type Input struct {
 	// Unagreed lets a match through that no other provider and no shared
 	// ISBN vouches for: a person chose the group it is in.
 	Unagreed bool
+	// Editions trusts a record alone that has the book's title, an author
+	// of it and its publisher (metadata.SameEdition), as the DNB's records
+	// of German books do where no other provider knows them.
+	Editions bool
 }
 
 // Outcome is what is done about a match.
@@ -163,6 +167,9 @@ func agreement(in Input) string {
 		if r.Work != "" && r.Work == o.Record.Work {
 			return "The records of " + in.Match.Provider + " and " + o.Provider + " are of the same work"
 		}
+	}
+	if in.Editions && metadata.SameEdition(in.Book, r) {
+		return "The record of " + in.Match.Provider + " has the book's title, author and publisher"
 	}
 	return ""
 }

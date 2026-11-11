@@ -184,3 +184,24 @@ func TestPreferredSpellingGoesByUse(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestOneProvidersEditionIsTrustedOnlyWhenTheSettingSaysSo(t *testing.T) {
+	b := book()
+	b.Identifiers = nil
+	b.Publisher = "Beispielverlag"
+	r := record()
+	r.Identifiers, r.Publisher = nil, "Beispielverlag"
+	out := Decide(Input{Book: b, Match: match("dnb", r)})
+	if out.Agreed != "" {
+		t.Fatalf("one provider's record was trusted with the setting off: %+v", out)
+	}
+	out = Decide(Input{Book: b, Match: match("dnb", r), Editions: true})
+	if out.Agreed == "" {
+		t.Error("the book's title, author and publisher were not trusted with the setting on")
+	}
+	r.Publisher = "Anderer Verlag"
+	out = Decide(Input{Book: b, Match: match("dnb", r), Editions: true})
+	if out.Agreed != "" {
+		t.Error("another publisher's edition was trusted")
+	}
+}

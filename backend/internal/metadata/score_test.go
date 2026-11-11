@@ -176,3 +176,70 @@ func TestCandidatesOfTheBooksLanguageComeFirstAmongEqualScores(t *testing.T) {
 }
 
 func mustDate(year int) (d time.Time) { return time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC) }
+
+func TestSameBookIsTheTitleWithAnAuthor(t *testing.T) {
+	book, r := bare()
+	if !SameBook(book, r) {
+		t.Fatal("the same title and author is not the same book")
+	}
+	r.Title = "Buddenbrooks Verfall einer Familie"
+	if SameBook(book, r) {
+		t.Error("a longer title was taken for the same book")
+	}
+	r.Title, r.Subtitle = "Buddenbrooks", "Verfall einer Familie"
+	if !SameBook(book, r) {
+		t.Error("the record's subtitle made it another book")
+	}
+	r.Subtitle = ""
+	r.Contributors = []catalog.NewContributor{{Name: "Heinrich Mann", Role: catalog.RoleAuthor}}
+	if SameBook(book, r) {
+		t.Error("another author's book of the title was taken for the same book")
+	}
+	r.Contributors = []catalog.NewContributor{{Name: "Thomas Mann", Role: catalog.RoleTranslator}}
+	if SameBook(book, r) {
+		t.Error("a translator was taken for the author")
+	}
+}
+
+func TestSameEditionNeedsThePublisherAndANearYear(t *testing.T) {
+	book, r := buddenbrooks()
+	if !SameEdition(book, r) {
+		t.Fatal("the same title, author and publisher is not the same edition")
+	}
+	r.Publisher = "Anderer Verlag"
+	if SameEdition(book, r) {
+		t.Error("another publisher's edition was taken")
+	}
+	r.Publisher = ""
+	if SameEdition(book, r) {
+		t.Error("a record without a publisher was taken")
+	}
+	r.Publisher = "Beispielverlag"
+	on := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
+	book.PublishedOn, book.PublishedPrecision = &on, "year"
+	r.Published = "2002"
+	if !SameEdition(book, r) {
+		t.Error("a year apart was taken for another edition")
+	}
+	r.Published = "2010"
+	if SameEdition(book, r) {
+		t.Error("an edition nine years later was taken")
+	}
+}
+
+func TestTheEbookOfAnEditionBeatsItsPrintedTwin(t *testing.T) {
+	book, r := bare()
+	book.Files = []catalog.File{{Kind: catalog.KindEbook}}
+	r.Medium = MediumEbook
+	ebook := Score(book, r)
+	r.Medium = MediumPrint
+	printed := Score(book, r)
+	r.Medium = ""
+	unknown := Score(book, r)
+	if !(ebook > unknown && unknown > printed) {
+		t.Errorf("ebook %.3f, unknown %.3f, printed %.3f", ebook, unknown, printed)
+	}
+	book.Files = append(book.Files, catalog.File{Kind: catalog.KindAudio})
+	r.Medium = MediumPrint
+	near(t, "a book of both kinds", Score(book, r), unknown)
+}

@@ -386,6 +386,10 @@ func (s *Service) Groups(ctx context.Context, scope library.Scope) ([]MatchGroup
 // with matches, without changing anything.
 func (s *Service) MatchPlan(ctx context.Context, scope library.Scope) (MatchCounts, error) {
 	var out MatchCounts
+	editions, err := s.editionsTrusted(ctx)
+	if err != nil {
+		return out, err
+	}
 	q := sqlc.New(s.pool)
 	after := uuid.Nil
 	for out.Books < PlanBooks {
@@ -398,7 +402,7 @@ func (s *Service) MatchPlan(ctx context.Context, scope library.Scope) (MatchCoun
 		for _, id := range ids {
 			after = id
 			out.Books++
-			r, err := s.matchesOfBook(ctx, s.pool, nil, scope, id, nil)
+			r, err := s.matchesOfBook(ctx, s.pool, nil, scope, id, nil, editions)
 			if err != nil {
 				if skippable(err) {
 					continue
@@ -417,6 +421,14 @@ func (s *Service) MatchPlan(ctx context.Context, scope library.Scope) (MatchCoun
 	return out, nil
 }
 
+// editionsTrusted says whether a match of the book's title, an author and
+// its publisher is trusted alone (settings.CurationMatchesEdition). It is
+// read before a run's transactions, which must not wait on the pool.
+func (s *Service) editionsTrusted(ctx context.Context) (bool, error) {
+	v, err := s.settings.Text(ctx, settings.CurationMatchesEdition)
+	return v == "on", err
+}
+
 type bookResult struct {
 	accepted, settled, dismissed int
 	reasons                      []string
@@ -429,7 +441,7 @@ func (r bookResult) did() bool { return r.accepted+r.dismissed+r.settled > 0 }
 // first, and when tx is not nil makes the decisions: dismissals, the fields
 // the rule takes, and the settling of a match taken whole. It counts them
 // either way. The caller holds the book's library.
-func (s *Service) matchesOfBook(ctx context.Context, conn sqlc.DBTX, tx pgx.Tx, scope library.Scope, id uuid.UUID, group *MatchGroup) (bookResult, error) {
+func (s *Service) matchesOfBook(ctx context.Context, conn sqlc.DBTX, tx pgx.Tx, scope library.Scope, id uuid.UUID, group *MatchGroup, editions bool) (bookResult, error) {
 	var res bookResult
 	q := sqlc.New(conn)
 	rows, err := q.ListPendingMatches(ctx, []uuid.UUID{id})
@@ -469,7 +481,7 @@ func (s *Service) matchesOfBook(ctx context.Context, conn sqlc.DBTX, tx pgx.Tx, 
 				others = append(others, o)
 			}
 		}
-		out := Decide(Input{Book: book, TextLanguage: lang, Match: m, Others: others, Unagreed: group != nil})
+		out := Decide(Input{Book: book, TextLanguage: lang, Match: m, Others: others, Unagreed: group != nil, Editions: editions})
 		note := func(rule, reason string) {
 			if res.rule == "" {
 				res.rule = rule
@@ -525,6 +537,10 @@ func (s *Service) matchesOfBook(ctx context.Context, conn sqlc.DBTX, tx pgx.Tx, 
 func (s *Service) RunMatches(ctx context.Context, a MatchesArgs) error {
 	scope := library.Scope{Viewer: a.Viewer, SeesAll: a.SeesAll}
 	ctx = curation.WithRun(ctx, a.RunID, true)
+	editions, err := s.editionsTrusted(ctx)
+	if err != nil {
+		return err
+	}
 	q := sqlc.New(s.pool)
 	started := time.Now()
 	after := a.After
@@ -547,7 +563,7 @@ func (s *Service) RunMatches(ctx context.Context, a MatchesArgs) error {
 					return err
 				})
 			}
-			if err := s.matchBook(ctx, a, scope, id); err != nil {
+			if err := s.matchBook(ctx, a, scope, id, editions); err != nil {
 				return err
 			}
 			after = id
@@ -555,7 +571,7 @@ func (s *Service) RunMatches(ctx context.Context, a MatchesArgs) error {
 	}
 }
 
-func (s *Service) matchBook(ctx context.Context, a MatchesArgs, scope library.Scope, id uuid.UUID) error {
+func (s *Service) matchBook(ctx context.Context, a MatchesArgs, scope library.Scope, id uuid.UUID, editions bool) error {
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
 			return err
@@ -571,7 +587,7 @@ func (s *Service) matchBook(ctx context.Context, a MatchesArgs, scope library.Sc
 		if !a.DryRun {
 			write = tx
 		}
-		res, err := s.matchesOfBook(ctx, tx, write, scope, id, a.Group)
+		res, err := s.matchesOfBook(ctx, tx, write, scope, id, a.Group, editions)
 		if err != nil || !res.did() {
 			return err
 		}

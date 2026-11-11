@@ -140,12 +140,17 @@ WITH sample AS (
     LIMIT $1
 )
 SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
+       b.page_count, b.series_index, p.name AS publisher, sr.name AS series,
+       ARRAY(SELECT DISTINCT f.kind FROM book_files f
+             WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL ORDER BY f.kind)::text[] AS kinds,
        ARRAY(SELECT DISTINCT i.value FROM book_identifiers i
              WHERE i.book_id = b.id AND i.type = 'isbn' ORDER BY i.value)::text[] AS isbns,
        ARRAY(SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
              WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position)::text[] AS authors
 FROM sample s
 JOIN books b ON b.id = s.id
+LEFT JOIN publishers p ON p.id = b.publisher_id
+LEFT JOIN series sr ON sr.id = b.series_id
 ORDER BY md5(b.id::text), b.id
 `
 
@@ -156,12 +161,19 @@ type ListMatchCheckBooksRow struct {
 	Language           *string
 	PublishedOn        *time.Time
 	PublishedPrecision *string
+	PageCount          *int32
+	SeriesIndex        *float64
+	Publisher          *string
+	Series             *string
+	Kinds              []string
 	Isbns              []string
 	Authors            []string
 }
 
 // A match-check's sample, picked by a hash of the ID so that a library
-// gives the same one each time; the names and ISBNs are read for it alone.
+// gives the same one each time; the names and ISBNs are read for it alone,
+// with what tells one edition from another (publisher, pages, series,
+// the kinds of its files).
 func (q *Queries) ListMatchCheckBooks(ctx context.Context, maxBooks int32) ([]ListMatchCheckBooksRow, error) {
 	rows, err := q.db.Query(ctx, listMatchCheckBooks, maxBooks)
 	if err != nil {
@@ -178,6 +190,11 @@ func (q *Queries) ListMatchCheckBooks(ctx context.Context, maxBooks int32) ([]Li
 			&i.Language,
 			&i.PublishedOn,
 			&i.PublishedPrecision,
+			&i.PageCount,
+			&i.SeriesIndex,
+			&i.Publisher,
+			&i.Series,
+			&i.Kinds,
 			&i.Isbns,
 			&i.Authors,
 		); err != nil {

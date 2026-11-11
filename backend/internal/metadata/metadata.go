@@ -21,6 +21,13 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 )
 
+// What a record's edition is (Record.Medium).
+const (
+	MediumEbook = "ebook"
+	MediumPrint = "print"
+	MediumAudio = "audio"
+)
+
 // Record is what one provider says about one book. An empty field says
 // nothing.
 type Record struct {
@@ -44,7 +51,10 @@ type Record struct {
 	Series      string
 	SeriesIndex *float64
 	PageCount   *int32
-	Tags        []string
+	// Medium is what the edition is, where the provider says so:
+	// MediumEbook, MediumPrint or MediumAudio.
+	Medium string
+	Tags   []string
 	// Identifiers are in the form catalog.NormalizeIdentifier gives.
 	Identifiers []catalog.Identifier
 	// CoverURL is where the provider keeps a cover, fetched with Cover.

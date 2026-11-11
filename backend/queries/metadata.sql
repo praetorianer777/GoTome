@@ -73,7 +73,9 @@ WHERE b.deleted_at IS NULL AND NOT b.placeholder
 
 -- name: ListMatchCheckBooks :many
 -- A match-check's sample, picked by a hash of the ID so that a library
--- gives the same one each time; the names and ISBNs are read for it alone.
+-- gives the same one each time; the names and ISBNs are read for it alone,
+-- with what tells one edition from another (publisher, pages, series,
+-- the kinds of its files).
 WITH sample AS (
     SELECT b.id
     FROM books b
@@ -83,12 +85,17 @@ WITH sample AS (
     LIMIT sqlc.arg(max_books)
 )
 SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
+       b.page_count, b.series_index, p.name AS publisher, sr.name AS series,
+       ARRAY(SELECT DISTINCT f.kind FROM book_files f
+             WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL ORDER BY f.kind)::text[] AS kinds,
        ARRAY(SELECT DISTINCT i.value FROM book_identifiers i
              WHERE i.book_id = b.id AND i.type = 'isbn' ORDER BY i.value)::text[] AS isbns,
        ARRAY(SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
              WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position)::text[] AS authors
 FROM sample s
 JOIN books b ON b.id = s.id
+LEFT JOIN publishers p ON p.id = b.publisher_id
+LEFT JOIN series sr ON sr.id = b.series_id
 ORDER BY md5(b.id::text), b.id;
 
 -- name: ListReviewBooksAfter :many

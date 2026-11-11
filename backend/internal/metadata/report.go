@@ -28,23 +28,23 @@ func PrintCheck(w io.Writer, r CheckReport) {
 	tallies := append(append([]Tally{r.All}, r.PerProvider...), r.PerLanguage...)
 	fmt.Fprintln(w, "The first candidate, by title, authors and language alone:")
 	t := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(t, "ranking\tbooks\tright\tsame work\twrong\tnothing\tfailed\t")
+	fmt.Fprintln(t, "ranking\tbooks\tright\tsame work\tedition\twrong\tnothing\tfailed\t")
 	for _, x := range tallies {
 		asked := x.Books - x.Failed
-		fmt.Fprintf(t, "%s\t%d\t%s\t%s\t%s\t%s\t%d\t\n", x.Name, x.Books,
-			pct(x.Right, asked), pct(x.SameWork, asked), pct(x.Wrong, asked), pct(x.None, asked), x.Failed)
+		fmt.Fprintf(t, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%d\t\n", x.Name, x.Books,
+			pct(x.Right, asked), pct(x.SameWork, asked), pct(x.Edition, asked), pct(x.Wrong, asked), pct(x.None, asked), x.Failed)
 	}
 	t.Flush()
 
-	fmt.Fprintln(w, "\nWhere the book stood when a wrong one was first (right or same work):")
+	fmt.Fprintln(w, "\nWhere the book stood when another edition or a wrong one was first (right or same work):")
 	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	header := "ranking\twrong first\t"
+	header := "ranking\tnot it first\t"
 	for _, b := range rankBands {
 		header += b.name + "\t"
 	}
 	fmt.Fprintln(t, header+"not found\t")
 	for _, x := range tallies {
-		line := fmt.Sprintf("%s\t%d\t", x.Name, x.Wrong)
+		line := fmt.Sprintf("%s\t%d\t", x.Name, x.Edition+x.Wrong)
 		for _, b := range rankBands {
 			n := 0
 			for rank, books := range x.Ranks {
@@ -60,21 +60,21 @@ func PrintCheck(w io.Writer, r CheckReport) {
 
 	fmt.Fprintln(w, "\nThe first candidate's score (all):")
 	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(t, "score\tright\tsame work\twrong\t")
+	fmt.Fprintln(t, "score\tright\tsame work\tedition\twrong\t")
 	for _, b := range r.Scores {
-		fmt.Fprintf(t, "%.2f-%.2f\t%d\t%d\t%d\t\n", b.From, b.To, b.Right, b.SameWork, b.Wrong)
+		fmt.Fprintf(t, "%.2f-%.2f\t%d\t%d\t%d\t%d\t\n", b.From, b.To, b.Right, b.SameWork, b.Edition, b.Wrong)
 	}
 	t.Flush()
 
 	fmt.Fprintf(w, "\nTaken at a threshold (all; * metadata.matchThreshold now, %.2f):\n", r.Threshold)
 	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(t, "threshold\ttaken\tright\tsame work\twrong\tright or same work\t")
+	fmt.Fprintln(t, "threshold\ttaken\tright\tsame work\tedition\twrong\tright or same work\t")
 	for _, p := range r.Thresholds {
 		mark := ""
 		if p.Threshold == r.Threshold {
 			mark = "*"
 		}
-		fmt.Fprintf(t, "%s%.2f\t%d\t%d\t%d\t%d\t%s\t\n", mark, p.Threshold, p.Taken, p.Right, p.SameWork, p.Wrong,
+		fmt.Fprintf(t, "%s%.2f\t%d\t%d\t%d\t%d\t%d\t%s\t\n", mark, p.Threshold, p.Taken, p.Right, p.SameWork, p.Edition, p.Wrong,
 			pct(p.Right+p.SameWork, p.Taken))
 	}
 	t.Flush()
@@ -82,7 +82,14 @@ func PrintCheck(w io.Writer, r CheckReport) {
 	a := r.Agreement
 	fmt.Fprintln(w, "\nTaken by the rule of an automatic run (two providers' first candidates name one ISBN or one work):")
 	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintln(t, "books\taccepted\tright\tsame work\twrong\tright or same work\t")
-	fmt.Fprintf(t, "%d\t%d\t%d\t%d\t%d\t%s\t\n", r.Sample, a.Accepted, a.Right, a.SameWork, a.Wrong, pct(a.Right+a.SameWork, a.Accepted))
+	fmt.Fprintln(t, "books\taccepted\tright\tsame work\tedition\twrong\tright or same work\t")
+	fmt.Fprintf(t, "%d\t%d\t%d\t%d\t%d\t%d\t%s\t\n", r.Sample, a.Accepted, a.Right, a.SameWork, a.Edition, a.Wrong, pct(a.Right+a.SameWork, a.Accepted))
+	t.Flush()
+
+	e := r.Editions
+	fmt.Fprintln(w, "\nTaken as well with curation.matches.edition on (one provider's first candidate has the book's title, an author and its publisher):")
+	t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(t, "books\taccepted\tright\tsame work\tedition\twrong\tright or same work\t")
+	fmt.Fprintf(t, "%d\t%d\t%d\t%d\t%d\t%d\t%s\t\n", r.Sample, e.Accepted, e.Right, e.SameWork, e.Edition, e.Wrong, pct(e.Right+e.SameWork, e.Accepted))
 	t.Flush()
 }
