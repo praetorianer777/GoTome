@@ -139,16 +139,13 @@ test("read aloud speaks the book's sentences in order and stops on the second pr
 		() => (window as unknown as { said: string[] }).said,
 	);
 	expect(said[0]).toContain("Chapter 1");
-	// A page that settles after the press starts the reading again from its
-	// top, so a sentence may come twice (#494, which makes this check that
-	// none does); none may be skipped.
 	const numbers = said
 		.map((text) => /^Chapter \d+, paragraph (\d+)\./.exec(text)?.[1])
 		.filter((n): n is string => n !== undefined)
 		.map(Number);
 	expect(numbers.length).toBeGreaterThan(0);
 	numbers.forEach((n, i) => {
-		if (i > 0) expect(n).toBeLessThanOrEqual((numbers[i - 1] as number) + 1);
+		if (i > 0) expect(n).toBe((numbers[i - 1] as number) + 1);
 	});
 	await button.click();
 	await expect(button).toHaveAttribute("aria-pressed", "false");

@@ -2,7 +2,7 @@ import { Overlayer } from "foliate-js/overlayer.js";
 import "foliate-js/view.js";
 import type { FoliateTocItem, View } from "foliate-js/view.js";
 import { closest, type Found } from "@/reader/passage";
-import { type Sentence, type Source, sentenceSpans } from "@/reader/speech";
+import { type Sentence, type Source, moveGuard, sentenceSpans } from "@/reader/speech";
 
 export type Flow = "paginated" | "scrolled";
 export type Theme = "light" | "sepia" | "dark";
@@ -228,20 +228,13 @@ export async function openEbook(
 	// settles, so every move waits for the one before.
 	let moving: Promise<unknown> = Promise.resolve();
 	let seen: Range | undefined;
-	let own = 0;
+	const guard = moveGuard();
 	const movedListeners = new Set<() => void>();
 	view.addEventListener("relocate", (e) => {
 		seen = (e as CustomEvent<View["lastLocation"]>).detail?.range;
-		if (own === 0) for (const listener of movedListeners) listener();
+		if (guard.personal(seen)) for (const listener of movedListeners) listener();
 	});
-	const ownMove = async <R>(move: () => Promise<R>): Promise<R> => {
-		own++;
-		try {
-			return await move();
-		} finally {
-			own--;
-		}
-	};
+	const ownMove = guard.own;
 	let pieces: Piece[] = [];
 	const marking = () => view.renderer.getContents()[0];
 	const speech: Source<Spoken> = {
@@ -258,6 +251,7 @@ export async function openEbook(
 		async mark(sentence) {
 			const now = marking();
 			now?.overlayer?.remove(SPOKEN_KEY);
+			guard.mark(undefined);
 			if (!sentence || !now?.doc) return;
 			const from = pointAt(pieces, sentence.start, false);
 			const to = pointAt(pieces, sentence.end, true);
@@ -265,6 +259,7 @@ export async function openEbook(
 			const range = now.doc.createRange();
 			range.setStart(...from);
 			range.setEnd(...to);
+			guard.mark(range);
 			await ownMove(() => view.renderer.scrollToAnchor(range));
 			marking()?.overlayer?.add(SPOKEN_KEY, range, Overlayer.highlight, {
 				color: "#facc15",
