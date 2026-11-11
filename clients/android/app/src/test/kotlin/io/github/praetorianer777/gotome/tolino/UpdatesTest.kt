@@ -36,6 +36,16 @@ class UpdatesTest {
     }
 
     @Test
+    fun ofSeveralReleasesTheNewestWithItsApkWins() {
+        fun entry(v: String, apk: Boolean) =
+            release("v$v", *(if (apk) arrayOf("gotome-tolino-$v.apk" to "https://a/$v.apk") else emptyArray()))
+        val body = "[" + listOf(entry("0.20.0", false), entry("0.9.0", true), entry("0.10.0", true), entry("0.8.0", true)).joinToString(",") + "]"
+        assertEquals(Release("0.10.0", "https://a/0.10.0.apk"), Updates.latest(body))
+        assertNull(Updates.latest("[" + entry("0.20.0", false) + "]"))
+        assertNull(Updates.latest("[]"))
+    }
+
+    @Test
     fun comparesVersionsByTheirNumbers() {
         assertTrue(Updates.newer("0.10.0", "0.9.9"))
         assertTrue(Updates.newer("1.0.0", "0.99.99"))
