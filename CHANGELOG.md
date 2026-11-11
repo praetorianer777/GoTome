@@ -8,26 +8,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
-### Changed
-
-- The Deutsche Nationalbibliothek is asked again when the exact title and
-  author find no book: with the title cut at a colon, dash or bracket and
-  without a volume number, with the author's last name alone, and with the
-  words of both anywhere in the record. Books it knew under another
-  spelling of title or author are now found.
-- With learned weights a match is a probability, which is lower for an
-  edition that is not the exact ISBN than the hand-set score was: raise
-  or lower `metadata.matchThreshold` to what the table of Measure says,
-  and matches that wait for review are kept from 0.2 instead of 0.5.
-
-### Fixed
-
-- A book card on the library page no longer grows wider than a narrow screen
-  when its author or series name is very long or its "Completed" and star
-  rating do not fit side by side: the names are cut off with an ellipsis and
-  the standing wraps.
-- A book chunked while the embedding pass was running no longer waits for the
-  next hourly pass before its similar books appear.
 - A book whose file names no ISBN gets the one printed on its imprint page,
   looked for after the word ISBN in the first and last pages of an EPUB or
   PDF, so it can be looked up by ISBN. An ISBN marked as the e-book's comes
@@ -64,6 +44,27 @@ What changes for someone who runs or uses GOtome. The format follows
   also counts by its description: how near it is to the book's own text is one more
   thing the learned score weighs, which tells another book of the same
   author and a like title from the book itself.
+
+### Changed
+
+- The Deutsche Nationalbibliothek is asked again when the exact title and
+  author find no book: with the title cut at a colon, dash or bracket and
+  without a volume number, with the author's last name alone, and with the
+  words of both anywhere in the record. Books it knew under another
+  spelling of title or author are now found.
+- With learned weights a match is a probability, which is lower for an
+  edition that is not the exact ISBN than the hand-set score was: raise
+  or lower `metadata.matchThreshold` to what the table of Measure says,
+  and matches that wait for review are kept from 0.2 instead of 0.5.
+
+### Fixed
+
+- A book card on the library page no longer grows wider than a narrow screen
+  when its author or series name is very long or its "Completed" and star
+  rating do not fit side by side: the names are cut off with an ellipsis and
+  the standing wraps.
+- A book chunked while the embedding pass was running no longer waits for the
+  next hourly pass before its similar books appear.
 
 ## [0.18.0] - 2026-11-11
 
