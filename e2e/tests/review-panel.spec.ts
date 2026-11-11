@@ -23,6 +23,7 @@ async function queued(page: Page, stamp: string) {
 		status: "unread",
 		placeholder: false,
 		filesMissing: false,
+		ereaderFindings: [],
 	};
 	await page.route(/\/api\/v1\/matches\?/, (route) =>
 		route.fulfill({

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { can, currentUserQuery } from "@/auth/session";
+import { ereaderLabel } from "@/books/ereader";
 import { EREADER_FINDINGS } from "@/books/rules";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
@@ -295,17 +296,38 @@ function Figures({ library }: { library: string }) {
 						</p>
 					)}
 					{f.withEreaderFindings > 0 && (
-						<p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-							<Link
-								to="/"
-								search={{ library: library || undefined, ereader: [...EREADER_FINDINGS] }}
-								className="underline"
+						<div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+							<p>
+								<Link
+									to="/"
+									search={{ library: library || undefined, ereader: [...EREADER_FINDINGS] }}
+									className="underline"
+								>
+									{t("overview.withEreaderFindings", {
+										count: formatCount(f.withEreaderFindings),
+									})}
+								</Link>
+							</p>
+							<ul
+								aria-label={t("overview.ereaderKinds")}
+								className="flex flex-wrap gap-x-5 gap-y-1 text-sm"
 							>
-								{t("overview.withEreaderFindings", {
-									count: formatCount(f.withEreaderFindings),
-								})}
-							</Link>
-						</p>
+								{f.ereaderKinds.map((kind) => (
+									<li key={kind.name} className="min-w-0">
+										<Link
+											to="/"
+											search={{ library: library || undefined, ereader: [kind.name] }}
+											className="underline"
+										>
+											{t("overview.ereaderKind", {
+												kind: ereaderLabel(kind.name),
+												count: formatCount(kind.count),
+											})}
+										</Link>
+									</li>
+								))}
+							</ul>
+						</div>
 					)}
 					<div className="grid gap-6 md:grid-cols-2">
 						<CountList

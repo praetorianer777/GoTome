@@ -8,6 +8,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- The overview splits the books with e-reader findings by kind, each linking to
+  its own list. A list filtered by e-reader findings says so above the books,
+  with a button to remove it, and marks each book that has findings, naming
+  them. Where a library's folder is read-only for GOtome, the book page and
+  the bulk bar say why Fix is not offered.
 - GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
   Tolino: those GOtome has count as on the device, so their reading progress
   arrives, and the store has a tab "Nicht in GOtome" with the rest, each with

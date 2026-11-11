@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { EREADER_FINDINGS } from "@/books/rules";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
 import { formatSize } from "@/lib/format";
@@ -12,6 +13,13 @@ export type Fix = components["schemas"]["FixRequest"]["findings"][number];
 /** The ways to fix a finding: the fonts can be cut down to the book's characters or removed. */
 export function fixesFor(finding: Finding): Fix[] {
 	return finding === "large-fonts" ? ["subset-fonts", "large-fonts"] : [finding];
+}
+
+/** A finding as a filter names it ("Very large images"); a name this app does not know stands as it is. */
+export function ereaderLabel(finding: string): string {
+	return (EREADER_FINDINGS as readonly string[]).includes(finding)
+		? t(`filter.ereader.${finding as (typeof EREADER_FINDINGS)[number]}`)
+		: finding;
 }
 
 /** What each finding says about the file, from its measures. */
@@ -40,6 +48,11 @@ function findingText(finding: Finding, check: components["schemas"]["EreaderChec
 	}
 }
 
+/** What a book's findings are called together, for a marker's name. */
+export function ereaderSummary(findings: readonly string[]): string {
+	return findings.map(ereaderLabel).join(", ");
+}
+
 /** Fixes findings of a file; the original goes into the trash. */
 export function useFixFile() {
 	const queryClient = useQueryClient();
@@ -66,7 +79,16 @@ const fixButton =
  * Names what may make a file slow or troublesome on an e-reader, each with
  * the button that fixes it where the person may change the file.
  */
-export function EReaderFindings({ file, canFix }: { file: BookFile; canFix: boolean }) {
+export function EReaderFindings({
+	file,
+	canFix,
+	readOnly = false,
+}: {
+	file: BookFile;
+	canFix: boolean;
+	/** The file's library is a folder GOtome cannot write to, which is why canFix is off. */
+	readOnly?: boolean;
+}) {
 	const fix = useFixFile();
 	const check = file.ereader;
 	const findings = check?.findings ?? [];
@@ -99,6 +121,11 @@ export function EReaderFindings({ file, canFix }: { file: BookFile; canFix: bool
 							</li>
 						))}
 					</ul>
+					{readOnly && !canFix && (
+						<span className="block text-slate-700 dark:text-slate-300">
+							{t("book.ereader.readOnly")}
+						</span>
+					)}
 				</>
 			)}
 			{fix.isSuccess && (

@@ -87,6 +87,9 @@ type Summary struct {
 	// FilesMissing is a book that has files, all of which a scan no longer
 	// found in the folder.
 	FilesMissing bool
+	// EReaderFindings are those of the book's EPUBs, each once, in the
+	// order of epub.Findings.
+	EReaderFindings []string
 }
 
 // summaryColumns are what a Summary is read from, in the order of dest. The
@@ -100,7 +103,10 @@ const summaryColumns = `b.id, b.library_id, b.title, COALESCE(b.subtitle, ''), b
                  FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), '{}'),
        COALESCE(ub.status, 'unread'), ub.rating, b.placeholder,
        COALESCE((SELECT bool_and(f.missing_at IS NOT NULL)
-                 FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), false)`
+                 FROM book_files f WHERE f.book_id = b.id AND f.trashed_at IS NULL), false),
+       COALESCE((SELECT array_agg(DISTINCT x ORDER BY x)
+                 FROM book_files f, unnest(f.ereader_findings) x
+                 WHERE f.book_id = b.id AND cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL), '{}')`
 
 // summaryJoin brings in where the viewer, a placeholder, stands with each
 // book.
@@ -112,7 +118,7 @@ func summaryJoin(viewer string) string {
 // series, which may be NULL.
 func (b *Summary) dest(series **string) []any {
 	return []any{&b.ID, &b.LibraryID, &b.Title, &b.Subtitle, &b.AddedAt,
-		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating, &b.Placeholder, &b.FilesMissing}
+		&b.CoverKey, series, &b.SeriesIndex, &b.PublishedYear, &b.Authors, &b.Formats, &b.Status, &b.Rating, &b.Placeholder, &b.FilesMissing, &b.EReaderFindings}
 }
 
 // Page is one page of a list, and the cursor of the next; Next is empty on

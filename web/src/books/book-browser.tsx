@@ -4,6 +4,7 @@ import { type CurrentUser, can } from "@/auth/session";
 import { type BookSort, booksQuery, facetsQuery } from "@/books/api";
 import { Grid, GridSkeleton, MoreBooks, Table } from "@/books/book-list";
 import { BulkBar } from "@/books/bulk-bar";
+import { ereaderSummary } from "@/books/ereader";
 import { FilterPanel } from "@/books/filter-panel";
 import {
 	FACET_FIELDS,
@@ -205,6 +206,23 @@ export function BookBrowser({
 				</aside>
 				<div className="flex min-w-0 flex-1 flex-col gap-6">
 					{above}
+					{picks.ereader && picks.ereader.length > 0 && (
+						<p
+							role="status"
+							className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+						>
+							<span className="min-w-0 break-words">
+								{t("library.ereader.notice", { findings: ereaderSummary(picks.ereader) })}
+							</span>
+							<button
+								type="button"
+								onClick={() => setPicks({ ...picks, ereader: undefined })}
+								className="underline"
+							>
+								{t("library.ereader.remove")}
+							</button>
+						</p>
+					)}
 
 					<section
 						aria-label={t("library.books")}
@@ -215,6 +233,7 @@ export function BookBrowser({
 								count={chosen.size}
 								canEdit={can(user, "metadata:edit")}
 								all={allMatching}
+								library={library}
 								selection={
 									allMatching ? { library, filter } : { books: [...chosen] }
 								}

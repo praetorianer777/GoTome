@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { BookSummary } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { ereaderSummary } from "@/books/ereader";
 import { MediumBadge } from "@/books/medium";
 import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { statusLabel } from "@/books/reading";
@@ -56,6 +57,24 @@ function FilesMissing({ book }: { book: BookSummary }) {
 			className="self-start rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
 		>
 			{t("library.filesMissing")}
+		</span>
+	);
+}
+
+/** Marks a book with an EPUB that may be slow or troublesome on an e-reader, and names why. */
+function EReaderMark({ book }: { book: BookSummary }) {
+	if (book.ereaderFindings.length === 0) {
+		return null;
+	}
+	const why = t("library.ereader.mark", { findings: ereaderSummary(book.ereaderFindings) });
+	return (
+		<span
+			role="img"
+			aria-label={why}
+			title={why}
+			className="inline-flex size-5 shrink-0 items-center justify-center self-start rounded bg-amber-100 text-xs font-bold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+		>
+			<span aria-hidden="true">!</span>
 		</span>
 	);
 }
@@ -205,6 +224,7 @@ function GridCard({
 				<SeriesLine book={book} />
 				<Standing book={book} />
 				<FilesMissing book={book} />
+				<EReaderMark book={book} />
 			</div>
 		</div>
 	);
@@ -355,6 +375,11 @@ function BookRow({
 				{book.filesMissing && (
 					<span className="ml-2 inline-flex align-middle">
 						<FilesMissing book={book} />
+					</span>
+				)}
+				{book.ereaderFindings.length > 0 && (
+					<span className="ml-2 inline-flex align-middle">
+						<EReaderMark book={book} />
 					</span>
 				)}
 				<SeriesLine book={book} />
