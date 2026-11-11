@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The Deutsche Nationalbibliothek is asked again when the exact title and
+  author find no book: with the title cut at a colon, dash or bracket and
+  without a volume number, with the author's last name alone, and with the
+  words of both anywhere in the record. Books it knew under another
+  spelling of title or author are now found.
+
 ### Fixed
 
 - A book card on the library page no longer grows wider than a narrow screen
