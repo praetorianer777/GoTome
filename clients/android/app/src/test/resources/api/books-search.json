@@ -22,6 +22,7 @@
       "status": "unread",
       "placeholder": false,
       "filesMissing": false,
+      "ereaderFindings": [],
       "match": "title"
     }
   ],

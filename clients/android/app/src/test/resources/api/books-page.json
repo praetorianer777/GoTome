@@ -12,7 +12,8 @@
       "addedAt": "2026-10-11T12:00:00Z",
       "status": "unread",
       "placeholder": false,
-      "filesMissing": false
+      "filesMissing": false,
+      "ereaderFindings": []
     }
   ],
   "nextCursor": "nextCursor-drawn-at-random"
