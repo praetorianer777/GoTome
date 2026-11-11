@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 test("a Goodreads export is previewed, imported, and lists books the library lacks", async ({

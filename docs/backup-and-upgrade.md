@@ -35,7 +35,8 @@ GOtome keeps running. The folder then holds:
   duplicate signatures (`file_signatures`, `file_lsh`), the vectors
   (`book_vectors`, and `passage_files`, which says whose passages have
   them), the cache of what metadata sources answered (`provider_records`)
-  and which books were looked at for genres (`book_genre_checks`) are
+  which books were looked at for genres (`book_genre_checks`) and the
+  last run of a match measure (`match_runs`) are
   left out: GOtome makes them again from the
   files, and they are most of the database.
 - `data.tar`: covers and managed libraries, without the full-text index

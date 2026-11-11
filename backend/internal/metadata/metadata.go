@@ -201,6 +201,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 		q.Language = s.language(ctx)
 	}
 
+	score := s.activeScorer(ctx)
 	var found []Candidate
 	var errs []error
 	var enabled []string
@@ -212,6 +213,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			continue
 		}
 		web := s.webs[p.Name()]
+		searched := false
 		records, err := func() ([]Record, error) {
 			var records []Record
 			for _, id := range ids {
@@ -224,6 +226,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			if len(records) > 0 {
 				return records, nil
 			}
+			searched = true
 			records, err := p.Search(ctx, web, q)
 			if errors.Is(err, ErrNotFound) {
 				return nil, nil
@@ -237,9 +240,17 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
 			continue
 		}
-		for _, r := range records {
-			r.Provider = p.Name()
-			found = append(found, Candidate{Record: r, Score: Score(book, r)})
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		// Only a book looked up by its title needs its candidates told
+		// apart by what they are about.
+		cosines := make([]*float64, len(records))
+		if searched {
+			cosines = s.describe(ctx, book, records)
+		}
+		for i, r := range records {
+			found = append(found, Candidate{Record: r, Score: score(book, r, scoreInput{rank: i, cosine: cosines[i]})})
 		}
 	}
 	lang := book.Language
@@ -276,6 +287,13 @@ func lookupIDs(book catalog.Book) []catalog.Identifier {
 	for _, id := range book.Identifiers {
 		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
 			ids = append(ids, id.Identifier)
+		}
+	}
+	if len(ids) == 0 {
+		for _, isbn := range book.PrintISBNs {
+			if id, ok := catalog.NormalizeIdentifier(catalog.IDISBN, isbn); ok && len(ids) < maxLookups {
+				ids = append(ids, id)
+			}
 		}
 	}
 	// Papers and many scholarly books have a DOI and no ISBN.

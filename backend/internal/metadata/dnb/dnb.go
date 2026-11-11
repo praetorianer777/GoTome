@@ -309,17 +309,76 @@ func (p *Provider) Lookup(ctx context.Context, web metadata.Web, id catalog.Iden
 	return found, nil
 }
 
-// Search finds books by title and first author.
+// Search finds books by title and first author. When that finds nothing it
+// asks again, stopping at the first question that finds something: the
+// title without its subtitle and series, the author's last name alone, and
+// the words of the title and the last name in any field.
 func (p *Provider) Search(ctx context.Context, web metadata.Web, q metadata.Query) ([]metadata.Record, error) {
 	title := strings.TrimSpace(q.Title)
 	if title == "" {
 		return nil, nil
 	}
-	cql := "tit=" + quote(title)
+	var author string
 	if len(q.Authors) > 0 {
-		cql += " and per=" + quote(metadata.NaturalName(q.Authors[0]))
+		author = metadata.NaturalName(q.Authors[0])
 	}
-	return p.query(ctx, web, cql, searchResults, false)
+	var asked []string
+	for _, cql := range searchQueries(title, author) {
+		if slices.Contains(asked, cql) {
+			continue
+		}
+		asked = append(asked, cql)
+		found, err := p.query(ctx, web, cql, searchResults, false)
+		if err != nil || len(found) > 0 {
+			return found, err
+		}
+	}
+	return nil, nil
+}
+
+var (
+	titleTail   = regexp.MustCompile(`\s+[:\-\x{2013}\x{2014}]\s+.*$|\s*[(\[].*$|[:\x{2013}\x{2014}].*$`)
+	seriesTail  = regexp.MustCompile(`(?i)[\s,]+(band|bd\.?|teil|folge|vol\.?|volume|no\.?|nr\.?)\s*\d+\s*$`)
+	wordSplitRe = regexp.MustCompile(`[^\p{L}\p{N}]+`)
+)
+
+// shortTitle is the title without what follows a colon, a dash or a
+// bracket and without a trailing volume number.
+func shortTitle(title string) string {
+	t := strings.TrimSpace(titleTail.ReplaceAllString(title, ""))
+	t = strings.TrimSpace(seriesTail.ReplaceAllString(t, ""))
+	if t == "" {
+		return title
+	}
+	return t
+}
+
+func searchQueries(title, author string) []string {
+	cql := "tit=" + quote(title)
+	if author != "" {
+		cql += " and per=" + quote(author)
+	}
+	out := []string{cql}
+	short := shortTitle(title)
+	if short != title {
+		q := "tit=" + quote(short)
+		if author != "" {
+			q += " and per=" + quote(author)
+		}
+		out = append(out, q)
+	}
+	if author == "" {
+		return out
+	}
+	fields := strings.Fields(author)
+	last := fields[len(fields)-1]
+	out = append(out, "tit="+quote(short)+" and per="+quote(last))
+	words := wordSplitRe.Split(short+" "+last, -1)
+	words = slices.DeleteFunc(words, func(w string) bool { return w == "" })
+	for i, w := range words {
+		words[i] = "woe=" + quote(w)
+	}
+	return append(out, strings.Join(words, " and "))
 }
 
 // ByAuthor lists the books of the author from the year before this one on,

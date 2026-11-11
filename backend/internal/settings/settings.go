@@ -45,6 +45,14 @@ const (
 	// MatchThreshold is the score from 0.5 to 1 above which a match found
 	// by itself is taken without asking.
 	MatchThreshold = "metadata.matchThreshold"
+	// ScoreWeights says which weights rank a lookup's candidates: handSet,
+	// learned (the ones learned from the library, else a shipped profile
+	// that fits it, else the hand-set ones) or imported (a file someone
+	// shared, once imported).
+	ScoreWeights = "metadata.scoreWeights"
+	// LearnScore is "on" or "off": whether the weights are learned from the
+	// library's books with an ISBN once a week.
+	LearnScore = "metadata.learnScore"
 	// CurationCleanupKinds lists, comma-separated, the kinds of clean-up
 	// suggestion that a daily run applies by itself (cleanup.AutoKinds).
 	CurationCleanupKinds = "curation.cleanup.kinds"
@@ -204,6 +212,8 @@ var Definitions = []Definition{
 	{Key: HardcoverToken, Kind: KindSecret},
 	{Key: AutoMatch, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: MatchThreshold, Kind: KindText, Default: "0.95", Check: threshold},
+	{Key: ScoreWeights, Kind: KindText, Default: "handSet", Check: scoreWeights, Choices: ScoreWeightChoices},
+	{Key: LearnScore, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true},
 	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: CurationMatchesEdition, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
@@ -312,6 +322,16 @@ func genreMode(v string) (string, error) {
 		return v, nil
 	}
 	return "", errors.New("Say off, tags, vector, neighbours or combined.")
+}
+
+// ScoreWeightChoices are the values of ScoreWeights.
+var ScoreWeightChoices = []string{"learned", "handSet", "imported"}
+
+func scoreWeights(v string) (string, error) {
+	if v = strings.TrimSpace(v); slices.Contains(ScoreWeightChoices, v) {
+		return v, nil
+	}
+	return "", errors.New("Say learned, handSet or imported.")
 }
 
 func threshold(v string) (string, error) {

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { accountMenu, openSignedIn } from "../fixtures/app";
 import { KEYCLOAK_URL } from "../fixtures/stack";
 

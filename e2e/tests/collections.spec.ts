@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn, signIn } from "../fixtures/app";
 import { ADMIN } from "../fixtures/stack";
 

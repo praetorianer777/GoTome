@@ -15,6 +15,7 @@ import { en } from "@/i18n/en";
 import { formatDate } from "@/lib/format";
 import { API_BASE } from "@/api/client";
 import { type Setting, settingsQuery, useUpdateSettings } from "@/settings/api";
+import { MatchScorePanel } from "@/settings/match-score";
 import {
 	EmbeddingModelField,
 	embeddingModelsQuery,
@@ -47,6 +48,14 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 	"metadata.matchThreshold": {
 		label: "settings.matchThreshold",
 		hint: "settings.matchThreshold.hint",
+	},
+	"metadata.scoreWeights": {
+		label: "settings.scoreWeights",
+		hint: "settings.scoreWeights.hint",
+	},
+	"metadata.learnScore": {
+		label: "settings.learnScore",
+		hint: "settings.learnScore.hint",
 	},
 	"curation.cleanup.kinds": {
 		label: "settings.curationCleanupKinds",
@@ -420,6 +429,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 						<div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
 							{section.settings.map(field)}
 						</div>
+						{section.id === "metadata" && <MatchScorePanel />}
 					</section>
 				))}
 				{Object.keys(errors).length === 0 && (

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 test("a smart shelf is built from rules with a live count, edited and deleted", async ({

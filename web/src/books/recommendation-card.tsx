@@ -26,7 +26,7 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
 				disabled={dismiss.isPending}
 				aria-label={t("recommendations.notInterestedNamed", { title: book.title })}
 				onClick={() => dismiss.mutate(book.id)}
-				className="self-start text-xs text-slate-600 underline underline-offset-4 hover:text-slate-900 disabled:opacity-60 dark:text-slate-400 dark:hover:text-white"
+				className="min-h-6 self-start text-xs text-slate-600 underline underline-offset-4 hover:text-slate-900 disabled:opacity-60 dark:text-slate-400 dark:hover:text-white"
 			>
 				{t("recommendations.notInterested")}
 			</button>

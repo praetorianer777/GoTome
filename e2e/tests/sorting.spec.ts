@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { libraryOfBooks, openSignedIn } from "../fixtures/app";
 
 // A card without a cover holds the title twice, on the card and under it.

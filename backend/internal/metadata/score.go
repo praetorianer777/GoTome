@@ -65,20 +65,10 @@ const (
 // Score says from 0 to 1 how well a record fits the book. A record that
 // carries one of the book's identifiers is the book, and scores 1.
 func Score(book catalog.Book, r Record) float64 {
-	for _, mine := range book.Identifiers {
-		for _, theirs := range r.Identifiers {
-			if mine.Identifier == theirs {
-				return 1
-			}
-		}
+	if sharesIdentifier(book, r) {
+		return 1
 	}
-	title := similarity(book.Title, r.Title)
-	if r.Subtitle != "" {
-		title = max(title, similarity(book.Title, r.Title+" "+r.Subtitle))
-	}
-	if book.Subtitle != "" {
-		title = max(title, similarity(book.Title+" "+book.Subtitle, r.Title+" "+r.Subtitle))
-	}
+	title := titleSimilarity(book, r)
 	score := weightTitle*title + weightAuthors*authorsMatch(book, r) +
 		weightYear*yearsMatch(book.Published(), r.Published) + weightLanguage*languagesMatch(book.Language, r.Language)
 	if languagesMatch(book.Language, r.Language) == 0 {
@@ -87,6 +77,30 @@ func Score(book catalog.Book, r Record) float64 {
 	score += pagesAdjust(book.PageCount, r.PageCount) + publisherAdjust(book.Publisher, r.Publisher) +
 		seriesAdjust(book, r) + mediumAdjust(book, r)
 	return max(0, min(score, bestWithoutIdentifier))
+}
+
+func sharesIdentifier(book catalog.Book, r Record) bool {
+	for _, mine := range book.Identifiers {
+		for _, theirs := range r.Identifiers {
+			if mine.Identifier == theirs {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// titleSimilarity is the best of the title's comparisons with and without
+// either side's subtitle.
+func titleSimilarity(book catalog.Book, r Record) float64 {
+	title := similarity(book.Title, r.Title)
+	if r.Subtitle != "" {
+		title = max(title, similarity(book.Title, r.Title+" "+r.Subtitle))
+	}
+	if book.Subtitle != "" {
+		title = max(title, similarity(book.Title+" "+book.Subtitle, r.Title+" "+r.Subtitle))
+	}
+	return title
 }
 
 // pagesAdjust compares page counts: near each other is the same edition's
@@ -193,21 +207,40 @@ func publisherAdjust(a, b string) float64 {
 	return publisherDiff
 }
 
-// seriesAdjust compares series and, within the same one, the place.
-func seriesAdjust(book catalog.Book, r Record) float64 {
+// seriesParts compares series and, within the same one, the place; each
+// is false where a side says nothing.
+func seriesParts(book catalog.Book, r Record) (same, diff, positionSameOK, positionDiffOK bool) {
 	if catalog.Key(book.Series) == "" || catalog.Key(r.Series) == "" {
-		return 0
+		return
 	}
 	if !SameName(book.Series, r.Series) {
-		return seriesDiff
+		return false, true, false, false
 	}
-	out := seriesSame
+	same = true
 	if book.SeriesIndex != nil && r.SeriesIndex != nil {
 		if *book.SeriesIndex == *r.SeriesIndex {
-			out += positionSame
+			positionSameOK = true
 		} else {
-			out += positionDiff
+			positionDiffOK = true
 		}
+	}
+	return
+}
+
+func seriesAdjust(book catalog.Book, r Record) float64 {
+	same, diff, posSame, posDiff := seriesParts(book, r)
+	out := 0.0
+	if same {
+		out += seriesSame
+	}
+	if diff {
+		out += seriesDiff
+	}
+	if posSame {
+		out += positionSame
+	}
+	if posDiff {
+		out += positionDiff
 	}
 	return out
 }

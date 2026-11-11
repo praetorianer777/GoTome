@@ -43,7 +43,7 @@ export function NamesPage({ kind }: { kind: "authors" | "series" }) {
 			{byLetter(shown).map((group) => (
 				<section key={group.letter} aria-label={group.letter} className="flex flex-col gap-3">
 					<h2 className="text-lg font-medium">{group.letter}</h2>
-					<ul className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+					<ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
 						{group.names.map((name) => (
 							<li key={name.key} className="flex min-w-0 items-baseline justify-between gap-3">
 								{kind === "authors" ? (

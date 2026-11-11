@@ -520,6 +520,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   under Debian's full FFmpeg by `make-files.sh`. Its `reference.json` is what
   came of them there; `gotome audio-check`, in `make stack-check`, and
   `TestAudioReadsAsTheReferenceSays` hold every build to it.
+- What a book prints about itself (#488): `ingest.ImprintOf` reads an ISBN
+  (after the word ISBN, checksum valid; an e-book's first, an unlabelled one
+  next; one beside Print/Taschenbuch only is `Imprint.PrintISBN`, kept in
+  `book_files.text_print_isbn` as `Book.PrintISBNs`, asked about by
+  `metadata.lookupIDs` when the book has no ISBN and never stored as an
+  identifier, nor taken from a record by `enrich.gaps`; a document naming more than four is a list of other titles, and the
+  last six documents count only for a single one), the publisher and the year
+  from the first and last six documents or pages. `catalog.ApplyImprintTx`
+  gives them to the book as source `text`, only where nothing else said
+  anything (no ISBN at all, no publisher, no date; no lock); a file's own
+  metadata replaces them. It runs with extraction and with `ingest.chunk_file`,
+  so a raise of `ChunkVersion` reads existing books for it.
 - When two files of one book say different things, the format decides: EPUB over
   MOBI and AZW3 over PDF (`formatRanks` in `catalog`); within a rank, the file
   read first.
@@ -911,6 +923,43 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   names too), wrong or none, per provider and language, with the scores
   of right and wrong ones (`docs/metadata.md`). #367 and any change to
   ranking are measured with it.
+- The score can be learned (#490, `metadata/features.go`, `model.go`,
+  `train.go`): `features` names what `Score` compares, as a map that is
+  zero where a side is silent (`FeatureVersion`: raise it with a change
+  to what a feature means; a feature added with weight zero for a model
+  that lacks it keeps the version), `fit` is a logistic regression by
+  Newton's method of whether a candidate carries the book's ISBN,
+  `gotome match-train` and the settings page's "Learn from my library"
+  (`Service.Train`, job `metadata.match_run`, progress and last report in
+  `match_runs`) fit it on a sample looked up as match-check does, a fifth
+  held out by a hash of the ID. The weights are `match_score_models` (slot
+  `learned` or `imported`), used by `Service.Candidates` through
+  `activeScorer` when `metadata.scoreWeights` allows: `learned` is the
+  installation's own, else a shipped profile that fits its languages
+  (`profiles.go`, numbers only), else `Score`. `Score` stays the
+  hand-set one. A `Profile` (export, import, shipped) holds weights and
+  counts and no title, author, ISBN, path or ID; `ParseProfile` refuses
+  another version and any name that is no feature. `match-check` ranks
+  the sample with every score there is (`Variants`) and reports the
+  calibration. `Check` and `Train` ask through `gather`, once, and rank
+  with `evaluate`.
+  `profiles.go` ships `german` (learned on a German library, 1,000 books):
+  it is the score of a library mostly in German until its own is learned.
+  A learned score is the probability of the exact ISBN, so `enrich` keeps
+  matches for review from `Service.ReviewFloor` (0.2; 0.5 for the hand-set
+  score), and `metadata.matchThreshold` is the owner's to move to what
+  Measure's table says.
+- A candidate's description is one more feature, `description` (#491): for
+  a book looked up by its title that has a content vector, the first three
+  descriptions of at least 60 characters of each provider's answer are
+  embedded as queries with the model's prefix and their cosine to the
+  book's content vector is the feature, centred and scaled
+  (`Service.Describe`, set to `similar.Service.CompareToBook`; the vectors
+  of descriptions are kept in memory by the hash of model and text). It is
+  nil, and the feature absent, where the book has no content vector,
+  embedding is off, the model cannot run, or the record has no description.
+  `match-check` and `match-train` take `-descriptions=false` to measure
+  without it.
 
 ## Reading state
 

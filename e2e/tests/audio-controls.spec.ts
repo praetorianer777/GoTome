@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { makeLibrary, uploadFile } from "../fixtures/accounts";
 import { openSignedIn } from "../fixtures/app";
 

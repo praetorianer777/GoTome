@@ -2218,6 +2218,132 @@ describe("settings", () => {
 		expect(server.requests.some((r) => r.method === "PATCH")).toBe(false);
 	});
 
+	it("measures and learns the match score in the background, and shares only weights", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/settings");
+
+		const panel = within(
+			await screen.findByRole("region", { name: "How sure a match is" }),
+		);
+		expect(panel.getByText(/1,200 books here have one/)).toBeInTheDocument();
+		expect(panel.getByText("Ranking with: the hand-set weights.")).toBeInTheDocument();
+		expect(panel.getAllByText("Not run yet.")).toHaveLength(2);
+		expect(
+			panel.getByText("Nothing learned here yet to export."),
+		).toBeInTheDocument();
+
+		await person.click(panel.getByRole("button", { name: "Learn from my library" }));
+		expect(await panel.findByText("Waiting to start.")).toBeInTheDocument();
+		expect(
+			panel.getByRole("button", { name: "Learn from my library" }),
+		).toBeDisabled();
+		expect(panel.getByRole("button", { name: "Measure" })).toBeDisabled();
+
+		const startedAt = new Date(Date.now() - 60_000).toISOString();
+		server.scoring.learn = {
+			state: "running",
+			done: 312,
+			total: 1000,
+			estimateSeconds: 3600,
+			startedAt,
+		};
+		expect(
+			await panel.findByText(
+				/312 of 1,000 books looked up, about \d+ min left\./,
+				undefined,
+				{ timeout: 5000 },
+			),
+		).toBeInTheDocument();
+
+		server.scoring.learn = {
+			state: "done",
+			done: 1000,
+			total: 1000,
+			estimateSeconds: 3600,
+			startedAt,
+			finishedAt: new Date().toISOString(),
+		};
+		server.scoring.using = "learned";
+		server.scoring.learned = {
+			learnedAt: new Date().toISOString(),
+			books: 1000,
+			gotomeVersion: "0.19.0",
+			languages: { de: 0.9 },
+			providers: { dnb: 0.6 },
+		};
+		const variant = (name: string, right: number) => ({
+			name,
+			all: { name: "all", books: 200, right, sameWork: 0, edition: 20, wrong: 200 - right - 20, none: 0, failed: 0, ranks: {}, missing: 0 },
+			scores: [],
+			thresholds: [{ threshold: 0.95, taken: 40, right: 36, sameWork: 0, edition: 3, wrong: 1 }],
+			calibration: [{ from: 0.9, to: 0.95, count: 40, right: 36, predicted: 0.93, found: 0.9 }],
+		});
+		server.scoring.learnReport = {
+			books: 1200,
+			sample: 1000,
+			trainBooks: 800,
+			testBooks: 200,
+			candidates: 5000,
+			right: 800,
+			providers: ["dnb"],
+			threshold: 0.95,
+			logLossTrain: 0.2,
+			logLossTest: 0.25,
+			weights: [
+				{ feature: "title", handSet: 0.55, learned: 3.21 },
+				{ feature: "provider:dnb", learned: 0.4 },
+			],
+			handSet: variant("handSet", 100),
+			learned: variant("learned", 140),
+			languages: { de: 0.9 },
+			providerShares: { dnb: 1 },
+		};
+		expect(
+			await panel.findByText(
+				/Learned on .* from 1,000 books\./,
+				undefined,
+				{ timeout: 5000 },
+			),
+		).toBeInTheDocument();
+		expect(await panel.findByRole("cell", { name: "Title likeness" })).toBeInTheDocument();
+		expect(panel.getByRole("cell", { name: "Source: dnb" })).toBeInTheDocument();
+		expect(panel.getByRole("cell", { name: "3.21" })).toBeInTheDocument();
+		expect(
+			panel.getByRole("link", { name: "Export the weights" }),
+		).toHaveAttribute("href", "/api/v1/metadata/scoring/export");
+
+		const upload = panel.getByLabelText("Import weights", { selector: "input" });
+		await person.upload(
+			upload,
+			new File([JSON.stringify({ featureVersion: 2 })], "weights.json", {
+				type: "application/json",
+			}),
+		);
+		expect(
+			await panel.findByText(/of another version of the features/),
+		).toBeInTheDocument();
+		await person.upload(
+			upload,
+			new File([JSON.stringify({ featureVersion: 1 })], "weights.json", {
+				type: "application/json",
+			}),
+		);
+		expect(
+			await panel.findByText(
+				"Imported weights, learned from 800 books by GOtome 0.19.0.",
+			),
+		).toBeInTheDocument();
+		await person.click(
+			panel.getByRole("button", { name: "Forget the imported weights" }),
+		);
+		await waitFor(() =>
+			expect(
+				panel.queryByText(/Imported weights, learned from/),
+			).not.toBeInTheDocument(),
+		);
+	}, 30_000);
+
 	it("keeps an editor out", async () => {
 		server
 			.withAccount("Edith", "a long password", "editor")
