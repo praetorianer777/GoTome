@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { libraryOfBooks } from "./app";
 import { makeEpub } from "./ebooks";
-import { newLibrary, uploadEpub } from "./library";
+import { editBook, newLibrary, uploadEpub } from "./library";
 
 /** The main views of the app, by address and the heading each opens with. */
 export const VIEWS: { path: string; heading: string }[] = [
@@ -37,6 +37,19 @@ export async function seeded(page: Page, stamp: string) {
 		`Layout Two ${stamp}`,
 		`Layout Three ${stamp}`,
 	]);
+	// The longest card the library shows: an author and a series too long for
+	// the column, one word with no break to cut at, and the viewer's
+	// standing with the book.
+	const long = `Bartholomew-Featherstonehaugh ${stamp.replaceAll(" ", "")} Wolfeschlegelsteinhausenbergerdorff`;
+	await editBook(page, books[`Layout Three ${stamp}`] as string, {
+		contributors: [{ name: long, role: "author" }],
+		series: { name: `The Unabridged Chronicles of ${long}`, index: 12 },
+	});
+	const reading = await page.request.put(
+		`/api/v1/books/${books[`Layout Three ${stamp}`]}/reading`,
+		{ data: { status: "completed", rating: 5 } },
+	);
+	expect(reading.status()).toBe(200);
 	const epubLibrary = await newLibrary(page, `Layout reader ${stamp}`);
 	const epub = await uploadEpub(
 		page,

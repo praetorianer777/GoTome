@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A book card on the library page no longer grows wider than a narrow screen
+  when its author or series name is very long or its "Completed" and star
+  rating do not fit side by side: the names are cut off with an ellipsis and
+  the standing wraps.
+- A book chunked while the embedding pass was running no longer waits for the
+  next hourly pass before its similar books appear.
+
 ## [0.18.0] - 2026-11-11
 
 ### Added

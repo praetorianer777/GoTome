@@ -48,7 +48,7 @@ export function SeriesLine({ book }: { book: BookSummary }) {
 		return null;
 	}
 	return (
-		<span className="line-clamp-1 block text-sm text-slate-600 dark:text-slate-400">
+		<span className="block truncate text-sm text-slate-600 dark:text-slate-400">
 			{book.seriesKey ? (
 				<SeriesLink name={book.series} seriesKey={book.seriesKey} />
 			) : (

@@ -152,7 +152,10 @@ export async function smallTargets(page: Page, min: number): Promise<string[]> {
 		const inline = (el) => {
 			if (el.tagName !== "A") return false;
 			const p = el.parentElement;
-			return !!p && getComputedStyle(el).display === "inline" && [...p.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
+			if (!p || getComputedStyle(el).display !== "inline") return false;
+			// A line of names cut off with an ellipsis is as tall as its text.
+			if (getComputedStyle(p).textOverflow === "ellipsis") return true;
+			return [...p.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
 		};
 		const sel = "a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [role=menuitem], [role=switch]";
 		for (const el of document.querySelectorAll(sel)) {
