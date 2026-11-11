@@ -145,7 +145,7 @@ func (s *Service) scorers(ctx context.Context) (scorerSet, error) {
 	if imported != nil {
 		set.all = append(set.all, namedScorer{ScoreImported, learnedScorer(imported.Weights)})
 	}
-	choice := ScoreLearned
+	choice := ScoreHandSet
 	if s.weights != nil {
 		choice = s.weights(ctx)
 	}
@@ -262,7 +262,7 @@ const LearnFrom = 500
 
 // Scoring reports the match score and the last runs.
 func (s *Service) Scoring(ctx context.Context) (ScoringStatus, error) {
-	st := ScoringStatus{Weights: ScoreLearned, LearnFrom: LearnFrom}
+	st := ScoringStatus{Weights: ScoreHandSet, LearnFrom: LearnFrom}
 	if s.weights != nil {
 		st.Weights = s.weights(ctx)
 	}

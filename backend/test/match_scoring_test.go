@@ -109,7 +109,10 @@ func TestTheMatchScoreIsLearnedMeasuredExportedAndImported(t *testing.T) {
 		}
 	}
 	queue := &recordingQueue{}
-	svc := metadata.NewService(a.pool, []metadata.Provider{lampProvider{}}, metadata.Options{AllowPrivate: true})
+	svc := metadata.NewService(a.pool, []metadata.Provider{lampProvider{}}, metadata.Options{
+		AllowPrivate: true,
+		Weights:      func(ctx context.Context) string { v, _ := a.settings.Text(ctx, settings.ScoreWeights); return v },
+	})
 	svc.Queue = queue
 	a.server.Metadata = svc
 
@@ -216,7 +219,7 @@ func TestTheMatchScoreIsLearnedMeasuredExportedAndImported(t *testing.T) {
 	}
 }
 
-func TestALibraryInGermanStartsWithTheShippedWeightsUntilItHasLearnedItsOwn(t *testing.T) {
+func TestALibraryInGermanRanksWithTheShippedWeightsOnceLearnedOnesAreChosen(t *testing.T) {
 	t.Parallel()
 	a := newApp(t)
 	admin, _ := a.signedIn("admin", "admin")
@@ -239,8 +242,14 @@ func TestALibraryInGermanStartsWithTheShippedWeightsUntilItHasLearnedItsOwn(t *t
 		s, _ := body["using"].(string)
 		return s
 	}
+	if got := using(); got != "handSet" {
+		t.Errorf("before anyone chooses, a library ranks with %q", got)
+	}
+	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{settings.ScoreWeights: "learned"}}); status != 200 {
+		t.Fatalf("choosing the learned weights: %d", status)
+	}
 	if got := using(); got != "profile:german" {
-		t.Errorf("a library mostly in German ranks with %q", got)
+		t.Errorf("a library mostly in German, learned weights chosen, ranks with %q", got)
 	}
 	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{settings.ScoreWeights: "handSet"}}); status != 200 {
 		t.Fatalf("setting the weights: %d", status)
