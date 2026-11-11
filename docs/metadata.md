@@ -147,6 +147,59 @@ On the library above it took 49 of 200 books: 36 the book's own edition,
 13 another edition of it, none another book. Turn it on only where your
 numbers say the same.
 
+## Learning the score from your library
+
+The score that ranks candidates was set by hand: how much the title,
+the authors, the year, the language, the publisher, the pages, the
+series and its place, and the kind of edition count. A library's books
+that have an ISBN are labelled examples of how well that works: look up
+without the ISBN, the candidate that carries it is right. `gotome
+match-train` fits a logistic regression on them, so that the score
+becomes a probability: a threshold of 0.95 then takes matches that are
+right 95 times in 100 on your library, which the calibration table of
+`match-check` shows (what a score predicts against what was found).
+
+```
+docker compose exec app gotome match-train -n 1000
+```
+
+It looks a sample up as `match-check` does (the same sample, the same
+cache, the same pace; `-providers` and `-json` too), computes for every
+candidate the features the score uses (title likeness, authors in
+common, year, language, publisher, pages, series and place, kind of
+edition, which source, and the place in the source's answer), and fits
+the weights on four fifths of the books. It prints the weights beside
+the hand-set ones, and, on the fifth held out, the hand-set and the
+learned score side by side: what comes first, what each threshold takes
+and how much of it is right, and the calibration. The weights it keeps
+are then fitted on all of the sample, and stored in the database (not in
+a file), per installation. Without enough right candidates (30) or
+books to hold some out (10) it keeps nothing.
+
+The same two commands are on the settings page, under **Book details**:
+**Measure** (`match-check`) and **Learn from my library** (`match-train`)
+each run in the background with their progress ("312 of 1,000 books
+looked up", the time left at the sources' pace), and show their last
+result as tables. `metadata.scoreWeights` chooses which weights rank a
+lookup: the learned ones (the default; without any, the starting weights
+shipped for the languages of the library, and without those the
+hand-set ones), the hand-set ones, or an imported file's.
+`metadata.learnScore` learns once a week, where at least 500 books have
+an ISBN, through the cache.
+
+**Sharing what was learned, never the books.** *Export weights* writes a
+small JSON file: the weights, the version of the feature set, the
+version of GOtome, how many books were learned from and the shares of
+languages and providers. It has no title, author, ISBN, path or ID; read
+it before you pass it on. *Import weights* keeps such a file beside your
+own, refused when it was made for another version of the features, and
+**Measure** then ranks the sample with it too, so that you see how it
+does on your library before you choose it with `metadata.scoreWeights`.
+GOtome never sends anything anywhere itself. Starting weights for a kind
+of library are built into a release from files that were shared; a new
+installation uses the one that fits the languages of its books until it
+has learned its own.
+
 ## Doing it automatically
 
 Clean-up suggestions and matches that wait for review can be dealt with

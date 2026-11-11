@@ -201,6 +201,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 		q.Language = s.language(ctx)
 	}
 
+	score := s.activeScorer(ctx)
 	var found []Candidate
 	var errs []error
 	var enabled []string
@@ -237,9 +238,12 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
 			continue
 		}
-		for _, r := range records {
-			r.Provider = p.Name()
-			found = append(found, Candidate{Record: r, Score: Score(book, r)})
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		cosines := s.describe(ctx, book, records)
+		for i, r := range records {
+			found = append(found, Candidate{Record: r, Score: score(book, r, scoreInput{rank: i, cosine: cosines[i]})})
 		}
 	}
 	lang := book.Language

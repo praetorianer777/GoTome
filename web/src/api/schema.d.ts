@@ -2372,6 +2372,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metadata/scoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports */
+        get: operations["getMatchScoring"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The learned weights as a file to read and share: weights and counts, nothing of the books */
+        get: operations["exportMatchScoring"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Keep a file of weights someone shared, to measure beside the others; refused for another version of the features */
+        put: operations["importMatchScoring"];
+        post?: never;
+        /** Forget the imported weights */
+        delete: operations["deleteImportedMatchScoring"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/learn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Learn the match score from the library's books with an ISBN (match-train), as a background job */
+        post: operations["learnMatchScoring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/measure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look a sample of the books with an ISBN up without it and count how often the first candidate is the book (match-check), as a background job */
+        post: operations["measureMatchScoring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metadata/search": {
         parameters: {
             query?: never;
@@ -3142,6 +3228,13 @@ export interface components {
         AccountList: {
             users: components["schemas"]["Account"][];
         };
+        Agreement: {
+            accepted: number;
+            edition: number;
+            right: number;
+            sameWork: number;
+            wrong: number;
+        };
         ApiKeyList: {
             keys: components["schemas"]["ApiKeyView"][];
         };
@@ -3400,6 +3493,14 @@ export interface components {
             id: string;
             total: number;
         };
+        CalibrationBand: {
+            count: number;
+            found: number;
+            from: number;
+            predicted: number;
+            right: number;
+            to: number;
+        };
         CandidateList: {
             candidates: components["schemas"]["CandidateView"][];
             failures: components["schemas"]["ProviderFailure"][];
@@ -3439,6 +3540,21 @@ export interface components {
             /** @enum {string} */
             unit?: "ms" | "s" | "count" | "bytes";
             value?: number;
+        };
+        CheckReport: {
+            agreement: components["schemas"]["Agreement"];
+            all: components["schemas"]["Tally"];
+            books: number;
+            editions: components["schemas"]["Agreement"];
+            perLanguage: components["schemas"]["Tally"][];
+            perProvider: components["schemas"]["Tally"][];
+            providers: string[];
+            sample: number;
+            scores: components["schemas"]["ScoreBand"][];
+            threshold: number;
+            thresholds: components["schemas"]["ThresholdPoint"][];
+            using: string;
+            variants: components["schemas"]["Variant"][];
         };
         CleanupApplied: {
             /** Format: uuid */
@@ -4395,6 +4511,21 @@ export interface components {
             sharedBuffersBytes: number;
             workMemBytes: number;
         };
+        Profile: {
+            books: number;
+            featureVersion: number;
+            format: string;
+            gotomeVersion: string;
+            languages: {
+                [key: string]: number;
+            };
+            providers: {
+                [key: string]: number;
+            };
+            weights: {
+                [key: string]: number;
+            };
+        };
         ProgressSaved: {
             progress: components["schemas"]["ProgressView"] | null;
             saved: boolean;
@@ -4573,6 +4704,17 @@ export interface components {
             books: components["schemas"]["ReviewBook"][];
             total: number;
         };
+        RunStatus: {
+            done: number;
+            error?: string;
+            estimateSeconds: number;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            startedAt: string;
+            state: string;
+            total: number;
+        };
         Scan: {
             booksAdded: number;
             error?: string;
@@ -4594,6 +4736,30 @@ export interface components {
             /** Format: date-time */
             startedAt?: string;
             state: string;
+        };
+        ScoreBand: {
+            edition: number;
+            from: number;
+            right: number;
+            sameWork: number;
+            to: number;
+            wrong: number;
+        };
+        ScoringRun: {
+            books?: number;
+        };
+        ScoringStatus: {
+            booksWithIsbn: number;
+            imported?: components["schemas"]["WeightsInfo"];
+            learn?: components["schemas"]["RunStatus"];
+            learnFrom: number;
+            learnReport?: components["schemas"]["TrainReport"];
+            learned?: components["schemas"]["WeightsInfo"];
+            measure?: components["schemas"]["RunStatus"];
+            measureReport?: components["schemas"]["CheckReport"];
+            profile?: string;
+            using: string;
+            weights: string;
         };
         SearchHit: {
             /** Format: date-time */
@@ -4772,6 +4938,20 @@ export interface components {
             quotaBytes?: number;
             usedBytes: number;
         };
+        Tally: {
+            books: number;
+            edition: number;
+            failed: number;
+            missing: number;
+            name: string;
+            none: number;
+            ranks: {
+                [key: string]: number;
+            };
+            right: number;
+            sameWork: number;
+            wrong: number;
+        };
         TextBook: {
             book: components["schemas"]["BookSummary"];
             corrected?: boolean;
@@ -4801,6 +4981,14 @@ export interface components {
             device: components["schemas"]["DeviceView"];
             username: string;
         };
+        ThresholdPoint: {
+            edition: number;
+            right: number;
+            sameWork: number;
+            taken: number;
+            threshold: number;
+            wrong: number;
+        };
         Tracker: {
             /** Format: date-time */
             createdAt: string;
@@ -4814,6 +5002,27 @@ export interface components {
         };
         TrackerList: {
             trackers: components["schemas"]["Tracker"][];
+        };
+        TrainReport: {
+            books: number;
+            candidates: number;
+            handSet: components["schemas"]["Variant"];
+            languages: {
+                [key: string]: number;
+            };
+            learned: components["schemas"]["Variant"];
+            logLossTest: number;
+            logLossTrain: number;
+            providerShares: {
+                [key: string]: number;
+            };
+            providers: string[];
+            right: number;
+            sample: number;
+            testBooks: number;
+            threshold: number;
+            trainBooks: number;
+            weights: components["schemas"]["WeightRow"][];
         };
         TrashList: {
             files: components["schemas"]["TrashedFile"][];
@@ -4881,6 +5090,13 @@ export interface components {
             role: "admin" | "editor" | "reader";
             username: string;
         };
+        Variant: {
+            all: components["schemas"]["Tally"];
+            calibration: components["schemas"]["CalibrationBand"][];
+            name: string;
+            scores: components["schemas"]["ScoreBand"][];
+            thresholds: components["schemas"]["ThresholdPoint"][];
+        };
         Warning: {
             commands: string[];
             kind: string;
@@ -4891,6 +5107,23 @@ export interface components {
             notified: number;
             polled: number;
             watches: number;
+        };
+        WeightRow: {
+            feature: string;
+            handSet?: number;
+            learned: number;
+        };
+        WeightsInfo: {
+            books: number;
+            gotomeVersion: string;
+            languages: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            learnedAt: string;
+            providers: {
+                [key: string]: number;
+            };
         };
         WishRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -10011,6 +10244,184 @@ export interface operations {
                 content: {
                     "image/*": string;
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Profile"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteImportedMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    learnMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoringRun"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    measureMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoringRun"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

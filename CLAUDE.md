@@ -911,6 +911,26 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   names too), wrong or none, per provider and language, with the scores
   of right and wrong ones (`docs/metadata.md`). #367 and any change to
   ranking are measured with it.
+- The score can be learned (#490, `metadata/features.go`, `model.go`,
+  `train.go`): `features` names what `Score` compares, as a map that is
+  zero where a side is silent (`FeatureVersion`: raise it with a change
+  to what a feature means; a feature added with weight zero for a model
+  that lacks it keeps the version), `fit` is a logistic regression by
+  Newton's method of whether a candidate carries the book's ISBN,
+  `gotome match-train` and the settings page's "Learn from my library"
+  (`Service.Train`, job `metadata.match_run`, progress and last report in
+  `match_runs`) fit it on a sample looked up as match-check does, a fifth
+  held out by a hash of the ID. The weights are `match_score_models` (slot
+  `learned` or `imported`), used by `Service.Candidates` through
+  `activeScorer` when `metadata.scoreWeights` allows: `learned` is the
+  installation's own, else a shipped profile that fits its languages
+  (`profiles.go`, numbers only), else `Score`. `Score` stays the
+  hand-set one. A `Profile` (export, import, shipped) holds weights and
+  counts and no title, author, ISBN, path or ID; `ParseProfile` refuses
+  another version and any name that is no feature. `match-check` ranks
+  the sample with every score there is (`Variants`) and reports the
+  calibration. `Check` and `Train` ask through `gather`, once, and rank
+  with `evaluate`.
 
 ## Reading state
 

@@ -145,3 +145,50 @@ GROUP BY lang ORDER BY count(*) DESC;
 -- A scheduled run that found nothing to do leaves no trace.
 DELETE FROM curation_runs r
 WHERE r.id = $1 AND r.started_by IS NULL AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id);
+
+-- name: ListScoreModels :many
+SELECT slot, model, books, trained_at FROM match_score_models;
+
+-- name: PutScoreModel :exec
+INSERT INTO match_score_models (slot, model, books, trained_at)
+VALUES (sqlc.arg(slot), sqlc.arg(model)::jsonb, sqlc.arg(books), now())
+ON CONFLICT (slot) DO UPDATE SET model = excluded.model, books = excluded.books, trained_at = now();
+
+-- name: DeleteScoreModel :exec
+DELETE FROM match_score_models WHERE slot = sqlc.arg(slot);
+
+-- name: LanguageShares :many
+-- How many books of the library are in each language, for the profile that
+-- fits it. Counts only.
+SELECT COALESCE(lower(split_part(language, '-', 1)), '')::text AS language, count(*) AS books
+FROM books
+WHERE deleted_at IS NULL AND NOT placeholder
+GROUP BY 1;
+
+-- name: ListMatchRuns :many
+SELECT kind, state, done, total, estimate_seconds, requested, started_at, finished_at, error, report
+FROM match_runs;
+
+-- name: QueueMatchRun :one
+-- Takes the run for a kind unless one is waiting or running; one that has
+-- stood for two days is a job that was lost.
+INSERT INTO match_runs (kind, state, requested, started_at, finished_at, done, total, error, report)
+VALUES (sqlc.arg(kind), 'queued', sqlc.arg(requested), now(), NULL, 0, 0, '', NULL)
+ON CONFLICT (kind) DO UPDATE
+SET state = 'queued', requested = excluded.requested, started_at = now(), finished_at = NULL,
+    done = 0, total = 0, error = '', report = NULL
+WHERE match_runs.state IN ('done', 'failed') OR match_runs.started_at < now() - interval '2 days'
+RETURNING kind;
+
+-- name: StartMatchRun :exec
+UPDATE match_runs SET state = 'running', total = sqlc.arg(total), done = 0,
+       estimate_seconds = sqlc.arg(estimate_seconds), started_at = now()
+WHERE kind = sqlc.arg(kind);
+
+-- name: ProgressMatchRun :exec
+UPDATE match_runs SET done = sqlc.arg(done) WHERE kind = sqlc.arg(kind) AND state = 'running';
+
+-- name: FinishMatchRun :exec
+UPDATE match_runs SET state = sqlc.arg(state), finished_at = now(), error = sqlc.arg(error),
+       report = sqlc.narg(report)::jsonb
+WHERE kind = sqlc.arg(kind);

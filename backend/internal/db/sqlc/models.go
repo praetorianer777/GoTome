@@ -446,6 +446,26 @@ type LibraryScan struct {
 	Error         *string
 }
 
+type MatchRun struct {
+	Kind            string
+	State           string
+	Done            int32
+	Total           int32
+	EstimateSeconds int32
+	Requested       int32
+	StartedAt       time.Time
+	FinishedAt      *time.Time
+	Error           string
+	Report          []byte
+}
+
+type MatchScoreModel struct {
+	Slot      string
+	Model     []byte
+	Books     int32
+	TrainedAt time.Time
+}
+
 type MetadataMatch struct {
 	ID        uuid.UUID
 	BookID    uuid.UUID

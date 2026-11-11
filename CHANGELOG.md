@@ -6,6 +6,26 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome can learn how sure a match is from your own books. Books with an
+  ISBN are looked up without it, and the weights of the score (title,
+  authors, year, language, publisher, pages, series, kind of edition,
+  which source) are fitted to which candidates were right, so that a
+  threshold of 0.95 takes matches that are right 95 times in 100 on your
+  library. On the settings page, under Book details, **Measure** and
+  **Learn from my library** run in the background with their progress and
+  show their results as tables: what comes first, what each threshold
+  takes, the hand-set weights beside the learned ones, and how well the
+  score's figures match what was found. `gotome match-train` does the
+  same from the command line, and `gotome match-check` ranks with every
+  score side by side. The setting `metadata.scoreWeights` chooses
+  between the learned, the hand-set and imported weights, and
+  `metadata.learnScore` (off) learns again every week.
+- The learned weights can be exported as a small file that holds numbers
+  only (no title, author, ISBN or path), and a file someone shared can be
+  imported and measured on your library before you use it.
+
 ## [0.18.0] - 2026-11-11
 
 ### Added

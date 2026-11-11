@@ -23,7 +23,11 @@ func PrintCheck(w io.Writer, r CheckReport) {
 		return fmt.Sprintf("%.0f%%", 100*float64(n)/float64(of))
 	}
 	fmt.Fprintf(w, "Books with an ISBN           %d\n", r.Books)
-	fmt.Fprintf(w, "Looked up without it         %d, at %s\n\n", r.Sample, strings.Join(r.Providers, ", "))
+	fmt.Fprintf(w, "Looked up without it         %d, at %s\n", r.Sample, strings.Join(r.Providers, ", "))
+	if r.Using != "" {
+		fmt.Fprintf(w, "Score in use                 %s\n", r.Using)
+	}
+	fmt.Fprintln(w)
 
 	tallies := append(append([]Tally{r.All}, r.PerProvider...), r.PerLanguage...)
 	fmt.Fprintln(w, "The first candidate, by title, authors and language alone:")
@@ -92,4 +96,69 @@ func PrintCheck(w io.Writer, r CheckReport) {
 	fmt.Fprintln(t, "books\taccepted\tright\tsame work\tedition\twrong\tright or same work\t")
 	fmt.Fprintf(t, "%d\t%d\t%d\t%d\t%d\t%d\t%s\t\n", r.Sample, e.Accepted, e.Right, e.SameWork, e.Edition, e.Wrong, pct(e.Right+e.SameWork, e.Accepted))
 	t.Flush()
+	if len(r.Variants) > 1 {
+		printVariants(w, r.Variants, r.Threshold)
+	}
+}
+
+// printVariants writes the hand-set and the learned scores side by side,
+// and each one's calibration: the score it predicts against the share found.
+func printVariants(w io.Writer, variants []Variant, threshold float64) {
+	pct := func(n, of int) string {
+		if of == 0 {
+			return "-"
+		}
+		return fmt.Sprintf("%.0f%%", 100*float64(n)/float64(of))
+	}
+	fmt.Fprintf(w, "\nThe same books ranked by each score (all; taken at metadata.matchThreshold, %.2f):\n", threshold)
+	t := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(t, "score\tright first\tsame work\tedition\twrong\tnothing\ttaken\tof them right\tof them wrong\t")
+	for _, v := range variants {
+		asked := v.All.Books - v.All.Failed
+		var taken ThresholdPoint
+		for _, p := range v.Thresholds {
+			if p.Threshold == threshold {
+				taken = p
+			}
+		}
+		fmt.Fprintf(t, "%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t\n", v.Name,
+			pct(v.All.Right, asked), pct(v.All.SameWork, asked), pct(v.All.Edition, asked), pct(v.All.Wrong, asked), pct(v.All.None, asked),
+			taken.Taken, pct(taken.Right, taken.Taken), pct(taken.Wrong, taken.Taken))
+	}
+	t.Flush()
+	for _, v := range variants {
+		fmt.Fprintf(w, "\nCalibration of %s (first candidates; found is the share carrying one of the book's ISBNs):\n", v.Name)
+		t := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+		fmt.Fprintln(t, "score\tcandidates\tpredicted\tfound\t")
+		for _, b := range v.Calibration {
+			if b.Count == 0 {
+				continue
+			}
+			fmt.Fprintf(t, "%.2f-%.2f\t%d\t%.0f%%\t%.0f%%\t\n", b.From, b.To, b.Count, 100*b.Predicted, 100*b.Found)
+		}
+		t.Flush()
+	}
+}
+
+// PrintTrain writes a learning's report as tables a person reads.
+func PrintTrain(w io.Writer, r TrainReport) {
+	fmt.Fprintf(w, "Books with an ISBN           %d\n", r.Books)
+	fmt.Fprintf(w, "Looked up without it         %d, at %s (%d to fit, %d held out)\n", r.Sample, strings.Join(r.Providers, ", "), r.TrainBooks, r.TestBooks)
+	fmt.Fprintf(w, "Candidates                   %d, of which %d carry one of the book's ISBNs\n", r.Candidates, r.Right)
+	fmt.Fprintf(w, "Log loss                     %.3f fitted on, %.3f held out\n\n", r.LogLossTrain, r.LogLossTest)
+
+	fmt.Fprintln(w, "Weights, hand-set beside learned:")
+	t := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+	fmt.Fprintln(t, "feature\thand-set\tlearned\t")
+	for _, row := range r.Weights {
+		hand := "-"
+		if row.HandSet != nil {
+			hand = fmt.Sprintf("%.2f", *row.HandSet)
+		}
+		fmt.Fprintf(t, "%s\t%s\t%.2f\t\n", row.Feature, hand, row.Learned)
+	}
+	t.Flush()
+
+	fmt.Fprintln(w, "\nOn the books held out:")
+	printVariants(w, []Variant{r.HandSet, r.Learned}, r.Threshold)
 }

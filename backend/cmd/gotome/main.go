@@ -88,6 +88,7 @@ const (
 	jobsShutdownWait     = 40 * time.Second
 	sessionSweepInterval = time.Hour
 	trashPurgeInterval   = 6 * time.Hour
+	autoLearnInterval    = 6 * time.Hour
 	embedInterval        = time.Hour
 	// Hourly, so that a model goes within an hour of its time; a look
 	// that finds none due is two small queries.
@@ -123,6 +124,7 @@ Commands:
   similar-check  Measure the similar books of a sample of the library, or with -recommend the recommendations (-h for options)
   genre-check    Measure how well genres are found again for tagged books (-h for options)
   match-check    Measure how often a lookup by title and author finds the book (-h for options)
+  match-train    Learn the match score from the library's books with an ISBN (-h for options)
   duplicate-check Show what the duplicate rules would do with a sample of the open pairs, naming nothing (-h for options)
   perf-check     Time the main views on this installation's library, naming nothing of it (-h for options)
   openapi        Write the API's OpenAPI document to the given file, or to stdout
@@ -164,6 +166,8 @@ func run(args []string) error {
 		return genreCheck(args[1:])
 	case "match-check":
 		return matchCheck(args[1:])
+	case "match-train":
+		return matchTrain(args[1:])
 	case "duplicate-check":
 		return duplicateCheck(args[1:])
 	case "perf-check":
@@ -383,7 +387,7 @@ func serve() error {
 	mailing.Offline = cfg.Offline
 	workers := background{
 		kindle:   mailing,
-		accounts: accounts, matches: matches, changes: changes, scans: scans,
+		accounts: accounts, matches: matches, meta: meta, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
 		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
@@ -396,6 +400,7 @@ func serve() error {
 	scans.Queue = runner
 	mailing.Queue = runner
 	matches.Queue = runner
+	meta.Queue = runner
 	changes.Queue = runner
 	histories.Queue = runner
 	searchIndex.Queue = runner
@@ -781,6 +786,43 @@ func genreCheck(args []string) error {
 	return nil
 }
 
+// matchEnvironment opens what the match commands work with: the
+// metadata service and the settings.
+func matchEnvironment() (ctx context.Context, meta *metadata.Service, store *settings.Store, done func(), err error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	log := newLogger(cfg)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	if err := cfg.RequireSecretKey(); err != nil {
+		stop()
+		return nil, nil, nil, nil, err
+	}
+	box, err := secret.New(cfg.SecretKey)
+	if err != nil {
+		stop()
+		return nil, nil, nil, nil, err
+	}
+	pool, err := openDatabase(ctx, cfg, log)
+	if err != nil {
+		stop()
+		return nil, nil, nil, nil, err
+	}
+	done = func() { pool.Close(); stop() }
+	store, err = settings.Open(ctx, pool, box)
+	if err != nil {
+		done()
+		return nil, nil, nil, nil, err
+	}
+	meta, err = metadataService(cfg, pool, store, log)
+	if err != nil {
+		done()
+		return nil, nil, nil, nil, err
+	}
+	return ctx, meta, store, done, nil
+}
+
 // matchCheck looks a sample of the books with an ISBN up by title and
 // authors alone and measures how often the first candidate is the book.
 // It asks the providers, at their pace and through the answer cache.
@@ -792,33 +834,11 @@ func matchCheck(args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	cfg, err := config.Load()
+	ctx, meta, store, done, err := matchEnvironment()
 	if err != nil {
 		return err
 	}
-	log := newLogger(cfg)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	if err := cfg.RequireSecretKey(); err != nil {
-		return err
-	}
-	box, err := secret.New(cfg.SecretKey)
-	if err != nil {
-		return err
-	}
-	pool, err := openDatabase(ctx, cfg, log)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-	store, err := settings.Open(ctx, pool, box)
-	if err != nil {
-		return err
-	}
-	meta, err := metadataService(cfg, pool, store, log)
-	if err != nil {
-		return err
-	}
+	defer done()
 	opts := metadata.CheckOptions{
 		Books: *n,
 		Start: func(books int, estimate time.Duration) {
@@ -847,6 +867,64 @@ func matchCheck(args []string) error {
 		return out.Encode(r)
 	}
 	metadata.PrintCheck(os.Stdout, r)
+	return nil
+}
+
+// matchTrain learns the match score from the library's books with an ISBN
+// and keeps the weights, printing numbers only.
+func matchTrain(args []string) error {
+	flags := flag.NewFlagSet("match-train", flag.ContinueOnError)
+	n := flags.Int("n", metadata.DefaultLearnBooks, "how many books with an ISBN to look up at most")
+	providers := flags.String("providers", "", "the providers to ask, separated by commas (default: those metadata.providers names)")
+	asJSON := flags.Bool("json", false, "print the report as JSON")
+	export := flags.String("export", "", "write the learned weights, as they are kept, to this file as JSON for sharing, instead of learning")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	ctx, meta, store, done, err := matchEnvironment()
+	if err != nil {
+		return err
+	}
+	defer done()
+	if *export != "" {
+		p, err := meta.ExportProfile(ctx)
+		if err != nil {
+			return err
+		}
+		encoded, err := json.MarshalIndent(p, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(*export, append(encoded, '\n'), 0o600)
+	}
+	opts := metadata.TrainOptions{
+		Books: *n,
+		Start: func(books int, estimate time.Duration) {
+			fmt.Fprintf(os.Stderr, "Looking up %d books; about %s at the providers' pace, less for answers in the cache.\n",
+				books, estimate.Round(time.Second))
+		},
+		Progress: func(done, of int) {
+			if done%10 == 0 || done == of {
+				fmt.Fprintf(os.Stderr, "%d of %d\n", done, of)
+			}
+		},
+	}
+	if *providers != "" {
+		opts.Providers = strings.Split(*providers, ",")
+	}
+	if v, err := store.Text(ctx, settings.MatchThreshold); err == nil {
+		opts.Threshold, _ = strconv.ParseFloat(v, 64)
+	}
+	r, err := meta.Train(ctx, opts)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		out := json.NewEncoder(os.Stdout)
+		out.SetIndent("", "  ")
+		return out.Encode(r)
+	}
+	metadata.PrintTrain(os.Stdout, r)
 	return nil
 }
 
@@ -936,6 +1014,19 @@ func metadataService(cfg config.Config, pool *pgxpool.Pool, settingStore *settin
 		Enabled: func(ctx context.Context) []string {
 			names, _ := settingStore.Text(ctx, settings.Providers)
 			return strings.Split(names, ",")
+		},
+		Weights: func(ctx context.Context) string {
+			v, _ := settingStore.Text(ctx, settings.ScoreWeights)
+			return v
+		},
+		MatchThreshold: func(ctx context.Context) float64 {
+			v, _ := settingStore.Text(ctx, settings.MatchThreshold)
+			f, _ := strconv.ParseFloat(v, 64)
+			return f
+		},
+		LearnScore: func(ctx context.Context) bool {
+			v, _ := settingStore.Text(ctx, settings.LearnScore)
+			return v == "on"
 		},
 	}
 	if cfg.TestMetadata != "" {

@@ -59,6 +59,15 @@ func (q *Queries) DeleteEmptyCurationRun(ctx context.Context, id uuid.UUID) erro
 	return err
 }
 
+const deleteScoreModel = `-- name: DeleteScoreModel :exec
+DELETE FROM match_score_models WHERE slot = $1
+`
+
+func (q *Queries) DeleteScoreModel(ctx context.Context, slot string) error {
+	_, err := q.db.Exec(ctx, deleteScoreModel, slot)
+	return err
+}
+
 const dismissOtherMatches = `-- name: DismissOtherMatches :exec
 UPDATE metadata_matches SET state = 'dismissed', updated_at = now()
 WHERE book_id = $1 AND id <> $2 AND state = 'pending'
@@ -72,6 +81,29 @@ type DismissOtherMatchesParams struct {
 // Once one match of a book is taken, the others it waited with are done.
 func (q *Queries) DismissOtherMatches(ctx context.Context, arg DismissOtherMatchesParams) error {
 	_, err := q.db.Exec(ctx, dismissOtherMatches, arg.BookID, arg.ID)
+	return err
+}
+
+const finishMatchRun = `-- name: FinishMatchRun :exec
+UPDATE match_runs SET state = $1, finished_at = now(), error = $2,
+       report = $3::jsonb
+WHERE kind = $4
+`
+
+type FinishMatchRunParams struct {
+	State  string
+	Error  string
+	Report []byte
+	Kind   string
+}
+
+func (q *Queries) FinishMatchRun(ctx context.Context, arg FinishMatchRunParams) error {
+	_, err := q.db.Exec(ctx, finishMatchRun,
+		arg.State,
+		arg.Error,
+		arg.Report,
+		arg.Kind,
+	)
 	return err
 }
 
@@ -128,6 +160,40 @@ func (q *Queries) GetVisibleMatch(ctx context.Context, arg GetVisibleMatchParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const languageShares = `-- name: LanguageShares :many
+SELECT COALESCE(lower(split_part(language, '-', 1)), '')::text AS language, count(*) AS books
+FROM books
+WHERE deleted_at IS NULL AND NOT placeholder
+GROUP BY 1
+`
+
+type LanguageSharesRow struct {
+	Language string
+	Books    int64
+}
+
+// How many books of the library are in each language, for the profile that
+// fits it. Counts only.
+func (q *Queries) LanguageShares(ctx context.Context) ([]LanguageSharesRow, error) {
+	rows, err := q.db.Query(ctx, languageShares)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LanguageSharesRow{}
+	for rows.Next() {
+		var i LanguageSharesRow
+		if err := rows.Scan(&i.Language, &i.Books); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMatchCheckBooks = `-- name: ListMatchCheckBooks :many
@@ -299,6 +365,42 @@ func (q *Queries) ListMatchGroups(ctx context.Context, arg ListMatchGroupsParams
 	return items, nil
 }
 
+const listMatchRuns = `-- name: ListMatchRuns :many
+SELECT kind, state, done, total, estimate_seconds, requested, started_at, finished_at, error, report
+FROM match_runs
+`
+
+func (q *Queries) ListMatchRuns(ctx context.Context) ([]MatchRun, error) {
+	rows, err := q.db.Query(ctx, listMatchRuns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchRun{}
+	for rows.Next() {
+		var i MatchRun
+		if err := rows.Scan(
+			&i.Kind,
+			&i.State,
+			&i.Done,
+			&i.Total,
+			&i.EstimateSeconds,
+			&i.Requested,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.Error,
+			&i.Report,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingMatches = `-- name: ListPendingMatches :many
 SELECT id, book_id, provider, record_id, score, record, state, created_at, updated_at FROM metadata_matches
 WHERE book_id = ANY($1::uuid[]) AND state = 'pending'
@@ -421,6 +523,35 @@ func (q *Queries) ListReviewBooksAfter(ctx context.Context, arg ListReviewBooksA
 	return items, nil
 }
 
+const listScoreModels = `-- name: ListScoreModels :many
+SELECT slot, model, books, trained_at FROM match_score_models
+`
+
+func (q *Queries) ListScoreModels(ctx context.Context) ([]MatchScoreModel, error) {
+	rows, err := q.db.Query(ctx, listScoreModels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchScoreModel{}
+	for rows.Next() {
+		var i MatchScoreModel
+		if err := rows.Scan(
+			&i.Slot,
+			&i.Model,
+			&i.Books,
+			&i.TrainedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTextLanguages = `-- name: ListTextLanguages :many
 SELECT lang, count(*)::int AS chunks FROM book_chunks
 WHERE book_id = $1 AND lang <> ''
@@ -453,6 +584,20 @@ func (q *Queries) ListTextLanguages(ctx context.Context, bookID uuid.UUID) ([]Li
 	return items, nil
 }
 
+const progressMatchRun = `-- name: ProgressMatchRun :exec
+UPDATE match_runs SET done = $1 WHERE kind = $2 AND state = 'running'
+`
+
+type ProgressMatchRunParams struct {
+	Done int32
+	Kind string
+}
+
+func (q *Queries) ProgressMatchRun(ctx context.Context, arg ProgressMatchRunParams) error {
+	_, err := q.db.Exec(ctx, progressMatchRun, arg.Done, arg.Kind)
+	return err
+}
+
 const putProviderRecord = `-- name: PutProviderRecord :exec
 INSERT INTO provider_records (provider, request_key, url, status, body, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -480,6 +625,47 @@ func (q *Queries) PutProviderRecord(ctx context.Context, arg PutProviderRecordPa
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const putScoreModel = `-- name: PutScoreModel :exec
+INSERT INTO match_score_models (slot, model, books, trained_at)
+VALUES ($1, $2::jsonb, $3, now())
+ON CONFLICT (slot) DO UPDATE SET model = excluded.model, books = excluded.books, trained_at = now()
+`
+
+type PutScoreModelParams struct {
+	Slot  string
+	Model []byte
+	Books int32
+}
+
+func (q *Queries) PutScoreModel(ctx context.Context, arg PutScoreModelParams) error {
+	_, err := q.db.Exec(ctx, putScoreModel, arg.Slot, arg.Model, arg.Books)
+	return err
+}
+
+const queueMatchRun = `-- name: QueueMatchRun :one
+INSERT INTO match_runs (kind, state, requested, started_at, finished_at, done, total, error, report)
+VALUES ($1, 'queued', $2, now(), NULL, 0, 0, '', NULL)
+ON CONFLICT (kind) DO UPDATE
+SET state = 'queued', requested = excluded.requested, started_at = now(), finished_at = NULL,
+    done = 0, total = 0, error = '', report = NULL
+WHERE match_runs.state IN ('done', 'failed') OR match_runs.started_at < now() - interval '2 days'
+RETURNING kind
+`
+
+type QueueMatchRunParams struct {
+	Kind      string
+	Requested int32
+}
+
+// Takes the run for a kind unless one is waiting or running; one that has
+// stood for two days is a job that was lost.
+func (q *Queries) QueueMatchRun(ctx context.Context, arg QueueMatchRunParams) (string, error) {
+	row := q.db.QueryRow(ctx, queueMatchRun, arg.Kind, arg.Requested)
+	var kind string
+	err := row.Scan(&kind)
+	return kind, err
 }
 
 const recordMatch = `-- name: RecordMatch :one
@@ -528,5 +714,22 @@ type SetMatchStateParams struct {
 
 func (q *Queries) SetMatchState(ctx context.Context, arg SetMatchStateParams) error {
 	_, err := q.db.Exec(ctx, setMatchState, arg.ID, arg.State)
+	return err
+}
+
+const startMatchRun = `-- name: StartMatchRun :exec
+UPDATE match_runs SET state = 'running', total = $1, done = 0,
+       estimate_seconds = $2, started_at = now()
+WHERE kind = $3
+`
+
+type StartMatchRunParams struct {
+	Total           int32
+	EstimateSeconds int32
+	Kind            string
+}
+
+func (q *Queries) StartMatchRun(ctx context.Context, arg StartMatchRunParams) error {
+	_, err := q.db.Exec(ctx, startMatchRun, arg.Total, arg.EstimateSeconds, arg.Kind)
 	return err
 }
