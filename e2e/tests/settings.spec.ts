@@ -66,7 +66,7 @@ test("a setting of a few values is chosen, not typed", async ({
 	expect(providers).toMatchObject({
 		value: "openlibrary,hardcover",
 		multiple: true,
-		choices: ["openlibrary", "crossref", "hardcover"],
+		choices: ["openlibrary", "crossref", "hardcover", "dnb"],
 	});
 	await expect(
 		page.getByRole("combobox", { name: "Genres for books" }),
