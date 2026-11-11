@@ -6,6 +6,21 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- GOtome for Tolino: the store comes up again from the "GOtome" book after the
+  app has run for hours. Reading the reader's log no longer waits on the
+  database or the network, and the app restarts the log reader when it has
+  heard nothing for three minutes.
+- GOtome for Tolino: the store is brought up once the reader has shown the
+  book, and again if the reader's viewer covered it, instead of at a fixed
+  moment that the viewer could miss.
+- GOtome for Tolino: the app finds the newest release with its APK, looks for
+  it even when GOtome cannot be reached, no longer offers the version it
+  already is, and hands a new version to Android's installer by itself.
+- GOtome for Tolino: the database is opened once, so Android no longer reports
+  leaked SQLite connections.
+
 ## [0.20.0] - 2026-11-11
 
 ### Added

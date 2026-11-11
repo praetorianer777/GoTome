@@ -29,7 +29,7 @@ class BookActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        db = Db(this)
+        db = Db.of(this)
         sync = Sync(this)
         bookId = intent.getStringExtra(BOOK) ?: return finish()
         val book = BookSummary(

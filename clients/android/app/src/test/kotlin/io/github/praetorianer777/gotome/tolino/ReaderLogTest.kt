@@ -1,7 +1,9 @@
 package io.github.praetorianer777.gotome.tolino
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReaderLogTest {
@@ -64,5 +66,63 @@ class ReaderLogTest {
             "",
         )
         for (line in others) assertNull(line, ReaderLog.parse(line))
+    }
+
+    @Test
+    fun theViewersFirstScreenIsShown() {
+        assertEquals(
+            ReaderEvent.Shown,
+            ReaderLog.parse("D/EpubViewerActivity( 5258): openDocument: screen begin: OEBPS/c1.xhtml#point(/1/2/1/1:0)"),
+        )
+        assertTrue(recorded.mapNotNull(ReaderLog::parse).any { it is ReaderEvent.Shown })
+        assertNull(ReaderLog.parse("D/EpubViewerActivity( 5258): openDocument: screen end: OEBPS/c1.xhtml#point(/1/2/3/1:70)"))
+    }
+
+    @Test
+    fun theAppsOwnProbeIsNoEvent() {
+        assertNull(ReaderLog.parse("D/${ReaderLog.PROBE}(20575): alive"))
+    }
+}
+
+class LivenessTest {
+    private var now = 1_000L
+    private val liveness = Liveness({ now }, silence = 180_000)
+
+    @Test
+    fun staysAliveWhileLinesComeIn() {
+        repeat(10) {
+            now += 60_000
+            liveness.heard()
+            assertFalse(liveness.stalled())
+        }
+    }
+
+    @Test
+    fun isStalledOnlyPastTheSilence() {
+        now += 180_000
+        assertFalse(liveness.stalled())
+        now += 1
+        assertTrue(liveness.stalled())
+    }
+
+    @Test
+    fun aRestartGivesTheNewReaderTimeBeforeTheNextOne() {
+        now += 500_000
+        assertTrue(liveness.stalled())
+        liveness.restarted()
+        assertFalse(liveness.stalled())
+        now += 181_000
+        assertTrue(liveness.stalled())
+    }
+}
+
+class StoreRaiseTest {
+    @Test
+    fun onlyOneOfTheViewerAndTheTimerTakesAnOpening() {
+        val raise = StoreRaise()
+        assertFalse(raise.take())
+        raise.arm()
+        assertTrue(raise.take())
+        assertFalse(raise.take())
     }
 }

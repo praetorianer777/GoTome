@@ -14,6 +14,8 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
 /**
@@ -27,13 +29,20 @@ class ReaderWatcher : Service() {
     }
 
     private val main = Handler(Looper.getMainLooper())
+    private val store = Handler(Looper.getMainLooper())
+    private val raise = StoreRaise()
+    private val liveness = Liveness(System::currentTimeMillis, STALL_AFTER)
     private val tracker = ReadingTracker()
     private lateinit var prefs: Prefs
     private lateinit var db: Db
+
+    /** Everything that may wait (database, preferences, files) runs here, never on the log's thread. */
+    private val work = Executors.newSingleThreadExecutor { r -> Thread(r, "reader-work").apply { isDaemon = true } }
     @Volatile private var reader: Thread? = null
     @Volatile private var logcat: Process? = null
+    @Volatile private var generation = 0
     private var sentAt = 0L
-    private val pages = HashMap<String, Int>()
+    private val pages = ConcurrentHashMap<String, Int>()
     /** The book just opened, until its first position decides whether to offer a jump. */
     private var opened: String? = null
 
@@ -42,7 +51,7 @@ class ReaderWatcher : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
-        db = Db(this)
+        db = Db.of(this)
         val channel = NotificationChannel(CHANNEL, getString(R.string.watcher_channel), NotificationManager.IMPORTANCE_MIN)
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         startForeground(1, Notification.Builder(this, CHANNEL)
@@ -65,31 +74,50 @@ class ReaderWatcher : Service() {
     private val connectivity by lazy { getSystemService(ConnectivityManager::class.java) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (reader?.isAlive != true) {
-            reader = Thread(::follow, "reader-log").apply { isDaemon = true; start() }
-        }
+        if (reader?.isAlive != true) startFollowing()
+        main.removeCallbacks(watchdog)
+        main.postDelayed(watchdog, PROBE_EVERY)
         return START_STICKY
     }
 
     override fun onDestroy() {
+        generation++
+        main.removeCallbacksAndMessages(null)
+        store.removeCallbacksAndMessages(null)
         connectivity.unregisterNetworkCallback(online)
-        reader?.interrupt()
-        logcat?.destroy()
+        logcat?.destroyForcibly()
+        work.shutdown()
         super.onDestroy()
     }
 
-    private fun follow() {
-        while (!Thread.currentThread().isInterrupted) {
+    private fun startFollowing() {
+        val mine = ++generation
+        reader = Thread({ follow(mine) }, "reader-log").apply { isDaemon = true; start() }
+    }
+
+    /**
+     * Reads the log from a process of its own; a stuck read, or a logd that stopped
+     * sending, would leave the thread waiting for good, so [watchdog] replaces both.
+     */
+    private fun follow(mine: Int) {
+        while (mine == generation) {
+            var process: Process? = null
             try {
                 // Only the reader's tags reach the app; "-T 1" skips what was logged before.
-                val command = listOf("logcat", "-v", "brief", "-T", "1") + ReaderLog.TAGS.map { "$it:D" } + "*:S"
-                val process = ProcessBuilder(command).redirectErrorStream(true).start()
+                val tags = ReaderLog.TAGS + ReaderLog.PROBE
+                val command = listOf("logcat", "-v", "brief", "-T", "1") + tags.map { "$it:D" } + "*:S"
+                process = ProcessBuilder(command).redirectErrorStream(true).start()
                 logcat = process
                 process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line -> ReaderLog.parse(line)?.let(::handle) }
+                    for (line in lines) {
+                        if (mine != generation) break
+                        onLine(line)
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "logcat ended: ${e.javaClass.simpleName}")
+            } finally {
+                process?.destroyForcibly()
             }
             try {
                 Thread.sleep(5_000)
@@ -99,14 +127,57 @@ class ReaderWatcher : Service() {
         }
     }
 
+    /** Asks the log reader for a sign of life every minute, and starts it anew when none came for minutes. */
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (liveness.stalled()) {
+                Log.w(TAG, "the log has been silent, following it anew")
+                logcat?.destroyForcibly()
+                reader?.interrupt()
+                liveness.restarted()
+                startFollowing()
+            }
+            Log.d(ReaderLog.PROBE, "alive")
+            main.postDelayed(this, PROBE_EVERY)
+        }
+    }
+
+    /** On the log's thread: nothing here may wait for anything but the next line. */
+    private fun onLine(line: String) {
+        liveness.heard()
+        val event = ReaderLog.parse(line) ?: return
+        when {
+            event is ReaderEvent.Opened && event.path == Storage.LAUNCHER -> {
+                raise.arm()
+                store.removeCallbacksAndMessages(null)
+                // The viewer starts after the line, and the store has to come after it:
+                // here a first try, and again when the viewer says it is showing the book.
+                store.postDelayed({ raiseStore(0) }, OPENED_WAIT)
+                store.postDelayed({ raise.take() }, ARMED_FOR)
+            }
+            event is ReaderEvent.Shown && raise.take() -> {
+                store.removeCallbacksAndMessages(null)
+                store.postDelayed({ raiseStore(0) }, SHOWN_WAIT)
+            }
+            event is ReaderEvent.Closed -> {
+                raise.take()
+                store.removeCallbacksAndMessages(null)
+            }
+        }
+        work.execute { runCatching { handle(event) }.onFailure { Log.w(TAG, "handling a log line failed", it) } }
+    }
+
+    /** Brings the store up and looks again a moment later whether it is on top. */
+    private fun raiseStore(attempt: Int) {
+        StoreActivity.bringUp(this)
+        store.postDelayed({
+            if (!StoreActivity.visible && attempt < RAISE_TRIES) raiseStore(attempt + 1)
+        }, RAISE_CHECK)
+    }
+
     private fun handle(event: ReaderEvent) {
         val now = System.currentTimeMillis()
         prefs.readerSeenAt = now
-        if (event is ReaderEvent.Opened && event.path == Storage.LAUNCHER) {
-            // The viewer starts right after the line; the store has to come after it.
-            main.removeCallbacksAndMessages(null)
-            main.postDelayed({ StoreActivity.bringUp(this) }, 800)
-        }
         when (val reading = tracker.on(event)) {
             is Reading.Opened -> opened = reading.path
             is Reading.Moved -> db.deliveredAt(reading.path)?.let { book ->
@@ -156,6 +227,13 @@ class ReaderWatcher : Service() {
         private const val CHANNEL = "watcher"
         private const val SEND_EVERY = 10 * 60 * 1000L
         private const val SYNC_ONLINE_EVERY = 5 * 60 * 1000L
+        private const val PROBE_EVERY = 60_000L
+        private const val STALL_AFTER = 3 * PROBE_EVERY
+        private const val OPENED_WAIT = 2_000L
+        private const val SHOWN_WAIT = 300L
+        private const val ARMED_FOR = 15_000L
+        private const val RAISE_CHECK = 1_500L
+        private const val RAISE_TRIES = 3
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, ReaderWatcher::class.java))
