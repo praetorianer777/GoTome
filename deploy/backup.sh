@@ -33,7 +33,7 @@ umask 077
 # have them), the cache of what metadata sources answered, and the last
 # run of a match measure (a report that is made again by running it). Their tables stay in the dump, empty; restore.sh has the text
 # read again, which fills them.
-derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs)
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")

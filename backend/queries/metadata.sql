@@ -194,3 +194,19 @@ UPDATE match_runs SET done = sqlc.arg(done) WHERE kind = sqlc.arg(kind) AND stat
 UPDATE match_runs SET state = sqlc.arg(state), finished_at = now(), error = sqlc.arg(error),
        report = sqlc.narg(report)::jsonb
 WHERE kind = sqlc.arg(kind);
+
+-- name: ListTextISBNsToLookUp :many
+-- Books whose ISBN came from their text and that were not queued for a
+-- lookup by it yet, in ID order.
+SELECT b.id, i.value AS isbn
+FROM books b
+JOIN book_identifiers i ON i.book_id = b.id AND i.type = 'isbn'
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.field_sources->>'identifiers' = 'text'
+  AND NOT EXISTS (SELECT 1 FROM text_isbn_lookups l WHERE l.book_id = b.id AND l.isbn = i.value)
+ORDER BY b.id, i.value
+LIMIT sqlc.arg(max_books);
+
+-- name: RecordTextISBNLookup :exec
+INSERT INTO text_isbn_lookups (book_id, isbn) VALUES ($1, $2)
+ON CONFLICT (book_id) DO UPDATE SET isbn = EXCLUDED.isbn, queued_at = now();

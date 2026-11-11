@@ -52,6 +52,9 @@ type Figures struct {
 	WithoutCover  int `json:"withoutCover"`
 	WithoutAuthor int `json:"withoutAuthor"`
 	WithoutText   int `json:"withoutText"`
+	// ISBNFromText is how many books have an ISBN read from their text
+	// (the imprint page), which no file's metadata named.
+	ISBNFromText int `json:"isbnFromText"`
 	// WithMissingFiles are the books with a file a scan no longer found
 	// in the library's folder; files in the trash are not missing.
 	WithMissingFiles int `json:"withMissingFiles"`
@@ -82,6 +85,7 @@ func (s *Service) Figures(ctx context.Context, scope library.Scope, libraryID *u
 		f.Pages, f.Authors, f.Series = row.Pages, int(row.Authors), int(row.Series)
 		f.Publishers, f.Tags = int(row.Publishers), int(row.Tags)
 		f.WithoutCover, f.WithoutAuthor, f.WithoutText = int(row.WithoutCover), int(row.WithoutAuthor), int(row.WithoutText)
+		f.ISBNFromText = int(row.IsbnFromText)
 		f.WithMissingFiles, f.WithEReaderFindings = int(row.WithMissingFiles), int(row.WithEreaderFindings)
 		return nil
 	})

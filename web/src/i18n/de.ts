@@ -601,6 +601,7 @@ export const de: Record<MessageKey, string> = {
 	"overview.withoutCover": "Bücher ohne Cover",
 	"overview.withoutAuthor": "Bücher ohne Autor",
 	"overview.withoutText": "E-Books, deren Text nicht gelesen wurde",
+	"overview.isbnFromText": "Bücher mit einer ISBN aus dem Impressum",
 	"overview.withMissingFiles": "Bücher mit Dateien, die im Ordner der Bibliothek fehlen: {count}",
 	"overview.withEreaderFindings": "Bücher mit EPUBs, die auf E-Readern langsam sein oder Ärger machen können: {count}",
 	"overview.formats": "Dateien nach Format",
@@ -1105,6 +1106,7 @@ export const de: Record<MessageKey, string> = {
 	"searchIndex.intro":
 		"Den Text erneut lesen, sobald GOtome ein Format besser liest; den Index neu aufbauen, wenn ihm Bücher zu fehlen scheinen. GOtome baut ihn selbst neu auf, wenn ein Update ändert, wie er gespeichert ist. Beides liest die Dateien der Bücher; die Suche funktioniert währenddessen mit dem, was sie hat.",
 	"searchIndex.known": "Bücher, deren Text die Suche kennt: {indexed} von {files}.",
+	"searchIndex.rereading": "Texte neu gelesen: {done} von {files}. Bis dahin antwortet die Suche für die übrigen {waiting} mit dem früher Gelesenen.",
 	"searchIndex.rebuilding":
 		"Der Index wird aus den Dateien der Bücher neu aufgebaut; bis ein Buch erneut gelesen ist, finden Suchen, was der Index davon hat.",
 	"searchIndex.rereadAll": "Alle Texte erneut lesen",

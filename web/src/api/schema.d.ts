@@ -4063,6 +4063,7 @@ export interface components {
             bytes: number;
             files: number;
             formats: components["schemas"]["Count"][];
+            isbnFromText: number;
             languages: components["schemas"]["Count"][];
             months: components["schemas"]["Count"][];
             pages: number;
@@ -4177,6 +4178,7 @@ export interface components {
             files: number;
             indexed: number;
             rebuilding: boolean;
+            rereading: number;
         };
         JobList: {
             jobs: components["schemas"]["JobView"][];

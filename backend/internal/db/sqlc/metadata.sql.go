@@ -559,6 +559,44 @@ func (q *Queries) ListScoreModels(ctx context.Context) ([]MatchScoreModel, error
 	return items, nil
 }
 
+const listTextISBNsToLookUp = `-- name: ListTextISBNsToLookUp :many
+SELECT b.id, i.value AS isbn
+FROM books b
+JOIN book_identifiers i ON i.book_id = b.id AND i.type = 'isbn'
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.field_sources->>'identifiers' = 'text'
+  AND NOT EXISTS (SELECT 1 FROM text_isbn_lookups l WHERE l.book_id = b.id AND l.isbn = i.value)
+ORDER BY b.id, i.value
+LIMIT $1
+`
+
+type ListTextISBNsToLookUpRow struct {
+	ID   uuid.UUID
+	Isbn string
+}
+
+// Books whose ISBN came from their text and that were not queued for a
+// lookup by it yet, in ID order.
+func (q *Queries) ListTextISBNsToLookUp(ctx context.Context, maxBooks int32) ([]ListTextISBNsToLookUpRow, error) {
+	rows, err := q.db.Query(ctx, listTextISBNsToLookUp, maxBooks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTextISBNsToLookUpRow{}
+	for rows.Next() {
+		var i ListTextISBNsToLookUpRow
+		if err := rows.Scan(&i.ID, &i.Isbn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTextLanguages = `-- name: ListTextLanguages :many
 SELECT lang, count(*)::int AS chunks FROM book_chunks
 WHERE book_id = $1 AND lang <> ''
@@ -708,6 +746,21 @@ func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) (bool,
 	var inserted bool
 	err := row.Scan(&inserted)
 	return inserted, err
+}
+
+const recordTextISBNLookup = `-- name: RecordTextISBNLookup :exec
+INSERT INTO text_isbn_lookups (book_id, isbn) VALUES ($1, $2)
+ON CONFLICT (book_id) DO UPDATE SET isbn = EXCLUDED.isbn, queued_at = now()
+`
+
+type RecordTextISBNLookupParams struct {
+	BookID uuid.UUID
+	Isbn   string
+}
+
+func (q *Queries) RecordTextISBNLookup(ctx context.Context, arg RecordTextISBNLookupParams) error {
+	_, err := q.db.Exec(ctx, recordTextISBNLookup, arg.BookID, arg.Isbn)
+	return err
 }
 
 const setMatchState = `-- name: SetMatchState :exec
