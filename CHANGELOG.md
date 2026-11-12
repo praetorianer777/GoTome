@@ -22,6 +22,12 @@ What changes for someone who runs or uses GOtome. The format follows
   a key within Google's anonymous quota; an API key can be set under
   Settings. A source whose quota is used up is left alone for a while and
   lookups go on afterwards instead of failing ([metadata](docs/metadata.md)).
+- Age ratings and content restriction per account. A book can be rated 0, 6,
+  12, 16 or 18 (adult) in its editor, or gets a rating from tags such as
+  "Erotica" or "FSK 16"; on the Users page an administrator limits an
+  account to books up to a rating. Books above it are hidden everywhere, as
+  if they did not exist ([people, roles and
+  libraries](docs/users-and-libraries.md#age-ratings)).
 
 ### Fixed
 

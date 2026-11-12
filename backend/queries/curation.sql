@@ -26,14 +26,14 @@ RETURNING id;
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
        r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
-         WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS actions,
+         WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))::int AS actions,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.state = 'undone'
-           AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS undone
+           AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))::int AS undone
 FROM curation_runs r
 LEFT JOIN users u ON u.id = r.started_by
 WHERE (EXISTS (SELECT 1 FROM curation_actions a
-               WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+               WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
        OR (r.started_by = sqlc.arg(viewer)::uuid AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)))
   AND (sqlc.narg(kind)::text IS NULL OR r.kind = sqlc.narg(kind)::text)
   AND (sqlc.narg(state)::text IS NULL OR r.state = sqlc.narg(state)::text)
@@ -45,15 +45,15 @@ LIMIT sqlc.arg(max_rows);
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
        r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
-         WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS actions,
+         WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))::int AS actions,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.state = 'undone'
-           AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))::int AS undone
+           AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))::int AS undone
 FROM curation_runs r
 LEFT JOIN users u ON u.id = r.started_by
 WHERE r.id = sqlc.arg(id)
   AND (EXISTS (SELECT 1 FROM curation_actions a
-               WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+               WHERE a.run_id = r.id AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
        OR (r.started_by = sqlc.arg(viewer)::uuid AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)));
 
 -- name: ListCurationActions :many
@@ -62,7 +62,7 @@ SELECT a.id, a.run_id, a.library_id, a.kind, a.rule, a.reason, a.books, a.trashe
        a.state, a.note, a.created_at, a.undone_at
 FROM curation_actions a
 WHERE a.run_id = sqlc.arg(run_id)
-  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)
   AND (sqlc.narg(after_at)::timestamptz IS NULL OR (a.created_at, a.id) > (sqlc.narg(after_at)::timestamptz, sqlc.narg(after_id)::uuid))
 ORDER BY a.created_at, a.id
 LIMIT sqlc.arg(max_rows);
@@ -74,7 +74,7 @@ SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before,
 FROM curation_actions a
 JOIN curation_runs r ON r.id = a.run_id
 WHERE a.id = sqlc.arg(id)
-  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)
 FOR UPDATE OF a;
 
 -- name: ListCurationActionIDsToUndo :many
@@ -83,7 +83,7 @@ FOR UPDATE OF a;
 SELECT a.id, a.created_at FROM curation_actions a
 WHERE a.run_id = sqlc.arg(run_id) AND a.state = 'done'
   AND NOT EXISTS (SELECT 1 FROM curation_runs r WHERE r.id = a.run_id AND r.dry_run)
-  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)
   AND (sqlc.narg(before_at)::timestamptz IS NULL OR (a.created_at, a.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT sqlc.arg(max_rows);

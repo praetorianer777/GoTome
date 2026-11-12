@@ -54,7 +54,7 @@ JOIN passage_files p ON p.file_id = c.file_id AND p.chunked_at = f.chunked_at
 WHERE c.id = ANY(sqlc.arg(ids)::bigint[])
   AND p.model = sqlc.arg(model)::text AND p.model_version = sqlc.arg(model_version)::text
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND c.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND c.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR c.library_id = sqlc.narg(library_id)::uuid);
 
 -- name: ListPassageLibraries :many
@@ -73,7 +73,7 @@ JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
 LEFT JOIN passage_files p ON p.file_id = f.id AND p.chunked_at = f.chunked_at
      AND p.model = sqlc.arg(model)::text AND p.model_version = sqlc.arg(model_version)::text
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid);
 
 -- name: ScoreMetadataNearQuery :many

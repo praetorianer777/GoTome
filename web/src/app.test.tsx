@@ -2837,6 +2837,36 @@ describe("profile", () => {
 	});
 });
 
+describe("age ratings of accounts", () => {
+	it("lets an administrator limit an account to books up to a rating", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.withAccount("Edith", "a long password", "reader")
+			.signedInAs("Steve");
+		renderApp("/admin/users");
+
+		const edith = within(
+			await screen.findByRole("listitem", { name: "Edith" }),
+		);
+		expect(edith.getByLabelText("Books this account sees")).toHaveValue("");
+		await person.selectOptions(
+			edith.getByLabelText("Books this account sees"),
+			"Up to age rating 12",
+		);
+		await person.click(edith.getByRole("button", { name: "Set the limit" }));
+		await waitFor(() =>
+			expect(server.accounts.get("edith")?.maxAgeRating).toBe(12),
+		);
+		const steve = within(
+			await screen.findByRole("listitem", { name: "Steve" }),
+		);
+		expect(
+			steve.queryByLabelText("Books this account sees"),
+		).not.toBeInTheDocument();
+	});
+});
+
 describe("quotas", () => {
 	it("lets an administrator set a quota, which the uploader sees and meets", async () => {
 		const person = userEvent.setup();
@@ -3113,6 +3143,29 @@ describe("editing a book", () => {
 		await person.click(screen.getByRole("button", { name: "Save" }));
 		await waitFor(() => expect(edits()).toHaveLength(2));
 		expect(edits()[1]).toEqual({ locks: { title: false } });
+	});
+
+	it("rates a book by age and takes the rating off again", async () => {
+		const person = userEvent.setup();
+		withBook();
+		const { unmount } = renderApp("/books/book-1/edit");
+		const rating = await screen.findByRole("combobox", { name: "Age rating" });
+		expect(rating).toHaveValue("");
+		await person.selectOptions(rating, "From 16");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(edits()).toHaveLength(1));
+		expect(edits()[0]).toEqual({ ageRating: 16 });
+		expect(server.books[0]?.ageRating).toBe(16);
+		unmount();
+
+		renderApp("/books/book-1/edit");
+		const again = await screen.findByRole("combobox", { name: "Age rating" });
+		await waitFor(() => expect(again).toHaveValue("16"));
+		expect(screen.getByRole("checkbox", { name: "Lock Age rating" })).toBeChecked();
+		await person.selectOptions(again, "Unrated");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(edits()).toHaveLength(2));
+		expect(edits()[1]).toEqual({ ageRating: -1 });
 	});
 
 	it("offers names already in use and shows the server's word at its field", async () => {

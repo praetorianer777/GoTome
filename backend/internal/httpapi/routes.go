@@ -437,6 +437,11 @@ func (s *Server) routes() []Route {
 			Request: setQuotaRequest{}, Response: account{}, Permission: auth.StorageManage, Handler: s.setQuota,
 		},
 		{
+			Method: http.MethodPut, Path: "/users/{userId}/max-age-rating", ID: "setUserMaxAgeRating",
+			Summary: "Set the highest age rating of a book an account sees; null is no limit", Tag: "users",
+			Request: setMaxAgeRatingRequest{}, Response: account{}, Permission: auth.UsersManage, Handler: s.setMaxAgeRating,
+		},
+		{
 			Method: http.MethodDelete, Path: "/users/{userId}/sessions", ID: "endUserSessions",
 			Summary: "Sign an account out everywhere", Tag: "users",
 			Permission: auth.UsersManage, Handler: s.endUserSessions,

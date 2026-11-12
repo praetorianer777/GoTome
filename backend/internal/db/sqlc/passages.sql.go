@@ -20,7 +20,7 @@ JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
 LEFT JOIN passage_files p ON p.file_id = f.id AND p.chunked_at = f.chunked_at
      AND p.model = $1::text AND p.model_version = $2::text
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
   AND ($5::uuid IS NULL OR b.library_id = $5::uuid)
 `
 
@@ -147,7 +147,7 @@ JOIN passage_files p ON p.file_id = c.file_id AND p.chunked_at = f.chunked_at
 WHERE c.id = ANY($1::bigint[])
   AND p.model = $2::text AND p.model_version = $3::text
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND c.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean))
+  AND c.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($4::uuid, $5::boolean)))
   AND ($6::uuid IS NULL OR c.library_id = $6::uuid)
 `
 

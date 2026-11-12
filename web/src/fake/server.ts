@@ -88,6 +88,7 @@ interface Account {
 	user: CurrentUser;
 	disabled?: boolean;
 	quotaBytes?: number;
+	maxAgeRating?: number;
 	usedBytes?: number;
 }
 
@@ -2571,6 +2572,10 @@ export class FakeServer {
 			book.pageCount = e.pageCount || undefined;
 			typed("pageCount");
 		}
+		if (e.ageRating !== undefined) {
+			book.ageRating = e.ageRating < 0 ? undefined : e.ageRating;
+			typed("ageRating");
+		}
 		if (e.contributors) {
 			book.contributors = e.contributors;
 			typed("contributors");
@@ -2735,6 +2740,7 @@ export class FakeServer {
 			lastSeenAt: "2026-01-02T00:00:00Z",
 			usedBytes: a.usedBytes ?? 0,
 			quotaBytes: a.quotaBytes,
+			maxAgeRating: a.maxAgeRating,
 		});
 		if (path === "/users" && method === "GET") {
 			return Response.json({ users: [...this.accounts.values()].map(view) });
@@ -2780,6 +2786,10 @@ export class FakeServer {
 		}
 		if (path.endsWith("/sessions")) {
 			return new Response(null, { status: 204 });
+		}
+		if (path.endsWith("/max-age-rating")) {
+			target.maxAgeRating = (body.maxAgeRating as number | null) ?? undefined;
+			return Response.json(view(target));
 		}
 		if (path.endsWith("/quota")) {
 			target.quotaBytes = (body.quotaBytes as number | null) ?? undefined;

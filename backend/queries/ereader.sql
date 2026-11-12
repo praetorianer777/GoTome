@@ -24,7 +24,8 @@ SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.sha256, f.drm,
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = sqlc.arg(id)
-  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND EXISTS (SELECT 1 FROM books b WHERE b.id = f.book_id AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))));
 
 -- name: ListFilesToFix :many
 -- The book's EPUBs on disk with a finding among those given.

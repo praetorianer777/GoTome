@@ -23,6 +23,14 @@ type account struct {
 	QuotaBytes *int64 `json:"quotaBytes,omitempty"`
 	// UsedBytes is what its uploads take up.
 	UsedBytes int64 `json:"usedBytes"`
+	// MaxAgeRating is the highest age rating of a book the account sees;
+	// left out for no limit.
+	MaxAgeRating *int16 `json:"maxAgeRating,omitempty" enum:"0,6,12,16,18"`
+}
+
+type setMaxAgeRatingRequest struct {
+	// MaxAgeRating is the highest rating the account may see; null is no limit.
+	MaxAgeRating *int16 `json:"maxAgeRating" enum:"0,6,12,16,18"`
 }
 
 // storage is what the caller's uploads take up and may.
@@ -79,7 +87,7 @@ type changePasswordRequest struct {
 func toAccountView(a auth.Account) account {
 	return account{
 		User: a.User, Disabled: a.Disabled, CreatedAt: a.CreatedAt, LastSeenAt: a.LastSeenAt,
-		Sessions: a.Sessions, QuotaBytes: a.QuotaBytes, UsedBytes: a.UsedBytes,
+		Sessions: a.Sessions, QuotaBytes: a.QuotaBytes, UsedBytes: a.UsedBytes, MaxAgeRating: a.MaxAgeRating,
 	}
 }
 
@@ -213,6 +221,28 @@ func (s *Server) setQuota(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	a, err := s.Auth.SetQuota(r.Context(), id, req.QuotaBytes)
+	if err != nil {
+		return accountError(err)
+	}
+	st, err := s.Scans.Storage(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	a.UsedBytes = st.UsedBytes
+	writeJSON(w, r, http.StatusOK, toAccountView(a))
+	return nil
+}
+
+func (s *Server) setMaxAgeRating(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "userId", "user")
+	if err != nil {
+		return err
+	}
+	var req setMaxAgeRatingRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	a, err := s.Auth.SetMaxAgeRating(r.Context(), id, req.MaxAgeRating)
 	if err != nil {
 		return accountError(err)
 	}

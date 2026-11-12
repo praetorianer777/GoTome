@@ -9,7 +9,7 @@ JOIN books b ON b.id = c.book_id
 LEFT JOIN series s ON s.id = b.series_id
 WHERE c.role = 'author' AND b.deleted_at IS NULL
   AND (a.person_key = ANY(sqlc.arg(person_keys)::text[]) OR a.name_key = ANY(sqlc.arg(name_keys)::text[]))
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY b.sort_title, b.id, c.position;
 
 -- name: DismissCleanup :exec
@@ -27,5 +27,5 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.book_id = ANY(sqlc.arg(book_ids)::uuid[]) AND m.state <> 'dismissed'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY m.book_id, m.score DESC, m.provider, m.record_id;

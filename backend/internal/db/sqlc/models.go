@@ -67,6 +67,7 @@ type Book struct {
 	Placeholder        bool
 	TitleAddition      bool
 	TitleSeries        *string
+	AgeRating          *int16
 }
 
 type BookChunk struct {
@@ -808,6 +809,7 @@ type User struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	MaxAgeRating     *int16
 }
 
 type UserBook struct {

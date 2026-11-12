@@ -3316,6 +3316,23 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/users/{userId}/max-age-rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the highest age rating of a book an account sees; null is no limit */
+        put: operations["setUserMaxAgeRating"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}/quota": {
         parameters: {
             query?: never;
@@ -3454,6 +3471,7 @@ export interface components {
             canUpload?: boolean;
         };
         AcceptMatchRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -3479,6 +3497,7 @@ export interface components {
             id: string;
             /** Format: date-time */
             lastSeenAt?: string;
+            maxAgeRating?: number;
             quotaBytes?: number;
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
@@ -3513,6 +3532,7 @@ export interface components {
             scopes: string[];
         };
         ApplyCandidateRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -3597,6 +3617,7 @@ export interface components {
         BookDetail: {
             /** Format: date-time */
             addedAt: string;
+            ageRating?: number;
             contributors: components["schemas"]["Contributor"][];
             coverKey?: string;
             description?: string;
@@ -4321,6 +4342,7 @@ export interface components {
             runId: string;
         };
         EditBookRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             description?: string;
             identifiers?: components["schemas"]["Identifier"][];
@@ -5246,6 +5268,9 @@ export interface components {
             lastSeenAt: string;
             userAgent: string;
         };
+        SetMaxAgeRatingRequest: {
+            maxAgeRating: number | null;
+        };
         SetQuotaRequest: {
             quotaBytes: number | null;
         };
@@ -5593,6 +5618,7 @@ export interface components {
             };
         };
         WishRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -12748,6 +12774,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setUserMaxAgeRating: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMaxAgeRatingRequest"];
             };
         };
         responses: {

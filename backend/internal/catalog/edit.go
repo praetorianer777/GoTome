@@ -30,13 +30,14 @@ const (
 	FieldTags         = "tags"
 	FieldIdentifiers  = "identifiers"
 	FieldCover        = "cover"
+	FieldAgeRating    = "ageRating"
 )
 
 // LockableFields lists every field a lock may be put on.
 var LockableFields = []string{
 	FieldTitle, FieldSubtitle, FieldDescription, FieldLanguage, FieldPublished,
 	FieldPublisher, FieldSeries, FieldPageCount, FieldContributors, FieldTags,
-	FieldIdentifiers, FieldCover,
+	FieldIdentifiers, FieldCover, FieldAgeRating,
 }
 
 // maxDescription bounds a description in characters; a provider's longest
@@ -67,7 +68,10 @@ type Edit struct {
 	Identifiers *[]Identifier
 	// Cover is a key in the cover store.
 	Cover *string
-	Locks map[string]bool
+	// AgeRating is one of AgeRatings; NoAgeRating removes it, which also keeps
+	// the tags from rating the book.
+	AgeRating *int16
+	Locks     map[string]bool
 	// Source is where the values come from when no person typed them: a
 	// provider, as ProviderSource names it. Such an edit leaves locked
 	// fields as they are and locks nothing.
@@ -105,6 +109,8 @@ func (e *Edit) leave(field string) {
 		e.Identifiers = nil
 	case FieldCover:
 		e.Cover = nil
+	case FieldAgeRating:
+		e.AgeRating = nil
 	}
 }
 
@@ -188,6 +194,9 @@ func (e *Edit) check() error {
 			problems["locks"] = fmt.Sprintf("There is no field %q to lock.", field)
 		}
 	}
+	if e.AgeRating != nil && *e.AgeRating != NoAgeRating && !ValidAgeRating(*e.AgeRating) {
+		problems[FieldAgeRating] = "An age rating is 0, 6, 12, 16 or 18."
+	}
 	if len(problems) > 0 {
 		return problems
 	}
@@ -199,7 +208,7 @@ func (e *Edit) check() error {
 func (e Edit) ChangesValues() bool {
 	return e.Title != nil || e.Subtitle != nil || e.Description != nil || e.Language != nil ||
 		e.Published != nil || e.Publisher != nil || e.Series != nil || e.PageCount != nil ||
-		e.Contributors != nil || e.Tags != nil || e.Identifiers != nil || e.Cover != nil
+		e.Contributors != nil || e.Tags != nil || e.Identifiers != nil || e.Cover != nil || e.AgeRating != nil
 }
 
 // EditTx changes how a book the scope may see is described, inside a
@@ -329,6 +338,26 @@ func EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e
 		typed(FieldIdentifiers)
 	}
 
+	if e.AgeRating != nil {
+		var rating *int16
+		if *e.AgeRating != NoAgeRating {
+			rating = e.AgeRating
+		}
+		if rating != nil {
+			ok, err := q.AgeRatingVisible(ctx, sqlc.AgeRatingVisibleParams{Rating: *rating, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return EditError{FieldAgeRating: "That is above the rating this account may see."}
+			}
+		}
+		if err := q.SetBookAgeRating(ctx, sqlc.SetBookAgeRatingParams{ID: book.ID, Rating: rating, Source: source}); err != nil {
+			return err
+		}
+		typed(FieldAgeRating)
+	}
+
 	maps.Copy(locked, e.Locks)
 	if update.FieldSources, err = json.Marshal(sources); err != nil {
 		return err
@@ -343,7 +372,13 @@ func EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e
 		}
 	}
 	slices.Sort(locks)
-	return q.SetBookLocks(ctx, sqlc.SetBookLocksParams{ID: book.ID, LockedFields: append([]string{}, locks...)})
+	if err := q.SetBookLocks(ctx, sqlc.SetBookLocksParams{ID: book.ID, LockedFields: append([]string{}, locks...)}); err != nil {
+		return err
+	}
+	if e.Tags != nil {
+		return RefreshAgeRating(ctx, q, book.ID)
+	}
+	return nil
 }
 
 // describedAs is the update that leaves the book as it is.

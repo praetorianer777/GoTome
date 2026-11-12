@@ -208,6 +208,12 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 			SELECT id, library_id, (extract(epoch FROM created_at - timestamptz '2020-01-01') / 3600)::int AS n
 			FROM books WHERE library_id IN (SELECT id FROM scale_libraries)`},
 		{sql: `CREATE UNIQUE INDEX ON scale_books (n)`},
+		// A third of the books are rated and the member has a maximum, so that
+		// the rule (#426) is worked out for every row it meets. It is 18, as
+		// the views are asked about books the administrator picked.
+		{sql: `UPDATE books SET age_rating = (ARRAY[0, 6, 12, 16, 18, 18])[1 + (extract(epoch FROM created_at)::bigint / 3600) % 18]
+			WHERE (extract(epoch FROM created_at)::bigint / 3600) % 18 < 6 AND library_id IN (SELECT id FROM scale_libraries)`},
+		{sql: `UPDATE users SET max_age_rating = 18 WHERE id = $1`, args: []any{member}},
 
 		{sql: `INSERT INTO book_contributors (book_id, author_id, role, position)
 			SELECT b.id, a.id, 'author', 0 FROM scale_books b JOIN scale_authors a ON a.n = b.n * 17 % 12000
@@ -515,6 +521,10 @@ func TestTheMainViewsAtFiftyThousandBooks(t *testing.T) {
 			results[who.name][v.Name] = r
 			if best > scaleBudget {
 				t.Errorf("%s: %s, want at most %s", key, best.Round(time.Millisecond), scaleBudget)
+				catcher.mu.Lock()
+				plans, _ := json.Marshal(catcher.plans[key])
+				catcher.mu.Unlock()
+				t.Logf("%s: plans: %s", key, plans)
 			}
 			if _, whole := perf.WholeByDesign[v.Name]; len(r.scans) > 0 && !whole {
 				t.Errorf("%s reads all of %s", key, strings.Join(r.scans, ", "))

@@ -16,7 +16,7 @@ SELECT to_char(date_trunc('month', b.created_at), 'YYYY-MM')::text AS month, cou
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
   AND b.created_at >= date_trunc('month', now()) - interval '11 months'
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 GROUP BY 1
 ORDER BY 1
@@ -58,7 +58,7 @@ const booksByLanguage = `-- name: BooksByLanguage :many
 SELECT COALESCE(lower(split_part(replace(b.language, '_', '-'), '-', 1)), '')::text AS language, count(*)::int AS books
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 GROUP BY 1
 ORDER BY books DESC, language
@@ -105,7 +105,7 @@ JOIN books b ON b.id = f.book_id
 CROSS JOIN LATERAL unnest(f.ereader_findings) AS finding
 WHERE cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 GROUP BY finding
 `
@@ -148,7 +148,7 @@ SELECT f.format, count(*)::int AS files, COALESCE(sum(f.size_bytes), 0)::bigint 
 FROM book_files f
 JOIN books b ON b.id = f.book_id
 WHERE f.trashed_at IS NULL AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 GROUP BY f.format
 ORDER BY files DESC, f.format
@@ -193,7 +193,7 @@ WITH vb AS (
            b.field_sources->>'identifiers' = 'text' AS isbn_from_text
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
       AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 ),
 vf AS (
@@ -281,7 +281,7 @@ WITH vb AS (
     SELECT b.id, b.primary_text_file_id
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
       AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 ),
 vf AS (

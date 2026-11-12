@@ -38,6 +38,9 @@ type Account struct {
 	Sessions int
 	// QuotaBytes is how much the account may upload; nil is no limit.
 	QuotaBytes *int64
+	// MaxAgeRating is the highest age rating of a book the account sees; nil
+	// is no limit.
+	MaxAgeRating *int16
 	// UsedBytes is what its uploads take up now.
 	UsedBytes int64
 }
@@ -112,7 +115,7 @@ func (s *Service) Accounts(ctx context.Context) ([]Account, error) {
 }
 
 func toAccount(row sqlc.User) Account {
-	return Account{User: toUser(row), Disabled: row.DisabledAt != nil, CreatedAt: row.CreatedAt, QuotaBytes: row.QuotaBytes}
+	return Account{User: toUser(row), Disabled: row.DisabledAt != nil, CreatedAt: row.CreatedAt, QuotaBytes: row.QuotaBytes, MaxAgeRating: row.MaxAgeRating}
 }
 
 // SetQuota sets how much the account may upload; nil is no limit. What it
@@ -125,6 +128,31 @@ func (s *Service) SetQuota(ctx context.Context, id uuid.UUID, quotaBytes *int64)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Account{}, ErrNoUser
 	}
+	if err != nil {
+		return Account{}, err
+	}
+	return toAccount(row), nil
+}
+
+// SetMaxAgeRating sets the highest age rating of a book the account sees; nil
+// is no limit. Administrators see every book whatever is set, so it is
+// refused for them: a limit that does nothing would only mislead.
+func (s *Service) SetMaxAgeRating(ctx context.Context, id uuid.UUID, rating *int16) (Account, error) {
+	if rating != nil && !slices.Contains([]int16{0, 6, 12, 16, 18}, *rating) {
+		return Account{}, &ValidationError{Fields: map[string]string{"maxAgeRating": "A rating is 0, 6, 12, 16 or 18."}}
+	}
+	q := sqlc.New(s.pool)
+	user, err := q.GetUser(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Account{}, ErrNoUser
+	}
+	if err != nil {
+		return Account{}, err
+	}
+	if rating != nil && Allows(user.Role, StorageManage) {
+		return Account{}, &ValidationError{Fields: map[string]string{"maxAgeRating": "Administrators see every book."}}
+	}
+	row, err := q.SetMaxAgeRating(ctx, sqlc.SetMaxAgeRatingParams{ID: id, MaxAgeRating: rating})
 	if err != nil {
 		return Account{}, err
 	}
