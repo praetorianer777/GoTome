@@ -791,6 +791,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calibre/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a Calibre library's metadata.db and preview what importing it would do */
+        post: operations["createCalibreImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An import of a Calibre library: its preview, then what it came to */
+        get: operations["getCalibreImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import a previewed Calibre library; a job describes the books one at a time */
+        post: operations["startCalibreImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cleanup": {
         parameters: {
             query?: never;
@@ -3626,6 +3677,57 @@ export interface components {
             right: number;
             to: number;
         };
+        CalibreColumn: {
+            books: number;
+            choices: string[];
+            datatype: string;
+            label: string;
+            name: string;
+        };
+        CalibreImport: {
+            books: number;
+            choices: {
+                [key: string]: string;
+            };
+            columns: components["schemas"]["CalibreColumn"][];
+            covers: number;
+            /** Format: date-time */
+            createdAt: string;
+            formats: {
+                [key: string]: number;
+            };
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            library: string;
+            missingFiles: number;
+            outcomes: {
+                [key: string]: number;
+            };
+            problems: components["schemas"]["CalibreProblem"][];
+            rated: number;
+            ratings: boolean;
+            ready: number;
+            series: number;
+            skipped: number;
+            state: string;
+            tags: number;
+        };
+        CalibreProblem: {
+            calibreId: number;
+            message: string;
+            title: string;
+        };
+        CalibreRequest: {
+            /** Format: uuid */
+            library: string;
+        };
+        CalibreStart: {
+            columns?: {
+                [key: string]: string;
+            };
+            ratings?: boolean;
+        };
         CandidateList: {
             candidates: components["schemas"]["CandidateView"][];
             failures: components["schemas"]["ProviderFailure"][];
@@ -4195,7 +4297,7 @@ export interface components {
             detail?: string;
             locked: boolean;
             /** @enum {string} */
-            source?: "file" | "filename" | "manual" | "provider";
+            source?: "file" | "filename" | "manual" | "provider" | "calibre";
         };
         FieldSuggestion: {
             /** @enum {string} */
@@ -7006,6 +7108,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreStart"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
                 };
             };
             /** @description The request failed. */

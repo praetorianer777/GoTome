@@ -33,6 +33,7 @@ import type { DuplicatesSearch } from "@/routes/duplicates";
 
 // Pages other than the library, a book and sign-in load with the first visit
 // to them, so the first load carries only what most visits show.
+const AdminCalibre = lazyRouteComponent(() => import("@/routes/admin-calibre"), "AdminCalibre");
 const AdminLibraries = lazyRouteComponent(() => import("@/routes/admin-libraries"), "AdminLibraries");
 const AdminSettings = lazyRouteComponent(() => import("@/routes/admin-settings"), "AdminSettings");
 const AdminUsers = lazyRouteComponent(() => import("@/routes/admin-users"), "AdminUsers");
@@ -341,6 +342,17 @@ const adminLibrariesRoute = createRoute({
 	component: AdminLibraries,
 });
 
+const adminCalibreRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/calibre",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "storage:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: AdminCalibre,
+});
+
 const adminSettingsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/admin/settings",
@@ -636,7 +648,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

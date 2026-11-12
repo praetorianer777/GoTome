@@ -10,7 +10,8 @@ Read ebooks and PDFs in the browser, listen to audiobooks, find books by a
 word of their text, send them to your e-reader, and share the library with
 your household, each person with their own reading state.
 
-- Libraries of folders you already have, or of uploads GOtome arranges
+- Libraries of folders you already have, or of uploads GOtome arranges;
+  a Calibre library moves in with its metadata, covers and ratings
 - Details from Open Library, CrossRef and Hardcover; editing, writing them
   back into EPUBs, bulk changes and a review queue
 - Exact and near-duplicate detection, with merging and replacing
