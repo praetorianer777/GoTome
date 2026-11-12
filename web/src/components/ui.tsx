@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Gopher, type Mood } from "@/components/gopher";
 import { t } from "@/i18n";
 
@@ -133,5 +133,34 @@ export function Loading({ rows = 3 }: { rows?: number }) {
 				<Skeleton key={i} className="h-12 w-full" />
 			))}
 		</div>
+	);
+}
+
+/**
+ * A link to a place on the same page. The page's `<base href>` makes a bare
+ * `#id` mean the start page, so the link scrolls to its target itself; the
+ * target is focused too, which it must allow (`tabIndex={-1}`) to take the
+ * keyboard along.
+ */
+export function InPageLink({
+	to,
+	className,
+	children,
+}: {
+	to: string;
+	className?: string;
+	children: ReactNode;
+}) {
+	const go = (event: MouseEvent<HTMLAnchorElement>) => {
+		const target = document.getElementById(to);
+		if (!target) return;
+		event.preventDefault();
+		target.scrollIntoView({ block: "start" });
+		target.focus({ preventScroll: true });
+	};
+	return (
+		<a href={`#${to}`} onClick={go} className={className}>
+			{children}
+		</a>
 	);
 }

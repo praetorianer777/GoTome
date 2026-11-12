@@ -9,7 +9,7 @@ import {
 	SubmitButton,
 	Switch,
 } from "@/components/form";
-import { button, Loading, PageHeader } from "@/components/ui";
+import { button, InPageLink, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { en } from "@/i18n/en";
 import { formatDate } from "@/lib/format";
@@ -417,12 +417,12 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 				<ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm lg:flex-col lg:gap-2">
 					{sections.map((section) => (
 						<li key={section.id}>
-							<a
-								href={`#settings-${section.id}`}
+							<InPageLink
+								to={`settings-${section.id}`}
 								className="inline-flex min-h-6 items-center text-brand-strong underline-offset-2 hover:underline dark:text-brand"
 							>
 								{t(section.title)}
-							</a>
+							</InPageLink>
 						</li>
 					))}
 				</ul>
@@ -432,6 +432,7 @@ function SettingsForm({ settings }: { settings: Setting[] }) {
 					<section
 						key={section.id}
 						id={`settings-${section.id}`}
+						tabIndex={-1}
 						aria-labelledby={`settings-${section.id}-title`}
 						className="flex scroll-mt-20 flex-col gap-3"
 					>

@@ -2070,7 +2070,7 @@ describe("settings", () => {
 	it("offers each setting of a few values as a choice, in sections", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Steve", "a long password").signedInAs("Steve");
-		renderApp("/admin/settings");
+		const { router } = renderApp("/admin/settings");
 
 		const sections = within(
 			await screen.findByRole("navigation", { name: "Sections" }),
@@ -2085,6 +2085,18 @@ describe("settings", () => {
 			"href",
 			"#settings-genres",
 		);
+		// The page's <base href="/"> would take a bare "#…" to the start page
+		// (#521): the link scrolls and focuses within the page instead.
+		const scroll = vi.fn();
+		Element.prototype.scrollIntoView = scroll;
+		try {
+			await person.click(sections.getByRole("link", { name: "Genres" }));
+			expect(scroll).toHaveBeenCalled();
+			expect(screen.getByRole("region", { name: "Genres" })).toHaveFocus();
+			expect(router.state.location.pathname).toBe("/admin/settings");
+		} finally {
+			delete (Element.prototype as Partial<Element>).scrollIntoView;
+		}
 		const signIn = within(screen.getByRole("region", { name: "Sign-in" }));
 		const passwords = signIn.getByRole("switch", {
 			name: "Sign in with a password",

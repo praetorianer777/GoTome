@@ -23,6 +23,11 @@ What changes for someone who runs or uses GOtome. The format follows
   Settings. A source whose quota is used up is left alone for a while and
   lookups go on afterwards instead of failing ([metadata](docs/metadata.md)).
 
+### Fixed
+
+- The section links of the settings page and "Skip to the content" stay on
+  the page instead of opening the library.
+
 ## [0.24.0] - 2026-11-12
 
 ### Added
