@@ -31,13 +31,15 @@ test("a misspelt title is found from the header and opened with the keyboard", a
 		.getByRole("option", { name: new RegExp(`^${title}`) });
 	await expect(hit).toBeVisible();
 	// Other tests' names (an author of the same project and time) may come
-	// before the book: move down until it is the one chosen.
-	await expect
-		.poll(async () => {
-			await box.press("ArrowDown");
-			return hit.getAttribute("aria-selected");
-		})
-		.toBe("true");
+	// before the book: its id says how far down it is. The pointer leaves the
+	// list, whose options take the choice on hover.
+	const position = Number((await hit.getAttribute("id"))?.split("-").pop());
+	expect(Number.isInteger(position)).toBe(true);
+	await page.mouse.move(0, 0);
+	for (let i = 0; i <= position; i++) {
+		await box.press("ArrowDown");
+	}
+	await expect(hit).toHaveAttribute("aria-selected", "true");
 	await box.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: title, level: 1 }),
