@@ -6,8 +6,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
-## [0.21.0] - 2026-11-11
-
 ### Added
 
 - The overview splits the books with e-reader findings by kind, each linking to
@@ -15,6 +13,19 @@ What changes for someone who runs or uses GOtome. The format follows
   with a button to remove it, and marks each book that has findings, naming
   them. Where a library's folder is read-only for GOtome, the book page and
   the bulk bar say why Fix is not offered.
+
+### Fixed
+
+- Deleting a library while duplicate checks, text signing or embedding of
+  its books were running could fail with an error instead of removing it.
+- A book that two followed authors or series list shows once under New
+  books, in the list its date says and with the cover either source has,
+  instead of once in each list (#507).
+
+## [0.21.0] - 2026-11-11
+
+### Added
+
 - GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
   Tolino: those GOtome has count as on the device, so their reading progress
   arrives, and the store has a tab "Nicht in GOtome" with the rest, each with
@@ -34,11 +45,6 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
-- Deleting a library while duplicate checks, text signing or embedding of
-  its books were running could fail with an error instead of removing it.
-- A book that two followed authors or series list shows once under New
-  books, in the list its date says and with the cover either source has,
-  instead of once in each list (#507).
 - Read aloud no longer says a sentence twice when the page settles after it
   has turned to the sentence.
 - GOtome for Tolino: the store comes up again from the "GOtome" book after the
