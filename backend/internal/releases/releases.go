@@ -183,7 +183,7 @@ type Release struct {
 	// a year. Both are nil where no provider knows when.
 	Date      *time.Time
 	Precision *string
-	Provider string
+	Provider  string
 	// CoverURL is the cover of CoverProvider, which may be another
 	// provider's listing of the book than Provider's.
 	CoverURL      *string
