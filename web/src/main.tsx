@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/app";
+import { registerWorker } from "@/offline/worker";
 import { applyLocale, loadLocale, locale } from "@/i18n";
 import { applyTheme, storedTheme } from "@/lib/theme";
 import "@/styles/index.css";
@@ -25,4 +26,5 @@ async function start() {
 	);
 }
 
+registerWorker();
 void start();

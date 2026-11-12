@@ -44,6 +44,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   - [Kobo, and Tolinos on the Kobo-based firmware](tolino-kobo-mode.md)
   - [GOtome for Tolino](../clients/android/README.md), for Tolinos on
     Android firmware
+- [On a phone and offline](offline.md): installing the app, keeping books
+  in the browser, and what is stored.
 - [Send to Kindle](kindle.md): e-mailing EPUBs to a Kindle, the mail server
   and the sender Amazon has to approve.
 - [Your reading history and importing it](importing-reading-history.md):

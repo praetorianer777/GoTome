@@ -1,13 +1,30 @@
 {
+  "id": ".",
   "name": "GOtome",
   "short_name": "GOtome",
   "description": "Your library of ebooks, PDFs and audiobooks",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
+  "orientation": "any",
+  "categories": [
+    "books",
+    "education"
+  ],
   "background_color": "#020c16",
   "theme_color": "#020c16",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

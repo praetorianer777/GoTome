@@ -33,6 +33,7 @@ import { ApiKeys } from "@/users/api-keys";
 import { Devices } from "@/users/devices";
 import { KindleAddress } from "@/users/kindle";
 import { ReadingImport } from "@/users/reading-import";
+import { OfflineBooks } from "@/offline/offline-books";
 import { StorageUse } from "@/users/storage";
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -89,6 +90,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 				</h2>
 				<StorageUse />
 			</section>
+			<OfflineBooks />
 			<LanguageChoice />
 			<NotificationSettings />
 			<SingleSignOn sso={sso} />

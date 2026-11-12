@@ -27,6 +27,7 @@ import { useServerVersion, VersionFooter } from "@/components/version-footer";
 import { useUpdate } from "@/system/update";
 import { Bell } from "@/notifications/bell";
 import { type MessageKey, t } from "@/i18n";
+import { useOfflineSync } from "@/offline/sync";
 import { MiniPlayer } from "@/player/controls";
 import { PlayerProvider } from "@/player/player";
 
@@ -285,6 +286,7 @@ const ROLE_LABELS: Record<string, MessageKey> = {
 export function Shell({ user }: { user: CurrentUser }) {
 	const version = useServerVersion();
 	const update = useUpdate(user);
+	useOfflineSync();
 	const matchRoute = useMatchRoute();
 	// The readers and the player take the whole screen.
 	const fullScreen =

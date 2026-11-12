@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome installs as an app on Android, iPhone and desktop browsers and opens
+  without a connection. "Keep offline" on a book stores its ebook, PDF or
+  audio files in the browser; the readers and the player open them with no
+  network, the profile lists what is kept and its size and removes it, and
+  places read offline are sent when the connection is back. Signing out
+  clears all of it. See `docs/offline.md`.
+
 ## [0.24.0] - 2026-11-12
 
 ### Added
