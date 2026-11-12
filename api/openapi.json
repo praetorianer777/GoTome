@@ -1148,7 +1148,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/bulk": {
@@ -1702,7 +1703,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/candidates": {
@@ -1979,7 +1981,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/deliveries": {
@@ -2363,7 +2366,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "personal:manage"
+        "x-permission": "personal:manage",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/progress/{medium}": {
@@ -2431,7 +2435,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "personal:manage"
+        "x-permission": "personal:manage",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/reading": {
@@ -5075,7 +5080,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/files/{fileId}/extraction": {
@@ -9759,7 +9765,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/settings": {

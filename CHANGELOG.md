@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A documented, versioned audio API for third-party players
+  (`docs/api-audio.md`): the audio timeline, series and downloads now accept
+  device tokens as well as API keys, and the stable routes are marked in the
+  OpenAPI document.
 - The overview splits the books with e-reader findings by kind, each linking to
   its own list. A list filtered by e-reader findings says so above the books,
   with a button to remove it, and marks each book that has findings, naming
