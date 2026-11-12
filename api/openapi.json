@@ -6047,6 +6047,49 @@
         "x-permission": "library:read"
       }
     },
+    "/kobo/{token}/v1/affiliate": {
+      "get": {
+        "operationId": "koboAffiliate",
+        "summary": "The affiliate a Kobo reader asks the store for: none",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/kobo/{token}/v1/analytics/event": {
       "post": {
         "operationId": "koboAnalyticsEvent",
@@ -6622,6 +6665,194 @@
           }
         ],
         "x-permission": "personal:manage"
+      }
+    },
+    "/kobo/{token}/v1/products/featured": {
+      "get": {
+        "operationId": "koboFeatured",
+        "summary": "The store's featured lists: none",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/featured/": {
+      "get": {
+        "operationId": "koboFeaturedSlash",
+        "summary": "The same, as the reader writes the address",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/featured/{listId}": {
+      "get": {
+        "operationId": "koboFeaturedList",
+        "summary": "One of the store's featured lists: empty",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "listId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/{productId}/nextread": {
+      "get": {
+        "operationId": "koboNextRead",
+        "summary": "What the store suggests reading next: nothing",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
       }
     },
     "/kobo/{token}/v1/user/loyalty/benefits": {
@@ -16053,6 +16284,34 @@
           "EntitlementId": {
             "type": "string"
           },
+          "Statistics": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "LastModified": {
+                "type": "string"
+              },
+              "RemainingTimeMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "SpentReadingMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "LastModified",
+              "SpentReadingMinutes",
+              "RemainingTimeMinutes"
+            ]
+          },
           "StatusInfo": {
             "type": [
               "object",
@@ -16071,7 +16330,8 @@
         "required": [
           "EntitlementId",
           "CurrentBookmark",
-          "StatusInfo"
+          "StatusInfo",
+          "Statistics"
         ]
       },
       "KoboStateResult": {

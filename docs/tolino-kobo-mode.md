@@ -32,6 +32,7 @@ On a Tolino Shine 5, October 2026:
 | 5.18.264769 | Tolino, developer mode on | The developer-mode package works: tapping search opens the developer menu |
 | 5.18.264769 | Kobo | A sync asks the `api_endpoint` server for `GET /v1/initialization`, `GET /v1/user/profile`, `GET /v1/user/loyalty/benefits`, `GET /v1/deals` and `POST /v1/analytics/gettests` |
 | 5.18.264769 | Kobo, developer mode off again | Still Kobo mode, still syncs with the `api_endpoint` server; firmware 6.0 is offered over Wi-Fi |
+| 6.0.279225 | Kobo | Syncs with GOtome over HTTPS, KEPUB works. A sync asks `GET /v1/affiliate`, `/v1/initialization`, `/v1/user/profile`, `/v1/user/loyalty/benefits`, `/v1/deals`, `POST /v1/analytics/gettests`, `PUT /v1/library/{id}/state`, `GET /v1/library/sync`, `/v1/user/wishlist`, `/v1/user/recommendations`, `/v1/products/featured/`, `POST /v1/analytics/event`, `GET /v1/products/{id}/nextread` and `/v1/library/{ids}/metadata`; the affiliate, featured and nextread answered 404 until #415 |
 
 Things learnt on the way:
 
@@ -157,6 +158,64 @@ the device on the profile cuts the reader off.
 The store's pages, its search and purchases stay Kobo's, as the reader's
 Kobo account has them. Collections, notes and highlights are not synced
 yet.
+
+### Reading time and statistics
+
+The reader tells GOtome how many minutes it has counted reading a book
+(`SpentReadingMinutes`, in all, with each place it sends). GOtome keeps the
+part beyond what it was told before as a reading session ending when the
+reader counted it, so **Statistics** (`GET /me/stats`) include what you read
+on the reader, in time and in pages (the share of the book the place moved
+times its page count), as they do for the web reader and KOReader. The same
+figure sent twice counts once. A reader whose count went down (after a
+reset) goes on from the lower one and adds no time. Firmware that sends no
+count still makes a session of the places it sends, with no time to speak
+of. The reader's `RemainingTimeMinutes` and its analytics events are not
+used: the events are taken and kept nowhere.
+
+### What GOtome answers and what stays Kobo's
+
+The resource map (`GET /v1/initialization`) sends the library, its details,
+reading places, covers, profile, wishlist, tags, deals, analytics and the
+sign-in tokens to GOtome. Everything else stays at Kobo, because the reader
+needs real pages there and GOtome has none to give: store home and search,
+book detail and checkout pages, categories, reviews, ratings, the account
+and sign-in pages, dictionaries (`dictionary_host`) and the user guide. Kobo
+mode needs a Kobo account for the activation, and the reader keeps asking
+for it; the account cannot be left out.
+
+The reader also builds some addresses from `api_endpoint` itself, whatever
+the map says. GOtome answers those with a list of nothing, where it answered
+404 before and the reader showed an error: `GET /v1/affiliate` (`{}`),
+`/v1/products/featured` with and without a trailing slash and
+`/v1/products/featured/{id}`, and `/v1/products/{id}/nextread`
+(`{"Items":[],"TotalPageCount":0,"PageIndex":0,"PageSize":0}`). The shape
+is the one other servers that stand in for Kobo's sync use; it has not been
+seen against real firmware here, see the list below.
+
+### What to check on the reader
+
+With a book sent to the device and synced (firmware, date and result into
+the table under "What was checked"):
+
+1. Sync twice. The log (`make logs`, or the server's) shows no 404 for
+   `v1/affiliate`, `v1/products/featured/` and `nextread`, and the reader
+   shows no error after the sync.
+2. Open the book, read a few pages for about ten minutes, sync. In GOtome,
+   **Statistics** show about those minutes on today's bar and the pages
+   read. Sync again without reading: nothing is added.
+3. Read on for five more minutes and sync: about five minutes are added,
+   not fifteen.
+4. Start the server with debug logging (`GOTOME_LOG_LEVEL=debug`) and read
+   a while: `kobo analytics event` lines list the kinds of event and the
+   names of their attributes and metrics, never values. Look for one that
+   names the time read (a `SecondsRead` or similar) and report the line:
+   GOtome does not use events yet, because their shape on this firmware
+   is not known.
+5. Open the reader's **Discover** tab and a book's store page: they come
+   from Kobo, so they need the reader's Kobo account and its internet.
+6. The reader's "next read" suggestions at the end of a book show nothing,
+   and no error.
 
 Watch the requests before GOtome answers them: a plain HTTP server that
 logs, such as `python3 -m http.server <port>` run in an empty directory,

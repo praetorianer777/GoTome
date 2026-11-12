@@ -452,6 +452,12 @@ type KoboBook struct {
 	ProgressAt *time.Time
 }
 
+type KoboReadingTime struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Minutes  int32
+}
+
 type Library struct {
 	ID               uuid.UUID
 	Name             string

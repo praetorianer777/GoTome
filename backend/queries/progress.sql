@@ -128,3 +128,8 @@ JOIN LATERAL (
 ) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT sqlc.arg(max_rows);
+
+-- name: InsertSessionAt :exec
+-- A session whose times a client reports, for a stretch it counted itself.
+INSERT INTO reading_sessions (user_id, book_id, medium, client_id, started_at, ended_at, from_fraction, to_fraction)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);

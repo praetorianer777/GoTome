@@ -28,6 +28,9 @@ const koboPrefix = APIPrefix + "/kobo/"
 // asks again while the answer says more follow.
 const koboPage = 100
 
+// koboMaxAge is how many days back a reader's statistics may say it read.
+const koboMaxAge = 90
+
 // koboTime is how Kobo's store writes a moment.
 const koboTime = "2006-01-02T15:04:05Z"
 
@@ -281,6 +284,11 @@ type koboStateIn struct {
 	StatusInfo *struct {
 		Status string `json:"Status"`
 	} `json:"StatusInfo"`
+	Statistics *struct {
+		LastModified         string `json:"LastModified"`
+		SpentReadingMinutes  *int   `json:"SpentReadingMinutes"`
+		RemainingTimeMinutes *int   `json:"RemainingTimeMinutes"`
+	} `json:"Statistics"`
 }
 
 type koboStateResult struct {
@@ -596,7 +604,7 @@ func (s *Server) koboPutState(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var req koboStateUpdate
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeKobo(w, r, &req); err != nil {
 		return err
 	}
 	scope := library.ScopeOf(*UserFrom(r.Context()))
@@ -612,12 +620,18 @@ func (s *Server) koboPutState(w http.ResponseWriter, r *http.Request) error {
 			if err != nil {
 				return err
 			}
+			span, counted, err := s.koboSpan(r.Context(), device, id, st)
+			if err != nil {
+				return err
+			}
 			p, saved, err := s.Reading.Save(r.Context(), scope, id, reading.Update{
 				Progress: reading.Progress{
 					Medium: reading.MediumEbook, Locator: fmt.Sprintf("fraction:%g", fraction),
 					Fraction: fraction, ClientID: koboClient(device),
 				},
 				BasedOn: seen,
+				Span:    span,
+				Quiet:   counted && span == nil,
 			})
 			if errors.Is(err, reading.ErrNotFound) {
 				return ErrNotFound("There is no such book.")
@@ -636,6 +650,26 @@ func (s *Server) koboPutState(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
+}
+
+// koboSpan is the reading the reader counted since it last told of the
+// book, ending when it counted it. Nil when it counted none; counted says
+// it sent a count at all, as older firmware does not, when the place
+// written makes the session.
+func (s *Server) koboSpan(ctx context.Context, device, book uuid.UUID, st koboStateIn) (span *reading.Span, counted bool, err error) {
+	if st.Statistics == nil || st.Statistics.SpentReadingMinutes == nil || *st.Statistics.SpentReadingMinutes < 0 {
+		return nil, false, nil
+	}
+	minutes, err := s.Kobo.ReadingMinutes(ctx, device, book, *st.Statistics.SpentReadingMinutes)
+	if err != nil || minutes == 0 {
+		return nil, true, err
+	}
+	now := time.Now()
+	end := now
+	if at, err := time.Parse(time.RFC3339, st.Statistics.LastModified); err == nil && at.Before(now) && at.After(now.AddDate(0, 0, -koboMaxAge)) {
+		end = at
+	}
+	return &reading.Span{Start: end.Add(-time.Duration(minutes) * time.Minute), End: end}, true, nil
 }
 
 // koboFraction is how far into the book a reading state says the person
@@ -774,10 +808,14 @@ func (s *Server) koboRoutes() []Route {
 		{"/v1/analytics/gettests", "koboAnalyticsTests", "The store's tests a Kobo reader asks for: none"},
 		{"/v1/analytics/event", "koboAnalyticsEvent", "What a Kobo reader reports for the store's analytics: taken, kept nowhere"},
 	} {
+		h := s.koboNothing
+		if p.id == "koboAnalyticsEvent" {
+			h = s.koboAnalytics
+		}
 		routes = append(routes, Route{
 			Method: http.MethodPost, Path: "/kobo/{token}" + p.path, ID: p.id, Summary: p.summary, Tag: tag,
-			Permission: auth.LibraryRead, Devices: true, Handler: s.koboNothing,
+			Permission: auth.LibraryRead, Devices: true, Handler: h,
 		})
 	}
-	return routes
+	return append(routes, s.koboStoreRoutes()...)
 }
