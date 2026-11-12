@@ -15,6 +15,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
@@ -94,6 +95,8 @@ type Server struct {
 	Reading *reading.Service
 	// Imports brings in reading histories from other services.
 	Imports *readimport.Service
+	// Calibre brings in the metadata of a Calibre library.
+	Calibre *calibre.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
 	// Search finds books by the words of their text; Index looks after the

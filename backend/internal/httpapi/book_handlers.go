@@ -267,7 +267,7 @@ type bookRecording struct {
 // updates leave it alone.
 type fieldState struct {
 	// Source is file, filename (a title guessed from the file's name),
-	// provider or manual; left out when nobody knows.
+	// provider, calibre or manual; left out when nobody knows.
 	Source string `json:"source,omitempty"`
 	// Detail is the format of the file or the name of the provider.
 	Detail string `json:"detail,omitempty"`

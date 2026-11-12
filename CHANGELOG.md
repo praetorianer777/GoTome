@@ -15,6 +15,17 @@ What changes for someone who runs or uses GOtome. The format follows
   share of the whole. Nothing moves until you choose
   ([getting started](docs/getting-started.md)).
 
+- Import a Calibre library: add the Calibre folder as an existing folder,
+  let it be scanned, and under Libraries choose "Import from Calibre". A
+  preview counts the books, formats, covers, series and tags and names what
+  is left out; the import then gives each book Calibre's title, authors,
+  series, tags, publisher, date, language, identifiers, description and
+  cover, and on request your ratings and, from custom columns, your reading
+  status or tags. `metadata.db` is only read, so Calibre may keep running.
+  What you set in GOtome is kept, and running the import again brings in
+  what changed in Calibre since. A Calibre book's formats are now always
+  one book in GOtome.
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner

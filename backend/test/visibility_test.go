@@ -120,6 +120,7 @@ func readCases() map[string][]readCase {
 		"getStats":            {{path: "/me/stats", control: "insider"}},
 		"listReading":         {{path: "/me/reading", control: "insider"}},
 		"listRecommendations": {{path: "/me/recommendations", why: "the book is the insider's own, which is never recommended; TestRecommendationsStayWithinTheLibrariesThePersonSees proves it"}},
+		"getCalibreImport":    {{path: "/calibre/imports/{calibreImport}", why: "for storage managers alone, who see every library, and the import is the caller's own; TestACalibreLibraryIsPreviewedImportedAndImportedAgain proves it"}},
 		"getReadingImport": {
 			{path: "/me/reading-imports/{insiderImport}", control: "insider"},
 			{path: "/me/reading-imports/{formerImport}", control: "former"},

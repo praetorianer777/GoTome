@@ -936,6 +936,23 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.startImport,
 		},
 		{
+			Method: http.MethodPost, Path: "/calibre/imports", ID: "createCalibreImport",
+			Summary: "Read a Calibre library's metadata.db and preview what importing it would do", Tag: "libraries",
+			Request: calibreRequest{}, Response: calibreImport{}, Status: http.StatusCreated,
+			Permission: auth.StorageManage, Handler: s.createCalibreImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/calibre/imports/{importId}", ID: "getCalibreImport",
+			Summary: "An import of a Calibre library: its preview, then what it came to", Tag: "libraries",
+			Response: calibreImport{}, Reads: ReadsLibraries, Permission: auth.StorageManage, Handler: s.getCalibreImport,
+		},
+		{
+			Method: http.MethodPost, Path: "/calibre/imports/{importId}/start", ID: "startCalibreImport",
+			Summary: "Import a previewed Calibre library; a job describes the books one at a time", Tag: "libraries",
+			Request: calibreStart{}, Response: calibreImport{}, Status: http.StatusAccepted,
+			Permission: auth.StorageManage, Handler: s.startCalibreImport,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
 			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.getProgress,

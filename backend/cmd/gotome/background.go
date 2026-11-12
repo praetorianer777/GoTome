@@ -10,6 +10,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
@@ -51,6 +52,7 @@ type background struct {
 	sync        *kosync.Service
 	updates     *updates.Service
 	imports     *readimport.Service
+	calibre     *calibre.Service
 	kindle      *kindle.Service
 	copies      *devicecopy.Service
 	automatic   *autocurate.Service
@@ -83,6 +85,7 @@ func (b background) registrations() []registration {
 		worker(&autocurate.MatchesWorker{Service: b.automatic}),
 		worker(&autocurate.DailyWorker{Service: b.automatic}),
 		worker(&readimport.Worker{Service: b.imports}),
+		worker(&calibre.Worker{Service: b.calibre}),
 		worker(&auth.SweepSessionsWorker{Service: b.accounts}),
 		worker(&ingest.ScanWorker{Service: b.scans}),
 		worker(&ingest.ScanAllWorker{Service: b.scans}),

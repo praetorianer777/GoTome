@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
@@ -213,6 +214,8 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Reading = reading.NewService(a.pool)
 	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
 	a.server.Imports.Queue = queue
+	a.server.Calibre = calibre.NewService(a.pool, a.scans, a.covers, quiet)
+	a.server.Calibre.Queue = queue
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
 	a.text = openTextIndex(t, a.pool)
 	a.server.Search = drainingSearch{a.text, search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())}

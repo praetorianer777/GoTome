@@ -213,6 +213,30 @@ type BulkChangeBook struct {
 	Change       []byte
 }
 
+type CalibreImport struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	LibraryID  uuid.UUID
+	SeesAll    bool
+	Ratings    bool
+	Columns    []byte
+	Summary    []byte
+	CreatedAt  time.Time
+	StartedAt  *time.Time
+	FinishedAt *time.Time
+}
+
+type CalibreImportBook struct {
+	ImportID  uuid.UUID
+	CalibreID int64
+	Title     string
+	Found     int32
+	Missing   int32
+	Outcome   *string
+	Message   string
+	BookID    *uuid.UUID
+}
+
 type CleanupDismissal struct {
 	Kind        string
 	Subject     string

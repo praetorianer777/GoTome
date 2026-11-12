@@ -20,6 +20,7 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/trash", heading: "Trash" },
 	{ path: "/profile", heading: "Your account" },
 	{ path: "/admin/libraries", heading: "Libraries" },
+	{ path: "/admin/calibre", heading: "Import from Calibre" },
 	{ path: "/admin/users", heading: "Users" },
 	{ path: "/admin/webhooks", heading: "Webhooks" },
 	{ path: "/admin/settings", heading: "Settings" },

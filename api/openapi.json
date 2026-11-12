@@ -2660,6 +2660,166 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/calibre/imports": {
+      "post": {
+        "operationId": "createCalibreImport",
+        "summary": "Read a Calibre library's metadata.db and preview what importing it would do",
+        "tags": [
+          "libraries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
+    "/calibre/imports/{importId}": {
+      "get": {
+        "operationId": "getCalibreImport",
+        "summary": "An import of a Calibre library: its preview, then what it came to",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
+    "/calibre/imports/{importId}/start": {
+      "post": {
+        "operationId": "startCalibreImport",
+        "summary": "Import a previewed Calibre library; a job describes the books one at a time",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibreStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
     "/cleanup": {
       "get": {
         "operationId": "listCleanup",
@@ -12522,6 +12682,178 @@
           "found"
         ]
       },
+      "CalibreColumn": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "datatype": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "name",
+          "datatype",
+          "books",
+          "choices"
+        ]
+      },
+      "CalibreImport": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "choices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalibreColumn"
+            }
+          },
+          "covers": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formats": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "missingFiles": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalibreProblem"
+            }
+          },
+          "rated": {
+            "type": "integer"
+          },
+          "ratings": {
+            "type": "boolean"
+          },
+          "ready": {
+            "type": "integer"
+          },
+          "series": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "library",
+          "createdAt",
+          "books",
+          "ready",
+          "skipped",
+          "formats",
+          "missingFiles",
+          "covers",
+          "series",
+          "tags",
+          "rated",
+          "columns",
+          "ratings",
+          "choices",
+          "problems",
+          "outcomes"
+        ]
+      },
+      "CalibreProblem": {
+        "type": "object",
+        "properties": {
+          "calibreId": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "calibreId",
+          "title",
+          "message"
+        ]
+      },
+      "CalibreRequest": {
+        "type": "object",
+        "properties": {
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "library"
+        ]
+      },
+      "CalibreStart": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ratings": {
+            "type": "boolean"
+          }
+        }
+      },
       "CandidateList": {
         "type": "object",
         "properties": {
@@ -14717,7 +15049,8 @@
               "file",
               "filename",
               "manual",
-              "provider"
+              "provider",
+              "calibre"
             ]
           }
         },

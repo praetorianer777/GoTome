@@ -144,6 +144,8 @@ function provenance(state: FieldState | undefined): string {
 			return t("edit.source.manual");
 		case "provider":
 			return t("edit.source.provider", { provider: state.detail ?? "" });
+		case "calibre":
+			return t("edit.source.calibre");
 	}
 	return "";
 }

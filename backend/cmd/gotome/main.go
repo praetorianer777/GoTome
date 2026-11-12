@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/config"
@@ -378,6 +379,7 @@ func serve() error {
 	if !cfg.Offline {
 		histories.Lookup = matches.EnqueueTx
 	}
+	calibreImports := calibre.NewService(pool, scans, coverStore, log)
 	progressSync := kosync.NewService(pool, readingService, log)
 	engineVersion, err := fulltext.Load(cfg.Fulltext)
 	if err != nil {
@@ -404,7 +406,7 @@ func serve() error {
 		accounts: accounts, matches: matches, meta: meta, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
-		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
+		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories, calibre: calibreImports,
 		trashRetention: settingStore.TrashRetention, automatic: autoCurate, hooks: hooks,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
@@ -418,6 +420,7 @@ func serve() error {
 	meta.Queue = runner
 	changes.Queue = runner
 	histories.Queue = runner
+	calibreImports.Queue = runner
 	searchIndex.Queue = runner
 	duplicates.Queue = runner
 	autoDupes.Queue = runner
@@ -535,6 +538,7 @@ func serve() error {
 		Bulk:           changes,
 		Reading:        readingService,
 		Imports:        histories,
+		Calibre:        calibreImports,
 		Shelves:        shelves.NewService(pool, books),
 		Search:         search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates:     duplicates,
