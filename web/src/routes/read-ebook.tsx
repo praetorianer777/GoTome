@@ -529,11 +529,12 @@ export function EbookReader({
 					<div ref={pages} className="h-[calc(100dvh-11rem)] min-h-80 w-full" />
 				</section>
 			</div>
-			{place?.chapter && (
-				<p className="text-center text-sm text-slate-600 dark:text-slate-400">
-					{place.chapter}
-				</p>
-			)}
+			<p
+				aria-live="polite"
+				className="min-h-5 text-center text-sm text-slate-600 dark:text-slate-400"
+			>
+				{place?.chapter}
+			</p>
 		</div>
 	);
 }

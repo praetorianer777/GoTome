@@ -6,6 +6,23 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- With Windows high contrast (forced colours) on, focus rings, buttons,
+  switches and what is selected or current are drawn in system colours;
+  with "more contrast" on, borders and grey text become stronger and the
+  glass panels solid; with reduced motion on, no transition or animation
+  runs anywhere.
+- The audiobook player announces the chapter it has come to and the sleep
+  timer when set, and the ebook reader announces the chapter as it changes.
+- New page: accessibility (`docs/accessibility.md`), with what is checked and
+  how to report a barrier.
+
+### Fixed
+
+- The "finished" toast is announced by screen readers that ignored it, as it
+  now appears inside a live region that was already on the page.
+
 ## [0.22.0] - 2026-11-12
 
 ### Added
