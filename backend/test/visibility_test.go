@@ -194,6 +194,7 @@ func readCases() map[string][]readCase {
 		"koboCover":              {{path: "/kobo/not-a-token/{book}/300/400/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
 		"koboCoverQuality":       {{path: "/kobo/not-a-token/{book}/300/400/80/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
 		"koboDownload":           {{path: "/kobo/not-a-token/download/{file}", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboDownloadKepub":      {{path: "/kobo/not-a-token/download/{file}/kepub", why: "only a device's token in the address reaches it; TestAKoboReaderIsSentAKepubOnlyWhereItsOwnerSwitchedThatOn proves it"}},
 		"kosyncPull":             {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},
