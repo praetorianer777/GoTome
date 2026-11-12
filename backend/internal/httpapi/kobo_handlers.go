@@ -57,8 +57,8 @@ func loggedPath(path string) string {
 }
 
 // koboBase is the address the reader's requests go to, its token in it.
-func koboBase(r *http.Request) string {
-	return publicBase(r) + koboPrefix + chi.URLParam(r, "token")
+func (s *Server) koboBase(r *http.Request) string {
+	return publicBaseFor(r, s.PublicURLs) + koboPrefix + chi.URLParam(r, "token")
 }
 
 func koboClient(device uuid.UUID) string { return "kobo:" + device.String() }
@@ -112,7 +112,7 @@ var koboStore = map[string]string{
 }
 
 func (s *Server) koboInitialization(w http.ResponseWriter, r *http.Request) error {
-	base := koboBase(r)
+	base := s.koboBase(r)
 	res := make(map[string]string, len(koboStore)+20)
 	for k, v := range koboStore {
 		res[k] = v
@@ -390,7 +390,7 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	base := koboBase(r)
+	base := s.koboBase(r)
 	kepubs := false
 	if s.Copies != nil {
 		if on, err := s.Auth.DeviceUsesKepub(r.Context(), DeviceFrom(r.Context())); err != nil {
