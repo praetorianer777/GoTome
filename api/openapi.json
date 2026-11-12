@@ -5090,6 +5090,56 @@
         "x-permission": "storage:manage"
       }
     },
+    "/files/{fileId}/convert": {
+      "post": {
+        "operationId": "convertFile",
+        "summary": "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/files/{fileId}/download": {
       "get": {
         "operationId": "downloadFile",
@@ -13338,6 +13388,43 @@
         "required": [
           "name",
           "role"
+        ]
+      },
+      "ConvertResult": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "images": {
+            "type": "integer"
+          },
+          "linksDropped": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "integer"
+          },
+          "tocEntries": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fileId",
+          "bookId",
+          "name",
+          "sections",
+          "images",
+          "tocEntries",
+          "linksDropped"
         ]
       },
       "Count": {

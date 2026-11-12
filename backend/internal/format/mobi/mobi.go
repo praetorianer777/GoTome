@@ -111,20 +111,37 @@ func Parse(r io.ReaderAt, size int64) (*Book, error) {
 
 // ParseWithLimits reads a file.
 func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
+	book, h, raw, err := read(r, size, limits)
+	if err != nil {
+		return nil, err
+	}
+	if raw != nil {
+		raw = h.utf8(raw)
+		sum := sha256.Sum256(raw)
+		book.ContentHash = sum[:]
+		book.Text, _ = markup.Text(raw)
+	}
+	return book, nil
+}
+
+// read parses the headers and, unless the content is encrypted, returns the
+// text records' markup as they were decompressed, before any conversion
+// from Windows-1252.
+func read(r io.ReaderAt, size int64, limits Limits) (*Book, *header, []byte, error) {
 	if size > limits.MaxFileBytes {
-		return nil, fmt.Errorf("%w: %d bytes", ErrTooLarge, size)
+		return nil, nil, nil, fmt.Errorf("%w: %d bytes", ErrTooLarge, size)
 	}
 	data := make([]byte, size)
 	if _, err := r.ReadAt(data, 0); err != nil && !errors.Is(err, io.EOF) {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	db, err := openPalmDB(data)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	h, err := readHeader(db)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	book := &Book{KF8: h.version >= 8, DRM: h.encryption != 0}
@@ -132,16 +149,13 @@ func ParseWithLimits(r io.ReaderAt, size int64, limits Limits) (*Book, error) {
 	book.Metadata = h.metadata(exth)
 	book.Cover = h.cover(exth)
 	if book.DRM {
-		return book, nil
+		return book, h, nil, nil
 	}
-	raw, err := h.text(limits)
+	raw, err := h.textRaw(limits)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	sum := sha256.Sum256(raw)
-	book.ContentHash = sum[:]
-	book.Text, _ = markup.Text(raw)
-	return book, nil
+	return book, h, raw, nil
 }
 
 // palmDB is the container every Mobipocket file is: a list of records.
@@ -349,10 +363,22 @@ func imageType(b []byte) string {
 	return ""
 }
 
-// text returns the book's markup: the text records, each stripped of the
+// utf8 converts markup to UTF-8 from the encoding the header names.
+func (h *header) utf8(out []byte) []byte {
+	if h.encoding == 1252 {
+		if decoded, err := charmap.Windows1252.NewDecoder().Bytes(out); err == nil {
+			return decoded
+		}
+	}
+	return out
+}
+
+// textRaw returns the book's markup: the text records, each stripped of the
 // data trailing it and decompressed, and for KF8 only the first flow, which
-// is the book; the others are its style sheets and drawings.
-func (h *header) text(limits Limits) ([]byte, error) {
+// is the book; the others are its style sheets and drawings. It is not yet
+// converted to UTF-8, so that the byte positions links of the older format
+// name still hold.
+func (h *header) textRaw(limits Limits) ([]byte, error) {
 	extra := uint16(0)
 	if h.mobiEnd >= 0xE4+16 {
 		extra = h.u16(0xF2)
@@ -395,11 +421,6 @@ func (h *header) text(limits Limits) ([]byte, error) {
 	}
 	if h.version >= 8 {
 		out = h.firstFlow(out)
-	}
-	if h.encoding == 1252 {
-		if decoded, err := charmap.Windows1252.NewDecoder().Bytes(out); err == nil {
-			out = decoded
-		}
 	}
 	return out, nil
 }

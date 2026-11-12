@@ -98,6 +98,27 @@ in a backup). It is saved on the reader as `<name>.kepub.epub`.
 - Only the Kobo sync is given KEPUBs; the OPDS catalogue and the web reader
   keep the EPUB.
 
+## Kindle files to EPUB
+
+Most e-readers other than a Kindle read EPUB and not MOBI, AZW or AZW3.
+On a book's page, the files list offers **Convert to EPUB** for a MOBI, AZW
+or AZW3 file (not one protected by DRM) to an editor, where the library is
+one GOtome writes to. GOtome reads the file with its own reader, no Calibre
+or other program, and writes an EPUB as a new file of the same book beside
+it, named after it. The original stays, and is not changed.
+
+- The text becomes XHTML documents, cut at the book's page breaks and
+  chapter headings and kept under a few hundred kilobytes each, so that an
+  e-reader does not lay out a whole book at once. Images, the cover, the
+  metadata and a table of contents made from the headings come with it.
+- Only the structure of the text is kept, not its looks: no fonts, colours
+  or margins. Links inside the book work in MOBI and AZW files; in AZW3
+  files the links that name a place by its position are left as text.
+- The new file is read like any new file, and the EPUB counts as the
+  book's text from then on (an EPUB comes before a Kindle file).
+- Converting the same file twice is refused. A read-only library does not
+  offer it.
+
 ## EPUBs that are slow on e-readers
 
 Some EPUBs are hard on an e-reader: a chapter file of several megabytes

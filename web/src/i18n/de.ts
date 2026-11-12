@@ -1029,6 +1029,8 @@ export const de: Record<MessageKey, string> = {
 	"trash.purge": "Jetzt löschen",
 	"trash.purgeConfirm": "Endgültig löschen",
 	"trash.purgeCancel": "Behalten",
+	"book.file.convert": "In EPUB umwandeln",
+	"book.file.convertNamed": "{name} in ein EPUB umwandeln",
 	"book.file.trash": "In den Papierkorb",
 	"book.file.trashNamed": "{name} in den Papierkorb legen",
 	"settings.trashRetention": "Tage, die eine Datei im Papierkorb bleibt",

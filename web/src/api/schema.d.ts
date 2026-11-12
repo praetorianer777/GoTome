@@ -1447,6 +1447,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays */
+        post: operations["convertFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/download": {
         parameters: {
             query?: never;
@@ -3835,6 +3852,17 @@ export interface components {
             name: string;
             /** @enum {string} */
             role: "author" | "narrator" | "translator" | "editor" | "illustrator";
+        };
+        ConvertResult: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId: string;
+            images: number;
+            linksDropped: number;
+            name: string;
+            sections: number;
+            tocEntries: number;
         };
         Count: {
             bytes?: number;
@@ -8577,6 +8605,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    convertFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertResult"];
+                };
             };
             /** @description The request failed. */
             default: {

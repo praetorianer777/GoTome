@@ -1014,6 +1014,8 @@ export const en = {
 	"trash.purge": "Delete now",
 	"trash.purgeConfirm": "Delete for good",
 	"trash.purgeCancel": "Keep it",
+	"book.file.convert": "Convert to EPUB",
+	"book.file.convertNamed": "Convert {name} to an EPUB",
 	"book.file.trash": "Move to trash",
 	"book.file.trashNamed": "Move {name} to the trash",
 	"settings.trashRetention": "Days a file stays in the trash",

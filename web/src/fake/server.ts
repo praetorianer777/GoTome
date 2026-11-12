@@ -455,6 +455,8 @@ export class FakeServer {
 	identities: LinkedIdentity[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
+	/** The files converted to an EPUB. */
+	conversions: string[] = [];
 	/** The fixes asked for, by file. */
 	fixes: { file: string; findings: string[] }[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -741,6 +743,22 @@ export class FakeServer {
 				tocEntriesRemoved: findings.includes("broken-toc") ? 1 : 0,
 				tocEntriesRepointed: findings.includes("broken-toc") ? 3 : 0,
 			});
+		}
+		const convert = /^\/files\/([^/]+)\/convert$/.exec(path);
+		if (convert && request.method === "POST") {
+			const book = this.books.find((b) => b.files.some((f) => f.id === convert[1]));
+			const file = book?.files.find((f) => f.id === convert[1]);
+			if (!book || !file) {
+				return Response.json({ error: { code: "not_found", message: "There is no such file." } }, { status: 404 });
+			}
+			this.conversions.push(file.id);
+			const name = file.name.replace(/\.[^.]+$/, ".epub");
+			const id = `${file.id}-epub`;
+			book.files.push({ ...file, id, format: "epub", name, extractState: "pending" });
+			return Response.json(
+				{ fileId: id, bookId: book.id, name, sections: 3, images: 1, tocEntries: 3, linksDropped: 0 },
+				{ status: 201 },
+			);
 		}
 		const fileAction = /^\/files\/([^/]+)(?:\/(trash|restore))?$/.exec(path);
 		if (fileAction && (fileAction[2] || request.method === "DELETE")) {

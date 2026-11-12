@@ -10,7 +10,7 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
-import { EReaderFindings } from "@/books/ereader";
+import { EReaderFindings, useConvertFile } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
 import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
@@ -424,6 +424,9 @@ function fileNotes(file: BookFile): string[] {
 	return notes;
 }
 
+/** The formats GOtome writes an EPUB from. */
+const KINDLE_FORMATS = ["mobi", "azw", "azw3"];
+
 function Files({
 	bookId,
 	libraryId,
@@ -437,6 +440,7 @@ function Files({
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
 	const trash = useTrashFile();
+	const convert = useConvertFile();
 	const libraries = useQuery(librariesQuery);
 	// Files go to the trash only in a library GOtome writes to.
 	const canTrash =
@@ -502,6 +506,17 @@ function Files({
 								{t("book.file.read")}
 							</Link>
 						)}
+						{canTrash && !file.missing && !file.drm && KINDLE_FORMATS.includes(file.format) && (
+							<button
+								type="button"
+								disabled={convert.isPending}
+								onClick={() => convert.mutate(file.id)}
+								aria-label={t("book.file.convertNamed", { name: file.name })}
+								className={button()}
+							>
+								{t("book.file.convert")}
+							</button>
+						)}
 						{canTrash && !file.missing && (
 							<button
 								type="button"
@@ -526,7 +541,7 @@ function Files({
 					</li>
 				))}
 			</ul>
-			<FormError error={reread.error ?? trash.error} />
+			<FormError error={reread.error ?? trash.error ?? convert.error} />
 			{canReread && files.some((f) => f.hasText) && (
 				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />
 			)}

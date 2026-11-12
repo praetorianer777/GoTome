@@ -466,6 +466,11 @@ func (s *Server) routes() []Route {
 			Request: fixRequest{}, Response: fixResult{}, Permission: auth.MetadataEdit, Handler: s.fixFile,
 		},
 		{
+			Method: http.MethodPost, Path: "/files/{fileId}/convert", ID: "convertFile",
+			Summary: "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays", Tag: "files",
+			Response: convertResult{}, Status: http.StatusCreated, Permission: auth.MetadataEdit, Handler: s.convertFile,
+		},
+		{
 			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
 			Summary: "Bring a trashed file back to where it was and to its book", Tag: "files",
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.restoreFile,

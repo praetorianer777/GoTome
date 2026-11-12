@@ -13,6 +13,9 @@ What changes for someone who runs or uses GOtome. The format follows
   a KEPUB, which the reader reads with better statistics and page turns.
   GOtome makes it itself when the reader syncs and keeps it with the other
   copies for devices ([devices](docs/devices.md#kepub-for-kobo-readers)).
+- Convert to EPUB: a book's page offers to write an EPUB from a MOBI, AZW or
+  AZW3 file as a new file of the same book beside it, in a library GOtome
+  writes to. The original stays ([devices](docs/devices.md#kindle-files-to-epub)).
 
 ### Changed
 
