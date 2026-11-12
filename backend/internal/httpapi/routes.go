@@ -1132,7 +1132,7 @@ func (s *Server) routes() []Route {
 			Produces: "image/jpeg", Status: http.StatusOK,
 			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getBookCover,
 		},
-	}, append(append(s.opdsRoutes(), s.kosyncRoutes()...), s.koboRoutes()...)...)
+	}, append(append(append(s.opdsRoutes(), s.kosyncRoutes()...), s.koboRoutes()...), s.annotationRoutes()...)...)
 }
 
 // buildInfo is version.Info under the name clients see it by: "Info" alone

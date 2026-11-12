@@ -12,6 +12,9 @@
   ],
   "tags": [
     {
+      "name": "annotations"
+    },
+    {
       "name": "auth"
     },
     {
@@ -58,6 +61,299 @@
     }
   ],
   "paths": {
+    "/annotations": {
+      "get": {
+        "operationId": "listAnnotations",
+        "summary": "The caller's highlights and notes in books they see, newest first, searchable",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The next cursor of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many to return, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/export.csv": {
+      "get": {
+        "operationId": "exportAnnotationsCsv",
+        "summary": "The caller's highlights and notes as a CSV file",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/export.md": {
+      "get": {
+        "operationId": "exportAnnotationsMarkdown",
+        "summary": "The caller's highlights and notes as a Markdown document, grouped by book",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/{annotationId}": {
+      "delete": {
+        "operationId": "deleteAnnotation",
+        "summary": "Delete one of the caller's highlights",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "annotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "patch": {
+        "operationId": "changeAnnotation",
+        "summary": "Change the note or the colour of one of the caller's highlights",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "annotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/auth/api-keys": {
       "get": {
         "operationId": "listOwnAPIKeys",
@@ -1712,6 +2008,66 @@
           }
         ],
         "x-permission": "metadata:edit"
+      }
+    },
+    "/books/{bookId}/annotations": {
+      "post": {
+        "operationId": "createAnnotation",
+        "summary": "Keep a highlight made in a reader, with an optional note",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/books/{bookId}/audio": {
@@ -4198,6 +4554,66 @@
           }
         ],
         "x-permission": "signed-in"
+      }
+    },
+    "/device/annotations/{document}": {
+      "put": {
+        "operationId": "putDeviceAnnotations",
+        "summary": "A device sends all its highlights and notes of a book, named by its KOReader MD5; those it no longer sends are removed",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAnnotations"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAnnotationsSaved"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/device/books": {
@@ -11826,6 +12242,185 @@
           "wrong"
         ]
       },
+      "AnnotationChange": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "AnnotationCreate": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "locator",
+          "passage"
+        ]
+      },
+      "AnnotationList": {
+        "type": "object",
+        "properties": {
+          "annotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationView"
+            }
+          },
+          "next": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotations"
+        ]
+      },
+      "AnnotationRect": {
+        "type": "object",
+        "properties": {
+          "h": {
+            "type": "number"
+          },
+          "w": {
+            "type": "number"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ]
+      },
+      "AnnotationView": {
+        "type": "object",
+        "properties": {
+          "bookAuthors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookTitle": {
+            "type": "string"
+          },
+          "chapter": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "bookId",
+          "kind",
+          "locator",
+          "passage",
+          "color",
+          "clientId",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "ApiKeyList": {
         "type": "object",
         "properties": {
@@ -14366,6 +14961,92 @@
         },
         "required": [
           "books"
+        ]
+      },
+      "DeviceAnnotation": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "locator",
+          "passage"
+        ]
+      },
+      "DeviceAnnotations": {
+        "type": "object",
+        "properties": {
+          "annotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceAnnotation"
+            }
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "annotations"
+        ]
+      },
+      "DeviceAnnotationsSaved": {
+        "type": "object",
+        "properties": {
+          "kept": {
+            "type": "integer"
+          },
+          "removed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kept",
+          "removed"
         ]
       },
       "DeviceAnswer": {

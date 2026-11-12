@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
@@ -120,6 +121,8 @@ type Server struct {
 	Copies *devicecopy.Service
 	// Kindle sends books to people's Kindles by e-mail.
 	Kindle *kindle.Service
+	// Annotations keeps the highlights and notes people make in books.
+	Annotations *annotations.Service
 	// Sync is the server KOReader's progress sync talks to.
 	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.

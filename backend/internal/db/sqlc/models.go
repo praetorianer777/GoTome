@@ -10,6 +10,28 @@ import (
 	"github.com/google/uuid"
 )
 
+type Annotation struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	BookID      uuid.UUID
+	FileID      *uuid.UUID
+	LocatorKind string
+	Locator     string
+	LocatorEnd  *string
+	Page        *int32
+	Rects       []byte
+	Passage     string
+	Note        *string
+	Color       string
+	Chapter     *string
+	Fraction    *float64
+	ClientID    string
+	ClientKey   string
+	EditedHere  bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type ApiKey struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID
