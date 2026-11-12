@@ -243,7 +243,7 @@ func TestTheKOReaderPluginIsToldWhereItCameFrom(t *testing.T) {
 			server = string(data)
 		}
 	}
-	if !strings.Contains(server, `return "`+a.url+`"`) {
+	if !strings.Contains(server, `return { "`+a.url+`" }`) {
 		t.Errorf("the plugin's server: %q, want %s", server, a.url)
 	}
 	if status, _, _ := a.fetch(http.DefaultClient, httpapi.APIPrefix+"/koreader/plugin.zip"); status != 401 {
