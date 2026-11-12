@@ -32,6 +32,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   Authelia, Keycloak and others; roles from groups.
 - [The API and API keys](api.md): calling GOtome from scripts with a
   key, its scopes, and the OpenAPI document.
+- [The audio API for players](api-audio.md): the stable routes a
+  third-party audiobook player streams and saves its position with.
 - [E-readers](devices.md): which way for which device, adding one, and
   sending books.
   - [KOReader and OPDS](koreader.md)

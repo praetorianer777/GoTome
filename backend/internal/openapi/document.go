@@ -49,6 +49,8 @@ type Operation struct {
 	// Permission is what the caller must hold. OpenAPI has no field for it,
 	// so it travels as an extension.
 	Permission string `json:"x-permission,omitempty"`
+	// Stable names the versioned subset the operation belongs to.
+	Stable string `json:"x-gotome-stable,omitempty"`
 }
 
 type Parameter struct {
