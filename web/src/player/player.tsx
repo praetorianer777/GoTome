@@ -66,7 +66,11 @@ export interface PlayerState {
 export interface Player {
 	state: PlayerState;
 	/** Loads a book at its saved place, and plays it when asked to. */
-	open(bookId: string, options?: { play?: boolean }): void;
+	/**
+	 * Loads a book. With at, a millisecond of the whole, it starts there
+	 * instead of at the saved place, or moves there if the book is loaded.
+	 */
+	open(bookId: string, options?: { play?: boolean; at?: number }): void;
 	play(): void;
 	pause(): void;
 	toggle(): void;
@@ -287,7 +291,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 		};
 		actions.current = {
 			open(bookId, options) {
-				if (current.current.bookId === bookId) return;
+				if (current.current.bookId === bookId) {
+					if (options?.at !== undefined) actions.current.seek(options.at);
+					return;
+				}
 				const { sleep } = current.current;
 				if (current.current.bookId) actions.current.close();
 				update({
@@ -314,7 +321,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 							),
 						];
 						const saved = progress.audio?.positionMs ?? 0;
-						const start = saved < timeline.durationMs ? saved : 0;
+						const start =
+							options?.at !== undefined
+								? Math.min(Math.max(options.at, 0), timeline.durationMs)
+								: saved < timeline.durationMs
+									? saved
+									: 0;
 						lastSaved.current = progress.audio ? saved : null;
 						update({
 							book,

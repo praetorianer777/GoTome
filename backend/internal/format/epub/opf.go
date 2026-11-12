@@ -79,7 +79,8 @@ type opfPackage struct {
 	Spine    struct {
 		Toc   string `xml:"toc,attr"`
 		Items []struct {
-			IDRef string `xml:"idref,attr"`
+			IDRef  string `xml:"idref,attr"`
+			Linear string `xml:"linear,attr"`
 		} `xml:"itemref"`
 	} `xml:"spine"`
 }

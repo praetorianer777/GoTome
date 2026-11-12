@@ -32,6 +32,8 @@ export interface ReaderSearch {
 	to?: number;
 	find?: string;
 	near?: string;
+	/** For an ebook: how far into the book to open, 0 to 1. */
+	fraction?: number;
 }
 
 function pageNumber(value: unknown): number | undefined {
@@ -39,8 +41,15 @@ function pageNumber(value: unknown): number | undefined {
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
+function shareOf(value: unknown): number | undefined {
+	if (value === undefined || value === "") return undefined;
+	const n = Number(value);
+	return Number.isFinite(n) && n >= 0 && n <= 1 ? n : undefined;
+}
+
 export function readerSearch(search: Record<string, unknown>): ReaderSearch {
 	return {
+		fraction: shareOf(search.fraction),
 		page: pageNumber(search.page),
 		to: pageNumber(search.to),
 		find: typeof search.find === "string" && search.find ? search.find : undefined,
@@ -53,7 +62,7 @@ export function ReaderRoute() {
 	const { bookId, fileId } = useParams({
 		from: "/app/books/$bookId/read/$fileId",
 	});
-	const { page, to, find, near } = useSearch({
+	const { page, to, find, near, fraction } = useSearch({
 		from: "/app/books/$bookId/read/$fileId",
 	});
 	const book = useQuery(bookQuery(bookId));
@@ -90,6 +99,7 @@ export function ReaderRoute() {
 					fileName={file.name}
 					title={book.data.title}
 					find={find ? { word: find, passage: near ?? find } : undefined}
+					at={fraction}
 				/>
 			</Suspense>
 		);

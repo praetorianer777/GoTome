@@ -1820,6 +1820,56 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/continuation": {
+      "get": {
+        "operationId": "getContinuation",
+        "summary": "Where the caller could go on in the other medium, a text or its audiobook, when that is further along",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Continuation"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/cover": {
       "delete": {
         "operationId": "deleteBookCover",
@@ -13199,6 +13249,42 @@
         },
         "required": [
           "name"
+        ]
+      },
+      "Continuation": {
+        "type": "object",
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/ContinueOffer"
+          },
+          "ebook": {
+            "$ref": "#/components/schemas/ContinueOffer"
+          }
+        }
+      },
+      "ContinueOffer": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "positionMs": {
+            "type": "integer"
+          },
+          "refined": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fraction",
+          "refined"
         ]
       },
       "Contributor": {

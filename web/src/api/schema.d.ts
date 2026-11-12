@@ -569,6 +569,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/continuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the caller could go on in the other medium, a text or its audiobook, when that is further along */
+        get: operations["getContinuation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/cover": {
         parameters: {
             query?: never;
@@ -3812,6 +3829,18 @@ export interface components {
             /** @enum {string} */
             visibility?: "private" | "shared";
         };
+        Continuation: {
+            audio?: components["schemas"]["ContinueOffer"];
+            ebook?: components["schemas"]["ContinueOffer"];
+        };
+        ContinueOffer: {
+            chapter?: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction: number;
+            positionMs?: number;
+            refined: boolean;
+        };
         Contributor: {
             key?: string;
             name: string;
@@ -6542,6 +6571,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getContinuation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Continuation"];
                 };
             };
             /** @description The request failed. */

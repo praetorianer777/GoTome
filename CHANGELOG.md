@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A book with a text and an audiobook offers to go on in the other medium:
+  "Continue in the audiobook at 2:14:05" or "Continue reading at Chapter 12"
+  on its page, in the reader and in the player, when the other is further
+  along. Chapters both name alike place it exactly; otherwise it is the same
+  share of the whole. Nothing moves until you choose
+  ([getting started](docs/getting-started.md)).
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner

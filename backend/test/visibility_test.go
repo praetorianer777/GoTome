@@ -114,6 +114,7 @@ func readCases() map[string][]readCase {
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
 		"getProgress":         {{path: "/books/{book}/progress", control: "insider"}},
+		"getContinuation":     {{path: "/books/{book}/continuation", control: "insider"}},
 		"getBookCover":        {{path: "/books/{book}/covers/small", control: "insider"}},
 		"downloadFile":        {{path: "/files/{file}/download", control: "insider"}},
 		"getStats":            {{path: "/me/stats", control: "insider"}},
