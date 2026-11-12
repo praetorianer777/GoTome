@@ -15,6 +15,7 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/recommendations", heading: "For you" },
 	{ path: "/releases", heading: "New books" },
 	{ path: "/stats", heading: "Your reading" },
+	{ path: "/highlights", heading: "Highlights" },
 	{ path: "/overview", heading: "Overview" },
 	{ path: "/jobs", heading: "Background jobs" },
 	{ path: "/trash", heading: "Trash" },
@@ -67,6 +68,22 @@ export async function seeded(page: Page, stamp: string) {
 			})
 		).status(),
 	).toBe(204);
+	// A highlight whose passage and note are one long word each, on the book
+	// page and in the list of every highlight.
+	const unbroken = `Floccinaucinihilipilification${stamp.replaceAll(" ", "")}`.repeat(4);
+	const highlighted = await page.request.post(
+		`/api/v1/books/${books[`Layout One ${stamp}`]}/annotations`,
+		{
+			data: {
+				kind: "cfi",
+				locator: "epubcfi(/6/4!/4/2/1:0)",
+				passage: unbroken,
+				note: unbroken,
+				chapter: unbroken,
+			},
+		},
+	);
+	expect(highlighted.status()).toBe(201);
 	const epubLibrary = await newLibrary(page, `Layout reader ${stamp}`);
 	const epub = await uploadEpub(
 		page,

@@ -209,6 +209,9 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 			return q.MergeDeliveries(ctx, sqlc.MergeDeliveriesParams{IntoBook: into, FromBook: from})
 		},
 		func() error {
+			return q.MergeAnnotations(ctx, sqlc.MergeAnnotationsParams{IntoBook: into, FromBook: from})
+		},
+		func() error {
 			return q.MergePlayQueue(ctx, sqlc.MergePlayQueueParams{IntoBook: into, FromBook: from})
 		},
 		func() error { return q.MergeRelations(ctx, sqlc.MergeRelationsParams{IntoBook: into, FromBook: from}) },

@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
@@ -263,6 +264,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Pairing = pairing.NewService(a.pool)
 	a.server.Reviews = reviews.NewService(a.pool)
 	a.server.Kobo = kobo.NewService(a.pool)
+	a.server.Annotations = annotations.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet, textEngine)
 	a.server.Index.Queue = queue

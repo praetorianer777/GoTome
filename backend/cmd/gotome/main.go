@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
@@ -538,6 +539,7 @@ func serve() error {
 		Matches:        matches,
 		Bulk:           changes,
 		Reading:        readingService,
+		Annotations:    annotations.NewService(pool),
 		Imports:        histories,
 		Calibre:        calibreImports,
 		Shelves:        shelves.NewService(pool, books),

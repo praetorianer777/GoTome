@@ -64,6 +64,7 @@ const SeriesPage = lazyRouteComponent(() => import("@/routes/series"), "SeriesPa
 const Duplicates = lazyRouteComponent(() => import("@/routes/duplicates"), "Duplicates");
 const Setup = lazyRouteComponent(() => import("@/routes/setup"), "Setup");
 const Trash = lazyRouteComponent(() => import("@/routes/trash"), "Trash");
+const Highlights = lazyRouteComponent(() => import("@/routes/highlights"), "Highlights");
 const Releases = lazyRouteComponent(() => import("@/routes/releases"), "Releases");
 const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
 
@@ -489,6 +490,28 @@ const releasesRoute = createRoute({
 	component: Releases,
 });
 
+const highlightsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/highlights",
+	validateSearch: (search): { q?: string } => ({
+		q: typeof search.q === "string" && search.q ? search.q : undefined,
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Highlights, function HighlightsPage() {
+		const navigate = highlightsRoute.useNavigate();
+		return (
+			<Highlights
+				q={highlightsRoute.useSearch().q}
+				onSearch={(q) => navigate({ search: { q } })}
+			/>
+		);
+	}),
+});
+
 const overviewRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/overview",
@@ -657,7 +680,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, personRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, highlightsRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, personRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

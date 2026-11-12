@@ -72,6 +72,7 @@ var Tables = []Table{
 	byBook("collection_items", "collection_id", "book_id"),
 	byBook("deliveries", "id"),
 	byBook("play_queue", "user_id", "book_id"),
+	func() Table { t := byBook("annotations", "id"); t.Keep, t.Quiet = true, true; return t }(),
 	{Name: "book_relations", Where: "t.book_a = ANY($1) OR t.book_b = ANY($1)", PK: []string{"book_a", "book_b"}},
 	{
 		Name: "notifications", Where: "t.book_id = ANY($1)", PK: []string{"id"}, Keep: true, Quiet: true,

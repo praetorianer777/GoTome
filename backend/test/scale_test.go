@@ -301,6 +301,13 @@ func scaleSeed(admin, member uuid.UUID) []seedStatement {
 		{sql: `INSERT INTO reading_finishes (user_id, book_id, medium, finished_at)
 			SELECT $1, b.id, 'ebook', now() - (s % 700) * interval '1 day'
 			FROM generate_series(0, 399) s JOIN scale_books b ON b.n = (s * 6 + 1) % 50000`, args: []any{member}},
+		// Highlights: 3,000 each, on books spread over the whole library.
+		{sql: `INSERT INTO annotations (user_id, book_id, locator_kind, locator, passage, note, client_id, client_key, created_at)
+			SELECT w.u, b.id, 'cfi', 'epubcfi(/6/4!/4/2/1:0)', 'A passage ' || s, CASE WHEN s % 3 = 0 THEN 'A note ' || s END,
+			       'web', s::text, now() - s * interval '1 hour'
+			FROM generate_series(0, 2999) s
+			JOIN scale_books b ON b.n = (s * 13 + 5) % 50000,
+			     (VALUES ($1::uuid), ($2::uuid)) w(u)`, args: []any{admin, member}},
 
 		{sql: `INSERT INTO collections (owner_id, name, visibility) VALUES ($1, 'Favourites', 'shared'), ($2, 'To read', 'private')`, args: []any{admin, member}},
 		{sql: `INSERT INTO collection_items (collection_id, book_id, position)

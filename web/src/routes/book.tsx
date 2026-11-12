@@ -16,6 +16,7 @@ import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
 import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
+import { HighlightsSection } from "@/books/highlights-section";
 import { SimilarBooks } from "@/books/similar";
 import { BookReviews } from "@/reviews/reviews";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
@@ -382,6 +383,7 @@ function BookPage({ book }: { book: BookDetail }) {
 			)}
 
 			<BookReviews bookId={book.id} personal={personal} />
+			{personal && <HighlightsSection bookId={book.id} />}
 
 			<SimilarBooks bookId={book.id} />
 		</article>

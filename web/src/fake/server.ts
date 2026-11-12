@@ -19,6 +19,7 @@ import type {
 } from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
 import type { Continuation } from "@/books/continue-offer";
+import type { Annotation, AnnotationCreate } from "@/books/annotations";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
@@ -370,6 +371,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** The signed-in person's highlights, newest first. */
+	annotations: Annotation[] = [];
 	/** What each book offers to go on with in the other medium; none by default. */
 	continuations: Record<string, Continuation> = {};
 	/**
@@ -1128,7 +1131,7 @@ export class FakeServer {
 				})),
 			});
 		}
-		if (path === "/books" || path.startsWith("/books/")) {
+		if (path === "/books" || path.startsWith("/books/") || path.startsWith("/annotations")) {
 			return this.answerBooks(request.method, path, url.searchParams, body);
 		}
 		return this.answer(
@@ -1617,6 +1620,62 @@ export class FakeServer {
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {
 			return Response.json(this.progress[progress[1] ?? ""] ?? { finishes: 0 });
+		}
+		if (path === "/annotations" && method === "GET") {
+			const words = (query.get("q") ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+			const matching = this.annotations.filter(
+				(a) =>
+					(!query.get("book") || a.bookId === query.get("book")) &&
+					words.every((w) =>
+						`${a.passage} ${a.note ?? ""} ${a.bookTitle ?? ""}`.toLowerCase().includes(w),
+					),
+			);
+			const from = Number(query.get("after") ?? 0);
+			const size = Number(query.get("limit") ?? 50);
+			const next = from + size < matching.length ? String(from + size) : undefined;
+			return Response.json({ annotations: matching.slice(from, from + size), next });
+		}
+		const highlight = /^\/books\/([^/]+)\/annotations$/.exec(path);
+		if (highlight && method === "POST") {
+			const book = this.books.find((b) => b.id === highlight[1]);
+			const made = body as AnnotationCreate;
+			const created: Annotation = {
+				id: `annotation-${this.annotations.length + 1}`,
+				bookId: highlight[1] ?? "",
+				bookTitle: book?.title,
+				bookAuthors: book?.contributors.filter((c) => c.role === "author").map((c) => c.name),
+				fileId: made.fileId,
+				kind: made.kind,
+				locator: made.locator,
+				page: made.page,
+				rects: made.rects,
+				passage: made.passage,
+				note: made.note,
+				color: made.color ?? "yellow",
+				chapter: made.chapter,
+				fraction: made.fraction,
+				clientId: "web",
+				createdAt: "2026-01-04T10:00:00Z",
+				updatedAt: "2026-01-04T10:00:00Z",
+			};
+			this.annotations.unshift(created);
+			return Response.json(created, { status: 201 });
+		}
+		const one = /^\/annotations\/([^/]+)$/.exec(path);
+		if (one) {
+			const at = this.annotations.findIndex((a) => a.id === one[1]);
+			const found = this.annotations[at];
+			if (!found) {
+				return Response.json({ error: { code: "not_found", message: "There is no such annotation." } }, { status: 404 });
+			}
+			if (method === "DELETE") {
+				this.annotations.splice(at, 1);
+				return new Response(null, { status: 204 });
+			}
+			const change = body as { note?: string; color?: string };
+			if (change.note !== undefined) found.note = change.note || undefined;
+			if (change.color !== undefined) found.color = change.color;
+			return Response.json(found);
 		}
 		const noted = /^\/books\/([^/]+)\/note$/.exec(path);
 		if (noted) {

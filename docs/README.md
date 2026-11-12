@@ -46,6 +46,8 @@ For people who run GOtome or use it. Start with **Getting started**.
     Android firmware
 - [On a phone and offline](offline.md): installing the app, keeping books
   in the browser, and what is stored.
+- [Highlights and notes](highlights.md): making them in the readers,
+  bringing them from KOReader, exporting them.
 - [Send to Kindle](kindle.md): e-mailing EPUBs to a Kindle, the mail server
   and the sender Amazon has to approve.
 - [Your reading history and importing it](importing-reading-history.md):

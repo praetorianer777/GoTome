@@ -122,6 +122,21 @@ INSERT INTO play_queue (user_id, book_id, position)
 SELECT user_id, sqlc.arg(into_book), position FROM moved
 ON CONFLICT DO NOTHING;
 
+-- name: MergeAnnotations :exec
+-- The book's annotations, as they are; one a person has under the same
+-- client and key in the surviving book stays and the other goes.
+WITH clash AS (
+    DELETE FROM annotations x
+    WHERE x.book_id = sqlc.arg(from_book)
+      AND EXISTS (SELECT 1 FROM annotations y
+                  WHERE y.book_id = sqlc.arg(into_book) AND y.user_id = x.user_id
+                    AND y.client_id = x.client_id AND y.client_key = x.client_key))
+UPDATE annotations x SET book_id = sqlc.arg(into_book)
+WHERE x.book_id = sqlc.arg(from_book)
+  AND NOT EXISTS (SELECT 1 FROM annotations y
+                  WHERE y.book_id = sqlc.arg(into_book) AND y.user_id = x.user_id
+                    AND y.client_id = x.client_id AND y.client_key = x.client_key);
+
 -- name: MergeRelations :exec
 -- The book's links to its other editions and translations; one to the
 -- surviving book itself goes.

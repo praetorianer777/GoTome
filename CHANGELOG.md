@@ -27,6 +27,13 @@ What changes for someone who runs or uses GOtome. The format follows
   network, the profile lists what is kept and its size and removes it, and
   places read offline are sent when the connection is back. Signing out
   clears all of it. See `docs/offline.md`.
+- Highlights and notes. Select text in the EPUB, MOBI or PDF reader to
+  highlight it in a colour and add a note; the reader draws and lists them.
+  A new page, Highlights, lists all of yours across the books you see,
+  searchable, and a book's page lists its own; both export as Markdown and
+  CSV. They are yours alone. The KOReader plugin sends a book's highlights
+  and notes from the device, again when they change, and a deleted one is
+  removed ([highlights](docs/highlights.md), [KOReader](docs/koreader.md)).
 
 ### Fixed
 
