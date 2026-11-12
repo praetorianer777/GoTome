@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import {
@@ -16,9 +16,7 @@ import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
 import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
-import { HighlightsSection } from "@/books/highlights-section";
 import { SimilarBooks } from "@/books/similar";
-import { BookReviews } from "@/reviews/reviews";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
 import { KeepAudioButton, KeepFileButton } from "@/offline/keep-button";
@@ -36,6 +34,15 @@ import { librariesQuery } from "@/libraries/api";
 import { useTrashFile } from "@/trash/api";
 import { type MessageKey, t } from "@/i18n";
 import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
+
+// Below the fold, and not wanted on every visit: they load after the page,
+// which keeps them out of the first load (scripts/budget.mjs).
+const BookReviews = lazy(() =>
+	import("@/reviews/reviews").then((m) => ({ default: m.BookReviews })),
+);
+const HighlightsSection = lazy(() =>
+	import("@/books/highlights-section").then((m) => ({ default: m.HighlightsSection })),
+);
 
 const ROLES: Record<string, MessageKey> = {
 	translator: "credit.translator",
@@ -382,8 +389,10 @@ function BookPage({ book }: { book: BookDetail }) {
 				<Joins joins={book.joins} canSplit={can(user, "metadata:edit")} />
 			)}
 
-			<BookReviews bookId={book.id} personal={personal} />
-			{personal && <HighlightsSection bookId={book.id} />}
+			<Suspense fallback={null}>
+				<BookReviews bookId={book.id} personal={personal} />
+				{personal && <HighlightsSection bookId={book.id} />}
+			</Suspense>
 
 			<SimilarBooks bookId={book.id} />
 		</article>
