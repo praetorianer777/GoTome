@@ -30,7 +30,14 @@ test("a misspelt title is found from the header and opened with the keyboard", a
 		.getByRole("listbox", { name: "Books found" })
 		.getByRole("option", { name: new RegExp(`^${title}`) });
 	await expect(hit).toBeVisible();
-	await box.press("ArrowDown");
+	// Other tests' names (an author of the same project and time) may come
+	// before the book: move down until it is the one chosen.
+	await expect
+		.poll(async () => {
+			await box.press("ArrowDown");
+			return hit.getAttribute("aria-selected");
+		})
+		.toBe("true");
 	await box.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: title, level: 1 }),

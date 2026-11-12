@@ -65,9 +65,9 @@ test("a setting of a few values is chosen, not typed", async ({
 		(s: { key: string }) => s.key === "metadata.providers",
 	);
 	expect(providers).toMatchObject({
-		value: "openlibrary,hardcover",
+		value: "openlibrary,hardcover,google",
 		multiple: true,
-		choices: ["openlibrary", "crossref", "hardcover", "dnb"],
+		choices: ["openlibrary", "crossref", "hardcover", "dnb", "google"],
 	});
 	await expect(
 		page.getByRole("combobox", { name: "Genres for books" }),
