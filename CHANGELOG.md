@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-12
+
 ### Added
 
 - Webhooks: an administrator registers addresses that GOtome tells of events
