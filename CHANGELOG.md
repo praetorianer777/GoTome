@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The section links of the settings page and "Skip to the content" stay on
+  the page instead of opening the library.
+
 ## [0.24.0] - 2026-11-12
 
 ### Added
