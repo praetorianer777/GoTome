@@ -24,10 +24,14 @@ export const LOCKABLE = [
 	"published",
 	"language",
 	"pageCount",
+	"ageRating",
 	"tags",
 	"identifiers",
 	"description",
 ] as const;
+/** The steps of an age rating (the German FSK scale); 18 is adult. */
+export const AGE_RATINGS = [0, 6, 12, 16, 18] as const;
+
 export type Lockable = (typeof LOCKABLE)[number];
 
 /** Names already in use that begin as typed, to pick from or to add to. */

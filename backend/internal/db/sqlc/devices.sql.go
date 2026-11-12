@@ -188,7 +188,7 @@ func (q *Queries) GetActiveUserIDByName(ctx context.Context, username string) (u
 }
 
 const getDeviceUser = `-- name: GetDeviceUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, d.id AS device_id, d.last_used_at AS device_last_used_at
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, u.max_age_rating, d.id AS device_id, d.last_used_at AS device_last_used_at
 FROM devices d
 JOIN users u ON u.id = d.user_id
 WHERE d.token_hash = $1
@@ -213,6 +213,7 @@ type GetDeviceUserRow struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	MaxAgeRating     *int16
 	DeviceID         uuid.UUID
 	DeviceLastUsedAt *time.Time
 }
@@ -234,6 +235,7 @@ func (q *Queries) GetDeviceUser(ctx context.Context, arg GetDeviceUserParams) (G
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
 		&i.KindleAddress,
+		&i.MaxAgeRating,
 		&i.DeviceID,
 		&i.DeviceLastUsedAt,
 	)
@@ -241,7 +243,7 @@ func (q *Queries) GetDeviceUser(ctx context.Context, arg GetDeviceUserParams) (G
 }
 
 const getDeviceUserByToken = `-- name: GetDeviceUserByToken :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, d.id AS device_id, d.last_used_at AS device_last_used_at
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, u.max_age_rating, d.id AS device_id, d.last_used_at AS device_last_used_at
 FROM devices d
 JOIN users u ON u.id = d.user_id
 WHERE d.token_hash = $1 AND u.disabled_at IS NULL
@@ -259,6 +261,7 @@ type GetDeviceUserByTokenRow struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	MaxAgeRating     *int16
 	DeviceID         uuid.UUID
 	DeviceLastUsedAt *time.Time
 }
@@ -281,6 +284,7 @@ func (q *Queries) GetDeviceUserByToken(ctx context.Context, tokenHash []byte) (G
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
 		&i.KindleAddress,
+		&i.MaxAgeRating,
 		&i.DeviceID,
 		&i.DeviceLastUsedAt,
 	)
@@ -288,7 +292,7 @@ func (q *Queries) GetDeviceUserByToken(ctx context.Context, tokenHash []byte) (G
 }
 
 const getSyncKeyUser = `-- name: GetSyncKeyUser :one
-SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, d.id AS device_id
+SELECT u.id, u.username, u.email, u.password_hash, u.role, u.quota_bytes, u.disabled_at, u.created_at, u.updated_at, u.history_library_id, u.kindle_address, u.max_age_rating, d.id AS device_id
 FROM devices d
 JOIN users u ON u.id = d.user_id
 WHERE d.sync_key_hash = $1
@@ -313,6 +317,7 @@ type GetSyncKeyUserRow struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	MaxAgeRating     *int16
 	DeviceID         uuid.UUID
 }
 
@@ -333,6 +338,7 @@ func (q *Queries) GetSyncKeyUser(ctx context.Context, arg GetSyncKeyUserParams) 
 		&i.UpdatedAt,
 		&i.HistoryLibraryID,
 		&i.KindleAddress,
+		&i.MaxAgeRating,
 		&i.DeviceID,
 	)
 	return i, err

@@ -33,7 +33,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 `
 
 type CountReviewBooksParams struct {
@@ -136,7 +136,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 `
 
 type GetVisibleMatchParams struct {
@@ -288,7 +288,7 @@ JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending' AND m.provider = $1
   AND LEAST(floor(m.score * 10), 9)::int = $2::int
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
 ORDER BY m.score DESC, m.id
 LIMIT $5
 `
@@ -334,7 +334,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY 1, 2
 ORDER BY 1, 2 DESC
 `
@@ -450,7 +450,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY b.id
 ORDER BY min(m.created_at), b.id
 LIMIT $3
@@ -491,7 +491,7 @@ JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL AND NOT b.placeholder
   AND b.id > $1::uuid
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY b.id
 LIMIT $4
 `

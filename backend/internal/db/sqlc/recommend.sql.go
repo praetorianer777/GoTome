@@ -91,7 +91,7 @@ first_open AS MATERIALIZED (
     FROM books e
     WHERE e.series_id IN (SELECT series_id FROM read_series)
       AND e.series_index IS NOT NULL AND e.deleted_at IS NULL AND NOT e.placeholder
-      AND e.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean))
+      AND e.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean)) AND (e.age_rating IS NULL OR e.age_rating <= (SELECT age_limit($4::uuid, $5::boolean)))
       AND NOT EXISTS (
           SELECT 1 FROM user_books eu
           WHERE eu.user_id = $4::uuid AND eu.book_id = e.id
@@ -113,7 +113,7 @@ eligible AS MATERIALIZED (
     FROM books b
     LEFT JOIN first_open f ON $6::boolean AND f.series_id = b.series_id
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT visible_library_ids FROM visible)
+      AND b.library_id IN (SELECT visible_library_ids FROM visible) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($4::uuid, $5::boolean)))
       AND (b.id = ANY($7::uuid[]) OR b.id NOT IN (SELECT book_id FROM taken))
       AND b.id NOT IN (SELECT book_id FROM dismissed)
       AND (f.series_index IS NULL OR b.series_index IS NULL OR f.series_index >= b.series_index)
@@ -223,7 +223,7 @@ FROM (
 JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND ($3::boolean OR NOT b.placeholder)
 JOIN book_vectors v ON v.book_id = ub.book_id
     AND v.model = $4::text AND v.model_version = $5::text
-WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $6::boolean))
+WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $6::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $6::boolean)))
 ORDER BY ub.book_id, v.kind
 `
 

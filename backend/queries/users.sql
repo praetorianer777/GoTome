@@ -50,3 +50,8 @@ SELECT user_id, used_bytes FROM storage_use;
 -- name: SetQuota :one
 UPDATE users SET quota_bytes = $2, updated_at = now() WHERE id = $1
 RETURNING *;
+
+-- name: SetMaxAgeRating :one
+-- The highest age rating the account may see; NULL is no limit.
+UPDATE users SET max_age_rating = sqlc.narg(max_age_rating)::smallint, updated_at = now() WHERE id = $1
+RETURNING *;

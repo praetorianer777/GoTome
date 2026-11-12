@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Age ratings and content restriction per account. A book can be rated 0, 6,
+  12, 16 or 18 (adult) in its editor, or gets a rating from tags such as
+  "Erotica" or "FSK 16"; on the Users page an administrator limits an
+  account to books up to a rating. Books above it are hidden everywhere, as
+  if they did not exist ([people, roles and
+  libraries](docs/users-and-libraries.md#age-ratings)).
+
 ## [0.24.0] - 2026-11-12
 
 ### Added

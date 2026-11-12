@@ -58,7 +58,7 @@ FROM quick_search_matches($3) m
 JOIN books b ON b.id = m.book_id
 LEFT JOIN series s ON s.id = b.series_id
 ` + summaryJoin("$1") + `
-WHERE b.library_id IN (SELECT * FROM visible_library_ids($1, $2)) AND NOT b.placeholder
+WHERE b.library_id IN (SELECT * FROM visible_library_ids($1, $2)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1, $2))) AND NOT b.placeholder
 ORDER BY m.score DESC, b.sort_title, b.id
 LIMIT $4`
 
@@ -157,7 +157,7 @@ CROSS JOIN LATERAL (
           WHERE m.match = '` + MatchSeries + `' AND sr.name_key = m.key) n
     JOIN books b ON b.id = n.book_id
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2))
+      AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1, $2)))
 ) counted
 WHERE counted.books > 0
 LIMIT $4`

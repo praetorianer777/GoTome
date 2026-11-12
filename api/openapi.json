@@ -11224,6 +11224,66 @@
         "x-permission": "users:manage"
       }
     },
+    "/users/{userId}/max-age-rating": {
+      "put": {
+        "operationId": "setUserMaxAgeRating",
+        "summary": "Set the highest age rating of a book an account sees; null is no limit",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMaxAgeRatingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "users:manage"
+      }
+    },
     "/users/{userId}/quota": {
       "put": {
         "operationId": "setUserQuota",
@@ -11680,6 +11740,9 @@
       "AcceptMatchRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -11753,6 +11816,9 @@
           "lastSeenAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "maxAgeRating": {
+            "type": "integer"
           },
           "quotaBytes": {
             "type": "integer"
@@ -11883,6 +11949,9 @@
       "ApplyCandidateRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -12202,6 +12271,9 @@
           "addedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "ageRating": {
+            "type": "integer"
           },
           "contributors": {
             "type": "array",
@@ -14903,6 +14975,9 @@
       "EditBookRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -18257,6 +18332,20 @@
           "current"
         ]
       },
+      "SetMaxAgeRatingRequest": {
+        "type": "object",
+        "properties": {
+          "maxAgeRating": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "maxAgeRating"
+        ]
+      },
       "SetQuotaRequest": {
         "type": "object",
         "properties": {
@@ -19493,6 +19582,9 @@
       "WishRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {

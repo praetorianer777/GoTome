@@ -85,7 +85,7 @@ LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
 LEFT JOIN device_sends sd ON sd.device_id = dl.device_id AND sd.book_id = dl.book_id
 WHERE dl.device_id = $1 AND d.user_id = $2::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
   AND ($4::timestamptz IS NULL OR (dl.queued_at, dl.id) < ($4::timestamptz, $5::uuid))
 ORDER BY dl.queued_at DESC, dl.id DESC
 LIMIT $6
@@ -152,7 +152,7 @@ FROM deliveries dl
 JOIN books b ON b.id = dl.book_id
 WHERE dl.device_id = $1 AND dl.delivered_at IS NULL
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY dl.queued_at
 LIMIT 200
 `
@@ -222,7 +222,7 @@ WITH hits AS (
         JOIN book_files f ON f.sha256 = c.source_sha256 AND f.trashed_at IS NULL
     ) m
     JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
-    WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+    WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
     ORDER BY m.hash, m.file_id
 ), recorded AS (
     INSERT INTO deliveries (device_id, book_id, delivered_at)
@@ -299,7 +299,7 @@ CROSS JOIN unnest($1::uuid[]) AS n(id)
 JOIN books b ON b.id = n.id
 WHERE d.id = $2 AND d.user_id = $3::uuid
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
   AND EXISTS (SELECT 1 FROM book_files f
               WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
 ON CONFLICT (device_id, book_id) DO UPDATE
@@ -335,7 +335,7 @@ INSERT INTO deliveries (device_id, book_id, delivered_at)
 SELECT $1, b.id, now()
 FROM books b
 WHERE b.id = $2 AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
 ON CONFLICT (device_id, book_id) DO UPDATE
 SET delivered_at = coalesce(deliveries.delivered_at, now())
 `

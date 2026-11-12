@@ -12,7 +12,7 @@ ON CONFLICT (name) DO UPDATE SET version = EXCLUDED.version, updated_at = now();
 UPDATE book_files f SET chunked_at = NULL, indexed_at = NULL
 FROM books b
 WHERE f.id = b.primary_text_file_id
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND (sqlc.narg(book_id)::uuid IS NULL OR b.id = sqlc.narg(book_id)::uuid)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL
@@ -34,7 +34,7 @@ SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
 JOIN libraries l ON l.id = b.library_id
-WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND (l.fulltext OR sqlc.narg(library_id)::uuid IS NOT NULL)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL

@@ -74,6 +74,24 @@ func (q *Queries) AddBookTag(ctx context.Context, arg AddBookTagParams) error {
 	return err
 }
 
+const ageRatingVisible = `-- name: AgeRatingVisible :one
+SELECT $1::smallint <= age_limit($2::uuid, $3::boolean) AS visible
+`
+
+type AgeRatingVisibleParams struct {
+	Rating  int16
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+// Whether the viewer may see books of this rating.
+func (q *Queries) AgeRatingVisible(ctx context.Context, arg AgeRatingVisibleParams) (bool, error) {
+	row := q.db.QueryRow(ctx, ageRatingVisible, arg.Rating, arg.Viewer, arg.SeesAll)
+	var visible bool
+	err := row.Scan(&visible)
+	return visible, err
+}
+
 const countBookContributors = `-- name: CountBookContributors :one
 SELECT count(*) FROM book_contributors WHERE book_id = $1
 `
@@ -103,7 +121,7 @@ INSERT INTO books (
     field_sources
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort, placeholder, title_addition, title_series
+RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort, placeholder, title_addition, title_series, age_rating
 `
 
 type CreateBookParams struct {
@@ -169,6 +187,7 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, e
 		&i.Placeholder,
 		&i.TitleAddition,
 		&i.TitleSeries,
+		&i.AgeRating,
 	)
 	return i, err
 }
@@ -300,6 +319,24 @@ func (q *Queries) DeleteFileIdentifiersOfType(ctx context.Context, arg DeleteFil
 	return err
 }
 
+const getBookAgeState = `-- name: GetBookAgeState :one
+SELECT age_rating, COALESCE(field_sources->>'ageRating', '')::text AS source, 'ageRating' = ANY(locked_fields) AS locked
+FROM books WHERE id = $1
+`
+
+type GetBookAgeStateRow struct {
+	AgeRating *int16
+	Source    string
+	Locked    bool
+}
+
+func (q *Queries) GetBookAgeState(ctx context.Context, id uuid.UUID) (GetBookAgeStateRow, error) {
+	row := q.db.QueryRow(ctx, getBookAgeState, id)
+	var i GetBookAgeStateRow
+	err := row.Scan(&i.AgeRating, &i.Source, &i.Locked)
+	return i, err
+}
+
 const getPublisher = `-- name: GetPublisher :one
 SELECT id, name, name_key FROM publishers WHERE id = $1
 `
@@ -328,11 +365,11 @@ func (q *Queries) GetSeries(ctx context.Context, id uuid.UUID) (Series, error) {
 }
 
 const getVisibleBook = `-- name: GetVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series, b.age_rating
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 `
 
 type GetVisibleBookParams struct {
@@ -374,6 +411,7 @@ func (q *Queries) GetVisibleBook(ctx context.Context, arg GetVisibleBookParams) 
 		&i.Placeholder,
 		&i.TitleAddition,
 		&i.TitleSeries,
+		&i.AgeRating,
 	)
 	return i, err
 }
@@ -384,7 +422,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 `
 
 type GetVisibleBookCoverParams struct {
@@ -410,7 +448,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 `
 
 type GetVisibleFileParams struct {
@@ -631,6 +669,30 @@ func (q *Queries) ListBookIdentifiers(ctx context.Context, bookID uuid.UUID) ([]
 	return items, nil
 }
 
+const listBookTagNames = `-- name: ListBookTagNames :many
+SELECT t.name FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = $1
+`
+
+func (q *Queries) ListBookTagNames(ctx context.Context, bookID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listBookTagNames, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBookTags = `-- name: ListBookTags :many
 SELECT t.id, t.name
 FROM book_tags bt
@@ -724,7 +786,7 @@ func (q *Queries) ListFileChapters(ctx context.Context, fileIds []uuid.UUID) ([]
 }
 
 const lockBookOfFile = `-- name: LockBookOfFile :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series, b.age_rating
 FROM books b
 JOIN book_files f ON f.book_id = b.id
 WHERE f.id = $1
@@ -764,16 +826,17 @@ func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error
 		&i.Placeholder,
 		&i.TitleAddition,
 		&i.TitleSeries,
+		&i.AgeRating,
 	)
 	return i, err
 }
 
 const lockVisibleBook = `-- name: LockVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series, b.age_rating
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 FOR UPDATE
 `
 
@@ -816,6 +879,7 @@ func (q *Queries) LockVisibleBook(ctx context.Context, arg LockVisibleBookParams
 		&i.Placeholder,
 		&i.TitleAddition,
 		&i.TitleSeries,
+		&i.AgeRating,
 	)
 	return i, err
 }
@@ -835,6 +899,27 @@ WHERE b.id = $1
 
 func (q *Queries) RefreshAuthorSort(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, refreshAuthorSort, id)
+	return err
+}
+
+const setBookAgeRating = `-- name: SetBookAgeRating :exec
+UPDATE books
+SET age_rating    = $1::smallint,
+    field_sources = CASE WHEN $1::smallint IS NULL THEN field_sources - 'ageRating'
+                         ELSE jsonb_set(field_sources, '{ageRating}', to_jsonb($2::text)) END,
+    updated_at    = now()
+WHERE id = $3
+`
+
+type SetBookAgeRatingParams struct {
+	Rating *int16
+	Source string
+	ID     uuid.UUID
+}
+
+// The age rating and where it came from; NULL takes both away.
+func (q *Queries) SetBookAgeRating(ctx context.Context, arg SetBookAgeRatingParams) error {
+	_, err := q.db.Exec(ctx, setBookAgeRating, arg.Rating, arg.Source, arg.ID)
 	return err
 }
 

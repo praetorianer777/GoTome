@@ -1,7 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import type { CurrentUser } from "@/auth/session";
-import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
+import { AGE_RATINGS } from "@/books/edit";
+import {
+	Field,
+	FormError,
+	fieldErrors,
+	SelectField,
+	SubmitButton,
+} from "@/components/form";
 import { Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDate, formatSize } from "@/lib/format";
@@ -9,6 +16,7 @@ import {
 	type Account,
 	useCreateUser,
 	useEndUserSessions,
+	useSetMaxAgeRating,
 	useSetQuota,
 	useUpdateUser,
 	usersQuery,
@@ -166,6 +174,7 @@ function UserRow({ account, isMe }: { account: Account; isMe: boolean }) {
 				</form>
 			)}
 			<Quota account={account} />
+			{account.role !== "admin" && <MaxAgeRating account={account} />}
 			{!errors.password && (
 				<FormError error={update.error ?? endSessions.error} />
 			)}
@@ -303,6 +312,47 @@ function Quota({ account }: { account: Account }) {
 						})}
 			</p>
 			<FormError error={Object.keys(errors).length === 0 ? setQuota.error : undefined} />
+		</form>
+	);
+}
+
+function MaxAgeRating({ account }: { account: Account }) {
+	const set = useSetMaxAgeRating();
+	const [value, setValue] = useState(
+		account.maxAgeRating === undefined ? "" : String(account.maxAgeRating),
+	);
+	const errors = fieldErrors(set.error);
+
+	function submit(event: FormEvent) {
+		event.preventDefault();
+		set.mutate({
+			id: account.id,
+			maxAgeRating: value === "" ? null : Number(value),
+		});
+	}
+
+	return (
+		<form onSubmit={submit} className="flex flex-wrap items-end gap-3" noValidate>
+			<div className="min-w-0 max-w-full">
+				<SelectField
+					label={t("users.maxAgeRating")}
+					hint={t("users.maxAgeRating.hint")}
+					value={value}
+					onChange={setValue}
+					error={errors.maxAgeRating}
+					choices={[
+						{ value: "", label: t("users.maxAgeRating.none") },
+						...AGE_RATINGS.map((r) => ({
+							value: String(r),
+							label: t("users.maxAgeRating.upTo", { rating: String(r) }),
+						})),
+					]}
+				/>
+			</div>
+			<button type="submit" disabled={set.isPending} className={quietButton}>
+				{t("users.maxAgeRating.save")}
+			</button>
+			<FormError error={Object.keys(errors).length === 0 ? set.error : undefined} />
 		</form>
 	);
 }

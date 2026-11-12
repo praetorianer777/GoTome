@@ -99,7 +99,7 @@ FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND (sqlc.narg(genre)::text IS NULL OR g.genre = sqlc.narg(genre)::text)
   AND (sqlc.narg(after_score)::float8 IS NULL
@@ -115,7 +115,7 @@ FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
 GROUP BY g.genre;
 
@@ -126,7 +126,7 @@ SET state = sqlc.arg(state)::text, decided_by = sqlc.arg(viewer)::uuid, updated_
 FROM books b
 WHERE g.book_id = sqlc.arg(book_id)::uuid AND g.genre = sqlc.arg(genre)::text
   AND b.id = g.book_id AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: ListGenreCheckBooks :many
 -- Every book a genre-check may count, with whether it has each vector of

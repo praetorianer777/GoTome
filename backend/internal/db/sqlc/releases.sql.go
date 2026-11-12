@@ -105,7 +105,7 @@ SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.pre
        (EXISTS (
             SELECT 1 FROM books b
             WHERE b.title_key = m.dedupe_key AND b.deleted_at IS NULL AND NOT b.placeholder
-              AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+              AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
               AND (cardinality(m.author_keys) = 0 OR EXISTS (
                   SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                   WHERE c.book_id = b.id AND a.name_key = ANY(m.author_keys))))
@@ -113,7 +113,7 @@ SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.pre
             SELECT 1 FROM book_identifiers i
             JOIN books b ON b.id = i.book_id
             WHERE i.type = 'isbn' AND i.value = ANY(m.isbns) AND b.deleted_at IS NULL AND NOT b.placeholder
-              AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
+              AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean))))
        )::boolean AS in_library
 FROM mine m
 LEFT JOIN LATERAL (
@@ -205,7 +205,7 @@ LEFT JOIN LATERAL (
     FROM (SELECT b.placeholder
           FROM books b
           WHERE b.title_key = l.dedupe_key AND b.deleted_at IS NULL
-            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
             AND (cardinality(l.author_keys) = 0 OR EXISTS (
                 SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                 WHERE c.book_id = b.id AND a.name_key = ANY(l.author_keys)))
@@ -214,7 +214,7 @@ LEFT JOIN LATERAL (
           FROM book_identifiers i
           JOIN books b ON b.id = i.book_id
           WHERE i.type = 'isbn' AND i.value = ANY(l.isbns) AND b.deleted_at IS NULL
-            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))) f
+            AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))) f
 ) m ON true
 WHERE m.held IS NOT TRUE
 ORDER BY l.series_index NULLS LAST, lower(l.title)
@@ -532,7 +532,7 @@ WHERE r.id = $2::uuid
   AND NOT EXISTS (
       SELECT 1 FROM books b
       WHERE b.title_key = r.dedupe_key AND b.deleted_at IS NULL AND NOT b.placeholder
-        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids(u.id, u.role = ANY($4::text[])))
+        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids(u.id, u.role = ANY($4::text[]))) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(u.id, u.role = ANY($4::text[]))))
         AND (cardinality(r.author_keys) = 0 OR EXISTS (
             SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
             WHERE c.book_id = b.id AND a.name_key = ANY(r.author_keys))))
@@ -540,7 +540,7 @@ WHERE r.id = $2::uuid
       SELECT 1 FROM book_identifiers i
       JOIN books b ON b.id = i.book_id
       WHERE i.type = 'isbn' AND i.value = ANY(r.isbns) AND b.deleted_at IS NULL AND NOT b.placeholder
-        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids(u.id, u.role = ANY($4::text[]))))
+        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids(u.id, u.role = ANY($4::text[]))) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(u.id, u.role = ANY($4::text[])))))
 ON CONFLICT DO NOTHING
 RETURNING user_id
 `

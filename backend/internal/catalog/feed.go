@@ -176,7 +176,7 @@ FROM books b
 LEFT JOIN book_files f ON f.book_id = b.id AND f.kind = '`+KindEbook+`'
      AND f.trashed_at IS NULL AND f.missing_at IS NULL
 WHERE b.id = ANY($1::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids($2, $3))
+  AND b.library_id IN (SELECT * FROM visible_library_ids($2, $3)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2, $3)))
 GROUP BY b.id`, ids, scope.Viewer, scope.SeesAll)
 	if err != nil {
 		return nil, err

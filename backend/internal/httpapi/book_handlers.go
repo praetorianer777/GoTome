@@ -213,9 +213,11 @@ type bookDetail struct {
 	Publisher string `json:"publisher,omitempty"`
 	Series    string `json:"series,omitempty"`
 	// SeriesKey is what GET /series/{seriesKey} takes for series.
-	SeriesKey    string           `json:"seriesKey,omitempty"`
-	SeriesIndex  *float64         `json:"seriesIndex,omitempty"`
-	PageCount    *int32           `json:"pageCount,omitempty"`
+	SeriesKey   string   `json:"seriesKey,omitempty"`
+	SeriesIndex *float64 `json:"seriesIndex,omitempty"`
+	PageCount   *int32   `json:"pageCount,omitempty"`
+	// AgeRating is 0, 6, 12, 16 or 18 (adult); left out when unrated.
+	AgeRating    *int16           `json:"ageRating,omitempty"`
 	Contributors []contributor    `json:"contributors"`
 	Tags         []string         `json:"tags"`
 	Identifiers  []bookIdentifier `json:"identifiers"`
@@ -490,7 +492,7 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 	out := bookDetail{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Description: b.Description,
 		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex,
-		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
+		PageCount: b.PageCount, AgeRating: b.AgeRating, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
 		Recordings: []bookRecording{}, Forms: []bookForm{}, Joins: []bookJoin{},

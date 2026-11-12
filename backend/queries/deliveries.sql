@@ -9,7 +9,7 @@ CROSS JOIN unnest(sqlc.arg(ids)::uuid[]) AS n(id)
 JOIN books b ON b.id = n.id
 WHERE d.id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND EXISTS (SELECT 1 FROM book_files f
               WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
 ON CONFLICT (device_id, book_id) DO UPDATE
@@ -49,7 +49,7 @@ LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
 LEFT JOIN device_sends sd ON sd.device_id = dl.device_id AND sd.book_id = dl.book_id
 WHERE dl.device_id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(before_at)::timestamptz IS NULL OR (dl.queued_at, dl.id) < (sqlc.narg(before_at)::timestamptz, sqlc.narg(before_id)::uuid))
 ORDER BY dl.queued_at DESC, dl.id DESC
 LIMIT sqlc.arg(max_rows);
@@ -62,7 +62,7 @@ FROM deliveries dl
 JOIN books b ON b.id = dl.book_id
 WHERE dl.device_id = sqlc.arg(device_id) AND dl.delivered_at IS NULL
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY dl.queued_at
 LIMIT 200;
 
@@ -78,7 +78,7 @@ INSERT INTO deliveries (device_id, book_id, delivered_at)
 SELECT sqlc.arg(device_id), b.id, now()
 FROM books b
 WHERE b.id = sqlc.arg(book_id) AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ON CONFLICT (device_id, book_id) DO UPDATE
 SET delivered_at = coalesce(deliveries.delivered_at, now());
 
@@ -106,7 +106,7 @@ WITH hits AS (
         JOIN book_files f ON f.sha256 = c.source_sha256 AND f.trashed_at IS NULL
     ) m
     JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
-    WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+    WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     ORDER BY m.hash, m.file_id
 ), recorded AS (
     INSERT INTO deliveries (device_id, book_id, delivered_at)

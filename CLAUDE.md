@@ -282,6 +282,25 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   that returns anything belonging to a library filters through it, with the two
   arguments from `library.ScopeOf(user)`. Do not restate the rule in Go or in
   another query.
+- The age rating (#426) is the second half of the rule, written once in
+  `age_limit(viewer, sees_all)` (and `books_age_visible(ids, ...)`
+  for rows that name several books, such as curation actions): a book above
+  the viewer's `users.max_age_rating` is hidden, answered as a book that does not
+  exist; unrated books and administrators (`sees_all`) pass. Wherever a query
+  filters `b.library_id IN (SELECT * FROM visible_library_ids(V, S))` on books
+  it adds `AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(V, S)))` with the same arguments
+  (files and chunks through their book); `visibleBooks` does it for the Go-built
+  lists. `TestEveryVisibilityQueryAppliesTheRating` fails for a query that
+  names `visible_library_ids` without it, and
+  `TestEveryReadRouteKeepsToTheCallersRatings` is the visibility test's twin
+  for ratings. A SQL function written in a migration (the clean-up ones) needs
+  the same line. A book's rating is `books.age_rating` (0, 6, 12, 16, 18;
+  `catalog.AgeRatings`), field `ageRating` in `field_sources` and
+  `locked_fields`: a person's edit (`Edit.AgeRating`, -1 removes) is `manual`
+  and locked, tags (`catalog.TagAgeRating`, `RefreshAgeRating`, source `tags`)
+  rate it where nobody has, and a merge keeps the higher (`RaiseAgeRating`).
+  An account is limited with `PUT /users/{id}/max-age-rating` (`users:manage`,
+  not for administrators); a limited editor cannot rate above their own limit.
 - Something the viewer may not see is answered exactly like something that does not
   exist: 404, same body.
 - Every GET route says what it reads (`Route.Reads`); the router refuses to

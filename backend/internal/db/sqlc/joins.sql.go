@@ -38,7 +38,7 @@ SELECT j.id, j.into_book, j.from_book, j.file_ids
 FROM book_joins j
 JOIN books b ON b.id = j.into_book
 WHERE j.id = $1 AND j.undone_at IS NULL AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 FOR UPDATE OF j
 `
 
@@ -117,7 +117,7 @@ FROM book_relations r
 JOIN books o ON o.id = CASE WHEN r.book_a = $1 THEN r.book_b ELSE r.book_a END
 WHERE $1 IN (r.book_a, r.book_b) AND r.kind = 'format'
   AND o.deleted_at IS NULL
-  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (o.age_rating IS NULL OR o.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY o.title, o.id
 `
 
