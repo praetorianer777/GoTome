@@ -79,6 +79,7 @@ export function SearchPage({
 	const shown = describing ? described : results;
 	const facets = useQuery(facetsQuery({ library, filter }));
 	const books = results.data?.pages.flatMap((page) => page.books) ?? [];
+	const notSearched = results.data?.pages[0]?.notSearched ?? [];
 	const setPicks = (next: FilterPicks) =>
 		onSearch(
 			Object.fromEntries(FACET_FIELDS.map((field) => [field, next[field]])),
@@ -190,6 +191,16 @@ export function SearchPage({
 					)}
 					{shown.isPending && q !== "" && (
 						<Loading />
+					)}
+					{!describing && notSearched.length > 0 && (
+						<p
+							role="status"
+							className="text-sm text-slate-600 dark:text-slate-400"
+						>
+							{t("fulltext.notSearched", {
+								names: notSearched.map((l) => l.name).join(", "),
+							})}
+						</p>
 					)}
 					{shown.isSuccess && (describing ? near : books).length === 0 && (
 						<div role="status">

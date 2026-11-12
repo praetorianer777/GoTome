@@ -174,6 +174,7 @@ export const de: Record<MessageKey, string> = {
 	"fulltext.pages": "Seiten {from}–{to}",
 	"fulltext.open": "Ab hier lesen",
 	"fulltext.more": "Weitere Bücher",
+	"fulltext.notSearched": "Nicht nach Text durchsucht, da die Volltextsuche dafür aus ist: {names}",
 
 	"user.menu": "Konto",
 	"user.signedInAs": "Angemeldet als {name}",
@@ -1385,6 +1386,9 @@ export const de: Record<MessageKey, string> = {
 	"libraries.visibility.shared": "Alle",
 	"libraries.visibility.private": "Nur ihre Mitglieder",
 	"libraries.joinFormats": "Aus E-Book und Hörbuch mit gleichem Titel und Autor ein Buch machen",
+	"libraries.fulltext": "Buchtexte durchsuchen (Volltextsuche)",
+	"libraries.fulltext.count": "{indexed} von {files} Büchern sind im Suchindex",
+	"libraries.fulltext.off": "Aus: Der Text wird weiter für ähnliche Bücher und Duplikate gelesen, aber die Suche schaut nicht hinein.",
 	"libraries.watch": "Diesen Ordner selbst durchsuchen, kurz nachdem sich Dateien darin ändern",
 	"libraries.writable": "GOtome darf hier Dateien ändern",
 	"libraries.unwritable": "Seit {when} kann GOtome nicht in diesen Ordner schreiben: {reason}. Bis beim Durchsuchen festgestellt wird, dass er wieder beschreibbar ist, werden Änderungen in der Zwischenzeit nur in GOtome gespeichert und nicht in die Dateien geschrieben, und nichts wird in den Papierkorb verschoben oder repariert. Ein mit :ro eingebundener Ordner ist schreibgeschützt, was auch immer diese Bibliothek sagt.",

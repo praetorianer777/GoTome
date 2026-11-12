@@ -70,6 +70,10 @@ type IndexStatus struct {
 	// reads text anew clears what says they were); their earlier reading
 	// still answers searches meanwhile.
 	Rereading int `json:"rereading"`
+	// NotSearched is how many of the libraries asked about are left out of
+	// full-text search; Files and Indexed count the others, or the one library
+	// named, whichever its setting.
+	NotSearched int `json:"notSearched"`
 	// Engine is the full-text engine's version.
 	Engine string `json:"engine"`
 }
@@ -85,6 +89,13 @@ func (x *Index) Status(ctx context.Context, scope library.Scope, libraryID *uuid
 			return err
 		}
 		out.Files, out.Indexed, out.Rereading = int(counts.Files), int(counts.InApp), int(counts.Rereading)
+		left, err := sqlc.New(tx).CountUnsearchedLibraries(ctx, sqlc.CountUnsearchedLibrariesParams{
+			Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID,
+		})
+		if err != nil {
+			return err
+		}
+		out.NotSearched = int(left)
 		return tx.QueryRow(ctx, `
 			SELECT EXISTS (SELECT 1 FROM river_job WHERE kind = ANY($1)
 			               AND state IN ('available', 'pending', 'retryable', 'running', 'scheduled'))`,

@@ -167,6 +167,7 @@ export const en = {
 	"fulltext.pages": "Pages {from}–{to}",
 	"fulltext.open": "Read from here",
 	"fulltext.more": "More books",
+	"fulltext.notSearched": "Not searched by text, because full-text search is off for them: {names}",
 
 	"user.menu": "Account",
 	"user.signedInAs": "Signed in as {name}",
@@ -1367,6 +1368,9 @@ export const en = {
 	"libraries.visibility.shared": "Everybody",
 	"libraries.visibility.private": "Only its members",
 	"libraries.joinFormats": "Make one book of an ebook and its audiobook with the same title and author",
+	"libraries.fulltext": "Search the books' text (full-text search)",
+	"libraries.fulltext.count": "{indexed} of {files} books are in the search index",
+	"libraries.fulltext.off": "Off: the text is still read for similar books and duplicates, but search does not look in it.",
 	"libraries.watch": "Scan this folder by itself soon after files in it change",
 	"libraries.writable": "GOtome may change files here",
 	"libraries.unwritable": "Since {when}, GOtome cannot write to this folder: {reason}. Until a scan finds it writable again, edits made meanwhile stay in GOtome without being written into the files, and nothing is moved to the trash or fixed. A folder mounted with :ro is read-only whatever this library says.",

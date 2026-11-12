@@ -42,7 +42,7 @@ func (q *Queries) ClearLibraryUnwritable(ctx context.Context, id uuid.UUID) erro
 const createLibrary = `-- name: CreateLibrary :one
 INSERT INTO libraries (id, name, root_path, mode, writable, visibility, owner_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch, fulltext
 `
 
 type CreateLibraryParams struct {
@@ -80,6 +80,7 @@ func (q *Queries) CreateLibrary(ctx context.Context, arg CreateLibraryParams) (L
 		&i.UnwritableReason,
 		&i.JoinFormats,
 		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
 }
@@ -109,7 +110,7 @@ func (q *Queries) GetLibraryRoot(ctx context.Context, id uuid.UUID) (string, err
 }
 
 const getVisibleLibrary = `-- name: GetVisibleLibrary :one
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch, l.fulltext
 FROM libraries l
 WHERE l.id = $1
   AND l.id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
@@ -138,6 +139,7 @@ func (q *Queries) GetVisibleLibrary(ctx context.Context, arg GetVisibleLibraryPa
 		&i.UnwritableReason,
 		&i.JoinFormats,
 		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
 }
@@ -256,7 +258,7 @@ func (q *Queries) ListLibraryRoots(ctx context.Context) ([]ListLibraryRootsRow, 
 }
 
 const listVisibleLibraries = `-- name: ListVisibleLibraries :many
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch, l.fulltext
 FROM libraries l
 WHERE l.id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY lower(l.name)
@@ -290,6 +292,7 @@ func (q *Queries) ListVisibleLibraries(ctx context.Context, arg ListVisibleLibra
 			&i.UnwritableReason,
 			&i.JoinFormats,
 			&i.Watch,
+			&i.Fulltext,
 		); err != nil {
 			return nil, err
 		}
@@ -328,6 +331,20 @@ func (q *Queries) ListWatchedLibraries(ctx context.Context) ([]ListWatchedLibrar
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockLibraryForUpdate = `-- name: LockLibraryForUpdate :one
+SELECT fulltext FROM libraries WHERE id = $1 FOR UPDATE
+`
+
+// Waits for the writers that hold the library (HoldLibrary), and keeps new
+// ones off until the transaction ends; returns whether it is searched by
+// text now.
+func (q *Queries) LockLibraryForUpdate(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, lockLibraryForUpdate, id)
+	var fulltext bool
+	err := row.Scan(&fulltext)
+	return fulltext, err
 }
 
 const markLibraryUnwritable = `-- name: MarkLibraryUnwritable :one
@@ -375,12 +392,13 @@ SET name       = COALESCE($2, name),
     writable   = COALESCE($4, writable),
     join_formats = COALESCE($5, join_formats),
     watch      = COALESCE($6, watch),
+    fulltext   = COALESCE($7, fulltext),
     -- Whoever sets it has just seen the folder written to, or turned it off.
     unwritable_since  = CASE WHEN $4::boolean IS NULL THEN unwritable_since END,
     unwritable_reason = CASE WHEN $4::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch, fulltext
 `
 
 type UpdateLibraryParams struct {
@@ -390,6 +408,7 @@ type UpdateLibraryParams struct {
 	Writable    *bool
 	JoinFormats *bool
 	Watch       *bool
+	Fulltext    *bool
 }
 
 func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (Library, error) {
@@ -400,6 +419,7 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (L
 		arg.Writable,
 		arg.JoinFormats,
 		arg.Watch,
+		arg.Fulltext,
 	)
 	var i Library
 	err := row.Scan(
@@ -416,6 +436,7 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (L
 		&i.UnwritableReason,
 		&i.JoinFormats,
 		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
 }

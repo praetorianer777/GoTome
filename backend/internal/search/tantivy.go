@@ -45,6 +45,10 @@ func (s *TantivySearch) Search(ctx context.Context, scope library.Scope, q Query
 
 	var res Result
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		_, left, err := libraries(ctx, tx, scope, q)
+		if err != nil {
+			return err
+		}
 		chunks, err := s.best(ctx, tx, scope, q, p)
 		if err != nil {
 			return err
@@ -64,6 +68,7 @@ func (s *TantivySearch) Search(ctx context.Context, scope library.Scope, q Query
 			}
 		}
 		res, err = group(ctx, tx, readings, limit, offset, s.passages)
+		res.NotSearched = left
 		return err
 	})
 	return res, err

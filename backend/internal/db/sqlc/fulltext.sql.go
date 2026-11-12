@@ -20,12 +20,30 @@ func (q *Queries) AddOutboxDocs(ctx context.Context, docs []byte) error {
 	return err
 }
 
+const addOutboxLibraryDelete = `-- name: AddOutboxLibraryDelete :exec
+INSERT INTO fulltext_outbox (delete_libraries) VALUES (ARRAY[$1::uuid])
+`
+
+func (q *Queries) AddOutboxLibraryDelete(ctx context.Context, libraryID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, addOutboxLibraryDelete, libraryID)
+	return err
+}
+
 const clearAllIndexed = `-- name: ClearAllIndexed :exec
 UPDATE book_files SET indexed_at = NULL WHERE indexed_at IS NOT NULL
 `
 
 func (q *Queries) ClearAllIndexed(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, clearAllIndexed)
+	return err
+}
+
+const clearLibraryIndexed = `-- name: ClearLibraryIndexed :exec
+UPDATE book_files SET indexed_at = NULL WHERE library_id = $1 AND indexed_at IS NOT NULL
+`
+
+func (q *Queries) ClearLibraryIndexed(ctx context.Context, libraryID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearLibraryIndexed, libraryID)
 	return err
 }
 
@@ -38,10 +56,22 @@ func (q *Queries) DeleteOutbox(ctx context.Context, id int64) error {
 	return err
 }
 
+const getLibraryFulltext = `-- name: GetLibraryFulltext :one
+SELECT fulltext FROM libraries WHERE id = $1
+`
+
+func (q *Queries) GetLibraryFulltext(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, getLibraryFulltext, id)
+	var fulltext bool
+	err := row.Scan(&fulltext)
+	return fulltext, err
+}
+
 const listFilesToIndex = `-- name: ListFilesToIndex :many
 SELECT f.id
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
+JOIN libraries l ON l.id = b.library_id AND l.fulltext
 WHERE f.chunked_at IS NOT NULL AND f.indexed_at IS NULL
   AND f.missing_at IS NULL AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL AND NOT b.placeholder
@@ -78,13 +108,14 @@ func (q *Queries) ListFilesToIndex(ctx context.Context, arg ListFilesToIndexPara
 }
 
 const listOutbox = `-- name: ListOutbox :many
-SELECT id, deletes, docs FROM fulltext_outbox ORDER BY id LIMIT $1
+SELECT id, deletes, delete_libraries, docs FROM fulltext_outbox ORDER BY id LIMIT $1
 `
 
 type ListOutboxRow struct {
-	ID      int64
-	Deletes []int64
-	Docs    []byte
+	ID              int64
+	Deletes         []int64
+	DeleteLibraries []uuid.UUID
+	Docs            []byte
 }
 
 // The oldest changes the full-text index is still to get.
@@ -97,7 +128,12 @@ func (q *Queries) ListOutbox(ctx context.Context, limit int32) ([]ListOutboxRow,
 	items := []ListOutboxRow{}
 	for rows.Next() {
 		var i ListOutboxRow
-		if err := rows.Scan(&i.ID, &i.Deletes, &i.Docs); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Deletes,
+			&i.DeleteLibraries,
+			&i.Docs,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

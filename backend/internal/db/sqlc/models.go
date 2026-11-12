@@ -375,10 +375,11 @@ type FileSignature struct {
 }
 
 type FulltextOutbox struct {
-	ID        int64
-	Deletes   []int64
-	Docs      []byte
-	CreatedAt time.Time
+	ID              int64
+	Deletes         []int64
+	Docs            []byte
+	CreatedAt       time.Time
+	DeleteLibraries []uuid.UUID
 }
 
 type IndexVersion struct {
@@ -421,6 +422,7 @@ type Library struct {
 	UnwritableReason *string
 	JoinFormats      bool
 	Watch            bool
+	Fulltext         bool
 }
 
 type LibraryMember struct {

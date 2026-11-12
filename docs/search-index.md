@@ -50,6 +50,21 @@ The API is `GET /api/v1/search/status`, `POST /api/v1/search/reread` (with
 `library` or `book`, or neither for everything) and
 `POST /api/v1/search/rebuild`.
 
+## Leaving a library out
+
+Each library has the switch **Search the books' text (full-text search)**
+on the Libraries page (Administrators), on for a new library, with how many
+of its books are in the index. Off, GOtome still reads the library's text
+for similar books, duplicates and typo repair, but adds nothing to the
+index, and search leaves the library out and says so above the results. Turning it
+off takes the library's entries out of the index at once (within a minute,
+by the index's job); turning it on reads its books again for the index, as
+after a rebuild. The API is `fulltext` on `PATCH /api/v1/libraries/{id}`;
+`GET /api/v1/search` names the libraries it left out as `notSearched`, and
+`GET /api/v1/search/status` counts them and leaves them out of its totals
+(asked for one library, it counts that library's books whichever its
+setting).
+
 ## Time and space
 
 Reading a book into the index means reading its file again, which takes
