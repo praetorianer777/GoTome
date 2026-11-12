@@ -66,6 +66,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | smart shelf | 12 ms | 21 ms |  |
 | collections | 8 ms | 14 ms |  |
 | reading statistics | 20 ms | 41 ms |  |
+| highlights | 3 ms | 2 ms |  |
+| highlights matching words | 27 ms | 27 ms |  |
 | new books | 7 ms | 6 ms |  |
 | items of followed feeds | 13 ms | 10 ms |  |
 | genre review | 39 ms | 36 ms | counts every waiting suggestion |
