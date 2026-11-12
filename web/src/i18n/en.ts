@@ -417,6 +417,8 @@ export const en = {
 	"player.sleep.minutes": "In {minutes} minutes",
 	"player.sleep.chapter": "At the end of the chapter",
 	"player.sleep.at": "At {at}",
+	"player.chapterNow": "Chapter: {title}",
+	"player.sleep.set": "Sleep timer: {when}",
 	"player.sleep.extend": "Keep listening for 15 more minutes",
 	"player.night": "Start a sleep timer by itself at night",
 	"player.night.from": "From",

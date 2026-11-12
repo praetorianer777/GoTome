@@ -284,3 +284,110 @@ h1 {
 		background-image: url("../assets/hero.webp");
 	}
 }
+
+/* Reduced motion: whatever else moves (hover lifts, the switch's knob, the
+   chevrons, the skeletons, smooth scrolling) is cut to nothing here, so a
+   new transition needs no rule of its own (#452). The toast's animation is
+   gated above and stays off the same way. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* More contrast: the hairlines of cards and panels, which are 1.2:1 by
+   design, and the grey text become the strongest steps, and the glass
+   becomes solid. */
+:root {
+	--contrast-fg: #000;
+	--contrast-edge: #1a1306;
+	--contrast-ground: #fff;
+}
+:root[data-theme="dark"] {
+	--contrast-fg: #fff;
+	--contrast-edge: #d5deec;
+	--contrast-ground: #0b1630;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--contrast-fg: #fff;
+		--contrast-edge: #d5deec;
+		--contrast-ground: #0b1630;
+	}
+}
+@media (prefers-contrast: more) {
+	.panel,
+	.panel-solid {
+		background-color: var(--contrast-ground);
+		backdrop-filter: none;
+	}
+	.panel,
+	.panel-solid,
+	.border-slate-200,
+	.border-slate-300,
+	.border-slate-700,
+	.border-slate-800,
+	.dark\:border-slate-600,
+	.dark\:border-slate-700,
+	.dark\:border-slate-800 {
+		border-color: var(--contrast-edge);
+	}
+	.text-slate-500,
+	.text-slate-600,
+	[class*="dark:text-slate-3"],
+	[class*="dark:text-slate-4"],
+	[class*="dark:text-slate-5"] {
+		color: var(--contrast-fg);
+	}
+	:focus-visible {
+		outline-width: 3px;
+	}
+}
+
+/* Forced colours (Windows high contrast): the browser replaces colours and
+   drops shadows, so what colour alone showed is drawn with system colours:
+   the focus ring, a button's edge, a switch and its knob, and what is
+   pressed, selected or current. */
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 3px solid Highlight;
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+	:where(button:not([role="switch"]), summary, select, input:not([type="checkbox"], [type="radio"], [type="range"])) {
+		outline: 1px solid ButtonText;
+		outline-offset: -1px;
+	}
+	[aria-pressed="true"],
+	[aria-selected="true"],
+	[aria-current="true"],
+	[aria-current="page"],
+	[aria-current="location"] {
+		forced-color-adjust: none;
+		background-color: Highlight;
+		color: HighlightText;
+	}
+	[role="switch"] > span[aria-hidden="true"] {
+		forced-color-adjust: none;
+		background-color: Canvas;
+		border: 2px solid ButtonText;
+	}
+	[role="switch"] > span[aria-hidden="true"] > span {
+		background-color: ButtonText;
+	}
+	[role="switch"][aria-checked="true"] > span[aria-hidden="true"] {
+		background-color: Highlight;
+		border-color: Highlight;
+	}
+	[role="switch"][aria-checked="true"] > span[aria-hidden="true"] > span {
+		background-color: HighlightText;
+	}
+	svg {
+		forced-color-adjust: auto;
+	}
+}

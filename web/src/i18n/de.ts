@@ -424,6 +424,8 @@ export const de: Record<MessageKey, string> = {
 	"player.sleep.minutes": "In {minutes} Minuten",
 	"player.sleep.chapter": "Am Ende des Kapitels",
 	"player.sleep.at": "Um {at}",
+	"player.chapterNow": "Kapitel: {title}",
+	"player.sleep.set": "Einschlaf-Timer: {when}",
 	"player.sleep.extend": "15 Minuten länger weiterhören",
 	"player.night": "Schlaf-Timer nachts selbst starten",
 	"player.night.from": "Von",

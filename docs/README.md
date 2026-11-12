@@ -54,6 +54,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   them with `gotome duplicate-check`.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
+- [Accessibility](accessibility.md): WCAG 2.2 AA, what is checked, what is
+  not met, and how to report a barrier.
 - [Search index](search-index.md): what is rebuilt when, and by hand.
 - [Embedding on a GPU](embedding-server.md): `bge-m3` on an Ollama server.
 - [How good similar books are](similarity.md): `gotome similar-check`.
