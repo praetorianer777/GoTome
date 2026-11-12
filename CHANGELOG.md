@@ -21,6 +21,12 @@ What changes for someone who runs or uses GOtome. The format follows
   shared stars, and a person's reviews have a page of their own. Others see
   only reviews of books they can see; turning sharing off hides them at
   once ([people, roles and libraries](docs/users-and-libraries.md#sharing-ratings-and-reviews)).
+- GOtome installs as an app on Android, iPhone and desktop browsers and opens
+  without a connection. "Keep offline" on a book stores its ebook, PDF or
+  audio files in the browser; the readers and the player open them with no
+  network, the profile lists what is kept and its size and removes it, and
+  places read offline are sent when the connection is back. Signing out
+  clears all of it. See `docs/offline.md`.
 
 ### Fixed
 

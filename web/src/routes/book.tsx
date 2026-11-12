@@ -20,6 +20,7 @@ import { SimilarBooks } from "@/books/similar";
 import { BookReviews } from "@/reviews/reviews";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
+import { KeepAudioButton, KeepFileButton } from "@/offline/keep-button";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { QueueButtons } from "@/player/up-next";
@@ -281,7 +282,7 @@ function BookPage({ book }: { book: BookDetail }) {
 
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
 				<div className="flex min-w-0 flex-col gap-6">
-					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
+					<Files book={book} />
 					{personal && <CollectionPicker bookId={book.id} />}
 					{personal &&
 						book.files.some((f) => f.kind === "ebook" && !f.missing) && (
@@ -432,15 +433,8 @@ function fileNotes(file: BookFile): string[] {
 /** The formats GOtome writes an EPUB from. */
 const KINDLE_FORMATS = ["mobi", "azw", "azw3"];
 
-function Files({
-	bookId,
-	libraryId,
-	files,
-}: {
-	bookId: string;
-	libraryId: string;
-	files: BookFile[];
-}) {
+function Files({ book }: { book: BookDetail }) {
+	const { id: bookId, libraryId, files } = book;
 	const { user } = useRouteContext({ from: "/app" });
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
@@ -533,6 +527,7 @@ function Files({
 								{t("book.file.trash")}
 							</button>
 						)}
+						<KeepFileButton book={book} file={file} />
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}
@@ -546,6 +541,9 @@ function Files({
 					</li>
 				))}
 			</ul>
+			<div className="flex">
+				<KeepAudioButton book={book} />
+			</div>
 			<FormError error={reread.error ?? trash.error ?? convert.error} />
 			{canReread && files.some((f) => f.hasText) && (
 				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />

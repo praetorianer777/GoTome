@@ -39,6 +39,9 @@ test("the app signs in, reloads and signs out below its prefix", async ({ page }
 	// address loads the app from it.
 	const cookies = await page.context().cookies();
 	expect(cookies.find((c) => c.name === "gotome_session")?.path).toBe(prefix);
+	// The service worker's scope is the prefix, so it serves nothing else.
+	const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
+	expect(new URL(scope).pathname).toBe(prefix);
 	await page.goto("profile");
 	await expect(page).toHaveURL(new RegExp(`${prefix}profile$`));
 	await page.reload();
