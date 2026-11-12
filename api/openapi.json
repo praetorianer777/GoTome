@@ -13029,6 +13029,12 @@
       "CreatedDevice": {
         "type": "object",
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "catalog": {
             "type": "string"
           },
@@ -13042,7 +13048,8 @@
         "required": [
           "device",
           "token",
-          "catalog"
+          "catalog",
+          "addresses"
         ]
       },
       "CurationAction": {
@@ -17774,6 +17781,12 @@
       "ThisDevice": {
         "type": "object",
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "device": {
             "$ref": "#/components/schemas/DeviceView"
           },
@@ -17787,7 +17800,8 @@
         "required": [
           "device",
           "username",
-          "upload"
+          "upload",
+          "addresses"
         ]
       },
       "ThresholdPoint": {

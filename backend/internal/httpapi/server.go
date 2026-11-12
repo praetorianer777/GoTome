@@ -143,6 +143,9 @@ type Server struct {
 	// BasePath is the path the server is served under, such as /gotome/;
 	// empty or "/" at the root.
 	BasePath string
+	// PublicURLs are the addresses an administrator named for clients
+	// (GOTOME_PUBLIC_URLS); devices learn them from GET /device.
+	PublicURLs []string
 }
 
 // Routes is the handler for every path the server answers.

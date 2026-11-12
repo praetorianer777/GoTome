@@ -194,6 +194,14 @@ export function Devices({ username }: { username: string }) {
 						<dd className="break-all font-mono">
 							{window.location.origin + created.catalog}
 						</dd>
+						{created.addresses.length > 0 && (
+							<>
+								<dt>{t("devices.addresses")}</dt>
+								<dd className="break-all font-mono">
+									{created.addresses.join(", ")}
+								</dd>
+							</>
+						)}
 						<dt>{t("devices.username")}</dt>
 						<dd className="break-all font-mono">{username}</dd>
 						<dt>{t("devices.token")}</dt>

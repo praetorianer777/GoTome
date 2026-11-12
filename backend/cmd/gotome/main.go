@@ -538,6 +538,7 @@ func serve() error {
 		NotifyHub:     hub,
 		Web:           webui.HandlerAt(cfg.BasePath),
 		BasePath:      cfg.BasePath,
+		PublicURLs:    cfg.PublicURLs,
 
 		TrustedProxies: cfg.TrustedProxies,
 	}

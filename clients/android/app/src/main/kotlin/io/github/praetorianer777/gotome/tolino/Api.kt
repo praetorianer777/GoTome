@@ -20,6 +20,8 @@ class Api(private val prefs: Prefs) {
         val conn = open("GET", base, "/device", basic(username, token))
         val device = Json.thisDevice(read(conn, signOutOn401 = false))
         prefs.server = base
+        prefs.addresses = device.addresses
+        prefs.lastGood = base
         prefs.username = device.username
         prefs.token = token
         return device.name
@@ -42,6 +44,35 @@ class Api(private val prefs: Prefs) {
         val conn = open("POST", pairing.server, "/device/requests/${pairing.id}/token", null)
         write(conn, Json.secret(pairing.secret))
         return Json.pairingAnswer(read(conn, signOutOn401 = false))
+    }
+
+    /** The address GOtome answers at, found once per instance; see [Addresses]. */
+    private var resolved: String? = null
+
+    private fun reachable(): String {
+        resolved?.let { return it }
+        val addresses = Addresses.order(prefs.server, prefs.addresses, prefs.lastGood)
+        val found = if (addresses.size > 1) Addresses.choose(addresses, ::answers) else addresses.firstOrNull()
+        return (found ?: prefs.server).also {
+            resolved = it
+            if (it != prefs.lastGood && addresses.size > 1) prefs.lastGood = it
+        }
+    }
+
+    /** Whether anything answers at [address]; GOtome's refusal of a missing sign-in counts, a silent address does not. */
+    private fun answers(address: String): Boolean = try {
+        val conn = URL("$address/api/v1/device").openConnection() as HttpURLConnection
+        conn.connectTimeout = Addresses.PROBE_TIMEOUT_MS
+        conn.readTimeout = Addresses.PROBE_TIMEOUT_MS
+        conn.instanceFollowRedirects = false
+        conn.responseCode > 0
+    } catch (e: IOException) {
+        false
+    }
+
+    /** Asks GOtome for the addresses it names for itself and keeps them. */
+    fun learnAddresses() {
+        prefs.addresses = Json.thisDevice(get("/device")).addresses
     }
 
     fun get(path: String): String = read(open("GET", path))
@@ -94,7 +125,7 @@ class Api(private val prefs: Prefs) {
 
     private fun open(method: String, path: String): HttpURLConnection {
         val token = prefs.token ?: throw ApiException(401, "Not signed in")
-        return open(method, prefs.server, path, basic(prefs.username, token))
+        return open(method, reachable(), path, basic(prefs.username, token))
     }
 
     private fun open(method: String, server: String, path: String, authorization: String?): HttpURLConnection {

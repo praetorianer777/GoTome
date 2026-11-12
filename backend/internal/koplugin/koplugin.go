@@ -10,6 +10,8 @@ import (
 	"io"
 	"io/fs"
 	"regexp"
+	"slices"
+	"strings"
 )
 
 //go:embed all:gotome.koplugin
@@ -25,8 +27,10 @@ const Folder = "gotome.koplugin"
 var origin = regexp.MustCompile(`^https?://([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])(:\d+)?(/[A-Za-z0-9._~\-]+)*$`)
 
 // Zip writes the plugin as a zip. server, the address the browser used,
-// becomes the plugin's default server where it is a plain address.
-func Zip(w io.Writer, server string) error {
+// and addresses, the ones the administrator named, become the plugin's
+// servers where they are plain addresses: the browser's first unless it is
+// among them already, which keeps their order.
+func Zip(w io.Writer, server string, addresses []string) error {
 	z := zip.NewWriter(w)
 	err := fs.WalkDir(plugin, Folder, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -46,12 +50,23 @@ func Zip(w io.Writer, server string) error {
 	if err != nil {
 		return err
 	}
-	if origin.MatchString(server) {
+	var list []string
+	seen := map[string]bool{}
+	if len(addresses) == 0 || !slices.Contains(addresses, server) {
+		addresses = append([]string{server}, addresses...)
+	}
+	for _, a := range addresses {
+		if origin.MatchString(a) && !seen[a] {
+			seen[a] = true
+			list = append(list, `"`+a+`"`)
+		}
+	}
+	if len(list) > 0 {
 		f, err := z.Create(Folder + "/gotome_server.lua")
 		if err != nil {
 			return err
 		}
-		if _, err := io.WriteString(f, "-- Where this copy of the plugin was downloaded from.\nreturn \""+server+"\"\n"); err != nil {
+		if _, err := io.WriteString(f, "-- Where this copy of the plugin was downloaded from, and the other addresses of the server.\nreturn { "+strings.Join(list, ", ")+" }\n"); err != nil {
 			return err
 		}
 	}

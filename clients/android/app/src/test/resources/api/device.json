@@ -10,6 +10,7 @@
   "upload": {
     "allowed": false,
     "reason": "token"
-  }
+  },
+  "addresses": []
 }
 

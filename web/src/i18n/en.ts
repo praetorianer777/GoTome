@@ -1235,6 +1235,7 @@ export const en = {
 	"devices.name": "Name of the device",
 	"devices.add": "Add a device",
 	"devices.created": "{name} is added. Enter these in its catalogue settings:",
+	"devices.addresses": "Server addresses, tried in this order",
 	"devices.catalog": "Catalogue address",
 	"devices.username": "User name",
 	"devices.token": "Password (token)",

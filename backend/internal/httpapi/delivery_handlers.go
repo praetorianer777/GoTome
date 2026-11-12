@@ -292,6 +292,9 @@ type thisDevice struct {
 	Username string     `json:"username"`
 	// Upload says whether the device may upload books now, and if not why.
 	Upload deviceUpload `json:"upload"`
+	// Addresses are the server's configured addresses, in the order a
+	// client should try them; empty where none are configured.
+	Addresses []string `json:"addresses"`
 }
 
 // getThisDevice tells a device's app whom its token signs in.
@@ -311,7 +314,7 @@ func (s *Server) getThisDevice(w http.ResponseWriter, r *http.Request) error {
 			if err != nil {
 				return err
 			}
-			writeJSON(w, r, http.StatusOK, thisDevice{Device: viewOf(d), Username: user.Username, Upload: upload})
+			writeJSON(w, r, http.StatusOK, thisDevice{Device: viewOf(d), Username: user.Username, Upload: upload, Addresses: append([]string{}, s.PublicURLs...)})
 			return nil
 		}
 	}

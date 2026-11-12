@@ -46,6 +46,18 @@ Over the internet, put GOtome behind HTTPS
 device's token travels with each of its requests, and a Kobo's is part of
 the address it calls.
 
+## Two addresses
+
+Name the addresses GOtome is reached at in `GOTOME_PUBLIC_URLS`
+([configuration.md](configuration.md)) and the profile shows them when a
+device is added. The GOtome for Tolino app asks for them (`GET /device`) at
+each sync and the KOReader plugin download carries them
+([koreader.md](koreader.md#at-home-and-on-the-road)). A device tries the
+address that worked last, then the others in order, with a four-second wait
+for each. The Tolino app cannot tell networks apart (Android 8.1 gives a
+Wi-Fi name only to apps with the location permission), so "the one that
+worked last" is what it remembers.
+
 ## Sending books
 
 On a book's page, **Send to an e-reader**; in the library, select books
