@@ -130,20 +130,26 @@ WHERE r.precision = 'day'
 -- name: ListReleases :many
 -- The books of the subjects the viewer follows, upcoming (later than
 -- today, or with no date and not of the subject's past) or out within the
--- last year, each book once; in_library says whether a library they see
--- has it.
-WITH mine AS (
-    SELECT DISTINCT ON (r.dedupe_key) r.*, s.kind AS subject_kind, s.name AS subject_name
+-- last year, each book once across both lists: of the rows the subjects
+-- have of a book, one with a date, the latest, says where it belongs, and
+-- the cover is its own or another row's, with the provider it is of. in_library says whether a library they see has it.
+WITH followed AS (
+    SELECT r.*, s.kind AS subject_kind, s.name AS subject_name
     FROM releases r
     JOIN trackers t ON t.subject_id = r.subject_id AND t.user_id = sqlc.arg(viewer)::uuid
     JOIN release_subjects s ON s.id = r.subject_id
+), chosen AS (
+    SELECT DISTINCT ON (f.dedupe_key) f.*
+    FROM followed f
+    ORDER BY f.dedupe_key, f.release_date IS NULL, f.release_date DESC, f.subject_kind, f.id
+), mine AS (
+    SELECT c.* FROM chosen c
     WHERE CASE WHEN sqlc.arg(upcoming)::boolean
-               THEN r.release_date > current_date OR (r.release_date IS NULL AND NOT r.backlog)
-               ELSE r.release_date <= current_date AND r.release_date > current_date - 365 END
-    ORDER BY r.dedupe_key, s.kind, r.id
+               THEN c.release_date > current_date OR (c.release_date IS NULL AND NOT c.backlog)
+               ELSE c.release_date <= current_date AND c.release_date > current_date - 365 END
 )
 SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.precision,
-       m.provider, m.cover_url, m.subject_kind, m.subject_name,
+       m.provider, cv.cover_url, coalesce(cv.provider, m.provider) AS cover_provider, m.subject_kind, m.subject_name,
        (EXISTS (
             SELECT 1 FROM books b
             WHERE b.title_key = m.dedupe_key AND b.deleted_at IS NULL AND NOT b.placeholder
@@ -158,6 +164,11 @@ SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.pre
               AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
        )::boolean AS in_library
 FROM mine m
+LEFT JOIN LATERAL (
+    SELECT o.cover_url, o.provider FROM followed o
+    WHERE o.dedupe_key = m.dedupe_key AND o.cover_url IS NOT NULL
+    ORDER BY o.id = m.id DESC, o.id LIMIT 1
+) cv ON true
 ORDER BY CASE WHEN sqlc.arg(upcoming)::boolean THEN m.release_date END ASC NULLS LAST,
          CASE WHEN NOT sqlc.arg(upcoming)::boolean THEN m.release_date END DESC,
          lower(m.title)
