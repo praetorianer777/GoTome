@@ -1265,10 +1265,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `TestOnnxMatchesTheReference` does the same in the toolchain when
   `GOTOME_TEST_EMBED_MODEL` and `GOTOME_TEST_ONNXRUNTIME` name the files.
 - `internal/similar` keeps `book_vectors`: per book a `metadata` vector of
-  `book_metadata_text` (title, authors, series, tags, description; the SQL
+  `book_metadata_text` (title without a shop's additions, authors but not placeholder ones, series, tags, description; the SQL
   function is the one place that says what it is made of) and, for a book
   with chunked text, a `content` vector, the mean of `Samples` passages
-  spread over its chunks, weighted by the tokens the model read. Each row
+  spread over its chunks (`embedding.contentSamples`, 16 unless set; part of the recipe hashed into the source), weighted by the tokens the model read. Each row
   holds the model, its revision and weights (`Version`), and the hash of
   its source: the metadata text, or the primary text file with when it was
   chunked and `recipe`. Placeholders and deleted or merged books have none.

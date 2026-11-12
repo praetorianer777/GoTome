@@ -75,7 +75,7 @@ passages of the book (16 unless set, 8 to 128), spread evenly over its text.
 Another number makes every content vector again and nothing else.
 
 Measured on a sample of the owner's library (#184): 173 books by 8 authors, 7
-of them in a series, all in German except a few; multilingual-e5-small;
+of them in a series; multilingual-e5-small;
 `similar-check` over all 173 books, 10 similar books each; the app limited
 to 2 CPUs (`cpus: 2`), one embedding thread, 12-CPU host that other work
 shared, so the times are rough.
