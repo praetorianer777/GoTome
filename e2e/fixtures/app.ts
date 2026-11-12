@@ -11,18 +11,6 @@ export async function signIn(page: Page, credentials: { username: string; passwo
 }
 
 /**
- * Waits until the browser holds the session cookie. WebKit stores a cookie a
- * fetch's answer set apart from the page, so a navigation right after
- * signing in may go out without it, and land on the sign-in page (#516: the
- * server's log shows such requests with no cookie at all).
- */
-export async function sessionStored(page: Page): Promise<void> {
-	await expect
-		.poll(async () => (await page.context().cookies()).some((c) => c.name === "gotome_session"))
-		.toBe(true);
-}
-
-/**
  * Goes to a page of a test that is signed in. WebKit under load now and
  * then loses the context's session cookie without the server ending the
  * session (#511: a poll of the duplicates page found the sign-in page for
@@ -35,7 +23,6 @@ export async function gotoSignedIn(page: Page, path: string): Promise<void> {
 	if (await page.getByRole("heading", { name: "Sign in", level: 1 }).isVisible()) {
 		await signIn(page);
 		await expect(page.getByRole("heading", { name: "Sign in", level: 1 })).toBeHidden();
-		await sessionStored(page);
 		await page.goto(path);
 	}
 }
@@ -48,7 +35,6 @@ export async function openSignedIn(page: Page): Promise<void> {
 	await expect(
 		page.getByRole("heading", { name: "Library", level: 1 }),
 	).toBeVisible();
-	await sessionStored(page);
 }
 
 /**
