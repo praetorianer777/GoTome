@@ -919,6 +919,21 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.dismissRecommendation,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/discover", ID: "listDiscover",
+			Summary: "Books beyond the libraries that the caller's taste points to: other works of authors they rated, next volumes of series they read, books of their genres; each with why", Tag: "books",
+			Response: discoverList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listDiscover,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/discover/run", ID: "requestDiscover",
+			Summary: "Ask for the caller's discovery to be worked out now", Tag: "books",
+			Status: http.StatusAccepted, Permission: auth.PersonalManage, Handler: s.requestDiscover,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/discover/{candidateId}/dismiss", ID: "dismissDiscovered",
+			Summary: "Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on", Tag: "books",
+			Permission: auth.PersonalManage, Handler: s.dismissDiscovered,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
 			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
 			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,

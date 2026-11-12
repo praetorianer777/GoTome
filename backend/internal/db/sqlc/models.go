@@ -357,6 +357,47 @@ type DeviceSend struct {
 	SentAt   time.Time
 }
 
+type DiscoverAsk struct {
+	UserID  uuid.UUID
+	Kind    string
+	NameKey string
+	AskedAt time.Time
+}
+
+type DiscoverCandidate struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Provider    string
+	ProviderID  string
+	Work        string
+	Title       string
+	TitleKeys   []string
+	AuthorKeys  []string
+	Isbns       []string
+	Record      []byte
+	Score       float64
+	ReasonKind  string
+	ReasonName  string
+	ReasonStars int16
+	Because     []string
+	FoundAt     time.Time
+}
+
+type DiscoverDismissal struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TitleKeys  []string
+	AuthorKeys []string
+	CreatedAt  time.Time
+}
+
+type DiscoverRun struct {
+	UserID     uuid.UUID
+	StartedAt  time.Time
+	FinishedAt *time.Time
+	Requested  bool
+}
+
 type DuplicateEvidence struct {
 	PairID uuid.UUID
 	Kind   string

@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Discover: books beyond your libraries from your taste, with a reason each
+  and "Add to wishlist" or "Not interested" in one tap: other works of the
+  authors you rated highly, the next volumes and gaps of the series you read,
+  and books of the genres you read most. Off until an administrator turns it
+  on (**Discover books beyond the libraries**); the metadata sources are then
+  asked for those authors, series and genres, never for you or your library,
+  and not at all in offline mode ([Discover](docs/discover.md)).
+
 ## [0.24.0] - 2026-11-12
 
 ### Added

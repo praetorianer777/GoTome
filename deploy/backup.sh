@@ -32,10 +32,11 @@ umask 077
 # duplicate signatures, the vectors (of books and of which files' passages
 # have them), the cache of what metadata sources answered, and the last
 # run of a match measure (a report that is made again by running it), and
-# the notes of the fixed copies made for devices. The log of webhook deliveries
+# the notes of the fixed copies made for devices, and what Discover found
+# for each person (what they dismissed stays). The log of webhook deliveries
 # is left out too (the webhooks themselves stay). Their tables stay in the
 # dump, empty; restore.sh has the text read again, which fills them.
-derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups device_copies webhook_deliveries)
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups device_copies webhook_deliveries discover_candidates discover_runs discover_asks)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")

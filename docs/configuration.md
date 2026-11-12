@@ -195,6 +195,14 @@ GOtome works out what each book is about with a language model, for
 | `embedding.contentSamples` | Passages per book | `16` | How many passages of a book's text, spread evenly over it, its content vector is the mean of (8 to 128). More passages take proportionally longer per book on the CPU. Another number makes every content vector again (the metadata vectors stay). Measurements: [similarity.md](similarity.md). |
 | `embedding.server` | Embedding server | none | The address of an Ollama server that runs `bge-m3`, such as `http://host.docker.internal:11434`, without a path. GOtome may reach this one address even on your own network. Empty, `bge-m3` runs in GOtome on the CPU. |
 
+### Discover
+
+See [discover.md](discover.md).
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `recommendations.discover` | Discover books beyond the libraries | `off` | `on` lets GOtome look for books no library holds from each person's taste, once a day for those who asked on the **Discover** page. This is the one place a person's taste leaves the server in the form of questions: the metadata sources (Open Library, Hardcover; all that are enabled under `metadata.providers`) are asked for the works of authors the person rated highly, for the volumes of series they read and for books of the genres they read most. They see those author, series and genre names and your server's address, never the person, their ratings or their library. Nothing is asked in offline mode (`GOTOME_OFFLINE`). |
+
 ### Genres
 
 See [genres.md](genres.md).

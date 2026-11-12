@@ -54,6 +54,8 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Resolving duplicates by themselves](duplicates.md): the classes of
   duplicate pairs the rules merge or link, dry runs, undo, and measuring
   them with `gotome duplicate-check`.
+- [Discover](discover.md): books beyond your libraries from your taste,
+  what the metadata sources are asked, and how to switch it on.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
 - [Accessibility](accessibility.md): WCAG 2.2 AA, what is checked, what is
