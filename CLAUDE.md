@@ -37,6 +37,11 @@ ever in the compose file or an environment variable. init only adds what is miss
   #15 chose ONNX Runtime directly, with a tokenizer of GOtome's own, int8
   weights, 16 passages per book prefixed `query: `
   (`docs/decisions/embedding-runtime.md`); its harness is `spikes/embed`.
+  #451 chose an ensemble of word weights, heads on the content vector, the
+  metadata vector and neighbours, calibrated per genre, shipped for the genres
+  Gutenberg has and adapted per library (`docs/decisions/genre-detection.md`);
+  its harness is `spikes/genres`. No genre feature work starts from it before
+  the follow-ups it lists are filed.
 
 ## Layout and toolchain
 

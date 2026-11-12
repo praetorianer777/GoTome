@@ -69,4 +69,4 @@ For people who run GOtome or use it. Start with **Getting started**.
   timing the views on your own library.
 - [The demo](demo.md): the Pages build, its sample data and the books it fetches.
 - [Decision records](decisions/): the search engine, the text store, the
-  embedding runtime, the MOBI reader, passage vectors.
+  embedding runtime, the MOBI reader, passage vectors, genre detection.
