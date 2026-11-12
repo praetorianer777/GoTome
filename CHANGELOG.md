@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-12
+
 ### Added
 
 - A documented, versioned audio API for third-party players
