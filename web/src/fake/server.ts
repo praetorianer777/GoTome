@@ -47,6 +47,9 @@ import type { SystemCheck } from "@/system/checks";
 import type { Health } from "@/system/health";
 import type { ReleaseStatus } from "@/system/update";
 
+const DEFAULT_ORGANISE_PATTERN =
+	"{author}/[{series}/][{series_index} - ]{title}.{ext}";
+
 const PERMISSIONS = {
 	reader: ["library:read", "personal:manage"],
 	editor: [
@@ -97,6 +100,34 @@ export class FakeServer {
 	session: CurrentUser | null = null;
 	requests: { method: string; path: string; body: unknown }[] = [];
 	libraries: Library[] = [];
+	/** What a preview of organising a library's files answers. */
+	organisePreview = {
+		files: 3,
+		books: 3,
+		unchanged: 1,
+		moves: 2,
+		collisions: 1,
+		skipped: 0,
+		examples: [
+			{
+				bookId: "book-1",
+				title: "Emma",
+				from: "inbox/emma.epub",
+				to: "Jane Austen/Emma.epub",
+				collision: false,
+			},
+			{
+				bookId: "book-2",
+				title: "Emma",
+				from: "inbox/emma-copy.epub",
+				to: "Jane Austen/Emma (2).epub",
+				collision: true,
+			},
+		],
+		left: [] as { bookId: string; title: string; path: string; reason: string }[],
+	};
+	/** The runs started by organising a library's files. */
+	organiseRuns: { library: string; pattern: string }[] = [];
 	/** Folders a library cannot be made writable on, as a :ro mount. */
 	readOnlyFolders: string[] = [];
 	/** The user IDs of each private library's members, by library ID. */
@@ -532,6 +563,8 @@ export class FakeServer {
 			joinFormats: false,
 			watch: true,
 			fulltext: true,
+			organiseEnabled: false,
+			organisePattern: DEFAULT_ORGANISE_PATTERN,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -3169,6 +3202,38 @@ export class FakeServer {
 				);
 				return new Response(null, { status: 204 });
 			}
+		}
+
+		const organisePath = /^([^/]+)\/organise(\/preview)?$/.exec(id);
+		if (organisePath && method === "POST") {
+			const target = this.libraries.find((l) => l.id === organisePath[1]);
+			if (!target) {
+				return refuse(404, "not_found", "There is no such library.");
+			}
+			const pattern =
+				String(body.pattern ?? "") || target.organisePattern || DEFAULT_ORGANISE_PATTERN;
+			if (!pattern.endsWith("{ext}")) {
+				return invalid({ pattern: "The pattern must end in {ext}." });
+			}
+			const blocked = !target.writable
+				? "read-only"
+				: target.mode !== "managed" && !target.organiseEnabled
+					? "off"
+					: undefined;
+			if (organisePath[2]) {
+				return Response.json({
+					...this.organisePreview,
+					pattern,
+					defaultPattern: DEFAULT_ORGANISE_PATTERN,
+					allowed: blocked === undefined,
+					blocked,
+				});
+			}
+			if (blocked) {
+				return refuse(409, "conflict", "This library's files may not be renamed.");
+			}
+			this.organiseRuns.push({ library: target.id, pattern });
+			return Response.json({ runId: `run-organise-${this.organiseRuns.length}` }, { status: 202 });
 		}
 
 		const library = this.libraries.find((l) => l.id === id);

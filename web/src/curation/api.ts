@@ -21,7 +21,7 @@ export function isBusy(run: CurationRun): boolean {
 	return run.undoing || run.state === "planned" || run.state === "running";
 }
 
-export const RUN_KINDS = ["duplicates", "cleanup", "matches"] as const;
+export const RUN_KINDS = ["duplicates", "cleanup", "matches", "organise"] as const;
 export const RUN_STATES = [
 	"planned",
 	"running",
