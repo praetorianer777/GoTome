@@ -626,6 +626,32 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   again for devices that had it. `POST /files/{id}/fix` and the bulk
   action `fix` (`FixBook`) call it.
 
+## Organising files
+
+- `internal/organise` (#414) is the pure part: `Parse` a pattern
+  (`{author}`, `{series}`, ..., `[optional groups]`, must end in `{ext}`),
+  `Layout` renders it for a book's values, `Segment`/`Clean` make a name safe
+  (NFC, no separators or Windows-unsafe characters, no leading dot, byte
+  limits), `Layout.Rel(n)` adds the collision number and keeps the limits.
+  `docs/organising-files.md` is the user's word for it.
+- `ingest.Service.PlanOrganise` / `planOrganise` works out the moves with no
+  side effect (paths held by any file record stay taken, even by a file that
+  moves away: a repeat settles it). `RequestOrganise` makes a curation run of
+  kind `organise` (`curation_runs.organise_library`, `organise_pattern`) and
+  queues `ingest.organise_files` (`WorkOrganise`, queue `metadata`): a
+  transaction per book under `HoldLibrary` and `LockLibraryFiles`, the
+  records first, the renames last (put back on any failure, folders GOtome
+  made removed), one `organise` action with the moves as `before["organise"]`.
+  A book that fails is a `skip` action with the reason, so the run does not
+  retry it. An external library needs `libraries.organise_enabled` as well
+  as `writable`; a managed one always may.
+- Sidecars (`name.sdr`, same-name images and `.opf`) move along unless
+  another book file shares the name. Writers that rename onto a path they read
+  earlier (`WriteBack`, `Fix`, `Convert`) compare `rel_path` under
+  `LockFileHash`.
+- Undo is `ingest.Service.UndoOrganiseTx` (the hook `Hooks.UndoOrganiseTx`):
+  the rows are put back only if every file is where the action left it.
+
 ## Chunks
 
 - A book's text is cut into `book_chunks`, read from its primary text file

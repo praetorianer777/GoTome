@@ -232,7 +232,7 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 		if err != nil {
 			return err
 		}
-		if !bytes.Equal(current, file.Sha256) {
+		if !bytes.Equal(current.Sha256, file.Sha256) || current.RelPath != file.RelPath {
 			return errWrittenMeanwhile
 		}
 		if err := os.Rename(temp, path); err != nil {

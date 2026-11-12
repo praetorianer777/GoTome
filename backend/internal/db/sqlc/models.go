@@ -303,6 +303,8 @@ type CurationRun struct {
 	UndoSeesAll     bool
 	UndoCursorAt    *time.Time
 	UndoCursorID    *uuid.UUID
+	OrganiseLibrary *uuid.UUID
+	OrganisePattern *string
 }
 
 type Delivery struct {
@@ -467,6 +469,8 @@ type Library struct {
 	JoinFormats      bool
 	Watch            bool
 	Fulltext         bool
+	OrganiseEnabled  bool
+	OrganisePattern  *string
 }
 
 type LibraryMember struct {

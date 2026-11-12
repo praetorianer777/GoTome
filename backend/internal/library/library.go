@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/organise"
 )
 
 // Modes and visibilities, as stored.
@@ -88,6 +89,11 @@ type Library struct {
 	Watch bool `json:"watch"`
 	// Fulltext says the library's books are searched by their text (#266).
 	Fulltext bool `json:"fulltext"`
+	// OrganiseEnabled lets GOtome rename and sort the files of a writable
+	// external library by a pattern (#414); a managed library always may.
+	OrganiseEnabled bool `json:"organiseEnabled"`
+	// OrganisePattern is the pattern in use: the library's own or the default.
+	OrganisePattern string `json:"organisePattern"`
 }
 
 // Member is somebody who may see a private library.
@@ -123,6 +129,10 @@ type Changes struct {
 	Watch *bool
 	// Fulltext turns the searching of the library's text on or off.
 	Fulltext *bool
+	// OrganiseEnabled turns the organising of an external library's files on or off.
+	OrganiseEnabled *bool
+	// OrganisePattern sets the pattern; an empty text is the default.
+	OrganisePattern *string
 }
 
 // Service manages libraries.
@@ -257,6 +267,11 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 	if c.Visibility != nil && *c.Visibility != VisibilityShared && *c.Visibility != VisibilityPrivate {
 		fields["visibility"] = "Choose who may see this library."
 	}
+	if c.OrganisePattern != nil {
+		if _, err := organise.Parse(*c.OrganisePattern); err != nil {
+			fields["organisePattern"] = err.Error() + "."
+		}
+	}
 	if len(fields) > 0 {
 		return Library{}, &ValidationError{Fields: fields}
 	}
@@ -293,7 +308,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 			}
 		}
 		var err error
-		row, err = q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats, Watch: c.Watch, Fulltext: c.Fulltext})
+		row, err = q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats, Watch: c.Watch, Fulltext: c.Fulltext, OrganiseEnabled: c.OrganiseEnabled, OrganisePattern: c.OrganisePattern})
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -471,7 +486,7 @@ func fromRow(row sqlc.Library) Library {
 	return Library{
 		ID: row.ID, Name: row.Name, RootPath: row.RootPath, Mode: row.Mode,
 		Writable: row.Writable, Visibility: row.Visibility, OwnerID: row.OwnerID, CreatedAt: row.CreatedAt,
-		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats, Watch: row.Watch, Fulltext: row.Fulltext,
+		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats, Watch: row.Watch, Fulltext: row.Fulltext, OrganiseEnabled: row.OrganiseEnabled, OrganisePattern: organise.PatternOr(row.OrganisePattern),
 	}
 }
 
