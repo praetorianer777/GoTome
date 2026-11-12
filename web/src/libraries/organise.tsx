@@ -137,16 +137,20 @@ export function OrganiseFiles({ library }: { library: Library }) {
 							{errors.organisePattern ?? errors.pattern}
 						</p>
 					)}
-					<p id={hint} className="text-slate-600 dark:text-slate-400">
-						{t("libraries.organise.placeholders")}:{" "}
-						{PLACEHOLDERS.map((p) => (
-							<code key={p} className="mr-2 break-all">
-								{p}
-							</code>
-						))}
-						<br />
-						{t("libraries.organise.brackets")}
-					</p>
+					<div id={hint} className="flex min-w-0 flex-col gap-1 text-slate-600 dark:text-slate-400">
+						<p id={`${field}-names`}>{t("libraries.organise.placeholders")}</p>
+						<ul
+							aria-labelledby={`${field}-names`}
+							className="flex min-w-0 flex-wrap gap-x-4 gap-y-2"
+						>
+							{PLACEHOLDERS.map((p) => (
+								<li key={p} className="min-w-0">
+									<code className="break-all">{p}</code>
+								</li>
+							))}
+						</ul>
+						<p>{t("libraries.organise.brackets")}</p>
+					</div>
 					<div className="flex flex-wrap gap-2">
 						<button type="submit" disabled={preview.isPending} className={quietButton}>
 							{preview.isPending
