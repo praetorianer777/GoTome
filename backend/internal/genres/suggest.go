@@ -209,6 +209,9 @@ func (s *Service) suggestBook(ctx context.Context, p pass, id uuid.UUID) error {
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+			return err
+		}
 		if err := q.DropStaleGenres(ctx, sqlc.DropStaleGenresParams{BookID: id, Keep: keep}); err != nil {
 			return err
 		}

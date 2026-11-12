@@ -163,9 +163,9 @@ under what a person notices. The host was loaded by other work throughout
 (load average 17 to 40 on twelve cores), so the times compare the options
 with each other and are not a dedicated server's.
 
-How to run it again is in
-[`spikes/text-store/README.md`](../../spikes/text-store/README.md); the
-numbers are in `spikes/text-store/results/`.
+The harness (`spikes/text-store`, with its README and the numbers in
+`results/`) was removed from the tree; it is in git history at commit
+`bf489b9` (`git show bf489b9:spikes/text-store/README.md`).
 
 ## What each option costs
 
@@ -313,7 +313,8 @@ small server higher than the work.)
   C interface of GOtome's own (Tantivy at pg_search's version, its
   `zstd-compression` feature, `tantivy-stemmers`), a Rust image for the
   Dockerfile's build stage, and for the toolchain image. Measure the
-  installation's real index once with them (`make text-store-spike`), as
+  installation's real index once with them (the harness is in git history
+  at `bf489b9`), as
   the 0.22.1 here is older than pg_search's fork.
 - The issues: the index library and its build; the outbox and the job that
   applies it; search on Tantivy behind `search.Searcher`; the readers of

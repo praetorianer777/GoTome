@@ -442,6 +442,9 @@ function Files({
 	const canTrash =
 		can(user, "metadata:edit") &&
 		Boolean(libraries.data?.find((l) => l.id === libraryId)?.writable);
+	const readOnly =
+		can(user, "metadata:edit") &&
+		libraries.data?.find((l) => l.id === libraryId)?.writable === false;
 	if (files.length === 0) {
 		return null;
 	}
@@ -466,7 +469,7 @@ function Files({
 									{fileNotes(file).join(" · ")}
 								</span>
 							)}
-							<EReaderFindings file={file} canFix={canTrash} />
+							<EReaderFindings file={file} canFix={canTrash} readOnly={readOnly} />
 							{file.extractState === "failed" && (
 								<span className="block text-red-700 dark:text-red-400">
 									{file.extractError

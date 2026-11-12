@@ -36,6 +36,7 @@ test("a long list keeps only the books near the window, and back returns to the 
 				addedAt: "2026-01-01T00:00:00Z",
 				status: "unread",
 				placeholder: false,
+				ereaderFindings: [],
 			}),
 		);
 		const next = from + books.length;

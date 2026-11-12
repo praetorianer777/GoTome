@@ -276,6 +276,41 @@ func TestAReleaseIsInTheLibraryOnlyWhereItIsSeen(t *testing.T) {
 	}
 }
 
+// A book two followed subjects list is one entry, in the list its date
+// says, with the cover either source gave (#507).
+func TestABookTwoSubjectsListIsListedOnce(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	a.server.Metadata = metadata.NewService(a.pool, []metadata.Provider{shelfProvider{base: "http://shelf.invalid"}}, metadata.Options{AllowPrivate: true})
+	admin, _ := a.signedIn("admin", "admin")
+	a.follow(admin, "author", "Jonas Corbin")
+	a.follow(admin, "series", "The Meridian")
+	r := work("Quiet Harbor: A Novel", in(-10), "Jonas Corbin")
+	r.Provider, r.Series, r.CoverURL = "shelf", "The Meridian", "https://covers.example/harbor.jpg"
+	a.works.set(metadata.Answer{Provider: "shelf", Records: []metadata.Record{r}})
+	a.poll()
+	// The author's source knows the day but has no cover; the series' has
+	// the cover but no day, and its listing is news.
+	if _, err := a.pool.Exec(context.Background(), `
+		UPDATE releases r SET cover_url = NULL, provider = 'elsewhere'
+		FROM release_subjects s WHERE s.id = r.subject_id AND s.kind = 'author'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(context.Background(), `
+		UPDATE releases r SET release_date = NULL, precision = NULL, backlog = false
+		FROM release_subjects s WHERE s.id = r.subject_id AND s.kind = 'series'`); err != nil {
+		t.Fatal(err)
+	}
+	upcoming, recent := a.releases(admin, "upcoming"), a.releases(admin, "recent")
+	if len(upcoming) != 0 {
+		t.Errorf("upcoming lists %v", upcoming)
+	}
+	got := recent["Quiet Harbor: A Novel"]
+	if len(recent) != 1 || got == nil || got["coverToken"] == nil {
+		t.Errorf("recent lists %v", recent)
+	}
+}
+
 // A followed author's release names its series as the source spells it,
 // which need not be how the catalogue does (#322).
 func TestASeriesListsReleasesOfAnyItsSpellings(t *testing.T) {

@@ -144,8 +144,8 @@ func (s *Server) listReleases(w http.ResponseWriter, r *http.Request) error {
 			date := rel.Date.Format(time.DateOnly)
 			out.Releases[i].Date = &date
 		}
-		if rel.CoverURL != nil && s.Metadata != nil && s.Metadata.Has(rel.Provider) {
-			token := s.Metadata.CoverToken(rel.Provider, *rel.CoverURL)
+		if rel.CoverURL != nil && s.Metadata != nil && s.Metadata.Has(rel.CoverProvider) {
+			token := s.Metadata.CoverToken(rel.CoverProvider, *rel.CoverURL)
 			out.Releases[i].CoverToken = &token
 		}
 	}

@@ -85,18 +85,23 @@ func (q *Queries) ListDueReleases(ctx context.Context) ([]ListDueReleasesRow, er
 }
 
 const listReleases = `-- name: ListReleases :many
-WITH mine AS (
-    SELECT DISTINCT ON (r.dedupe_key) r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at, r.series_key, s.kind AS subject_kind, s.name AS subject_name
+WITH followed AS (
+    SELECT r.id, r.subject_id, r.dedupe_key, r.title, r.authors, r.author_keys, r.series, r.series_index, r.release_date, r.precision, r.isbns, r.provider, r.provider_id, r.cover_url, r.backlog, r.first_seen_at, r.series_key, s.kind AS subject_kind, s.name AS subject_name
     FROM releases r
     JOIN trackers t ON t.subject_id = r.subject_id AND t.user_id = $1::uuid
     JOIN release_subjects s ON s.id = r.subject_id
+), chosen AS (
+    SELECT DISTINCT ON (f.dedupe_key) f.id, f.subject_id, f.dedupe_key, f.title, f.authors, f.author_keys, f.series, f.series_index, f.release_date, f.precision, f.isbns, f.provider, f.provider_id, f.cover_url, f.backlog, f.first_seen_at, f.series_key, f.subject_kind, f.subject_name
+    FROM followed f
+    ORDER BY f.dedupe_key, f.release_date IS NULL, f.release_date DESC, f.subject_kind, f.id
+), mine AS (
+    SELECT c.id, c.subject_id, c.dedupe_key, c.title, c.authors, c.author_keys, c.series, c.series_index, c.release_date, c.precision, c.isbns, c.provider, c.provider_id, c.cover_url, c.backlog, c.first_seen_at, c.series_key, c.subject_kind, c.subject_name FROM chosen c
     WHERE CASE WHEN $3::boolean
-               THEN r.release_date > current_date OR (r.release_date IS NULL AND NOT r.backlog)
-               ELSE r.release_date <= current_date AND r.release_date > current_date - 365 END
-    ORDER BY r.dedupe_key, s.kind, r.id
+               THEN c.release_date > current_date OR (c.release_date IS NULL AND NOT c.backlog)
+               ELSE c.release_date <= current_date AND c.release_date > current_date - 365 END
 )
 SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.precision,
-       m.provider, m.cover_url, m.subject_kind, m.subject_name,
+       m.provider, cv.cover_url, coalesce(cv.provider, m.provider) AS cover_provider, m.subject_kind, m.subject_name,
        (EXISTS (
             SELECT 1 FROM books b
             WHERE b.title_key = m.dedupe_key AND b.deleted_at IS NULL AND NOT b.placeholder
@@ -111,6 +116,11 @@ SELECT m.id, m.title, m.authors, m.series, m.series_index, m.release_date, m.pre
               AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
        )::boolean AS in_library
 FROM mine m
+LEFT JOIN LATERAL (
+    SELECT o.cover_url, o.provider FROM followed o
+    WHERE o.dedupe_key = m.dedupe_key AND o.cover_url IS NOT NULL
+    ORDER BY o.id = m.id DESC, o.id LIMIT 1
+) cv ON true
 ORDER BY CASE WHEN $3::boolean THEN m.release_date END ASC NULLS LAST,
          CASE WHEN NOT $3::boolean THEN m.release_date END DESC,
          lower(m.title)
@@ -124,24 +134,26 @@ type ListReleasesParams struct {
 }
 
 type ListReleasesRow struct {
-	ID          uuid.UUID
-	Title       string
-	Authors     []string
-	Series      *string
-	SeriesIndex *float64
-	ReleaseDate *time.Time
-	Precision   *string
-	Provider    string
-	CoverUrl    *string
-	SubjectKind string
-	SubjectName string
-	InLibrary   bool
+	ID            uuid.UUID
+	Title         string
+	Authors       []string
+	Series        *string
+	SeriesIndex   *float64
+	ReleaseDate   *time.Time
+	Precision     *string
+	Provider      string
+	CoverUrl      *string
+	CoverProvider string
+	SubjectKind   string
+	SubjectName   string
+	InLibrary     bool
 }
 
 // The books of the subjects the viewer follows, upcoming (later than
 // today, or with no date and not of the subject's past) or out within the
-// last year, each book once; in_library says whether a library they see
-// has it.
+// last year, each book once across both lists: of the rows the subjects
+// have of a book, one with a date, the latest, says where it belongs, and
+// the cover is its own or another row's, with the provider it is of. in_library says whether a library they see has it.
 func (q *Queries) ListReleases(ctx context.Context, arg ListReleasesParams) ([]ListReleasesRow, error) {
 	rows, err := q.db.Query(ctx, listReleases, arg.Viewer, arg.SeesAll, arg.Upcoming)
 	if err != nil {
@@ -161,6 +173,7 @@ func (q *Queries) ListReleases(ctx context.Context, arg ListReleasesParams) ([]L
 			&i.Precision,
 			&i.Provider,
 			&i.CoverUrl,
+			&i.CoverProvider,
 			&i.SubjectKind,
 			&i.SubjectName,
 			&i.InLibrary,

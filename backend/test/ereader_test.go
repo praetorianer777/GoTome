@@ -213,6 +213,27 @@ func TestEPUBsSlowOnAnEReaderAreFound(t *testing.T) {
 			t.Errorf("statistics: %v, want %v", body["withEreaderFindings"], want)
 		}
 	}
+	_, stats, _ := a.call(reader, http.MethodGet, "/statistics", nil)
+	kinds, _ := stats["ereaderKinds"].([]any)
+	if len(kinds) != len(epub.Findings) {
+		t.Fatalf("the reader's kinds: %v", kinds)
+	}
+	for i, k := range kinds {
+		if c := k.(map[string]any); c["name"] != epub.Findings[i] || c["count"] != 1.0 {
+			t.Errorf("kind %d: %v", i, c)
+		}
+	}
+	_, list, _ := a.call(reader, http.MethodGet, "/books", nil)
+	for _, bk := range list["books"].([]any) {
+		book := bk.(map[string]any)
+		want := "[]"
+		if book["title"] == "Der Schwalbenturm" {
+			want = fmt.Sprint(epub.Findings)
+		}
+		if got := fmt.Sprint(book["ereaderFindings"]); got != want {
+			t.Errorf("%v: ereaderFindings %s, want %s", book["title"], got, want)
+		}
+	}
 
 	// Files read before measuring was are measured by the job, and one
 	// that cannot be is recorded as such.

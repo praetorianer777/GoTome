@@ -4611,7 +4611,7 @@ describe("importing a reading history", () => {
 				title: "Die Abenteuer des Sherlock Holmes",
 				authors: ["Arthur Conan Doyle"],
 				candidates: [
-					{ id: "b-3", libraryId: "lib-1", title: "The Adventures of Sherlock Holmes", authors: ["Arthur Conan Doyle"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+					{ id: "b-3", libraryId: "lib-1", title: "The Adventures of Sherlock Holmes", authors: ["Arthur Conan Doyle"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false, ereaderFindings: [] },
 				],
 				skip: false,
 			},
@@ -4622,8 +4622,8 @@ describe("importing a reading history", () => {
 				title: "Emma",
 				authors: ["Jane Austen"],
 				candidates: [
-					{ id: "b-1", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
-					{ id: "b-2", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false },
+					{ id: "b-1", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false, ereaderFindings: [] },
+					{ id: "b-2", libraryId: "lib-1", title: "Emma", authors: ["Jane Austen"], authorKeys: [], formats: [], addedAt: "2024-01-01T00:00:00Z", status: "unread", placeholder: false, filesMissing: false, ereaderFindings: [] },
 				],
 				skip: false,
 			},
@@ -4691,6 +4691,7 @@ describe("recommendations", () => {
 			status: "unread" as const,
 			placeholder: false,
 			filesMissing: false,
+			ereaderFindings: [],
 		});
 		server.recommendations = {
 			hasProfile: true,
@@ -7222,6 +7223,7 @@ describe("reviewing suggested genres", () => {
 		status: "unread" as const,
 		placeholder: false,
 		filesMissing: false,
+		ereaderFindings: [],
 	});
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);
@@ -8207,6 +8209,105 @@ describe("the overview", () => {
 				"broken-toc",
 			],
 		});
+	});
+
+	it("splits the e-reader findings by kind and says what the filtered list shows", async () => {
+		const person = userEvent.setup();
+		const file = (id: string, findings: ("large-image" | "broken-toc")[]) => ({
+			id,
+			kind: "ebook" as const,
+			format: "epub",
+			name: `${id}.epub`,
+			size: 1000,
+			missing: false,
+			drm: false,
+			extractState: "done" as const,
+			ereader: {
+				findings,
+				largestDocument: 0,
+				fonts: 0,
+				fontBytes: 0,
+				largestImage: 9_000_000,
+				imageWidth: 0,
+				imageHeight: 0,
+				missingResources: [],
+				malformedDocuments: [],
+				brokenTocEntries: [],
+			},
+		});
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels", { mode: "external", writable: false })
+			.withBook("Der Schwalbenturm", { files: [file("tower", ["large-image"])] })
+			.withBook("Emma", { files: [file("emma", ["broken-toc"])] })
+			.withBook("Persuasion");
+		server.figures.withEreaderFindings = 2;
+		server.figures.ereaderKinds = [
+			{ name: "large-image", count: 1 },
+			{ name: "broken-toc", count: 1 },
+		];
+		const { router } = renderApp("/overview");
+		await person.click(
+			await screen.findByRole("link", { name: "Very large images: 1" }),
+		);
+		await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+		expect(router.state.location.search).toMatchObject({ ereader: ["large-image"] });
+		expect(
+			await screen.findByText(
+				"Showing books whose EPUBs may be slow or troublesome on e-readers: Very large images",
+			),
+		).toBeInTheDocument();
+		expect(
+			await screen.findByRole("img", {
+				name: "May be slow or troublesome on e-readers: Very large images",
+			}),
+		).toBeInTheDocument();
+		expect(screen.queryByText("Emma")).not.toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Show all books" }));
+		await waitFor(() =>
+			expect(screen.queryByText(/^Showing books whose EPUBs/)).not.toBeInTheDocument(),
+		);
+		expect((await screen.findAllByRole("link", { name: "Persuasion" })).length).toBeGreaterThan(0);
+	});
+
+	it("says why Fix is missing in a library GOtome cannot write to", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Shelf", { mode: "external", writable: false })
+			.withBook("Der Schwalbenturm", {
+				files: [
+					{
+						id: "tower",
+						kind: "ebook" as const,
+						format: "epub",
+						name: "Schwalbenturm.epub",
+						size: 1000,
+						missing: false,
+						drm: false,
+						extractState: "done" as const,
+						ereader: {
+							findings: ["broken-toc" as const],
+							largestDocument: 0,
+							fonts: 0,
+							fontBytes: 0,
+							largestImage: 0,
+							imageWidth: 0,
+							imageHeight: 0,
+							missingResources: [],
+							malformedDocuments: [],
+							brokenTocEntries: ["a"],
+						},
+					},
+				],
+			});
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		expect(
+			await files.findByText(/the library's folder is read-only for GOtome/),
+		).toBeInTheDocument();
+		expect(files.queryByRole("button", { name: /Repair/ })).not.toBeInTheDocument();
 	});
 
 	it("shows a reader what the library holds and not the work", async () => {

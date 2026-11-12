@@ -98,6 +98,51 @@ func (q *Queries) BooksByLanguage(ctx context.Context, arg BooksByLanguageParams
 	return items, nil
 }
 
+const ereaderFindingCounts = `-- name: EreaderFindingCounts :many
+SELECT finding::text AS finding, count(DISTINCT f.book_id)::int AS books
+FROM book_files f
+JOIN books b ON b.id = f.book_id
+CROSS JOIN LATERAL unnest(f.ereader_findings) AS finding
+WHERE cardinality(f.ereader_findings) > 0 AND f.trashed_at IS NULL
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
+GROUP BY finding
+`
+
+type EreaderFindingCountsParams struct {
+	Viewer    uuid.UUID
+	SeesAll   bool
+	LibraryID *uuid.UUID
+}
+
+type EreaderFindingCountsRow struct {
+	Finding string
+	Books   int32
+}
+
+// The viewer's books with each e-reader finding, in an EPUB that is not
+// in the trash; a book with two findings counts under both.
+func (q *Queries) EreaderFindingCounts(ctx context.Context, arg EreaderFindingCountsParams) ([]EreaderFindingCountsRow, error) {
+	rows, err := q.db.Query(ctx, ereaderFindingCounts, arg.Viewer, arg.SeesAll, arg.LibraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []EreaderFindingCountsRow{}
+	for rows.Next() {
+		var i EreaderFindingCountsRow
+		if err := rows.Scan(&i.Finding, &i.Books); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const filesByFormat = `-- name: FilesByFormat :many
 SELECT f.format, count(*)::int AS files, COALESCE(sum(f.size_bytes), 0)::bigint AS bytes
 FROM book_files f

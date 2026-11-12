@@ -21,7 +21,8 @@
       "addedAt": "2026-10-11T12:00:00Z",
       "status": "unread",
       "placeholder": false,
-      "filesMissing": false
+      "filesMissing": false,
+      "ereaderFindings": []
     },
     {
       "id": "0192f0a0-0000-7000-8000-000000000003",
@@ -35,7 +36,8 @@
       "addedAt": "2026-10-11T12:00:00Z",
       "status": "unread",
       "placeholder": false,
-      "filesMissing": false
+      "filesMissing": false,
+      "ereaderFindings": []
     }
   ]
 }

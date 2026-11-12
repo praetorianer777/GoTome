@@ -11798,6 +11798,20 @@
           "coverKey": {
             "type": "string"
           },
+          "ereaderFindings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "large-document",
+                "large-fonts",
+                "large-image",
+                "missing-resources",
+                "malformed-document",
+                "broken-toc"
+              ]
+            }
+          },
           "filesMissing": {
             "type": "boolean"
           },
@@ -11860,7 +11874,8 @@
           "addedAt",
           "status",
           "placeholder",
-          "filesMissing"
+          "filesMissing",
+          "ereaderFindings"
         ]
       },
       "BuildInfo": {
@@ -14323,6 +14338,12 @@
           "bytes": {
             "type": "integer"
           },
+          "ereaderKinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Count"
+            }
+          },
           "files": {
             "type": "integer"
           },
@@ -14392,6 +14413,7 @@
           "isbnFromText",
           "withMissingFiles",
           "withEreaderFindings",
+          "ereaderKinds",
           "formats",
           "languages",
           "months"
@@ -16967,6 +16989,12 @@
           "coverKey": {
             "type": "string"
           },
+          "ereaderFindings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "filesMissing": {
             "type": "boolean"
           },
@@ -17038,6 +17066,7 @@
           "status",
           "placeholder",
           "filesMissing",
+          "ereaderFindings",
           "match"
         ]
       },

@@ -6,6 +6,22 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The overview splits the books with e-reader findings by kind, each linking to
+  its own list. A list filtered by e-reader findings says so above the books,
+  with a button to remove it, and marks each book that has findings, naming
+  them. Where a library's folder is read-only for GOtome, the book page and
+  the bulk bar say why Fix is not offered.
+
+### Fixed
+
+- Deleting a library while duplicate checks, text signing or embedding of
+  its books were running could fail with an error instead of removing it.
+- A book that two followed authors or series list shows once under New
+  books, in the list its date says and with the cover either source has,
+  instead of once in each list (#507).
+
 ## [0.21.0] - 2026-11-11
 
 ### Added

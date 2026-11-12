@@ -3454,6 +3454,7 @@ export interface components {
             authorKeys: string[];
             authors: string[];
             coverKey?: string;
+            ereaderFindings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
             filesMissing: boolean;
             formats: string[];
             /** Format: uuid */
@@ -4118,6 +4119,7 @@ export interface components {
             authors: number;
             books: number;
             bytes: number;
+            ereaderKinds: components["schemas"]["Count"][];
             files: number;
             formats: components["schemas"]["Count"][];
             isbnFromText: number;
@@ -4827,6 +4829,7 @@ export interface components {
             authorKeys: string[];
             authors: string[];
             coverKey?: string;
+            ereaderFindings: string[];
             filesMissing: boolean;
             formats: string[];
             /** Format: uuid */

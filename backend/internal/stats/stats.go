@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
@@ -61,6 +62,9 @@ type Figures struct {
 	// WithEReaderFindings are the books with an EPUB that may be slow or
 	// troublesome on an e-reader.
 	WithEReaderFindings int `json:"withEreaderFindings"`
+	// EReaderKinds are the books with each finding, in the order of
+	// epub.Findings, those with none left out.
+	EReaderKinds []Count `json:"ereaderKinds"`
 	// Formats are the files by format, Languages the books by language
 	// ("" for none known), Months the books added in each of the last
 	// twelve months that had any, as YYYY-MM.
@@ -73,7 +77,7 @@ type Figures struct {
 // four counts read every book, so they run side by side.
 func (s *Service) Figures(ctx context.Context, scope library.Scope, libraryID *uuid.UUID) (Figures, error) {
 	q := sqlc.New(s.pool)
-	f := Figures{Formats: []Count{}, Languages: []Count{}, Months: []Count{}}
+	f := Figures{EReaderKinds: []Count{}, Formats: []Count{}, Languages: []Count{}, Months: []Count{}}
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		row, err := q.LibraryFigures(ctx, sqlc.LibraryFiguresParams{Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID})
@@ -87,6 +91,22 @@ func (s *Service) Figures(ctx context.Context, scope library.Scope, libraryID *u
 		f.WithoutCover, f.WithoutAuthor, f.WithoutText = int(row.WithoutCover), int(row.WithoutAuthor), int(row.WithoutText)
 		f.ISBNFromText = int(row.IsbnFromText)
 		f.WithMissingFiles, f.WithEReaderFindings = int(row.WithMissingFiles), int(row.WithEreaderFindings)
+		return nil
+	})
+	g.Go(func() error {
+		rows, err := q.EreaderFindingCounts(ctx, sqlc.EreaderFindingCountsParams{Viewer: scope.Viewer, SeesAll: scope.SeesAll, LibraryID: libraryID})
+		if err != nil {
+			return err
+		}
+		counts := map[string]int{}
+		for _, r := range rows {
+			counts[r.Finding] = int(r.Books)
+		}
+		for _, kind := range epub.Findings {
+			if counts[kind] > 0 {
+				f.EReaderKinds = append(f.EReaderKinds, Count{Name: kind, Count: counts[kind]})
+			}
+		}
 		return nil
 	})
 	g.Go(func() error {

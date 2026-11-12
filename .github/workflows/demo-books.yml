@@ -1,0 +1,56 @@
+name: Demo books
+
+# Fills the cache of the demo's sample books (#493). A run restores only caches
+# saved on its own ref or on the default branch, and demo.yml runs on release
+# tags, so the cache is saved here, from main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/demo/sample-books.lock.json
+      - web/scripts/sample-books.mjs
+      - web/scripts/sample-books-fetch.mjs
+      - mk/demo.mk
+      - .github/workflows/demo-books.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cache:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore the sample books
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: web/demo/files
+          key: demo-books-${{ hashFiles('web/demo/sample-books.lock.json') }}
+
+      - name: Fetch the copy in the release demo-books
+        if: steps.cache.outputs.cache-hit != 'true'
+        id: release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/demo-books-release
+          gh release download demo-books --repo "$GITHUB_REPOSITORY" \
+            --pattern sample-books.tar --dir .cache/demo-books-release --clobber
+          tar -xf .cache/demo-books-release/sample-books.tar -C .cache/demo-books-release
+
+      # Fails unless every book matches the lock, so the cache below is
+      # saved only when complete.
+      - name: Check the books, fetching what is missing from the sites
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: make sample-books ${{ steps.release.outcome == 'success' && 'SAMPLE_BOOKS_FROM=.cache/demo-books-release' || '' }}
+
+      - name: Save the sample books
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: web/demo/files
+          key: ${{ steps.cache.outputs.cache-primary-key }}
