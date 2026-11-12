@@ -34,6 +34,9 @@ What changes for someone who runs or uses GOtome. The format follows
 
 - Deleting a library while duplicate checks, text signing or embedding of
   its books were running could fail with an error instead of removing it.
+- A book that two followed authors or series list shows once under New
+  books, in the list its date says and with the cover either source has,
+  instead of once in each list (#507).
 - Read aloud no longer says a sentence twice when the page settles after it
   has turned to the sentence.
 - GOtome for Tolino: the store comes up again from the "GOtome" book after the

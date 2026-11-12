@@ -183,8 +183,11 @@ type Release struct {
 	// a year. Both are nil where no provider knows when.
 	Date      *time.Time
 	Precision *string
-	Provider  string
-	CoverURL  *string
+	Provider string
+	// CoverURL is the cover of CoverProvider, which may be another
+	// provider's listing of the book than Provider's.
+	CoverURL      *string
+	CoverProvider string
 	// SubjectKind and SubjectName are what the viewer follows that lists it.
 	SubjectKind string
 	SubjectName string
@@ -205,7 +208,7 @@ func (s *Service) Releases(ctx context.Context, scope library.Scope, upcoming bo
 	for i, r := range rows {
 		out[i] = Release{
 			ID: r.ID, Title: r.Title, Authors: r.Authors, Series: r.Series, SeriesIndex: r.SeriesIndex,
-			Date: r.ReleaseDate, Precision: r.Precision, Provider: r.Provider, CoverURL: r.CoverUrl,
+			Date: r.ReleaseDate, Precision: r.Precision, Provider: r.Provider, CoverURL: r.CoverUrl, CoverProvider: r.CoverProvider,
 			SubjectKind: r.SubjectKind, SubjectName: r.SubjectName, InLibrary: r.InLibrary,
 		}
 	}
