@@ -227,7 +227,7 @@ var Definitions = []Definition{
 	{Key: CurationCleanupKinds, Kind: KindText, Check: names, Choices: CleanupKinds, Multiple: true},
 	{Key: CurationMatchesAuto, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: CurationMatchesEdition, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
-	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
+	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover,google", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: DevicesFixOnSend, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
@@ -297,7 +297,7 @@ var OnOff = []string{"on", "off"}
 
 // ProviderNames are the metadata providers Providers may name, as each
 // provider's Name says.
-var ProviderNames = []string{"openlibrary", "crossref", "hardcover", "dnb"}
+var ProviderNames = []string{"openlibrary", "crossref", "hardcover", "dnb", "google"}
 
 // Roles are the values of OIDCDefaultRole: a role, or none to refuse.
 var Roles = []string{"admin", "editor", "reader", "none"}

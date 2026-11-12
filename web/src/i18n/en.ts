@@ -1380,7 +1380,7 @@ export const en = {
 		"The language descriptions are asked for in, as a two-letter code such as en or de.",
 	"settings.googleBooksKey": "Google Books API key",
 	"settings.googleBooksKey.hint":
-		"Optional. Without one, Google Books answers fewer requests a day.",
+		"Optional. Without one, Google Books answers fewer requests a day. The key's Google Cloud project needs the Books API enabled.",
 	"settings.hardcoverToken": "Hardcover API token",
 	"settings.hardcoverToken.hint":
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
@@ -1439,6 +1439,7 @@ export const en = {
 	"settingChoice.metadata.providers.crossref": "Crossref",
 	"settingChoice.metadata.providers.hardcover": "Hardcover",
 	"settingChoice.metadata.providers.dnb": "German National Library",
+	"settingChoice.metadata.providers.google": "Google Books",
 	"settingChoice.oidc.defaultRole.admin": "Administrator",
 	"settingChoice.oidc.defaultRole.editor": "Editor",
 	"settingChoice.oidc.defaultRole.reader": "Reader",

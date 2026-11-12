@@ -29,5 +29,7 @@ jobs:
       - name: Ask the live providers
         run: make contract-test
         env:
-          # Without it Hardcover's contract test is skipped.
+          # Without these Hardcover's contract test is skipped, and Google
+          # Books is asked anonymously and skipped when that quota is used up.
           GOTOME_HARDCOVER_TOKEN: ${{ secrets.GOTOME_HARDCOVER_TOKEN }}
+          GOTOME_GOOGLE_BOOKS_KEY: ${{ secrets.GOTOME_GOOGLE_BOOKS_KEY }}

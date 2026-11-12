@@ -969,7 +969,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   its book, as Hardcover answers three levels deep at most; the book gives
   the series and its position. Its tests take the token from
   `GOTOME_HARDCOVER_TOKEN`, which `make record-fixtures` and
-  `make contract-test` pass on by name). All three are in
+  `make contract-test` pass on by name); `google` (Google Books, 500 ms;
+  the secret `metadata.googleBooksKey` as `key` in `SecretQuery`, without
+  it Google's small anonymous quota. Google says a used-up quota as a 403
+  with a reason, which `Request.Busy` turns into a back-off like a 429;
+  `Request.Reason` puts the message of any other refusal into the error.
+  Its tests take the key from `GOTOME_GOOGLE_BOOKS_KEY`, and skip a request
+  with no recorded answer). Hardcover, CrossRef, Open Library and Google are in
   `metadata.providers` by default.
 - `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
   `enrich.match_book` job (unique, 30 s later) when a file is read and

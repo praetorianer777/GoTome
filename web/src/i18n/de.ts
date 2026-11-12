@@ -1399,7 +1399,7 @@ export const de: Record<MessageKey, string> = {
 	"settings.metadataLanguage.hint":
 		"Die Sprache, in der Beschreibungen angefragt werden, als Code aus zwei Buchstaben wie en oder de.",
 	"settings.googleBooksKey": "Google-Books-API-Schlüssel",
-	"settings.googleBooksKey.hint": "Optional. Ohne ihn beantwortet Google Books weniger Anfragen am Tag.",
+	"settings.googleBooksKey.hint": "Optional. Ohne ihn beantwortet Google Books weniger Anfragen am Tag. Für das Google-Cloud-Projekt des Schlüssels muss die Books API aktiviert sein.",
 	"settings.hardcoverToken": "Hardcover-API-Token",
 	"settings.hardcoverToken.hint":
 		"Aus den Kontoeinstellungen bei Hardcover. Nötig, um Bücher bei Hardcover nachzuschlagen.",
@@ -1458,6 +1458,7 @@ export const de: Record<MessageKey, string> = {
 	"settingChoice.metadata.providers.crossref": "Crossref",
 	"settingChoice.metadata.providers.hardcover": "Hardcover",
 	"settingChoice.metadata.providers.dnb": "Deutsche Nationalbibliothek",
+	"settingChoice.metadata.providers.google": "Google Books",
 	"settingChoice.oidc.defaultRole.admin": "Administrator",
 	"settingChoice.oidc.defaultRole.editor": "Redakteur",
 	"settingChoice.oidc.defaultRole.reader": "Leser",

@@ -17,6 +17,11 @@ What changes for someone who runs or uses GOtome. The format follows
   it. Managed libraries may always be organised; an existing folder only
   when it is writable and you switch it on. A run is listed under Changes and
   can be undone ([organising files](docs/organising-files.md)).
+- Google Books as a source of book details, by ISBN, title and author:
+  descriptions, page counts, dates, categories and covers. It works without
+  a key within Google's anonymous quota; an API key can be set under
+  Settings. A source whose quota is used up is left alone for a while and
+  lookups go on afterwards instead of failing ([metadata](docs/metadata.md)).
 
 ## [0.24.0] - 2026-11-12
 
@@ -1308,6 +1313,12 @@ What changes for someone who runs or uses GOtome. The format follows
   administrator may give a contact e-mail address in Settings, which
   CrossRef serves faster. Installations that chose their sources keep
   their choice; add `crossref` to use it.
+- Google Books is asked for book details beside OpenLibrary, with the
+  small quota Google gives anyone, or with your own once an administrator
+  gives a Google Books API key in Settings (a key of a Google Cloud
+  project with the Books API enabled). When the quota is used up, GOtome
+  waits rather than failing. Installations that chose their sources keep
+  their choice; add `google` to use it.
 - Hardcover is asked for book details beside OpenLibrary once an
   administrator gives a Hardcover API token in Settings (from your
   Hardcover account settings). It knows series and their order, which
