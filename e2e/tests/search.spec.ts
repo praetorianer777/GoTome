@@ -6,7 +6,13 @@ test("a misspelt title is found from the header and opened with the keyboard", a
 	page,
 }, testInfo) => {
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
-	const title = `Quicksearch ${stamp}`;
+	// Letters alone, coded from the project and the time: other tests' names
+	// carry the project and the time in digits, and a misspelt query that
+	// shared them would be offered those names first.
+	const word = [...`${testInfo.project.name.length}${Date.now()}`]
+		.map((d) => "bcdfghjklm"[Number(d)])
+		.join("");
+	const title = `Quicksearch ${word}`;
 	await openSignedIn(page);
 	const created = await page.request.post("/api/v1/libraries", {
 		data: { name: `Search ${stamp}`, mode: "managed", visibility: "shared" },
@@ -25,21 +31,12 @@ test("a misspelt title is found from the header and opened with the keyboard", a
 	expect(uploaded.status()).toBe(200);
 
 	const box = page.getByRole("combobox", { name: "Search books" });
-	await box.fill(`Quiksearch ${stamp}`);
+	await box.fill(`Quiksearch ${word}`);
 	const hit = page
 		.getByRole("listbox", { name: "Books found" })
 		.getByRole("option", { name: new RegExp(`^${title}`) });
 	await expect(hit).toBeVisible();
-	// Other tests' names (an author of the same project and time) may come
-	// before the book: its id says how far down it is. The pointer leaves the
-	// list, whose options take the choice on hover.
-	const position = Number((await hit.getAttribute("id"))?.split("-").pop());
-	expect(Number.isInteger(position)).toBe(true);
-	await page.mouse.move(0, 0);
-	for (let i = 0; i <= position; i++) {
-		await box.press("ArrowDown");
-	}
-	await expect(hit).toHaveAttribute("aria-selected", "true");
+	await box.press("ArrowDown");
 	await box.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: title, level: 1 }),
