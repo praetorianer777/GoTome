@@ -41,7 +41,7 @@ export function SelectionBar({
 			}}
 			className="fixed inset-x-3 bottom-3 z-30 mx-auto flex max-w-xl flex-col gap-2 rounded-xl border border-slate-300 bg-white p-3 text-sm shadow-lg dark:border-slate-600 dark:bg-slate-900"
 		>
-			<p className="line-clamp-2 break-words text-slate-600 italic dark:text-slate-400">
+			<p className="line-clamp-2 [overflow-wrap:anywhere] text-slate-600 italic dark:text-slate-400">
 				{text}
 			</p>
 			<div className="flex flex-wrap items-center gap-2">
@@ -146,7 +146,7 @@ export function HighlightItem({
 					<Link
 						to="/books/$bookId"
 						params={{ bookId: a.bookId }}
-						className="break-words font-medium text-brand-strong underline underline-offset-4 dark:text-brand"
+						className="inline-flex min-h-6 items-center [overflow-wrap:anywhere] font-medium text-brand-strong underline underline-offset-4 dark:text-brand"
 					>
 						{a.bookTitle}
 					</Link>
@@ -160,17 +160,17 @@ export function HighlightItem({
 			)}
 			<blockquote
 				style={{ borderColor: cssColor(a.color) }}
-				className="min-w-0 break-words border-l-4 pl-3 leading-relaxed"
+				className="min-w-0 [overflow-wrap:anywhere] border-l-4 pl-3 leading-relaxed"
 			>
 				{a.passage}
 			</blockquote>
 			{!editing && a.note && (
-				<p className="min-w-0 break-words whitespace-pre-wrap pl-4 text-sm">
+				<p className="min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap pl-4 text-sm">
 					<span className="font-medium">{t("highlights.note")}: </span>
 					{a.note}
 				</p>
 			)}
-			<p className="pl-4 text-xs text-slate-600 dark:text-slate-400">
+			<p className="min-w-0 [overflow-wrap:anywhere] pl-4 text-xs text-slate-600 dark:text-slate-400">
 				{whereLine(a)}
 			</p>
 			{editing ? (
