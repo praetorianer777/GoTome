@@ -58,6 +58,43 @@ with hundreds of books. Seen in the lists: a number in a title draws
 other titles with it ("Station 5 streng geheim" and "Hafen 5"), which is
 the metadata vector's (#184).
 
+## What the metadata text is made of
+
+Since #184 the metadata vector's text (`book_metadata_text`) has the title
+without a shop's additions ("(German Edition)", ": Roman"; the list of the
+clean-up, `title_without_addition`) and leaves out placeholder authors
+("authors_sort", "Unknown"; `placeholder_author_keys`). The text's hash is the
+vector's source, so the first embedding pass after the upgrade makes every
+metadata vector again, one short text per book (seconds on a CPU); the content
+vectors have another source and are not touched.
+
+## Passages per content vector
+
+A content vector is the mean of the vectors of `embedding.contentSamples`
+passages of the book (16 unless set, 8 to 128), spread evenly over its text.
+Another number makes every content vector again and nothing else.
+
+Measured on a sample of the owner's library (#184): 173 books by 8 authors, 7
+of them in a series, all in German except a few; multilingual-e5-small;
+`similar-check` over all 173 books, 10 similar books each; the app limited
+to 2 CPUs (`cpus: 2`), one embedding thread, 12-CPU host that other work
+shared, so the times are rough.
+
+| Passages | Own author | Own series | Copies | Authors | Books a minute |
+|---:|---:|---:|---:|---:|---:|
+| 16 | 19.9% | 2.9% | 0.0% | 5.77 | 9.6 |
+| 32 | 19.9% | 4.3% | 0.0% | 5.71 | 4.9 |
+| 64 | 19.9% | 4.3% | 0.0% | 5.72 | 4.4 |
+
+The sample is small, and the caps of #182 (two books per author) hold the
+share of the book's own author at the same figure whatever the vectors say;
+the one series figure that moved is one similar book in 700. Nothing here
+shows a gain that pays for twice the time per book or more, so the default
+stays 16. The time per book is not a clean doubling (the 64 run shared the
+host with other work); count on at least twice the 16 figure for 32 and 64.
+A full re-embedding at the owner's 23 books a minute (16 passages) takes about
+36 hours for 49,666 books; at 32 passages about twice that.
+
 ## Searching by description
 
 `similar-check -describe "…" -k 8` prints the books nearest a description,
