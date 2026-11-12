@@ -14534,11 +14534,18 @@
           },
           "more": {
             "type": "boolean"
+          },
+          "notSearched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedLibrary"
+            }
           }
         },
         "required": [
           "books",
-          "more"
+          "more",
+          "notSearched"
         ]
       },
       "GenreDecision": {
@@ -14824,6 +14831,9 @@
           "indexed": {
             "type": "integer"
           },
+          "notSearched": {
+            "type": "integer"
+          },
           "rebuilding": {
             "type": "boolean"
           },
@@ -14836,6 +14846,7 @@
           "indexed",
           "rebuilding",
           "rereading",
+          "notSearched",
           "engine"
         ]
       },
@@ -15279,6 +15290,9 @@
           "filesPending": {
             "type": "integer"
           },
+          "fulltext": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -15326,6 +15340,7 @@
           "writable",
           "joinFormats",
           "watch",
+          "fulltext",
           "visibility",
           "createdAt",
           "filesPending",
@@ -15748,6 +15763,22 @@
           "key",
           "sort",
           "books"
+        ]
+      },
+      "NamedLibrary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "NamedList": {
@@ -18052,6 +18083,9 @@
       "UpdateLibraryRequest": {
         "type": "object",
         "properties": {
+          "fulltext": {
+            "type": "boolean"
+          },
           "joinFormats": {
             "type": "boolean"
           },

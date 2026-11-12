@@ -23,7 +23,9 @@ type libraryResponse struct {
 	// and author are made one by themselves, as a person's merge would.
 	JoinFormats bool `json:"joinFormats"`
 	// Watch: the folder is watched, and scanned soon after files in it change.
-	Watch      bool      `json:"watch"`
+	Watch bool `json:"watch"`
+	// Fulltext: the library's books are searched by their text.
+	Fulltext   bool      `json:"fulltext"`
 	Visibility string    `json:"visibility"`
 	CreatedAt  time.Time `json:"createdAt"`
 	// RootPath and OwnerID are for those who manage storage. Where the files
@@ -99,13 +101,16 @@ type updateLibraryRequest struct {
 	JoinFormats *bool `json:"joinFormats,omitempty"`
 	// Watch, on, scans the folder soon after files in it change.
 	Watch *bool `json:"watch,omitempty"`
+	// Fulltext, off, leaves the library out of full-text search and takes
+	// its books out of the index; on, reads its texts again for it.
+	Fulltext *bool `json:"fulltext,omitempty"`
 }
 
 func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
+		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, Fulltext: l.Fulltext, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
@@ -237,13 +242,18 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch})
+	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch, Fulltext: req.Fulltext})
 	if err != nil {
 		return libraryError(err)
 	}
 	// Update has just seen the folder written to.
 	if req.Writable != nil && *req.Writable {
 		if err := s.Scans.WritableAgain(r.Context(), id); err != nil {
+			return err
+		}
+	}
+	if req.Fulltext != nil && *req.Fulltext {
+		if err := s.Scans.EnqueueIndexing(r.Context()); err != nil {
 			return err
 		}
 	}

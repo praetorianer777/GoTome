@@ -8,6 +8,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- A library can be left out of full-text search. The switch is on the
+  Libraries page, with how many of the library's books are in the index; off,
+  its text is still read for similar books and duplicates but not indexed,
+  and the search page names the libraries it did not look in.
 - The overview splits the books with e-reader findings by kind, each linking to
   its own list. A list filtered by e-reader findings says so above the books,
   with a button to remove it, and marks each book that has findings, naming

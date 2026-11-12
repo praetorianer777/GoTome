@@ -519,6 +519,7 @@ export class FakeServer {
 			writable: true,
 			joinFormats: false,
 			watch: true,
+			fulltext: true,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -2837,7 +2838,11 @@ export class FakeServer {
 					);
 				return hits.length > 0 ? [{ book: summaryOf(b), hits }] : [];
 			});
-		return Response.json({ books, more: false });
+		const library = query.get("library");
+		const notSearched = this.libraries
+			.filter((l) => !l.fulltext && (!library || l.id === library))
+			.map((l) => ({ id: l.id, name: l.name }));
+		return Response.json({ books, more: false, notSearched });
 	}
 
 	private trashAction(fileID: string, action: string) {

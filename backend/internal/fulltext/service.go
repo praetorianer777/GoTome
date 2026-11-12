@@ -120,7 +120,7 @@ func (s *Service) Drain(ctx context.Context, deadline time.Time) (bool, error) {
 			return false, err
 		}
 		for _, r := range rows {
-			b := Batch{DeleteChunks: r.Deletes}
+			b := Batch{DeleteChunks: r.Deletes, DeleteLibraries: r.DeleteLibraries}
 			if err := json.Unmarshal(r.Docs, &b.Add); err != nil {
 				return false, fmt.Errorf("outbox row %d: %w", r.ID, err)
 			}

@@ -42,6 +42,9 @@ type Result struct {
 	Books []Book
 	// More says there are books after this page.
 	More bool
+	// NotSearched are the libraries the query would look in that are left
+	// out of full-text search.
+	NotSearched []Library
 }
 
 // Book is a book found, with its best passages.

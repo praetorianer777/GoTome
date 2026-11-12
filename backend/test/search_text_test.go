@@ -31,7 +31,11 @@ type textResult struct {
 			} `json:"snippet"`
 		} `json:"hits"`
 	} `json:"books"`
-	More bool `json:"more"`
+	More        bool `json:"more"`
+	NotSearched []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"notSearched"`
 }
 
 func (a *app) searchText(c *http.Client, query url.Values) (int, textResult) {
