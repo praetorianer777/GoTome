@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -584,7 +585,7 @@ var mediaTypes = map[string]string{
 // seek. A file is not a request: it may take hours, and the server's write
 // deadline is lifted for it.
 func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
-	book, fixed, err := s.serveFile(w, r)
+	book, fixed, err := s.serveFile(w, r, false)
 	if err != nil {
 		return err
 	}
@@ -596,8 +597,9 @@ func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
 
 // serveFile sends the file the path names, if the caller may see it, and
 // returns the book it belongs to. To a device it sends the fixed copy of an
-// EPUB when one is ready, and says so.
-func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool, error) {
+// EPUB when one is ready, and says so; to a Kobo reader that asked for the
+// KEPUB, the KEPUB, made now if it is not (the copy then is not a fixed one).
+func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, kepub bool) (uuid.UUID, bool, error) {
 	id, err := pathID(r, "fileId", "file")
 	if err != nil {
 		return uuid.Nil, false, err
@@ -615,15 +617,25 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, b
 	served := f
 	sum := file.SHA256
 	fixed := false
+	name := file.Name
 	if device := DeviceFrom(r.Context()); device != uuid.Nil && file.Format == "epub" && s.Copies != nil {
-		ready, err := s.Copies.Ready(r.Context(), file.SHA256)
+		var ready *devicecopy.Copy
+		var err error
+		if kepub {
+			ready, err = s.Copies.Kepub(r.Context(), file.ID)
+		} else {
+			ready, err = s.Copies.Ready(r.Context(), file.SHA256)
+		}
 		if err != nil {
 			return uuid.Nil, false, err
 		}
 		if ready != nil {
 			if cf, err := os.Open(ready.Path); err == nil {
 				defer cf.Close()
-				served, sum, fixed = cf, ready.SHA256, true
+				served, sum, fixed = cf, ready.SHA256, !kepub
+				if kepub {
+					name = epub.KepubName(name)
+				}
 			}
 		}
 	}
@@ -635,7 +647,7 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, b
 
 	h := w.Header()
 	h.Set("Content-Type", cmp.Or(mediaTypes[file.Format], "application/octet-stream"))
-	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": file.Name}))
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
 	h.Set("Cache-Control", "private, no-cache")
 	if len(sum) > 0 {
 		h.Set("ETag", `"`+hex.EncodeToString(sum)+`"`)

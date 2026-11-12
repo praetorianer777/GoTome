@@ -1064,6 +1064,8 @@ export const de: Record<MessageKey, string> = {
 	"trash.purge": "Jetzt löschen",
 	"trash.purgeConfirm": "Endgültig löschen",
 	"trash.purgeCancel": "Behalten",
+	"book.file.convert": "In EPUB umwandeln",
+	"book.file.convertNamed": "{name} in ein EPUB umwandeln",
 	"book.file.trash": "In den Papierkorb",
 	"book.file.trashNamed": "{name} in den Papierkorb legen",
 	"settings.trashRetention": "Tage, die eine Datei im Papierkorb bleibt",
@@ -1350,6 +1352,9 @@ export const de: Record<MessageKey, string> = {
 	"devices.canUploadNamed": "{name} darf Bücher hochladen",
 	"devices.mayUpload": "Darf Bücher hochladen",
 	"devices.books": "Bücher auf {name}",
+	"devices.kepub": "Diesem Kobo-Reader KEPUBs schicken",
+	"devices.kepubHint":
+		"Ein Kobo-Reader liest ein KEPUB mit besserer Lesestatistik und schnellerem Umblättern. GOtome macht beim Sync aus jedem EPUB eines und behält es. Bücher, die schon auf dem Reader sind, bleiben, wie sie sind. Aus, bis du es auf deinem Reader ausprobiert hast.",
 	"apiKeys.title": "API-Schlüssel",
 	"apiKeys.intro":
 		"Für Skripte und andere Programme, die GOtome ohne Browser nutzen: den Schlüssel als Authorization: Bearer senden. Ein Schlüssel darf nur, was seine Bereiche sagen, und nie mehr als Ihre Rolle erlaubt.",

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -390,6 +391,15 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 		return nil, err
 	}
 	base := koboBase(r)
+	kepubs := false
+	if s.Copies != nil {
+		if on, err := s.Auth.DeviceUsesKepub(r.Context(), DeviceFrom(r.Context())); err != nil {
+			loggerFrom(r.Context()).Error("reading a device's KEPUB setting", "error", err)
+		} else {
+			kepubs = on
+		}
+	}
+	deadline := time.Now().Add(koboKepubBudget)
 	for _, b := range summaries {
 		f, ok := feed[b.ID]
 		if !ok {
@@ -411,6 +421,12 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 				size = fixed
 			}
 		}
+		downloads := koboDownloads(base+"/download/"+epub.ID.String(), size)
+		if kepubs {
+			if kepub, ok := s.koboKepub(r.Context(), epub.ID, deadline); ok {
+				downloads = koboKepubDownloads(base+"/download/"+epub.ID.String()+"/kepub", kepub)
+			}
+		}
 		changed := f.UpdatedAt.UTC().Format(koboTime)
 		added := b.AddedAt.UTC().Format(koboTime)
 		m := koboMetadata{
@@ -420,7 +436,7 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 			CrossRevisionID:        b.ID,
 			CurrentDisplayPrice:    koboPrice{CurrencyCode: "EUR"},
 			Description:            f.Description,
-			DownloadUrls:           koboDownloads(base+"/download/"+epub.ID.String(), size),
+			DownloadUrls:           downloads,
 			EntitlementID:          b.ID,
 			ExternalIDs:            []string{},
 			Genre:                  "00000000-0000-0000-0000-000000000001",
@@ -454,6 +470,36 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 		out[b.ID] = koboBook{entitlement: entitlement(b.ID, added, changed, false), metadata: m}
 	}
 	return out, nil
+}
+
+// koboKepubDownloads offers a KEPUB, under the one name a Kobo reader knows
+// it by.
+func koboKepubDownloads(url string, size int64) []koboDownload {
+	return []koboDownload{{Format: "KEPUB", Size: size, URL: url, Platform: "Generic"}}
+}
+
+// koboKepubBudget is the time a sync spends making KEPUBs; a book it does
+// not reach is told as an EPUB.
+const koboKepubBudget = 20 * time.Second
+
+// koboKepub is the size of a file's KEPUB, made now unless the sync is out
+// of time for it.
+func (s *Server) koboKepub(ctx context.Context, file uuid.UUID, deadline time.Time) (int64, bool) {
+	if size, ok := s.Copies.KepubSizeOf(ctx, file); ok {
+		return size, true
+	}
+	if time.Now().After(deadline) {
+		return 0, false
+	}
+	c, err := s.Copies.Kepub(ctx, file)
+	if err != nil {
+		loggerFrom(ctx).Error("making a KEPUB", "error", err)
+		return 0, false
+	}
+	if c == nil {
+		return 0, false
+	}
+	return c.Size, true
 }
 
 // koboDownloads offers an EPUB under both names Kobo's firmware knows it
@@ -696,6 +742,12 @@ func (s *Server) koboRoutes() []Route {
 			Summary: "A book's EPUB for a Kobo reader; the whole of it marks the book delivered", Tag: tag,
 			Produces: "application/epub+zip", Status: http.StatusOK, Reads: ReadsLibraries,
 			Permission: auth.LibraryRead, Devices: true, Handler: s.opdsDeviceFile,
+		},
+		{
+			Method: http.MethodGet, Path: "/kobo/{token}/download/{fileId}/kepub", ID: "koboDownloadKepub",
+			Summary: "A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered", Tag: tag,
+			Produces: "application/epub+zip", Status: http.StatusOK, Reads: ReadsLibraries,
+			Permission: auth.LibraryRead, Devices: true, Handler: s.koboKepubFile,
 		},
 		{
 			Method: http.MethodPut, Path: "/kobo/{token}/v1/library/{bookId}/state", ID: "koboPutReadingState",

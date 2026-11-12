@@ -27,7 +27,7 @@ func (q *Queries) CountWaitingDeviceRequests(ctx context.Context, userID *uuid.U
 const createDevice = `-- name: CreateDevice :one
 INSERT INTO devices (user_id, name, token_hash, sync_key_hash, can_upload)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, created_at, last_used_at, can_upload
+RETURNING id, name, created_at, last_used_at, can_upload, kepub
 `
 
 type CreateDeviceParams struct {
@@ -44,6 +44,7 @@ type CreateDeviceRow struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	CanUpload  bool
+	Kepub      bool
 }
 
 func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (CreateDeviceRow, error) {
@@ -61,6 +62,7 @@ func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Cre
 		&i.CreatedAt,
 		&i.LastUsedAt,
 		&i.CanUpload,
+		&i.Kepub,
 	)
 	return i, err
 }
@@ -151,6 +153,17 @@ func (q *Queries) DeviceMayUpload(ctx context.Context, id uuid.UUID) (bool, erro
 	var can_upload bool
 	err := row.Scan(&can_upload)
 	return can_upload, err
+}
+
+const deviceUsesKepub = `-- name: DeviceUsesKepub :one
+SELECT kepub FROM devices WHERE id = $1
+`
+
+func (q *Queries) DeviceUsesKepub(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, deviceUsesKepub, id)
+	var kepub bool
+	err := row.Scan(&kepub)
+	return kepub, err
 }
 
 const dropOldDeviceRequests = `-- name: DropOldDeviceRequests :exec
@@ -326,7 +339,7 @@ func (q *Queries) GetSyncKeyUser(ctx context.Context, arg GetSyncKeyUserParams) 
 }
 
 const listUserDevices = `-- name: ListUserDevices :many
-SELECT id, name, created_at, last_used_at, can_upload
+SELECT id, name, created_at, last_used_at, can_upload, kepub
 FROM devices
 WHERE user_id = $1
 ORDER BY created_at
@@ -338,6 +351,7 @@ type ListUserDevicesRow struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	CanUpload  bool
+	Kepub      bool
 }
 
 func (q *Queries) ListUserDevices(ctx context.Context, userID uuid.UUID) ([]ListUserDevicesRow, error) {
@@ -355,6 +369,7 @@ func (q *Queries) ListUserDevices(ctx context.Context, userID uuid.UUID) ([]List
 			&i.CreatedAt,
 			&i.LastUsedAt,
 			&i.CanUpload,
+			&i.Kepub,
 		); err != nil {
 			return nil, err
 		}
@@ -406,6 +421,24 @@ func (q *Queries) ListWaitingDeviceRequests(ctx context.Context, userID *uuid.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const setDeviceKepub = `-- name: SetDeviceKepub :execrows
+UPDATE devices SET kepub = $3 WHERE id = $1 AND user_id = $2
+`
+
+type SetDeviceKepubParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+	Kepub  bool
+}
+
+func (q *Queries) SetDeviceKepub(ctx context.Context, arg SetDeviceKepubParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setDeviceKepub, arg.ID, arg.UserID, arg.Kepub)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setDeviceRequestState = `-- name: SetDeviceRequestState :exec

@@ -6400,6 +6400,70 @@ describe("fixing EPUBs for e-readers", () => {
 		).toBeInTheDocument();
 	});
 
+	it("converts a Kindle file to an EPUB from the book's page", async () => {
+		const person = userEvent.setup();
+		const kindle = {
+			id: "tower-kindle",
+			kind: "ebook" as const,
+			format: "azw3",
+			name: "Schwalbenturm.azw3",
+			size: 900_000,
+			missing: false,
+			drm: false,
+			extractState: "done" as const,
+		};
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [kindle] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		await person.click(
+			await files.findByRole("button", {
+				name: "Convert Schwalbenturm.azw3 to an EPUB",
+			}),
+		);
+		expect(server.conversions).toEqual(["tower-kindle"]);
+		expect(
+			await files.findByRole("button", {
+				name: "Move Schwalbenturm.epub to the trash",
+			}),
+		).toBeInTheDocument();
+		expect(
+			files.queryByRole("button", {
+				name: "Convert Schwalbenturm.epub to an EPUB",
+			}),
+		).not.toBeInTheDocument();
+	});
+
+	it("offers no conversion to a reader or for a protected Kindle file", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", {
+				files: [
+					{
+						id: "k1",
+						kind: "ebook" as const,
+						format: "mobi",
+						name: "Turm.mobi",
+						size: 1000,
+						missing: false,
+						drm: false,
+						extractState: "done" as const,
+					},
+				],
+			});
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		await files.findByText("Turm.mobi");
+		expect(
+			files.queryByRole("button", { name: /^Convert / }),
+		).not.toBeInTheDocument();
+	});
+
 	it("offers to shrink the fonts to the characters the book uses beside removing them", async () => {
 		const person = userEvent.setup();
 		server
@@ -8085,6 +8149,13 @@ describe("sending to an e-reader", () => {
 			persuasion.getByText(/^On the e-reader since .*, sent fixed$/),
 		).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
+		const kepub = screen.getByRole("checkbox", {
+			name: "Send KEPUBs to this Kobo reader",
+		});
+		expect(kepub).not.toBeChecked();
+		await person.click(kepub);
+		await waitFor(() => expect(kepub).toBeChecked());
+		expect(server.devices[0]?.kepub).toBe(true);
 		expect(
 			within(list.getByRole("listitem", { name: "Emma" })).getByText(
 				/^Announced to the reader/,

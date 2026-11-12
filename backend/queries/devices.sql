@@ -1,10 +1,10 @@
 -- name: CreateDevice :one
 INSERT INTO devices (user_id, name, token_hash, sync_key_hash, can_upload)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, created_at, last_used_at, can_upload;
+RETURNING id, name, created_at, last_used_at, can_upload, kepub;
 
 -- name: ListUserDevices :many
-SELECT id, name, created_at, last_used_at, can_upload
+SELECT id, name, created_at, last_used_at, can_upload, kepub
 FROM devices
 WHERE user_id = $1
 ORDER BY created_at;
@@ -82,3 +82,9 @@ WHERE d.token_hash = $1 AND u.disabled_at IS NULL;
 
 -- name: DeviceMayUpload :one
 SELECT can_upload FROM devices WHERE id = $1;
+
+-- name: SetDeviceKepub :execrows
+UPDATE devices SET kepub = $3 WHERE id = $1 AND user_id = $2;
+
+-- name: DeviceUsesKepub :one
+SELECT kepub FROM devices WHERE id = $1;

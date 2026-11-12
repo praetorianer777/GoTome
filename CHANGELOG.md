@@ -24,6 +24,14 @@ What changes for someone who runs or uses GOtome. The format follows
   What you set in GOtome is kept, and running the import again brings in
   what changed in Calibre since. A Calibre book's formats are now always
   one book in GOtome.
+- KEPUB for Kobo readers: a device's page has a switch (off at first) that
+  makes GOtome tell a Kobo reader, or a Tolino in Kobo mode, of each EPUB as
+  a KEPUB, which the reader reads with better statistics and page turns.
+  GOtome makes it itself when the reader syncs and keeps it with the other
+  copies for devices ([devices](docs/devices.md#kepub-for-kobo-readers)).
+- Convert to EPUB: a book's page offers to write an EPUB from a MOBI, AZW or
+  AZW3 file as a new file of the same book beside it, in a library GOtome
+  writes to. The original stays ([devices](docs/devices.md#kindle-files-to-epub)).
 
 ### Changed
 

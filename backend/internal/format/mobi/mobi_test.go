@@ -31,6 +31,8 @@ type fixture struct {
 	encryption  uint16
 	extraFlags  uint16
 	recordSize  int
+	// images are the image records after the cover's.
+	images [][]byte
 	// css makes the file KF8, with the markup and the style sheet as two flows.
 	css string
 }
@@ -97,11 +99,14 @@ func (f fixture) build(t testing.TB) []byte {
 	}
 	firstImage := uint32(noIndex)
 	exth := f.exth
-	if f.cover != nil {
+	if f.cover != nil || len(f.images) > 0 {
 		firstImage = uint32(len(records))
+	}
+	if f.cover != nil {
 		records = append(records, f.cover)
 		exth = append(exth, exthRecord{exthCoverOffset, u32(0)})
 	}
+	records = append(records, f.images...)
 	fdst := uint32(noIndex)
 	if f.css != "" {
 		fdst = uint32(len(records))

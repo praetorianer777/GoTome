@@ -206,3 +206,46 @@ func (s *Server) fixFile(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, fixResult(fixed))
 	return nil
 }
+
+// convertResult says what converting a Kindle file to an EPUB made: the new
+// file, a file of the same book.
+type convertResult struct {
+	FileID uuid.UUID `json:"fileId"`
+	BookID uuid.UUID `json:"bookId"`
+	// Name is the new file's name in the library's folder.
+	Name string `json:"name"`
+	// Sections are the content documents written, Images the pictures and
+	// TocEntries the entries of the table of contents.
+	Sections   int `json:"sections"`
+	Images     int `json:"images"`
+	TocEntries int `json:"tocEntries"`
+	// LinksDropped are links to places GOtome could not find in the book,
+	// which stay as text.
+	LinksDropped int `json:"linksDropped"`
+}
+
+func (s *Server) convertFile(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "fileId", "file")
+	if err != nil {
+		return err
+	}
+	made, err := s.Scans.ConvertToEPUB(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
+	switch {
+	case errors.Is(err, ingest.ErrNoFile):
+		return ErrNotFound("There is no such file.")
+	case errors.Is(err, ingest.ErrNotConvertible):
+		return ErrConflict("GOtome converts MOBI, AZW and AZW3 files it can read and that DRM does not protect.")
+	case errors.Is(err, ingest.ErrAlreadyConverted):
+		return ErrConflict("This book already has the EPUB that comes of this file.")
+	case errors.Is(err, ingest.ErrFileChanged):
+		return ErrConflict("The file changed since it was read. It is read again at the next scan.")
+	}
+	if err := trashError(err); err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusCreated, convertResult{
+		FileID: made.FileID, BookID: made.BookID, Name: made.Name, Sections: made.Sections,
+		Images: made.Images, TocEntries: made.TOCEntries, LinksDropped: made.LinksDropped,
+	})
+	return nil
+}

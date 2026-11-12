@@ -311,6 +311,11 @@ func (s *Server) routes() []Route {
 			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,
 		},
 		{
+			Method: http.MethodPatch, Path: "/auth/devices/{deviceId}", ID: "updateOwnDevice",
+			Summary: "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs", Tag: "auth",
+			Request: updateDeviceRequest{}, Response: deviceView{}, Permission: auth.SignedIn, Handler: s.updateOwnDevice,
+		},
+		{
 			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
 			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,
@@ -459,6 +464,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPost, Path: "/files/{fileId}/fix", ID: "fixFile",
 			Summary: "Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash", Tag: "files",
 			Request: fixRequest{}, Response: fixResult{}, Permission: auth.MetadataEdit, Handler: s.fixFile,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/convert", ID: "convertFile",
+			Summary: "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays", Tag: "files",
+			Response: convertResult{}, Status: http.StatusCreated, Permission: auth.MetadataEdit, Handler: s.convertFile,
 		},
 		{
 			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
