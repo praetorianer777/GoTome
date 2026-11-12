@@ -63,6 +63,9 @@ type document struct {
 	file, book uuid.UUID
 	format     string
 	pages      *int32
+	// viaCopy is a document named by the hash of the fixed copy sent to a
+	// device, whose chapters may be cut otherwise than the file's.
+	viaCopy bool
 }
 
 func (s *Service) document(ctx context.Context, scope library.Scope, md5 string) (document, error) {
@@ -75,7 +78,7 @@ func (s *Service) document(ctx context.Context, scope library.Scope, md5 string)
 	if err != nil {
 		return document{}, err
 	}
-	return document{file: row.ID, book: row.BookID, format: row.Format, pages: row.PageCount}, nil
+	return document{file: row.ID, book: row.BookID, format: row.Format, pages: row.PageCount, viaCopy: row.ViaCopy}, nil
 }
 
 // Push keeps the place KOReader reports, under #44's rule: a place behind
@@ -160,7 +163,7 @@ func placeFor(doc document, p reading.Progress) (string, bool) {
 	if xpointer, ok := strings.CutPrefix(p.Locator, xpointerPrefix); ok {
 		return xpointer, true
 	}
-	if m := spineStep.FindStringSubmatch(p.Locator); m != nil {
+	if m := spineStep.FindStringSubmatch(p.Locator); m != nil && !doc.viaCopy {
 		step, _ := strconv.Atoi(m[1])
 		return "/body/DocFragment[" + strconv.Itoa(step/2) + "]", true
 	}

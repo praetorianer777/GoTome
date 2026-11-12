@@ -68,3 +68,28 @@ contents that leads nowhere. GOtome measures every EPUB and shows such findings 
 book's page; the library's filter **On e-readers** finds them all, and the
 Overview counts them. An editor can **Fix** a finding where the library is
 writable ([troubleshooting.md](troubleshooting.md#e-reader-findings-and-fixes)).
+
+### Sent fixed
+
+A book sent to a device does not wait for anyone to press Fix, and does not
+need a writable library. When it is queued, GOtome makes a copy of each of
+its EPUBs that has findings in the background, with the fixes of
+**Everything found** (fonts are cut down, not removed), and the device
+downloads that copy. The library's file is only read, never changed. The
+copies lie in `device-copies/` in the data folder; they are kept up to 4 GB
+and 90 days unused, are made again when the file or GOtome's fixes change,
+and are not in a backup. Turn it off with the setting
+`devices.fixOnSend` ([configuration.md](configuration.md#devices)).
+
+- A download never waits for a copy: if it is not ready yet (a large book
+  takes a while), the device gets the file as it lies, and the next
+  download gets the copy.
+- A device's book list says **Sent fixed** for a book that was downloaded as
+  a fixed copy.
+- KOReader's progress sync names a book by the hash of the file it holds. A
+  fixed copy has a hash of its own, which GOtome records, so the place is
+  kept for the book either way. A place written by the web reader cannot be
+  given to KOReader in a fixed copy (its chapters may be cut differently);
+  KOReader's own places are kept.
+- A copy that was removed to make room keeps its hashes, so a device that
+  holds it is still known.

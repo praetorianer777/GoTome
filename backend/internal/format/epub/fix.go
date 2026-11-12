@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+// FixVersion is the version of what Fix makes of an EPUB. Copies made for
+// devices are kept by it: raise it with any change to Fix, to the limits
+// and to what the findings mean, and every copy is made again.
+const FixVersion = 1
+
 // Fixed says what Fix changed.
 type Fixed struct {
 	// DocumentsSplit are the content documents cut into parts, PartsAdded

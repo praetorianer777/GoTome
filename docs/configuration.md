@@ -160,6 +160,12 @@ See [metadata.md](metadata.md#doing-it-automatically). Both are off until you tu
 |---|---|---|---|
 | `updates.check` | Check for new releases | `on` | Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one (footer, overview, a notification). GitHub learns that an instance exists at this address and nothing else; nothing is downloaded or installed. `GOTOME_OFFLINE=true` asks nothing whatever this says. |
 
+### Devices
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `devices.fixOnSend` | Fix e-reader findings in books sent to devices | `on` | A book sent to a device whose EPUB has e-reader findings goes out as `epub.Fix` would leave it (the same fixes as "Everything found" on the library page), from a copy GOtome makes in the background beside its data (`device-copies/`) once the book is queued. The library's file is never written, so this also works for read-only folders. A download that finds no copy ready yet sends the file as it lies. Copies are kept up to 4 GB and 90 days unused, and a backup leaves them out ([devices](devices.md)). |
+
 ### Trash
 
 | Key | On the page | Default | What it does |

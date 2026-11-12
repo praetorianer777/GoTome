@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -59,6 +60,9 @@ type deviceBook struct {
 	// it waits, or from a Kobo reader at its next sync. Other devices keep
 	// what they downloaded.
 	Removable bool `json:"removable"`
+	// SentFixed says the device downloaded the book as a fixed copy, with
+	// its e-reader findings fixed, not as the library's file lies.
+	SentFixed bool `json:"sentFixed"`
 }
 
 type deviceBookList struct {
@@ -195,7 +199,7 @@ func (s *Server) listDeviceBooks(w http.ResponseWriter, r *http.Request) error {
 		}
 		out.Books = append(out.Books, deviceBook{
 			Book: summaryOf(summary), DeliveryID: b.ID, State: b.State(), QueuedAt: b.QueuedAt,
-			DeliveredAt: b.DeliveredAt, SyncedAt: b.SyncedAt, Removable: b.Removable(),
+			DeliveredAt: b.DeliveredAt, SyncedAt: b.SyncedAt, Removable: b.Removable(), SentFixed: b.SentFixed,
 		})
 	}
 	if next != nil {
@@ -238,6 +242,7 @@ func (s *Server) opdsDevice(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	s.requestCopies(r.Context(), ids)
 	books, err := s.Books.Summaries(r.Context(), scope, ids)
 	if err != nil {
 		return err
@@ -272,19 +277,43 @@ func (s *Server) opdsDeviceFile(w http.ResponseWriter, r *http.Request) error {
 	if device == uuid.Nil {
 		return errNotADevice()
 	}
-	book, err := s.serveFile(w, r)
+	book, fixed, err := s.serveFile(w, r)
 	if err != nil {
 		return err
 	}
-	// A part of the file, or one the device already has, is not a delivery.
-	rec, ok := w.(*statusRecorder)
-	if !ok || rec.status != http.StatusOK || r.Method != http.MethodGet || r.Context().Err() != nil {
+	if !wholeFileSent(w, r) {
 		return nil
 	}
+	s.recordSend(r, device, book, fixed)
 	if _, err := s.Deliveries.Delivered(r.Context(), device, book); err != nil {
 		loggerFrom(r.Context()).Error("marking a delivery", "error", err)
 	}
 	return nil
+}
+
+// wholeFileSent is whether the answer was the file itself: a part of it, or
+// one the device already has, is not a delivery.
+func wholeFileSent(w http.ResponseWriter, r *http.Request) bool {
+	rec, ok := w.(*statusRecorder)
+	return ok && rec.status == http.StatusOK && r.Method == http.MethodGet && r.Context().Err() == nil
+}
+
+func (s *Server) recordSend(r *http.Request, device, book uuid.UUID, fixed bool) {
+	if err := s.Deliveries.Sent(r.Context(), device, book, fixed); err != nil {
+		loggerFrom(r.Context()).Error("recording a send", "error", err)
+	}
+}
+
+// requestCopies has the fixed copies of the books made, where they have
+// findings, for a device that will be sent them. A failure only means the
+// device gets the files as they lie.
+func (s *Server) requestCopies(ctx context.Context, ids []uuid.UUID) {
+	if s.Copies == nil {
+		return
+	}
+	if err := s.Copies.Request(ctx, ids); err != nil {
+		loggerFrom(ctx).Error("queueing fixed copies", "error", err)
+	}
 }
 
 type thisDevice struct {
@@ -330,6 +359,7 @@ func (s *Server) listDeviceQueue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	s.requestCopies(r.Context(), ids)
 	books, err := s.Books.Summaries(r.Context(), scope, ids)
 	if err != nil {
 		return err

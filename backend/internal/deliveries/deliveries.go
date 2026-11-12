@@ -29,6 +29,8 @@ const MaxPage = 100
 // Service keeps the deliveries.
 type Service struct {
 	pool *pgxpool.Pool
+	// OnQueued, when set, hears of the books just queued for a device.
+	OnQueued func(ctx context.Context, bookIDs []uuid.UUID)
 }
 
 // NewService returns a Service on the pool.
@@ -60,7 +62,16 @@ func (s *Service) Queue(ctx context.Context, scope library.Scope, deviceID uuid.
 	n, err := q.QueueDeliveries(ctx, sqlc.QueueDeliveriesParams{
 		Ids: ids, DeviceID: deviceID, Viewer: scope.Viewer, SeesAll: scope.SeesAll,
 	})
+	if err == nil && n > 0 && s.OnQueued != nil {
+		s.OnQueued(ctx, ids)
+	}
 	return int(n), err
+}
+
+// Sent records that the device downloaded the whole of a book's file, and
+// whether it was a fixed copy (#501).
+func (s *Service) Sent(ctx context.Context, deviceID, bookID uuid.UUID, fixed bool) error {
+	return sqlc.New(s.pool).RecordDeviceSend(ctx, sqlc.RecordDeviceSendParams{DeviceID: deviceID, BookID: bookID, Fixed: fixed})
 }
 
 // ForBook lists the book's deliveries to the user's devices, the latest
@@ -161,6 +172,8 @@ type DeviceBook struct {
 	// SyncedAt is when a Kobo reader's library sync last told it of the
 	// book; nil for other devices, and before the first sync.
 	SyncedAt *time.Time
+	// SentFixed says the device downloaded the book as a fixed copy.
+	SentFixed bool
 }
 
 // How far a book got to a device.
@@ -222,7 +235,7 @@ func (s *Service) OfDevice(ctx context.Context, scope library.Scope, deviceID uu
 	}
 	out := make([]DeviceBook, len(rows))
 	for i, r := range rows {
-		out[i] = DeviceBook{ID: r.ID, BookID: r.BookID, QueuedAt: r.QueuedAt, DeliveredAt: r.DeliveredAt, SyncedAt: r.SyncedAt}
+		out[i] = DeviceBook{ID: r.ID, BookID: r.BookID, QueuedAt: r.QueuedAt, DeliveredAt: r.DeliveredAt, SyncedAt: r.SyncedAt, SentFixed: r.SentFixed}
 	}
 	if len(out) <= limit {
 		return out, nil, nil

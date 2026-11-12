@@ -13452,6 +13452,9 @@
           "removable": {
             "type": "boolean"
           },
+          "sentFixed": {
+            "type": "boolean"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -13470,7 +13473,8 @@
           "deliveryId",
           "state",
           "queuedAt",
-          "removable"
+          "removable",
+          "sentFixed"
         ]
       },
       "DeviceBookList": {

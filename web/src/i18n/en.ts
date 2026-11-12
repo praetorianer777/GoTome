@@ -1273,6 +1273,7 @@ export const en = {
 	"deviceBooks.waiting": "Waiting since {date}",
 	"deviceBooks.synced": "Announced to the reader {date}, not downloaded yet",
 	"deviceBooks.delivered": "On the e-reader since {date}",
+	"deviceBooks.deliveredFixed": "On the e-reader since {date}, sent fixed",
 	"deviceBooks.takeOff": "Take off this device",
 	"deviceBooks.takeOffNamed": "Take {title} off this device",
 	"deviceBooks.more": "Show more",
@@ -1291,6 +1292,9 @@ export const en = {
 	"settings.hardcoverToken": "Hardcover API token",
 	"settings.hardcoverToken.hint":
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
+	"settings.devicesFixOnSend": "Fix e-reader findings in books sent to devices",
+	"settings.devicesFixOnSend.hint":
+		"A book with findings (a chapter too large, big images or fonts, a broken table of contents) is sent to a device as a fixed copy GOtome keeps beside its data. The file in the library is never changed, so this works for read-only folders too.",
 	"settings.updatesCheck": "Check for new releases",
 	"settings.updatesCheck.hint":
 		"Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one. GitHub learns that an instance exists at this address, nothing else. Nothing is downloaded or installed.",

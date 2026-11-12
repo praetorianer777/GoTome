@@ -118,7 +118,7 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 function stateText(b: DeviceBook): string {
 	switch (b.state) {
 		case "delivered":
-			return t("deviceBooks.delivered", {
+			return t(b.sentFixed ? "deviceBooks.deliveredFixed" : "deviceBooks.delivered", {
 				date: formatDate(b.deliveredAt ?? b.queuedAt),
 			});
 		case "synced":

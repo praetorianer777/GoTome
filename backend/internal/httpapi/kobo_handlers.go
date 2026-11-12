@@ -325,6 +325,7 @@ func (s *Server) koboSync(w http.ResponseWriter, r *http.Request) error {
 			ids = append(ids, c.BookID)
 		}
 	}
+	s.requestCopies(r.Context(), ids)
 	books, err := s.koboBooks(r, scope, ids)
 	if err != nil {
 		return err
@@ -404,6 +405,12 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 		if epub == nil {
 			continue
 		}
+		size := epub.Size
+		if s.Copies != nil {
+			if fixed, ok := s.Copies.SizeOf(r.Context(), epub.ID); ok {
+				size = fixed
+			}
+		}
 		changed := f.UpdatedAt.UTC().Format(koboTime)
 		added := b.AddedAt.UTC().Format(koboTime)
 		m := koboMetadata{
@@ -413,7 +420,7 @@ func (s *Server) koboBooks(r *http.Request, scope library.Scope, ids []uuid.UUID
 			CrossRevisionID:        b.ID,
 			CurrentDisplayPrice:    koboPrice{CurrencyCode: "EUR"},
 			Description:            f.Description,
-			DownloadUrls:           koboDownloads(base+"/download/"+epub.ID.String(), epub.Size),
+			DownloadUrls:           koboDownloads(base+"/download/"+epub.ID.String(), size),
 			EntitlementID:          b.ID,
 			ExternalIDs:            []string{},
 			Genre:                  "00000000-0000-0000-0000-000000000001",

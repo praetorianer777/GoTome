@@ -36,11 +36,13 @@ GOtome keeps running. The folder then holds:
   (`book_vectors`, and `passage_files`, which says whose passages have
   them), the cache of what metadata sources answered (`provider_records`)
   which books were looked at for genres (`book_genre_checks`) and the
-  last run of a match measure (`match_runs`) are
+  last run of a match measure (`match_runs`) and the notes of the copies
+  made for devices (`device_copies`) are
   left out: GOtome makes them again from the
   files, and they are most of the database.
 - `data.tar`: covers and managed libraries, without the full-text index
-  (`search/`) and the passages' vectors (`passages/`), which GOtome makes
+  (`search/`), the passages' vectors (`passages/`) and the fixed copies
+  made for devices (`device-copies/`), which GOtome makes
   again from the files.
 - `secret-key`, readable by its owner alone.
 - `VERSION`: the version that made the backup.

@@ -72,6 +72,9 @@ const (
 	// TrashRetentionDays is how many days a trashed file is kept before it
 	// is deleted for good.
 	TrashRetentionDays = "trash.retentionDays"
+	// DevicesFixOnSend is "on" or "off": whether a book with e-reader
+	// findings is sent to a device as a fixed copy (#501).
+	DevicesFixOnSend = "devices.fixOnSend"
 	// UpdatesCheck is "on" or "off": whether GitHub is asked once a day for
 	// the latest release, to tell administrators of a newer one.
 	UpdatesCheck = "updates.check"
@@ -220,6 +223,7 @@ var Definitions = []Definition{
 	{Key: Providers, Kind: KindText, Default: "openlibrary,crossref,hardcover", Check: names, Choices: ProviderNames, Multiple: true},
 	{Key: ContactEmail, Kind: KindText, Check: email},
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
+	{Key: DevicesFixOnSend, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: UpdatesCheck, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel, Choices: slices.Sorted(maps.Keys(embed.Specs))},
@@ -753,6 +757,12 @@ func (s *Store) TrashRetention(ctx context.Context) (time.Duration, error) {
 	}
 	d, _ := strconv.Atoi(n)
 	return time.Duration(d) * 24 * time.Hour, nil
+}
+
+// DeviceFixOnSend says whether devices are sent fixed copies of EPUBs.
+func (s *Store) DeviceFixOnSend(ctx context.Context) (bool, error) {
+	v, err := s.Text(ctx, DevicesFixOnSend)
+	return v == "on", err
 }
 
 // EmbeddingPassages says whether passages are embedded and searched.
