@@ -5321,6 +5321,33 @@ describe("the EPUB and MOBI reader", () => {
 		);
 	});
 
+	it("does not save a coarser place than the one it opened at", async () => {
+		const person = userEvent.setup();
+		withBook("epub", "Persuasion.epub");
+		server.progress["book-1"] = {
+			ebook: {
+				fileId: "file-1",
+				locator: "epubcfi(/6/3,/2,/4)",
+				fraction: 0.4,
+				chapter: "Two",
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1");
+		await person.click(
+			await screen.findByRole("link", { name: "Read Persuasion.epub" }),
+		);
+		expect(await screen.findByText("40%")).toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 900));
+		expect(saves()).toHaveLength(0);
+
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]).toMatchObject({ locator: "epubcfi(/6/5)" });
+	});
+
 	it("opens a place KOReader saved by how far into the book it is", async () => {
 		withBook("epub", "Persuasion.epub");
 		server.progress["book-1"] = {

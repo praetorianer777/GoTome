@@ -172,3 +172,28 @@ func TestTheKOReaderPluginAndKoboEndpointKnowTheSubPath(t *testing.T) {
 		t.Errorf("the plugin's server: %q", server)
 	}
 }
+
+func TestADeadSessionCookieIsNotClearedByAnAnswer(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+
+	req, err := http.NewRequest(http.MethodGet, a.url+httpapi.APIPrefix+"/auth/me", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(&http.Cookie{Name: httpapi.SessionCookie, Value: "a-token-no-session-has"})
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("status %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Set-Cookie"); got != "" {
+		t.Errorf("a response that raced a sign-in would sign the person out again: %s", got)
+	}
+	if logs := a.logs.String(); !strings.Contains(logs, "names no live session") || strings.Contains(logs, "a-token-no-session-has") {
+		t.Errorf("the log: %s", logs)
+	}
+}

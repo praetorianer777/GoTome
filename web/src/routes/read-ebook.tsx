@@ -224,6 +224,10 @@ export function EbookReader({
 		let open = true;
 		let opened: Ebook | undefined;
 		kept.current = start.current;
+		// Opening at a saved place reports places on the way to it, some
+		// coarser (WebKit: the section's start, #515): none is a place the
+		// person moved to, so none is saved until the book has settled.
+		if (start.current) finding.current = true;
 		(async () => {
 			const res = await fetch(downloadUrl({ id: fileId }));
 			if (!res.ok) throw new Error(t("reader.unreadable"));
@@ -240,6 +244,10 @@ export function EbookReader({
 			});
 			if (open) {
 				opened = book;
+				if (start.current && !findNow.current) {
+					kept.current = latest.current?.cfi ?? start.current;
+					finding.current = false;
+				}
 				setEbook(book);
 			} else {
 				book.close();
@@ -310,6 +318,7 @@ export function EbookReader({
 	useEffect(() => {
 		if (preview || !place || finding.current || place.cfi === kept.current) return;
 		const timer = setTimeout(() => {
+			if (finding.current || place.cfi === kept.current) return;
 			kept.current = place.cfi;
 			savePlace(
 				{

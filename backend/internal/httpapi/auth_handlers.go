@@ -247,8 +247,10 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		user, err := s.Auth.Authenticate(r.Context(), token)
 		switch {
 		case errors.Is(err, auth.ErrNoSession):
-			// A cookie for a session that is gone would be sent forever.
-			clearSessionCookie(w, r)
+			// Not cleared here: a response to a request sent with the old
+			// cookie can arrive after a sign-in has set the new one, and
+			// its clearing Set-Cookie would sign the person out again (#516).
+			s.Log.WarnContext(r.Context(), "a session cookie names no live session", "method", r.Method, "path", r.URL.Path)
 			next.ServeHTTP(w, r)
 		case err != nil:
 			writeError(w, r, err)

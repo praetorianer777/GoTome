@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A browser holding a dead session cookie could be signed out again right after
+  signing in, when the answer to an older request arrived late. The server no
+  longer clears a cookie because its session is unknown; only signing out does.
+- Reopening an e-book no longer saves a coarser place (the start of the
+  section, in Safari) over the exact one it opened at.
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner
