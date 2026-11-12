@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { test } from "../fixtures/test";
-import { openSignedIn } from "../fixtures/app";
+import { openSignedIn, gotoSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
 test("a book uploaded twice with other details shows as a pair of cards, and is kept as two", async ({
@@ -36,7 +36,7 @@ test("a book uploaded twice with other details shows as a pair of cards, and is 
 	const pairs = page.getByRole("region", { name: "Pairs" });
 	// The books are read and checked in the background after the upload.
 	await expect(async () => {
-		await page.goto(`/duplicates?library=${library}`);
+		await gotoSignedIn(page, `/duplicates?library=${library}`);
 		await expect(pairs.getByRole("listitem", { name: said })).toBeVisible({
 			timeout: 2_000,
 		});
@@ -99,7 +99,7 @@ test("the two Keep this buttons of a pair line up whatever the titles say", asyn
 	}
 	await page.setViewportSize({ width: 900, height: 1000 });
 	await expect(async () => {
-		await page.goto(`/duplicates?library=${library}`);
+		await gotoSignedIn(page, `/duplicates?library=${library}`);
 		await expect(
 			page.getByRole("button", { name: /^Keep this/ }),
 		).toHaveCount(2, { timeout: 2_000 });
