@@ -287,8 +287,6 @@ func TestChangingTheModelQueuesEmbeddingEveryBookAgain(t *testing.T) {
 	}
 }
 
-func ptr(s string) *string { return &s }
-
 func TestAModelThatCannotRunLeavesTheBooksForLater(t *testing.T) {
 	t.Parallel()
 	a := newVectorApp(t)
@@ -373,3 +371,81 @@ func TestAPlaceholderSomeoneReadGetsOnlyAMetadataVector(t *testing.T) {
 		t.Errorf("once no one has read it the placeholder has %v", kinds(got))
 	}
 }
+
+func TestTheMetadataTextLeavesOutAdditionsAndPlaceholderAuthorsAndOnlyThatVectorIsRemade(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	ctx := context.Background()
+	var oldText string
+	if err := a.pool.QueryRow(ctx, `SELECT book_metadata_text($1)`, a.text).Scan(&oldText); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	before := a.storedVectors(a.text)
+
+	// A source hash made from the title as it was written stands for a vector
+	// made before the text was cleaned.
+	var author uuid.UUID
+	if err := a.pool.QueryRow(ctx, `
+		INSERT INTO authors (name, sort_name, name_key) VALUES ('authors_sort', 'authors_sort', 'authors sort') RETURNING id`).Scan(&author); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_contributors (book_id, author_id, role, position) VALUES ($1, $2, 'author', 9)`, a.text, author); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `UPDATE books SET title = title || ' (German Edition)' WHERE id = $1`, a.text); err != nil {
+		t.Fatal(err)
+	}
+	var cleaned string
+	if err := a.pool.QueryRow(ctx, `SELECT book_metadata_text($1)`, a.text).Scan(&cleaned); err != nil {
+		t.Fatal(err)
+	}
+	if cleaned != oldText {
+		t.Errorf("the text is %q, not %q", cleaned, oldText)
+	}
+	if strings.Contains(cleaned, "German Edition") || strings.Contains(cleaned, "authors_sort") {
+		t.Errorf("the text keeps an addition or a placeholder author: %q", cleaned)
+	}
+	a.embedAll()
+	if again := a.storedVectors(a.text); !again["metadata"].EmbeddedAt.Equal(before["metadata"].EmbeddedAt) {
+		t.Error("a title addition and a placeholder author made the metadata vector again")
+	}
+
+	if _, err := a.pool.Exec(ctx, `
+		UPDATE book_vectors SET source_hash = sha256(convert_to(
+			(SELECT title || E'\n' || 'Jane Austen' FROM books WHERE id = $1), 'UTF8'))
+		WHERE book_id = $1 AND kind = 'metadata'`, a.text); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	after := a.storedVectors(a.text)
+	if !after["metadata"].EmbeddedAt.After(before["metadata"].EmbeddedAt) {
+		t.Error("a source hash of the old text left the metadata vector as it was")
+	}
+	if !after["content"].EmbeddedAt.Equal(before["content"].EmbeddedAt) {
+		t.Error("the metadata text made the content vector again")
+	}
+}
+
+func TestAnotherNumberOfSamplesMakesTheContentVectorsAgain(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	a.vectors.ContentSamples = a.settings.EmbeddingContentSamples
+	a.embedAll()
+	before := a.storedVectors(a.text)
+
+	a.set("embedding.contentSamples", "32")
+	a.embedAll()
+	after := a.storedVectors(a.text)
+	if !after["content"].EmbeddedAt.After(before["content"].EmbeddedAt) {
+		t.Error("another number of samples left the content vector as it was")
+	}
+	if !after["metadata"].EmbeddedAt.Equal(before["metadata"].EmbeddedAt) {
+		t.Error("another number of samples made the metadata vector again")
+	}
+	if err := a.settings.Update(context.Background(), a.adminID, map[string]*string{"embedding.contentSamples": ptr("4")}); err == nil {
+		t.Error("4 samples were accepted")
+	}
+}
+
+func ptr(s string) *string { return &s }

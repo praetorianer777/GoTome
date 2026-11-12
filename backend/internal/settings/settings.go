@@ -105,6 +105,10 @@ const (
 	// Off by default: on a library of 50,000 books it is about 1.5 GB on
 	// disk and days of the CPU (docs/decisions/passage-vectors.md).
 	EmbeddingPassages = "embedding.passages"
+	// EmbeddingContentSamples is how many passages of a book's text its
+	// content vector is made from, 8 to 128 (#184). It is part of the
+	// content vector's recipe: another number makes them again.
+	EmbeddingContentSamples = "embedding.contentSamples"
 	// Passwords is "on" or "off": whether people may sign in with a
 	// password. Off leaves it to administrators while none of them can sign
 	// in through the identity provider.
@@ -235,6 +239,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingRemoveUnusedDays, Kind: KindText, Default: "1", Check: days},
 	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode, Choices: GenreModes},
 	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
+	{Key: EmbeddingContentSamples, Kind: KindText, Default: "16", Check: contentSamples},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: OIDCIssuer, Kind: KindText, Check: issuer},
 	{Key: OIDCClientID, Kind: KindText},
@@ -452,6 +457,14 @@ func days(v string) (string, error) {
 	n, err := strconv.Atoi(strings.TrimSpace(v))
 	if err != nil || n < 1 || n > 3650 {
 		return "", errors.New("Give a whole number of days from 1 to 3650.")
+	}
+	return strconv.Itoa(n), nil
+}
+
+func contentSamples(v string) (string, error) {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 8 || n > 128 {
+		return "", errors.New("Give a whole number from 8 to 128.")
 	}
 	return strconv.Itoa(n), nil
 }
@@ -773,6 +786,19 @@ func (s *Store) DeviceFixOnSend(ctx context.Context) (bool, error) {
 func (s *Store) EmbeddingPassages(ctx context.Context) (bool, error) {
 	v, err := s.Text(ctx, EmbeddingPassages)
 	return v == "on", err
+}
+
+// EmbeddingContentSamples is how many passages a content vector is made of.
+func (s *Store) EmbeddingContentSamples(ctx context.Context) (int, error) {
+	v, err := s.Text(ctx, EmbeddingContentSamples)
+	if err != nil {
+		return 0, err
+	}
+	n, err := contentSamples(v)
+	if err != nil {
+		return 0, fmt.Errorf("%s is %q: %w", EmbeddingContentSamples, v, err)
+	}
+	return strconv.Atoi(n)
 }
 
 // EmbeddingServer is the address of the embedding server, or "" for none.

@@ -1057,6 +1057,9 @@ export const en = {
 	"settings.embeddingRemoveUnused": "Days an unused model is kept",
 	"settings.embeddingRemoveUnused.hint":
 		"A model that has not been the one in use for this many days has its downloaded files and its vectors removed. From 1 to 3650; 1 unless set.",
+	"settings.embeddingContentSamples": "Passages per book",
+	"settings.embeddingContentSamples.hint":
+		"How many passages of a book's text, spread over it, its content vector is made from. From 8 to 128; 16 unless set. More passages take proportionally longer per book, and another number reads every book's text again.",
 	"settings.embeddingServer": "Embedding server",
 	"settings.embeddingServer.hint":
 		"The address of an Ollama server for bge-m3, such as http://host.docker.internal:11434, with the model pulled there (ollama pull bge-m3). Empty, GOtome runs bge-m3 itself on the CPU; the vectors are the same either way.",

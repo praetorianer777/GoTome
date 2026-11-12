@@ -307,6 +307,7 @@ func serve() error {
 	vectors.Passages = scans.Passages
 	vectors.ModelDir = cfg.ModelDir
 	vectors.RemoveAfter = settingStore.RemoveUnusedAfter
+	vectors.ContentSamples = settingStore.EmbeddingContentSamples
 	passageStore, err := passages.OpenStore(passages.Dir(cfg.DataDir))
 	if err != nil {
 		return err
