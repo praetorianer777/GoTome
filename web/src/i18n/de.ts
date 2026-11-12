@@ -1075,6 +1075,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.embeddingRemoveUnused": "Tage, die ein ungenutztes Modell bleibt",
 	"settings.embeddingRemoveUnused.hint":
 		"Ein Modell, das so viele Tage nicht in Verwendung war, verliert seine heruntergeladenen Dateien und seine Vektoren. Von 1 bis 3650; 1, wenn nicht gesetzt.",
+	"settings.embeddingContentSamples": "Textstellen pro Buch",
+	"settings.embeddingContentSamples.hint":
+		"Aus wie vielen Textstellen eines Buches, über den Text verteilt, sein Inhaltsvektor gebildet wird. Von 8 bis 128; 16, wenn nicht gesetzt. Mehr Textstellen brauchen entsprechend länger pro Buch, und eine andere Zahl liest den Text jedes Buches neu.",
 	"settings.embeddingServer": "Embedding-Server",
 	"settings.embeddingServer.hint":
 		"Die Adresse eines Ollama-Servers für bge-m3, etwa http://host.docker.internal:11434, auf dem das Modell geladen ist (ollama pull bge-m3). Leer führt GOtome bge-m3 selbst auf der CPU aus; die Vektoren sind in beiden Fällen dieselben.",

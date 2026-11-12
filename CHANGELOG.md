@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Similar books and the search by description compare books by a cleaner
+  text: titles without a shop's additions ("(German Edition)", ": Roman")
+  and without placeholder authors ("authors_sort"). Every book's metadata
+  vector is made again after the upgrade, in the background; the text
+  vectors stay.
+- New setting `embedding.contentSamples` (16 unless set): how many passages
+  of a book's text its content vector is made from.
+
 ## [0.23.0] - 2026-11-12
 
 ### Added

@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { test } from "../fixtures/test";
-import { openSignedIn } from "../fixtures/app";
+import { openSignedIn, gotoSignedIn } from "../fixtures/app";
 import { makeEpub } from "../fixtures/ebooks";
 
 test("two copies of a book are merged into one, with the files of both and the place read", async ({
@@ -36,7 +36,7 @@ test("two copies of a book are merged into one, with the files of both and the p
 	const said = `Kept ${stamp} and Merged ${stamp} have the same content, with other details.`;
 	const pairs = page.getByRole("region", { name: "Pairs" });
 	await expect(async () => {
-		await page.goto(`/duplicates?library=${library}`);
+		await gotoSignedIn(page, `/duplicates?library=${library}`);
 		await expect(pairs.getByRole("listitem", { name: said })).toBeVisible({ timeout: 2_000 });
 	}).toPass({ timeout: 30_000 });
 	const pair = pairs.getByRole("listitem", { name: said });

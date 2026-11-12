@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 import { test } from "../fixtures/test";
 import { makeAccount, signedIn } from "../fixtures/accounts";
-import { accountMenu, openSignedIn } from "../fixtures/app";
+import { accountMenu, gotoSignedIn, openSignedIn } from "../fixtures/app";
 
 test("a person signs another browser out from their profile", async ({
 	page,
@@ -61,7 +61,7 @@ test("the language is chosen on the profile and kept in this browser", async ({
 	page,
 }) => {
 	await openSignedIn(page);
-	await page.goto("/profile");
+	await gotoSignedIn(page, "/profile");
 	const choice = page.getByLabel("The language GOtome speaks in this browser.");
 	await expect(choice).toHaveValue("browser");
 	await choice.selectOption({ label: "Deutsch" });
@@ -79,7 +79,7 @@ test("the language is chosen on the profile and kept in this browser", async ({
 		page.getByRole("heading", { name: "Bibliothek", level: 1 }),
 	).toBeVisible();
 
-	await page.goto("/profile");
+	await gotoSignedIn(page, "/profile");
 	await page
 		.getByLabel("Die Sprache, in der GOtome in diesem Browser spricht.")
 		.selectOption({ label: "Wie der Browser" });

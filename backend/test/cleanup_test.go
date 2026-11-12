@@ -338,6 +338,34 @@ func TestTitleAdditionsAreOneRuleInGoAndSQL(t *testing.T) {
 		if goes := cleanup.CleanTitle(title) != title; goes != sql {
 			t.Errorf("%q: Go takes something off: %v, SQL finds an addition: %v", title, goes, sql)
 		}
+		var stripped string
+		if err := a.pool.QueryRow(context.Background(), `SELECT title_without_addition($1)`, title).Scan(&stripped); err != nil {
+			t.Fatal(err)
+		}
+		if want := cleanup.CleanTitle(title); stripped != want {
+			t.Errorf("%q: Go leaves %q, SQL %q", title, want, stripped)
+		}
+	}
+	for _, title := range []string{" Roman ", ": Roman", "Der Wirbel - Roman - Thriller (German Edition)  "} {
+		var stripped string
+		if err := a.pool.QueryRow(context.Background(), `SELECT title_without_addition($1)`, title).Scan(&stripped); err != nil {
+			t.Fatal(err)
+		}
+		if want := cleanup.CleanTitle(title); stripped != want {
+			t.Errorf("%q: Go leaves %q, SQL %q", title, want, stripped)
+		}
+	}
+}
+
+func TestThePlaceholderAuthorsOfSQLAreThoseOfGo(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	var keys []string
+	if err := a.pool.QueryRow(context.Background(), `SELECT placeholder_author_keys()`).Scan(&keys); err != nil {
+		t.Fatal(err)
+	}
+	if want := cleanup.PlaceholderAuthors(); !slices.Equal(keys, want) {
+		t.Errorf("SQL %v, Go %v", keys, want)
 	}
 }
 
