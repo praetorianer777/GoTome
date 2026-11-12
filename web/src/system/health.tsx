@@ -62,7 +62,7 @@ function HealthWarning({
 		<li className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
 			<p>{warningText(warning, health)}</p>
 			{warning.commands.length > 0 && (
-				<pre className="overflow-x-auto rounded bg-white p-2 text-xs text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+				<pre className="rounded bg-white p-2 text-xs break-all whitespace-pre-wrap text-slate-900 dark:bg-slate-900 dark:text-slate-100">
 					{[...warning.commands.map(psql), "docker compose restart db"].join(
 						"\n",
 					)}
