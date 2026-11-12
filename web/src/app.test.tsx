@@ -1033,6 +1033,62 @@ describe("libraries", () => {
 		});
 	});
 
+	it("previews what organising a library's files would move, and moves them", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("Novels");
+		renderApp("/admin/libraries");
+
+		const row = within(await screen.findByRole("listitem", { name: "Novels" }));
+		const pattern = row.getByLabelText("Pattern");
+		expect(pattern).toHaveValue("{author}/[{series}/][{series_index} - ]{title}.{ext}");
+		expect(row.queryByRole("button", { name: /^Move \d+ files$/ })).not.toBeInTheDocument();
+
+		await person.click(row.getByRole("button", { name: "Preview" }));
+		expect(
+			await row.findByText(/^2 of 3 files would move, 1 are in place, 1 get a number/),
+		).toBeInTheDocument();
+		const moves = within(row.getByRole("list", { name: "Moves" }));
+		expect(moves.getAllByRole("listitem")).toHaveLength(2);
+		expect(moves.getByText("Jane Austen/Emma (2).epub", { exact: false })).toBeInTheDocument();
+		expect(moves.getByText("numbered")).toBeInTheDocument();
+
+		await person.type(pattern, "x");
+		expect(row.getByText(/The pattern changed since the preview/)).toBeInTheDocument();
+		expect(row.getByRole("button", { name: "Move 2 files" })).toBeDisabled();
+		await person.type(pattern, "{Backspace}");
+		await person.click(row.getByRole("button", { name: "Move 2 files" }));
+
+		expect(await row.findByText("The files are being moved in the background.")).toBeInTheDocument();
+		expect(server.organiseRuns).toEqual([
+			{ library: "lib-1", pattern: "{author}/[{series}/][{series_index} - ]{title}.{ext}" },
+		]);
+		expect(row.getByRole("link", { name: "Follow the run under Changes" })).toBeInTheDocument();
+	});
+
+	it("organises an external library only after it is writable and opted in", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("NAS", { mode: "external", writable: false, rootPath: "/books" });
+		renderApp("/admin/libraries");
+
+		const nas = within(await screen.findByRole("listitem", { name: "NAS" }));
+		expect(nas.getByText(/Turn on "GOtome may change files here" first/)).toBeInTheDocument();
+		expect(nas.getByRole("checkbox", { name: /rename and sort the files/ })).toBeDisabled();
+		expect(nas.queryByLabelText("Pattern")).not.toBeInTheDocument();
+
+		await person.click(nas.getByRole("checkbox", { name: "GOtome may change files here" }));
+		await waitFor(() => expect(server.libraries[0]?.writable).toBe(true));
+		expect(nas.queryByLabelText("Pattern")).not.toBeInTheDocument();
+		await person.click(nas.getByRole("checkbox", { name: /rename and sort the files/ }));
+		await waitFor(() => expect(server.libraries[0]?.organiseEnabled).toBe(true));
+		expect(await nas.findByLabelText("Pattern")).toBeInTheDocument();
+	});
+
 	it("shows a scan that is under way and one that failed", async () => {
 		const scan = {
 			id: "scan-1",

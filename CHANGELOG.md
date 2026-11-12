@@ -6,6 +6,18 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Rename and sort a library's files by their books' details: under Libraries,
+  a library's "Organise files" section holds a pattern (by default
+  `{author}/[{series}/][{series_index} - ]{title}.{ext}`), a preview of what
+  would move and a button that moves it. Names are made safe and short
+  enough, a name that is taken gets a number, an audiobook's parts stay
+  together in order, and a cover or KOReader folder beside a file moves with
+  it. Managed libraries may always be organised; an existing folder only
+  when it is writable and you switch it on. A run is listed under Changes and
+  can be undone ([organising files](docs/organising-files.md)).
+
 ## [0.24.0] - 2026-11-12
 
 ### Added

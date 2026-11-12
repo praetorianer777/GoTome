@@ -86,7 +86,9 @@ What GOtome writes into a library it may change:
   folder, from where **Restore** brings it back until it is deleted for
   good (after `trash.retentionDays`, 30 days by default);
 - **Fix** for e-readers, which replaces an EPUB with a lighter one and
-  moves the original into the trash.
+  moves the original into the trash;
+- **Organise files**, which renames files and moves them into folders by a
+  pattern, when you ask for it ([organising files](organising-files.md)).
 
 GOtome checks that it can write to the folder when **GOtome may change
 files here** is turned on, by making a dot file there and removing it

@@ -537,14 +537,20 @@ func (q *Queries) LockActiveScan(ctx context.Context, libraryID uuid.UUID) (Libr
 }
 
 const lockFileHash = `-- name: LockFileHash :one
-SELECT sha256 FROM book_files WHERE id = $1 FOR UPDATE
+SELECT sha256, rel_path FROM book_files WHERE id = $1 FOR UPDATE
 `
 
-func (q *Queries) LockFileHash(ctx context.Context, id uuid.UUID) ([]byte, error) {
+type LockFileHashRow struct {
+	Sha256  []byte
+	RelPath string
+}
+
+// The file's hash and path, locked: organising the library moves files.
+func (q *Queries) LockFileHash(ctx context.Context, id uuid.UUID) (LockFileHashRow, error) {
 	row := q.db.QueryRow(ctx, lockFileHash, id)
-	var sha256 []byte
-	err := row.Scan(&sha256)
-	return sha256, err
+	var i LockFileHashRow
+	err := row.Scan(&i.Sha256, &i.RelPath)
+	return i, err
 }
 
 const markFilesMissing = `-- name: MarkFilesMissing :execrows

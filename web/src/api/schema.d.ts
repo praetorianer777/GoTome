@@ -2217,6 +2217,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/libraries/{libraryId}/organise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rename and sort a library's files by a pattern, as a run that can be undone */
+        post: operations["organiseLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/libraries/{libraryId}/organise/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What renaming a library's files by a pattern would move, without moving anything */
+        post: operations["previewOrganise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/libraries/{libraryId}/scans": {
         parameters: {
             query?: never;
@@ -4645,6 +4679,8 @@ export interface components {
             lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
+            organiseEnabled: boolean;
+            organisePattern: string;
             /** Format: uuid */
             ownerId?: string;
             rootPath?: string;
@@ -4812,6 +4848,42 @@ export interface components {
         NotificationsRead: {
             all?: boolean;
             ids?: string[];
+        };
+        OrganiseMoveItem: {
+            /** Format: uuid */
+            bookId: string;
+            collision: boolean;
+            from: string;
+            title: string;
+            to: string;
+        };
+        OrganisePreview: {
+            allowed: boolean;
+            blocked?: string;
+            books: number;
+            collisions: number;
+            defaultPattern: string;
+            examples: components["schemas"]["OrganiseMoveItem"][];
+            files: number;
+            left: components["schemas"]["OrganiseSkipItem"][];
+            moves: number;
+            pattern: string;
+            skipped: number;
+            unchanged: number;
+        };
+        OrganiseRequest: {
+            pattern?: string;
+        };
+        OrganiseSkipItem: {
+            /** Format: uuid */
+            bookId: string;
+            path: string;
+            reason: string;
+            title: string;
+        };
+        OrganiseStarted: {
+            /** Format: uuid */
+            runId: string;
         };
         PairFormats: {
             /** Format: uuid */
@@ -5408,6 +5480,8 @@ export interface components {
             fulltext?: boolean;
             joinFormats?: boolean;
             name?: string;
+            organiseEnabled?: boolean;
+            organisePattern?: string;
             visibility?: string;
             watch?: boolean;
             writable?: boolean;
@@ -7988,7 +8062,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only runs of this kind. */
-                kind?: "duplicates" | "cleanup" | "matches" | "placeholders";
+                kind?: "duplicates" | "cleanup" | "matches" | "placeholders" | "organise";
                 /** @description Only runs in this state. */
                 state?: "planned" | "running" | "done" | "confirmed" | "undone";
                 /** @description Where the page before ended, as its nextCursor says; runs come newest first. */
@@ -10288,6 +10362,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    organiseLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganiseRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganiseStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewOrganise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganiseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisePreview"];
+                };
             };
             /** @description The request failed. */
             default: {

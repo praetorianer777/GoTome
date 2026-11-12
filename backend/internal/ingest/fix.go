@@ -134,7 +134,7 @@ func (s *Service) Fix(ctx context.Context, scope library.Scope, fileID uuid.UUID
 		if err != nil {
 			return err
 		}
-		if !bytes.Equal(current, f.Sha256) {
+		if !bytes.Equal(current.Sha256, f.Sha256) || current.RelPath != f.RelPath {
 			return ErrFileChanged
 		}
 		if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {

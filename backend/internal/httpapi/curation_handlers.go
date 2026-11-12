@@ -12,7 +12,7 @@ import (
 )
 
 type curationRunsQuery struct {
-	Kind   string `query:"kind" enum:"duplicates,cleanup,matches,placeholders" doc:"Only runs of this kind."`
+	Kind   string `query:"kind" enum:"duplicates,cleanup,matches,placeholders,organise" doc:"Only runs of this kind."`
 	State  string `query:"state" enum:"planned,running,done,confirmed,undone" doc:"Only runs in this state."`
 	Cursor string `query:"cursor" doc:"Where the page before ended, as its nextCursor says; runs come newest first."`
 	Limit  int    `query:"limit" doc:"How many runs a page holds, at most 200; 50 when left out."`
@@ -75,7 +75,7 @@ type curationBook struct {
 type curationAction struct {
 	ID    uuid.UUID `json:"id"`
 	RunID uuid.UUID `json:"runId"`
-	Kind  string    `json:"kind" enum:"merge,replace,edit,link,skip"`
+	Kind  string    `json:"kind" enum:"merge,replace,edit,link,skip,organise"`
 	// Rule and Reason say why an automatic rule did it.
 	Rule   string         `json:"rule,omitempty"`
 	Reason string         `json:"reason,omitempty"`

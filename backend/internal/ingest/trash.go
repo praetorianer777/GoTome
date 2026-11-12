@@ -48,7 +48,7 @@ func TrashPath(root string, id uuid.UUID, relPath string) string { return trashP
 
 // CurationHooks are what the service lends curation for undoing actions.
 func (s *Service) CurationHooks() curation.Hooks {
-	return curation.Hooks{TrashPath: TrashPath, AfterUndoTx: s.AfterUndoTx, WriteBackTx: s.WriteBackTx}
+	return curation.Hooks{TrashPath: TrashPath, AfterUndoTx: s.AfterUndoTx, WriteBackTx: s.WriteBackTx, UndoOrganiseTx: s.UndoOrganiseTx}
 }
 
 // AfterUndoTx follows the undoing of an action on the books: each reads its

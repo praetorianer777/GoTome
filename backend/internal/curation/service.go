@@ -25,6 +25,8 @@ const (
 	// KindPlaceholders is the joining of a book read but not owned to the
 	// library's book.
 	KindPlaceholders = "placeholders"
+	// KindOrganise is the renaming of a library's files by a pattern.
+	KindOrganise = "organise"
 )
 
 // What an action did.
@@ -36,6 +38,9 @@ const (
 	ActionLink = "link"
 	// ActionSkip is a pair a dry run would leave for a person.
 	ActionSkip = "skip"
+	// ActionOrganise is the moving of one book's files to the places a
+	// pattern gives them.
+	ActionOrganise = "organise"
 )
 
 // The states of a run.
@@ -64,7 +69,17 @@ type Hooks struct {
 	AfterUndoTx func(ctx context.Context, tx pgx.Tx, books []uuid.UUID) error
 	// WriteBackTx queues the writing of a book's metadata into its files.
 	WriteBackTx func(ctx context.Context, tx pgx.Tx, book uuid.UUID) (int, error)
+	// UndoOrganiseTx puts the records of an organise action's files back
+	// and returns the moves on disk to make once the transaction has
+	// committed; or, when the files are not as the action left them, a
+	// state (an Outcome) and a message.
+	UndoOrganiseTx func(ctx context.Context, tx pgx.Tx, libraryID uuid.UUID, before []byte) ([]FileMove, string, string, error)
 }
+
+// FileMove is a file or folder to rename once an undo has committed. Stop
+// is the folder that is never removed when the move leaves its folder
+// empty, and above which none is.
+type FileMove struct{ From, To, Stop string }
 
 // Queue is what runs jobs: an undo is one.
 type Queue interface {

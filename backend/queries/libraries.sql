@@ -34,6 +34,10 @@ SET name       = COALESCE(sqlc.narg(name), name),
     join_formats = COALESCE(sqlc.narg(join_formats), join_formats),
     watch      = COALESCE(sqlc.narg(watch), watch),
     fulltext   = COALESCE(sqlc.narg(fulltext), fulltext),
+    organise_enabled = COALESCE(sqlc.narg(organise_enabled), organise_enabled),
+    -- An empty text is the default pattern.
+    organise_pattern = CASE WHEN sqlc.narg(organise_pattern)::text IS NULL THEN organise_pattern
+                            ELSE NULLIF(sqlc.narg(organise_pattern)::text, '') END,
     -- Whoever sets it has just seen the folder written to, or turned it off.
     unwritable_since  = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_since END,
     unwritable_reason = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_reason END,
