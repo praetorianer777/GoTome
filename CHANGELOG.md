@@ -14,7 +14,6 @@ What changes for someone who runs or uses GOtome. The format follows
   along. Chapters both name alike place it exactly; otherwise it is the same
   share of the whole. Nothing moves until you choose
   ([getting started](docs/getting-started.md)).
-
 - Import a Calibre library: add the Calibre folder as an existing folder,
   let it be scanned, and under Libraries choose "Import from Calibre". A
   preview counts the books, formats, covers, series and tags and names what
