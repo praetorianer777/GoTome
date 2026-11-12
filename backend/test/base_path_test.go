@@ -168,7 +168,7 @@ func TestTheKOReaderPluginAndKoboEndpointKnowTheSubPath(t *testing.T) {
 			server = string(data)
 		}
 	}
-	if !strings.Contains(server, `return "`+srv.URL+`/library"`) {
+	if !strings.Contains(server, `return { "`+srv.URL+`/library" }`) {
 		t.Errorf("the plugin's server: %q", server)
 	}
 }
