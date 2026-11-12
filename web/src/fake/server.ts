@@ -32,6 +32,7 @@ import type {
 	ReviewBook,
 } from "@/books/edit";
 import type { Uploaded } from "@/books/upload";
+import type { Webhook, WebhookDelivery, WebhookRequest } from "@/webhooks/api";
 import type { Library, Scan } from "@/libraries/api";
 import type { AutoCleanupCounts, AutoMatchCounts } from "@/curation/auto";
 import type { Setting } from "@/settings/api";
@@ -436,6 +437,10 @@ export class FakeServer {
 		{ kind: "books.added", app: true },
 		{ kind: "wish.fulfilled", app: true },
 	];
+	/** The webhooks, the secrets they were made with, and what was sent. */
+	webhooks: Webhook[] = [];
+	webhookSecrets = new Map<string, string>();
+	webhookDeliveries = new Map<string, WebhookDelivery[]>();
 	/** The authors and series the signed-in person follows. */
 	trackers: Tracker[] = [];
 	/** The new books of what they follow, as the server would list them. */
@@ -1333,6 +1338,13 @@ export class FakeServer {
 		if (path.startsWith("/metadata/scoring")) {
 			return this.answerScoring(path, method, body, refuse);
 		}
+		if (path === "/webhooks" || path.startsWith("/webhooks/")) {
+			if (!this.session?.permissions.includes("settings:manage")) {
+				return refuse(403, "forbidden", "You do not have permission to do that.");
+			}
+			return this.answerWebhooks(method, path, body as unknown as WebhookRequest, refuse);
+		}
+
 		if (path === "/settings") {
 			return this.answerSettings(
 				method,
@@ -2019,6 +2031,90 @@ export class FakeServer {
 				.split(/\s+/)
 				.some((w) => w.startsWith(q)),
 		);
+	}
+
+	private answerWebhooks(
+		method: string,
+		path: string,
+		body: WebhookRequest,
+		refuse: (status: number, code: string, message: string, fields?: Record<string, string>) => Response,
+	): Response {
+		const kinds = ["books.added", "scan.failed", "duplicates.found", "release.out"];
+		if (path === "/webhooks" && method === "GET") {
+			return Response.json({ webhooks: this.webhooks, kinds });
+		}
+		const check = (creating: boolean) => {
+			const fields: Record<string, string> = {};
+			if (!body.name?.trim()) {
+				fields.name = "Give the webhook a name of up to 80 characters.";
+			}
+			if (!/^https?:\/\/[^/]+/.test(body.url ?? "")) {
+				fields.url = "Give an http or https address without a user name.";
+			}
+			if ((creating || body.secret !== undefined) && (body.secret ?? "").length < 16) {
+				fields.secret = "Give a secret of 16 to 200 characters.";
+			}
+			return fields;
+		};
+		if (path === "/webhooks" && method === "POST") {
+			const fields = check(true);
+			if (Object.keys(fields).length > 0) {
+				return refuse(422, "validation_failed", "Some fields need attention.", fields);
+			}
+			const hook: Webhook = {
+				id: `hook-${this.webhooks.length + 1}`,
+				name: body.name,
+				url: body.url,
+				kinds: body.kinds,
+				secretSet: true,
+				trusted: body.trusted,
+				enabled: body.enabled,
+				createdAt: "2026-01-03T00:00:00Z",
+			};
+			this.webhooks.push(hook);
+			this.webhookSecrets.set(hook.id, body.secret ?? "");
+			return Response.json(hook, { status: 201 });
+		}
+		const [, id, rest] = /^\/webhooks\/([^/]+)(?:\/(.*))?$/.exec(path) ?? [];
+		const hook = this.webhooks.find((h) => h.id === id);
+		if (!hook) {
+			return refuse(404, "not_found", "There is no such webhook.");
+		}
+		if (rest === "test" && method === "POST") {
+			const log = this.webhookDeliveries.get(hook.id) ?? [];
+			log.unshift({
+				id: `delivery-${log.length + 1}`,
+				kind: "webhook.test",
+				status: "pending",
+				attempts: 0,
+				createdAt: "2026-01-03T00:00:00Z",
+				payload: { kind: "webhook.test", data: {}, libraryIds: [] },
+			});
+			this.webhookDeliveries.set(hook.id, log);
+			return new Response(null, { status: 202 });
+		}
+		if (rest === "deliveries") {
+			return Response.json({ deliveries: this.webhookDeliveries.get(hook.id) ?? [] });
+		}
+		if (method === "PUT") {
+			const fields = check(false);
+			if (Object.keys(fields).length > 0) {
+				return refuse(422, "validation_failed", "Some fields need attention.", fields);
+			}
+			Object.assign(hook, {
+				name: body.name,
+				url: body.url,
+				kinds: body.kinds,
+				trusted: body.trusted,
+				enabled: body.enabled,
+			});
+			if (body.secret !== undefined) {
+				this.webhookSecrets.set(hook.id, body.secret);
+			}
+			return Response.json(hook);
+		}
+		this.webhooks = this.webhooks.filter((h) => h.id !== id);
+		return new Response(null, { status: 204 });
 	}
 
 	/**

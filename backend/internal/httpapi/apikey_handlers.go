@@ -14,7 +14,7 @@ type apiKeyView struct {
 	ID         uuid.UUID  `json:"id"`
 	Name       string     `json:"name"`
 	Prefix     string     `json:"prefix" doc:"The key's first characters, to tell keys apart."`
-	Scopes     []string   `json:"scopes" doc:"What the key may do: read, progress, upload, edit, admin."`
+	Scopes     []string   `json:"scopes" doc:"What the key may do: read, progress, upload, edit, admin, metrics."`
 	CreatedAt  time.Time  `json:"createdAt"`
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`

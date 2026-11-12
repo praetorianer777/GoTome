@@ -24,6 +24,7 @@ const (
 	ScopeUpload   = "upload"
 	ScopeEdit     = "edit"
 	ScopeAdmin    = "admin"
+	ScopeMetrics  = "metrics"
 )
 
 // MaxAPIKeyNameLen bounds a key's name; MaxAPIKeys the keys one person holds.
@@ -46,11 +47,12 @@ var scopePermissions = map[string][]Permission{
 	ScopeUpload:   {BooksUpload},
 	ScopeEdit:     {MetadataEdit, IndexRebuild},
 	ScopeAdmin:    {UsersManage, SettingsManage, StorageManage},
+	ScopeMetrics:  {MetricsRead},
 }
 
 // Scopes lists the scopes a key may be made with, narrowest first.
 func Scopes() []string {
-	return []string{ScopeRead, ScopeProgress, ScopeUpload, ScopeEdit, ScopeAdmin}
+	return []string{ScopeRead, ScopeProgress, ScopeUpload, ScopeEdit, ScopeAdmin, ScopeMetrics}
 }
 
 // ScopesAllow reports whether one of the scopes holds the permission. A

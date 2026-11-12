@@ -50,6 +50,7 @@ func TestRequire(t *testing.T) {
 		{auth.UsersManage, signIn, refused, refused, ok},
 		{auth.SettingsManage, signIn, refused, refused, ok},
 		{auth.StorageManage, signIn, refused, refused, ok},
+		{auth.MetricsRead, signIn, refused, refused, ok},
 	}
 	covered := map[auth.Permission]bool{}
 	for _, c := range cases {
@@ -167,6 +168,9 @@ func TestAKeyReachesWhatItsScopesAndItsOwnersRoleBothHold(t *testing.T) {
 		{auth.RoleAdmin, []string{"edit"}, auth.IndexRebuild, false, ok},
 		{auth.RoleAdmin, []string{"edit"}, auth.SettingsManage, false, refused},
 		{auth.RoleAdmin, []string{"admin"}, auth.StorageManage, false, ok},
+		{auth.RoleAdmin, []string{"metrics"}, auth.MetricsRead, false, ok},
+		{auth.RoleAdmin, []string{"admin"}, auth.MetricsRead, false, refused},
+		{auth.RoleEditor, []string{"metrics"}, auth.MetricsRead, false, refused},
 		{auth.RoleAdmin, []string{"admin"}, auth.LibraryRead, false, refused},
 		// An owner who lost the role loses the key's reach with it.
 		{auth.RoleReader, []string{"admin"}, auth.UsersManage, false, refused},

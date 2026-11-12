@@ -41,6 +41,8 @@ func TestAllows(t *testing.T) {
 		{RoleAdmin, UsersManage, true},
 		{RoleAdmin, SettingsManage, true},
 		{RoleAdmin, StorageManage, true},
+		{RoleAdmin, MetricsRead, true},
+		{RoleEditor, MetricsRead, false},
 		{"", LibraryRead, false},
 		{"owner", LibraryRead, false},
 		// The two route markers are not something a role holds.
@@ -116,6 +118,9 @@ func TestScopesAllow(t *testing.T) {
 		{[]string{ScopeEdit}, UsersManage, false},
 		{[]string{ScopeAdmin}, SettingsManage, true},
 		{[]string{ScopeAdmin}, LibraryRead, false},
+		{[]string{ScopeMetrics}, MetricsRead, true},
+		{[]string{ScopeAdmin}, MetricsRead, false},
+		{[]string{ScopeMetrics}, SettingsManage, false},
 		{[]string{"root"}, LibraryRead, false},
 		{nil, LibraryRead, false},
 		{[]string{ScopeAdmin}, SignedIn, false},

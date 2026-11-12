@@ -9,7 +9,7 @@ import {
 	useRevokeApiKey,
 } from "@/users/api";
 
-const SCOPES = ["read", "progress", "upload", "edit", "admin"] as const;
+const SCOPES = ["read", "progress", "upload", "edit", "admin", "metrics"] as const;
 
 function scopeName(scope: string): string {
 	return (SCOPES as readonly string[]).includes(scope)

@@ -36,6 +36,7 @@ import type { DuplicatesSearch } from "@/routes/duplicates";
 const AdminLibraries = lazyRouteComponent(() => import("@/routes/admin-libraries"), "AdminLibraries");
 const AdminSettings = lazyRouteComponent(() => import("@/routes/admin-settings"), "AdminSettings");
 const AdminUsers = lazyRouteComponent(() => import("@/routes/admin-users"), "AdminUsers");
+const AdminWebhooks = lazyRouteComponent(() => import("@/routes/admin-webhooks"), "AdminWebhooks");
 const AuthorPage = lazyRouteComponent(() => import("@/routes/author"), "AuthorPage");
 const BulkProgress = lazyRouteComponent(() => import("@/routes/bulk"), "BulkProgress");
 const Overview = lazyRouteComponent(() => import("@/routes/overview"), "Overview");
@@ -596,6 +597,19 @@ const adminUsersRoute = createRoute({
 	}),
 });
 
+const adminWebhooksRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/webhooks",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "settings:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(AdminWebhooks, function AdminWebhooksPage() {
+		return <AdminWebhooks />;
+	}),
+});
+
 const deviceRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/devices/$deviceId",
@@ -622,7 +636,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

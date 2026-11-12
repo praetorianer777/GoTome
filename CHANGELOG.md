@@ -6,6 +6,20 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Webhooks: an administrator registers addresses that GOtome tells of events
+  (books added, scan failed, duplicates found, a release out, an update
+  available and the others people are notified of). Each delivery is a small
+  signed JSON of IDs and counts, never a title, retried with a growing wait,
+  with a log per webhook and a "send test" button. Only public addresses are
+  reached unless the webhook is marked trusted ([webhooks](docs/webhooks.md)).
+- Prometheus metrics at `GET /api/v1/metrics`, off until the setting
+  `metrics.enabled` is on, for an API key of the new `metrics` scope: counts
+  of books, files and users, job queues and failures, requests and their
+  latency by route, the database pool and the search index's backlog
+  ([metrics](docs/metrics.md)).
+
 ## [0.22.0] - 2026-11-12
 
 ### Added

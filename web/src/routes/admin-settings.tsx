@@ -41,6 +41,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.devicesFixOnSend",
 		hint: "settings.devicesFixOnSend.hint",
 	},
+	"metrics.enabled": {
+		label: "settings.metricsEnabled",
+		hint: "settings.metricsEnabled.hint",
+	},
 	"updates.check": {
 		label: "settings.updatesCheck",
 		hint: "settings.updatesCheck.hint",

@@ -21,6 +21,7 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/profile", heading: "Your account" },
 	{ path: "/admin/libraries", heading: "Libraries" },
 	{ path: "/admin/users", heading: "Users" },
+	{ path: "/admin/webhooks", heading: "Webhooks" },
 	{ path: "/admin/settings", heading: "Settings" },
 ];
 
