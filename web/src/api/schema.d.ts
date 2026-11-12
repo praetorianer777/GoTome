@@ -4,6 +4,75 @@
  */
 
 export interface paths {
+    "/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes in books they see, newest first, searchable */
+        get: operations["listAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes as a CSV file */
+        get: operations["exportAnnotationsCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/export.md": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes as a Markdown document, grouped by book */
+        get: operations["exportAnnotationsMarkdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/{annotationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete one of the caller's highlights */
+        delete: operations["deleteAnnotation"];
+        options?: never;
+        head?: never;
+        /** Change the note or the colour of one of the caller's highlights */
+        patch: operations["changeAnnotation"];
+        trace?: never;
+    };
     "/auth/api-keys": {
         parameters: {
             query?: never;
@@ -517,6 +586,23 @@ export interface paths {
         head?: never;
         /** Change how a book is described, and lock what was changed */
         patch: operations["editBook"];
+        trace?: never;
+    };
+    "/books/{bookId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep a highlight made in a reader, with an optional note */
+        post: operations["createAnnotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/books/{bookId}/audio": {
@@ -1182,6 +1268,23 @@ export interface paths {
         /** The device that asks, and whom its token signs in; only for a device's token */
         get: operations["getThisDevice"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/annotations/{document}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** A device sends all its highlights and notes of a book, named by its KOReader MD5; those it no longer sends are removed */
+        put: operations["putDeviceAnnotations"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3462,6 +3565,59 @@ export interface components {
             sameWork: number;
             wrong: number;
         };
+        AnnotationChange: {
+            color?: string;
+            note?: string;
+        };
+        AnnotationCreate: {
+            chapter?: string;
+            color?: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction?: number;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+        };
+        AnnotationList: {
+            annotations: components["schemas"]["AnnotationView"][];
+            next?: string;
+        };
+        AnnotationRect: {
+            h: number;
+            w: number;
+            x: number;
+            y: number;
+        };
+        AnnotationView: {
+            bookAuthors?: string[];
+            /** Format: uuid */
+            bookId: string;
+            bookTitle?: string;
+            chapter?: string;
+            clientId: string;
+            color: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction?: number;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+            /** Format: date-time */
+            updatedAt: string;
+        };
         ApiKeyList: {
             keys: components["schemas"]["ApiKeyView"][];
         };
@@ -4140,6 +4296,29 @@ export interface components {
         DescribedList: {
             books: components["schemas"]["BookSummary"][];
             nextOffset?: number;
+        };
+        DeviceAnnotation: {
+            chapter?: string;
+            color?: string;
+            createdAt?: string;
+            fraction?: number;
+            key: string;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+            updatedAt?: string;
+        };
+        DeviceAnnotations: {
+            annotations: components["schemas"]["DeviceAnnotation"][];
+            clientId: string;
+        };
+        DeviceAnnotationsSaved: {
+            kept: number;
+            removed: number;
         };
         DeviceAnswer: {
             /** @enum {string} */
@@ -5562,6 +5741,176 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAnnotations: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+                /** @description The next cursor of the previous page. */
+                after?: string;
+                /** @description How many to return, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportAnnotationsCsv: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportAnnotationsMarkdown: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    changeAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listOwnAPIKeys: {
         parameters: {
             query?: never;
@@ -6661,6 +7010,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationView"];
                 };
             };
             /** @description The request failed. */
@@ -8163,6 +8547,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThisDevice"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putDeviceAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceAnnotations"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceAnnotationsSaved"];
                 };
             };
             /** @description The request failed. */

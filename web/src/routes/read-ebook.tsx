@@ -1,7 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { can } from "@/auth/session";
 import { downloadUrl } from "@/books/api";
+import {
+	type Annotation,
+	bookAnnotationsQuery,
+	cssColor,
+	useCreateAnnotation,
+} from "@/books/annotations";
+import {
+	HighlightsPanel,
+	SelectionBar,
+	wordOf,
+} from "@/books/highlight-tools";
 import { ContinueOffers } from "@/books/continue-offer";
 import {
 	knowProgress,
@@ -18,6 +30,7 @@ import {
 	type Flow,
 	type Look,
 	type Place,
+	type TextSelection,
 	type Theme,
 	type TocEntry,
 	openEbook,
@@ -127,6 +140,18 @@ export function EbookReader({
 	preview?: boolean;
 }) {
 	const progress = useQuery({ ...progressQuery(bookId), enabled: !preview });
+	const { user } = useRouteContext({ from: "/app" });
+	const marking = !preview && can(user, "personal:manage");
+	const highlights = useQuery({ ...bookAnnotationsQuery(bookId), enabled: marking });
+	const createHighlight = useCreateAnnotation(bookId);
+	const [selection, setSelection] = useState<TextSelection>();
+	// A tap on the bar clears the selection in the book before it is pressed.
+	const engaged = useRef(false);
+	// Highlights made in this file, which the book can draw; the rest are listed.
+	const ofThisFile = useMemo(
+		() => (highlights.data ?? []).filter((a) => a.kind === "cfi" && a.fileId === fileId),
+		[highlights.data, fileId],
+	);
 	const queryClient = useQueryClient();
 	const save = useSaveProgress(bookId, "ebook");
 	const { mutate: savePlace } = save;
@@ -205,6 +230,9 @@ export function EbookReader({
 				{ keys: ["End"], label: "keys.last", run: () => void ebook.goToFraction(1) },
 				{ keys: ["c"], label: "keys.contents", run: () => toggle("contents") },
 				{ keys: ["f"], label: "keys.search", run: () => toggle("search") },
+				...(marking
+					? [{ keys: ["h"], label: "keys.highlights" as const, run: () => toggle("highlights") }]
+					: []),
 				{ keys: ["d"], label: "keys.look", run: () => toggle("look") },
 				{ keys: ["+", "="], label: "keys.larger", run: () => resize(1) },
 				{ keys: ["-"], label: "keys.smaller", run: () => resize(-1) },
@@ -313,6 +341,32 @@ export function EbookReader({
 		storeLook(look);
 	}, [ebook, look]);
 
+	useEffect(() => {
+		if (!ebook || !marking) return;
+		return ebook.onSelection((chosen) => {
+			if (chosen) setSelection(chosen);
+			else if (!engaged.current) setSelection(undefined);
+		});
+	}, [ebook, marking]);
+
+	useEffect(() => {
+		if (!ebook || !marking) return;
+		ebook.setHighlights(ofThisFile.map((a) => ({ cfi: a.locator, color: cssColor(a.color) })));
+	}, [ebook, marking, ofThisFile]);
+
+	useEffect(() => {
+		if (!ebook || !marking) return;
+		return ebook.onHighlight((cfi) => {
+			if (ofThisFile.some((a) => a.locator === cfi)) setPanel("highlights");
+		});
+	}, [ebook, marking, ofThisFile]);
+
+	const goToHighlight = (a: Annotation) => {
+		if (!ebook) return;
+		if (a.kind === "cfi" && a.fileId === fileId) void ebook.goTo(a.locator);
+		else void ebook.find(wordOf(a.passage), a.passage);
+	};
+
 	// The passage looked for is where the person is, but not a place they
 	// read up to: it is not saved until they move on from it.
 	useEffect(() => {
@@ -396,6 +450,22 @@ export function EbookReader({
 				>
 					{t("reader.search")}
 				</button>
+				{marking && (
+					<button
+						ref={(el) => {
+							toggles.current.highlights = el;
+						}}
+						type="button"
+						className={button}
+						aria-expanded={panel === "highlights"}
+						aria-controls="reader-panel"
+						aria-keyshortcuts="H"
+						disabled={!ebook}
+						onClick={() => toggle("highlights")}
+					>
+						{t("reader.highlights")}
+					</button>
+				)}
 				<button
 					ref={(el) => {
 						toggles.current.look = el;
@@ -528,6 +598,12 @@ export function EbookReader({
 						{panel === "search" && ebook && (
 							<BookSearch ebook={ebook} onGo={(cfi) => void ebook.goTo(cfi)} />
 						)}
+						{panel === "highlights" && (
+							<HighlightsPanel
+								annotations={highlights.data ?? []}
+								onGo={goToHighlight}
+							/>
+						)}
 						{panel === "look" && (
 							<LookControls
 								look={look}
@@ -554,11 +630,47 @@ export function EbookReader({
 			>
 				{place?.chapter}
 			</p>
+			{selection && (
+				<SelectionBar
+					text={selection.text}
+					pending={createHighlight.isPending}
+					onEngage={() => {
+						engaged.current = true;
+					}}
+					onCancel={() => {
+						engaged.current = false;
+						ebook?.clearSelection();
+						setSelection(undefined);
+					}}
+					onSave={({ color, note }) =>
+						createHighlight.mutate(
+							{
+								fileId,
+								kind: "cfi",
+								locator: selection.cfi,
+								passage: selection.text,
+								note: note.trim() || undefined,
+								color,
+								chapter: selection.chapter,
+								fraction: selection.fraction,
+							},
+							{
+								onSuccess: () => {
+									engaged.current = false;
+									ebook?.clearSelection();
+									setSelection(undefined);
+								},
+							},
+						)
+					}
+				/>
+			)}
+			<FormError error={createHighlight.error} />
 		</div>
 	);
 }
 
-type Panel = "contents" | "look" | "search";
+type Panel = "contents" | "look" | "search" | "highlights";
 
 /** How many places a search in the book lists. */
 const SEARCH_LIMIT = 100;

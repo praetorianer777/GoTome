@@ -24,6 +24,22 @@ export interface Place {
 	atEnd: boolean;
 }
 
+/** Text the person selected in the book, and where it is. */
+export interface TextSelection {
+	/** The CFI of the selected range. */
+	cfi: string;
+	text: string;
+	/** How far into the book the page being read is. */
+	fraction?: number;
+	chapter?: string;
+}
+
+/** A highlight to draw: the CFI it is at and the CSS colour. */
+export interface Drawn {
+	cfi: string;
+	color: string;
+}
+
 export interface TocEntry {
 	key: string;
 	label: string;
@@ -65,6 +81,16 @@ export interface Ebook {
 	/** Turns to the next or the previous page in reading order. */
 	next(): Promise<void>;
 	prev(): Promise<void>;
+	/**
+	 * Tells when the person selects text in the book, and with undefined
+	 * when the selection is gone. Returns how to stop listening.
+	 */
+	onSelection(listener: (selection: TextSelection | undefined) => void): () => void;
+	clearSelection(): void;
+	/** Draws these highlights in the book and takes away the others it drew. */
+	setHighlights(list: Drawn[]): void;
+	/** Tells when the person taps a highlight, with its CFI. */
+	onHighlight(listener: (cfi: string) => void): () => void;
 	setLook(look: Look): void;
 	close(): void;
 }
@@ -189,9 +215,55 @@ export async function openEbook(
 	view.style.display = "block";
 	view.style.height = "100%";
 	into.replaceChildren(view);
+	const selectionListeners = new Set<(selection: TextSelection | undefined) => void>();
+	const highlightListeners = new Set<(cfi: string) => void>();
+	const drawn = new Map<string, string>();
+	let selecting: Document | undefined;
+	const selectionOf = (doc: Document, index: number): TextSelection | undefined => {
+		const chosen = doc.getSelection();
+		if (!chosen || chosen.isCollapsed || chosen.rangeCount === 0) return undefined;
+		const text = chosen.toString().replace(/\s+/g, " ").trim();
+		if (!text) return undefined;
+		const at = view.lastLocation;
+		return {
+			cfi: view.getCFI(index, chosen.getRangeAt(0)),
+			text,
+			fraction: at?.fraction,
+			chapter: at?.tocItem?.label?.trim() || undefined,
+		};
+	};
 	view.addEventListener("load", (e) => {
-		const { doc } = (e as CustomEvent<{ doc: Document }>).detail;
+		const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
 		doc.addEventListener("keydown", options.onKey);
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		// A selection changes with every character dragged over; it is told
+		// of once it has stopped.
+		doc.addEventListener("selectionchange", () => {
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				const selection = selectionOf(doc, index);
+				if (selection) selecting = doc;
+				else if (selecting !== doc) return;
+				for (const listener of selectionListeners) listener(selection);
+			}, 250);
+		});
+	});
+	view.addEventListener("draw-annotation", (e) => {
+		const { draw, annotation } = (
+			e as CustomEvent<{
+				draw: (draw: unknown, options?: object) => void;
+				annotation: { value: string };
+			}>
+		).detail;
+		const color = drawn.get(annotation.value);
+		if (color) draw(Overlayer.highlight, { color });
+	});
+	view.addEventListener("create-overlay", () => {
+		for (const cfi of drawn.keys()) void view.addAnnotation({ value: cfi }).catch(() => {});
+	});
+	view.addEventListener("show-annotation", (e) => {
+		const { value } = (e as CustomEvent<{ value: string }>).detail;
+		if (drawn.has(value)) for (const listener of highlightListeners) listener(value);
 	});
 	view.addEventListener("relocate", (e) => {
 		const at = (e as CustomEvent<View["lastLocation"]>).detail;
@@ -322,6 +394,33 @@ export async function openEbook(
 		goRight: inTurn(() => view.goRight()),
 		next: inTurn(() => view.next()),
 		prev: inTurn(() => view.prev()),
+		onSelection(listener) {
+			selectionListeners.add(listener);
+			return () => selectionListeners.delete(listener);
+		},
+		clearSelection() {
+			selecting?.getSelection()?.removeAllRanges();
+			selecting = undefined;
+		},
+		setHighlights(list) {
+			const wanted = new Map(list.map((h) => [h.cfi, h.color]));
+			for (const cfi of [...drawn.keys()]) {
+				if (!wanted.has(cfi)) {
+					drawn.delete(cfi);
+					void view.deleteAnnotation({ value: cfi }).catch(() => {});
+				}
+			}
+			for (const [cfi, color] of wanted) {
+				if (drawn.get(cfi) === color) continue;
+				drawn.set(cfi, color);
+				// A CFI of another edition resolves to nothing here.
+				void view.addAnnotation({ value: cfi }).catch(() => {});
+			}
+		},
+		onHighlight(listener) {
+			highlightListeners.add(listener);
+			return () => highlightListeners.delete(listener);
+		},
 		setLook,
 		close: () => {
 			view.close();

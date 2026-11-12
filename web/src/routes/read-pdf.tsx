@@ -1,7 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { can } from "@/auth/session";
 import { bookQuery, downloadUrl } from "@/books/api";
+import {
+	type Annotation,
+	bookAnnotationsQuery,
+	cssColor,
+	useCreateAnnotation,
+} from "@/books/annotations";
+import { HighlightsPanel, SelectionBar } from "@/books/highlight-tools";
 import {
 	knowProgress,
 	type Progress,
@@ -31,7 +39,7 @@ function zoomedOut(zoom: Zoom): Zoom {
 	return [...ZOOMS].reverse().find((z) => z < at) ?? ZOOMS[0] ?? 1;
 }
 
-type Panel = "contents" | "search";
+type Panel = "contents" | "search" | "highlights";
 
 /** How many places a search in the file lists. */
 const SEARCH_LIMIT = 100;
@@ -61,6 +69,46 @@ function pageIn(
 	return Number(match[1]);
 }
 
+/** Text selected on a page of the PDF, and the rectangles it covers. */
+interface PdfSelection {
+	page: number;
+	text: string;
+	rects: { x: number; y: number; w: number; h: number }[];
+}
+
+const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
+
+/** The selection inside the text layer, as fractions of the layer, or none. */
+function selectionIn(layer: HTMLElement, page: number): PdfSelection | undefined {
+	const chosen = document.getSelection();
+	if (!chosen || chosen.isCollapsed || chosen.rangeCount === 0) return undefined;
+	const range = chosen.getRangeAt(0);
+	if (!layer.contains(range.commonAncestorContainer)) return undefined;
+	const box = layer.getBoundingClientRect();
+	if (box.width === 0 || box.height === 0) return undefined;
+	const text = chosen.toString().replace(/\s+/g, " ").trim();
+	if (!text) return undefined;
+	const rects: PdfSelection["rects"] = [];
+	for (const r of range.getClientRects()) {
+		const rect = {
+			x: clamp01((r.left - box.left) / box.width),
+			y: clamp01((r.top - box.top) / box.height),
+			w: clamp01(r.width / box.width),
+			h: clamp01(r.height / box.height),
+		};
+		// The layer's own box and its lines' boxes are not words.
+		if (rect.w * rect.h > 0.5 || rect.w < 0.002 || rect.h < 0.002) continue;
+		const seen = rects.some(
+			(o) =>
+				Math.abs(o.x - rect.x) < 0.002 &&
+				Math.abs(o.y - rect.y) < 0.002 &&
+				Math.abs(o.w - rect.w) < 0.002,
+		);
+		if (!seen) rects.push(rect);
+	}
+	return rects.length > 0 ? { page, text, rects: rects.slice(0, 200) } : undefined;
+}
+
 /** A PDF of a book, a page at a time, picking up where the person left off. */
 export function PdfReader({
 	bookId,
@@ -80,6 +128,16 @@ export function PdfReader({
 }) {
 	const book = useQuery(bookQuery(bookId));
 	const progress = useQuery({ ...progressQuery(bookId), enabled: !preview });
+	const { user } = useRouteContext({ from: "/app" });
+	const marking = !preview && can(user, "personal:manage");
+	const highlights = useQuery({ ...bookAnnotationsQuery(bookId), enabled: marking });
+	const createHighlight = useCreateAnnotation(bookId);
+	const [selection, setSelection] = useState<PdfSelection>();
+	// A tap on the bar clears the selection on the page before it is pressed.
+	const engaged = useRef(false);
+	const ofThisFile = (highlights.data ?? []).filter(
+		(a) => a.kind === "pdf" && (!a.fileId || a.fileId === fileId),
+	);
 	const queryClient = useQueryClient();
 	const save = useSaveProgress(bookId, "ebook");
 	const { mutate: savePlace } = save;
@@ -159,6 +217,11 @@ export function PdfReader({
 		setPage(start);
 	}
 
+	const onSelect = useCallback((chosen: PdfSelection | undefined) => {
+		if (chosen) setSelection(chosen);
+		else if (!engaged.current) setSelection(undefined);
+	}, []);
+
 	const go = (n: number) => {
 		if (doc) setPage(Math.min(Math.max(n, 1), doc.pages));
 	};
@@ -208,6 +271,9 @@ export function PdfReader({
 				},
 				{ keys: ["c"], label: "keys.contents", run: () => toggle("contents") },
 				{ keys: ["f"], label: "keys.search", run: () => toggle("search") },
+				...(marking
+					? [{ keys: ["h"], label: "keys.highlights" as const, run: () => toggle("highlights") }]
+					: []),
 				{ keys: ["+", "="], label: "keys.zoomIn", run: () => setZoom(zoomedIn(zoom)) },
 				{ keys: ["-"], label: "keys.zoomOut", run: () => setZoom(zoomedOut(zoom)) },
 				{ keys: ["0"], label: "keys.fitWidth", run: () => setZoom("width") },
@@ -265,6 +331,22 @@ export function PdfReader({
 				>
 					{t("reader.search")}
 				</button>
+				{marking && (
+					<button
+						ref={(el) => {
+							toggles.current.highlights = el;
+						}}
+						type="button"
+						className={button}
+						aria-expanded={panel === "highlights"}
+						aria-controls="reader-panel"
+						aria-keyshortcuts="H"
+						disabled={!doc}
+						onClick={() => toggle("highlights")}
+					>
+						{t("reader.highlights")}
+					</button>
+				)}
 				<button
 					type="button"
 					className={button}
@@ -344,17 +426,67 @@ export function PdfReader({
 						ref={panelBox}
 						className="w-64 shrink-0 overflow-auto text-sm"
 					>
-						{panel === "contents" ? (
+						{panel === "contents" && (
 							<Outline doc={doc} current={page} onGo={(n) => go(n)} />
-						) : (
-							<PdfSearch doc={doc} onGo={(n) => go(n)} />
+						)}
+						{panel === "search" && <PdfSearch doc={doc} onGo={(n) => go(n)} />}
+						{panel === "highlights" && (
+							<HighlightsPanel
+								annotations={ofThisFile}
+								note={t("highlights.panelPdfNote")}
+								onGo={(a: Annotation) => a.page && go(a.page)}
+							/>
 						)}
 					</div>
 				)}
 				{doc && page !== undefined && (
-					<Page doc={doc} page={page} zoom={zoom} title={title} />
+					<Page
+						doc={doc}
+						page={page}
+						zoom={zoom}
+						title={title}
+						highlights={ofThisFile.filter((a) => a.page === page)}
+						onSelect={marking ? onSelect : undefined}
+					/>
 				)}
 			</div>
+			{selection && (
+				<SelectionBar
+					text={selection.text}
+					pending={createHighlight.isPending}
+					onEngage={() => {
+						engaged.current = true;
+					}}
+					onCancel={() => {
+						engaged.current = false;
+						document.getSelection()?.removeAllRanges();
+						setSelection(undefined);
+					}}
+					onSave={({ color, note }) =>
+						createHighlight.mutate(
+							{
+								fileId,
+								kind: "pdf",
+								locator: `page:${selection.page}`,
+								page: selection.page,
+								rects: selection.rects,
+								passage: selection.text,
+								note: note.trim() || undefined,
+								color,
+								fraction: doc ? selection.page / doc.pages : undefined,
+							},
+							{
+								onSuccess: () => {
+									engaged.current = false;
+									document.getSelection()?.removeAllRanges();
+									setSelection(undefined);
+								},
+							},
+						)
+					}
+				/>
+			)}
+			<FormError error={createHighlight.error} />
 		</div>
 	);
 }
@@ -466,11 +598,17 @@ function Page({
 	page,
 	zoom,
 	title,
+	highlights,
+	onSelect,
 }: {
 	doc: PdfDocument;
 	page: number;
 	zoom: Zoom;
 	title: string;
+	/** The highlights on this page, drawn over it where they have rectangles. */
+	highlights: Annotation[];
+	/** Told of text selected on the page; left out to leave selecting alone. */
+	onSelect?: (selection: PdfSelection | undefined) => void;
 }) {
 	const frame = useRef<HTMLDivElement>(null);
 	const canvas = useRef<HTMLCanvasElement>(null);
@@ -515,6 +653,27 @@ function Page({
 		};
 	}, [doc, page, zoom, width]);
 
+	useEffect(() => {
+		const layer = text.current;
+		if (!layer || !onSelect) return;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		let mine = false;
+		const changed = () => {
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				const chosen = selectionIn(layer, page);
+				if (chosen) mine = true;
+				else if (!mine) return;
+				onSelect(chosen);
+			}, 250);
+		};
+		document.addEventListener("selectionchange", changed);
+		return () => {
+			clearTimeout(timer);
+			document.removeEventListener("selectionchange", changed);
+		};
+	}, [page, onSelect]);
+
 	return (
 		<div ref={frame} className="min-w-0 flex-1 overflow-auto">
 			<FormError error={failed} />
@@ -525,6 +684,28 @@ function Page({
 				className="relative mx-auto w-fit bg-white shadow"
 			>
 				<canvas ref={canvas} aria-hidden="true" />
+				<div
+					aria-hidden="true"
+					data-testid="highlight-layer"
+					className="pointer-events-none absolute inset-0 mix-blend-multiply"
+				>
+					{highlights.flatMap((a) =>
+						(a.rects ?? []).map((r, i) => (
+							<span
+								key={`${a.id}-${i}`}
+								data-highlight={a.id}
+								className="absolute rounded-sm opacity-40"
+								style={{
+									left: `${r.x * 100}%`,
+									top: `${r.y * 100}%`,
+									width: `${r.w * 100}%`,
+									height: `${r.h * 100}%`,
+									backgroundColor: cssColor(a.color),
+								}}
+							/>
+						)),
+					)}
+				</div>
 				<div ref={text} className="textLayer" />
 			</figure>
 		</div>

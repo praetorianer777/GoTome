@@ -57,6 +57,7 @@ export interface NavItem {
 		| "/wishlist"
 		| "/releases"
 		| "/stats"
+		| "/highlights"
 		| "/overview"
 		| "/profile"
 		| "/jobs"
@@ -102,6 +103,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "personal:manage",
 		group: "sections",
 		icon: "spark",
+	},
+	{
+		to: "/highlights",
+		label: "nav.highlights",
+		permission: "personal:manage",
+		group: "sections",
+		icon: "highlight",
 	},
 	{
 		to: "/stats",
@@ -658,6 +666,7 @@ export type IconName =
 	| "wand"
 	| "undo"
 	| "tag"
+	| "highlight"
 	| "trash"
 	| "jobs"
 	| "folder"
@@ -671,6 +680,7 @@ export type IconName =
 
 const ICONS: Record<IconName, string[]> = {
 	tag: ["M4 4h7l9 9-7 7-9-9z", "M8 8h.01"],
+	highlight: ["M14 4l6 6-8 8-6-6z", "M6 12l-2 6 6-2", "M4 21h8"],
 	book: [
 		"M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z",
 		"M12 6v14",
