@@ -149,6 +149,11 @@ func TestLiveContract(t *testing.T) {
 	if _, err := live.Get(context.Background(), metadata.Request{URL: got[0].CoverURL}); err != nil {
 		t.Errorf("cover: %v", err)
 	}
+	subject, err := New().BySubject(context.Background(), live, "science_fiction")
+	if err != nil || len(subject) == 0 {
+		t.Fatalf("BySubject: %d records, %v", len(subject), err)
+	}
+	checkSubjectWorks(t, subject)
 }
 
 func TestTheWorksOfAnAuthor(t *testing.T) {
@@ -190,5 +195,72 @@ func TestTheEditionNamesTheWorkTheSearchFinds(t *testing.T) {
 	found, err := New().Search(context.Background(), web(), metadata.Query{Title: "Emma", Authors: []string{"Jane Austen"}, Language: "en"})
 	if err != nil || len(found) == 0 || found[0].Work != edition[0].Work {
 		t.Errorf("the edition's work %q, the search's first %+v, %v", edition[0].Work, found, err)
+	}
+}
+
+// checkSubjectWorks holds works listed under a subject to what any listing
+// of one says.
+func checkSubjectWorks(t *testing.T, got []metadata.Record) {
+	t.Helper()
+	for _, r := range got {
+		if r.Title == "" || r.ID == "" || r.Work != r.ID {
+			t.Errorf("record = %+v", r)
+		}
+		if slices.ContainsFunc(r.Identifiers, func(i catalog.Identifier) bool { return i.Type == catalog.IDISBN }) {
+			t.Errorf("a work carries an ISBN: %+v", r)
+		}
+	}
+	withAuthor := slices.IndexFunc(got, func(r metadata.Record) bool { return len(r.Contributors) > 0 })
+	if withAuthor < 0 {
+		t.Error("no work names an author")
+	}
+}
+
+// TestTheWorksOfASubject replays Open Library's answer for a subject. It
+// skips until the answer is recorded (make record-fixtures).
+func TestTheWorksOfASubject(t *testing.T) {
+	got, err := New().BySubject(context.Background(), web(), "Science Fiction")
+	if errors.Is(err, metadata.ErrNoFixture) {
+		t.Skip(err)
+	}
+	if err != nil || len(got) == 0 {
+		t.Fatalf("BySubject: %d records, %v", len(got), err)
+	}
+	checkSubjectWorks(t, got)
+}
+
+type answers map[string]string
+
+func (a answers) Get(_ context.Context, r metadata.Request) ([]byte, error) {
+	if body, ok := a[r.URL]; ok {
+		return []byte(body), nil
+	}
+	return nil, metadata.ErrNotFound
+}
+
+func TestASubjectIsReadIntoRecords(t *testing.T) {
+	web := answers{site + "/subjects/sea_stories.json?limit=40": `{"name": "sea stories", "works": [
+		{"key": "/works/OL1W", "title": "The Harbour Lamp", "cover_id": 77, "first_publish_year": 1901,
+		 "subject": ["Sea stories", "open_syllabus_project"], "authors": [{"key": "/authors/OL1A", "name": "Ada Moss"}]},
+		{"key": "/works/OL2W", "title": "  ", "authors": []},
+		{"key": "/works/OL3W", "title": "Nameless Shore", "authors": []}]}`}
+	got, err := New().BySubject(context.Background(), web, " Sea Stories ")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("BySubject: %+v, %v", got, err)
+	}
+	first := got[0]
+	if first.ID != "OL1W" || first.Work != "OL1W" || first.Title != "The Harbour Lamp" || first.Published != "1901" ||
+		len(first.Contributors) != 1 || first.Contributors[0].Name != "Ada Moss" || !strings.Contains(first.CoverURL, "/b/id/77-L.jpg") ||
+		!slices.Equal(first.Tags, []string{"Sea stories"}) {
+		t.Errorf("record = %+v", first)
+	}
+	if got[1].Title != "Nameless Shore" || len(got[1].Contributors) != 0 || got[1].CoverURL != "" {
+		t.Errorf("record = %+v", got[1])
+	}
+	if got, err := New().BySubject(context.Background(), web, "a/b"); err != nil || got != nil {
+		t.Errorf("a subject with a slash: %+v, %v", got, err)
+	}
+	if _, err := New().BySubject(context.Background(), web, "unknown"); !errors.Is(err, metadata.ErrNotFound) {
+		t.Errorf("an unknown subject: %v", err)
 	}
 }
