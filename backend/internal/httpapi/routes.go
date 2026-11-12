@@ -311,6 +311,11 @@ func (s *Server) routes() []Route {
 			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,
 		},
 		{
+			Method: http.MethodPatch, Path: "/auth/devices/{deviceId}", ID: "updateOwnDevice",
+			Summary: "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs", Tag: "auth",
+			Request: updateDeviceRequest{}, Response: deviceView{}, Permission: auth.SignedIn, Handler: s.updateOwnDevice,
+		},
+		{
 			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
 			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,

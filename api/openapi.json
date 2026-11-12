@@ -427,6 +427,61 @@
           }
         ],
         "x-permission": "signed-in"
+      },
+      "patch": {
+        "operationId": "updateOwnDevice",
+        "summary": "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
       }
     },
     "/auth/identities": {
@@ -5618,6 +5673,65 @@
       "get": {
         "operationId": "koboDownload",
         "summary": "A book's EPUB for a Kobo reader; the whole of it marks the book delivered",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/epub+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/download/{fileId}/kepub": {
+      "get": {
+        "operationId": "koboDownloadKepub",
+        "summary": "A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered",
         "tags": [
           "kobo"
         ],
@@ -14032,6 +14146,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "kepub": {
+            "type": "boolean"
+          },
           "lastUsedAt": {
             "type": "string",
             "format": "date-time"
@@ -14044,7 +14161,8 @@
           "id",
           "name",
           "createdAt",
-          "canUpload"
+          "canUpload",
+          "kepub"
         ]
       },
       "Disk": {
@@ -18450,6 +18568,17 @@
             ]
           }
         }
+      },
+      "UpdateDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "kepub": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kepub"
+        ]
       },
       "UpdateLibraryRequest": {
         "type": "object",

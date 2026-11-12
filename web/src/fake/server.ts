@@ -127,6 +127,7 @@ export class FakeServer {
 		createdAt: string;
 		lastUsedAt?: string;
 		canUpload?: boolean;
+		kepub?: boolean;
 	}[] = [];
 	/** The signed-in person's API keys. */
 	apiKeys: {
@@ -1013,7 +1014,7 @@ export class FakeServer {
 						removable: !d.deliveredAt || !!d.syncedAt, sentFixed: !!d.sentFixed,
 					}];
 				});
-			return Response.json({ device, books });
+			return Response.json({ device: { ...device, kepub: !!device.kepub }, books });
 		}
 		if (sending && request.method === "POST") {
 			const device = this.devices.find((d) => d.id === sending[1]);
@@ -2641,6 +2642,16 @@ export class FakeServer {
 				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds", addresses: ["http://192.168.1.5:8080", "https://books.example.org"] },
 				{ status: 201 },
 			);
+		}
+		if (path.startsWith("/auth/devices/") && method === "PATCH") {
+			const device = this.devices.find(
+				(d) => `/auth/devices/${d.id}` === path,
+			);
+			if (!device) {
+				return refuse(404, "not_found", "There is no such device.");
+			}
+			device.kepub = body.kepub === true;
+			return Response.json(device);
 		}
 		if (path.startsWith("/auth/devices/") && method === "DELETE") {
 			this.devices = this.devices.filter(

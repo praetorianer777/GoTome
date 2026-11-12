@@ -298,6 +298,7 @@ type Device struct {
 	CreatedAt   time.Time
 	LastUsedAt  *time.Time
 	CanUpload   bool
+	Kepub       bool
 }
 
 type DeviceCopy struct {
@@ -309,6 +310,7 @@ type DeviceCopy struct {
 	KoreaderMd5  *string
 	MadeAt       time.Time
 	LastUsedAt   time.Time
+	Kind         string
 }
 
 type DeviceRequest struct {

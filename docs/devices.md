@@ -71,6 +71,33 @@ A device's page, reached from your profile, lists the books sent to it:
 waiting, synced, or delivered. A book still waiting can be taken back; on
 a Kobo, taking a book back removes it at the next sync.
 
+## KEPUB for Kobo readers
+
+A Kobo reader reads its own format, KEPUB, with better reading statistics
+and page turns than a plain EPUB. On a device's page (reached from your
+profile) **Send KEPUBs to this Kobo reader** makes GOtome tell the reader
+of each EPUB as a KEPUB. It is off for every device until you have tried it
+on yours.
+
+GOtome makes the KEPUB itself, no Calibre or other program: each sentence of
+the text is wrapped in a numbered `koboSpan`, the body in the two divisions
+Kobo's reader lays out, and a small style rule is added. Everything else
+(the package, the images, the fonts, the styles) is copied as stored, and a
+chapter file that is not well-formed XML stays as it is. The KEPUB is made
+when the reader syncs, at most 20 seconds' worth per sync (a book not reached
+is told as an EPUB), and kept in `device-copies/` beside the fixed copies
+(up to 4 GB and 90 days unused, removed when the file changes or goes, not
+in a backup). It is saved on the reader as `<name>.kepub.epub`.
+
+- Books already on the reader stay as they are: take a book off the device
+  and send it again to get its KEPUB.
+- The KEPUB is made from the library's file, not from a fixed copy; the
+  e-reader findings of a book are not fixed in it.
+- A Kobo's reading place is a fraction in GOtome, so it carries over between
+  an EPUB and its KEPUB.
+- Only the Kobo sync is given KEPUBs; the OPDS catalogue and the web reader
+  keep the EPUB.
+
 ## EPUBs that are slow on e-readers
 
 Some EPUBs are hard on an e-reader: a chapter file of several megabytes

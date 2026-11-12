@@ -122,7 +122,8 @@ export interface paths {
         delete: operations["deleteOwnDevice"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs */
+        patch: operations["updateOwnDevice"];
         trace?: never;
     };
     "/auth/identities": {
@@ -1642,6 +1643,23 @@ export interface paths {
         };
         /** A book's EPUB for a Kobo reader; the whole of it marks the book delivered */
         get: operations["koboDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/download/{fileId}/kepub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered */
+        get: operations["koboDownloadKepub"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4046,6 +4064,7 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             id: string;
+            kepub: boolean;
             /** Format: date-time */
             lastUsedAt?: string;
             name: string;
@@ -5223,6 +5242,9 @@ export interface components {
             /** @enum {string} */
             role?: "admin" | "editor" | "reader";
         };
+        UpdateDeviceRequest: {
+            kepub: boolean;
+        };
         UpdateLibraryRequest: {
             fulltext?: boolean;
             joinFormats?: boolean;
@@ -5642,6 +5664,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateOwnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceView"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -8884,6 +8941,38 @@ export interface operations {
         };
     };
     koboDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/epub+zip": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboDownloadKepub: {
         parameters: {
             query?: never;
             header?: never;

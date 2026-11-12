@@ -1296,6 +1296,9 @@ export const en = {
 	"devices.canUploadNamed": "Allow {name} to upload books",
 	"devices.mayUpload": "May upload books",
 	"devices.books": "Books on {name}",
+	"devices.kepub": "Send KEPUBs to this Kobo reader",
+	"devices.kepubHint":
+		"A Kobo reader reads a KEPUB with better reading statistics and page turns. GOtome makes one from each EPUB when the reader syncs, and keeps it. Books already on the reader stay as they are. Off until you have tried it on your reader.",
 	"apiKeys.title": "API keys",
 	"apiKeys.intro":
 		"For scripts and other programs that use GOtome without a browser: send the key as Authorization: Bearer. A key does only what its scopes say, and never more than your role allows.",

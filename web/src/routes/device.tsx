@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format";
 import {
 	type DeviceBook,
 	deviceBooksQuery,
+	useSetDeviceKepub,
 	useTakeOffDevice,
 } from "@/users/api";
 
@@ -19,6 +20,7 @@ const button =
 export function DevicePage({ deviceId }: { deviceId: string }) {
 	const pages = useInfiniteQuery(deviceBooksQuery(deviceId));
 	const takeOff = useTakeOffDevice();
+	const setKepub = useSetDeviceKepub();
 	if (pages.error instanceof ApiError && pages.error.status === 404) {
 		return (
 			<p className="text-slate-600 dark:text-slate-400">
@@ -46,7 +48,25 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 					</p>
 				)}
 			</div>
-			<FormError error={pages.error ?? takeOff.error} />
+			{device && (
+				<div className="flex flex-col gap-1">
+					<label className="flex items-center gap-2">
+						<input
+							type="checkbox"
+							checked={device.kepub}
+							disabled={setKepub.isPending}
+							onChange={(e) =>
+								setKepub.mutate({ id: device.id, kepub: e.target.checked })
+							}
+						/>
+						{t("devices.kepub")}
+					</label>
+					<p className="text-sm text-slate-600 dark:text-slate-400">
+						{t("devices.kepubHint")}
+					</p>
+				</div>
+			)}
+			<FormError error={pages.error ?? takeOff.error ?? setKepub.error} />
 			{pages.isPending && <Loading />}
 			{pages.isSuccess && books.length === 0 && (
 				<p role="status" className="text-slate-600 dark:text-slate-400">

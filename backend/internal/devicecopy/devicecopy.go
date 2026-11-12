@@ -4,10 +4,12 @@
 // library GOtome cannot write to. The library's file is only read.
 //
 // Copies are a cache under GOTOME_DATA_DIR/device-copies, named by the
-// SHA-256 of the file they were made from and epub.FixVersion, and
-// described by device_copies rows. They are made by a job when a book is
-// queued for a device, never while a device downloads: a download that
-// finds no copy ready sends the file itself.
+// SHA-256 of the file they were made from, their kind and its version, and
+// described by device_copies rows. Fixed copies are made by a job when a
+// book is queued for a device, never while a device downloads: a download
+// that finds no copy ready sends the file itself. A KEPUB (#411), which a
+// Kobo reader is sent where its owner chose so, is made when the sync tells
+// the reader of the book, and again by the download that finds it gone.
 package devicecopy
 
 import (
@@ -23,6 +25,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +45,12 @@ import (
 const (
 	MaxBytes   = 4 << 30
 	MaxAgeDays = 90
+)
+
+// The kinds of copy, and what each is named by.
+const (
+	KindFix   = "fix"
+	KindKepub = "kepub"
 )
 
 // Dir is where the copies lie.
@@ -65,11 +74,16 @@ type Service struct {
 	// Version is the version of the copies made and sent: epub.FixVersion,
 	// which a test raises.
 	Version int16
+	// KepubVersion is the version of the KEPUBs made: epub.KepubVersion.
+	KepubVersion int16
+
+	// converting keeps one conversion of a file at a time.
+	converting sync.Mutex
 }
 
 // NewService returns a Service keeping its copies under dataDir.
 func NewService(pool *pgxpool.Pool, dataDir string, log *slog.Logger) *Service {
-	return &Service{pool: pool, dir: Dir(dataDir), log: log, Version: epub.FixVersion}
+	return &Service{pool: pool, dir: Dir(dataDir), log: log, Version: epub.FixVersion, KepubVersion: epub.KepubVersion}
 }
 
 func (s *Service) enabled(ctx context.Context) bool {
@@ -84,7 +98,10 @@ func (s *Service) enabled(ctx context.Context) bool {
 	return on
 }
 
-func (s *Service) pathOf(source []byte, version int16) string {
+func (s *Service) pathOf(source []byte, kind string, version int16) string {
+	if kind == KindKepub {
+		return filepath.Join(s.dir, fmt.Sprintf("%s-kepub-v%d.kepub.epub", hex.EncodeToString(source), version))
+	}
 	return filepath.Join(s.dir, fmt.Sprintf("%s-v%d.epub", hex.EncodeToString(source), version))
 }
 
@@ -102,8 +119,21 @@ func (s *Service) Ready(ctx context.Context, source []byte) (*Copy, error) {
 	if len(source) == 0 || !s.enabled(ctx) {
 		return nil, nil
 	}
+	return s.ready(ctx, source, KindFix, s.Version)
+}
+
+// KepubReady is the KEPUB made from a file of this hash, if there is one on
+// disk.
+func (s *Service) KepubReady(ctx context.Context, source []byte) (*Copy, error) {
+	if len(source) == 0 {
+		return nil, nil
+	}
+	return s.ready(ctx, source, KindKepub, s.KepubVersion)
+}
+
+func (s *Service) ready(ctx context.Context, source []byte, kind string, version int16) (*Copy, error) {
 	q := sqlc.New(s.pool)
-	row, err := q.GetDeviceCopy(ctx, sqlc.GetDeviceCopyParams{SourceSha256: source, FixVersion: s.Version})
+	row, err := q.GetDeviceCopy(ctx, sqlc.GetDeviceCopyParams{SourceSha256: source, Kind: kind, FixVersion: version})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -113,16 +143,16 @@ func (s *Service) Ready(ctx context.Context, source []byte) (*Copy, error) {
 	if row.State != "ready" {
 		return nil, nil
 	}
-	path := s.pathOf(source, s.Version)
+	path := s.pathOf(source, kind, version)
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() != *row.SizeBytes {
-		if err := q.EvictDeviceCopy(ctx, sqlc.EvictDeviceCopyParams{SourceSha256: source, FixVersion: s.Version}); err != nil {
+		if err := q.EvictDeviceCopy(ctx, sqlc.EvictDeviceCopyParams{SourceSha256: source, Kind: kind, FixVersion: version}); err != nil {
 			return nil, err
 		}
 		return nil, nil
 	}
 	if time.Since(row.LastUsedAt) > time.Hour {
-		_ = q.TouchDeviceCopy(ctx, sqlc.TouchDeviceCopyParams{SourceSha256: source, FixVersion: s.Version})
+		_ = q.TouchDeviceCopy(ctx, sqlc.TouchDeviceCopyParams{SourceSha256: source, Kind: kind, FixVersion: version})
 	}
 	return &Copy{Path: path, SHA256: row.Sha256, Size: info.Size()}, nil
 }
@@ -133,7 +163,16 @@ func (s *Service) SizeOf(ctx context.Context, fileID uuid.UUID) (int64, bool) {
 	if !s.enabled(ctx) {
 		return 0, false
 	}
-	row, err := sqlc.New(s.pool).GetReadyCopyOfFile(ctx, sqlc.GetReadyCopyOfFileParams{ID: fileID, FixVersion: s.Version})
+	return s.sizeOf(ctx, fileID, KindFix, s.Version)
+}
+
+// KepubSizeOf is the size of the ready KEPUB of a file.
+func (s *Service) KepubSizeOf(ctx context.Context, fileID uuid.UUID) (int64, bool) {
+	return s.sizeOf(ctx, fileID, KindKepub, s.KepubVersion)
+}
+
+func (s *Service) sizeOf(ctx context.Context, fileID uuid.UUID, kind string, version int16) (int64, bool) {
+	row, err := sqlc.New(s.pool).GetReadyCopyOfFile(ctx, sqlc.GetReadyCopyOfFileParams{ID: fileID, Kind: kind, FixVersion: version})
 	if err != nil || row.SizeBytes == nil {
 		return 0, false
 	}
@@ -190,38 +229,22 @@ func (s *Service) Make(ctx context.Context, fileID uuid.UUID) error {
 	if f.Format != "epub" || f.Drm || f.Sha256 == nil || f.TrashedAt != nil || f.MissingAt != nil || len(fixes) == 0 {
 		return nil
 	}
-	if row, err := q.GetDeviceCopy(ctx, sqlc.GetDeviceCopyParams{SourceSha256: f.Sha256, FixVersion: s.Version}); err == nil {
+	if row, err := q.GetDeviceCopy(ctx, sqlc.GetDeviceCopyParams{SourceSha256: f.Sha256, Kind: KindFix, FixVersion: s.Version}); err == nil {
 		if row.State == "unfixable" {
 			return nil
 		}
-		if _, err := os.Stat(s.pathOf(f.Sha256, s.Version)); row.State == "ready" && err == nil {
+		if _, err := os.Stat(s.pathOf(f.Sha256, KindFix, s.Version)); row.State == "ready" && err == nil {
 			return nil
 		}
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
 
-	src, err := os.Open(filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath)))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
+	src, info, err := openSource(f.RootPath, f.RelPath, f.Sha256)
+	if src == nil || err != nil {
 		return err
 	}
 	defer src.Close()
-	info, err := src.Stat()
-	if err != nil {
-		return err
-	}
-	h := sha256.New()
-	if _, err := io.Copy(h, io.NewSectionReader(src, 0, info.Size())); err != nil {
-		return err
-	}
-	if string(h.Sum(nil)) != string(f.Sha256) {
-		// The scan has yet to read the file again; a copy of other bytes
-		// would be kept under the wrong hash.
-		return nil
-	}
 
 	if err := os.MkdirAll(s.dir, 0o755); err != nil {
 		return err
@@ -248,13 +271,13 @@ func (s *Service) Make(ctx context.Context, fileID uuid.UUID) error {
 		if err != nil {
 			s.log.Info("a file is sent as it is: it cannot be fixed", "file", fileID, "error", err)
 		}
-		return q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{SourceSha256: f.Sha256, FixVersion: s.Version, State: "unfixable"})
+		return q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{SourceSha256: f.Sha256, Kind: KindFix, FixVersion: s.Version, State: "unfixable"})
 	case err != nil:
 		return fmt.Errorf("fix %s for a device: %w", f.RelPath, err)
 	}
 	if err := reads(temp); err != nil {
 		s.log.Warn("a fixed copy does not read; the file is sent as it is", "file", fileID, "error", err)
-		return q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{SourceSha256: f.Sha256, FixVersion: s.Version, State: "unfixable"})
+		return q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{SourceSha256: f.Sha256, Kind: KindFix, FixVersion: s.Version, State: "unfixable"})
 	}
 	md5, err := kosync.PartialMD5(temp)
 	if err != nil {
@@ -267,14 +290,137 @@ func (s *Service) Make(ctx context.Context, fileID uuid.UUID) error {
 	if err := os.Chmod(temp, 0o644); err != nil {
 		return err
 	}
-	if err := os.Rename(temp, s.pathOf(f.Sha256, s.Version)); err != nil {
+	if err := os.Rename(temp, s.pathOf(f.Sha256, KindFix, s.Version)); err != nil {
 		return err
 	}
 	n := size.Size()
 	return q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{
-		SourceSha256: f.Sha256, FixVersion: s.Version, State: "ready",
+		SourceSha256: f.Sha256, Kind: KindFix, FixVersion: s.Version, State: "ready",
 		Sha256: sum.Sum(nil), SizeBytes: &n, KoreaderMd5: &md5,
 	})
+}
+
+// openSource opens a library file for copying, if it lies there with the
+// hash the catalogue has: when the scan has yet to read the file again, a
+// copy of other bytes would be kept under the wrong hash. Neither the file
+// nor an error is returned for a file that is gone or other.
+func openSource(root, rel string, sum []byte) (*os.File, fs.FileInfo, error) {
+	src, err := os.Open(filepath.Join(root, filepath.FromSlash(rel)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := src.Stat()
+	if err != nil {
+		src.Close()
+		return nil, nil, err
+	}
+	h := sha256.New()
+	if _, err := io.Copy(h, io.NewSectionReader(src, 0, info.Size())); err != nil {
+		src.Close()
+		return nil, nil, err
+	}
+	if string(h.Sum(nil)) != string(sum) {
+		src.Close()
+		return nil, nil, nil
+	}
+	return src, info, nil
+}
+
+// Kepub is the KEPUB of a file for a Kobo reader, made now if there is none
+// (one conversion at a time). It is nil, and the reader is sent the EPUB,
+// for a file that is no EPUB, is gone or encrypted, or that cannot be
+// converted; the last is noted, so that it is not tried again.
+func (s *Service) Kepub(ctx context.Context, fileID uuid.UUID) (*Copy, error) {
+	q := sqlc.New(s.pool)
+	f, err := q.GetFileToCopy(ctx, fileID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if f.Format != "epub" || f.Drm || f.Sha256 == nil || f.TrashedAt != nil || f.MissingAt != nil {
+		return nil, nil
+	}
+	if c, err := s.KepubReady(ctx, f.Sha256); c != nil || err != nil {
+		return c, err
+	}
+	s.converting.Lock()
+	defer s.converting.Unlock()
+	if c, err := s.KepubReady(ctx, f.Sha256); c != nil || err != nil {
+		return c, err
+	}
+	if row, err := q.GetDeviceCopy(ctx, sqlc.GetDeviceCopyParams{SourceSha256: f.Sha256, Kind: KindKepub, FixVersion: s.KepubVersion}); err == nil {
+		if row.State == "unfixable" {
+			return nil, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+	src, info, err := openSource(f.RootPath, f.RelPath, f.Sha256)
+	if src == nil || err != nil {
+		return nil, err
+	}
+	defer src.Close()
+	if err := os.MkdirAll(s.dir, 0o755); err != nil {
+		return nil, err
+	}
+	out, err := os.CreateTemp(s.dir, ".making-*")
+	if err != nil {
+		return nil, err
+	}
+	temp := out.Name()
+	defer os.Remove(temp)
+	sum := sha256.New()
+	// The time is the source's, as for a fixed copy, so that the same
+	// bytes come again if the copy is evicted.
+	_, err = epub.Kepubify(src, info.Size(), io.MultiWriter(out, sum), info.ModTime().UTC())
+	if err == nil {
+		err = out.Sync()
+	}
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	note := func() (*Copy, error) {
+		return nil, q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{SourceSha256: f.Sha256, Kind: KindKepub, FixVersion: s.KepubVersion, State: "unfixable"})
+	}
+	if errors.Is(err, epub.ErrNotWritable) || errors.Is(err, epub.ErrNotEPUB) || errors.Is(err, epub.ErrTooLarge) || errors.Is(err, epub.ErrUnsafe) {
+		s.log.Info("a file is sent as an EPUB: it cannot be made a KEPUB", "file", fileID, "error", err)
+		return note()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("make %s a KEPUB: %w", f.RelPath, err)
+	}
+	if err := reads(temp); err != nil {
+		s.log.Warn("a KEPUB does not read; the file is sent as an EPUB", "file", fileID, "error", err)
+		return note()
+	}
+	md5, err := kosync.PartialMD5(temp)
+	if err != nil {
+		return nil, err
+	}
+	st, err := os.Stat(temp)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(temp, 0o644); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(temp, s.pathOf(f.Sha256, KindKepub, s.KepubVersion)); err != nil {
+		return nil, err
+	}
+	n := st.Size()
+	err = q.SetDeviceCopy(ctx, sqlc.SetDeviceCopyParams{
+		SourceSha256: f.Sha256, Kind: KindKepub, FixVersion: s.KepubVersion, State: "ready",
+		Sha256: sum.Sum(nil), SizeBytes: &n, KoreaderMd5: &md5,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &Copy{Path: s.pathOf(f.Sha256, KindKepub, s.KepubVersion), SHA256: sum.Sum(nil), Size: n}, nil
 }
 
 // reads checks that the written file opens as an EPUB.
@@ -298,7 +444,8 @@ func reads(path string) error {
 }
 
 // Trim removes the copies unused for MaxAgeDays and, of the rest, the least
-// recently used until the copies fit in MaxBytes; the notes of copies that
+// recently used until the copies fit in MaxBytes, and those of files no
+// library holds any more; the notes of copies that
 // were not made, once old; and files in the cache that no row names. An
 // evicted copy keeps its hashes.
 func (s *Service) Trim(ctx context.Context) error {
@@ -308,10 +455,20 @@ func (s *Service) Trim(ctx context.Context) error {
 		return err
 	}
 	for _, c := range old {
-		if err := q.EvictDeviceCopy(ctx, sqlc.EvictDeviceCopyParams{SourceSha256: c.SourceSha256, FixVersion: c.FixVersion}); err != nil {
+		if err := q.EvictDeviceCopy(ctx, sqlc.EvictDeviceCopyParams{SourceSha256: c.SourceSha256, Kind: c.Kind, FixVersion: c.FixVersion}); err != nil {
 			return err
 		}
-		_ = os.Remove(s.pathOf(c.SourceSha256, c.FixVersion))
+		_ = os.Remove(s.pathOf(c.SourceSha256, c.Kind, c.FixVersion))
+	}
+	orphans, err := q.ListOrphanCopies(ctx)
+	if err != nil {
+		return err
+	}
+	for _, c := range orphans {
+		if err := q.EvictDeviceCopy(ctx, sqlc.EvictDeviceCopyParams{SourceSha256: c.SourceSha256, Kind: c.Kind, FixVersion: c.FixVersion}); err != nil {
+			return err
+		}
+		_ = os.Remove(s.pathOf(c.SourceSha256, c.Kind, c.FixVersion))
 	}
 	if _, err := q.DeleteStaleCopyNotes(ctx, MaxAgeDays); err != nil {
 		return err
@@ -322,7 +479,7 @@ func (s *Service) Trim(ctx context.Context) error {
 	}
 	keep := map[string]bool{}
 	for _, c := range live {
-		keep[filepath.Base(s.pathOf(c.SourceSha256, c.FixVersion))] = true
+		keep[filepath.Base(s.pathOf(c.SourceSha256, c.Kind, c.FixVersion))] = true
 	}
 	entries, err := os.ReadDir(s.dir)
 	if errors.Is(err, fs.ErrNotExist) {

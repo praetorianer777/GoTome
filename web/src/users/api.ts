@@ -124,6 +124,24 @@ export function useDeleteDevice() {
 	});
 }
 
+/** Switches KEPUBs on or off for a Kobo reader. */
+export function useSetDeviceKepub() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({ id, kepub }: { id: string; kepub: boolean }) =>
+			(
+				await api.PATCH("/auth/devices/{deviceId}", {
+					params: { path: { deviceId: id } },
+					body: { kepub },
+				})
+			).data,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ownDevicesQuery.queryKey });
+			queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+		},
+	});
+}
+
 export type ApiKey = components["schemas"]["ApiKeyView"];
 
 export const ownApiKeysQuery = queryOptions({

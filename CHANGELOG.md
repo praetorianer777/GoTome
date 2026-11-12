@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- KEPUB for Kobo readers: a device's page has a switch (off at first) that
+  makes GOtome tell a Kobo reader, or a Tolino in Kobo mode, of each EPUB as
+  a KEPUB, which the reader reads with better statistics and page turns.
+  GOtome makes it itself when the reader syncs and keeps it with the other
+  copies for devices ([devices](docs/devices.md#kepub-for-kobo-readers)).
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner

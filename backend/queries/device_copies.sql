@@ -16,44 +16,44 @@ WHERE f.book_id = ANY(sqlc.arg(book_ids)::uuid[]) AND f.format = 'epub' AND NOT 
   AND f.trashed_at IS NULL AND f.missing_at IS NULL AND f.sha256 IS NOT NULL
   AND cardinality(f.ereader_findings) > 0
   AND NOT EXISTS (SELECT 1 FROM device_copies c
-                  WHERE c.source_sha256 = f.sha256 AND c.fix_version = sqlc.arg(fix_version)::smallint
+                  WHERE c.source_sha256 = f.sha256 AND c.kind = 'fix' AND c.fix_version = sqlc.arg(fix_version)::smallint
                     AND c.state IN ('ready', 'unfixable'))
 ORDER BY f.sha256, f.id;
 
 -- name: GetDeviceCopy :one
 SELECT state, sha256, size_bytes, koreader_md5, last_used_at
 FROM device_copies
-WHERE source_sha256 = $1 AND fix_version = $2;
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3;
 
 -- name: GetReadyCopyOfFile :one
 -- The size of the copy of a file, if one is ready.
 SELECT c.sha256, c.size_bytes
 FROM book_files f
-JOIN device_copies c ON c.source_sha256 = f.sha256 AND c.fix_version = $2 AND c.state = 'ready'
+JOIN device_copies c ON c.source_sha256 = f.sha256 AND c.kind = $2 AND c.fix_version = $3 AND c.state = 'ready'
 WHERE f.id = $1;
 
 -- name: SetDeviceCopy :exec
-INSERT INTO device_copies (source_sha256, fix_version, state, sha256, size_bytes, koreader_md5)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (source_sha256, fix_version) DO UPDATE
+INSERT INTO device_copies (source_sha256, kind, fix_version, state, sha256, size_bytes, koreader_md5)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (source_sha256, kind, fix_version) DO UPDATE
 SET state = EXCLUDED.state, sha256 = EXCLUDED.sha256, size_bytes = EXCLUDED.size_bytes,
     koreader_md5 = EXCLUDED.koreader_md5, made_at = now(), last_used_at = now();
 
 -- name: TouchDeviceCopy :exec
 UPDATE device_copies SET last_used_at = now()
-WHERE source_sha256 = $1 AND fix_version = $2 AND last_used_at < now() - interval '1 hour';
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3 AND last_used_at < now() - interval '1 hour';
 
 -- name: EvictDeviceCopy :exec
 UPDATE device_copies SET state = 'evicted'
-WHERE source_sha256 = $1 AND fix_version = $2 AND state = 'ready';
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3 AND state = 'ready';
 
 -- name: ListCopiesToEvict :many
 -- The ready copies unused for longer than max_age, then the least recently
 -- used of the rest until what remains is within max_bytes.
-SELECT source_sha256, fix_version
+SELECT source_sha256, kind, fix_version
 FROM (
-    SELECT source_sha256, fix_version, last_used_at,
-           sum(size_bytes) OVER (ORDER BY last_used_at DESC, source_sha256) AS running
+    SELECT source_sha256, kind, fix_version, last_used_at,
+           sum(size_bytes) OVER (ORDER BY last_used_at DESC, source_sha256, kind) AS running
     FROM device_copies
     WHERE state = 'ready'
 ) c
@@ -67,8 +67,19 @@ WHERE (c.state = 'unfixable' AND c.made_at < now() - sqlc.arg(max_age_days)::int
    OR (c.state = 'evicted' AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.sha256 = c.source_sha256));
 
 -- name: ListLiveCopies :many
-SELECT source_sha256, fix_version FROM device_copies WHERE state = 'ready';
+SELECT source_sha256, kind, fix_version FROM device_copies WHERE state = 'ready';
 
 -- name: RecordDeviceSend :exec
 INSERT INTO device_sends (device_id, book_id, fixed) VALUES ($1, $2, $3)
 ON CONFLICT (device_id, book_id) DO UPDATE SET fixed = EXCLUDED.fixed, sent_at = now();
+
+-- name: GetFileHash :one
+SELECT sha256 FROM book_files WHERE id = $1;
+
+-- name: ListOrphanCopies :many
+-- The ready copies of files that no file in a library has any more: the
+-- file changed, was purged, or lies in the trash.
+SELECT c.source_sha256, c.kind, c.fix_version
+FROM device_copies c
+WHERE c.state = 'ready'
+  AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.sha256 = c.source_sha256 AND f.trashed_at IS NULL);

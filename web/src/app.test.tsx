@@ -7983,6 +7983,13 @@ describe("sending to an e-reader", () => {
 			persuasion.getByText(/^On the e-reader since .*, sent fixed$/),
 		).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
+		const kepub = screen.getByRole("checkbox", {
+			name: "Send KEPUBs to this Kobo reader",
+		});
+		expect(kepub).not.toBeChecked();
+		await person.click(kepub);
+		await waitFor(() => expect(kepub).toBeChecked());
+		expect(server.devices[0]?.kepub).toBe(true);
 		expect(
 			within(list.getByRole("listitem", { name: "Emma" })).getByText(
 				/^Announced to the reader/,

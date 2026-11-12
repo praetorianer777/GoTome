@@ -30,27 +30,29 @@ func (q *Queries) DeleteStaleCopyNotes(ctx context.Context, maxAgeDays int32) (i
 
 const evictDeviceCopy = `-- name: EvictDeviceCopy :exec
 UPDATE device_copies SET state = 'evicted'
-WHERE source_sha256 = $1 AND fix_version = $2 AND state = 'ready'
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3 AND state = 'ready'
 `
 
 type EvictDeviceCopyParams struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 }
 
 func (q *Queries) EvictDeviceCopy(ctx context.Context, arg EvictDeviceCopyParams) error {
-	_, err := q.db.Exec(ctx, evictDeviceCopy, arg.SourceSha256, arg.FixVersion)
+	_, err := q.db.Exec(ctx, evictDeviceCopy, arg.SourceSha256, arg.Kind, arg.FixVersion)
 	return err
 }
 
 const getDeviceCopy = `-- name: GetDeviceCopy :one
 SELECT state, sha256, size_bytes, koreader_md5, last_used_at
 FROM device_copies
-WHERE source_sha256 = $1 AND fix_version = $2
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3
 `
 
 type GetDeviceCopyParams struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 }
 
@@ -63,7 +65,7 @@ type GetDeviceCopyRow struct {
 }
 
 func (q *Queries) GetDeviceCopy(ctx context.Context, arg GetDeviceCopyParams) (GetDeviceCopyRow, error) {
-	row := q.db.QueryRow(ctx, getDeviceCopy, arg.SourceSha256, arg.FixVersion)
+	row := q.db.QueryRow(ctx, getDeviceCopy, arg.SourceSha256, arg.Kind, arg.FixVersion)
 	var i GetDeviceCopyRow
 	err := row.Scan(
 		&i.State,
@@ -73,6 +75,17 @@ func (q *Queries) GetDeviceCopy(ctx context.Context, arg GetDeviceCopyParams) (G
 		&i.LastUsedAt,
 	)
 	return i, err
+}
+
+const getFileHash = `-- name: GetFileHash :one
+SELECT sha256 FROM book_files WHERE id = $1
+`
+
+func (q *Queries) GetFileHash(ctx context.Context, id uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getFileHash, id)
+	var sha256 []byte
+	err := row.Scan(&sha256)
+	return sha256, err
 }
 
 const getFileToCopy = `-- name: GetFileToCopy :one
@@ -116,12 +129,13 @@ func (q *Queries) GetFileToCopy(ctx context.Context, id uuid.UUID) (GetFileToCop
 const getReadyCopyOfFile = `-- name: GetReadyCopyOfFile :one
 SELECT c.sha256, c.size_bytes
 FROM book_files f
-JOIN device_copies c ON c.source_sha256 = f.sha256 AND c.fix_version = $2 AND c.state = 'ready'
+JOIN device_copies c ON c.source_sha256 = f.sha256 AND c.kind = $2 AND c.fix_version = $3 AND c.state = 'ready'
 WHERE f.id = $1
 `
 
 type GetReadyCopyOfFileParams struct {
 	ID         uuid.UUID
+	Kind       string
 	FixVersion int16
 }
 
@@ -132,17 +146,17 @@ type GetReadyCopyOfFileRow struct {
 
 // The size of the copy of a file, if one is ready.
 func (q *Queries) GetReadyCopyOfFile(ctx context.Context, arg GetReadyCopyOfFileParams) (GetReadyCopyOfFileRow, error) {
-	row := q.db.QueryRow(ctx, getReadyCopyOfFile, arg.ID, arg.FixVersion)
+	row := q.db.QueryRow(ctx, getReadyCopyOfFile, arg.ID, arg.Kind, arg.FixVersion)
 	var i GetReadyCopyOfFileRow
 	err := row.Scan(&i.Sha256, &i.SizeBytes)
 	return i, err
 }
 
 const listCopiesToEvict = `-- name: ListCopiesToEvict :many
-SELECT source_sha256, fix_version
+SELECT source_sha256, kind, fix_version
 FROM (
-    SELECT source_sha256, fix_version, last_used_at,
-           sum(size_bytes) OVER (ORDER BY last_used_at DESC, source_sha256) AS running
+    SELECT source_sha256, kind, fix_version, last_used_at,
+           sum(size_bytes) OVER (ORDER BY last_used_at DESC, source_sha256, kind) AS running
     FROM device_copies
     WHERE state = 'ready'
 ) c
@@ -156,6 +170,7 @@ type ListCopiesToEvictParams struct {
 
 type ListCopiesToEvictRow struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 }
 
@@ -170,7 +185,7 @@ func (q *Queries) ListCopiesToEvict(ctx context.Context, arg ListCopiesToEvictPa
 	items := []ListCopiesToEvictRow{}
 	for rows.Next() {
 		var i ListCopiesToEvictRow
-		if err := rows.Scan(&i.SourceSha256, &i.FixVersion); err != nil {
+		if err := rows.Scan(&i.SourceSha256, &i.Kind, &i.FixVersion); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -188,7 +203,7 @@ WHERE f.book_id = ANY($1::uuid[]) AND f.format = 'epub' AND NOT f.drm
   AND f.trashed_at IS NULL AND f.missing_at IS NULL AND f.sha256 IS NOT NULL
   AND cardinality(f.ereader_findings) > 0
   AND NOT EXISTS (SELECT 1 FROM device_copies c
-                  WHERE c.source_sha256 = f.sha256 AND c.fix_version = $2::smallint
+                  WHERE c.source_sha256 = f.sha256 AND c.kind = 'fix' AND c.fix_version = $2::smallint
                     AND c.state IN ('ready', 'unfixable'))
 ORDER BY f.sha256, f.id
 `
@@ -227,11 +242,12 @@ func (q *Queries) ListFilesToCopy(ctx context.Context, arg ListFilesToCopyParams
 }
 
 const listLiveCopies = `-- name: ListLiveCopies :many
-SELECT source_sha256, fix_version FROM device_copies WHERE state = 'ready'
+SELECT source_sha256, kind, fix_version FROM device_copies WHERE state = 'ready'
 `
 
 type ListLiveCopiesRow struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 }
 
@@ -244,7 +260,42 @@ func (q *Queries) ListLiveCopies(ctx context.Context) ([]ListLiveCopiesRow, erro
 	items := []ListLiveCopiesRow{}
 	for rows.Next() {
 		var i ListLiveCopiesRow
-		if err := rows.Scan(&i.SourceSha256, &i.FixVersion); err != nil {
+		if err := rows.Scan(&i.SourceSha256, &i.Kind, &i.FixVersion); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrphanCopies = `-- name: ListOrphanCopies :many
+SELECT c.source_sha256, c.kind, c.fix_version
+FROM device_copies c
+WHERE c.state = 'ready'
+  AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.sha256 = c.source_sha256 AND f.trashed_at IS NULL)
+`
+
+type ListOrphanCopiesRow struct {
+	SourceSha256 []byte
+	Kind         string
+	FixVersion   int16
+}
+
+// The ready copies of files that no file in a library has any more: the
+// file changed, was purged, or lies in the trash.
+func (q *Queries) ListOrphanCopies(ctx context.Context) ([]ListOrphanCopiesRow, error) {
+	rows, err := q.db.Query(ctx, listOrphanCopies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOrphanCopiesRow{}
+	for rows.Next() {
+		var i ListOrphanCopiesRow
+		if err := rows.Scan(&i.SourceSha256, &i.Kind, &i.FixVersion); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -272,15 +323,16 @@ func (q *Queries) RecordDeviceSend(ctx context.Context, arg RecordDeviceSendPara
 }
 
 const setDeviceCopy = `-- name: SetDeviceCopy :exec
-INSERT INTO device_copies (source_sha256, fix_version, state, sha256, size_bytes, koreader_md5)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (source_sha256, fix_version) DO UPDATE
+INSERT INTO device_copies (source_sha256, kind, fix_version, state, sha256, size_bytes, koreader_md5)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (source_sha256, kind, fix_version) DO UPDATE
 SET state = EXCLUDED.state, sha256 = EXCLUDED.sha256, size_bytes = EXCLUDED.size_bytes,
     koreader_md5 = EXCLUDED.koreader_md5, made_at = now(), last_used_at = now()
 `
 
 type SetDeviceCopyParams struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 	State        string
 	Sha256       []byte
@@ -291,6 +343,7 @@ type SetDeviceCopyParams struct {
 func (q *Queries) SetDeviceCopy(ctx context.Context, arg SetDeviceCopyParams) error {
 	_, err := q.db.Exec(ctx, setDeviceCopy,
 		arg.SourceSha256,
+		arg.Kind,
 		arg.FixVersion,
 		arg.State,
 		arg.Sha256,
@@ -302,15 +355,16 @@ func (q *Queries) SetDeviceCopy(ctx context.Context, arg SetDeviceCopyParams) er
 
 const touchDeviceCopy = `-- name: TouchDeviceCopy :exec
 UPDATE device_copies SET last_used_at = now()
-WHERE source_sha256 = $1 AND fix_version = $2 AND last_used_at < now() - interval '1 hour'
+WHERE source_sha256 = $1 AND kind = $2 AND fix_version = $3 AND last_used_at < now() - interval '1 hour'
 `
 
 type TouchDeviceCopyParams struct {
 	SourceSha256 []byte
+	Kind         string
 	FixVersion   int16
 }
 
 func (q *Queries) TouchDeviceCopy(ctx context.Context, arg TouchDeviceCopyParams) error {
-	_, err := q.db.Exec(ctx, touchDeviceCopy, arg.SourceSha256, arg.FixVersion)
+	_, err := q.db.Exec(ctx, touchDeviceCopy, arg.SourceSha256, arg.Kind, arg.FixVersion)
 	return err
 }
