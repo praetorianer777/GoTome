@@ -273,11 +273,21 @@ func opdsDeviceDownload(href string) string {
 // opdsDeviceFile sends a file to the device that asks and, once the whole
 // of it has gone out, marks its book delivered there.
 func (s *Server) opdsDeviceFile(w http.ResponseWriter, r *http.Request) error {
+	return s.deviceFile(w, r, false)
+}
+
+// koboKepubFile is opdsDeviceFile for the KEPUB of an EPUB, which a Kobo
+// reader is told of when its owner switched that on for it (#411).
+func (s *Server) koboKepubFile(w http.ResponseWriter, r *http.Request) error {
+	return s.deviceFile(w, r, true)
+}
+
+func (s *Server) deviceFile(w http.ResponseWriter, r *http.Request, kepub bool) error {
 	device := DeviceFrom(r.Context())
 	if device == uuid.Nil {
 		return errNotADevice()
 	}
-	book, fixed, err := s.serveFile(w, r)
+	book, fixed, err := s.serveFile(w, r, kepub)
 	if err != nil {
 		return err
 	}

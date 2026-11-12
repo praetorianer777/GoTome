@@ -18,6 +18,7 @@ import type {
 	CleanupSuggestion,
 } from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
+import type { Continuation } from "@/books/continue-offer";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
@@ -127,6 +128,7 @@ export class FakeServer {
 		createdAt: string;
 		lastUsedAt?: string;
 		canUpload?: boolean;
+		kepub?: boolean;
 	}[] = [];
 	/** The signed-in person's API keys. */
 	apiKeys: {
@@ -368,6 +370,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** What each book offers to go on with in the other medium; none by default. */
+	continuations: Record<string, Continuation> = {};
 	/**
 	 * The passages of the books' text the full-text search finds: one is
 	 * found when its text holds the words, its book with the library's
@@ -454,6 +458,8 @@ export class FakeServer {
 	identities: LinkedIdentity[] = [];
 	/** Files somebody asked to have read again. */
 	reread: string[] = [];
+	/** The files converted to an EPUB. */
+	conversions: string[] = [];
 	/** The fixes asked for, by file. */
 	fixes: { file: string; findings: string[] }[] = [];
 	/** The secrets as they were sent, which the fake keeps and never sends back. */
@@ -741,6 +747,22 @@ export class FakeServer {
 				tocEntriesRepointed: findings.includes("broken-toc") ? 3 : 0,
 			});
 		}
+		const convert = /^\/files\/([^/]+)\/convert$/.exec(path);
+		if (convert && request.method === "POST") {
+			const book = this.books.find((b) => b.files.some((f) => f.id === convert[1]));
+			const file = book?.files.find((f) => f.id === convert[1]);
+			if (!book || !file) {
+				return Response.json({ error: { code: "not_found", message: "There is no such file." } }, { status: 404 });
+			}
+			this.conversions.push(file.id);
+			const name = file.name.replace(/\.[^.]+$/, ".epub");
+			const id = `${file.id}-epub`;
+			book.files.push({ ...file, id, format: "epub", name, extractState: "pending" });
+			return Response.json(
+				{ fileId: id, bookId: book.id, name, sections: 3, images: 1, tocEntries: 3, linksDropped: 0 },
+				{ status: 201 },
+			);
+		}
 		const fileAction = /^\/files\/([^/]+)(?:\/(trash|restore))?$/.exec(path);
 		if (fileAction && (fileAction[2] || request.method === "DELETE")) {
 			return this.trashAction(fileAction[1] ?? "", fileAction[2] ?? "purge");
@@ -1013,7 +1035,7 @@ export class FakeServer {
 						removable: !d.deliveredAt || !!d.syncedAt, sentFixed: !!d.sentFixed,
 					}];
 				});
-			return Response.json({ device, books });
+			return Response.json({ device: { ...device, kepub: !!device.kepub }, books });
 		}
 		if (sending && request.method === "POST") {
 			const device = this.devices.find((d) => d.id === sending[1]);
@@ -1529,6 +1551,10 @@ export class FakeServer {
 					complete: true,
 				},
 			);
+		}
+		const continuation = /^\/books\/([^/]+)\/continuation$/.exec(path);
+		if (continuation) {
+			return Response.json(this.continuations[continuation[1] ?? ""] ?? {});
 		}
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {
@@ -2641,6 +2667,16 @@ export class FakeServer {
 				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds", addresses: ["http://192.168.1.5:8080", "https://books.example.org"] },
 				{ status: 201 },
 			);
+		}
+		if (path.startsWith("/auth/devices/") && method === "PATCH") {
+			const device = this.devices.find(
+				(d) => `/auth/devices/${d.id}` === path,
+			);
+			if (!device) {
+				return refuse(404, "not_found", "There is no such device.");
+			}
+			device.kepub = body.kepub === true;
+			return Response.json(device);
 		}
 		if (path.startsWith("/auth/devices/") && method === "DELETE") {
 			this.devices = this.devices.filter(

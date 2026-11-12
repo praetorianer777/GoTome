@@ -32,7 +32,10 @@ var (
 	trackNumber = regexp.MustCompile(`^(\d{1,3})(?:\D|$)`)
 	// partSuffix ends a file named after its book and its position:
 	// "Dusk - Part 02", "Dusk (3)", "Dusk_04".
-	partSuffix = regexp.MustCompile(`(?i)^(.*?)[\s._,(\[-]*(?:(?:part|pt|teil|cd|disc|disk|track|chapter|kapitel)[\s._]*)?(\d{1,3})[)\]]?$`)
+	// calibreFolder is the folder Calibre makes for a book: Author/Title (12).
+	// Everything in it is that one book, whatever the formats are called.
+	calibreFolder = regexp.MustCompile(`^(.+?) \(\d+\)$`)
+	partSuffix    = regexp.MustCompile(`(?i)^(.*?)[\s._,(\[-]*(?:(?:part|pt|teil|cd|disc|disk|track|chapter|kapitel)[\s._]*)?(\d{1,3})[)\]]?$`)
 )
 
 // unitOf is the folder whose files are grouped together: the file's own, or
@@ -79,7 +82,16 @@ func groupUnit(unit string, paths []string) []Group {
 		}
 		return d
 	}
+	calibre := calibreFolder.FindStringSubmatch(path.Base(unit))
+	if strings.Count(unit, "/") != 1 {
+		calibre = nil
+	}
 	whole := func(p string) {
+		if calibre != nil {
+			d := add("\x00calibre", cleanTitle(calibre[1]))
+			d.whole = append(d.whole, p)
+			return
+		}
 		stem := stemOf(p)
 		d := add(nameKey(stem), cleanTitle(stem))
 		d.whole = append(d.whole, p)

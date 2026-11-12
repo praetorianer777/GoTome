@@ -49,6 +49,8 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Your reading history and importing it](importing-reading-history.md):
   books you read but do not own, notes, and the Goodreads and StoryGraph
   import.
+- [Moving from Calibre](moving-from-calibre.md): reading a Calibre library's
+  `metadata.db` in place, what is taken from it, and running it again.
 - [Resolving duplicates by themselves](duplicates.md): the classes of
   duplicate pairs the rules merge or link, dry runs, undo, and measuring
   them with `gotome duplicate-check`.

@@ -425,6 +425,40 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   records the new `sha256`, size and time; `original_sha256` stays. A file
   whose hash is not the recorded one is left for the scan.
 
+## Calibre import
+
+- `internal/calibre` (#394) brings a Calibre library's `metadata.db` into an
+  external library that holds its folder (`docs/moving-from-calibre.md`).
+  `Open` reads the file with `modernc.org/sqlite` (BSD-3, no cgo, about
+  5.6 MB of binary) read-only and `immutable=1`, so Calibre may be running
+  and nothing is written beside it; the integration tests hold its bytes,
+  modification time and folder unchanged. The Calibre schema is tolerated
+  as Calibre writes it (`calibretest` writes a small one for the tests and,
+  with `GOTOME_WRITE_CALIBRE_FIXTURE`, `e2e/fixtures/calibre`).
+- A Calibre folder (`Author/Title (12)`, two levels down) is one book
+  whatever its files are called (`calibreFolder` in `grouping.go`). A row of
+  Calibre's is matched to files by `books.path` + `data.name` + format
+  against `book_files.rel_path`, never by title; one whose files lie in
+  several GOtome books is left out.
+- `POST /calibre/imports` previews (`storage:manage`): `calibre_imports`
+  holds the counts and `calibre_import_books` a row per Calibre book, with
+  no metadata kept. `.../start` (ratings, and a choice of `ignore`, `status`
+  or `tags` per custom column) queues the `calibre.import` job (queue
+  `metadata`), which reads each book again from `metadata.db` and writes it
+  in a transaction of its own with its outcome (`changed`, `unchanged`,
+  `skipped`, `failed`), so a run cut off and run again does each once. Running
+  an import again is a new preview and import.
+- A book is described through `ingest.Service.EditTx` with `Source`
+  `calibre` (`catalog.SourceCalibre`), which skips locked fields and locks
+  nothing. A field is replaced only while its source is empty, a guess, a
+  file's or Calibre's own (`replaceable`); a person's or a provider's stays,
+  and `ApplyFileMetadataTx` leaves Calibre's. Whether a book changed is
+  decided by `BookDescribedDigest` before and after. Ratings and the status of
+  a custom column are the importing person's own and go through
+  `catalog.ImportReadingTx` without overwriting. Not done: watching
+  `metadata.db` for changes (an import is run by hand), and Calibre's sort
+  title (GOtome works out its own).
+
 ## Uploads
 
 - `ingest.Service.Upload` is the one writer into a library, and only into a

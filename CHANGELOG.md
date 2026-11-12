@@ -6,6 +6,33 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A book with a text and an audiobook offers to go on in the other medium:
+  "Continue in the audiobook at 2:14:05" or "Continue reading at Chapter 12"
+  on its page, in the reader and in the player, when the other is further
+  along. Chapters both name alike place it exactly; otherwise it is the same
+  share of the whole. Nothing moves until you choose
+  ([getting started](docs/getting-started.md)).
+- Import a Calibre library: add the Calibre folder as an existing folder,
+  let it be scanned, and under Libraries choose "Import from Calibre". A
+  preview counts the books, formats, covers, series and tags and names what
+  is left out; the import then gives each book Calibre's title, authors,
+  series, tags, publisher, date, language, identifiers, description and
+  cover, and on request your ratings and, from custom columns, your reading
+  status or tags. `metadata.db` is only read, so Calibre may keep running.
+  What you set in GOtome is kept, and running the import again brings in
+  what changed in Calibre since. A Calibre book's formats are now always
+  one book in GOtome.
+- KEPUB for Kobo readers: a device's page has a switch (off at first) that
+  makes GOtome tell a Kobo reader, or a Tolino in Kobo mode, of each EPUB as
+  a KEPUB, which the reader reads with better statistics and page turns.
+  GOtome makes it itself when the reader syncs and keeps it with the other
+  copies for devices ([devices](docs/devices.md#kepub-for-kobo-readers)).
+- Convert to EPUB: a book's page offers to write an EPUB from a MOBI, AZW or
+  AZW3 file as a new file of the same book beside it, in a library GOtome
+  writes to. The original stays ([devices](docs/devices.md#kindle-files-to-epub)).
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner
@@ -15,6 +42,11 @@ What changes for someone who runs or uses GOtome. The format follows
   vectors stay.
 - New setting `embedding.contentSamples` (16 unless set): how many passages
   of a book's text its content vector is made from.
+
+### Fixed
+
+- Reopening an e-book no longer saves a coarser place (the start of the
+  section, in Safari) over the exact one it opened at.
 
 ## [0.23.0] - 2026-11-12
 

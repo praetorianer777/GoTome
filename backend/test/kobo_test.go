@@ -471,6 +471,15 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 		t.Errorf("download: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
 	resp.Body.Close()
+	called["koboDownloadKepub"] = true
+	resp, err = http.Get(items[0].NewEntitlement.BookMetadata.DownloadUrls[0].Url + "/kepub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body, _ := io.ReadAll(resp.Body); resp.StatusCode != 200 || !bytes.HasPrefix(body, []byte("PK")) || !strings.Contains(resp.Header.Get("Content-Disposition"), ".kepub.epub") {
+		t.Errorf("KEPUB download: %d %s", resp.StatusCode, resp.Header.Get("Content-Disposition"))
+	}
+	resp.Body.Close()
 	call("koboArchive", http.MethodDelete, "/v1/library/"+emma, nil, 204)
 	if _, d, _ := a.call(reader, http.MethodGet, "/books/"+emma+"/deliveries", nil); len(d["deliveries"].([]any)) != 0 {
 		t.Errorf("archived, still sent: %v", d)

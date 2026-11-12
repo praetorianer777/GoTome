@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
-import { button, control, Loading } from "@/components/ui";
+import { button, control, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatDateTime, formatCount } from "@/lib/format";
 import {
@@ -34,7 +35,14 @@ export function AdminLibraries() {
 
 	return (
 		<div className="flex flex-col gap-8">
-			<h1 className="text-2xl font-semibold">{t("libraries.title")}</h1>
+			<PageHeader
+				title={t("libraries.title")}
+				actions={
+					<Link to="/admin/calibre" className={button()}>
+						{t("calibre.link")}
+					</Link>
+				}
+			/>
 
 			<section
 				aria-labelledby="existing-libraries"

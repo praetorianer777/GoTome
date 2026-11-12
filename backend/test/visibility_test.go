@@ -114,11 +114,13 @@ func readCases() map[string][]readCase {
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
 		"getProgress":         {{path: "/books/{book}/progress", control: "insider"}},
+		"getContinuation":     {{path: "/books/{book}/continuation", control: "insider"}},
 		"getBookCover":        {{path: "/books/{book}/covers/small", control: "insider"}},
 		"downloadFile":        {{path: "/files/{file}/download", control: "insider"}},
 		"getStats":            {{path: "/me/stats", control: "insider"}},
 		"listReading":         {{path: "/me/reading", control: "insider"}},
 		"listRecommendations": {{path: "/me/recommendations", why: "the book is the insider's own, which is never recommended; TestRecommendationsStayWithinTheLibrariesThePersonSees proves it"}},
+		"getCalibreImport":    {{path: "/calibre/imports/{calibreImport}", why: "for storage managers alone, who see every library, and the import is the caller's own; TestACalibreLibraryIsPreviewedImportedAndImportedAgain proves it"}},
 		"getReadingImport": {
 			{path: "/me/reading-imports/{insiderImport}", control: "insider"},
 			{path: "/me/reading-imports/{formerImport}", control: "former"},
@@ -192,6 +194,7 @@ func readCases() map[string][]readCase {
 		"koboCover":              {{path: "/kobo/not-a-token/{book}/300/400/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
 		"koboCoverQuality":       {{path: "/kobo/not-a-token/{book}/300/400/80/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
 		"koboDownload":           {{path: "/kobo/not-a-token/download/{file}", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboDownloadKepub":      {{path: "/kobo/not-a-token/download/{file}/kepub", why: "only a device's token in the address reaches it; TestAKoboReaderIsSentAKepubOnlyWhereItsOwnerSwitchedThatOn proves it"}},
 		"kosyncPull":             {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
 		"listOpdsSmartShelf": {
 			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},

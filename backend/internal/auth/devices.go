@@ -42,6 +42,9 @@ type Device struct {
 	// CanUpload is whether the device's token may upload books, as its
 	// owner chose when making it (#211).
 	CanUpload bool
+	// Kepub is whether a Kobo reader is sent KEPUBs made from the EPUBs
+	// (#411).
+	Kepub bool
 }
 
 // CreateDevice makes a device for the user and returns the token it signs
@@ -78,7 +81,7 @@ func createDevice(ctx context.Context, q *sqlc.Queries, userID uuid.UUID, name s
 	if err != nil {
 		return Device{}, "", err
 	}
-	return Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload}, token, nil
+	return Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload, Kepub: row.Kepub}, token, nil
 }
 
 // Devices lists the user's devices, the oldest first.
@@ -89,9 +92,31 @@ func (s *Service) Devices(ctx context.Context, userID uuid.UUID) ([]Device, erro
 	}
 	out := make([]Device, len(rows))
 	for i, row := range rows {
-		out[i] = Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload}
+		out[i] = Device{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, CanUpload: row.CanUpload, Kepub: row.Kepub}
 	}
 	return out, nil
+}
+
+// SetDeviceKepub switches whether a Kobo reader of the user's is sent KEPUBs.
+// ErrNoDevice covers one that is not theirs.
+func (s *Service) SetDeviceKepub(ctx context.Context, userID, deviceID uuid.UUID, on bool) error {
+	n, err := sqlc.New(s.pool).SetDeviceKepub(ctx, sqlc.SetDeviceKepubParams{ID: deviceID, UserID: userID, Kepub: on})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNoDevice
+	}
+	return nil
+}
+
+// DeviceUsesKepub is whether the device is sent KEPUBs.
+func (s *Service) DeviceUsesKepub(ctx context.Context, deviceID uuid.UUID) (bool, error) {
+	on, err := sqlc.New(s.pool).DeviceUsesKepub(ctx, deviceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return on, err
 }
 
 // DeviceMayUpload is whether the device's owner allowed it to upload books.

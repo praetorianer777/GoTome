@@ -3707,6 +3707,81 @@ describe("reading progress", () => {
 	});
 });
 
+describe("continuing in the other medium", () => {
+	const epub = (id: string) => ({
+		id,
+		kind: "ebook",
+		format: "epub",
+		name: "Emma.epub",
+		size: 1_000_000,
+		missing: false,
+		drm: false,
+		extractState: "done",
+	});
+	const mp3 = {
+		id: "file-a",
+		kind: "audio",
+		format: "mp3",
+		name: "Emma 1.mp3",
+		size: 1_000_000,
+		missing: false,
+		drm: false,
+		extractState: "done",
+	};
+
+	function withBothMedia() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [epub("file-e"), mp3] });
+	}
+
+	it("offers the audiobook where the text is further, and opens the player there", async () => {
+		const person = userEvent.setup();
+		withBothMedia();
+		server.continuations["book-1"] = {
+			audio: { fraction: 0.5, positionMs: 8_045_000, chapter: "Chapter 12", refined: true },
+		};
+		const { router } = renderApp("/books/book-1");
+		const link = await screen.findByRole("link", {
+			name: "Continue in the audiobook at 2:14:05",
+		});
+		await person.click(link);
+		expect(router.state.location.pathname).toBe("/books/book-1/listen");
+	});
+
+	it("offers the text where the audiobook is further, at its chapter, and opens the reader there", async () => {
+		const person = userEvent.setup();
+		withBothMedia();
+		server.continuations["book-1"] = {
+			ebook: { fraction: 0.4, fileId: "file-e", chapter: "Chapter 12", refined: true },
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(
+			await screen.findByRole("link", { name: "Continue reading at Chapter 12" }),
+		);
+		expect(router.state.location.pathname).toBe("/books/book-1/read/file-e");
+		expect(router.state.location.search).toMatchObject({ fraction: 0.4 });
+	});
+
+	it("says a share of the book where no chapters were matched, and offers nothing when neither is behind", async () => {
+		withBothMedia();
+		server.continuations["book-1"] = {
+			ebook: { fraction: 0.426, fileId: "file-e", refined: false },
+		};
+		const { unmount } = renderApp("/books/book-1");
+		expect(
+			await screen.findByRole("link", { name: "Continue reading at 43%" }),
+		).toBeInTheDocument();
+		unmount();
+		server.continuations["book-1"] = {};
+		renderApp("/books/book-1");
+		await screen.findByRole("heading", { name: "Emma" });
+		expect(screen.queryByRole("link", { name: /^Continue / })).not.toBeInTheDocument();
+	});
+});
+
 describe("the PDF reader", () => {
 	function withPdf() {
 		server
@@ -5321,6 +5396,33 @@ describe("the EPUB and MOBI reader", () => {
 		);
 	});
 
+	it("does not save a coarser place than the one it opened at", async () => {
+		const person = userEvent.setup();
+		withBook("epub", "Persuasion.epub");
+		server.progress["book-1"] = {
+			ebook: {
+				fileId: "file-1",
+				locator: "epubcfi(/6/3,/2,/4)",
+				fraction: 0.4,
+				chapter: "Two",
+				clientId: "phone",
+				updatedAt: "2026-01-02T00:00:00Z",
+			},
+			finishes: 0,
+		};
+		renderApp("/books/book-1");
+		await person.click(
+			await screen.findByRole("link", { name: "Read Persuasion.epub" }),
+		);
+		expect(await screen.findByText("40%")).toBeInTheDocument();
+		await new Promise((resolve) => setTimeout(resolve, 900));
+		expect(saves()).toHaveLength(0);
+
+		await person.click(screen.getByRole("button", { name: "Page right" }));
+		await waitFor(() => expect(saves()).toHaveLength(1));
+		expect(saves()[0]).toMatchObject({ locator: "epubcfi(/6/5)" });
+	});
+
 	it("opens a place KOReader saved by how far into the book it is", async () => {
 		withBook("epub", "Persuasion.epub");
 		server.progress["book-1"] = {
@@ -6296,6 +6398,70 @@ describe("fixing EPUBs for e-readers", () => {
 				"One chapter file holds 1.3 MB, which an e-reader lays out at once",
 			),
 		).toBeInTheDocument();
+	});
+
+	it("converts a Kindle file to an EPUB from the book's page", async () => {
+		const person = userEvent.setup();
+		const kindle = {
+			id: "tower-kindle",
+			kind: "ebook" as const,
+			format: "azw3",
+			name: "Schwalbenturm.azw3",
+			size: 900_000,
+			missing: false,
+			drm: false,
+			extractState: "done" as const,
+		};
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", { files: [kindle] });
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		await person.click(
+			await files.findByRole("button", {
+				name: "Convert Schwalbenturm.azw3 to an EPUB",
+			}),
+		);
+		expect(server.conversions).toEqual(["tower-kindle"]);
+		expect(
+			await files.findByRole("button", {
+				name: "Move Schwalbenturm.epub to the trash",
+			}),
+		).toBeInTheDocument();
+		expect(
+			files.queryByRole("button", {
+				name: "Convert Schwalbenturm.epub to an EPUB",
+			}),
+		).not.toBeInTheDocument();
+	});
+
+	it("offers no conversion to a reader or for a protected Kindle file", async () => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Der Schwalbenturm", {
+				files: [
+					{
+						id: "k1",
+						kind: "ebook" as const,
+						format: "mobi",
+						name: "Turm.mobi",
+						size: 1000,
+						missing: false,
+						drm: false,
+						extractState: "done" as const,
+					},
+				],
+			});
+		renderApp("/books/book-1");
+		const files = within(await screen.findByRole("region", { name: "Files" }));
+		await files.findByText("Turm.mobi");
+		expect(
+			files.queryByRole("button", { name: /^Convert / }),
+		).not.toBeInTheDocument();
 	});
 
 	it("offers to shrink the fonts to the characters the book uses beside removing them", async () => {
@@ -7983,6 +8149,13 @@ describe("sending to an e-reader", () => {
 			persuasion.getByText(/^On the e-reader since .*, sent fixed$/),
 		).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
+		const kepub = screen.getByRole("checkbox", {
+			name: "Send KEPUBs to this Kobo reader",
+		});
+		expect(kepub).not.toBeChecked();
+		await person.click(kepub);
+		await waitFor(() => expect(kepub).toBeChecked());
+		expect(server.devices[0]?.kepub).toBe(true);
 		expect(
 			within(list.getByRole("listitem", { name: "Emma" })).getByText(
 				/^Announced to the reader/,

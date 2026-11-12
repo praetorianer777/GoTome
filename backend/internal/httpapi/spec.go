@@ -105,7 +105,7 @@ func Spec() *openapi.Document {
 		catalog.RoleAuthor, catalog.RoleNarrator, catalog.RoleTranslator, catalog.RoleEditor, catalog.RoleIllustrator,
 	}}
 	b.FieldOverrides["FieldState.source"] = &openapi.Schema{Type: "string", Enum: []string{
-		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider,
+		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider, catalog.ProvenanceCalibre,
 	}}
 	b.FieldOverrides["FieldSuggestion.reason"] = &openapi.Schema{Type: "string", Enum: metadata.Reasons}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{

@@ -9,6 +9,42 @@ import (
 	"context"
 )
 
+// iteratorForAddCalibreImportBooks implements pgx.CopyFromSource.
+type iteratorForAddCalibreImportBooks struct {
+	rows                 []AddCalibreImportBooksParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForAddCalibreImportBooks) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForAddCalibreImportBooks) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].ImportID,
+		r.rows[0].CalibreID,
+		r.rows[0].Title,
+		r.rows[0].Found,
+		r.rows[0].Missing,
+	}, nil
+}
+
+func (r iteratorForAddCalibreImportBooks) Err() error {
+	return nil
+}
+
+func (q *Queries) AddCalibreImportBooks(ctx context.Context, arg []AddCalibreImportBooksParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"calibre_import_books"}, []string{"import_id", "calibre_id", "title", "found", "missing"}, &iteratorForAddCalibreImportBooks{rows: arg})
+}
+
 // iteratorForInsertBookChunks implements pgx.CopyFromSource.
 type iteratorForInsertBookChunks struct {
 	rows                 []InsertBookChunksParams

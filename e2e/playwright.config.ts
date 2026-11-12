@@ -73,6 +73,13 @@ export default defineConfig({
 		{
 			name: "webkit",
 			dependencies: ["first-run"],
+			// WebKit here stops sending the session cookie, for good, once a
+			// navigation aborts the page's requests in flight: a trace shows
+			// every request with it until a reload, and every one after without
+			// it, with no answer having cleared it (#516). Its tests land on the
+			// sign-in page at random, one in most runs; a second try in a new
+			// context passes, and the report marks it flaky.
+			retries: process.env.CI ? 1 : 0,
 			use: {
 				...devices["Desktop Safari"],
 				// Without a GPU, WebKit rasterises through Mesa's software GL,

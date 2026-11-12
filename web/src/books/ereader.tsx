@@ -72,6 +72,26 @@ export function useFixFile() {
 	});
 }
 
+/**
+ * Writes an EPUB from a MOBI, AZW or AZW3 file as a new file of the same
+ * book; the original stays.
+ */
+export function useConvertFile() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (id: string) =>
+			(
+				await api.POST("/files/{fileId}/convert", {
+					params: { path: { fileId: id } },
+				})
+			).data,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["book"] });
+			queryClient.invalidateQueries({ queryKey: ["books"] });
+		},
+	});
+}
+
 const fixButton =
 	"ml-2 rounded-md border border-amber-400 px-2 py-0.5 text-xs text-amber-950 hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/40";
 

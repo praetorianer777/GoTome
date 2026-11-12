@@ -311,6 +311,11 @@ func (s *Server) routes() []Route {
 			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,
 		},
 		{
+			Method: http.MethodPatch, Path: "/auth/devices/{deviceId}", ID: "updateOwnDevice",
+			Summary: "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs", Tag: "auth",
+			Request: updateDeviceRequest{}, Response: deviceView{}, Permission: auth.SignedIn, Handler: s.updateOwnDevice,
+		},
+		{
 			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
 			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,
@@ -459,6 +464,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPost, Path: "/files/{fileId}/fix", ID: "fixFile",
 			Summary: "Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash", Tag: "files",
 			Request: fixRequest{}, Response: fixResult{}, Permission: auth.MetadataEdit, Handler: s.fixFile,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/convert", ID: "convertFile",
+			Summary: "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays", Tag: "files",
+			Response: convertResult{}, Status: http.StatusCreated, Permission: auth.MetadataEdit, Handler: s.convertFile,
 		},
 		{
 			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
@@ -936,9 +946,31 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.startImport,
 		},
 		{
+			Method: http.MethodPost, Path: "/calibre/imports", ID: "createCalibreImport",
+			Summary: "Read a Calibre library's metadata.db and preview what importing it would do", Tag: "libraries",
+			Request: calibreRequest{}, Response: calibreImport{}, Status: http.StatusCreated,
+			Permission: auth.StorageManage, Handler: s.createCalibreImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/calibre/imports/{importId}", ID: "getCalibreImport",
+			Summary: "An import of a Calibre library: its preview, then what it came to", Tag: "libraries",
+			Response: calibreImport{}, Reads: ReadsLibraries, Permission: auth.StorageManage, Handler: s.getCalibreImport,
+		},
+		{
+			Method: http.MethodPost, Path: "/calibre/imports/{importId}/start", ID: "startCalibreImport",
+			Summary: "Import a previewed Calibre library; a job describes the books one at a time", Tag: "libraries",
+			Request: calibreStart{}, Response: calibreImport{}, Status: http.StatusAccepted,
+			Permission: auth.StorageManage, Handler: s.startCalibreImport,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
 			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.getProgress,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/continuation", ID: "getContinuation",
+			Summary: "Where the caller could go on in the other medium, a text or its audiobook, when that is further along", Tag: "books",
+			Response: continuation{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getContinuation,
 		},
 		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",

@@ -20,6 +20,12 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+      # A small Calibre library, for previewing its import (written by
+      # calibre's TestWriteTheBrowserFixture).
+      - ../e2e/fixtures/calibre:/fixtures/calibre-chromium:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-firefox:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-webkit:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-phone:ro
       # Two copies of one book, for keeping one of them: once read-only, and
       # once as a folder inside one GOtome may write to (the tmpfs below)
       # whose trash it may not, as when the folder belongs to another user.

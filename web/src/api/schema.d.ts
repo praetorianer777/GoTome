@@ -122,7 +122,8 @@ export interface paths {
         delete: operations["deleteOwnDevice"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs */
+        patch: operations["updateOwnDevice"];
         trace?: never;
     };
     "/auth/identities": {
@@ -569,6 +570,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/continuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the caller could go on in the other medium, a text or its audiobook, when that is further along */
+        get: operations["getContinuation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/cover": {
         parameters: {
             query?: never;
@@ -785,6 +803,57 @@ export interface paths {
         get: operations["getBulk"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a Calibre library's metadata.db and preview what importing it would do */
+        post: operations["createCalibreImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An import of a Calibre library: its preview, then what it came to */
+        get: operations["getCalibreImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import a previewed Calibre library; a job describes the books one at a time */
+        post: operations["startCalibreImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1446,6 +1515,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays */
+        post: operations["convertFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/download": {
         parameters: {
             query?: never;
@@ -1642,6 +1728,23 @@ export interface paths {
         };
         /** A book's EPUB for a Kobo reader; the whole of it marks the book delivered */
         get: operations["koboDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/download/{fileId}/kepub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered */
+        get: operations["koboDownloadKepub"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3626,6 +3729,57 @@ export interface components {
             right: number;
             to: number;
         };
+        CalibreColumn: {
+            books: number;
+            choices: string[];
+            datatype: string;
+            label: string;
+            name: string;
+        };
+        CalibreImport: {
+            books: number;
+            choices: {
+                [key: string]: string;
+            };
+            columns: components["schemas"]["CalibreColumn"][];
+            covers: number;
+            /** Format: date-time */
+            createdAt: string;
+            formats: {
+                [key: string]: number;
+            };
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            library: string;
+            missingFiles: number;
+            outcomes: {
+                [key: string]: number;
+            };
+            problems: components["schemas"]["CalibreProblem"][];
+            rated: number;
+            ratings: boolean;
+            ready: number;
+            series: number;
+            skipped: number;
+            state: string;
+            tags: number;
+        };
+        CalibreProblem: {
+            calibreId: number;
+            message: string;
+            title: string;
+        };
+        CalibreRequest: {
+            /** Format: uuid */
+            library: string;
+        };
+        CalibreStart: {
+            columns?: {
+                [key: string]: string;
+            };
+            ratings?: boolean;
+        };
         CandidateList: {
             candidates: components["schemas"]["CandidateView"][];
             failures: components["schemas"]["ProviderFailure"][];
@@ -3812,11 +3966,34 @@ export interface components {
             /** @enum {string} */
             visibility?: "private" | "shared";
         };
+        Continuation: {
+            audio?: components["schemas"]["ContinueOffer"];
+            ebook?: components["schemas"]["ContinueOffer"];
+        };
+        ContinueOffer: {
+            chapter?: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction: number;
+            positionMs?: number;
+            refined: boolean;
+        };
         Contributor: {
             key?: string;
             name: string;
             /** @enum {string} */
             role: "author" | "narrator" | "translator" | "editor" | "illustrator";
+        };
+        ConvertResult: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId: string;
+            images: number;
+            linksDropped: number;
+            name: string;
+            sections: number;
+            tocEntries: number;
         };
         Count: {
             bytes?: number;
@@ -4046,6 +4223,7 @@ export interface components {
             createdAt: string;
             /** Format: uuid */
             id: string;
+            kepub: boolean;
             /** Format: date-time */
             lastUsedAt?: string;
             name: string;
@@ -4195,7 +4373,7 @@ export interface components {
             detail?: string;
             locked: boolean;
             /** @enum {string} */
-            source?: "file" | "filename" | "manual" | "provider";
+            source?: "file" | "filename" | "manual" | "provider" | "calibre";
         };
         FieldSuggestion: {
             /** @enum {string} */
@@ -5223,6 +5401,9 @@ export interface components {
             /** @enum {string} */
             role?: "admin" | "editor" | "reader";
         };
+        UpdateDeviceRequest: {
+            kepub: boolean;
+        };
         UpdateLibraryRequest: {
             fulltext?: boolean;
             joinFormats?: boolean;
@@ -5642,6 +5823,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateOwnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceView"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -6555,6 +6771,37 @@ export interface operations {
             };
         };
     };
+    getContinuation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Continuation"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     putBookCover: {
         parameters: {
             query?: never;
@@ -7006,6 +7253,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreStart"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
                 };
             };
             /** @description The request failed. */
@@ -8532,6 +8878,37 @@ export interface operations {
             };
         };
     };
+    convertFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     downloadFile: {
         parameters: {
             query?: never;
@@ -8884,6 +9261,38 @@ export interface operations {
         };
     };
     koboDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/epub+zip": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboDownloadKepub: {
         parameters: {
             query?: never;
             header?: never;

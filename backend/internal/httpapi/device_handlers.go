@@ -19,6 +19,9 @@ type deviceView struct {
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
 	// CanUpload is whether the device's token may upload books.
 	CanUpload bool `json:"canUpload"`
+	// Kepub is whether a Kobo reader is sent KEPUBs made from the EPUBs of
+	// its books, which it reads with better statistics and page turns.
+	Kepub bool `json:"kepub"`
 }
 
 type deviceList struct {
@@ -44,7 +47,7 @@ type createdDevice struct {
 }
 
 func viewOf(d auth.Device) deviceView {
-	return deviceView{ID: d.ID, Name: d.Name, CreatedAt: d.CreatedAt, LastUsedAt: d.LastUsedAt, CanUpload: d.CanUpload}
+	return deviceView{ID: d.ID, Name: d.Name, CreatedAt: d.CreatedAt, LastUsedAt: d.LastUsedAt, CanUpload: d.CanUpload, Kepub: d.Kepub}
 }
 
 func (s *Server) listOwnDevices(w http.ResponseWriter, r *http.Request) error {
@@ -75,6 +78,40 @@ func (s *Server) createOwnDevice(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, r, http.StatusCreated, createdDevice{Device: viewOf(device), Token: token, Catalog: withBase(r, opdsPath), Addresses: append([]string{}, s.PublicURLs...)})
 	return nil
+}
+
+type updateDeviceRequest struct {
+	// Kepub switches the KEPUBs for a Kobo reader on or off.
+	Kepub bool `json:"kepub"`
+}
+
+func (s *Server) updateOwnDevice(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "deviceId", "device")
+	if err != nil {
+		return err
+	}
+	var req updateDeviceRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	err = s.Auth.SetDeviceKepub(r.Context(), UserFrom(r.Context()).ID, id, req.Kepub)
+	if errors.Is(err, auth.ErrNoDevice) {
+		return ErrNotFound("There is no such device.")
+	}
+	if err != nil {
+		return err
+	}
+	devices, err := s.Auth.Devices(r.Context(), UserFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	for _, d := range devices {
+		if d.ID == id {
+			writeJSON(w, r, http.StatusOK, viewOf(d))
+			return nil
+		}
+	}
+	return ErrNotFound("There is no such device.")
 }
 
 func (s *Server) deleteOwnDevice(w http.ResponseWriter, r *http.Request) error {

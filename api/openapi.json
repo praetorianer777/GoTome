@@ -427,6 +427,61 @@
           }
         ],
         "x-permission": "signed-in"
+      },
+      "patch": {
+        "operationId": "updateOwnDevice",
+        "summary": "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "x-permission": "signed-in"
       }
     },
     "/auth/identities": {
@@ -1820,6 +1875,56 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/continuation": {
+      "get": {
+        "operationId": "getContinuation",
+        "summary": "Where the caller could go on in the other medium, a text or its audiobook, when that is further along",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Continuation"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/cover": {
       "delete": {
         "operationId": "deleteBookCover",
@@ -2608,6 +2713,166 @@
           }
         ],
         "x-permission": "metadata:edit"
+      }
+    },
+    "/calibre/imports": {
+      "post": {
+        "operationId": "createCalibreImport",
+        "summary": "Read a Calibre library's metadata.db and preview what importing it would do",
+        "tags": [
+          "libraries"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
+    "/calibre/imports/{importId}": {
+      "get": {
+        "operationId": "getCalibreImport",
+        "summary": "An import of a Calibre library: its preview, then what it came to",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
+    "/calibre/imports/{importId}/start": {
+      "post": {
+        "operationId": "startCalibreImport",
+        "summary": "Import a previewed Calibre library; a job describes the books one at a time",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibreStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibreImport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
       }
     },
     "/cleanup": {
@@ -5035,6 +5300,56 @@
         "x-permission": "storage:manage"
       }
     },
+    "/files/{fileId}/convert": {
+      "post": {
+        "operationId": "convertFile",
+        "summary": "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays",
+        "tags": [
+          "files"
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "metadata:edit"
+      }
+    },
     "/files/{fileId}/download": {
       "get": {
         "operationId": "downloadFile",
@@ -5618,6 +5933,65 @@
       "get": {
         "operationId": "koboDownload",
         "summary": "A book's EPUB for a Kobo reader; the whole of it marks the book delivered",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/epub+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/download/{fileId}/kepub": {
+      "get": {
+        "operationId": "koboDownloadKepub",
+        "summary": "A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered",
         "tags": [
           "kobo"
         ],
@@ -12472,6 +12846,178 @@
           "found"
         ]
       },
+      "CalibreColumn": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "datatype": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "name",
+          "datatype",
+          "books",
+          "choices"
+        ]
+      },
+      "CalibreImport": {
+        "type": "object",
+        "properties": {
+          "books": {
+            "type": "integer"
+          },
+          "choices": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalibreColumn"
+            }
+          },
+          "covers": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "formats": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "missingFiles": {
+            "type": "integer"
+          },
+          "outcomes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalibreProblem"
+            }
+          },
+          "rated": {
+            "type": "integer"
+          },
+          "ratings": {
+            "type": "boolean"
+          },
+          "ready": {
+            "type": "integer"
+          },
+          "series": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "library",
+          "createdAt",
+          "books",
+          "ready",
+          "skipped",
+          "formats",
+          "missingFiles",
+          "covers",
+          "series",
+          "tags",
+          "rated",
+          "columns",
+          "ratings",
+          "choices",
+          "problems",
+          "outcomes"
+        ]
+      },
+      "CalibreProblem": {
+        "type": "object",
+        "properties": {
+          "calibreId": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "calibreId",
+          "title",
+          "message"
+        ]
+      },
+      "CalibreRequest": {
+        "type": "object",
+        "properties": {
+          "library": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "library"
+        ]
+      },
+      "CalibreStart": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ratings": {
+            "type": "boolean"
+          }
+        }
+      },
       "CandidateList": {
         "type": "object",
         "properties": {
@@ -13201,6 +13747,42 @@
           "name"
         ]
       },
+      "Continuation": {
+        "type": "object",
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/ContinueOffer"
+          },
+          "ebook": {
+            "$ref": "#/components/schemas/ContinueOffer"
+          }
+        }
+      },
+      "ContinueOffer": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "positionMs": {
+            "type": "integer"
+          },
+          "refined": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fraction",
+          "refined"
+        ]
+      },
       "Contributor": {
         "type": "object",
         "properties": {
@@ -13224,6 +13806,43 @@
         "required": [
           "name",
           "role"
+        ]
+      },
+      "ConvertResult": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "images": {
+            "type": "integer"
+          },
+          "linksDropped": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "integer"
+          },
+          "tocEntries": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fileId",
+          "bookId",
+          "name",
+          "sections",
+          "images",
+          "tocEntries",
+          "linksDropped"
         ]
       },
       "Count": {
@@ -14032,6 +14651,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "kepub": {
+            "type": "boolean"
+          },
           "lastUsedAt": {
             "type": "string",
             "format": "date-time"
@@ -14044,7 +14666,8 @@
           "id",
           "name",
           "createdAt",
-          "canUpload"
+          "canUpload",
+          "kepub"
         ]
       },
       "Disk": {
@@ -14631,7 +15254,8 @@
               "file",
               "filename",
               "manual",
-              "provider"
+              "provider",
+              "calibre"
             ]
           }
         },
@@ -18450,6 +19074,17 @@
             ]
           }
         }
+      },
+      "UpdateDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "kepub": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kepub"
+        ]
       },
       "UpdateLibraryRequest": {
         "type": "object",
