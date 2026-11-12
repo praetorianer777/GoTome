@@ -444,9 +444,8 @@ func reads(path string) error {
 }
 
 // Trim removes the copies unused for MaxAgeDays and, of the rest, the least
-// recently used until the copies fit in MaxBytes, and those of files no
-// library holds any more; the notes of copies that
-// were not made, once old; and files in the cache that no row names. An
+// recently used until the copies fit in MaxBytes, and the KEPUBs of files
+// no library holds any more; the notes of copies that were not made, once old; and files in the cache that no row names. An
 // evicted copy keeps its hashes.
 func (s *Service) Trim(ctx context.Context) error {
 	q := sqlc.New(s.pool)

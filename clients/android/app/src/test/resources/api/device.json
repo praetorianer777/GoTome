@@ -4,7 +4,8 @@
     "name": "Tolino",
     "createdAt": "2026-10-11T12:00:00Z",
     "lastUsedAt": "2026-10-11T12:00:00Z",
-    "canUpload": false
+    "canUpload": false,
+    "kepub": false
   },
   "username": "steve",
   "upload": {

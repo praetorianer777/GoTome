@@ -77,9 +77,10 @@ ON CONFLICT (device_id, book_id) DO UPDATE SET fixed = EXCLUDED.fixed, sent_at =
 SELECT sha256 FROM book_files WHERE id = $1;
 
 -- name: ListOrphanCopies :many
--- The ready copies of files that no file in a library has any more: the
--- file changed, was purged, or lies in the trash.
+-- The ready KEPUBs of files that no file in a library has any more: the
+-- file changed, was purged, or lies in the trash. Fixed copies stay for the
+-- devices that hold them until they are unused.
 SELECT c.source_sha256, c.kind, c.fix_version
 FROM device_copies c
-WHERE c.state = 'ready'
+WHERE c.state = 'ready' AND c.kind = 'kepub'
   AND NOT EXISTS (SELECT 1 FROM book_files f WHERE f.sha256 = c.source_sha256 AND f.trashed_at IS NULL);
