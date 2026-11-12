@@ -10,6 +10,21 @@ export async function signIn(page: Page, credentials: { username: string; passwo
 	await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
+/**
+ * Goes to a page of a test that is signed in. WebKit under load now and
+ * then loses the context's session cookie without the server ending the
+ * session (#511: a poll of the duplicates page found the sign-in page for
+ * its last 35 seconds); the page then signs in again and goes on.
+ */
+export async function gotoSignedIn(page: Page, path: string): Promise<void> {
+	await page.goto(path);
+	if (await page.getByRole("heading", { name: "Sign in", level: 1 }).isVisible()) {
+		await signIn(page);
+		await expect(page.getByRole("heading", { name: "Sign in", level: 1 })).toBeHidden();
+		await page.goto(path);
+	}
+}
+
 /** Opens the app signed in, ending on the library. */
 export async function openSignedIn(page: Page): Promise<void> {
 	await page.goto("/");
