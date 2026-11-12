@@ -1255,6 +1255,7 @@ export const de: Record<MessageKey, string> = {
 	"devices.name": "Name des Geräts",
 	"devices.add": "Gerät hinzufügen",
 	"devices.created": "{name} ist hinzugefügt. Diese Angaben in seinen Katalogeinstellungen eintragen:",
+	"devices.addresses": "Serveradressen, in dieser Reihenfolge versucht",
 	"devices.catalog": "Katalogadresse",
 	"devices.username": "Benutzername",
 	"devices.token": "Passwort (Token)",

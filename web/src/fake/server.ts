@@ -2541,7 +2541,7 @@ export class FakeServer {
 			};
 			this.devices.push(device);
 			return Response.json(
-				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds" },
+				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds", addresses: ["http://192.168.1.5:8080", "https://books.example.org"] },
 				{ status: 201 },
 			);
 		}

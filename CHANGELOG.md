@@ -16,6 +16,11 @@ What changes for someone who runs or uses GOtome. The format follows
   Libraries page, with how many of the library's books are in the index; off,
   its text is still read for similar books and duplicates but not indexed,
   and the search page names the libraries it did not look in.
+- A GOtome that is reached at two addresses, one at home and one on the road,
+  can name them in `GOTOME_PUBLIC_URLS`. The Tolino app learns them from GOtome
+  and the KOReader plugin download carries them; each tries them in order with
+  a short timeout, the one that worked last first. The profile shows them when
+  a device is added.
 - The overview splits the books with e-reader findings by kind, each linking to
   its own list. A list filtered by e-reader findings says so above the books,
   with a button to remove it, and marks each book that has findings, naming

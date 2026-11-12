@@ -3,6 +3,7 @@
 package test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	t.Parallel()
 	a := newApp(t)
+	a.server.PublicURLs = []string{"http://192.168.1.5:8080", "https://books.example.org"}
 	admin, _ := a.signedIn("admin", "admin")
 	reader, readerID := a.signedIn("reader", "reader")
 	stranger, _ := a.signedIn("stranger", "reader")
@@ -63,6 +65,12 @@ func TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen(t *testing.T) {
 	status, mine, _ := a.call(device, http.MethodGet, "/device", nil)
 	if status != 200 || mine["username"] != "reader" || mine["device"].(map[string]any)["id"] != deviceID {
 		t.Errorf("the device itself: %d %v", status, mine)
+	}
+	if got := fmt.Sprint(mine["addresses"]); got != "[http://192.168.1.5:8080 https://books.example.org]" {
+		t.Errorf("the addresses the device is told: %s", got)
+	}
+	if got := fmt.Sprint(made["addresses"]); got != "[http://192.168.1.5:8080 https://books.example.org]" {
+		t.Errorf("the addresses a new device is shown: %s", got)
 	}
 	if status, out, _ := a.call(device, http.MethodGet, "/device/books", nil); status != 200 ||
 		len(out["books"].([]any)) != 1 || out["books"].([]any)[0].(map[string]any)["id"] != book {

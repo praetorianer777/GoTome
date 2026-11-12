@@ -14,6 +14,16 @@ class Prefs(context: Context) {
         get() = p.getString("server", "")!!
         set(value) = p.edit().putString("server", value.trim().trimEnd('/')).apply()
 
+    /** The other addresses GOtome named for itself (`GET /device`), tried after [server]. */
+    var addresses: List<String>
+        get() = Addresses.split(p.getString("addresses", "")!!)
+        set(value) = p.edit().putString("addresses", Addresses.join(value)).apply()
+
+    /** The address that answered last, tried first. */
+    var lastGood: String?
+        get() = p.getString("lastGood", null)
+        set(value) = p.edit().putString("lastGood", value).apply()
+
     /** The request to be added that waits for its person, kept while the app is closed. */
     var pairing: Pairing?
         get() {

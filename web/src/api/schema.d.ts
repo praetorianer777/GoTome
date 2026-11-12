@@ -3769,6 +3769,7 @@ export interface components {
             token: string;
         };
         CreatedDevice: {
+            addresses: string[];
             catalog: string;
             device: components["schemas"]["DeviceView"];
             token: string;
@@ -5049,6 +5050,7 @@ export interface components {
             files: number;
         };
         ThisDevice: {
+            addresses: string[];
             device: components["schemas"]["DeviceView"];
             upload: components["schemas"]["DeviceUpload"];
             username: string;

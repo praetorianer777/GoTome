@@ -25,7 +25,7 @@ data class BookDetail(
     val files: List<BookFile>,
 )
 
-data class ThisDevice(val name: String, val username: String)
+data class ThisDevice(val name: String, val username: String, val addresses: List<String> = emptyList())
 
 /** A request to be added to an account: what the app polls with and the code it shows. */
 data class Pairing(val server: String, val id: String, val secret: String, val code: String)
@@ -111,7 +111,9 @@ object Json {
 
     fun thisDevice(body: String): ThisDevice {
         val o = JSONObject(body)
-        return ThisDevice(o.getJSONObject("device").getString("name"), o.getString("username"))
+        val named = o.optJSONArray("addresses")
+        val addresses = (0 until (named?.length() ?: 0)).mapNotNull { Addresses.clean(named!!.optString(it)) }
+        return ThisDevice(o.getJSONObject("device").getString("name"), o.getString("username"), addresses)
     }
 
     fun deviceRequest(username: String, deviceName: String): String =

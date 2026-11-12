@@ -2544,6 +2544,12 @@ describe("profile", () => {
 		const created = await devices.findByRole("status");
 		expect(created).toHaveTextContent("Tolino is added.");
 		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);
+		expect(created).toHaveTextContent(
+			"Server addresses, tried in this order",
+		);
+		expect(created).toHaveTextContent(
+			"http://192.168.1.5:8080, https://books.example.org",
+		);
 		expect(created).toHaveTextContent("Rita");
 		expect(created).toHaveTextContent("abcd-efgh-ijkm-npqr-stuv");
 		expect(created).toHaveTextContent(

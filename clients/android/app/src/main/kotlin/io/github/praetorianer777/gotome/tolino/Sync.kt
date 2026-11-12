@@ -21,6 +21,7 @@ class Sync(private val context: Context) {
         // Deleted in the Tolino library, it would leave the store without its way in.
         runCatching { LauncherBook.ensure(context) }
         try {
+            runCatching { api.learnAddresses() }.onFailure { Log.w(TAG, "asking for GOtome's addresses failed", it) }
             progress(context.getString(R.string.sending_progress))
             sendProgress()
             deliverQueue(progress)
