@@ -33,12 +33,19 @@ SET name       = COALESCE(sqlc.narg(name), name),
     writable   = COALESCE(sqlc.narg(writable), writable),
     join_formats = COALESCE(sqlc.narg(join_formats), join_formats),
     watch      = COALESCE(sqlc.narg(watch), watch),
+    fulltext   = COALESCE(sqlc.narg(fulltext), fulltext),
     -- Whoever sets it has just seen the folder written to, or turned it off.
     unwritable_since  = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_since END,
     unwritable_reason = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: LockLibraryForUpdate :one
+-- Waits for the writers that hold the library (HoldLibrary), and keeps new
+-- ones off until the transaction ends; returns whether it is searched by
+-- text now.
+SELECT fulltext FROM libraries WHERE id = $1 FOR UPDATE;
 
 -- name: MarkLibraryUnwritable :one
 -- Only the first time: the name comes back only when the library was not

@@ -64,7 +64,11 @@ type Route struct {
 	// Keys lets an API key reach a route that declares SignedIn. Routes with
 	// any other permission are reached through the key's scopes; the others
 	// that concern the caller's account stay closed to keys.
-	Keys    bool
+	Keys bool
+	// Stable names the versioned subset of the API a route belongs to, such
+	// as "audio/1". Its shape then changes only with a new version
+	// (TestTheStableSubsetKeepsItsShape).
+	Stable  string
 	Handler HandlerFunc
 }
 
@@ -518,7 +522,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
-			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listBooks,
+			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.listBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/authors", ID: "listAuthors",
@@ -538,7 +542,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/series/{seriesKey}", ID: "getSeries",
 			Summary: "A series: how far the caller has read it, what is missing and what the sources list of it", Tag: "books",
-			Response: seriesDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getSeries,
+			Response: seriesDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getSeries,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
@@ -769,7 +773,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/audio", ID: "getAudio",
 			Summary: "A book's audio as one recording: its parts in order and the chapters across them", Tag: "books",
-			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAudio,
+			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getAudio,
 		},
 		{
 			Method: http.MethodGet, Path: "/search/similar", ID: "searchDescribed",
@@ -899,12 +903,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
-			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Handler: s.getProgress,
+			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.getProgress,
 		},
 		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
 			Summary: "Record where the caller is in a book; medium is ebook or audio", Tag: "books",
-			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Devices: true, Handler: s.putProgress,
+			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.putProgress,
 		},
 		{
 			Method: http.MethodGet, Path: "/collections", ID: "listCollections",
@@ -1053,13 +1057,13 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
 			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
 			Produces: "application/octet-stream", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.downloadFile,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.downloadFile,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
 			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",
 			Produces: "image/jpeg", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.getBookCover,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getBookCover,
 		},
 	}, append(append(s.opdsRoutes(), s.kosyncRoutes()...), s.koboRoutes()...)...)
 }

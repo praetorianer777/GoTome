@@ -31,9 +31,10 @@ umask 077
 # words of the search, what the full-text index is still to get, the
 # duplicate signatures, the vectors (of books and of which files' passages
 # have them), the cache of what metadata sources answered, and the last
-# run of a match measure (a report that is made again by running it). Their tables stay in the dump, empty; restore.sh has the text
+# run of a match measure (a report that is made again by running it), and
+# the notes of the fixed copies made for devices. Their tables stay in the dump, empty; restore.sh has the text
 # read again, which fills them.
-derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups)
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups device_copies)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")
@@ -43,9 +44,10 @@ echo "Copying the database"
 docker compose exec -T db pg_dump -U gotome -d gotome --format=custom "${exclude[@]}" >"$dir/database.dump"
 
 echo "Copying GOtome's files"
-# Not the models, which are downloaded again, nor the full-text index and
-# the passages' vectors, which are made again from the files.
-docker compose exec -T app tar -C /data --exclude=./models --exclude=./search --exclude=./passages -cf - . >"$dir/data.tar"
+# Not the models, which are downloaded again, nor the full-text index, the
+# passages' vectors and the copies made for devices, which are made again
+# from the files.
+docker compose exec -T app tar -C /data --exclude=./models --exclude=./search --exclude=./passages --exclude=./device-copies -cf - . >"$dir/data.tar"
 
 echo "Copying the secret key"
 docker compose exec -T app cat /secrets/secret-key >"$dir/secret-key"

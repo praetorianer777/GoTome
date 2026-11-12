@@ -167,6 +167,7 @@ export const en = {
 	"fulltext.pages": "Pages {from}–{to}",
 	"fulltext.open": "Read from here",
 	"fulltext.more": "More books",
+	"fulltext.notSearched": "Not searched by text, because full-text search is off for them: {names}",
 
 	"user.menu": "Account",
 	"user.signedInAs": "Signed in as {name}",
@@ -1235,6 +1236,7 @@ export const en = {
 	"devices.name": "Name of the device",
 	"devices.add": "Add a device",
 	"devices.created": "{name} is added. Enter these in its catalogue settings:",
+	"devices.addresses": "Server addresses, tried in this order",
 	"devices.catalog": "Catalogue address",
 	"devices.username": "User name",
 	"devices.token": "Password (token)",
@@ -1273,6 +1275,7 @@ export const en = {
 	"deviceBooks.waiting": "Waiting since {date}",
 	"deviceBooks.synced": "Announced to the reader {date}, not downloaded yet",
 	"deviceBooks.delivered": "On the e-reader since {date}",
+	"deviceBooks.deliveredFixed": "On the e-reader since {date}, sent fixed",
 	"deviceBooks.takeOff": "Take off this device",
 	"deviceBooks.takeOffNamed": "Take {title} off this device",
 	"deviceBooks.more": "Show more",
@@ -1291,6 +1294,9 @@ export const en = {
 	"settings.hardcoverToken": "Hardcover API token",
 	"settings.hardcoverToken.hint":
 		"From your Hardcover account settings. Needed to look books up on Hardcover.",
+	"settings.devicesFixOnSend": "Fix e-reader findings in books sent to devices",
+	"settings.devicesFixOnSend.hint":
+		"A book with findings (a chapter too large, big images or fonts, a broken table of contents) is sent to a device as a fixed copy GOtome keeps beside its data. The file in the library is never changed, so this works for read-only folders too.",
 	"settings.updatesCheck": "Check for new releases",
 	"settings.updatesCheck.hint":
 		"Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one. GitHub learns that an instance exists at this address, nothing else. Nothing is downloaded or installed.",
@@ -1367,6 +1373,9 @@ export const en = {
 	"libraries.visibility.shared": "Everybody",
 	"libraries.visibility.private": "Only its members",
 	"libraries.joinFormats": "Make one book of an ebook and its audiobook with the same title and author",
+	"libraries.fulltext": "Search the books' text (full-text search)",
+	"libraries.fulltext.count": "{indexed} of {files} books are in the search index",
+	"libraries.fulltext.off": "Off: the text is still read for similar books and duplicates, but search does not look in it.",
 	"libraries.watch": "Scan this folder by itself soon after files in it change",
 	"libraries.writable": "GOtome may change files here",
 	"libraries.unwritable": "Since {when}, GOtome cannot write to this folder: {reason}. Until a scan finds it writable again, edits made meanwhile stay in GOtome without being written into the files, and nothing is moved to the trash or fixed. A folder mounted with :ro is read-only whatever this library says.",

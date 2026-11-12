@@ -73,8 +73,10 @@ SELECT count(*) AS files, count(f.chunked_at) AS chunked, count(f.indexed_at) AS
                           AND EXISTS (SELECT 1 FROM book_chunks c WHERE c.file_id = f.id)) AS rereading
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
+JOIN libraries l ON l.id = b.library_id
 WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
+  AND (l.fulltext OR $3::uuid IS NOT NULL)
   AND f.missing_at IS NULL AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL AND NOT b.placeholder
 `
@@ -94,7 +96,8 @@ type CountChunkedRow struct {
 
 // How many of the visible books' primary text files, of a library when
 // named, there are, how many of them are chunked, how many the full-text
-// index has been given, and how many wait to be read again while their
+// index has been given (of the libraries searched by text, or of the one
+// named, whether it is or not), and how many wait to be read again while their
 // earlier chunks still answer.
 func (q *Queries) CountChunked(ctx context.Context, arg CountChunkedParams) (CountChunkedRow, error) {
 	row := q.db.QueryRow(ctx, countChunked, arg.Viewer, arg.SeesAll, arg.LibraryID)
@@ -106,6 +109,28 @@ func (q *Queries) CountChunked(ctx context.Context, arg CountChunkedParams) (Cou
 		&i.Rereading,
 	)
 	return i, err
+}
+
+const countUnsearchedLibraries = `-- name: CountUnsearchedLibraries :one
+SELECT count(*) FROM libraries l
+WHERE l.id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND ($3::uuid IS NULL OR l.id = $3::uuid)
+  AND NOT l.fulltext
+`
+
+type CountUnsearchedLibrariesParams struct {
+	Viewer    uuid.UUID
+	SeesAll   bool
+	LibraryID *uuid.UUID
+}
+
+// How many of the visible libraries, or the named one, are left out of
+// full-text search.
+func (q *Queries) CountUnsearchedLibraries(ctx context.Context, arg CountUnsearchedLibrariesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnsearchedLibraries, arg.Viewer, arg.SeesAll, arg.LibraryID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getIndexVersion = `-- name: GetIndexVersion :one

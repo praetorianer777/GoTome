@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 )
 
@@ -85,6 +86,8 @@ type Library struct {
 	JoinFormats bool `json:"joinFormats"`
 	// Watch scans the folder soon after files in it change (#409).
 	Watch bool `json:"watch"`
+	// Fulltext says the library's books are searched by their text (#266).
+	Fulltext bool `json:"fulltext"`
 }
 
 // Member is somebody who may see a private library.
@@ -118,6 +121,8 @@ type Changes struct {
 	JoinFormats *bool
 	// Watch turns the watching of the folder on or off.
 	Watch *bool
+	// Fulltext turns the searching of the library's text on or off.
+	Fulltext *bool
 }
 
 // Service manages libraries.
@@ -268,7 +273,29 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 		}
 	}
 
-	row, err := q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats, Watch: c.Watch})
+	var row sqlc.Library
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if c.Fulltext != nil {
+			was, err := q.LockLibraryForUpdate(ctx, id)
+			if err != nil {
+				return err
+			}
+			if was && !*c.Fulltext {
+				// The index holds no text to take the entries out by book:
+				// the engine deletes them by library.
+				if err := q.AddOutboxLibraryDelete(ctx, id); err != nil {
+					return err
+				}
+				if err := q.ClearLibraryIndexed(ctx, id); err != nil {
+					return err
+				}
+			}
+		}
+		var err error
+		row, err = q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats, Watch: c.Watch, Fulltext: c.Fulltext})
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Library{}, ErrNotFound
 	}
@@ -444,7 +471,7 @@ func fromRow(row sqlc.Library) Library {
 	return Library{
 		ID: row.ID, Name: row.Name, RootPath: row.RootPath, Mode: row.Mode,
 		Writable: row.Writable, Visibility: row.Visibility, OwnerID: row.OwnerID, CreatedAt: row.CreatedAt,
-		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats, Watch: row.Watch,
+		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats, Watch: row.Watch, Fulltext: row.Fulltext,
 	}
 }
 

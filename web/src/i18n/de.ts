@@ -174,6 +174,7 @@ export const de: Record<MessageKey, string> = {
 	"fulltext.pages": "Seiten {from}–{to}",
 	"fulltext.open": "Ab hier lesen",
 	"fulltext.more": "Weitere Bücher",
+	"fulltext.notSearched": "Nicht nach Text durchsucht, da die Volltextsuche dafür aus ist: {names}",
 
 	"user.menu": "Konto",
 	"user.signedInAs": "Angemeldet als {name}",
@@ -1254,6 +1255,7 @@ export const de: Record<MessageKey, string> = {
 	"devices.name": "Name des Geräts",
 	"devices.add": "Gerät hinzufügen",
 	"devices.created": "{name} ist hinzugefügt. Diese Angaben in seinen Katalogeinstellungen eintragen:",
+	"devices.addresses": "Serveradressen, in dieser Reihenfolge versucht",
 	"devices.catalog": "Katalogadresse",
 	"devices.username": "Benutzername",
 	"devices.token": "Passwort (Token)",
@@ -1293,6 +1295,7 @@ export const de: Record<MessageKey, string> = {
 	"deviceBooks.waiting": "Wartet seit {date}",
 	"deviceBooks.synced": "Dem Reader am {date} angekündigt, noch nicht heruntergeladen",
 	"deviceBooks.delivered": "Auf dem E-Reader seit {date}",
+	"deviceBooks.deliveredFixed": "Auf dem E-Reader seit {date}, behoben gesendet",
 	"deviceBooks.takeOff": "Von diesem Gerät nehmen",
 	"deviceBooks.takeOffNamed": "{title} von diesem Gerät nehmen",
 	"deviceBooks.more": "Mehr anzeigen",
@@ -1310,6 +1313,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.hardcoverToken": "Hardcover-API-Token",
 	"settings.hardcoverToken.hint":
 		"Aus den Kontoeinstellungen bei Hardcover. Nötig, um Bücher bei Hardcover nachzuschlagen.",
+	"settings.devicesFixOnSend": "E-Reader-Befunde in an Geräte gesendeten Büchern beheben",
+	"settings.devicesFixOnSend.hint":
+		"Ein Buch mit Befunden (zu großes Kapitel, große Bilder oder Schriften, kaputtes Inhaltsverzeichnis) geht als behobene Kopie an das Gerät, die GOtome neben seinen Daten aufbewahrt. Die Datei in der Bibliothek bleibt unverändert, daher klappt das auch bei schreibgeschützten Ordnern.",
 	"settings.updatesCheck": "Nach neuen Releases suchen",
 	"settings.updatesCheck.hint":
 		"Einmal am Tag fragt GOtome GitHub nach dem neuesten Release und sagt den Administratoren Bescheid, wenn es ein neueres gibt. GitHub erfährt, dass unter dieser Adresse eine Instanz läuft, sonst nichts. Es wird nichts heruntergeladen oder installiert.",
@@ -1385,6 +1391,9 @@ export const de: Record<MessageKey, string> = {
 	"libraries.visibility.shared": "Alle",
 	"libraries.visibility.private": "Nur ihre Mitglieder",
 	"libraries.joinFormats": "Aus E-Book und Hörbuch mit gleichem Titel und Autor ein Buch machen",
+	"libraries.fulltext": "Buchtexte durchsuchen (Volltextsuche)",
+	"libraries.fulltext.count": "{indexed} von {files} Büchern sind im Suchindex",
+	"libraries.fulltext.off": "Aus: Der Text wird weiter für ähnliche Bücher und Duplikate gelesen, aber die Suche schaut nicht hinein.",
 	"libraries.watch": "Diesen Ordner selbst durchsuchen, kurz nachdem sich Dateien darin ändern",
 	"libraries.writable": "GOtome darf hier Dateien ändern",
 	"libraries.unwritable": "Seit {when} kann GOtome nicht in diesen Ordner schreiben: {reason}. Bis beim Durchsuchen festgestellt wird, dass er wieder beschreibbar ist, werden Änderungen in der Zwischenzeit nur in GOtome gespeichert und nicht in die Dateien geschrieben, und nichts wird in den Papierkorb verschoben oder repariert. Ein mit :ro eingebundener Ordner ist schreibgeschützt, was auch immer diese Bibliothek sagt.",

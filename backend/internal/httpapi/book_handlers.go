@@ -584,30 +584,52 @@ var mediaTypes = map[string]string{
 // seek. A file is not a request: it may take hours, and the server's write
 // deadline is lifted for it.
 func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
-	_, err := s.serveFile(w, r)
-	return err
+	book, fixed, err := s.serveFile(w, r)
+	if err != nil {
+		return err
+	}
+	if device := DeviceFrom(r.Context()); device != uuid.Nil && wholeFileSent(w, r) {
+		s.recordSend(r, device, book, fixed)
+	}
+	return nil
 }
 
 // serveFile sends the file the path names, if the caller may see it, and
-// returns the book it belongs to.
-func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, error) {
+// returns the book it belongs to. To a device it sends the fixed copy of an
+// EPUB when one is ready, and says so.
+func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool, error) {
 	id, err := pathID(r, "fileId", "file")
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, false, err
 	}
 	file, f, err := s.Books.OpenFile(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	switch {
 	case errors.Is(err, catalog.ErrNotFound):
-		return uuid.Nil, ErrNotFound("There is no such file.")
+		return uuid.Nil, false, ErrNotFound("There is no such file.")
 	case errors.Is(err, catalog.ErrFileGone):
-		return uuid.Nil, ErrNotFound("The file is no longer in the library's folder.")
+		return uuid.Nil, false, ErrNotFound("The file is no longer in the library's folder.")
 	case err != nil:
-		return uuid.Nil, err
+		return uuid.Nil, false, err
 	}
 	defer f.Close()
-	info, err := f.Stat()
+	served := f
+	sum := file.SHA256
+	fixed := false
+	if device := DeviceFrom(r.Context()); device != uuid.Nil && file.Format == "epub" && s.Copies != nil {
+		ready, err := s.Copies.Ready(r.Context(), file.SHA256)
+		if err != nil {
+			return uuid.Nil, false, err
+		}
+		if ready != nil {
+			if cf, err := os.Open(ready.Path); err == nil {
+				defer cf.Close()
+				served, sum, fixed = cf, ready.SHA256, true
+			}
+		}
+	}
+	info, err := served.Stat()
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, false, err
 	}
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
@@ -615,9 +637,9 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) (uuid.UUID, e
 	h.Set("Content-Type", cmp.Or(mediaTypes[file.Format], "application/octet-stream"))
 	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": file.Name}))
 	h.Set("Cache-Control", "private, no-cache")
-	if len(file.SHA256) > 0 {
-		h.Set("ETag", `"`+hex.EncodeToString(file.SHA256)+`"`)
+	if len(sum) > 0 {
+		h.Set("ETag", `"`+hex.EncodeToString(sum)+`"`)
 	}
-	http.ServeContent(w, r, "", info.ModTime(), f)
-	return file.BookID, nil
+	http.ServeContent(w, r, "", info.ModTime(), served)
+	return file.BookID, fixed, nil
 }

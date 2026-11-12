@@ -76,11 +76,13 @@ func (q *Queries) ListBookDeliveries(ctx context.Context, arg ListBookDeliveries
 }
 
 const listDeviceBooks = `-- name: ListDeviceBooks :many
-SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at
+SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at,
+       (coalesce(sd.fixed, false) AND dl.delivered_at IS NOT NULL)::boolean AS sent_fixed
 FROM deliveries dl
 JOIN devices d ON d.id = dl.device_id
 JOIN books b ON b.id = dl.book_id
 LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
+LEFT JOIN device_sends sd ON sd.device_id = dl.device_id AND sd.book_id = dl.book_id
 WHERE dl.device_id = $1 AND d.user_id = $2::uuid
   AND b.deleted_at IS NULL
   AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
@@ -104,6 +106,7 @@ type ListDeviceBooksRow struct {
 	QueuedAt    time.Time
 	DeliveredAt *time.Time
 	SyncedAt    *time.Time
+	SentFixed   bool
 }
 
 // The books of one of the user's devices that the user still sees, waiting
@@ -131,6 +134,7 @@ func (q *Queries) ListDeviceBooks(ctx context.Context, arg ListDeviceBooksParams
 			&i.QueuedAt,
 			&i.DeliveredAt,
 			&i.SyncedAt,
+			&i.SentFixed,
 		); err != nil {
 			return nil, err
 		}
@@ -211,6 +215,11 @@ WITH hits AS (
         SELECT h.hash, f.book_id, f.id
         FROM unnest($1::bytea[]) AS h(hash)
         JOIN book_files f ON f.original_sha256 = h.hash AND f.trashed_at IS NULL
+        UNION ALL
+        SELECT h.hash, f.book_id, f.id
+        FROM unnest($1::bytea[]) AS h(hash)
+        JOIN device_copies c ON c.sha256 = h.hash
+        JOIN book_files f ON f.sha256 = c.source_sha256 AND f.trashed_at IS NULL
     ) m
     JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
     WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))

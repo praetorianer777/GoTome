@@ -177,7 +177,7 @@ export function textSearchQuery(params: {
 						query: { ...params, limit: TEXT_PAGE_SIZE, offset: pageParam || undefined },
 					},
 				})
-			).data ?? { books: [], more: false },
+			).data ?? { books: [], more: false, notSearched: [] },
 		initialPageParam: 0,
 		getNextPageParam: (last, pages) =>
 			last.more ? pages.length * TEXT_PAGE_SIZE : undefined,

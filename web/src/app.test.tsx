@@ -2544,6 +2544,12 @@ describe("profile", () => {
 		const created = await devices.findByRole("status");
 		expect(created).toHaveTextContent("Tolino is added.");
 		expect(created).toHaveTextContent(`${window.location.origin}/api/v1/opds`);
+		expect(created).toHaveTextContent(
+			"Server addresses, tried in this order",
+		);
+		expect(created).toHaveTextContent(
+			"http://192.168.1.5:8080, https://books.example.org",
+		);
 		expect(created).toHaveTextContent("Rita");
 		expect(created).toHaveTextContent("abcd-efgh-ijkm-npqr-stuv");
 		expect(created).toHaveTextContent(
@@ -7869,6 +7875,7 @@ describe("sending to an e-reader", () => {
 				deviceName: "Kobo",
 				queuedAt: "2026-01-05T08:00:00Z",
 				deliveredAt: "2026-01-06T08:00:00Z",
+				sentFixed: true,
 			},
 			{
 				id: "dl-2",
@@ -7902,7 +7909,9 @@ describe("sending to an e-reader", () => {
 		const persuasion = within(
 			list.getByRole("listitem", { name: "Persuasion" }),
 		);
-		expect(persuasion.getByText(/^On the e-reader since/)).toBeInTheDocument();
+		expect(
+			persuasion.getByText(/^On the e-reader since .*, sent fixed$/),
+		).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
 		expect(
 			within(list.getByRole("listitem", { name: "Emma" })).getByText(

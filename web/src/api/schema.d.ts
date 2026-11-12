@@ -3769,6 +3769,7 @@ export interface components {
             token: string;
         };
         CreatedDevice: {
+            addresses: string[];
             catalog: string;
             device: components["schemas"]["DeviceView"];
             token: string;
@@ -3891,6 +3892,7 @@ export interface components {
             /** Format: date-time */
             queuedAt: string;
             removable: boolean;
+            sentFixed: boolean;
             /** @enum {string} */
             state: "waiting" | "synced" | "delivered";
             /** Format: date-time */
@@ -4162,6 +4164,7 @@ export interface components {
         FullTextResult: {
             books: components["schemas"]["TextBook"][];
             more: boolean;
+            notSearched: components["schemas"]["NamedLibrary"][];
         };
         GenreDecision: {
             /** @enum {string} */
@@ -4237,6 +4240,7 @@ export interface components {
             engine: string;
             files: number;
             indexed: number;
+            notSearched: number;
             rebuilding: boolean;
             rereading: number;
         };
@@ -4363,6 +4367,7 @@ export interface components {
             createdAt: string;
             filesFailed: number;
             filesPending: number;
+            fulltext: boolean;
             /** Format: uuid */
             id: string;
             joinFormats: boolean;
@@ -4491,6 +4496,11 @@ export interface components {
             key: string;
             name: string;
             sort: string;
+        };
+        NamedLibrary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         NamedList: {
             names: components["schemas"]["NamedEntry"][];
@@ -5041,6 +5051,7 @@ export interface components {
             files: number;
         };
         ThisDevice: {
+            addresses: string[];
             device: components["schemas"]["DeviceView"];
             upload: components["schemas"]["DeviceUpload"];
             username: string;
@@ -5120,6 +5131,7 @@ export interface components {
             role?: "admin" | "editor" | "reader";
         };
         UpdateLibraryRequest: {
+            fulltext?: boolean;
             joinFormats?: boolean;
             name?: string;
             visibility?: string;

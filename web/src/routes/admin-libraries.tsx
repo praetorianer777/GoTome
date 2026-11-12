@@ -3,7 +3,7 @@ import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
 import { button, control, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatCount } from "@/lib/format";
 import {
 	type Library,
 	librariesQuery,
@@ -14,6 +14,7 @@ import {
 	useRemoveMember,
 	useUpdateLibrary,
 } from "@/libraries/api";
+import { searchStatusQuery } from "@/jobs/search-index";
 import { ScanStatus } from "@/libraries/scan";
 import { usersQuery } from "@/users/api";
 
@@ -60,6 +61,28 @@ export function AdminLibraries() {
 
 			<CreateLibrary />
 		</div>
+	);
+}
+
+function FulltextStatus({ library }: { library: Library }) {
+	const status = useQuery(searchStatusQuery(library.id));
+	if (!library.fulltext) {
+		return (
+			<p className="text-sm text-slate-600 dark:text-slate-400">
+				{t("libraries.fulltext.off")}
+			</p>
+		);
+	}
+	if (!status.data) {
+		return null;
+	}
+	return (
+		<p className="text-sm text-slate-600 dark:text-slate-400">
+			{t("libraries.fulltext.count", {
+				indexed: formatCount(status.data.indexed, 0),
+				files: formatCount(status.data.files, 0),
+			})}
+		</p>
 	);
 }
 
@@ -128,6 +151,8 @@ function LibraryRow({ library }: { library: Library }) {
 				</p>
 			)}
 
+			<FulltextStatus library={library} />
+
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
 				<label className="flex items-center gap-2">
 					<span>{t("libraries.visibility")}</span>
@@ -173,6 +198,20 @@ function LibraryRow({ library }: { library: Library }) {
 						}
 					/>
 					<span>{t("libraries.watch")}</span>
+				</label>
+				<label className="flex min-h-6 min-w-0 items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.fulltext}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { fulltext: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.fulltext")}</span>
 				</label>
 				{external && (
 					<label className="flex min-h-6 items-center gap-2">

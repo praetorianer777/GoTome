@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
@@ -50,6 +51,7 @@ type background struct {
 	updates     *updates.Service
 	imports     *readimport.Service
 	kindle      *kindle.Service
+	copies      *devicecopy.Service
 	automatic   *autocurate.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
@@ -106,6 +108,8 @@ func (b background) registrations() []registration {
 		worker(&kosync.HashWorker{Service: b.sync}),
 		worker(&kindle.Worker{Service: b.kindle}),
 		worker(&ingest.MeasureWorker{Service: b.scans}),
+		worker(&devicecopy.MakeWorker{Service: b.copies}),
+		worker(&devicecopy.TrimWorker{Service: b.copies}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
 	}
 }
@@ -136,6 +140,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		updates.Periodic(updateCheckInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
+		devicecopy.TrimPeriodic(copyTrimInterval),
 		fulltext.Periodic(outboxInterval),
 		autocurate.Periodic(curationInterval),
 	}

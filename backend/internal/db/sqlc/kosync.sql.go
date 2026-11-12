@@ -12,10 +12,13 @@ import (
 )
 
 const getKoreaderDocument = `-- name: GetKoreaderDocument :one
-SELECT f.id, f.book_id, f.format, f.page_count
+SELECT f.id, f.book_id, f.format, f.page_count,
+       f.koreader_md5 IS DISTINCT FROM $1::text AS via_copy
 FROM book_files f
 JOIN books b ON b.id = f.book_id
-WHERE f.koreader_md5 = $1::text AND f.trashed_at IS NULL
+WHERE (f.koreader_md5 = $1::text
+       OR f.sha256 IN (SELECT c.source_sha256 FROM device_copies c WHERE c.koreader_md5 = $1::text))
+  AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
   AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 ORDER BY f.id DESC
@@ -33,10 +36,13 @@ type GetKoreaderDocumentRow struct {
 	BookID    uuid.UUID
 	Format    string
 	PageCount *int32
+	ViaCopy   bool
 }
 
 // The file KOReader names by the MD5, of a book the viewer sees; of
-// several copies, the newest.
+// several copies, the newest. The MD5 may also be that of the fixed copy
+// sent to a device in place of the file (#501), which is then the file's
+// stand-in; via_copy says so.
 func (q *Queries) GetKoreaderDocument(ctx context.Context, arg GetKoreaderDocumentParams) (GetKoreaderDocumentRow, error) {
 	row := q.db.QueryRow(ctx, getKoreaderDocument, arg.Md5, arg.Viewer, arg.SeesAll)
 	var i GetKoreaderDocumentRow
@@ -45,6 +51,7 @@ func (q *Queries) GetKoreaderDocument(ctx context.Context, arg GetKoreaderDocume
 		&i.BookID,
 		&i.Format,
 		&i.PageCount,
+		&i.ViaCopy,
 	)
 	return i, err
 }

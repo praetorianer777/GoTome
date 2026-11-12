@@ -79,6 +79,9 @@ type Config struct {
 	// TrustedProxies are the reverse proxies whose forwarded client address
 	// and scheme are believed; none believes no forwarded address.
 	TrustedProxies []netip.Prefix
+	// PublicURLs are the addresses clients may reach this server at, such
+	// as one at home and one on the road, without a trailing slash.
+	PublicURLs []string
 	// ModelDir is where embedding models are downloaded to; DataDir/models
 	// unless set.
 	ModelDir string
@@ -184,6 +187,10 @@ func load(getenv func(string) string) (Config, error) {
 	if cfg.TrustedProxies, err = parseProxies(proxies); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_TRUSTED_PROXIES is %q, want addresses or CIDR ranges separated by commas, such as 172.16.0.0/12: %w", proxies, err)
 	}
+	urls := get("GOTOME_PUBLIC_URLS", "")
+	if cfg.PublicURLs, err = ParsePublicURLs(urls); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_PUBLIC_URLS is %q, want full addresses separated by commas, such as http://192.168.1.5:8080,https://books.example.org: %w", urls, err)
+	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
@@ -231,6 +238,36 @@ func NormalizeBasePath(p string) (string, error) {
 		}
 	}
 	return "/" + strings.Join(segments, "/") + "/", nil
+}
+
+// ParsePublicURLs reads absolute http(s) addresses separated by commas or
+// spaces, each a host with an optional port and path and nothing else; the
+// result has no trailing slashes and no address twice.
+func ParsePublicURLs(s string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, field := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		u, err := url.Parse(field)
+		if err != nil {
+			return nil, err
+		}
+		if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+			return nil, fmt.Errorf("%q is not an http or https address with a host", field)
+		}
+		if u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.Contains(field, "?") || strings.Contains(field, "#") {
+			return nil, fmt.Errorf("%q must hold no user name, query or fragment", field)
+		}
+		path, err := NormalizeBasePath(u.Path)
+		if err != nil {
+			return nil, fmt.Errorf("%q: %w", field, err)
+		}
+		addr := u.Scheme + "://" + strings.ToLower(u.Host) + strings.TrimSuffix(path, "/")
+		if !seen[addr] {
+			seen[addr] = true
+			out = append(out, addr)
+		}
+	}
+	return out, nil
 }
 
 // parseProxies reads addresses and CIDR ranges separated by commas or

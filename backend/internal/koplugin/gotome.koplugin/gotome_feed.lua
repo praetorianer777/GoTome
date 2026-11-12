@@ -104,4 +104,45 @@ function M.feed_url(server)
     return base .. "/api/v1/opds/device"
 end
 
+--- The addresses to try, in order: the person's own entry, then the ones
+--- GOtome named, none twice, with the one that worked last put first. Each
+--- may be a string or a list of strings.
+function M.candidates(own, named, last_good)
+    local out, seen = {}, {}
+    local function add(value)
+        if type(value) == "string" then
+            value = { value }
+        end
+        for _i, address in ipairs(type(value) == "table" and value or {}) do
+            local key = address:gsub("/+$", "")
+            if key ~= "" and not seen[key] then
+                seen[key] = true
+                table.insert(out, address)
+            end
+        end
+    end
+    add(own)
+    add(named)
+    local first = type(last_good) == "string" and last_good:gsub("/+$", "") or nil
+    for i, address in ipairs(out) do
+        if i > 1 and address:gsub("/+$", "") == first then
+            table.remove(out, i)
+            table.insert(out, 1, address)
+            break
+        end
+    end
+    return out
+end
+
+--- The first of the addresses that answers, with how many were tried:
+--- reaches(address) says whether the server answered at it at all.
+function M.choose(addresses, reaches)
+    for i, address in ipairs(addresses) do
+        if reaches(address) then
+            return address, i
+        end
+    end
+    return nil, #addresses
+end
+
 return M

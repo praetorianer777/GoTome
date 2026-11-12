@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -51,19 +50,9 @@ type reading struct {
 // filter picks few enough to name; nil books when it has none or picks too
 // many, whose conditions the outer query keeps.
 func where(ctx context.Context, tx pgx.Tx, books *catalog.Service, scope library.Scope, q Query) ([]uuid.UUID, []uuid.UUID, error) {
-	rows, err := tx.Query(ctx, "SELECT visible_library_ids($1, $2)", scope.Viewer, scope.SeesAll)
+	libs, _, err := libraries(ctx, tx, scope, q)
 	if err != nil {
 		return nil, nil, err
-	}
-	libs, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-	if err != nil {
-		return nil, nil, err
-	}
-	if q.LibraryID != nil {
-		if !slices.Contains(libs, *q.LibraryID) {
-			return nil, nil, nil
-		}
-		libs = []uuid.UUID{*q.LibraryID}
 	}
 	if len(libs) == 0 || matchesAll(q.Filter) {
 		return libs, nil, nil
@@ -158,4 +147,38 @@ func distinctBooks(chunks []found) int {
 // book matches.
 func matchesAll(n filter.Node) bool {
 	return n.Field == "" && n.Not == nil && len(n.Any) == 0 && len(n.All) == 0
+}
+
+// Library is a library named in an answer.
+type Library struct {
+	ID   uuid.UUID
+	Name string
+}
+
+// libraries splits the libraries the query looks in, the caller's visible
+// ones or the one it names, into those searched by their text and those
+// left out (#266), by name. Naming one the caller cannot see gives neither.
+func libraries(ctx context.Context, tx pgx.Tx, scope library.Scope, q Query) (searched []uuid.UUID, left []Library, err error) {
+	rows, err := tx.Query(ctx, `
+		SELECT l.id, l.name, l.fulltext FROM libraries l
+		WHERE l.id IN (SELECT * FROM visible_library_ids($1, $2))
+		  AND ($3::uuid IS NULL OR l.id = $3)
+		ORDER BY lower(l.name), l.id`, scope.Viewer, scope.SeesAll, q.LibraryID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var l Library
+		var on bool
+		if err := rows.Scan(&l.ID, &l.Name, &on); err != nil {
+			return nil, nil, err
+		}
+		if on {
+			searched = append(searched, l.ID)
+		} else {
+			left = append(left, l)
+		}
+	}
+	return searched, left, rows.Err()
 }

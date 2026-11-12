@@ -300,6 +300,17 @@ type Device struct {
 	CanUpload   bool
 }
 
+type DeviceCopy struct {
+	SourceSha256 []byte
+	FixVersion   int16
+	State        string
+	Sha256       []byte
+	SizeBytes    *int64
+	KoreaderMd5  *string
+	MadeAt       time.Time
+	LastUsedAt   time.Time
+}
+
 type DeviceRequest struct {
 	ID         uuid.UUID
 	UserID     *uuid.UUID
@@ -311,6 +322,13 @@ type DeviceRequest struct {
 	CreatedAt  time.Time
 	ExpiresAt  time.Time
 	CanUpload  bool
+}
+
+type DeviceSend struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Fixed    bool
+	SentAt   time.Time
 }
 
 type DuplicateEvidence struct {
@@ -375,10 +393,11 @@ type FileSignature struct {
 }
 
 type FulltextOutbox struct {
-	ID        int64
-	Deletes   []int64
-	Docs      []byte
-	CreatedAt time.Time
+	ID              int64
+	Deletes         []int64
+	Docs            []byte
+	CreatedAt       time.Time
+	DeleteLibraries []uuid.UUID
 }
 
 type IndexVersion struct {
@@ -421,6 +440,7 @@ type Library struct {
 	UnwritableReason *string
 	JoinFormats      bool
 	Watch            bool
+	Fulltext         bool
 }
 
 type LibraryMember struct {

@@ -154,6 +154,7 @@ func Spec() *openapi.Document {
 			Responses:   map[string]*openapi.Response{"default": failure},
 		}
 		op.Permission = string(rt.Permission)
+		op.Stable = rt.Stable
 		if rt.Permission != auth.Public {
 			op.Security = []map[string][]string{{sessionScheme: {}}}
 			if rt.keyReaches() {

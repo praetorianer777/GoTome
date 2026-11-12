@@ -46,6 +46,7 @@ compose file passes each on from `.env`.
 | `GOTOME_FORCE_PASSWORD_LOGIN` | `false` | `true` lets everyone sign in with a password even where the setting `auth.passwords` turned passwords off: the way back in when the identity provider is gone. Set it back once you are in. |
 | `GOTOME_TRUSTED_PROXIES` | empty | The reverse proxies in front of GOtome, as addresses or CIDR ranges separated by commas, such as `172.18.0.0/16` or `192.168.1.10`. A request from one of them is taken to come from the address it names last in `X-Forwarded-For` that is not itself a trusted proxy, and over HTTPS when `X-Forwarded-Proto` says so; from anywhere else both headers are ignored. That keeps the limits on failed sign-ins, device requests and single sign-on starts per person rather than one for everyone behind the proxy ([getting-started.md](getting-started.md#a-reverse-proxy-and-https)). Empty trusts no forwarded address, and takes `X-Forwarded-Proto` from anyone, as before. |
 | `GOTOME_BASE_PATH` | `/` | The path GOtome is served under when it shares a host name with other sites, such as `/gotome/` for `https://example.org/gotome/`. Written with or without the slashes at either end; a value with `..` or empty segments, a scheme or a host, or characters other than letters, digits and `-._~` is refused at start. The web app, the API, the OPDS and Kobo addresses, the KOReader plugin's server, the session and sign-in cookies and the single sign-on redirect address all follow it. GOtome expects the prefix in the request path: the proxy passes it on and does not strip it, and a request outside it is answered 404 (only `/healthz` and `/readyz` stay at the root, for the container's health check). Without it nothing changes ([reverse-proxy-sub-path.md](reverse-proxy-sub-path.md)). |
+| `GOTOME_PUBLIC_URLS` | empty | The addresses clients can reach GOtome at, as full `http://` or `https://` addresses separated by commas, such as `http://192.168.1.5:8080,https://books.example.org` (the one at home first, the one on the road after). A path is kept (`https://example.org/gotome`); a user name, query or fragment is refused at start. A device's app asks `GET /device` for them and the KOReader plugin download carries them, so the device learns them once and tries them in order with a short timeout, remembering the one that worked ([koreader.md](koreader.md)). Empty advertises none. |
 | `GOTOME_ENV` | `production` | `production` logs one JSON object per line; `development`, for working on GOtome itself, logs plain text. |
 | `POSTGRES_PASSWORD` | empty | Only for an installation that chose its own database password before `init` existed: `init` then writes that one into the secrets volume instead of a random one. Leave it unset otherwise. |
 
@@ -159,6 +160,12 @@ See [metadata.md](metadata.md#doing-it-automatically). Both are off until you tu
 | Key | On the page | Default | What it does |
 |---|---|---|---|
 | `updates.check` | Check for new releases | `on` | Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one (footer, overview, a notification). GitHub learns that an instance exists at this address and nothing else; nothing is downloaded or installed. `GOTOME_OFFLINE=true` asks nothing whatever this says. |
+
+### Devices
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `devices.fixOnSend` | Fix e-reader findings in books sent to devices | `on` | A book sent to a device whose EPUB has e-reader findings goes out as `epub.Fix` would leave it (the same fixes as "Everything found" on the library page), from a copy GOtome makes in the background beside its data (`device-copies/`) once the book is queued. The library's file is never written, so this also works for read-only folders. A download that finds no copy ready yet sends the file as it lies. Copies are kept up to 4 GB and 90 days unused, and a backup leaves them out ([devices](devices.md)). |
 
 ### Trash
 

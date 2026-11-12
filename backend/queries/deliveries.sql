@@ -40,11 +40,13 @@ WHERE dl.id = $1 AND d.id = dl.device_id AND d.user_id = $2
 -- The books of one of the user's devices that the user still sees, waiting
 -- or delivered, with when a Kobo reader was told of each; the last sent
 -- first, after the cursor.
-SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at
+SELECT dl.id, dl.book_id, dl.queued_at, dl.delivered_at, k.synced_at,
+       (coalesce(sd.fixed, false) AND dl.delivered_at IS NOT NULL)::boolean AS sent_fixed
 FROM deliveries dl
 JOIN devices d ON d.id = dl.device_id
 JOIN books b ON b.id = dl.book_id
 LEFT JOIN kobo_books k ON k.device_id = dl.device_id AND k.book_id = dl.book_id
+LEFT JOIN device_sends sd ON sd.device_id = dl.device_id AND sd.book_id = dl.book_id
 WHERE dl.device_id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
   AND b.deleted_at IS NULL
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
@@ -97,6 +99,11 @@ WITH hits AS (
         SELECT h.hash, f.book_id, f.id
         FROM unnest(sqlc.arg(hashes)::bytea[]) AS h(hash)
         JOIN book_files f ON f.original_sha256 = h.hash AND f.trashed_at IS NULL
+        UNION ALL
+        SELECT h.hash, f.book_id, f.id
+        FROM unnest(sqlc.arg(hashes)::bytea[]) AS h(hash)
+        JOIN device_copies c ON c.sha256 = h.hash
+        JOIN book_files f ON f.sha256 = c.source_sha256 AND f.trashed_at IS NULL
     ) m
     JOIN books b ON b.id = m.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
     WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))

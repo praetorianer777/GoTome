@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
@@ -30,6 +31,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
@@ -119,6 +121,8 @@ type app struct {
 	// text is the app's full-text index, which every search brings up to
 	// date with the outbox first, as the job would shortly after.
 	text *fulltext.Service
+	// copies makes the fixed copies sent to devices.
+	copies *devicecopy.Service
 	// passages embeds and finds the books' passages, while they are on.
 	passages *passages.Service
 	// ready is what /readyz answers from; every component holds until a
@@ -241,6 +245,11 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Resources.DataDir = a.dataDir
 	a.server.Resources.Embedding, a.server.Resources.Server = a.settings.Embedding, a.settings.EmbeddingServer
 	a.server.Deliveries = deliveries.NewService(a.pool)
+	a.copies = devicecopy.NewService(a.pool, a.dataDir, quiet)
+	a.copies.Queue = queue
+	a.copies.Enabled = a.settings.DeviceFixOnSend
+	a.server.Copies = a.copies
+	a.server.Deliveries.OnQueued = func(ctx context.Context, ids []uuid.UUID) { _ = a.copies.Request(ctx, ids) }
 	a.server.Kindle = kindle.NewService(a.pool, a.settings, a.server.Books, quiet)
 	a.server.Kindle.Queue = queue
 	a.server.Pairing = pairing.NewService(a.pool)

@@ -58,6 +58,18 @@ up, without opening the catalogue.
    name and the device's token, and choose the folder books go into
    (KOReader's home folder unless you choose another).
 
+### At home and on the road
+
+If GOtome is reached at two addresses, such as its address on your network
+and the one behind your reverse proxy, name both in `GOTOME_PUBLIC_URLS`
+(`http://192.168.1.5:8080,https://books.example.org`,
+[configuration.md](configuration.md)). The plugin you download then knows
+both, the one you downloaded it from first. When it fetches, it tries the
+address that worked last, then the others in order, and waits four seconds
+at most for each to answer; a server that answers with a refusal counts as
+reached, so a wrong token is told and not tried at the next address. An
+address typed under **Server** is tried first.
+
 **Fetch books sent here** fetches at once; **Fetch when Wi-Fi comes up**
 (on by default) does so every time the device connects. Each book is
 saved under its title, a number added where a file of that name exists,

@@ -38,6 +38,9 @@ type createdDevice struct {
 	Token string `json:"token"`
 	// Catalog is the address of the catalogue for e-readers.
 	Catalog string `json:"catalog"`
+	// Addresses are the server's configured addresses (GOTOME_PUBLIC_URLS),
+	// which the device learns again from GET /device; empty where none are.
+	Addresses []string `json:"addresses"`
 }
 
 func viewOf(d auth.Device) deviceView {
@@ -70,7 +73,7 @@ func (s *Server) createOwnDevice(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, r, http.StatusCreated, createdDevice{Device: viewOf(device), Token: token, Catalog: withBase(r, opdsPath)})
+	writeJSON(w, r, http.StatusCreated, createdDevice{Device: viewOf(device), Token: token, Catalog: withBase(r, opdsPath), Addresses: append([]string{}, s.PublicURLs...)})
 	return nil
 }
 
@@ -94,7 +97,7 @@ func (s *Server) deleteOwnDevice(w http.ResponseWriter, r *http.Request) error {
 // the browser used as its server.
 func (s *Server) getKOReaderPlugin(w http.ResponseWriter, r *http.Request) error {
 	var buf bytes.Buffer
-	if err := koplugin.Zip(&buf, publicBase(r)); err != nil {
+	if err := koplugin.Zip(&buf, publicBase(r), s.PublicURLs); err != nil {
 		return err
 	}
 	h := w.Header()

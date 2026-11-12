@@ -24,8 +24,12 @@ local _ = require("gettext")
 
 local feed = require("gotome_feed")
 
--- The address the plugin was downloaded from, written into it by GOtome.
+-- The addresses of the server, the one the plugin was downloaded from
+-- first, written into it by GOtome.
 local ok_server, downloaded_from = pcall(require, "gotome_server")
+
+-- How long an address may take to answer before the next is tried.
+local PROBE_BLOCK_TIMEOUT, PROBE_TOTAL_TIMEOUT = 4, 8
 
 local GOtome = WidgetContainer:extend{
     name = "gotome",
@@ -40,7 +44,7 @@ end
 function GOtome:setting(key)
     local value = self.settings:readSetting(key)
     if value == nil and key == "server" and ok_server then
-        return downloaded_from
+        return feed.candidates(nil, downloaded_from)[1]
     end
     if value == nil and key == "folder" then
         return G_reader_settings:readSetting("home_dir") or DataStorage:getDataDir()
@@ -60,9 +64,13 @@ end
 
 -- One GET of the server, its body into sink: the HTTP status, or nil and
 -- why not.
-function GOtome:get(url, sink)
+function GOtome:get(url, sink, probe)
     local http = url:match("^https:") and require("ssl.https") or require("socket.http")
-    socketutil:set_timeout(socketutil.LARGE_BLOCK_TIMEOUT, socketutil.LARGE_TOTAL_TIMEOUT)
+    if probe then
+        socketutil:set_timeout(PROBE_BLOCK_TIMEOUT, PROBE_TOTAL_TIMEOUT)
+    else
+        socketutil:set_timeout(socketutil.LARGE_BLOCK_TIMEOUT, socketutil.LARGE_TOTAL_TIMEOUT)
+    end
     local ok, result, code = pcall(http.request, {
         url = url,
         method = "GET",
@@ -82,6 +90,26 @@ function GOtome:get(url, sink)
     return code
 end
 
+--- The address of the server that answers now: the one that worked last
+--- time is tried first, then the others in order. Any answer counts, a
+--- wrong token too, so that it is told rather than another address tried.
+function GOtome:reach()
+    local own = self.settings:readSetting("server")
+    local addresses = feed.candidates(own, ok_server and downloaded_from or nil,
+        self.settings:readSetting("last_good"))
+    local address = feed.choose(addresses, function(candidate)
+        local code = self:get(feed.feed_url(candidate), ltn12.sink.null(), true)
+        return code ~= nil
+    end)
+    if address then
+        if address ~= self.settings:readSetting("last_good") then
+            self:save("last_good", address)
+        end
+        return address
+    end
+    return addresses[1]
+end
+
 local function exists(path)
     return lfs.attributes(path, "mode") ~= nil
 end
@@ -95,7 +123,7 @@ function GOtome:fetch(quiet)
         end
         return
     end
-    local server = self:setting("server")
+    local server = self:reach()
     local body = {}
     local code, err = self:get(feed.feed_url(server), ltn12.sink.table(body))
     if code ~= 200 then

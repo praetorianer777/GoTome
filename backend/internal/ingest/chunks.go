@@ -203,8 +203,16 @@ func chunkSources(sections []Section, c textproc.Chunk) []string {
 }
 
 // indexChunksTx hands the file's chunks, as stored, to the full-text index
-// through its outbox, and records that it has them.
+// through its outbox, and records that it has them; a library that is not
+// searched by text gets nothing (#266).
 func (s *Service) indexChunksTx(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, chunks []textproc.Chunk) error {
+	// Read under the library's hold, so a switch cannot happen between this
+	// and the commit; a library left out keeps indexed_at empty, which is
+	// how turning it on finds the files.
+	searched, err := q.GetLibraryFulltext(ctx, libraryID)
+	if err != nil || !searched {
+		return err
+	}
 	stored, err := q.ListFileChunks(ctx, fileID)
 	if err != nil {
 		return err

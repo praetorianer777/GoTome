@@ -1148,7 +1148,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/bulk": {
@@ -1702,7 +1703,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/candidates": {
@@ -1979,7 +1981,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/deliveries": {
@@ -2363,7 +2366,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "personal:manage"
+        "x-permission": "personal:manage",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/progress/{medium}": {
@@ -2431,7 +2435,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "personal:manage"
+        "x-permission": "personal:manage",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/books/{bookId}/reading": {
@@ -5075,7 +5080,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/files/{fileId}/extraction": {
@@ -9759,7 +9765,8 @@
             "apiKey": []
           }
         ],
-        "x-permission": "library:read"
+        "x-permission": "library:read",
+        "x-gotome-stable": "audio/1"
       }
     },
     "/settings": {
@@ -13029,6 +13036,12 @@
       "CreatedDevice": {
         "type": "object",
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "catalog": {
             "type": "string"
           },
@@ -13042,7 +13055,8 @@
         "required": [
           "device",
           "token",
-          "catalog"
+          "catalog",
+          "addresses"
         ]
       },
       "CurationAction": {
@@ -13452,6 +13466,9 @@
           "removable": {
             "type": "boolean"
           },
+          "sentFixed": {
+            "type": "boolean"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -13470,7 +13487,8 @@
           "deliveryId",
           "state",
           "queuedAt",
-          "removable"
+          "removable",
+          "sentFixed"
         ]
       },
       "DeviceBookList": {
@@ -14534,11 +14552,18 @@
           },
           "more": {
             "type": "boolean"
+          },
+          "notSearched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedLibrary"
+            }
           }
         },
         "required": [
           "books",
-          "more"
+          "more",
+          "notSearched"
         ]
       },
       "GenreDecision": {
@@ -14824,6 +14849,9 @@
           "indexed": {
             "type": "integer"
           },
+          "notSearched": {
+            "type": "integer"
+          },
           "rebuilding": {
             "type": "boolean"
           },
@@ -14836,6 +14864,7 @@
           "indexed",
           "rebuilding",
           "rereading",
+          "notSearched",
           "engine"
         ]
       },
@@ -15279,6 +15308,9 @@
           "filesPending": {
             "type": "integer"
           },
+          "fulltext": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -15326,6 +15358,7 @@
           "writable",
           "joinFormats",
           "watch",
+          "fulltext",
           "visibility",
           "createdAt",
           "filesPending",
@@ -15748,6 +15781,22 @@
           "key",
           "sort",
           "books"
+        ]
+      },
+      "NamedLibrary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "NamedList": {
@@ -17774,6 +17823,12 @@
       "ThisDevice": {
         "type": "object",
         "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "device": {
             "$ref": "#/components/schemas/DeviceView"
           },
@@ -17787,7 +17842,8 @@
         "required": [
           "device",
           "username",
-          "upload"
+          "upload",
+          "addresses"
         ]
       },
       "ThresholdPoint": {
@@ -18052,6 +18108,9 @@
       "UpdateLibraryRequest": {
         "type": "object",
         "properties": {
+          "fulltext": {
+            "type": "boolean"
+          },
           "joinFormats": {
             "type": "boolean"
           },

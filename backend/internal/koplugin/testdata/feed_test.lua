@@ -49,6 +49,32 @@ for _, path in ipairs({ "gotome.koplugin/main.lua", "gotome.koplugin/_meta.lua" 
     if err then io.stderr:write(err .. "\n") end
 end
 
+local home, road = "http://192.168.1.5:8080", "https://books.example.org"
+local function joined(list) return table.concat(list, " ") end
+check("a string is one address", joined(feed.candidates(nil, home)), home)
+check("own address first, none twice", joined(feed.candidates(road .. "/", { home, road })), road .. "/ " .. home)
+check("the last good first", joined(feed.candidates(nil, { home, road }, road)), road .. " " .. home)
+check("a last good that is gone is ignored", joined(feed.candidates(nil, { home, road }, "http://gone")), home .. " " .. road)
+check("nothing named", #feed.candidates(nil, nil), 0)
+
+local tried = {}
+local function answers(...)
+    local up = {}
+    for _i, a in ipairs({ ... }) do up[a] = true end
+    tried = {}
+    return function(a) table.insert(tried, a) return up[a] == true end
+end
+local chosen, count = feed.choose({ home, road }, answers(road))
+check("falls back to the second", chosen, road)
+check("having tried two", count, 2)
+check("tried in order", joined(tried), home .. " " .. road)
+chosen, count = feed.choose({ home, road }, answers(home, road))
+check("stops at the first that answers", joined(tried), home)
+check("the first", chosen, home)
+chosen, count = feed.choose({ home, road }, answers())
+check("none answers", chosen, nil)
+check("having tried all", count, 2)
+
 if failures > 0 then
     os.exit(1)
 end

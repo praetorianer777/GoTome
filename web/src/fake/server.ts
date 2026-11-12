@@ -147,6 +147,7 @@ export class FakeServer {
 		deliveredAt?: string;
 		/** When a Kobo reader's sync told it of the book. */
 		syncedAt?: string;
+		sentFixed?: boolean;
 	}[] = [];
 	/** Sending to a Kindle: the mail server's state, and what was sent. */
 	kindle = {
@@ -519,6 +520,7 @@ export class FakeServer {
 			writable: true,
 			joinFormats: false,
 			watch: true,
+			fulltext: true,
 			visibility: "shared",
 			rootPath: `/data/libraries/${id}`,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -1003,7 +1005,7 @@ export class FakeServer {
 					return [{
 						book: summaryOf(book), deliveryId: d.id, state, queuedAt: d.queuedAt,
 						deliveredAt: d.deliveredAt, syncedAt: d.syncedAt,
-						removable: !d.deliveredAt || !!d.syncedAt,
+						removable: !d.deliveredAt || !!d.syncedAt, sentFixed: !!d.sentFixed,
 					}];
 				});
 			return Response.json({ device, books });
@@ -2540,7 +2542,7 @@ export class FakeServer {
 			};
 			this.devices.push(device);
 			return Response.json(
-				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds" },
+				{ device, token: "abcd-efgh-ijkm-npqr-stuv", catalog: "/api/v1/opds", addresses: ["http://192.168.1.5:8080", "https://books.example.org"] },
 				{ status: 201 },
 			);
 		}
@@ -2837,7 +2839,11 @@ export class FakeServer {
 					);
 				return hits.length > 0 ? [{ book: summaryOf(b), hits }] : [];
 			});
-		return Response.json({ books, more: false });
+		const library = query.get("library");
+		const notSearched = this.libraries
+			.filter((l) => !l.fulltext && (!library || l.id === library))
+			.map((l) => ({ id: l.id, name: l.name }));
+		return Response.json({ books, more: false, notSearched });
 	}
 
 	private trashAction(fileID: string, action: string) {

@@ -57,6 +57,14 @@ type fullTextResult struct {
 	Books []textBook `json:"books"`
 	// More says there are books found after this page.
 	More bool `json:"more"`
+	// NotSearched are the libraries the search would have looked in whose
+	// books are not searched by their text.
+	NotSearched []namedLibrary `json:"notSearched"`
+}
+
+type namedLibrary struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 const defaultTextPage = 20
@@ -96,7 +104,10 @@ func (s *Server) searchText(w http.ResponseWriter, r *http.Request) error {
 	for _, sm := range summaries {
 		byID[sm.ID] = sm
 	}
-	out := fullTextResult{Books: []textBook{}, More: res.More}
+	out := fullTextResult{Books: []textBook{}, More: res.More, NotSearched: []namedLibrary{}}
+	for _, l := range res.NotSearched {
+		out.NotSearched = append(out.NotSearched, namedLibrary{ID: l.ID, Name: l.Name})
+	}
 	for _, b := range res.Books {
 		sm, ok := byID[b.ID]
 		if !ok {
