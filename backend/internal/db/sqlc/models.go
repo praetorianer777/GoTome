@@ -799,3 +799,30 @@ type UserIdentity struct {
 	CreatedAt  time.Time
 	LastUsedAt time.Time
 }
+
+type Webhook struct {
+	ID           uuid.UUID
+	Name         string
+	Url          string
+	Kinds        []string
+	SecretSealed []byte
+	Trusted      bool
+	Enabled      bool
+	CreatedBy    *uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type WebhookDelivery struct {
+	ID           uuid.UUID
+	HookID       uuid.UUID
+	Kind         string
+	Payload      []byte
+	Status       string
+	Attempts     int32
+	LastError    *string
+	ResponseCode *int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeliveredAt  *time.Time
+}

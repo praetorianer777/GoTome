@@ -78,6 +78,9 @@ const (
 	// UpdatesCheck is "on" or "off": whether GitHub is asked once a day for
 	// the latest release, to tell administrators of a newer one.
 	UpdatesCheck = "updates.check"
+	// MetricsEnabled is "on" or "off": whether GET /api/v1/metrics answers
+	// (#418). Off, the default, it is a 404 to everyone.
+	MetricsEnabled = "metrics.enabled"
 	// EmbeddingEnabled is "on" or "off": whether books are embedded for
 	// suggesting similar ones. Off pauses it; on again goes on with the
 	// books that have no vector yet.
@@ -225,6 +228,7 @@ var Definitions = []Definition{
 	{Key: TrashRetentionDays, Kind: KindText, Default: "30", Check: days},
 	{Key: DevicesFixOnSend, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: UpdatesCheck, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
+	{Key: MetricsEnabled, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingEnabled, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel, Choices: slices.Sorted(maps.Keys(embed.Specs))},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},

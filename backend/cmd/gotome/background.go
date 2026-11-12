@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 	"github.com/praetorianer777/gotome/backend/internal/updates"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 )
 
 // background is what the workers of serve work with.
@@ -53,6 +54,7 @@ type background struct {
 	kindle      *kindle.Service
 	copies      *devicecopy.Service
 	automatic   *autocurate.Service
+	hooks       *webhooks.Service
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -110,6 +112,8 @@ func (b background) registrations() []registration {
 		worker(&ingest.MeasureWorker{Service: b.scans}),
 		worker(&devicecopy.MakeWorker{Service: b.copies}),
 		worker(&devicecopy.TrimWorker{Service: b.copies}),
+		worker(&webhooks.DeliverWorker{Service: b.hooks}),
+		worker(&webhooks.TrimWorker{Service: b.hooks}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
 	}
 }
@@ -141,6 +145,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		devicecopy.TrimPeriodic(copyTrimInterval),
+		webhooks.TrimPeriodic(webhookTrimInterval),
 		fulltext.Periodic(outboxInterval),
 		autocurate.Periodic(curationInterval),
 	}

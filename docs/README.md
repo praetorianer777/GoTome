@@ -34,6 +34,10 @@ For people who run GOtome or use it. Start with **Getting started**.
   key, its scopes, and the OpenAPI document.
 - [The audio API for players](api-audio.md): the stable routes a
   third-party audiobook player streams and saves its position with.
+- [Webhooks](webhooks.md): telling other services of events, signed,
+  with a log of what was sent.
+- [Metrics](metrics.md): a Prometheus endpoint with a scrape example and
+  a note on Grafana.
 - [E-readers](devices.md): which way for which device, adding one, and
   sending books.
   - [KOReader and OPDS](koreader.md)

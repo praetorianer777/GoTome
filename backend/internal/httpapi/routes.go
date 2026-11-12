@@ -489,6 +489,41 @@ func (s *Server) routes() []Route {
 		},
 
 		{
+			Method: http.MethodGet, Path: "/webhooks", ID: "listWebhooks",
+			Summary: "The webhooks, and the kinds of event they may ask for; a secret says only that it is set", Tag: "webhooks",
+			Response: webhookList{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.listWebhooks,
+		},
+		{
+			Method: http.MethodPost, Path: "/webhooks", ID: "createWebhook",
+			Summary: "Register an address to be sent events", Tag: "webhooks",
+			Request: webhookRequest{}, Response: webhook{}, Status: http.StatusCreated, Permission: auth.SettingsManage, Handler: s.createWebhook,
+		},
+		{
+			Method: http.MethodPut, Path: "/webhooks/{webhookId}", ID: "updateWebhook",
+			Summary: "Change a webhook; without a secret it keeps its own", Tag: "webhooks",
+			Request: webhookRequest{}, Response: webhook{}, Permission: auth.SettingsManage, Handler: s.updateWebhook,
+		},
+		{
+			Method: http.MethodDelete, Path: "/webhooks/{webhookId}", ID: "deleteWebhook",
+			Summary: "Remove a webhook and its log", Tag: "webhooks",
+			Permission: auth.SettingsManage, Handler: s.deleteWebhook,
+		},
+		{
+			Method: http.MethodPost, Path: "/webhooks/{webhookId}/test", ID: "testWebhook",
+			Summary: "Send a test event to a webhook, as a background job", Tag: "webhooks",
+			Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.testWebhook,
+		},
+		{
+			Method: http.MethodGet, Path: "/webhooks/{webhookId}/deliveries", ID: "listWebhookDeliveries",
+			Summary: "The latest deliveries to a webhook, with how each went and what was sent", Tag: "webhooks",
+			Response: webhookDeliveryList{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.listWebhookDeliveries,
+		},
+		{
+			Method: http.MethodGet, Path: "/metrics", ID: "getMetrics",
+			Summary: "Prometheus metrics: counts, job queues, requests by route, the database pool and the search index's backlog. Answers 404 unless the setting metrics.enabled is on; an API key of the metrics scope reaches it", Tag: "system",
+			Produces: "text/plain", Reads: ReadsNoLibrary, Permission: auth.MetricsRead, Handler: s.getMetrics,
+		},
+		{
 			Method: http.MethodGet, Path: "/metadata/scoring", ID: "getMatchScoring",
 			Summary: "Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports", Tag: "settings",
 			Response: metadata.ScoringStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getScoring,
