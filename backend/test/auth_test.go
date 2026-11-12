@@ -17,25 +17,49 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
+	"github.com/praetorianer777/gotome/backend/internal/embed"
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
+	"github.com/praetorianer777/gotome/backend/internal/kobo"
+	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/passages"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/sso"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -95,8 +119,22 @@ type app struct {
 	box      *secret.Box
 	settings *settings.Store
 	logs     lockedBuffer
-	now      time.Time
-	mu       sync.Mutex
+	// works is what the providers list for following authors and series.
+	works *fakeWorks
+	// text is the app's full-text index, which every search brings up to
+	// date with the outbox first, as the job would shortly after.
+	text *fulltext.Service
+	// copies makes the fixed copies sent to devices.
+	copies *devicecopy.Service
+	// passages embeds and finds the books' passages, while they are on.
+	passages *passages.Service
+	// hooks sends events to webhooks.
+	hooks *webhooks.Service
+	// ready is what /readyz answers from; every component holds until a
+	// test says otherwise.
+	ready *httpapi.Readiness
+	now   time.Time
+	mu    sync.Mutex
 }
 
 func (a *app) clock() time.Time {
@@ -113,7 +151,14 @@ func (a *app) advance(d time.Duration) {
 
 func newApp(t *testing.T) *app {
 	t.Helper()
-	a := &app{t: t, pool: dbtest.New(t), now: time.Now()}
+	return newAppOn(t, dbtest.New(t))
+}
+
+// newAppOn is newApp on a pool the test made, such as one that reports the
+// plans of the queries it runs.
+func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
+	t.Helper()
+	a := &app{t: t, pool: pool, now: time.Now()}
 	accounts, err := auth.NewService(a.pool, fastHash, auth.DefaultSessionTTL)
 	if err != nil {
 		t.Fatal(err)
@@ -149,21 +194,97 @@ func newApp(t *testing.T) *app {
 		Books:     catalog.NewService(a.pool),
 		Covers:    a.covers,
 	}
+	a.server.Auth.PasswordsOff = a.settings.PasswordsOff
+	a.server.SSO = sso.NewService(a.pool, a.server.Auth, a.settings)
 	a.server.Bulk = bulk.NewService(a.pool, a.scans, matchesOf{a}, quiet)
 	a.server.Bulk.Queue = queue
+	a.server.Cleanup = cleanup.NewService(a.pool, a.server.Bulk)
+	a.server.Curation = curation.NewService(a.pool)
+	a.server.Curation.Hooks = a.scans.CurationHooks()
+	a.server.Curation.Queue = queue
+	a.scans.Curation = a.server.Curation
+	a.server.Bulk.Curation = a.server.Curation
+	a.server.Auto = autocurate.NewService(a.pool, a.server.Curation, a.server.Cleanup, a.scans, a.settings, quiet)
+	a.server.Auto.Queue = queue
+	a.server.AutoDuplicates = autodupe.NewService(a.pool, a.server.Books, quiet)
+	a.server.AutoDuplicates.Ingest = a.scans
+	a.server.AutoDuplicates.Curation = a.server.Curation
+	a.server.AutoDuplicates.Queue = queue
+	a.server.AutoDuplicates.Settings = a.settings
 	a.server.Reading = reading.NewService(a.pool)
+	a.server.Imports = readimport.NewService(a.pool, a.server.Books, quiet)
+	a.server.Imports.Queue = queue
+	a.server.Calibre = calibre.NewService(a.pool, a.scans, a.covers, quiet)
+	a.server.Calibre.Queue = queue
 	a.server.Shelves = shelves.NewService(a.pool, a.server.Books)
-	a.server.Search = search.NewPGSearch(a.pool, a.server.Books)
+	a.text = openTextIndex(t, a.pool)
+	a.server.Search = drainingSearch{a.text, search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())}
 	a.server.Duplicates = dedupe.NewService(a.pool, a.server.Books, quiet)
 	a.server.Duplicates.Queue = queue
-	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding, nil, quiet)
-	a.server.Index = search.NewIndex(a.pool, quiet)
+	a.server.Duplicates.Texts = a.scans.FileTexts
+	// Descriptions are embedded as the books' passages were in the tests:
+	// by the fake model, under the name the settings give.
+	a.server.Similar = similar.NewService(a.pool, a.settings.Embedding,
+		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			return &embed.Fake{Dim: spec.Model.Dim}, nil
+		}, quiet)
+	a.server.Similar.Passages = a.scans.Passages
+	a.server.Similar.Queue = queue
+	a.server.Genres = genres.NewService(a.pool, a.server.Similar, func(ctx context.Context) (string, error) {
+		return a.settings.Text(ctx, settings.GenreSuggestions)
+	}, quiet)
+	a.server.Genres.Queue = queue
+	// Passages are off unless a test switches them on.
+	passageStore, err := passages.OpenStore(passages.Dir(a.dataDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { passageStore.Close() })
+	a.passages = passages.NewService(a.pool, passageStore, a.settings.Embedding, a.settings.EmbeddingPassages,
+		func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+			return &embed.Fake{Dim: spec.Model.Dim}, nil
+		}, quiet)
+	a.passages.Chunks = a.scans.FileChunks
+	a.server.Similar.NearPassages = a.passages.Near
+	a.server.Similar.PassageStatus = a.passages.Status
+	a.server.Stats = stats.NewService(a.pool, a.server.Similar)
+	a.server.Resources = resources.NewService(a.pool)
+	a.server.Resources.DataDir = a.dataDir
+	a.server.Resources.Embedding, a.server.Resources.Server = a.settings.Embedding, a.settings.EmbeddingServer
+	a.server.Deliveries = deliveries.NewService(a.pool)
+	a.copies = devicecopy.NewService(a.pool, a.dataDir, quiet)
+	a.copies.Queue = queue
+	a.copies.Enabled = a.settings.DeviceFixOnSend
+	a.server.Copies = a.copies
+	a.server.Deliveries.OnQueued = func(ctx context.Context, ids []uuid.UUID) { _ = a.copies.Request(ctx, ids) }
+	a.server.Kindle = kindle.NewService(a.pool, a.settings, a.server.Books, quiet)
+	a.server.Kindle.Queue = queue
+	a.server.Pairing = pairing.NewService(a.pool)
+	a.server.Kobo = kobo.NewService(a.pool)
+	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
+	a.server.Index = search.NewIndex(a.pool, quiet, textEngine)
 	a.server.Index.Queue = queue
+	a.works = &fakeWorks{}
+	a.server.Releases = releases.NewService(a.pool, a.works, quiet)
+	a.server.Releases.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)
+	a.hooks = &webhooks.Service{Pool: a.pool, Box: a.box, Queue: queue, Log: quiet, PublicURL: "https://books.example.org"}
+	a.server.Webhooks = a.hooks
+	a.server.Metrics = &metrics.Service{Pool: a.pool, Version: "test"}
 	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
 	hubCtx, stopHub := context.WithCancel(context.Background())
 	t.Cleanup(stopHub)
 	go a.server.NotifyHub.Run(hubCtx)
+	a.ready = httpapi.NewReadiness()
+	a.ready.Set(httpapi.CheckDatabase, a.pool.Ping)
+	a.ready.Set(httpapi.CheckSearchIndex, a.text.Check)
+	a.ready.Set(httpapi.CheckJobs, queue.Check)
+	a.ready.Set(httpapi.CheckDataDir, httpapi.DataDirCheck(a.dataDir))
+	a.ready.Migrated()
+	a.server.Ready = a.ready
+	a.server.Checks = &syscheck.Collector{
+		Pool: a.pool, Readiness: a.ready.Checks, Embedding: a.server.Similar.Runtime, Resources: a.server.Resources,
+	}
 	srv := httptest.NewServer(a.server.Routes())
 	t.Cleanup(srv.Close)
 	a.url = srv.URL

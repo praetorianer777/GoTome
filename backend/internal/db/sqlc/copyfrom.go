@@ -9,6 +9,42 @@ import (
 	"context"
 )
 
+// iteratorForAddCalibreImportBooks implements pgx.CopyFromSource.
+type iteratorForAddCalibreImportBooks struct {
+	rows                 []AddCalibreImportBooksParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForAddCalibreImportBooks) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForAddCalibreImportBooks) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].ImportID,
+		r.rows[0].CalibreID,
+		r.rows[0].Title,
+		r.rows[0].Found,
+		r.rows[0].Missing,
+	}, nil
+}
+
+func (r iteratorForAddCalibreImportBooks) Err() error {
+	return nil
+}
+
+func (q *Queries) AddCalibreImportBooks(ctx context.Context, arg []AddCalibreImportBooksParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"calibre_import_books"}, []string{"import_id", "calibre_id", "title", "found", "missing"}, &iteratorForAddCalibreImportBooks{rows: arg})
+}
+
 // iteratorForInsertBookChunks implements pgx.CopyFromSource.
 type iteratorForInsertBookChunks struct {
 	rows                 []InsertBookChunksParams
@@ -38,9 +74,9 @@ func (r iteratorForInsertBookChunks) Values() ([]interface{}, error) {
 		r.rows[0].PageTo,
 		r.rows[0].CharOffset,
 		r.rows[0].Lang,
-		r.rows[0].BodyEn,
-		r.rows[0].BodyDe,
-		r.rows[0].BodyXx,
+		r.rows[0].Sources,
+		r.rows[0].SourceFrom,
+		r.rows[0].SourceTo,
 	}, nil
 }
 
@@ -49,5 +85,5 @@ func (r iteratorForInsertBookChunks) Err() error {
 }
 
 func (q *Queries) InsertBookChunks(ctx context.Context, arg []InsertBookChunksParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"book_chunks"}, []string{"book_id", "library_id", "file_id", "position", "chapter", "page_from", "page_to", "char_offset", "lang", "body_en", "body_de", "body_xx"}, &iteratorForInsertBookChunks{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"book_chunks"}, []string{"book_id", "library_id", "file_id", "position", "chapter", "page_from", "page_to", "char_offset", "lang", "sources", "source_from", "source_to"}, &iteratorForInsertBookChunks{rows: arg})
 }

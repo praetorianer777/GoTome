@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
-import artwork from "@/assets/artwork.webp";
-import { t } from "@/i18n";
+import { Wordmark } from "@/components/wordmark";
 
-/** The frame the setup and sign-in pages share: the artwork, a title, a form. */
+/**
+ * The frame the setup and sign-in pages share: the hero, the name as text, a
+ * title and a form on a panel. The art is decoration, so the name beside it
+ * is text, not part of the image.
+ */
 export function AuthPage({
 	title,
 	intro,
@@ -13,22 +16,21 @@ export function AuthPage({
 	children: ReactNode;
 }) {
 	return (
-		<main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-8">
-			{/* The artwork carries the name. Width and height are the file's own, so
-			    the browser keeps the space free before the image arrives. */}
-			<img
-				src={artwork}
-				width={640}
-				height={659}
-				alt={t("app.name")}
-				className="mx-auto h-auto w-48 rounded-2xl sm:w-64"
-				decoding="async"
-			/>
-			<div className="flex flex-col gap-2">
-				<h1 className="text-2xl font-semibold">{title}</h1>
-				{intro && <p className="text-slate-600 dark:text-slate-400">{intro}</p>}
+		<main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-4 px-4 py-8">
+			<div className="hero-art relative h-40 overflow-hidden rounded-2xl border border-slate-200 sm:h-56 dark:border-slate-700">
+				<span className="panel absolute right-3 bottom-3 rounded-xl px-3 py-2 sm:top-1/2 sm:right-4 sm:bottom-auto sm:-translate-y-1/2 sm:px-5 sm:py-3">
+					<Wordmark size="large" className="w-28 sm:w-48" />
+				</span>
 			</div>
-			{children}
+			<div className="panel flex flex-col gap-6 rounded-2xl p-6">
+				<div className="flex flex-col gap-2">
+					<h1 className="text-2xl font-semibold">{title}</h1>
+					{intro && (
+						<p className="text-slate-600 dark:text-slate-400">{intro}</p>
+					)}
+				</div>
+				{children}
+			</div>
 		</main>
 	);
 }

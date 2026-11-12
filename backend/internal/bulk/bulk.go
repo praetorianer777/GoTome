@@ -1,5 +1,6 @@
 // Package bulk makes one change to many books: an edit, a lookup with the
-// metadata providers, or the writing of their metadata into their files. It
+// metadata providers, the writing of their metadata into their files, or a
+// fix of their EPUBs for e-readers. It
 // runs as a job, a book at a time, and keeps what it came to for each.
 package bulk
 
@@ -19,6 +20,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -32,10 +34,13 @@ const (
 	ActionEdit      = "edit"
 	ActionFetch     = "fetch"
 	ActionWriteBack = "writeBack"
+	// ActionFix fixes what makes the books' EPUBs slow or troublesome on
+	// an e-reader, the findings named.
+	ActionFix = "fix"
 )
 
 // Actions lists every action.
-var Actions = []string{ActionEdit, ActionFetch, ActionWriteBack}
+var Actions = []string{ActionEdit, ActionFetch, ActionWriteBack, ActionFix}
 
 // What a bulk change came to for one book.
 const (
@@ -73,6 +78,12 @@ var ErrNotFound = errors.New("no such bulk change")
 type Ingest interface {
 	ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error)
 	WriteBackTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) (int, error)
+	FixBook(ctx context.Context, scope library.Scope, bookID uuid.UUID, findings []string) (int, error)
+}
+
+// fixChange is what a fix keeps as its change: the findings to fix.
+type fixChange struct {
+	Findings []string `json:"findings"`
 }
 
 // Fetcher looks a book up with the providers: enrich.Service.
@@ -94,6 +105,9 @@ type Service struct {
 	log     *slog.Logger
 	// Queue is set once the job runner exists.
 	Queue Queue
+	// Curation, when set, gets a run for each clean-up (StartEach) and an
+	// action, with the state of the book before, for each book it changes.
+	Curation *curation.Service
 }
 
 // NewService returns a Service. Its Queue must be set before Start is
@@ -104,17 +118,21 @@ func NewService(pool *pgxpool.Pool, ingest Ingest, fetcher Fetcher, log *slog.Lo
 
 // Start records a bulk change of the books, which the scope's user chose
 // among those they may see, and queues the job that makes it. An edit must
-// have passed catalog.Change.Check.
-func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.UUID, action string, change catalog.Change) (uuid.UUID, error) {
+// have passed catalog.Change.Check; a fix names the findings to fix.
+func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.UUID, action string, change catalog.Change, findings []string) (uuid.UUID, error) {
 	data := []byte("{}")
-	if action == ActionEdit {
-		var err error
-		if data, err = json.Marshal(change); err != nil {
-			return uuid.Nil, err
-		}
+	var err error
+	switch action {
+	case ActionEdit:
+		data, err = json.Marshal(change)
+	case ActionFix:
+		data, err = json.Marshal(fixChange{Findings: findings})
+	}
+	if err != nil {
+		return uuid.Nil, err
 	}
 	var id uuid.UUID
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		var err error
 		id, err = q.CreateBulkChange(ctx, sqlc.CreateBulkChangeParams{
@@ -125,6 +143,51 @@ func (s *Service) Start(ctx context.Context, scope library.Scope, books []uuid.U
 		}
 		if err := q.AddBulkChangeBooks(ctx, sqlc.AddBulkChangeBooksParams{BulkChangeID: id, BookIds: books}); err != nil {
 			return err
+		}
+		_, err = s.Queue.InsertTx(ctx, tx, Args{BulkChangeID: id}, jobs.InsertOpts{
+			Queue: jobs.QueueMetadata, MaxAttempts: jobAttempts,
+		})
+		return err
+	})
+	return id, err
+}
+
+// BookChange is one book's own part of a bulk change.
+type BookChange struct {
+	BookID uuid.UUID
+	Change catalog.Change
+}
+
+// StartEach records an edit that changes each book its own way, as a
+// clean-up does, and queues the job that makes it. Every change must have
+// passed catalog.Change.Check.
+func (s *Service) StartEach(ctx context.Context, scope library.Scope, changes []BookChange) (uuid.UUID, error) {
+	ids := make([]uuid.UUID, len(changes))
+	data := make([][]byte, len(changes))
+	for i, c := range changes {
+		ids[i] = c.BookID
+		var err error
+		if data[i], err = json.Marshal(c.Change); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	var id uuid.UUID
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		var err error
+		id, err = q.CreateBulkChange(ctx, sqlc.CreateBulkChangeParams{
+			CreatedBy: scope.Viewer, SeesAll: scope.SeesAll, Action: ActionEdit, Change: []byte("{}"),
+		})
+		if err != nil {
+			return err
+		}
+		if err := q.AddBulkChangeBookChanges(ctx, sqlc.AddBulkChangeBookChangesParams{BulkChangeID: id, BookIds: ids, Changes: data}); err != nil {
+			return err
+		}
+		if s.Curation != nil {
+			if _, err := s.Curation.StartRun(ctx, tx, curation.KindCleanup, scope.Viewer, id); err != nil {
+				return err
+			}
 		}
 		_, err = s.Queue.InsertTx(ctx, tx, Args{BulkChangeID: id}, jobs.InsertOpts{
 			Queue: jobs.QueueMetadata, MaxAttempts: jobAttempts,
@@ -152,6 +215,15 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 	if err := json.Unmarshal(row.Change, &change); err != nil {
 		return false, err
 	}
+	var fix fixChange
+	if err := json.Unmarshal(row.Change, &fix); err != nil {
+		return false, err
+	}
+	if run, automatic, ok, err := s.Curation.RunOfBulkChange(ctx, id); err != nil {
+		return false, err
+	} else if ok {
+		ctx = curation.WithRun(ctx, run, automatic)
+	}
 	started := time.Now()
 	for time.Since(started) < budget {
 		next, err := q.NextBulkChangeBooks(ctx, sqlc.NextBulkChangeBooksParams{BulkChangeID: id, Limit: batch})
@@ -162,7 +234,14 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (bool, error) {
 			return true, s.finish(ctx, row)
 		}
 		for _, book := range next {
-			if err := s.one(ctx, row.Action, scope, change, id, book); err != nil {
+			own := change
+			if book.Change != nil {
+				own = catalog.Change{}
+				if err := json.Unmarshal(book.Change, &own); err != nil {
+					return false, err
+				}
+			}
+			if err := s.one(ctx, row.Action, scope, own, fix.Findings, id, book.BookID); err != nil {
 				return false, err
 			}
 		}
@@ -177,6 +256,9 @@ func (s *Service) finish(ctx context.Context, row sqlc.BulkChange) error {
 		q := sqlc.New(tx)
 		n, err := q.FinishBulkChange(ctx, row.ID)
 		if err != nil || n == 0 {
+			return err
+		}
+		if err := s.Curation.FinishBulkChange(ctx, tx, row.ID); err != nil {
 			return err
 		}
 		counts, err := q.CountBulkOutcomes(ctx, row.ID)
@@ -199,7 +281,7 @@ func (s *Service) finish(ctx context.Context, row sqlc.BulkChange) error {
 // one makes the change to one book and records what it came to. It returns
 // an error only for what stops the whole run: the job being cut off, the
 // database gone, or providers that ask to be left alone.
-func (s *Service) one(ctx context.Context, action string, scope library.Scope, change catalog.Change, id, book uuid.UUID) error {
+func (s *Service) one(ctx context.Context, action string, scope library.Scope, change catalog.Change, findings []string, id, book uuid.UUID) error {
 	record := func(q *sqlc.Queries, outcome, message string, skipped []string) error {
 		return q.SetBulkChangeOutcome(ctx, sqlc.SetBulkChangeOutcomeParams{
 			BulkChangeID: id, BookID: book, Outcome: &outcome, Message: optional(message), Skipped: append([]string{}, skipped...),
@@ -209,9 +291,24 @@ func (s *Service) one(ctx context.Context, action string, scope library.Scope, c
 	switch action {
 	case ActionEdit:
 		err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+			var pending *curation.Pending
+			if curation.InRun(ctx) {
+				if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{book}); err != nil {
+					return err
+				}
+				var err error
+				if pending, err = s.Curation.Begin(ctx, tx, curation.SetEdit, book); err != nil {
+					return err
+				}
+			}
 			changed, err := s.ingest.ChangeTx(ctx, tx, scope, book, change)
 			if err != nil {
 				return err
+			}
+			if changed.Values || changed.Locks {
+				if err := pending.Done(ctx, tx, curation.Record{Kind: curation.ActionEdit}); err != nil {
+					return err
+				}
 			}
 			outcome := OutcomeUnchanged
 			switch {
@@ -254,6 +351,21 @@ func (s *Service) one(ctx context.Context, action string, scope library.Scope, c
 			}
 			return record(sqlc.New(tx), outcome, "", nil)
 		})
+	case ActionFix:
+		// Each file is fixed in a transaction of its own, which renames it;
+		// a run repeated after a fix finds nothing left to fix.
+		if _, err = s.books.Get(ctx, scope, book); err != nil {
+			break
+		}
+		var fixed int
+		if fixed, err = s.ingest.FixBook(ctx, scope, book, findings); err != nil {
+			break
+		}
+		outcome := OutcomeChanged
+		if fixed == 0 {
+			outcome = OutcomeUnchanged
+		}
+		err = record(sqlc.New(s.pool), outcome, "", nil)
 	}
 	if err == nil || ctx.Err() != nil || errors.Is(err, enrich.ErrBusy) {
 		return err

@@ -1,8 +1,11 @@
+import { EmbeddingPanel } from "@/jobs/embedding";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
 	type Job,
 	type JobGroup,
@@ -32,11 +35,6 @@ const STATES: Record<string, MessageKey> = {
 	discarded: "jobs.state.failed",
 };
 
-const when = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "short",
-	timeStyle: "medium",
-});
-
 /** What a job does, in words. */
 function describe(job: Job): string {
 	switch (job.kind) {
@@ -48,12 +46,20 @@ function describe(job: Job): string {
 			return t("jobs.kind.read", { file: job.filePath || t("jobs.goneFile") });
 		case "ingest.purge_trash":
 			return t("jobs.kind.purgeTrash");
+		case "ingest.measure_files":
+			return t("jobs.kind.measure");
 		case "ingest.chunk_file":
 			return t("jobs.kind.chunk", { file: job.filePath || t("jobs.goneFile") });
 		case "search.rebuild_index":
 			return t("jobs.kind.rebuildIndex");
+		case "fulltext.apply_outbox":
+			return t("jobs.kind.applyIndex");
+		case "ingest.index_files":
+			return t("jobs.kind.indexFiles");
 		case "similar.embed_books":
 			return t("jobs.kind.embed");
+		case "passages.embed":
+			return t("jobs.kind.embedPassages");
 		case "dedupe.sign_file":
 			return t("jobs.kind.sign", { file: job.filePath || t("jobs.goneFile") });
 		case "dedupe.check_book":
@@ -80,13 +86,9 @@ export function Jobs() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("jobs.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("jobs.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("jobs.title")} intro={t("jobs.intro")} />
 			<SearchIndexPanel />
+			<EmbeddingPanel />
 			<fieldset className="flex flex-wrap items-center gap-2 text-sm">
 				<legend className="sr-only">{t("jobs.filter")}</legend>
 				{GROUPS.map((g) => (
@@ -95,14 +97,14 @@ export function Jobs() {
 						type="button"
 						aria-pressed={group === g.value}
 						onClick={() => setGroup(g.value)}
-						className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900"
+						className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink"
 					>
 						{t(g.label)}
 					</button>
 				))}
 			</fieldset>
 			<FormError error={jobs.error ?? retry.error ?? cancel.error} />
-			{jobs.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{jobs.isPending && <Loading />}
 			{jobs.data?.length === 0 && (
 				<p className="text-slate-600 dark:text-slate-400">{t("jobs.none")}</p>
 			)}
@@ -117,13 +119,13 @@ export function Jobs() {
 							aria-label={describe(job)}
 							className="flex flex-col gap-1 px-4 py-3 text-sm"
 						>
-							<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-								<span className="min-w-0 flex-1 break-all font-medium">
+							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+								<span className="min-w-40 flex-1 break-all font-medium">
 									{job.bookId ? (
 										<Link
 											to="/books/$bookId"
 											params={{ bookId: job.bookId }}
-											className="hover:underline"
+											className="inline-flex min-h-6 items-center hover:underline"
 										>
 											{describe(job)}
 										</Link>
@@ -147,10 +149,9 @@ export function Jobs() {
 									})}
 								</span>
 								<span className="text-slate-500 tabular-nums">
-									{when.format(
-										new Date(
-											job.finalizedAt ?? job.attemptedAt ?? job.createdAt,
-										),
+									{formatDateTime(
+										job.finalizedAt ?? job.attemptedAt ?? job.createdAt,
+										"short",
 									)}
 								</span>
 								{jobIsActive(job) ? (

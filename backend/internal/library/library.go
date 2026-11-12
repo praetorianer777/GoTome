@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 )
 
@@ -75,6 +76,18 @@ type Library struct {
 	Visibility string     `json:"visibility"`
 	OwnerID    *uuid.UUID `json:"ownerId,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
+	// UnwritableSince is when GOtome found that it cannot write to the
+	// folder of this writable library, for UnwritableReason; nil while it
+	// can.
+	UnwritableSince  *time.Time `json:"unwritableSince,omitempty"`
+	UnwritableReason string     `json:"unwritableReason,omitempty"`
+	// JoinFormats makes one book of an ebook and its audiobook, found by
+	// title and author, by itself.
+	JoinFormats bool `json:"joinFormats"`
+	// Watch scans the folder soon after files in it change (#409).
+	Watch bool `json:"watch"`
+	// Fulltext says the library's books are searched by their text (#266).
+	Fulltext bool `json:"fulltext"`
 }
 
 // Member is somebody who may see a private library.
@@ -104,6 +117,12 @@ type Changes struct {
 	Name       *string
 	Visibility *string
 	Writable   *bool
+	// JoinFormats turns the automatic joining of an ebook and its audiobook on or off.
+	JoinFormats *bool
+	// Watch turns the watching of the folder on or off.
+	Watch *bool
+	// Fulltext turns the searching of the library's text on or off.
+	Fulltext *bool
 }
 
 // Service manages libraries.
@@ -210,6 +229,11 @@ func (s *Service) Create(ctx context.Context, owner uuid.UUID, in NewLibrary) (L
 				"rootPath": "There is no such folder inside the GOtome container. Mount it in the compose file first.",
 			}}
 		}
+		if writable {
+			if err := ProbeWritable(root); err != nil {
+				return Library{}, &ValidationError{Fields: map[string]string{"writable": unwritableMessage(root, err)}}
+			}
+		}
 	}
 
 	row, err := q.CreateLibrary(ctx, sqlc.CreateLibraryParams{
@@ -236,8 +260,42 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 	if len(fields) > 0 {
 		return Library{}, &ValidationError{Fields: fields}
 	}
+	if c.Writable != nil && *c.Writable {
+		root, err := q.GetLibraryRoot(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Library{}, ErrNotFound
+		}
+		if err != nil {
+			return Library{}, err
+		}
+		if err := ProbeWritable(root); err != nil {
+			return Library{}, &ValidationError{Fields: map[string]string{"writable": unwritableMessage(root, err)}}
+		}
+	}
 
-	row, err := q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable})
+	var row sqlc.Library
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if c.Fulltext != nil {
+			was, err := q.LockLibraryForUpdate(ctx, id)
+			if err != nil {
+				return err
+			}
+			if was && !*c.Fulltext {
+				// The index holds no text to take the entries out by book:
+				// the engine deletes them by library.
+				if err := q.AddOutboxLibraryDelete(ctx, id); err != nil {
+					return err
+				}
+				if err := q.ClearLibraryIndexed(ctx, id); err != nil {
+					return err
+				}
+			}
+		}
+		var err error
+		row, err = q.UpdateLibrary(ctx, sqlc.UpdateLibraryParams{ID: id, Name: c.Name, Visibility: c.Visibility, Writable: c.Writable, JoinFormats: c.JoinFormats, Watch: c.Watch, Fulltext: c.Fulltext})
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Library{}, ErrNotFound
 	}
@@ -254,10 +312,24 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, c Changes) (Library,
 	return fromRow(row), nil
 }
 
+// deleteAttempts is how often Delete tries when it deadlocks.
+const deleteAttempts = 3
+
 // Delete removes the library from GOtome. The folder and every file in it
 // stay where they are: forgetting a library must never cost anybody a book.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	n, err := sqlc.New(s.pool).DeleteLibrary(ctx, id)
+	var n int64
+	var err error
+	// The writers of a library's books hold the library first, which keeps
+	// them from deadlocking with this (HoldLibrary). One that does not, and
+	// locks more than one of its rows, may still: the delete is tried again.
+	for range deleteAttempts {
+		n, err = sqlc.New(s.pool).DeleteLibrary(ctx, id)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "40P01" {
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -350,11 +422,47 @@ func conflict(err error) error {
 	return &ValidationError{Fields: map[string]string{"name": "Another library already has this name."}}
 }
 
+// probePrefix starts the name of the file ProbeWritable makes. A dot file,
+// which the scan passes by.
+const probePrefix = ".gotome-write-check-"
+
+// ProbeWritable checks that GOtome can write to a library's folder, by
+// making a file in it and removing it again. A mount with :ro, a full disk
+// or a folder the app's user may not write to all fail here, before any
+// book's file would.
+func ProbeWritable(root string) error {
+	f, err := os.CreateTemp(root, probePrefix+"*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	if err := f.Close(); err != nil {
+		_ = os.Remove(name)
+		return err
+	}
+	return os.Remove(name)
+}
+
+// UnwritableReason is why ProbeWritable failed, in the system's words
+// without the probe's file name.
+func UnwritableReason(err error) string {
+	return reason(err)
+}
+
+func unwritableMessage(root string, err error) string {
+	return fmt.Sprintf("GOtome cannot write to %s: %s. If it is mounted with :ro in the compose file, "+
+		"mount it without; otherwise the app's user 10001 needs write access to it.", root, reason(err))
+}
+
 // reason is an OS error without the path, which the person just typed.
 func reason(err error) string {
 	var pathErr *os.PathError
 	if errors.As(err, &pathErr) {
 		return pathErr.Err.Error()
+	}
+	var link *os.LinkError
+	if errors.As(err, &link) {
+		return link.Err.Error()
 	}
 	return err.Error()
 }
@@ -363,5 +471,13 @@ func fromRow(row sqlc.Library) Library {
 	return Library{
 		ID: row.ID, Name: row.Name, RootPath: row.RootPath, Mode: row.Mode,
 		Writable: row.Writable, Visibility: row.Visibility, OwnerID: row.OwnerID, CreatedAt: row.CreatedAt,
+		UnwritableSince: row.UnwritableSince, UnwritableReason: deref(row.UnwritableReason), JoinFormats: row.JoinFormats, Watch: row.Watch, Fulltext: row.Fulltext,
 	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

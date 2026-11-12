@@ -109,3 +109,58 @@ func TestAnotherKeyIsRefusedAtStart(t *testing.T) {
 		t.Errorf("another key: err = %v, want ErrWrongKey naming the variable", err)
 	}
 }
+
+func TestSingleSignOnSettingsAreChecked(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	status, body, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.OIDCIssuer: "auth.example.org", settings.OIDCScopes: "profile email", settings.OIDCDefaultRole: "owner",
+		settings.Passwords: "maybe",
+	}})
+	for _, key := range []string{settings.OIDCIssuer, settings.OIDCScopes, settings.OIDCDefaultRole, settings.Passwords} {
+		if status != 422 || fieldError(body, key) == "" {
+			t.Errorf("%s: %d %v", key, status, body)
+		}
+	}
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.OIDCIssuer: "https://auth.example.org/realms/home", settings.OIDCScopes: "openid,profile  groups",
+		settings.OIDCAdminGroups: " admins , ,Library Admins ", settings.OIDCDefaultRole: "None",
+	}})
+	if status != 200 || setting(t, body, settings.OIDCScopes)["value"] != "openid profile groups" ||
+		setting(t, body, settings.OIDCAdminGroups)["value"] != "admins,Library Admins" ||
+		setting(t, body, settings.OIDCDefaultRole)["value"] != "none" {
+		t.Errorf("kept as: %d %v", status, body)
+	}
+}
+
+func TestASettingOfChoicesSaysThemAndTakesNoOther(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+
+	status, body, _ := a.call(admin, http.MethodGet, "/settings", nil)
+	providers := setting(t, body, settings.Providers)
+	if status != 200 || providers["multiple"] != true || len(providers["choices"].([]any)) != len(settings.ProviderNames) {
+		t.Fatalf("the providers: %d %v", status, providers)
+	}
+	if g := setting(t, body, settings.GenreSuggestions); g["multiple"] != nil || len(g["choices"].([]any)) != len(settings.GenreModes) {
+		t.Errorf("the genre modes: %v", g)
+	}
+	if l := setting(t, body, settings.MetadataLanguage); l["choices"] != nil {
+		t.Errorf("a language is typed: %v", l)
+	}
+
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.Providers: "openlibrary,google", settings.AutoMatch: "sometimes",
+	}})
+	if status != 422 || fieldError(body, settings.Providers) == "" || fieldError(body, settings.AutoMatch) == "" {
+		t.Errorf("refused: %d %v", status, body)
+	}
+	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
+		settings.Providers: "Crossref", settings.GenreSuggestions: "tags",
+	}})
+	if status != 200 || setting(t, body, settings.Providers)["value"] != "crossref" || setting(t, body, settings.GenreSuggestions)["value"] != "tags" {
+		t.Errorf("taken: %d %v", status, body)
+	}
+}

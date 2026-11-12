@@ -11,6 +11,146 @@ import (
 	"github.com/google/uuid"
 )
 
+const cosineToBookContent = `-- name: CosineToBookContent :one
+SELECT (1 - (v.embedding <=> CAST($1 AS vector)))::float8 AS cosine
+FROM book_vectors v
+WHERE v.book_id = $2::uuid AND v.kind = 'content'
+  AND v.model = $3::text AND v.model_version = $4::text
+`
+
+type CosineToBookContentParams struct {
+	Query        string
+	BookID       uuid.UUID
+	Model        string
+	ModelVersion string
+}
+
+// The cosine of a text's vector to a book's content vector of the model;
+// no row where the book has none.
+func (q *Queries) CosineToBookContent(ctx context.Context, arg CosineToBookContentParams) (float64, error) {
+	row := q.db.QueryRow(ctx, cosineToBookContent,
+		arg.Query,
+		arg.BookID,
+		arg.Model,
+		arg.ModelVersion,
+	)
+	var cosine float64
+	err := row.Scan(&cosine)
+	return cosine, err
+}
+
+const countEmbedded = `-- name: CountEmbedded :one
+SELECT count(*)::int AS books,
+       count(f.id)::int AS with_text,
+       count(*) FILTER (WHERE v.metadata)::int AS metadata,
+       count(*) FILTER (WHERE v.content)::int AS content,
+       count(*) FILTER (WHERE v.metadata_last_hour)::int AS metadata_last_hour
+FROM books b
+LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT NULL
+LEFT JOIN (
+    SELECT book_id,
+           bool_or(kind = 'metadata') AS metadata,
+           bool_or(kind = 'content') AS content,
+           bool_or(kind = 'metadata' AND embedded_at > now() - interval '1 hour') AS metadata_last_hour
+    FROM book_vectors
+    WHERE model = $1::text AND model_version = $2::text
+    GROUP BY book_id
+) v ON v.book_id = b.id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND ($5::uuid IS NULL OR b.library_id = $5::uuid)
+`
+
+type CountEmbeddedParams struct {
+	Model        string
+	ModelVersion string
+	Viewer       uuid.UUID
+	SeesAll      bool
+	LibraryID    *uuid.UUID
+}
+
+type CountEmbeddedRow struct {
+	Books            int32
+	WithText         int32
+	Metadata         int32
+	Content          int32
+	MetadataLastHour int32
+}
+
+// How far the books the viewer sees, of one library when named, are
+// embedded with the model: all of them, those with text, those with their
+// metadata and their content vector of it, and the metadata vectors made
+// in the last hour. The vectors are grouped by book once and joined, which
+// at 50,000 books is faster than looking each book's up.
+func (q *Queries) CountEmbedded(ctx context.Context, arg CountEmbeddedParams) (CountEmbeddedRow, error) {
+	row := q.db.QueryRow(ctx, countEmbedded,
+		arg.Model,
+		arg.ModelVersion,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.LibraryID,
+	)
+	var i CountEmbeddedRow
+	err := row.Scan(
+		&i.Books,
+		&i.WithText,
+		&i.Metadata,
+		&i.Content,
+		&i.MetadataLastHour,
+	)
+	return i, err
+}
+
+const countVectorsByModel = `-- name: CountVectorsByModel :many
+SELECT v.model, v.model_version,
+       count(*) FILTER (WHERE v.kind = 'metadata')::int AS metadata,
+       count(*) FILTER (WHERE v.kind = 'content')::int AS content
+FROM book_vectors v
+JOIN books b ON b.id = v.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+GROUP BY v.model, v.model_version
+`
+
+type CountVectorsByModelParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type CountVectorsByModelRow struct {
+	Model        string
+	ModelVersion string
+	Metadata     int32
+	Content      int32
+}
+
+// How many of the books the viewer sees have a metadata and a content
+// vector of each model and version that made any.
+func (q *Queries) CountVectorsByModel(ctx context.Context, arg CountVectorsByModelParams) ([]CountVectorsByModelRow, error) {
+	rows, err := q.db.Query(ctx, countVectorsByModel, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountVectorsByModelRow{}
+	for rows.Next() {
+		var i CountVectorsByModelRow
+		if err := rows.Scan(
+			&i.Model,
+			&i.ModelVersion,
+			&i.Metadata,
+			&i.Content,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteBookVector = `-- name: DeleteBookVector :exec
 DELETE FROM book_vectors WHERE book_id = $1 AND kind = $2
 `
@@ -20,6 +160,7 @@ type DeleteBookVectorParams struct {
 	Kind   string
 }
 
+// Of every model: what it was made from is gone.
 func (q *Queries) DeleteBookVector(ctx context.Context, arg DeleteBookVectorParams) error {
 	_, err := q.db.Exec(ctx, deleteBookVector, arg.BookID, arg.Kind)
 	return err
@@ -27,16 +168,68 @@ func (q *Queries) DeleteBookVector(ctx context.Context, arg DeleteBookVectorPara
 
 const deleteVectorsOfGoneBooks = `-- name: DeleteVectorsOfGoneBooks :execrows
 DELETE FROM book_vectors v USING books b
-WHERE b.id = v.book_id AND (b.deleted_at IS NOT NULL OR b.placeholder)
+WHERE b.id = v.book_id AND (b.deleted_at IS NOT NULL OR (b.placeholder AND NOT EXISTS (
+    SELECT 1 FROM user_books u
+    WHERE u.book_id = b.id AND (u.status = 'completed' OR u.rating IS NOT NULL))))
 `
 
-// Deleted, merged and placeholder books have none.
+// Deleted and merged books have none, nor have placeholders no one read or
+// rated: only those inform a taste profile.
 func (q *Queries) DeleteVectorsOfGoneBooks(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteVectorsOfGoneBooks)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deleteVectorsOfModel = `-- name: DeleteVectorsOfModel :many
+WITH doomed AS (
+    SELECT book_id, kind FROM book_vectors
+    WHERE model = $1::text AND model_version = $2::text
+      AND book_id >= $3::uuid
+    ORDER BY book_id, kind
+    LIMIT $4::int
+)
+DELETE FROM book_vectors v USING doomed d
+WHERE v.book_id = d.book_id AND v.kind = d.kind AND v.model = $1::text
+RETURNING v.book_id
+`
+
+type DeleteVectorsOfModelParams struct {
+	Model        string
+	ModelVersion string
+	After        uuid.UUID
+	Batch        int32
+}
+
+// A batch of a model's vectors, from the book given on in ID order, so
+// that no statement holds its locks long; the books whose vectors went.
+// From the book given, not after it: a book's other kind may be left of
+// the batch before.
+func (q *Queries) DeleteVectorsOfModel(ctx context.Context, arg DeleteVectorsOfModelParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, deleteVectorsOfModel,
+		arg.Model,
+		arg.ModelVersion,
+		arg.After,
+		arg.Batch,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var book_id uuid.UUID
+		if err := rows.Scan(&book_id); err != nil {
+			return nil, err
+		}
+		items = append(items, book_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getBookMetadataText = `-- name: GetBookMetadataText :one
@@ -50,16 +243,185 @@ func (q *Queries) GetBookMetadataText(ctx context.Context, bookID uuid.UUID) (st
 	return column_1, err
 }
 
+const hasBookContentVector = `-- name: HasBookContentVector :one
+SELECT EXISTS (
+    SELECT 1 FROM book_vectors v
+    WHERE v.book_id = $1::uuid AND v.kind = 'content'
+      AND v.model = $2::text AND v.model_version = $3::text
+)::boolean
+`
+
+type HasBookContentVectorParams struct {
+	BookID       uuid.UUID
+	Model        string
+	ModelVersion string
+}
+
+func (q *Queries) HasBookContentVector(ctx context.Context, arg HasBookContentVectorParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasBookContentVector, arg.BookID, arg.Model, arg.ModelVersion)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const listBookTitles = `-- name: ListBookTitles :many
+SELECT b.id, b.title,
+       COALESCE((SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+                 WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position LIMIT 1), '')::text AS author
+FROM books b
+WHERE b.id = ANY($1::uuid[])
+`
+
+type ListBookTitlesRow struct {
+	ID     uuid.UUID
+	Title  string
+	Author string
+}
+
+// Books by their title and first author, for a check to print.
+func (q *Queries) ListBookTitles(ctx context.Context, ids []uuid.UUID) ([]ListBookTitlesRow, error) {
+	rows, err := q.db.Query(ctx, listBookTitles, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookTitlesRow{}
+	for rows.Next() {
+		var i ListBookTitlesRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Author); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBookTraits = `-- name: ListBookTraits :many
+SELECT b.id, b.title, b.series_id,
+       COALESCE(array_agg(a.person_key ORDER BY c.position) FILTER (WHERE a.person_key IS NOT NULL), '{}')::text[] AS people
+FROM books b
+LEFT JOIN book_contributors c ON c.book_id = b.id AND c.role = 'author'
+LEFT JOIN authors a ON a.id = c.author_id
+WHERE b.id = ANY($1::uuid[])
+GROUP BY b.id
+`
+
+type ListBookTraitsRow struct {
+	ID       uuid.UUID
+	Title    string
+	SeriesID *uuid.UUID
+	People   []string
+}
+
+// What a similar-check compares books by: the title, the series and the
+// authors, each by person_key.
+func (q *Queries) ListBookTraits(ctx context.Context, ids []uuid.UUID) ([]ListBookTraitsRow, error) {
+	rows, err := q.db.Query(ctx, listBookTraits, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookTraitsRow{}
+	for rows.Next() {
+		var i ListBookTraitsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.SeriesID,
+			&i.People,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBooksNearQuery = `-- name: ListBooksNearQuery :many
+WITH near AS (
+    SELECT v.book_id,
+           max(1 - (v.embedding <=> $6::text::vector)) FILTER (WHERE v.kind = 'content') AS content,
+           max(1 - (v.embedding <=> $6::text::vector)) FILTER (WHERE v.kind = 'metadata') AS metadata
+    FROM book_vectors v
+    WHERE v.model = $7::text AND v.model_version = $8::text
+    GROUP BY v.book_id
+)
+SELECT n.book_id,
+       (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
+             THEN 0.6 * n.content + 0.4 * n.metadata
+             ELSE coalesce(n.content, n.metadata)
+        END)::float8 AS score
+FROM near n
+JOIN books b ON b.id = n.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
+ORDER BY score DESC, n.book_id
+LIMIT $5::int OFFSET $4::int
+`
+
+type ListBooksNearQueryParams struct {
+	Viewer       uuid.UUID
+	SeesAll      bool
+	LibraryID    *uuid.UUID
+	Skip         int32
+	Max          int32
+	Query        string
+	Model        string
+	ModelVersion string
+}
+
+type ListBooksNearQueryRow struct {
+	BookID uuid.UUID
+	Score  float64
+}
+
+// The books whose vectors of the model are nearest a query's, among those
+// the viewer sees, of one library when named, as ListSimilarBooks blends
+// them: the best first, a page at a time.
+func (q *Queries) ListBooksNearQuery(ctx context.Context, arg ListBooksNearQueryParams) ([]ListBooksNearQueryRow, error) {
+	rows, err := q.db.Query(ctx, listBooksNearQuery,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.LibraryID,
+		arg.Skip,
+		arg.Max,
+		arg.Query,
+		arg.Model,
+		arg.ModelVersion,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBooksNearQueryRow{}
+	for rows.Next() {
+		var i ListBooksNearQueryRow
+		if err := rows.Scan(&i.BookID, &i.Score); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBooksToEmbed = `-- name: ListBooksToEmbed :many
 SELECT b.id AS book_id,
        f.id AS text_file_id,
        h.content_hash::bytea AS content_hash,
-       (mv.book_id IS NULL OR mv.model <> $1::text
-        OR mv.model_version <> $2::text
+       (mv.book_id IS NULL OR mv.model_version <> $1::text
         OR mv.source_hash <> h.metadata_hash)::boolean AS metadata_stale,
        (h.content_hash IS NOT NULL
-        AND (cv.book_id IS NULL OR cv.model <> $1::text
-             OR cv.model_version <> $2::text
+        AND (cv.book_id IS NULL OR cv.model_version <> $1::text
              OR cv.source_hash <> h.content_hash))::boolean AS content_stale,
        (h.content_hash IS NULL AND cv.book_id IS NOT NULL)::boolean AS content_gone
 FROM books b
@@ -67,20 +429,23 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id AND f.chunked_at IS NOT 
 CROSS JOIN LATERAL (
     SELECT sha256(convert_to(book_metadata_text(b.id), 'UTF8')) AS metadata_hash,
            CASE WHEN f.id IS NOT NULL THEN
-               sha256(convert_to(f.id::text || ' ' || f.chunked_at::text || ' ' || $3::text, 'UTF8'))
+               sha256(convert_to(f.id::text || ' ' || f.chunked_at::text || ' ' || $2::text, 'UTF8'))
            END::bytea AS content_hash
 ) h
-LEFT JOIN book_vectors mv ON mv.book_id = b.id AND mv.kind = 'metadata'
-LEFT JOIN book_vectors cv ON cv.book_id = b.id AND cv.kind = 'content'
-WHERE b.deleted_at IS NULL AND NOT b.placeholder AND b.id > $4::uuid
+LEFT JOIN book_vectors mv ON mv.book_id = b.id AND mv.kind = 'metadata' AND mv.model = $3::text
+LEFT JOIN book_vectors cv ON cv.book_id = b.id AND cv.kind = 'content' AND cv.model = $3::text
+WHERE b.deleted_at IS NULL AND b.id > $4::uuid
+  AND (NOT b.placeholder OR EXISTS (
+      SELECT 1 FROM user_books u
+      WHERE u.book_id = b.id AND (u.status = 'completed' OR u.rating IS NOT NULL)))
 ORDER BY b.id
 LIMIT $5::int
 `
 
 type ListBooksToEmbedParams struct {
-	Model        string
 	ModelVersion string
 	Recipe       string
+	Model        string
 	After        uuid.UUID
 	Page         int32
 }
@@ -95,15 +460,17 @@ type ListBooksToEmbedRow struct {
 }
 
 // A page of books after the given one, in ID order, and whether each one's
-// vectors are missing, of another model or made from something that has
-// changed since. The content's source is the primary text file as it was
+// vectors of the model are missing, of another version of it or made from
+// something that has changed since. The content's source is the primary text file as it was
 // chunked (its ID, when, and how it is sampled); a book without one has no
-// content vector, and content_gone says one is still stored.
+// content vector, and content_gone says one is still stored. A placeholder
+// is among them only while someone read or rated it, for the taste profile
+// (a metadata vector alone: it has no text).
 func (q *Queries) ListBooksToEmbed(ctx context.Context, arg ListBooksToEmbedParams) ([]ListBooksToEmbedRow, error) {
 	rows, err := q.db.Query(ctx, listBooksToEmbed,
-		arg.Model,
 		arg.ModelVersion,
 		arg.Recipe,
+		arg.Model,
 		arg.After,
 		arg.Page,
 	)
@@ -125,38 +492,6 @@ func (q *Queries) ListBooksToEmbed(ctx context.Context, arg ListBooksToEmbedPara
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listChunkBodies = `-- name: ListChunkBodies :many
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks
-WHERE file_id = $1 AND position = ANY($2::int[])
-ORDER BY position
-`
-
-type ListChunkBodiesParams struct {
-	FileID    uuid.UUID
-	Positions []int32
-}
-
-func (q *Queries) ListChunkBodies(ctx context.Context, arg ListChunkBodiesParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, listChunkBodies, arg.FileID, arg.Positions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var body string
-		if err := rows.Scan(&body); err != nil {
-			return nil, err
-		}
-		items = append(items, body)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -196,14 +531,21 @@ WITH mine AS (
       AND v.model = $5::text AND v.model_version = $6::text
 ),
 near AS (
-    SELECT v.book_id,
-           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'content') AS content,
-           max(1 - (v.embedding <=> m.embedding)) FILTER (WHERE v.kind = 'metadata') AS metadata
-    FROM book_vectors v
-    JOIN mine m ON m.kind = v.kind
-    WHERE v.model = $5::text AND v.model_version = $6::text
-      AND v.book_id <> $3::uuid
-    GROUP BY v.book_id
+    SELECT s.book_id,
+           max(s.sim) FILTER (WHERE m.kind = 'content') AS content,
+           max(s.sim) FILTER (WHERE m.kind = 'metadata') AS metadata
+    FROM mine m
+    -- One scan of the vectors of each kind: joined on the kind, the planner
+    -- memoizes the whole scan of each kind (160 MB at 50,000 books).
+    CROSS JOIN LATERAL (
+        SELECT v.book_id, 1 - (v.embedding <=> m.embedding) AS sim
+        FROM book_vectors v
+        WHERE v.kind = m.kind
+          AND v.model = $5::text AND v.model_version = $6::text
+          AND v.book_id <> $3::uuid
+        OFFSET 0
+    ) s
+    GROUP BY s.book_id
 )
 SELECT n.book_id,
        (CASE WHEN n.content IS NOT NULL AND n.metadata IS NOT NULL
@@ -213,7 +555,7 @@ SELECT n.book_id,
 FROM near n
 JOIN books b ON b.id = n.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND NOT EXISTS (
       SELECT 1 FROM duplicate_pairs p
       WHERE (p.book_a, p.book_b) IN ((n.book_id, $3::uuid), ($3::uuid, n.book_id)))
@@ -272,13 +614,169 @@ func (q *Queries) ListSimilarBooks(ctx context.Context, arg ListSimilarBooksPara
 	return items, nil
 }
 
+const listSimilarCheckSample = `-- name: ListSimilarCheckSample :many
+WITH people AS (
+    SELECT a.person_key, count(DISTINCT c.book_id) AS books
+    FROM book_contributors c
+    JOIN authors a ON a.id = c.author_id
+    JOIN books b ON b.id = c.book_id
+    WHERE c.role = 'author' AND b.deleted_at IS NULL AND NOT b.placeholder
+    GROUP BY a.person_key
+)
+SELECT b.id
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_vectors v
+              WHERE v.book_id = b.id AND v.kind = 'content'
+                AND v.model = $1::text AND v.model_version = $2::text)
+  AND EXISTS (SELECT 1 FROM book_contributors c
+              JOIN authors a ON a.id = c.author_id
+              JOIN people p ON p.person_key = a.person_key
+              WHERE c.book_id = b.id AND c.role = 'author' AND p.books >= $3::int)
+ORDER BY md5(b.id::text)
+LIMIT $4::int
+`
+
+type ListSimilarCheckSampleParams struct {
+	Model        string
+	ModelVersion string
+	MinBooks     int32
+	Max          int32
+}
+
+// The books a similar-check asks about: with a content vector of the model,
+// by an author with at least min_books books in either order of the name,
+// in the order of a hash of their ID, so a library gives the same sample
+// each time.
+func (q *Queries) ListSimilarCheckSample(ctx context.Context, arg ListSimilarCheckSampleParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listSimilarCheckSample,
+		arg.Model,
+		arg.ModelVersion,
+		arg.MinBooks,
+		arg.Max,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStoredMetadataVectors = `-- name: ListStoredMetadataVectors :many
+SELECT v.book_id, coalesce(book_metadata_text(v.book_id), '')::text AS text, v.embedding
+FROM book_vectors v
+WHERE v.kind = 'metadata' AND v.model = $1::text AND v.model_version = $2::text
+ORDER BY md5(v.book_id::text)
+LIMIT $3::int
+`
+
+type ListStoredMetadataVectorsParams struct {
+	Model        string
+	ModelVersion string
+	Max          int32
+}
+
+type ListStoredMetadataVectorsRow struct {
+	BookID    uuid.UUID
+	Text      string
+	Embedding string
+}
+
+// A sample of the books with a metadata vector of the model, with the text
+// it was made from, in the order of a hash of their ID.
+func (q *Queries) ListStoredMetadataVectors(ctx context.Context, arg ListStoredMetadataVectorsParams) ([]ListStoredMetadataVectorsRow, error) {
+	rows, err := q.db.Query(ctx, listStoredMetadataVectors, arg.Model, arg.ModelVersion, arg.Max)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStoredMetadataVectorsRow{}
+	for rows.Next() {
+		var i ListStoredMetadataVectorsRow
+		if err := rows.Scan(&i.BookID, &i.Text, &i.Embedding); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnusedModels = `-- name: ListUnusedModels :many
+SELECT name, since FROM unused_embedding_models
+`
+
+func (q *Queries) ListUnusedModels(ctx context.Context) ([]UnusedEmbeddingModel, error) {
+	rows, err := q.db.Query(ctx, listUnusedModels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UnusedEmbeddingModel{}
+	for rows.Next() {
+		var i UnusedEmbeddingModel
+		if err := rows.Scan(&i.Name, &i.Since); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markModelChosen = `-- name: MarkModelChosen :exec
+DELETE FROM unused_embedding_models WHERE name = $1
+`
+
+func (q *Queries) MarkModelChosen(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelChosen, name)
+	return err
+}
+
+const markModelLeft = `-- name: MarkModelLeft :exec
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET since = now()
+`
+
+// Another model was chosen in its place just now.
+func (q *Queries) MarkModelLeft(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelLeft, name)
+	return err
+}
+
+const markModelUnused = `-- name: MarkModelUnused :exec
+INSERT INTO unused_embedding_models (name) VALUES ($1)
+ON CONFLICT (name) DO NOTHING
+`
+
+// Found unused now, unless it was before.
+func (q *Queries) MarkModelUnused(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, markModelUnused, name)
+	return err
+}
+
 const putBookVector = `-- name: PutBookVector :exec
 INSERT INTO book_vectors (book_id, kind, model, model_version, source_hash, embedding)
 SELECT b.id, $1::text, $2::text, $3::text,
        $4::bytea, CAST($5::text AS vector)
 FROM books b WHERE b.id = $6::uuid AND b.deleted_at IS NULL
-ON CONFLICT (book_id, kind) DO UPDATE
-SET model = excluded.model, model_version = excluded.model_version,
+ON CONFLICT (book_id, kind, model) DO UPDATE
+SET model_version = excluded.model_version,
     source_hash = excluded.source_hash, embedding = excluded.embedding, embedded_at = now()
 `
 
@@ -302,4 +800,40 @@ func (q *Queries) PutBookVector(ctx context.Context, arg PutBookVectorParams) er
 		arg.BookID,
 	)
 	return err
+}
+
+const sizeVectorsByModel = `-- name: SizeVectorsByModel :many
+SELECT v.model, v.model_version,
+       sum(pg_column_size(v.embedding) + pg_column_size(v.source_hash) + 80)::bigint AS bytes
+FROM book_vectors v
+GROUP BY v.model, v.model_version
+`
+
+type SizeVectorsByModelRow struct {
+	Model        string
+	ModelVersion string
+	Bytes        int64
+}
+
+// What the vectors of each model and version take in the database, of
+// every book: the vectors as stored, compressed or not, the hashes, and
+// roughly a row's header and other columns.
+func (q *Queries) SizeVectorsByModel(ctx context.Context) ([]SizeVectorsByModelRow, error) {
+	rows, err := q.db.Query(ctx, sizeVectorsByModel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SizeVectorsByModelRow{}
+	for rows.Next() {
+		var i SizeVectorsByModelRow
+		if err := rows.Scan(&i.Model, &i.ModelVersion, &i.Bytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

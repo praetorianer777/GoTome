@@ -1,0 +1,189 @@
+package epub
+
+import (
+	"bytes"
+	"image"
+	"image/png"
+	"slices"
+	"strings"
+	"testing"
+)
+
+func pngOf(t *testing.T, w, h int) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+
+// noise is bytes that do not pack, as an image's do not: zeros would make
+// the entry a zip bomb, which the archive is refused for.
+func noise(n int) string {
+	b := make([]byte, n)
+	x := uint32(2463534242)
+	for i := range b {
+		x ^= x << 13
+		x ^= x >> 17
+		x ^= x << 5
+		b[i] = byte(x)
+	}
+	return string(b)
+}
+
+func measure(t *testing.T, data []byte) Measures {
+	t.Helper()
+	m, err := Measure(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatalf("Measure: %v", err)
+	}
+	return m
+}
+
+// heavyOPF lists a large chapter, three fonts, a large picture and a file
+// the archive does not hold.
+const heavyOPF = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">heavy</dc:identifier><dc:title>Heavy</dc:title><dc:language>de</dc:language>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="text/ch1.xhtml" media-type="application/xhtml+xml"/>
+    <item id="ch2" href="text/ch2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="f1" href="fonts/DejaVuSerif.ttf" media-type="application/vnd.ms-opentype"/>
+    <item id="f2" href="fonts/DejaVuSans.otf" media-type="font/otf"/>
+    <item id="map" href="images/map.png" media-type="image/png"/>
+    <item id="small" href="images/small.png" media-type="image/png"/>
+    <item id="drawing" href="images/drawing.svg" media-type="image/svg+xml"/>
+    <item id="gone" href="images/gone.jpg" media-type="image/jpeg"/>
+    <item id="web" href="https://example.com/font.woff" media-type="font/woff"/>
+  </manifest>
+  <spine><itemref idref="ch1"/><itemref idref="ch2"/></spine>
+</package>`
+
+func TestMeasureFindsWhatIsSlow(t *testing.T) {
+	data := build(t,
+		entry{"mimetype", "application/epub+zip"},
+		container("OEBPS/content.opf"),
+		entry{"OEBPS/content.opf", heavyOPF},
+		entry{"OEBPS/text/ch1.xhtml", "<html><body><p>" + strings.Repeat("Geralt ritt weiter. ", 20000) + "</p></body></html>"},
+		entry{"OEBPS/text/ch2.xhtml", "<html><body><p>Kurz.</p></body></html>"},
+		entry{"OEBPS/fonts/DejaVuSerif.ttf", strings.Repeat("s", 700_000)},
+		entry{"OEBPS/fonts/DejaVuSans.otf", strings.Repeat("a", 500_000)},
+		entry{"OEBPS/fonts/unlisted.woff2", strings.Repeat("u", 1000)},
+		entry{"OEBPS/images/map.png", pngOf(t, 2500, 1700)},
+		entry{"OEBPS/images/small.png", pngOf(t, 10, 10) + noise(1_200_000)},
+		entry{"OEBPS/images/drawing.svg", `<svg xmlns="http://www.w3.org/2000/svg" width="90000" height="90000"/>`},
+	)
+	m := measure(t, data)
+	if m.LargestDocumentName != "OEBPS/text/ch1.xhtml" || m.LargestDocument < 400_000 {
+		t.Errorf("largest document %q, %d bytes", m.LargestDocumentName, m.LargestDocument)
+	}
+	if m.Fonts != 3 || m.FontBytes != 1_201_000 || m.LargestFont != 700_000 {
+		t.Errorf("fonts %d, %d bytes, largest %d", m.Fonts, m.FontBytes, m.LargestFont)
+	}
+	if m.ImageWidth != 2500 || m.ImageHeight != 1700 || m.ImagePixelsName != "OEBPS/images/map.png" {
+		t.Errorf("image %dx%d %q", m.ImageWidth, m.ImageHeight, m.ImagePixelsName)
+	}
+	if m.LargestImageName != "OEBPS/images/small.png" || m.LargestImage < 1_200_000 {
+		t.Errorf("largest image %q, %d bytes", m.LargestImageName, m.LargestImage)
+	}
+	if !slices.Equal(m.MissingResources, []string{"OEBPS/images/gone.jpg"}) {
+		t.Errorf("missing %v", m.MissingResources)
+	}
+	if got := m.Findings(); !slices.Equal(got, Findings[:4]) {
+		t.Errorf("findings %v", got)
+	}
+}
+
+func TestMeasureFindsNothingInAnOrdinaryBook(t *testing.T) {
+	// Named entities under an XHTML DTD are valid, and nothing here reads
+	// them as broken.
+	data := build(t,
+		entry{"mimetype", "application/epub+zip"},
+		container("OEBPS/content.opf"),
+		entry{"OEBPS/content.opf", epub3OPF},
+		entry{"OEBPS/nav.xhtml", `<html><body><nav><ol><li><a href="text/ch1.xhtml">One</a></li></ol></nav></body></html>`},
+		entry{"OEBPS/text/ch1.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Rittersporn&nbsp;sang &mdash; laut.</p></body></html>`},
+		entry{"OEBPS/text/ch 2.xhtml", `<html><body><p>Two.</p></body></html>`},
+		entry{"OEBPS/images/front.jpg", "\xff\xd8\xffcover-bytes"},
+		entry{"OEBPS/style.css", "p { margin: 0 }"},
+	)
+	m := measure(t, data)
+	if got := m.Findings(); len(got) != 0 {
+		t.Errorf("findings %v in %+v", got, m)
+	}
+	if m.Fonts != 0 || m.LargestDocumentName == "" {
+		t.Errorf("measures %+v", m)
+	}
+}
+
+func TestMeasureRefusesWhatIsNoEPUB(t *testing.T) {
+	if _, err := Measure(bytes.NewReader([]byte("no zip")), 6); err == nil {
+		t.Error("measured a file that is no zip")
+	}
+}
+
+// troubledOPF lists XHTML documents, an HTML one, a navigation document and
+// an NCX.
+const troubledOPF = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="id">troubled</dc:identifier><dc:title>Troubled</dc:title><dc:language>de</dc:language>
+  </metadata>
+  <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="a" href="a.xhtml" media-type="application/xhtml+xml"/>
+    <item id="b" href="b.xhtml" media-type="application/xhtml+xml"/>
+    <item id="c" href="c.xhtml" media-type="application/xhtml+xml"/>
+    <item id="d" href="d.xhtml" media-type="application/xhtml+xml"/>
+    <item id="e" href="e.html" media-type="text/html"/>
+  </manifest>
+  <spine toc="ncx"><itemref idref="a"/><itemref idref="b"/><itemref idref="c"/><itemref idref="d"/><itemref idref="e"/></spine>
+</package>`
+
+func TestMeasureFindsMalformedDocumentsAndABrokenTOC(t *testing.T) {
+	data := build(t,
+		entry{"mimetype", "application/epub+zip"},
+		container("OEBPS/content.opf"),
+		entry{"OEBPS/content.opf", troubledOPF},
+		entry{"OEBPS/nav.xhtml", `<html xmlns="http://www.w3.org/1999/xhtml"><body><nav><ol>
+<li><a href="d.xhtml">D</a></li>
+<li><a href="missing.xhtml#x">Missing</a></li>
+<li><a href="https://example.com/">Elsewhere</a></li>
+<li><a href="a.xhtml#a1">A</a></li>
+</ol></nav></body></html>`},
+		entry{"OEBPS/toc.ncx", `<?xml version="1.0"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><navMap>
+<navPoint id="p1"><navLabel><text>C</text></navLabel><content src="c.xhtml#c1"/></navPoint>
+<navPoint id="p2"><navLabel><text>Gone</text></navLabel><content src="gone.xhtml"/>
+  <navPoint id="p3"><navLabel><text>Nope</text></navLabel><content src="c.xhtml#nope"/></navPoint>
+</navPoint>
+</navMap></ncx>`},
+		// An end tag missing, and an entity no DTD declares.
+		entry{"OEBPS/a.xhtml", `<html><body><p id="a1">Tom &amp; Jerry<br></p></body></html>`},
+		entry{"OEBPS/b.xhtml", `<html><body><p>Rittersporn&nbsp;sang.</p></body></html>`},
+		// HTML's entities under the XHTML DTD, and one the document declares.
+		entry{"OEBPS/c.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><body><h1 id="c1">Eins&nbsp;&mdash;&nbsp;zwei</h1></body></html>`},
+		entry{"OEBPS/d.xhtml", `<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html [<!ENTITY gotome "GOtome">]>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><p>&gotome; f` + "\xfc" + `r alle.</p></body></html>`},
+		// HTML need not be XML.
+		entry{"OEBPS/e.html", `<html><body><p>Frei<br>heraus</body></html>`},
+	)
+	m := measure(t, data)
+	if !slices.Equal(m.MalformedDocuments, []string{"OEBPS/a.xhtml", "OEBPS/b.xhtml"}) {
+		t.Errorf("malformed %v", m.MalformedDocuments)
+	}
+	if want := []string{"OEBPS/missing.xhtml", "OEBPS/gone.xhtml", "OEBPS/c.xhtml#nope"}; !slices.Equal(m.BrokenTocEntries, want) {
+		t.Errorf("broken entries %v, want %v", m.BrokenTocEntries, want)
+	}
+	if got := m.Findings(); !slices.Equal(got, []string{MalformedDocument, BrokenTOC}) {
+		t.Errorf("findings %v", got)
+	}
+}

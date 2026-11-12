@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -40,6 +41,8 @@ const (
 	DefaultUploadLimitMB = 4096
 	// DefaultOnnxRuntime is where the image puts the ONNX Runtime library.
 	DefaultOnnxRuntime = "/usr/local/lib/libonnxruntime.so.1.30.0"
+	// DefaultFulltext is where the image puts the full-text engine.
+	DefaultFulltext = "/usr/local/lib/libgotome_fulltext.so"
 )
 
 // Config is the fully resolved configuration of the process.
@@ -60,11 +63,32 @@ type Config struct {
 	// Offline asks no metadata provider on the internet and downloads no
 	// embedding model.
 	Offline bool
+	// ForcePasswords lets everyone sign in with a password whatever the
+	// setting says: the way back in when the identity provider is gone.
+	ForcePasswords bool
+	// TestMetadata is a file of records that, for the browser tests, is
+	// the one metadata provider in place of every other; empty in an
+	// installation.
+	TestMetadata string
+	// TestEmbeddings embeds with vectors made from the words of each text
+	// instead of a model, for the browser tests; never in an installation.
+	TestEmbeddings bool
+	// BasePath is the path GOtome is served under, such as /gotome/; "/"
+	// when it has the host to itself. Always starts and ends with a slash.
+	BasePath string
+	// TrustedProxies are the reverse proxies whose forwarded client address
+	// and scheme are believed; none believes no forwarded address.
+	TrustedProxies []netip.Prefix
+	// PublicURLs are the addresses clients may reach this server at, such
+	// as one at home and one on the road, without a trailing slash.
+	PublicURLs []string
 	// ModelDir is where embedding models are downloaded to; DataDir/models
 	// unless set.
 	ModelDir string
 	// OnnxRuntime is the path of the ONNX Runtime library.
 	OnnxRuntime string
+	// Fulltext is the path of the full-text engine's library.
+	Fulltext string
 	// EmbedThreads is how many threads embedding a book uses.
 	EmbedThreads int
 	// SecretKey encrypts the secrets kept in the database. Commands that
@@ -110,6 +134,7 @@ func load(getenv func(string) string) (Config, error) {
 		DatabaseURL: get("GOTOME_DATABASE_URL", ""),
 		DataDir:     get("GOTOME_DATA_DIR", DefaultDataDir),
 		OnnxRuntime: get("GOTOME_ONNXRUNTIME", DefaultOnnxRuntime),
+		Fulltext:    get("GOTOME_FULLTEXT_LIBRARY", DefaultFulltext),
 	}
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
 		return Config{}, fmt.Errorf("GOTOME_ENV is %q, want %s or %s", cfg.Env, EnvDevelopment, EnvProduction)
@@ -121,6 +146,10 @@ func load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("GOTOME_DATA_DIR is %q, want a full path such as %s", cfg.DataDir, DefaultDataDir)
 	}
 	var err error
+	base := get("GOTOME_BASE_PATH", "/")
+	if cfg.BasePath, err = NormalizeBasePath(base); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_BASE_PATH is %q, want a path such as /gotome/: %w", base, err)
+	}
 	cfg.ModelDir = get("GOTOME_MODEL_DIR", filepath.Join(cfg.DataDir, "models"))
 	if !filepath.IsAbs(cfg.ModelDir) {
 		return Config{}, fmt.Errorf("GOTOME_MODEL_DIR is %q, want a full path such as %s", cfg.ModelDir, filepath.Join(DefaultDataDir, "models"))
@@ -145,6 +174,23 @@ func load(getenv func(string) string) (Config, error) {
 	if cfg.Offline, err = strconv.ParseBool(offline); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_OFFLINE is %q, want true or false", offline)
 	}
+	force := get("GOTOME_FORCE_PASSWORD_LOGIN", "false")
+	if cfg.ForcePasswords, err = strconv.ParseBool(force); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_FORCE_PASSWORD_LOGIN is %q, want true or false", force)
+	}
+	cfg.TestMetadata = get("GOTOME_TEST_METADATA", "")
+	fake := get("GOTOME_TEST_EMBEDDINGS", "false")
+	if cfg.TestEmbeddings, err = strconv.ParseBool(fake); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_TEST_EMBEDDINGS is %q, want true or false", fake)
+	}
+	proxies := get("GOTOME_TRUSTED_PROXIES", "")
+	if cfg.TrustedProxies, err = parseProxies(proxies); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_TRUSTED_PROXIES is %q, want addresses or CIDR ranges separated by commas, such as 172.16.0.0/12: %w", proxies, err)
+	}
+	urls := get("GOTOME_PUBLIC_URLS", "")
+	if cfg.PublicURLs, err = ParsePublicURLs(urls); err != nil {
+		return Config{}, fmt.Errorf("GOTOME_PUBLIC_URLS is %q, want full addresses separated by commas, such as http://192.168.1.5:8080,https://books.example.org: %w", urls, err)
+	}
 	level := get("GOTOME_LOG_LEVEL", DefaultLogLevel)
 	if err := cfg.LogLevel.UnmarshalText([]byte(level)); err != nil {
 		return Config{}, fmt.Errorf("GOTOME_LOG_LEVEL is %q, want debug, info, warn or error", level)
@@ -164,6 +210,87 @@ func load(getenv func(string) string) (Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// NormalizeBasePath makes a path GOtome is served under start and end with
+// one slash. It refuses what is not a plain path: a scheme or host, a query,
+// dot segments, empty segments or characters a browser would encode.
+func NormalizeBasePath(p string) (string, error) {
+	p = strings.TrimSpace(p)
+	if p == "" || p == "/" {
+		return "/", nil
+	}
+	if strings.Contains(p, "://") || strings.HasPrefix(p, "//") {
+		return "", errors.New("it must be a path, not an address with a scheme or host")
+	}
+	segments := strings.Split(strings.Trim(p, "/"), "/")
+	for _, seg := range segments {
+		switch {
+		case seg == "":
+			return "", errors.New("it must not hold empty segments")
+		case seg == "." || seg == "..":
+			return "", errors.New("it must not hold . or .. segments")
+		}
+		for _, r := range seg {
+			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~", r)) {
+				return "", fmt.Errorf("it may hold only letters, digits and - . _ ~, not %q", r)
+			}
+		}
+	}
+	return "/" + strings.Join(segments, "/") + "/", nil
+}
+
+// ParsePublicURLs reads absolute http(s) addresses separated by commas or
+// spaces, each a host with an optional port and path and nothing else; the
+// result has no trailing slashes and no address twice.
+func ParsePublicURLs(s string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, field := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		u, err := url.Parse(field)
+		if err != nil {
+			return nil, err
+		}
+		if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+			return nil, fmt.Errorf("%q is not an http or https address with a host", field)
+		}
+		if u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.Contains(field, "?") || strings.Contains(field, "#") {
+			return nil, fmt.Errorf("%q must hold no user name, query or fragment", field)
+		}
+		path, err := NormalizeBasePath(u.Path)
+		if err != nil {
+			return nil, fmt.Errorf("%q: %w", field, err)
+		}
+		addr := u.Scheme + "://" + strings.ToLower(u.Host) + strings.TrimSuffix(path, "/")
+		if !seen[addr] {
+			seen[addr] = true
+			out = append(out, addr)
+		}
+	}
+	return out, nil
+}
+
+// parseProxies reads addresses and CIDR ranges separated by commas or
+// spaces; an address alone is a range of one.
+func parseProxies(s string) ([]netip.Prefix, error) {
+	var prefixes []netip.Prefix
+	for _, field := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		if strings.Contains(field, "/") {
+			p, err := netip.ParsePrefix(field)
+			if err != nil {
+				return nil, err
+			}
+			prefixes = append(prefixes, p.Masked())
+			continue
+		}
+		addr, err := netip.ParseAddr(field)
+		if err != nil {
+			return nil, err
+		}
+		addr = addr.Unmap()
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+	return prefixes, nil
 }
 
 // withPassword puts the password kept in the file into the database URL. The

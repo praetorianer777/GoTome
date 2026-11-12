@@ -107,8 +107,9 @@ FROM me
 JOIN books ob ON ob.title_key = me.title_key AND ob.id <> me.id
                AND ob.deleted_at IS NULL AND NOT ob.placeholder
 JOIN book_contributors c ON c.book_id = me.id AND c.role = 'author'
-JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = c.author_id
 JOIN authors a ON a.id = c.author_id
+JOIN authors oa ON oa.person_key = a.person_key
+JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = oa.id
 WHERE me.title_key <> ''
 `
 
@@ -120,9 +121,10 @@ type FindDuplicateEvidenceRow struct {
 
 // Every other book that looks like this one, with why: a file of the same
 // bytes, a file of the same content where the bytes differ, a shared ISBN,
-// or the same title and an author in common. Only books in the library,
-// neither deleted, merged nor wished for, count. Each branch starts from the
-// book's own rows and reaches the others through an index.
+// or the same title and an author in common, whichever way round the
+// author's name is written. Only books in the library, neither deleted,
+// merged nor wished for, count. Each branch starts from the book's own rows
+// and reaches the others through an index.
 func (q *Queries) FindDuplicateEvidence(ctx context.Context, bookID uuid.UUID) ([]FindDuplicateEvidenceRow, error) {
 	rows, err := q.db.Query(ctx, findDuplicateEvidence, bookID)
 	if err != nil {
@@ -168,8 +170,8 @@ SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = $1
-  AND a.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
 FOR UPDATE OF p
 `
@@ -239,22 +241,23 @@ func (q *Queries) ListDuplicateEvidence(ctx context.Context, pairIds []uuid.UUID
 }
 
 const listDuplicatePairs = `-- name: ListDuplicatePairs :many
-SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score
+SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score, p.contained
 FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.state = $1
-  AND a.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
   AND ($4::uuid IS NULL OR $4::uuid IN (a.library_id, b.library_id))
   AND ($5::text IS NULL OR EXISTS (
       SELECT 1 FROM duplicate_evidence e WHERE e.pair_id = p.id AND e.kind = $5::text))
-  AND p.score >= $6::real
-  AND ($7::uuid IS NULL
-       OR (p.score, p.id) < ($8::real, $7::uuid))
+  AND ($6::boolean IS NULL OR p.contained = $6::boolean)
+  AND p.score >= $7::real
+  AND ($8::uuid IS NULL
+       OR (p.score, p.id) < ($9::real, $8::uuid))
 ORDER BY p.score DESC, p.id DESC
-LIMIT $9
+LIMIT $10
 `
 
 type ListDuplicatePairsParams struct {
@@ -263,6 +266,7 @@ type ListDuplicatePairsParams struct {
 	SeesAll    bool
 	LibraryID  *uuid.UUID
 	Kind       *string
+	Contained  *bool
 	Least      float32
 	AfterID    *uuid.UUID
 	AfterScore float32
@@ -270,17 +274,19 @@ type ListDuplicatePairsParams struct {
 }
 
 type ListDuplicatePairsRow struct {
-	ID      uuid.UUID
-	BookA   uuid.UUID
-	BookB   uuid.UUID
-	State   string
-	FoundAt time.Time
-	Score   float32
+	ID        uuid.UUID
+	BookA     uuid.UUID
+	BookB     uuid.UUID
+	State     string
+	FoundAt   time.Time
+	Score     float32
+	Contained bool
 }
 
 // The pairs in the state whose books the viewer both sees, of a library when
-// named (either book in it), with evidence of the kind and a score of at
-// least the least when named, the strongest first, after the cursor's.
+// named (either book in it), contained or not when asked, with evidence of
+// the kind and a score of at least the least when named, the strongest
+// first, after the cursor's.
 func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairsParams) ([]ListDuplicatePairsRow, error) {
 	rows, err := q.db.Query(ctx, listDuplicatePairs,
 		arg.State,
@@ -288,6 +294,7 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 		arg.SeesAll,
 		arg.LibraryID,
 		arg.Kind,
+		arg.Contained,
 		arg.Least,
 		arg.AfterID,
 		arg.AfterScore,
@@ -307,6 +314,7 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 			&i.State,
 			&i.FoundAt,
 			&i.Score,
+			&i.Contained,
 		); err != nil {
 			return nil, err
 		}
@@ -318,35 +326,9 @@ func (q *Queries) ListDuplicatePairs(ctx context.Context, arg ListDuplicatePairs
 	return items, nil
 }
 
-const listFileChunkTexts = `-- name: ListFileChunkTexts :many
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks WHERE file_id = $1 ORDER BY position
-`
-
-// The file's text as its chunks hold it, in order.
-func (q *Queries) ListFileChunkTexts(ctx context.Context, fileID uuid.UUID) ([]string, error) {
-	rows, err := q.db.Query(ctx, listFileChunkTexts, fileID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var body string
-		if err := rows.Scan(&body); err != nil {
-			return nil, err
-		}
-		items = append(items, body)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLibraryBookIDs = `-- name: ListLibraryBookIDs :many
 SELECT b.id FROM books b
-WHERE b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND b.deleted_at IS NULL AND NOT b.placeholder
 `
@@ -371,6 +353,57 @@ func (q *Queries) ListLibraryBookIDs(ctx context.Context, arg ListLibraryBookIDs
 			return nil, err
 		}
 		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecordingPairs = `-- name: ListRecordingPairs :many
+SELECT p.id AS pair_id, na.names::text[] AS narrators_a, nb.names::text[] AS narrators_b
+FROM duplicate_pairs p
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_a AND c.role = 'narrator') na
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_b AND c.role = 'narrator') nb
+WHERE p.id = ANY($1::uuid[])
+  AND na.names IS NOT NULL AND nb.names IS NOT NULL
+  AND (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_a AND c.role = 'narrator')
+      IS DISTINCT FROM
+      (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_b AND c.role = 'narrator')
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_a AND f.kind = 'audio' AND f.trashed_at IS NULL)
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_b AND f.kind = 'audio' AND f.trashed_at IS NULL)
+`
+
+type ListRecordingPairsRow struct {
+	PairID     uuid.UUID
+	NarratorsA []string
+	NarratorsB []string
+}
+
+// Of the pairs, those whose books are both audiobooks with narrators that
+// differ: the same book read by someone else, not a copy. The narrators of
+// each book are named as the pair's first and second book.
+func (q *Queries) ListRecordingPairs(ctx context.Context, pairIds []uuid.UUID) ([]ListRecordingPairsRow, error) {
+	rows, err := q.db.Query(ctx, listRecordingPairs, pairIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecordingPairsRow{}
+	for rows.Next() {
+		var i ListRecordingPairsRow
+		if err := rows.Scan(&i.PairID, &i.NarratorsA, &i.NarratorsB); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -537,11 +570,14 @@ func (q *Queries) PutFileSignature(ctx context.Context, arg PutFileSignaturePara
 
 const refreshPairScores = `-- name: RefreshPairScores :exec
 UPDATE duplicate_pairs p SET score = coalesce(
-    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0)
+    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0),
+    contained = coalesce(
+    (SELECT bool_and(duplicate_contains(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), false)
 WHERE p.book_a = $1 OR p.book_b = $1
 `
 
-// The book's pairs' scores, from their evidence as it now is.
+// The book's pairs' scores, and whether one book only holds the other,
+// from their evidence as it now is.
 func (q *Queries) RefreshPairScores(ctx context.Context, bookID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, refreshPairScores, bookID)
 	return err

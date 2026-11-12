@@ -4,6 +4,163 @@
  */
 
 export interface paths {
+    "/auth/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's API keys: bearer tokens for scripts, each limited to its scopes */
+        get: operations["listOwnAPIKeys"];
+        put?: never;
+        /** Make an API key, shown this once */
+        post: operations["createOwnAPIKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/api-keys/{keyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of the caller's API keys */
+        delete: operations["revokeOwnAPIKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/device-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** E-readers asking to be added to the caller's account, waiting for a decision */
+        get: operations["listDeviceRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/device-requests/{requestId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a device's request: its app then collects the token of a new device */
+        post: operations["acceptDeviceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/device-requests/{requestId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a device's request */
+        post: operations["declineDeviceRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's devices: e-readers that sign in with a token of their own */
+        get: operations["listOwnDevices"];
+        put?: never;
+        /** Add a device, and get the token it signs in with, shown this once */
+        post: operations["createOwnDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/devices/{deviceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of the caller's devices: its token signs nobody in from then on */
+        delete: operations["deleteOwnDevice"];
+        options?: never;
+        head?: never;
+        /** Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs */
+        patch: operations["updateOwnDevice"];
+        trace?: never;
+    };
+    "/auth/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The identity provider accounts linked to the caller's account */
+        get: operations["listOwnIdentities"];
+        put?: never;
+        /** Begin linking an identity provider account to the caller's: where to send the browser */
+        post: operations["linkOwnIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/identities/{identityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink an identity provider account from the caller's */
+        delete: operations["unlinkOwnIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -49,6 +206,57 @@ export interface paths {
         get: operations["getCurrentUser"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How one may sign in: with a password, through an identity provider, or both */
+        get: operations["getSignInMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the identity provider sends the browser back to; redirects into the app */
+        get: operations["finishSingleSignOn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oidc/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin signing in through the identity provider: where to send the browser */
+        post: operations["startSingleSignOn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -115,6 +323,40 @@ export interface paths {
         };
         /** What the caller's uploads take up, and how much they may */
         get: operations["getOwnStorage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The authors of the books the caller sees, each person once, alphabetically */
+        get: operations["listAuthors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/authors/{authorKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An author, under every spelling of their name, as the caller's books name them */
+        get: operations["getAuthor"];
         put?: never;
         post?: never;
         delete?: never;
@@ -232,7 +474,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Books whose title, author or series looks like the words, the best first */
+        /** Books, authors and series whose title or name looks like the words, the best first */
         get: operations["searchBooks"];
         put?: never;
         post?: never;
@@ -328,6 +570,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/continuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the caller could go on in the other medium, a text or its audiobook, when that is further along */
+        get: operations["getContinuation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/cover": {
         parameters: {
             query?: never;
@@ -363,6 +622,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The book's deliveries to the caller's devices, waiting or done */
+        get: operations["listBookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/genres/{genre}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Accept or reject a genre of a book; what a person decided is not changed by suggestions */
+        put: operations["decideGenre"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/join-library-book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say that a book read but not owned is a book of the library, and move everyone's reading of it there */
+        post: operations["joinPlaceholder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/kindle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's latest sends of the book to their Kindle, with their outcome */
+        get: operations["listBookKindleSends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/merge": {
         parameters: {
             query?: never;
@@ -374,6 +701,23 @@ export interface paths {
         put?: never;
         /** Merge another book of the same library into this one, with its files, details and everyone's reading */
         post: operations["mergeBooks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write the caller's private note or review of a book; an empty note removes it */
+        put: operations["setNote"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -457,6 +801,125 @@ export interface paths {
         };
         /** A bulk change the caller asked for, and what it came to for each book so far */
         get: operations["getBulk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a Calibre library's metadata.db and preview what importing it would do */
+        post: operations["createCalibreImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An import of a Calibre library: its preview, then what it came to */
+        get: operations["getCalibreImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calibre/imports/{importId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import a previewed Calibre library; a job describes the books one at a time */
+        post: operations["startCalibreImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggested fixes for how the books the caller sees are described, of one kind, with how many there are of each */
+        get: operations["listCleanup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees */
+        post: operations["applyCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave a suggested fix: it stays away while what it was about stays as it is */
+        post: operations["dismissCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cleanup/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What applying one suggested fix does to each of its books, and what the providers are known to say about them */
+        get: operations["previewCleanup"];
         put?: never;
         post?: never;
         delete?: never;
@@ -553,6 +1016,300 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/curation/actions/{actionId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo one action of a run; if its books changed since it is left and reported */
+        post: operations["undoCurationAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many suggestions of each kind that the data decides an automatic clean-up would apply to the books the caller sees */
+        get: operations["getAutoCleanup"];
+        put?: never;
+        /** Queue an automatic clean-up of the kinds named as a run on the Changes page; a dry run records what it would do and changes nothing */
+        post: operations["startAutoCleanup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many open pairs of duplicates the rules can resolve by themselves, per class, and which classes the settings have them resolve every day */
+        get: operations["listDuplicateClasses"];
+        put?: never;
+        /** Resolve the open pairs of the classes chosen in a job: merge books of the same text, link books that hold one another; a dry run records what it would do and changes nothing */
+        post: operations["startDuplicateRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an automatic pass over the matches that wait would do, and the rest of them by provider and score with a sample of each group */
+        get: operations["getAutoMatches"];
+        put?: never;
+        /** Queue a run that takes the fields of matches providers agree on and dismisses those that contradict the text, or accepts one group of matches whole; a dry run changes nothing */
+        post: operations["startAutoMatches"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The runs of changes to books that can be undone: merges, replaces and clean-ups, the newest first */
+        get: operations["listCurationRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A run with its actions in libraries the caller sees, each with the books' details before and after */
+        get: operations["getCurationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a run: the files it trashed start their time in the trash, and what it changed is written into the files */
+        post: operations["confirmCurationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curation/runs/{runId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo every action of a run that is not undone, in a job; one whose books changed since is left and reported on the action. The run says undoing until it is done */
+        post: operations["undoCurationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/deliveries/{deliveryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a book off a device: out of its queue before the device has it, or off a Kobo reader at its next sync */
+        delete: operations["takeBackDelivery"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The device that asks, and whom its token signs in; only for a device's token */
+        get: operations["getThisDevice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books sent to the device that asks, until it has them; only for a device's token */
+        get: operations["listDeviceQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/books/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Record that the device that asks has the book; only for a device's token */
+        put: operations["putOnDevice"];
+        post?: never;
+        /** Record that the device that asks no longer has the book, nor waits for it; only for a device's token */
+        delete: operations["takeOffDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Which visible books have a file with one of the SHA-256 hashes of the files the device holds; they are recorded as on the device; only for a device's token */
+        post: operations["matchDeviceFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask, as an e-reader's app, to be added to an account; answered alike whether the account exists */
+        post: operations["requestDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/requests/{requestId}/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once */
+        post: operations["collectDeviceToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store a book file the device holds in the account's upload library, if the device was allowed to upload (the book is then put on the device with PUT /device/books/{bookId}); only for a device's token */
+        post: operations["uploadFromDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/devices/{deviceId}/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books of one of the caller's devices, waiting, synced or delivered, the last sent first */
+        get: operations["listDeviceBooks"];
+        put?: never;
+        /** Send books to one of the caller's devices: by IDs, or a library and filter */
+        post: operations["sendToDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/duplicates": {
         parameters: {
             query?: never;
@@ -621,6 +1378,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embedding/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The models embedding.model may name, with their size, whether each runs here and how many of the caller's books have its vectors */
+        get: operations["listEmbeddingModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/embedding/models/{modelName}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays */
+        post: operations["removeEmbeddingModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/embedding/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the books the caller sees are embedded with the chosen model, and whether embedding goes on */
+        get: operations["embeddingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The RSS and Atom feeds the caller follows for new books, and how fetching each goes */
+        get: operations["listFeeds"];
+        put?: never;
+        /** Follow an RSS or Atom feed for items naming keywords or authors; following it again gives it the new filters */
+        post: operations["addFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The items of the caller's feeds that name what their filters ask for, the newest first */
+        get: operations["listFeedItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/{feedId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop following a feed */
+        delete: operations["removeFeed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/{feedId}/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch one of the caller's feeds soon, also one that stopped after failing too often */
+        post: operations["fetchFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}": {
         parameters: {
             query?: never;
@@ -633,6 +1510,23 @@ export interface paths {
         post?: never;
         /** Delete a trashed file for good, before its time is up */
         delete: operations["purgeFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays */
+        post: operations["convertFile"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -672,6 +1566,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{fileId}/fix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash */
+        post: operations["fixFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files/{fileId}/restore": {
         parameters: {
             query?: never;
@@ -700,6 +1611,23 @@ export interface paths {
         put?: never;
         /** Move a file of a writable library into its trash; it can be restored until the trash is purged */
         post: operations["trashFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/genres/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Genres suggested for the books the caller sees that wait for a person, the surest first, with how many wait per genre */
+        get: operations["listGenreSuggestions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -751,6 +1679,449 @@ export interface paths {
         put?: never;
         /** Run a job that is not running again, as soon as a worker is free */
         post: operations["retryJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/joins/{joinId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Split a book the library made of an ebook and its audiobook into the two again */
+        post: operations["undoJoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kindle/sends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the EPUBs of books to the caller's Kindle by e-mail, one job each: by IDs, or a library and filter */
+        post: operations["sendToKindle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/download/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's EPUB for a Kobo reader; the whole of it marks the book delivered */
+        get: operations["koboDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/download/{fileId}/kepub": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's KEPUB for a Kobo reader, made from its EPUB; the whole of it marks the book delivered */
+        get: operations["koboDownloadKepub"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/analytics/event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a Kobo reader reports for the store's analytics: taken, kept nowhere */
+        post: operations["koboAnalyticsEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/analytics/gettests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The store's tests a Kobo reader asks for: none */
+        post: operations["koboAnalyticsTests"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/auth/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store tokens a Kobo reader asks for; GOtome signs it in by its address */
+        post: operations["koboAuthDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store tokens a Kobo reader renews */
+        post: operations["koboAuthRefresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's deals: none */
+        get: operations["koboDeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/initialization": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where a Kobo reader goes for its library, its details, reading places and covers: GOtome, with its device token in the address */
+        get: operations["koboInitialization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The changes to a Kobo reader's library since its last sync: books sent to it, their details and reading places, and books taken off it */
+        get: operations["koboSync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A Kobo reader's collections: none yet */
+        get: operations["koboTags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** A Kobo reader archives a book: it leaves the device */
+        delete: operations["koboArchive"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/{bookId}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's details as a Kobo reader shows them */
+        get: operations["koboMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/{bookId}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the person is in a book, as a Kobo reader keeps it */
+        get: operations["koboReadingState"];
+        /** Where a Kobo reader says the person is in a book */
+        put: operations["koboPutReadingState"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/user/loyalty/benefits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's loyalty benefits: none */
+        get: operations["koboBenefits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/user/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store profile a Kobo reader asks for: nothing */
+        get: operations["koboProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/user/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's recommendations: empty */
+        get: operations["koboRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/user/wishlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's wishlist: empty */
+        get: operations["koboWishlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/{bookId}/{width}/{height}/false/image.jpg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's cover for a Kobo reader */
+        get: operations["koboCover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/{bookId}/{width}/{height}/{quality}/{greyscale}/image.jpg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A book's cover for a Kobo reader, at a quality it names */
+        get: operations["koboCoverQuality"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/koreader/plugin.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder */
+        get: operations["getKOReaderPlugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/syncs/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** KOReader reports where the person is in a document, named by its partial MD5 */
+        put: operations["kosyncPush"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/syncs/progress/{document}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the person is in a document, as KOReader goes to it; empty where no place can be given */
+        get: operations["kosyncPull"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/users/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** KOReader's progress sync checks its sign-in: the user name in x-auth-user, the MD5 of a device token in x-auth-key */
+        get: operations["kosyncAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kosync/users/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** KOReader's progress sync registers an account: refused, as accounts and devices are made in GOtome */
+        post: operations["kosyncRegister"];
         delete?: never;
         options?: never;
         head?: never;
@@ -931,6 +2302,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/kindle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether books can be sent to a Kindle by e-mail, the address they come from and the caller's Kindle address */
+        get: operations["getKindle"];
+        /** Set the caller's Kindle address, or remove it with an empty one */
+        put: operations["putKindle"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/notification-settings": {
         parameters: {
             query?: never;
@@ -943,6 +2332,143 @@ export interface paths {
         /** Choose which kinds of event the caller is told of; kinds left out stay as they are */
         put: operations["putNotificationSettings"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The audiobooks the caller has lined up to play one after another, of those they still see */
+        get: operations["getPlayQueue"];
+        /** Replace the caller's play queue; books they may not see are left out */
+        put: operations["setPlayQueue"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's reading history: what they read, are reading or gave up, owned or not */
+        get: operations["listReading"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reading-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a Goodreads or StoryGraph export and preview what importing it would do */
+        post: operations["createReadingImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reading-imports/{importId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An import of a reading history: its preview, then what it came to */
+        get: operations["getReadingImport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reading-imports/{importId}/rows/{row}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Pick the book an ambiguous row of an import is, or skip the row */
+        put: operations["chooseReadingImportRow"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reading-imports/{importId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write a previewed import; a job sets the books one at a time */
+        post: operations["startReadingImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unread books of the libraries the caller sees that are near what they liked, with why */
+        get: operations["listRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/recommendations/{bookId}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say the caller is not interested in a book: it is left out of their recommendations */
+        post: operations["dismissRecommendation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -983,6 +2509,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/metadata/scoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports */
+        get: operations["getMatchScoring"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The learned weights as a file to read and share: weights and counts, nothing of the books */
+        get: operations["exportMatchScoring"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Keep a file of weights someone shared, to measure beside the others; refused for another version of the features */
+        put: operations["importMatchScoring"];
+        post?: never;
+        /** Forget the imported weights */
+        delete: operations["deleteImportedMatchScoring"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/learn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Learn the match score from the library's books with an ISBN (match-train), as a background job */
+        post: operations["learnMatchScoring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metadata/scoring/measure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look a sample of the books with an ISBN up without it and count how often the first candidate is the book (match-check), as a background job */
+        post: operations["measureMatchScoring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/metadata/search": {
         parameters: {
             query?: never;
@@ -992,6 +2604,23 @@ export interface paths {
         };
         /** Books the metadata providers know by title, author or ISBN, to wish for */
         get: operations["searchMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prometheus metrics: counts, job queues, requests by route, the database pool and the search index's backlog. Answers 404 unless the setting metrics.enabled is on; an API key of the metrics scope reaches it */
+        get: operations["getMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1051,6 +2680,227 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/opds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The catalogue for e-readers: what it offers to browse */
+        get: operations["getOpdsRoot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authors of books with an ebook, alphabetically */
+        get: operations["listOpdsAuthors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books with an ebook, the latest first, or of an author, a series or a status */
+        get: operations["listOpdsBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/collections/{collectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A collection's books, in its order */
+        get: operations["listOpdsCollection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books sent to the device that asks, until it downloads them */
+        get: operations["listOpdsDeviceBooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/device/files/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A file of a book sent to the device that asks; the whole of it marks the book delivered */
+        get: operations["downloadOpdsDeviceFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/opensearch.xml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The OpenSearch description of the catalogue's search */
+        get: operations["getOpdsSearchDescription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose title, author or series looks like the words */
+        get: operations["searchOpds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Series of books with an ebook, alphabetically */
+        get: operations["listOpdsSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/shelves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The collections and smart shelves the caller may see */
+        get: operations["listOpdsShelves"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opds/smart-shelves/{shelfId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books a smart shelf holds */
+        get: operations["listOpdsSmartShelf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/placeholder-joins/{actionId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take back a join of a book read but not owned that the caller made */
+        post: operations["undoPlaceholderJoin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Upcoming and recent books of what the caller follows, and whether a library they see has each */
+        get: operations["listReleases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -1077,7 +2927,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Build the search index again from the text already read; searches use the old one until then */
+        /** Build the search index again from the books' files; searches find what it has of a book until the book is read again */
         post: operations["rebuildSearchIndex"];
         delete?: never;
         options?: never;
@@ -1102,6 +2952,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books whose text and description are nearest a description of what they are to be about, best first */
+        get: operations["searchDescribed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search/status": {
         parameters: {
             query?: never;
@@ -1111,6 +2978,40 @@ export interface paths {
         };
         /** How much of the books' text search knows, and whether its index is being rebuilt */
         get: operations["searchStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The series of the books the caller sees, alphabetically */
+        get: operations["listSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/series/{seriesKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A series: how far the caller has read it, what is missing and what the sources list of it */
+        get: operations["getSeries"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1204,6 +3105,126 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the libraries the caller sees hold: books, files, formats, languages, what is missing */
+        get: operations["getLibraryFigures"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics/work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How far the background work on the caller's books is, with its pace and the time left */
+        get: operations["getWorkProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory */
+        get: operations["getSystemChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit */
+        get: operations["getSystemHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version */
+        get: operations["getSystemUpdate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trackers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The authors and series the caller follows for new books */
+        get: operations["listTrackers"];
+        put?: never;
+        /** Follow an author or a series for new books; following it again is the same tracker */
+        post: operations["follow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trackers/{trackerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop following an author or a series */
+        delete: operations["unfollow"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1312,6 +3333,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The webhooks, and the kinds of event they may ask for; a secret says only that it is set */
+        get: operations["listWebhooks"];
+        put?: never;
+        /** Register an address to be sent events */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change a webhook; without a secret it keeps its own */
+        put: operations["updateWebhook"];
+        post?: never;
+        /** Remove a webhook and its log */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The latest deliveries to a webhook, with how each went and what was sent */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhookId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a test event to a webhook, as a background job */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1324,6 +3415,9 @@ export interface components {
             };
             message: string;
             requestId?: string;
+        };
+        AcceptDeviceRequestBody: {
+            canUpload?: boolean;
         };
         AcceptMatchRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -1360,6 +3454,29 @@ export interface components {
         };
         AccountList: {
             users: components["schemas"]["Account"][];
+        };
+        Agreement: {
+            accepted: number;
+            edition: number;
+            right: number;
+            sameWork: number;
+            wrong: number;
+        };
+        ApiKeyList: {
+            keys: components["schemas"]["ApiKeyView"][];
+        };
+        ApiKeyView: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            name: string;
+            prefix: string;
+            scopes: string[];
         };
         ApplyCandidateRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -1401,6 +3518,45 @@ export interface components {
             durationMs: number;
             parts: components["schemas"]["AudioPart"][];
         };
+        AuthorDetail: {
+            books: number;
+            key: string;
+            name: string;
+            spellings: string[];
+        };
+        AutoCleanupCounts: {
+            kinds: components["schemas"]["AutoCleanupKind"][];
+        };
+        AutoCleanupKind: {
+            books: number;
+            kind: string;
+            suggestions: number;
+        };
+        AutoMatchCounts: {
+            accept: number;
+            books: number;
+            capped: boolean;
+            dismiss: number;
+            groups: components["schemas"]["AutoMatchGroup"][];
+            settle: number;
+        };
+        AutoMatchGroup: {
+            band: number;
+            matches: number;
+            provider: string;
+            sample: components["schemas"]["ReviewBook"][];
+        };
+        AutoRunRequest: {
+            band?: number;
+            dryRun: boolean;
+            kinds?: string[];
+            provider?: string;
+        };
+        AutoRunStarted: {
+            dryRun: boolean;
+            /** Format: uuid */
+            runId: string;
+        };
         BookCount: {
             count: number;
         };
@@ -1415,9 +3571,11 @@ export interface components {
                 [key: string]: components["schemas"]["FieldState"];
             };
             files: components["schemas"]["BookFile"][];
+            forms: components["schemas"]["BookForm"][];
             /** Format: uuid */
             id: string;
             identifiers: components["schemas"]["BookIdentifier"][];
+            joins: components["schemas"]["BookJoin"][];
             language?: string;
             /** Format: uuid */
             libraryId: string;
@@ -1426,8 +3584,10 @@ export interface components {
             published?: string;
             publisher?: string;
             reading: components["schemas"]["ReadingState"];
+            recordings: components["schemas"]["BookRecording"][];
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             subtitle?: string;
             tags: string[];
             title: string;
@@ -1435,6 +3595,7 @@ export interface components {
         BookFile: {
             drm: boolean;
             durationMs?: number;
+            ereader?: components["schemas"]["EreaderCheck"];
             extractError?: string;
             extractState: string;
             format: string;
@@ -1449,20 +3610,42 @@ export interface components {
             relPath?: string;
             size: number;
         };
+        BookForm: {
+            /** Format: uuid */
+            id: string;
+            kinds: string[];
+            title: string;
+        };
         BookIdentifier: {
             fromFile: boolean;
             type: string;
             value: string;
         };
+        BookJoin: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            joinedAt: string;
+            title: string;
+        };
         BookList: {
             books: components["schemas"]["BookSummary"][];
             nextCursor?: string;
         };
+        BookRecording: {
+            /** Format: uuid */
+            id: string;
+            narrators: string[];
+            title: string;
+        };
         BookSummary: {
             /** Format: date-time */
             addedAt: string;
+            authorKeys: string[];
             authors: string[];
             coverKey?: string;
+            ereaderFindings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            filesMissing: boolean;
             formats: string[];
             /** Format: uuid */
             id: string;
@@ -1473,6 +3656,7 @@ export interface components {
             rating?: number;
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             /** @enum {string} */
             status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
@@ -1500,10 +3684,11 @@ export interface components {
         };
         BulkRequest: {
             /** @enum {string} */
-            action: "edit" | "fetch" | "writeBack";
+            action: "edit" | "fetch" | "writeBack" | "fix";
             books?: string[];
             change?: components["schemas"]["BulkChange"];
             filter?: string;
+            findings?: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
             library?: string;
         };
         BulkResult: {
@@ -1522,7 +3707,7 @@ export interface components {
         };
         BulkStatus: {
             /** @enum {string} */
-            action: "edit" | "fetch" | "writeBack";
+            action: "edit" | "fetch" | "writeBack" | "fix";
             books: components["schemas"]["BulkResult"][];
             counts: {
                 [key: string]: number;
@@ -1536,6 +3721,65 @@ export interface components {
             id: string;
             total: number;
         };
+        CalibrationBand: {
+            count: number;
+            found: number;
+            from: number;
+            predicted: number;
+            right: number;
+            to: number;
+        };
+        CalibreColumn: {
+            books: number;
+            choices: string[];
+            datatype: string;
+            label: string;
+            name: string;
+        };
+        CalibreImport: {
+            books: number;
+            choices: {
+                [key: string]: string;
+            };
+            columns: components["schemas"]["CalibreColumn"][];
+            covers: number;
+            /** Format: date-time */
+            createdAt: string;
+            formats: {
+                [key: string]: number;
+            };
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            library: string;
+            missingFiles: number;
+            outcomes: {
+                [key: string]: number;
+            };
+            problems: components["schemas"]["CalibreProblem"][];
+            rated: number;
+            ratings: boolean;
+            ready: number;
+            series: number;
+            skipped: number;
+            state: string;
+            tags: number;
+        };
+        CalibreProblem: {
+            calibreId: number;
+            message: string;
+            title: string;
+        };
+        CalibreRequest: {
+            /** Format: uuid */
+            library: string;
+        };
+        CalibreStart: {
+            columns?: {
+                [key: string]: string;
+            };
+            ratings?: boolean;
+        };
         CandidateList: {
             candidates: components["schemas"]["CandidateView"][];
             failures: components["schemas"]["ProviderFailure"][];
@@ -1544,6 +3788,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
@@ -1561,6 +3808,110 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        Check: {
+            /** Format: date-time */
+            checkedAt: string;
+            message: string;
+            name: string;
+            /** @enum {string} */
+            status: "ok" | "degraded" | "failing";
+            /** @enum {string} */
+            unit?: "ms" | "s" | "count" | "bytes";
+            value?: number;
+        };
+        CheckReport: {
+            agreement: components["schemas"]["Agreement"];
+            all: components["schemas"]["Tally"];
+            books: number;
+            editions: components["schemas"]["Agreement"];
+            perLanguage: components["schemas"]["Tally"][];
+            perProvider: components["schemas"]["Tally"][];
+            providers: string[];
+            sample: number;
+            scores: components["schemas"]["ScoreBand"][];
+            threshold: number;
+            thresholds: components["schemas"]["ThresholdPoint"][];
+            using: string;
+            variants: components["schemas"]["Variant"][];
+        };
+        CleanupApplied: {
+            /** Format: uuid */
+            id: string;
+            total: number;
+        };
+        CleanupApplyRequest: {
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
+            picks?: components["schemas"]["CleanupPick"][];
+        };
+        CleanupBook: {
+            coverKey?: string;
+            evidence: components["schemas"]["CleanupEvidence"][];
+            fields: components["schemas"]["CleanupField"][];
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        CleanupCounts: {
+            authors: number;
+            clashes: number;
+            placeholders: number;
+            series: number;
+            titles: number;
+        };
+        CleanupDismissRequest: {
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
+            subject: string;
+        };
+        CleanupEvidence: {
+            field: string;
+            provider: string;
+            source: string;
+            value: string;
+            verdict?: string;
+        };
+        CleanupField: {
+            after: string;
+            before: string;
+            locked?: boolean;
+            name: string;
+        };
+        CleanupList: {
+            counts: components["schemas"]["CleanupCounts"];
+            nextCursor?: string;
+            suggestions: components["schemas"]["CleanupSuggestion"][];
+        };
+        CleanupName: {
+            /** Format: uuid */
+            book?: string;
+            books: number;
+            name: string;
+            position?: number;
+            title?: string;
+        };
+        CleanupPick: {
+            fix?: string;
+            subject: string;
+            to?: string;
+        };
+        CleanupPreview: {
+            books: components["schemas"]["CleanupBook"][];
+            suggestion: components["schemas"]["CleanupSuggestion"];
+            total: number;
+        };
+        CleanupSuggestion: {
+            /** Format: uuid */
+            book?: string;
+            books: number;
+            /** @enum {string} */
+            fix: "merge" | "removeAuthor" | "clearSeries" | "retitle" | "setSeries" | "nameIsSeries" | "choose";
+            found: components["schemas"]["CleanupName"][];
+            /** @enum {string} */
+            kind: "authors" | "placeholders" | "clashes" | "titles" | "series";
+            subject: string;
+            suggested?: string;
         };
         Collection: {
             books: number;
@@ -1615,14 +3966,49 @@ export interface components {
             /** @enum {string} */
             visibility?: "private" | "shared";
         };
+        Continuation: {
+            audio?: components["schemas"]["ContinueOffer"];
+            ebook?: components["schemas"]["ContinueOffer"];
+        };
+        ContinueOffer: {
+            chapter?: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction: number;
+            positionMs?: number;
+            refined: boolean;
+        };
         Contributor: {
+            key?: string;
             name: string;
             /** @enum {string} */
             role: "author" | "narrator" | "translator" | "editor" | "illustrator";
         };
+        ConvertResult: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId: string;
+            images: number;
+            linksDropped: number;
+            name: string;
+            sections: number;
+            tocEntries: number;
+        };
+        Count: {
+            bytes?: number;
+            count: number;
+            name: string;
+        };
         CoverForm: {
             /** Format: binary */
             file: string;
+        };
+        CreateAPIKeyRequest: {
+            /** Format: date-time */
+            expiresAt?: string;
+            name: string;
+            scopes: string[];
         };
         CreateAccountRequest: {
             email?: string;
@@ -1631,6 +4017,10 @@ export interface components {
             role: "admin" | "editor" | "reader";
             username: string;
         };
+        CreateDeviceRequest: {
+            canUpload?: boolean;
+            name: string;
+        };
         CreateLibraryRequest: {
             mode: string;
             name: string;
@@ -1638,14 +4028,213 @@ export interface components {
             visibility: string;
             writable?: boolean;
         };
+        CreatedAPIKey: {
+            key: components["schemas"]["ApiKeyView"];
+            token: string;
+        };
+        CreatedDevice: {
+            addresses: string[];
+            catalog: string;
+            device: components["schemas"]["DeviceView"];
+            token: string;
+        };
+        CurationAction: {
+            books: components["schemas"]["CurationBook"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            note?: string;
+            reason?: string;
+            rule?: string;
+            /** Format: uuid */
+            runId: string;
+            state: string;
+            trashedFiles: number;
+            /** Format: date-time */
+            undoneAt?: string;
+        };
+        CurationBook: {
+            changes: components["schemas"]["CurationFieldChange"][];
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        CurationConflict: {
+            rows: number;
+            table: string;
+        };
+        CurationFieldChange: {
+            after: string;
+            before: string;
+            field: string;
+        };
+        CurationOutcome: {
+            /** Format: uuid */
+            actionId: string;
+            conflicts?: components["schemas"]["CurationConflict"][];
+            message?: string;
+            state: string;
+        };
+        CurationRun: {
+            actions: number;
+            automatic: boolean;
+            /** Format: date-time */
+            confirmedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            dryRun: boolean;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            rule?: string;
+            skipped: number;
+            /** Format: uuid */
+            startedBy?: string;
+            startedByName?: string;
+            state: string;
+            undoing: boolean;
+            undone: number;
+            /** Format: date-time */
+            undoneAt?: string;
+        };
+        CurationRunDetail: {
+            actions: components["schemas"]["CurationAction"][];
+            nextCursor?: string;
+            run: components["schemas"]["CurationRun"];
+        };
+        CurationRunList: {
+            nextCursor?: string;
+            runs: components["schemas"]["CurationRun"][];
+        };
+        CurationUndoQueued: {
+            /** Format: uuid */
+            runId: string;
+        };
         CurrentUser: {
             email?: string;
             /** Format: uuid */
             id: string;
-            permissions: ("library:read" | "personal:manage" | "books:upload" | "metadata:edit" | "index:rebuild" | "users:manage" | "settings:manage" | "storage:manage")[];
+            permissions: ("library:read" | "personal:manage" | "books:upload" | "metadata:edit" | "index:rebuild" | "users:manage" | "settings:manage" | "storage:manage" | "metrics:read")[];
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
             username: string;
+        };
+        DeliveryList: {
+            deliveries: components["schemas"]["DeliveryView"][];
+        };
+        DeliveryView: {
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            deviceId: string;
+            deviceName: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            queuedAt: string;
+        };
+        DescribedList: {
+            books: components["schemas"]["BookSummary"][];
+            nextOffset?: number;
+        };
+        DeviceAnswer: {
+            /** @enum {string} */
+            state: "pending" | "accepted" | "declined" | "expired";
+            token?: string;
+            username?: string;
+        };
+        DeviceBook: {
+            book: components["schemas"]["BookSummary"];
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            deliveryId: string;
+            /** Format: date-time */
+            queuedAt: string;
+            removable: boolean;
+            sentFixed: boolean;
+            /** @enum {string} */
+            state: "waiting" | "synced" | "delivered";
+            /** Format: date-time */
+            syncedAt?: string;
+        };
+        DeviceBookList: {
+            books: components["schemas"]["DeviceBook"][];
+            device: components["schemas"]["DeviceView"];
+            nextCursor?: string;
+        };
+        DeviceCollect: {
+            secret: string;
+        };
+        DeviceFileMatch: {
+            /** Format: uuid */
+            bookId: string;
+            /** Format: uuid */
+            fileId: string;
+            sha256: string;
+        };
+        DeviceFileMatches: {
+            matches: components["schemas"]["DeviceFileMatch"][];
+        };
+        DeviceFilesRequest: {
+            hashes: string[];
+        };
+        DeviceList: {
+            devices: components["schemas"]["DeviceView"][];
+        };
+        DeviceRequestCreate: {
+            deviceName: string;
+            username: string;
+        };
+        DeviceRequestList: {
+            requests: components["schemas"]["DeviceRequestView"][];
+        };
+        DeviceRequestView: {
+            address: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            deviceName: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+        };
+        DeviceTicket: {
+            code: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            secret: string;
+        };
+        DeviceUpload: {
+            allowed: boolean;
+            library?: string;
+            reason?: string;
+        };
+        DeviceView: {
+            canUpload: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            kepub: boolean;
+            /** Format: date-time */
+            lastUsedAt?: string;
+            name: string;
+        };
+        Disk: {
+            databaseBytes: number;
+            freeBytes: number;
+            indexBytes: number;
+            needFreeBytes: number;
+            path: string;
+            totalBytes: number;
         };
         DuplicateCheckRequest: {
             /** Format: uuid */
@@ -1653,6 +4242,15 @@ export interface components {
         };
         DuplicateCheckResult: {
             books: number;
+        };
+        DuplicateClassCount: {
+            class: string;
+            daily: boolean;
+            merges: boolean;
+            pairs: number;
+        };
+        DuplicateClassList: {
+            classes: components["schemas"]["DuplicateClassCount"][];
         };
         DuplicateEvidence: {
             detail: string;
@@ -1666,14 +4264,27 @@ export interface components {
         };
         DuplicatePair: {
             books: components["schemas"]["BookSummary"][];
+            contained: boolean;
             evidence: components["schemas"]["DuplicateEvidence"][];
+            formats?: components["schemas"]["PairFormats"];
             /** Format: date-time */
             foundAt: string;
             /** Format: uuid */
             id: string;
+            narrators?: string[][];
             score: number;
             /** @enum {string} */
             state: "open" | "kept_both" | "merged" | "replaced";
+        };
+        DuplicateRunRequest: {
+            classes: string[];
+            dryRun: boolean;
+        };
+        DuplicateRunStarted: {
+            dryRun: boolean;
+            pairs: number;
+            /** Format: uuid */
+            runId: string;
         };
         EditBookRequest: {
             contributors?: components["schemas"]["Contributor"][];
@@ -1691,12 +4302,24 @@ export interface components {
             tags?: string[];
             title?: string;
         };
+        EreaderCheck: {
+            brokenTocEntries: string[];
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc")[];
+            fontBytes: number;
+            fonts: number;
+            imageHeight: number;
+            imageWidth: number;
+            largestDocument: number;
+            largestImage: number;
+            malformedDocuments: string[];
+            missingResources: string[];
+        };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
         };
         Facet: {
             /** @enum {string} */
-            field: "author" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format";
+            field: "author" | "narrator" | "series" | "tag" | "language" | "published" | "status" | "rating" | "format" | "files" | "ereader" | "genre";
             values: components["schemas"]["FacetValue"][];
         };
         FacetList: {
@@ -1707,25 +4330,184 @@ export interface components {
             label: string;
             value: string;
         };
+        Feed: {
+            authors: string[];
+            /** Format: date-time */
+            checkedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            failures: number;
+            /** Format: uuid */
+            id: string;
+            keywords: string[];
+            lastError?: string;
+            /** Format: date-time */
+            nextFetchAt?: string;
+            title?: string;
+            url: string;
+        };
+        FeedItem: {
+            authors: string[];
+            feed: string;
+            /** Format: uuid */
+            feedId: string;
+            link?: string;
+            /** Format: date-time */
+            published?: string;
+            /** Format: date-time */
+            seenAt: string;
+            title: string;
+        };
+        FeedItemList: {
+            items: components["schemas"]["FeedItem"][];
+        };
+        FeedList: {
+            feeds: components["schemas"]["Feed"][];
+        };
+        FeedRequest: {
+            authors?: string[];
+            keywords?: string[];
+            url: string;
+        };
         FieldState: {
             detail?: string;
             locked: boolean;
             /** @enum {string} */
-            source?: "file" | "filename" | "manual" | "provider";
+            source?: "file" | "filename" | "manual" | "provider" | "calibre";
+        };
+        FieldSuggestion: {
+            /** @enum {string} */
+            reason: "empty" | "filename" | "sameEdition" | "adds" | "locked" | "manual" | "language" | "file" | "other";
+            suggested: boolean;
+        };
+        Figures: {
+            audioHours: number;
+            audiobooks: number;
+            authors: number;
+            books: number;
+            bytes: number;
+            ereaderKinds: components["schemas"]["Count"][];
+            files: number;
+            formats: components["schemas"]["Count"][];
+            isbnFromText: number;
+            languages: components["schemas"]["Count"][];
+            months: components["schemas"]["Count"][];
+            pages: number;
+            publishers: number;
+            series: number;
+            tags: number;
+            withEreaderFindings: number;
+            withMissingFiles: number;
+            withoutAuthor: number;
+            withoutCover: number;
+            withoutText: number;
+        };
+        FixRequest: {
+            findings: ("large-document" | "large-fonts" | "large-image" | "missing-resources" | "malformed-document" | "broken-toc" | "subset-fonts")[];
+        };
+        FixResult: {
+            documentsRepaired: number;
+            documentsSplit: number;
+            fontsRemoved: number;
+            fontsSubset: number;
+            imagesScaled: number;
+            itemsRemoved: number;
+            partsAdded: number;
+            tocEntriesRemoved: number;
+            tocEntriesRepointed: number;
+        };
+        FollowRequest: {
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+        };
+        Following: {
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
         };
         FullTextResult: {
             books: components["schemas"]["TextBook"][];
             more: boolean;
+            notSearched: components["schemas"]["NamedLibrary"][];
+        };
+        GenreDecision: {
+            /** @enum {string} */
+            state: "accepted" | "rejected";
+        };
+        GenreSuggestion: {
+            book: components["schemas"]["BookSummary"];
+            genre: string;
+            /** @enum {string} */
+            method: "vector" | "neighbours";
+            score: number;
+        };
+        GenreSuggestions: {
+            nextCursor?: string;
+            suggestions: components["schemas"]["GenreSuggestion"][];
+            waiting: components["schemas"]["GenreWaiting"][];
+        };
+        GenreWaiting: {
+            genre: string;
+            waiting: number;
+        };
+        Health: {
+            disk: components["schemas"]["Disk"];
+            memory: components["schemas"]["Memory"];
+            postgres: components["schemas"]["Postgres"];
+            warnings: components["schemas"]["Warning"][];
+            watches: components["schemas"]["Watches"];
+        };
+        HistoryEntry: {
+            book: components["schemas"]["BookSummary"];
+            finishedOn?: string;
+            startedOn?: string;
+        };
+        HistoryList: {
+            entries: components["schemas"]["HistoryEntry"][];
+            nextCursor?: string;
+            years: number[];
         };
         Identifier: {
             type: string;
             value: string;
         };
+        IdentityList: {
+            items: components["schemas"]["LinkedIdentity"][];
+        };
+        ImportAmbiguity: {
+            authors: string[];
+            candidates: components["schemas"]["BookSummary"][];
+            /** Format: uuid */
+            choice?: string;
+            row: number;
+            skip: boolean;
+            title: string;
+        };
+        ImportChoice: {
+            /** Format: uuid */
+            book?: string;
+            skip?: boolean;
+        };
+        ImportForm: {
+            file: string;
+            library?: string;
+        };
+        ImportSkipped: {
+            message: string;
+            row: number;
+            title: string;
+        };
+        ImportStart: {
+            overwrite?: boolean;
+        };
         IndexStatus: {
             engine: string;
             files: number;
             indexed: number;
+            notSearched: number;
             rebuilding: boolean;
+            rereading: number;
         };
         JobList: {
             jobs: components["schemas"]["JobView"][];
@@ -1755,6 +4537,99 @@ export interface components {
             scheduledAt: string;
             state: string;
         };
+        KindleAddress: {
+            address: string;
+        };
+        KindleResult: {
+            queued: number;
+            skipped: components["schemas"]["KindleSkipped"][];
+        };
+        KindleSendList: {
+            sends: components["schemas"]["KindleSendView"][];
+        };
+        KindleSendView: {
+            address: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: uuid */
+            id: string;
+            message?: string;
+            state: string;
+        };
+        KindleSkipped: {
+            /** Format: uuid */
+            bookId: string;
+            reason: string;
+        };
+        KindleStatus: {
+            address: string;
+            available: boolean;
+            format: string;
+            maxBytes: number;
+            sender?: string;
+        };
+        KoboResult: {
+            Result: string;
+        };
+        KoboStateIn: {
+            CurrentBookmark: {
+                ProgressPercent: number | null;
+            } | null;
+            EntitlementId: string;
+            StatusInfo: {
+                Status: string;
+            } | null;
+        };
+        KoboStateResult: {
+            RequestResult: string;
+            UpdateResults: components["schemas"]["KoboUpdateResult"][];
+        };
+        KoboStateUpdate: {
+            ReadingStates: components["schemas"]["KoboStateIn"][];
+        };
+        KoboTokens: {
+            AccessToken: string;
+            RefreshToken: string;
+            TokenType: string;
+            TrackingId: string;
+            UserKey: string;
+        };
+        KoboUpdateResult: {
+            CurrentBookmarkResult: components["schemas"]["KoboResult"];
+            EntitlementId: string;
+            StatisticsResult: components["schemas"]["KoboResult"];
+            StatusInfoResult: components["schemas"]["KoboResult"];
+        };
+        KosyncAuthorized: {
+            authorized: string;
+        };
+        KosyncPosition: {
+            device?: string;
+            device_id?: string;
+            document?: string;
+            percentage?: number;
+            progress?: string;
+            timestamp?: number;
+        };
+        KosyncProgress: {
+            device: string;
+            device_id: string;
+            document: string;
+            percentage: number;
+            progress: string;
+        };
+        KosyncSaved: {
+            document: string;
+            timestamp: number;
+        };
+        LastDelivery: {
+            /** Format: date-time */
+            at: string;
+            responseCode?: number;
+            status: string;
+        };
         LibraryList: {
             libraries: components["schemas"]["LibraryResponse"][];
         };
@@ -1763,16 +4638,43 @@ export interface components {
             createdAt: string;
             filesFailed: number;
             filesPending: number;
+            fulltext: boolean;
             /** Format: uuid */
             id: string;
+            joinFormats: boolean;
             lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
             /** Format: uuid */
             ownerId?: string;
             rootPath?: string;
+            unwritableReason?: string;
+            /** Format: date-time */
+            unwritableSince?: string;
             visibility: string;
+            watch: boolean;
             writable: boolean;
+        };
+        LinkedIdentity: {
+            /** Format: date-time */
+            createdAt: string;
+            email?: string;
+            /** Format: uuid */
+            id: string;
+            issuer: string;
+            /** Format: date-time */
+            lastUsedAt: string;
+        };
+        ListedBook: {
+            authors: string[];
+            coverToken?: string;
+            isbns: string[];
+            published?: string;
+            seriesIndex?: number;
+            source: string;
+            title: string;
+            wishable: boolean;
+            wished: boolean;
         };
         LoginRequest: {
             password: string;
@@ -1782,6 +4684,9 @@ export interface components {
             contributors: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            fields?: {
+                [key: string]: components["schemas"]["FieldSuggestion"];
+            };
             id: string;
             identifiers: components["schemas"]["Identifier"][];
             language?: string;
@@ -1809,13 +4714,71 @@ export interface components {
         MemberList: {
             members: components["schemas"]["Member"][];
         };
+        Memory: {
+            appBytes: number;
+            budgetBytes: number;
+            cpus: number;
+            embeddingBytes: number;
+            embeddingModel: string;
+            limited: boolean;
+            machineBytes: number;
+            needBytes: number;
+        };
         MergeRequest: {
             /** Format: uuid */
             from: string;
             take: string[];
         };
+        ModelChoice: {
+            chosen: boolean;
+            content: number;
+            databaseBytes: number;
+            dimensions: number;
+            diskBytes: number;
+            memoryBytes: number;
+            metadata: number;
+            model: string;
+            name: string;
+            readiness: components["schemas"]["Readiness"];
+            /** Format: date-time */
+            removeAt?: string;
+            storedBytes: number;
+            /** Format: date-time */
+            unusedSince?: string;
+            weights: string;
+        };
+        ModelList: {
+            books: number;
+            models: components["schemas"]["ModelChoice"][];
+            withText: number;
+        };
+        NameHit: {
+            books: number;
+            key: string;
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+        };
         NameList: {
             names: string[];
+        };
+        NamedEntry: {
+            books: number;
+            key: string;
+            name: string;
+            sort: string;
+        };
+        NamedLibrary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        NamedList: {
+            names: components["schemas"]["NamedEntry"][];
+            nextCursor?: string;
+        };
+        NoteRequest: {
+            note: string;
         };
         Notification: {
             /** Format: uuid */
@@ -1828,7 +4791,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "bulk.finished" | "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "bulk.finished" | "device.requested" | "kindle.sent" | "kindle.failed" | "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
             link?: string;
             /** Format: date-time */
             readAt?: string;
@@ -1841,7 +4804,7 @@ export interface components {
         NotificationSetting: {
             app: boolean;
             /** @enum {string} */
-            kind: "books.added" | "wish.fulfilled" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed";
+            kind: "books.added" | "wish.fulfilled" | "release.announced" | "release.out" | "feed.item" | "review.needed" | "duplicates.found" | "files.unreadable" | "scan.failed" | "library.unwritable" | "system.degraded" | "update.available";
         };
         NotificationSettings: {
             kinds: components["schemas"]["NotificationSetting"][];
@@ -1850,11 +4813,61 @@ export interface components {
             all?: boolean;
             ids?: string[];
         };
+        PairFormats: {
+            /** Format: uuid */
+            ebookId: string;
+            sameLibrary: boolean;
+        };
         PairStateRequest: {
             /** @enum {string} */
-            relation?: "edition" | "translation" | "related";
+            relation?: "edition" | "translation" | "related" | "recording" | "format";
             /** @enum {string} */
             state: "kept_both" | "open";
+        };
+        PassageStatus: {
+            bytes: number;
+            withPassages: number;
+            withText: number;
+        };
+        PlaceholderJoin: {
+            /** Format: uuid */
+            actionId: string;
+            /** Format: uuid */
+            book: string;
+        };
+        PlaceholderJoinRequest: {
+            /** Format: uuid */
+            book: string;
+        };
+        PlayQueue: {
+            books: string[];
+        };
+        Postgres: {
+            connections: number;
+            effectiveCacheSizeBytes: number;
+            maintenanceWorkMemBytes: number;
+            maxConnections: number;
+            maxParallelMaintenanceWorkers: number;
+            maxParallelWorkers: number;
+            maxParallelWorkersPerGather: number;
+            needBytes: number;
+            sharedBuffersBytes: number;
+            workMemBytes: number;
+        };
+        Profile: {
+            books: number;
+            featureVersion: number;
+            format: string;
+            gotomeVersion: string;
+            languages: {
+                [key: string]: number;
+            };
+            providers: {
+                [key: string]: number;
+            };
+            weights: {
+                [key: string]: number;
+            };
         };
         ProgressSaved: {
             progress: components["schemas"]["ProgressView"] | null;
@@ -1894,6 +4907,16 @@ export interface components {
             message: string;
             provider: string;
         };
+        Queue: {
+            lastHour: number;
+            minutesLeft?: number;
+            waiting: number;
+        };
+        Readiness: {
+            onServer: boolean;
+            /** @enum {string} */
+            state: "ready" | "download" | "noRuntime" | "notDownloaded" | "noServer" | "serverDown";
+        };
         ReadingBulkRequest: {
             books?: string[];
             filter?: string;
@@ -1914,8 +4937,31 @@ export interface components {
             /** @enum {string} */
             status?: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
         };
+        ReadingImport: {
+            ambiguities: components["schemas"]["ImportAmbiguity"][];
+            ambiguous: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            library: string;
+            matched: number;
+            maybe: number;
+            maybes: components["schemas"]["ImportAmbiguity"][];
+            new: number;
+            outcomes: {
+                [key: string]: number;
+            };
+            overwrite: boolean;
+            roundedRatings: number;
+            skipped: number;
+            skippedRows: components["schemas"]["ImportSkipped"][];
+            source: string;
+            state: string;
+            total: number;
+        };
         ReadingState: {
             finishedOn?: string;
+            note?: string;
             rating?: number;
             startedOn?: string;
             /** @enum {string} */
@@ -1931,14 +4977,61 @@ export interface components {
             totalListeningMinutes: number;
             totalPages: number;
             totalReadingMinutes: number;
+            undated: number;
             years: components["schemas"]["StatsYear"][];
         };
         RebuildResult: {
             queued: boolean;
         };
+        Recommendation: {
+            because: components["schemas"]["RecommendationBecause"][];
+            book: components["schemas"]["BookSummary"];
+        };
+        RecommendationBecause: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        RecommendationList: {
+            books: components["schemas"]["Recommendation"][];
+            hasProfile: boolean;
+        };
+        Release: {
+            authors: string[];
+            coverToken?: string;
+            date?: string;
+            following: components["schemas"]["Following"];
+            /** Format: uuid */
+            id: string;
+            inLibrary: boolean;
+            /** @enum {string} */
+            precision?: "day" | "month" | "year";
+            series?: string;
+            seriesIndex?: number;
+            source: string;
+            title: string;
+        };
+        ReleaseList: {
+            releases: components["schemas"]["Release"][];
+        };
+        ReleaseStatus: {
+            available: boolean;
+            /** Format: date-time */
+            checkedAt?: string;
+            current: string;
+            enabled: boolean;
+            latest?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            security: boolean;
+            url?: string;
+        };
         ReplaceRequest: {
             /** Format: uuid */
             keep: string;
+        };
+        Report: {
+            checks: components["schemas"]["Check"][];
         };
         RereadLibraryRequest: {
             failedOnly: boolean;
@@ -1952,6 +5045,17 @@ export interface components {
         };
         ReviewList: {
             books: components["schemas"]["ReviewBook"][];
+            total: number;
+        };
+        RunStatus: {
+            done: number;
+            error?: string;
+            estimateSeconds: number;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: date-time */
+            startedAt: string;
+            state: string;
             total: number;
         };
         Scan: {
@@ -1976,11 +5080,38 @@ export interface components {
             startedAt?: string;
             state: string;
         };
+        ScoreBand: {
+            edition: number;
+            from: number;
+            right: number;
+            sameWork: number;
+            to: number;
+            wrong: number;
+        };
+        ScoringRun: {
+            books?: number;
+        };
+        ScoringStatus: {
+            booksWithIsbn: number;
+            imported?: components["schemas"]["WeightsInfo"];
+            learn?: components["schemas"]["RunStatus"];
+            learnFrom: number;
+            learnReport?: components["schemas"]["TrainReport"];
+            learned?: components["schemas"]["WeightsInfo"];
+            measure?: components["schemas"]["RunStatus"];
+            measureReport?: components["schemas"]["CheckReport"];
+            profile?: string;
+            using: string;
+            weights: string;
+        };
         SearchHit: {
             /** Format: date-time */
             addedAt: string;
+            authorKeys: string[];
             authors: string[];
             coverKey?: string;
+            ereaderFindings: string[];
+            filesMissing: boolean;
             formats: string[];
             /** Format: uuid */
             id: string;
@@ -1993,6 +5124,7 @@ export interface components {
             rating?: number;
             series?: string;
             seriesIndex?: number;
+            seriesKey?: string;
             /** @enum {string} */
             status: "unread" | "reading" | "completed" | "abandoned" | "wishlist";
             subtitle?: string;
@@ -2000,6 +5132,30 @@ export interface components {
         };
         SearchResult: {
             books: components["schemas"]["SearchHit"][];
+            names: components["schemas"]["NameHit"][];
+        };
+        SendRequest: {
+            books?: string[];
+            filter?: string;
+            library?: string;
+        };
+        SendResult: {
+            queued: number;
+        };
+        SeriesDetail: {
+            books: number;
+            key: string;
+            /** Format: uuid */
+            library: string;
+            listed: components["schemas"]["ListedBook"][];
+            missing: components["schemas"]["SeriesGap"][];
+            name: string;
+            next?: components["schemas"]["BookSummary"];
+            read: number;
+        };
+        SeriesGap: {
+            from: number;
+            to: number;
         };
         SeriesPlace: {
             index?: number;
@@ -2025,10 +5181,12 @@ export interface components {
             settings: components["schemas"]["SettingView"][];
         };
         SettingView: {
+            choices?: string[];
             isSet: boolean;
             key: string;
             /** @enum {string} */
             kind: "text" | "secret";
+            multiple?: boolean;
             /** Format: date-time */
             updatedAt?: string;
             value?: string;
@@ -2040,6 +5198,10 @@ export interface components {
         };
         SetupStatus: {
             needed: boolean;
+        };
+        SignInMethods: {
+            password: boolean;
+            sso?: components["schemas"]["SsoMethod"];
         };
         SimilarList: {
             books: components["schemas"]["BookSummary"][];
@@ -2072,6 +5234,15 @@ export interface components {
             match?: boolean;
             text: string;
         };
+        SsoMethod: {
+            name: string;
+        };
+        SsoRedirect: {
+            url: string;
+        };
+        SsoStartRequest: {
+            returnTo?: string;
+        };
         StatsDay: {
             date: string;
             listeningMinutes: number;
@@ -2091,9 +5262,39 @@ export interface components {
             finishes: number;
             year: number;
         };
+        Status: {
+            books: number;
+            content: number;
+            enabled: boolean;
+            metadata: number;
+            metadataLastHour: number;
+            model: string;
+            passages?: components["schemas"]["PassageStatus"];
+            withText: number;
+        };
+        Step: {
+            done: number;
+            lastHour: number;
+            minutesLeft?: number;
+            total: number;
+        };
         Storage: {
             quotaBytes?: number;
             usedBytes: number;
+        };
+        Tally: {
+            books: number;
+            edition: number;
+            failed: number;
+            missing: number;
+            name: string;
+            none: number;
+            ranks: {
+                [key: string]: number;
+            };
+            right: number;
+            sameWork: number;
+            wrong: number;
         };
         TextBook: {
             book: components["schemas"]["BookSummary"];
@@ -2119,6 +5320,55 @@ export interface components {
         };
         TextRereadResult: {
             files: number;
+        };
+        ThisDevice: {
+            addresses: string[];
+            device: components["schemas"]["DeviceView"];
+            upload: components["schemas"]["DeviceUpload"];
+            username: string;
+        };
+        ThresholdPoint: {
+            edition: number;
+            right: number;
+            sameWork: number;
+            taken: number;
+            threshold: number;
+            wrong: number;
+        };
+        Tracker: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "author" | "series";
+            name: string;
+            /** Format: date-time */
+            polledAt?: string;
+        };
+        TrackerList: {
+            trackers: components["schemas"]["Tracker"][];
+        };
+        TrainReport: {
+            books: number;
+            candidates: number;
+            handSet: components["schemas"]["Variant"];
+            languages: {
+                [key: string]: number;
+            };
+            learned: components["schemas"]["Variant"];
+            logLossTest: number;
+            logLossTrain: number;
+            providerShares: {
+                [key: string]: number;
+            };
+            providers: string[];
+            right: number;
+            sample: number;
+            testBooks: number;
+            threshold: number;
+            trainBooks: number;
+            weights: components["schemas"]["WeightRow"][];
         };
         TrashList: {
             files: components["schemas"]["TrashedFile"][];
@@ -2151,9 +5401,15 @@ export interface components {
             /** @enum {string} */
             role?: "admin" | "editor" | "reader";
         };
+        UpdateDeviceRequest: {
+            kepub: boolean;
+        };
         UpdateLibraryRequest: {
+            fulltext?: boolean;
+            joinFormats?: boolean;
             name?: string;
             visibility?: string;
+            watch?: boolean;
             writable?: boolean;
         };
         UpdateSettingsRequest: {
@@ -2184,14 +5440,93 @@ export interface components {
             role: "admin" | "editor" | "reader";
             username: string;
         };
+        Variant: {
+            all: components["schemas"]["Tally"];
+            calibration: components["schemas"]["CalibrationBand"][];
+            name: string;
+            scores: components["schemas"]["ScoreBand"][];
+            thresholds: components["schemas"]["ThresholdPoint"][];
+        };
+        Warning: {
+            commands: string[];
+            kind: string;
+        };
+        Watches: {
+            limit: number;
+            limitReached: boolean;
+            notified: number;
+            polled: number;
+            watches: number;
+        };
+        Webhook: {
+            /** Format: date-time */
+            createdAt: string;
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            kinds: string[];
+            last?: components["schemas"]["LastDelivery"];
+            name: string;
+            secretSet: boolean;
+            trusted: boolean;
+            url: string;
+        };
+        WebhookDelivery: {
+            attempts: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            lastError?: string;
+            /** @description A JSON value. */
+            payload: unknown;
+            responseCode?: number;
+            status: string;
+        };
+        WebhookDeliveryList: {
+            deliveries: components["schemas"]["WebhookDelivery"][];
+        };
+        WebhookList: {
+            kinds: string[];
+            webhooks: components["schemas"]["Webhook"][];
+        };
+        WebhookRequest: {
+            enabled: boolean;
+            kinds: string[];
+            name: string;
+            secret?: string;
+            trusted: boolean;
+            url: string;
+        };
+        WeightRow: {
+            feature: string;
+            handSet?: number;
+            learned: number;
+        };
+        WeightsInfo: {
+            books: number;
+            gotomeVersion: string;
+            languages: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            learnedAt: string;
+            providers: {
+                [key: string]: number;
+            };
+        };
         WishRequest: {
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
+            finishedOn?: string;
             identifiers?: components["schemas"]["Identifier"][];
             language?: string;
             /** Format: uuid */
-            library: string;
+            library?: string;
             locks?: {
                 [key: string]: boolean;
             };
@@ -2199,10 +5534,24 @@ export interface components {
             provider: string;
             published?: string;
             publisher?: string;
+            rating?: number;
             series?: components["schemas"]["SeriesPlace"];
+            status?: string;
             subtitle?: string;
             tags?: string[];
             title?: string;
+        };
+        Work: {
+            checks: components["schemas"]["Queue"];
+            content: components["schemas"]["Step"];
+            files: components["schemas"]["Step"];
+            filesFailed: number;
+            lookups: components["schemas"]["Queue"];
+            matchesPending: number;
+            model: string;
+            pairsOpen: number;
+            texts: components["schemas"]["Step"];
+            vectors: components["schemas"]["Step"];
         };
     };
     responses: never;
@@ -2213,6 +5562,401 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listOwnAPIKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAPIKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedAPIKey"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeOwnAPIKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDeviceRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRequestList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    acceptDeviceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptDeviceRequestBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    declineDeviceRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOwnDevices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOwnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedDevice"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteOwnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateOwnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOwnIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    linkOwnIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoRedirect"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unlinkOwnIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -2289,6 +6033,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrentUser"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSignInMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInMethods"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    finishSingleSignOn: {
+        parameters: {
+            query?: {
+                /** @description The state the sign-in was started with */
+                state?: string;
+                /** @description The authorization code */
+                code?: string;
+                /** @description The issuer of the answer (RFC 9207) */
+                iss?: string;
+                /** @description What the identity provider refused, instead of a code */
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startSingleSignOn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SsoStartRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoRedirect"];
                 };
             };
             /** @description The request failed. */
@@ -2420,15 +6262,80 @@ export interface operations {
             };
         };
     };
+    listAuthors: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                after?: string;
+                /** @description How many names a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAuthor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                authorKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listBooks: {
         parameters: {
             query?: {
                 /** @description A library's ID; left out, every library the caller may see. */
                 library?: string;
-                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
+                /** @description A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not. */
                 filter?: string;
-                /** @description What the books are ordered by; title when left out. */
-                sort?: "title" | "author" | "added";
+                /** @description What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series. */
+                sort?: "title" | "author" | "added" | "series";
                 /** @description The direction; asc when left out. */
                 order?: "asc" | "desc";
                 /** @description The nextCursor of the page before. */
@@ -2864,6 +6771,37 @@ export interface operations {
             };
         };
     };
+    getContinuation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Continuation"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     putBookCover: {
         parameters: {
             query?: never;
@@ -2962,6 +6900,137 @@ export interface operations {
             };
         };
     };
+    listBookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    decideGenre: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+                genre: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenreDecision"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    joinPlaceholder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceholderJoinRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceholderJoin"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listBookKindleSends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleSendList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     mergeBooks: {
         parameters: {
             query?: never;
@@ -2985,6 +7054,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BookDetail"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -3151,6 +7253,247 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startCalibreImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibreStart"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibreImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCleanup: {
+        parameters: {
+            query?: {
+                /** @description Which suggestions: authors (one person under several spellings, the default), placeholders (a value a tool left in place of an author), clashes (an author that is the name of the books' series), titles (what a shop added to a title) or series (a series written into the titles of books without one). */
+                kind?: "authors" | "placeholders" | "clashes" | "titles" | "series";
+                /** @description Where the page before ended, as its nextCursor says; suggestions about the most books come first. */
+                cursor?: string;
+                /** @description How many suggestions a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    applyCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CleanupApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupApplied"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CleanupDismissRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewCleanup: {
+        parameters: {
+            query?: {
+                /** @description The kind of the suggestion. */
+                kind?: "authors" | "placeholders" | "clashes" | "titles" | "series";
+                /** @description The suggestion's subject, as the list says. */
+                subject?: string;
+                /** @description For an author, the spelling to keep when it is not the one suggested. */
+                to?: string;
+                /** @description For a suggestion whose fix is to choose, the fix to show; required then. */
+                fix?: "nameIsSeries" | "clearSeries";
+                /** @description How many books to skip. */
+                offset?: number;
+                /** @description How many books to show, at most 200; 5 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CleanupPreview"];
                 };
             };
             /** @description The request failed. */
@@ -3424,6 +7767,707 @@ export interface operations {
             };
         };
     };
+    undoCurationAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationOutcome"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAutoCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoCleanupCounts"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startAutoCleanup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDuplicateClasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateClassList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startDuplicateRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DuplicateRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAutoMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoMatchCounts"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startAutoMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoRunStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listCurationRuns: {
+        parameters: {
+            query?: {
+                /** @description Only runs of this kind. */
+                kind?: "duplicates" | "cleanup" | "matches" | "placeholders";
+                /** @description Only runs in this state. */
+                state?: "planned" | "running" | "done" | "confirmed" | "undone";
+                /** @description Where the page before ended, as its nextCursor says; runs come newest first. */
+                cursor?: string;
+                /** @description How many runs a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationRunList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCurationRun: {
+        parameters: {
+            query?: {
+                /** @description Where the page before ended, as its nextCursor says; actions come in the order they were made. */
+                cursor?: string;
+                /** @description How many actions a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationRunDetail"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmCurationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoCurationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationUndoQueued"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    takeBackDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getThisDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThisDevice"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDeviceQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putOnDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    takeOffDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    matchDeviceFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceFilesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceFileMatches"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requestDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceTicket"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    collectDeviceToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceCollect"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceAnswer"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadFromDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadForm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Uploaded"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDeviceBooks: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                cursor?: string;
+                /** @description How many books a page holds, at most 100; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceBookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sendToDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listDuplicates: {
         parameters: {
             query?: {
@@ -3433,6 +8477,8 @@ export interface operations {
                 library?: string;
                 /** @description Only pairs with evidence of this kind. */
                 kind?: "sha256" | "content" | "isbn" | "title_author" | "overlap";
+                /** @description true: only pairs of which one book holds the other's text, such as a story and its collection; false: only the others. Left out, both. */
+                contained?: "true" | "false";
                 /** @description Only pairs whose score is at least this many percent. */
                 least?: number;
                 /** @description Where the page before ended, as its nextCursor says; pairs come strongest first. */
@@ -3565,6 +8611,244 @@ export interface operations {
             };
         };
     };
+    listEmbeddingModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeEmbeddingModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                modelName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    embeddingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listFeeds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listFeedItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedItemList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    fetchFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     purgeFile: {
         parameters: {
             query?: never;
@@ -3582,6 +8866,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    convertFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertResult"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -3656,6 +8971,41 @@ export interface operations {
             };
         };
     };
+    fixFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     restoreFile: {
         parameters: {
             query?: never;
@@ -3702,6 +9052,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listGenreSuggestions: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+                /** @description One genre's key, such as crime; left out, every genre. */
+                genre?: string;
+                /** @description Where the page before ended, as its nextCursor says; the surest suggestions come first. */
+                cursor?: string;
+                /** @description How many suggestions a page holds, at most 100; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenreSuggestions"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -3798,6 +9186,825 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JobView"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoJoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                joinId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sendToKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/epub+zip": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboDownloadKepub: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/epub+zip": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboAnalyticsEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboAnalyticsTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboAuthDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KoboTokens"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboAuthRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KoboTokens"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboDeals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboInitialization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboReadingState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboPutReadingState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KoboStateUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KoboStateResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboBenefits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRecommendations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboWishlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboCover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                width: string;
+                height: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboCoverQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                width: string;
+                height: string;
+                quality: string;
+                greyscale: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getKOReaderPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KosyncProgress"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncSaved"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncPull: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncPosition"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KosyncAuthorized"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    kosyncRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -4255,6 +10462,68 @@ export interface operations {
             };
         };
     };
+    getKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putKindle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KindleAddress"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindleStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getNotificationSettings: {
         parameters: {
             query?: never;
@@ -4305,6 +10574,302 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotificationSettings"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getPlayQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayQueue"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setPlayQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayQueue"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayQueue"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReading: {
+        parameters: {
+            query?: {
+                /** @description Only books with this status; reading, completed and abandoned together when left out. */
+                status?: "reading" | "completed" | "abandoned" | "wishlist";
+                /** @description Only books finished in this year (started in it, if not finished). */
+                year?: number;
+                /** @description Only books the caller rated with this many stars. */
+                stars?: number;
+                /** @description Words of the title or of an author. */
+                q?: string;
+                /** @description The nextCursor of the page before. */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createReadingImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImportForm"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getReadingImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chooseReadingImportRow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+                row: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportChoice"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startReadingImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportStart"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadingImport"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listRecommendations: {
+        parameters: {
+            query?: {
+                /** @description How many books to return, at most 50; 12 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissRecommendation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -4382,6 +10947,184 @@ export interface operations {
             };
         };
     };
+    getMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    importMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Profile"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteImportedMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    learnMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoringRun"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    measureMatchScoring: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScoringRun"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchMetadata: {
         parameters: {
             query?: {
@@ -4405,6 +11148,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
                 };
             };
             /** @description The request failed. */
@@ -4501,6 +11273,418 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getOpdsRoot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=navigation": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsAuthors: {
+        parameters: {
+            query?: {
+                /** @description The cursor of the page before. */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=navigation": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsBooks: {
+        parameters: {
+            query?: {
+                /** @description An author's name key; only their books. */
+                author?: string;
+                /** @description A series's name key; only its books, in their order. */
+                series?: string;
+                /** @description Only the books the caller has this status for. */
+                status?: "reading" | "wishlist" | "completed";
+                /** @description The cursor of the page before. */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsCollection: {
+        parameters: {
+            query?: {
+                /** @description The page, from 1. */
+                page?: number;
+            };
+            header?: never;
+            path: {
+                collectionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsDeviceBooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    downloadOpdsDeviceFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getOpdsSearchDescription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/opensearchdescription+xml": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchOpds: {
+        parameters: {
+            query?: {
+                /** @description Words of a title, an author or a series. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsSeries: {
+        parameters: {
+            query?: {
+                /** @description The cursor of the page before. */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=navigation": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsShelves: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=navigation": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOpdsSmartShelf: {
+        parameters: {
+            query?: {
+                /** @description The cursor of the page before. */
+                after?: string;
+            };
+            header?: never;
+            path: {
+                shelfId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    undoPlaceholderJoin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurationOutcome"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReleases: {
+        parameters: {
+            query?: {
+                /** @description upcoming (the default) lists the books still to come, the soonest first; recent those out within the last year, the newest first. */
+                when?: "upcoming" | "recent";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseList"];
                 };
             };
             /** @description The request failed. */
@@ -4616,6 +11800,44 @@ export interface operations {
             };
         };
     };
+    searchDescribed: {
+        parameters: {
+            query?: {
+                /** @description What the books are to be about, in a few words or sentences, in any language the model reads. */
+                q?: string;
+                /** @description A library's ID: only its books. Left out, every library the caller may see. */
+                library?: string;
+                /** @description How many of the best books to pass over, as the page before's nextOffset says. */
+                offset?: number;
+                /** @description How many books a page holds, at most 100; 24 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescribedList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     searchStatus: {
         parameters: {
             query?: {
@@ -4635,6 +11857,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndexStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listSeries: {
+        parameters: {
+            query?: {
+                /** @description The nextCursor of the page before. */
+                after?: string;
+                /** @description How many names a page holds, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                seriesKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeriesDetail"];
                 };
             };
             /** @description The request failed. */
@@ -4969,6 +12256,248 @@ export interface operations {
             };
         };
     };
+    getLibraryFigures: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Figures"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getWorkProgress: {
+        parameters: {
+            query?: {
+                /** @description A library's ID; left out, every library the caller may see. */
+                library?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Work"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSystemUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseStatus"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listTrackers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackerList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    follow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tracker"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unfollow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trackerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listTrash: {
         parameters: {
             query?: {
@@ -5179,6 +12708,192 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BuildInfo"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {

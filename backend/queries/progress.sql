@@ -56,7 +56,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND s.started_at >= sqlc.arg(since)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
@@ -73,7 +73,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY s.medium
 ORDER BY s.medium;
 
@@ -87,12 +87,28 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY 1
 ORDER BY 1 DESC;
 
+-- name: UndatedFinishes :one
+-- Books a person has as completed that no finish is recorded for: an import
+-- of a read book with no date. They are in no year, and no date is made up.
+SELECT count(*)
+FROM user_books ub
+JOIN books b ON b.id = ub.book_id
+WHERE ub.user_id = sqlc.arg(user_id)
+  AND ub.status = 'completed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id);
+
 -- name: ReadingHistory :many
--- When a person began and finished books, the latest first.
+-- When a person began and finished books, the latest first. Each event
+-- finds its book by its key: a person's events are a few thousand at most,
+-- and joined as a set the planner may read every book of the library
+-- instead. OFFSET 0 keeps the subquery from being flattened into such a
+-- join.
 SELECT h.book_id, b.title, h.event, h.day
 FROM (
     SELECT ub.book_id, 'started' AS event, ub.started_on AS day
@@ -103,8 +119,12 @@ FROM (
     FROM reading_finishes rf
     WHERE rf.user_id = sqlc.arg(user_id)
 ) h
-JOIN books b ON b.id = h.book_id
-WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+JOIN LATERAL (
+    SELECT bk.title
+    FROM books bk
+    WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+    OFFSET 0
+) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT sqlc.arg(max_rows);

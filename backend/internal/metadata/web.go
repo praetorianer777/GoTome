@@ -8,19 +8,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
+	"slices"
 	"strconv"
 	"sync"
-	"syscall"
+	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -29,7 +30,7 @@ var (
 	ErrNotFound = errors.New("the provider knows no such book")
 	// ErrForbiddenAddress is a request to an address inside the server's own
 	// network, which no provider has any business with.
-	ErrForbiddenAddress = errors.New("the address is not on the public internet")
+	ErrForbiddenAddress = outbound.ErrForbiddenAddress
 	// ErrBusy is a provider asking to be asked later.
 	ErrBusy = errors.New("the provider asks to be asked later")
 )
@@ -106,6 +107,12 @@ type Options struct {
 	// Enabled names the providers to ask, read on every search. Nil asks
 	// them all.
 	Enabled func(context.Context) []string
+	// Weights reads the setting that says which weights rank candidates:
+	// ScoreHandSet, ScoreLearned or ScoreImported. Nil is learned.
+	Weights func(context.Context) string
+	// MatchThreshold and LearnScore read the settings of that name.
+	MatchThreshold func(context.Context) float64
+	LearnScore     func(context.Context) bool
 	// AllowPrivate lets requests reach addresses inside the server's own
 	// network. Only tests set it, for a provider served on the loopback.
 	AllowPrivate bool
@@ -113,10 +120,23 @@ type Options struct {
 
 // Service asks the providers and ranks what they say.
 type Service struct {
-	providers []Provider
-	webs      map[string]Web
-	language  func(context.Context) string
-	enabled   func(context.Context) []string
+	pool           *pgxpool.Pool
+	providers      []Provider
+	webs           map[string]Web
+	cached         map[string]Web
+	language       func(context.Context) string
+	enabled        func(context.Context) []string
+	weights        func(context.Context) string
+	models         modelCache
+	matchThreshold func(context.Context) float64
+	learnScore     func(context.Context) bool
+	// Queue is set once the job runner exists.
+	Queue Queue
+	// Describe, when set, says how near texts are to a book's own text, as
+	// cosines of their vectors to its content vector, nil where that cannot
+	// be said (similar.Service.CompareToBook). A candidate's description
+	// is one more feature of the learned score.
+	Describe func(ctx context.Context, bookID uuid.UUID, texts []string) ([]*float64, error)
 	// tokenKey signs cover tokens. It is new with every start: a token is
 	// good for as long as the page that holds it.
 	tokenKey []byte
@@ -126,10 +146,11 @@ type Service struct {
 // pool, answers are kept in provider_records.
 func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service {
 	client := newClient(opts.AllowPrivate)
-	s := &Service{providers: providers, webs: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, tokenKey: make([]byte, 32)}
+	s := &Service{pool: pool, providers: providers, webs: map[string]Web{}, cached: map[string]Web{}, language: opts.Language, enabled: opts.Enabled, weights: opts.Weights, matchThreshold: opts.MatchThreshold, learnScore: opts.LearnScore, tokenKey: make([]byte, 32)}
 	_, _ = rand.Read(s.tokenKey)
 	for _, p := range providers {
 		s.webs[p.Name()] = newWeb(p, client, pool)
+		s.cached[p.Name()] = &web{provider: p.Name(), pool: pool, cacheOnly: true}
 	}
 	return s
 }
@@ -142,19 +163,7 @@ func newWeb(p Provider, client *http.Client, pool *pgxpool.Pool) *web {
 }
 
 func newClient(allowPrivate bool) *http.Client {
-	return &http.Client{
-		Transport: guardedTransport(allowPrivate),
-		Timeout:   requestTimeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return errors.New("too many redirects")
-			}
-			if req.URL.Scheme != "https" && req.URL.Scheme != "http" {
-				return fmt.Errorf("redirect to %s", req.URL.Scheme)
-			}
-			return nil
-		},
-	}
+	return outbound.NewClient(outbound.Options{Timeout: requestTimeout, AllowPrivate: allowPrivate})
 }
 
 // web is the Web of one provider.
@@ -163,6 +172,10 @@ type web struct {
 	client   *http.Client
 	pool     *pgxpool.Pool
 	limit    *spacer
+	// cacheOnly answers from provider_records and never asks the provider.
+	cacheOnly bool
+	// last is how the latest request that reached the provider ended.
+	last atomic.Pointer[Outcome]
 
 	mu           sync.Mutex
 	blockedUntil time.Time
@@ -193,9 +206,37 @@ func (w *web) backOff(retryAfter string) error {
 	return &BusyError{Provider: w.provider, Until: w.blockedUntil}
 }
 
+// Outcome is how a provider last answered: Err is empty when it did.
+type Outcome struct {
+	At  time.Time
+	Err string
+}
+
+func (w *web) note(err error) {
+	o := Outcome{At: time.Now()}
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		o.Err = err.Error()
+		if len(o.Err) > 200 {
+			o.Err = o.Err[:200]
+		}
+	}
+	w.last.Store(&o)
+}
+
 var userAgent = "GOtome/" + version.Current().Version + " (+https://github.com/praetorianer777/GoTome)"
 
 func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
+	var asked bool
+	body, err := w.get(ctx, r, &asked)
+	if asked && ctx.Err() == nil {
+		w.note(err)
+	}
+	return body, err
+}
+
+// get is Get, saying through asked whether the request left for the provider
+// rather than being answered from the cache.
+func (w *web) get(ctx context.Context, r Request, asked *bool) ([]byte, error) {
 	method := r.Method
 	if method == "" {
 		method = http.MethodGet
@@ -219,6 +260,9 @@ func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
 		}
 	}
 
+	if w.cacheOnly {
+		return nil, ErrNotFound
+	}
 	if len(r.SecretQuery) > 0 {
 		q := u.Query()
 		for k, vs := range r.SecretQuery {
@@ -240,6 +284,7 @@ func (w *web) Get(ctx context.Context, r Request) ([]byte, error) {
 		req.Header[k] = vs
 	}
 	req.Header.Set("User-Agent", userAgent)
+	*asked = true
 	resp, err := w.client.Do(req)
 	if err != nil {
 		// The URL in the error may carry the secret query.
@@ -319,57 +364,28 @@ func (s *spacer) wait(ctx context.Context) error {
 	}
 }
 
-// guardedTransport dials only public addresses. The check is on the address
-// a name resolved to, as it is dialled, so neither a name pointing inside
-// nor a redirect to one gets through. No proxy is used: it would be what is
-// dialled.
-func guardedTransport(allowPrivate bool) *http.Transport {
-	dialer := &net.Dialer{
-		Timeout: 10 * time.Second,
-		Control: func(network, address string, _ syscall.RawConn) error {
-			if allowPrivate {
-				return nil
-			}
-			ap, err := netip.ParseAddrPort(address)
-			if err != nil {
-				return fmt.Errorf("%w: %s", ErrForbiddenAddress, address)
-			}
-			if !public(ap.Addr()) {
-				return fmt.Errorf("%w: %s", ErrForbiddenAddress, ap.Addr())
-			}
-			return nil
-		},
-	}
-	return &http.Transport{
-		Proxy:                 nil,
-		DialContext:           dialer.DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          20,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: requestTimeout,
-	}
+// ProviderState is a provider and how it last answered, as far as this
+// process has asked it since it started; Last is nil before the first request.
+type ProviderState struct {
+	Name    string
+	Enabled bool
+	Last    *Outcome
 }
 
-// nonPublic are the ranges no provider lives in beside those netip names.
-var nonPublic = []netip.Prefix{
-	netip.MustParsePrefix("100.64.0.0/10"), // shared address space, carrier NAT
-	netip.MustParsePrefix("192.0.0.0/24"),
-	netip.MustParsePrefix("198.18.0.0/15"),
-	netip.MustParsePrefix("240.0.0.0/4"),
-	netip.MustParsePrefix("64:ff9b:1::/48"),
-}
-
-func public(a netip.Addr) bool {
-	a = a.Unmap()
-	if !a.IsValid() || a.IsLoopback() || a.IsPrivate() || a.IsUnspecified() || a.IsLinkLocalUnicast() ||
-		a.IsLinkLocalMulticast() || a.IsInterfaceLocalMulticast() || a.IsMulticast() {
-		return false
+// ProviderStates lists the providers with their last answers. It asks
+// nobody.
+func (s *Service) ProviderStates(ctx context.Context) []ProviderState {
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
 	}
-	for _, p := range nonPublic {
-		if p.Contains(a) {
-			return false
+	out := make([]ProviderState, 0, len(s.providers))
+	for _, p := range s.providers {
+		st := ProviderState{Name: p.Name(), Enabled: s.enabled == nil || slices.Contains(enabled, p.Name())}
+		if w, ok := s.webs[p.Name()].(*web); ok {
+			st.Last = w.last.Load()
 		}
+		out = append(out, st)
 	}
-	return true
+	return out
 }

@@ -19,12 +19,21 @@ ever in the compose file or an environment variable. init only adds what is miss
   the author squash-merges it and closes the issue with a pointer to the pull
   request: merging alone does not close issues in this repository. Pull requests by
   anyone else, and any with failing or missing checks, are left to the owner.
-- The backlog is filed as issues in milestones `M0`–`M10`. An issue names its
+- Issues worked on in parallel go as a batch (the owner's decision, 2026-11-09):
+  each issue on its own branch with its own commits and only its own checks, no
+  push; one batch branch (`chore/<batch issue>-batch-<n>`) merges them, resolves
+  conflicts and migration numbers, and passes the gate and CI once. Its pull
+  request names every issue (`Closes #a, closes #b`) and is merged with a merge
+  commit, not squashed, so each issue keeps its commits. A branch that fails is
+  fixed or taken out of the batch.
+- The backlog is filed as issues in milestones (`M0` onwards). An issue names its
   dependencies; do not start it before they are merged.
 - Issues #14 (search engine) and #15 (embedding runtime) end in decision records
   under `docs/decisions/`. No search or embedding feature work starts before them.
   #14 chose pg_search in the pinned ParadeDB image
   (`docs/decisions/search-engine.md`); its harness is `spikes/search`.
+  #244 and #265 moved the index into the app, on Tantivy, without a copy
+  of the text (`docs/decisions/text-store.md`).
   #15 chose ONNX Runtime directly, with a tokenizer of GOtome's own, int8
   weights, 16 passages per book prefixed `query: `
   (`docs/decisions/embedding-runtime.md`); its harness is `spikes/embed`.
@@ -40,10 +49,30 @@ ever in the compose file or an environment variable. init only adds what is miss
   with a five-second test, plain and with `-race`, on the host and in the container,
   and did not reproduce. If it shows up, `make check-go GO_BASE=golang:1.26-bookworm`
   is the way to tell the toolchain apart from the code.
+- `engine/` is the full-text engine (#265): a Rust crate on Tantivy with a C
+  interface, which `internal/fulltext` loads at run time (`GOTOME_FULLTEXT_LIBRARY`),
+  as embed loads ONNX Runtime. It builds in the Rust image the Dockerfile pins
+  (`RUST_IMAGE`), offline from the crates in the git-ignored `engine/vendor`,
+  which `make engine-fetch` fills once (the owner runs it; a worktree takes the
+  main checkout's as hard links; CI fetches them). `make check-engine` tests it
+  and builds the library the Go tests load (`GOTOME_TEST_FULLTEXT`).
 - `deploy/Dockerfile` builds the one app image; `deploy/docker-compose.yml` is the
   whole deployment: `app` and `db`. The database image is ParadeDB (Postgres 18 with
-  `pg_search` and `pgvector`), pinned by digest; change the pin only in a commit
-  about that.
+  `pg_search` and `pgvector`; GOtome uses `pgvector` only since #265), pinned by digest; change the pin only in a commit
+  about that. `db` runs with `init: true`: Postgres as process 1 inherits
+  every orphan in its container, such as a health check past its timeout,
+  and restarts when one exits with a code above 1 (#168). `make
+  stack-check` fails when Postgres is process 1.
+- `deploy/backup.sh` and `deploy/restore.sh` are the operator's backup and
+  restore (`docs/backup-and-upgrade.md`). A backup leaves out the rows GOtome
+  makes again (`derived` in backup.sh: chunks, search words, the full-text
+  outbox, signatures, vectors, provider answers) and the full-text index
+  (`/data/search`); a restore clears `chunked_at`, so every text is read
+  again. A new table of that kind goes into `derived`. `make
+  upgrade-test` (its own CI job, `tests/test-upgrade.sh`) sets an installation
+  up on the previous release's image, or before the first release on one
+  built from the merge base (`tests/upgrade-from.sh`), backs it up, upgrades
+  it, and restores the backup on this checkout's image.
 - `make up` builds and starts the stack for this checkout and prints its URL;
   `make down`, `make clean`, `make logs`, `make psql` go with it. Project name and
   port come from the checkout path (`mk/stack.mk`) and are written to
@@ -55,6 +84,17 @@ ever in the compose file or an environment variable. init only adds what is miss
 and CI runs the same script. It must stay fast (target under five minutes) and must
 work in parallel git worktrees, so it may not rely on fixed ports or fixed compose
 project names. An issue that adds something testable adds its stage to the script.
+Every stage is timed: the table at the end of a run (also in a CI job's summary and
+in `.cache/gate-timings.md`) says where the minutes went (#403).
+
+CI (`.github/workflows/ci.yml`) runs the same script cut into parts,
+`./run-tests.sh --full --only <part>[,<part>]` (shell, engine, go, koplugin, fuzz,
+web, android, integration, scale, e2e), as jobs side by side. The Go test image and
+the app image are built once, with buildx and the Actions cache, and handed on as
+artifacts (`.github/actions/load-images`; `STACK_PREBUILT=1` makes `stack-up` start
+the loaded image instead of building); the browser suite is one job per Playwright
+project (`E2E_PROJECT`), each on a stack of its own. The job `tests` is green when
+all of them are. A new stage belongs to exactly one part (`part_of` in the script).
 
 The hook has its own tests in `.claude/hooks/tests/`; run them after changing a hook.
 
@@ -78,6 +118,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Integration tests live in `backend/test` behind the `integration` build tag and run
   with `make test-integration` against the running stack (`make up` first). Each test
   gets its own database from `dbtest.New(t)`, copied from a migrated template.
+  The same target runs `cmd/gotome/cli_test.go`, the subcommands against a
+  test database.
 
 ## Web app
 
@@ -92,10 +134,46 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   build and `make web-embed` fill it.
 - TypeScript stays on 5.x while `openapi-typescript` requires it.
 - Text a person reads comes from `web/src/i18n/en.ts` through `t(key)`, never from a
-  literal in a component. Which page someone lands on (setup, sign-in, the app) is
+  literal in a component. Every key has its German in `de.ts` (typed against
+  `en.ts`, so a missing one fails `make check-web`); the language is each
+  browser's, chosen on the profile. Dates and numbers go through `lib/format.ts`.
+- A view's keyboard shortcuts are `KeyBinding`s run by `useKeys`
+  (`lib/keys.ts`), which leaves keys to fields, focused buttons and an open
+  `Dialog`; the same list is the view's "Keys" dialog (`KeyHelp`).
+  `e2e/tests/accessibility.spec.ts` runs axe on the main views once
+  `@axe-core/playwright` is installed in `e2e/`, and skips until then. Which page someone lands on (setup, sign-in, the app) is
   decided by the route guards in `web/src/router.tsx`.
-- A navigation entry is listed in `NAV_ITEMS` with the permission its page needs.
+- How the app looks is `docs/design.md`: the colours (the `slate` scale is
+  redefined from parchment to ink navy), the serif headings, the layout and
+  the parts every page uses. Its tokens live in `web/src/styles/index.css`.
+- A navigation entry is listed in `NAV_ITEMS` with the permission its page
+  needs (none: everyone signed in) and its group in the sidebar.
 - App tests render the whole app against `web/src/test/fake-server.ts`.
+- The library's grid and table render only the rows near the window once
+  they hold `VIRTUAL_FROM` books (`books/virtual.ts`, TanStack Virtual over
+  the window's scroll); shorter lists render whole. Rows are measured as
+  they render, and the measurements and the first row in view are kept per
+  list and history entry, so back returns to the same row. The next page
+  loads while the end of a list is near, not only as it comes near.
+  `e2e/tests/long-list.spec.ts` answers `GET /books` itself with 500 books.
+
+## Outbound requests and headers
+
+- Every request the server makes to another server goes through
+  `outbound.NewClient` (`internal/outbound`): it dials only public
+  addresses, checked on the address a name resolved to as it is dialled,
+  so a name or a redirect pointing inside is refused
+  (`ErrForbiddenAddress`); no proxy, http(s) redirects only. The one
+  exception is `Options.Trusted`, the host and port of an address an
+  administrator named: the identity provider's issuer and
+  `embedding.server`, which are often on the local network. Nothing else
+  of theirs is trusted, so endpoints a discovery document or a redirect
+  names elsewhere inside are refused. A new kind of outbound request
+  (webhooks, feeds) uses this client and trusts nothing a user typed.
+- `securityHeaders` (`httpapi/middleware.go`) gives every answer
+  `nosniff`, `X-Frame-Options`, `Referrer-Policy: same-origin` and a
+  `Permissions-Policy`, and a sandboxing CSP that the web app replaces with
+  its own (`webui.ContentSecurityPolicy`). Files are sent as attachments.
 
 ## Authentication
 
@@ -117,6 +195,37 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   sessions; changing one's own password ends all but the current one.
 - A session has an `id` for its owner to see and end it by; the token's hash is
   never sent.
+- Single sign-on is OpenID Connect through `internal/sso` (go-oidc), set up
+  by the `oidc.*` settings: the authorization code flow with PKCE, the
+  state hashed in `oidc_logins` (ten minutes, taken once) and also in the
+  `gotome_oidc` cookie, which the callback must bring back, a nonce the ID
+  token must carry, and the issuer checked in the token and, where the
+  provider names it, in the answer (RFC 9207). The redirect URI is
+  `/api/v1/auth/oidc/callback` on the host the browser used. A callback
+  always ends at a page of the app, an error as `?sso=<reason>`.
+- `user_identities` links an account to a provider's issuer and subject.
+  What a sign-in may do besides is `auth.IdentityPolicy`
+  (`SignInIdentity`): make an account, take the one of a verified address,
+  and, once any `oidc.*Groups` is set, set the role from the groups at
+  every sign-in, except that it never demotes the last administrator.
+  Linking from the profile starts with a POST, so no other site can link
+  its own identity to a person's account.
+- `auth.passwords` off refuses passwords (`auth.ErrPasswordsOff`) while an
+  identity provider is set up (`settings.Store.PasswordsOff`), except to
+  administrators while no active administrator has an identity;
+  `GOTOME_FORCE_PASSWORD_LOGIN` overrides it. Starting a sign-in is limited
+  per address, as each leaves a row until it expires. The one identity of an
+  account that has no usable password cannot be unlinked.
+  `internal/sso/ssotest` is the identity provider the integration tests
+  sign in at, and can be made to tamper with its answers.
+- The browser tests sign in at a real Keycloak (`tests/sso.spec.ts`):
+  `make sso-up` starts it beside the stack (compose profile `sso`, realm,
+  client and people in `deploy/keycloak/gotome-realm.json`, all test
+  values). It listens on the checkout's second port inside its container
+  too, so the issuer `http://keycloak:<port>` is one address for the app,
+  on the stack's network, and for the browser, whose container maps the
+  name to this machine. The full gate starts it; a push does not, and the
+  test skips without it except in CI.
 
 ## Browser tests
 
@@ -134,9 +243,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `CHANGELOG.md` is written for someone who runs or uses GOtome. A change they would
   notice gets a line under `## [Unreleased]` in the same pull request; internal work
   does not.
-- A release is cut by the owner with `./release.sh <version>` on `main`. It moves the
-  Unreleased entries under the version, writes `VERSION`, commits and tags, and pushes
-  nothing. Pushing the tag runs `.github/workflows/release.yml`.
+- A release is cut by the owner with `./release.sh` on `main`. Without a version it
+  works one out from what was merged since the last tag: a `feat/` pull request or an
+  Added, Changed or Deprecated section is minor, a `BREAKING CHANGE` or a Removed
+  section major (minor before 1.0), anything else patch; `major`, `minor`, `patch` or
+  an explicit version override it. It moves the Unreleased entries under the version,
+  writes `VERSION`, commits and tags, and pushes nothing. Pushing the tag runs
+  `.github/workflows/release.yml`.
 
 ## Settings and secrets
 
@@ -144,11 +257,23 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   is a `Definition` (key, kind text or secret, default, check); a new one is added
   there, with its label in `web/src/i18n/en.ts` and `TEXTS` in
   `web/src/routes/admin-settings.tsx`. The routes need `settings:manage`.
+- `docs/` is the operator's and user's documentation (`docs/README.md` is
+  its index). Every setting and every `GOTOME_*` variable the code or the
+  compose files name has a row in `docs/configuration.md`, the setting's
+  with its default: `make config-reference-check` (in `check-go`, uncached)
+  fails otherwise.
 - A secret is sealed with AES-256-GCM (`internal/secret`), its key as associated
   data, and stored only sealed. The API never returns it, only `isSet`; code that
   needs it calls `settings.Store.Secret` and must neither log nor send it.
 - `settings.Open` leaves a sealed check value on the first start and opens it on
   every later one: a start with another key fails with `ErrWrongKey`.
+- Code that holds a transaction reads settings, and everything else, on
+  that transaction (`Store.TextTx`), never through the pool: holding locks
+  while waiting for a second connection hangs every request once the pool
+  is taken by requests waiting for those locks (#189,
+  `TestQueueingALookupNeedsNoSecondConnection`). The pool holds at least
+  `db.minConns` connections, two of which the notification hub and River's
+  notifier keep.
 
 ## Libraries and visibility
 
@@ -166,6 +291,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   its book, and one about the book must equal the answer about an ID or name
   that does not exist. A new such route needs its calls in `readCases`, with
   someone who does see the book as the control, or the test fails.
+- Deleting a library cascades through its books, files and chunks. A
+  transaction that locks more than one of those holds the library first
+  (`HoldLibrary`, `HoldLibrariesOfFiles`, `HoldLibrariesOfBooks`, before
+  any other lock), or it deadlocks with the delete (#199).
 - Managed libraries live under `GOTOME_DATA_DIR` (`/data` in the image, a volume);
   external ones are folders mounted into the container.
 
@@ -212,8 +341,56 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   transaction lowers the word-similarity threshold and turns off sequential
   scans, without which the planner reads every title; a test holds it under
   300 ms on 50,000 books.
+- `make scale-test` (`test/scale_test.go`, in the full gate) seeds 50,000
+  books and asks every main view as two people: each within a second, and
+  none reading `books`, `book_files` or `book_chunks` whole except those in
+  `perf.WholeByDesign`. It catches the plans that ran through `auto_explain` on
+  the connection and writes them to `.cache/scale-plans`. A new main view
+  goes into `scaleViews`. `docs/performance.md` has the table.
+- `gotome perf-check` (`cmd/gotome/perfcheck.go`, `internal/perf`) times the
+  same views (`perf.Views`, which the scale test asks too) on an installation's
+  own library, as one person, in-process through the router with no session
+  written. Its connections are `default_transaction_read_only`, it queues
+  nothing, and nothing it prints or fails with may name anything of the
+  library (views are named generically, errors say the view and a status):
+  `perfcheck_test.go` holds the output to that. A new view goes into
+  `perf.Views`; what it needs picked from the library into `perf.Pick`.
+- Call `visible_library_ids` in `FROM` (`IN (SELECT * FROM
+  visible_library_ids(...))`): in a select list the planner cannot see
+  into it and takes half the books for visible. A filter on the viewer's
+  own rows is an `EXISTS` (`filtersFor`), not a value looked up per book.
 - Files are sent with `http.ServeContent` (ranges, `If-Range` on the SHA-256 ETag)
   and without the server's write deadline.
+
+## Authors and series
+
+- An author is a person, whichever way their name is spelled: `/authors/$key`
+  and `GET /authors/{authorKey}` go by `catalog.PersonKey`, and the filter field
+  `person` is an author under every spelling (`authors.person_key`). It has no
+  facet, so `author`'s facet on that page is the author and their co-authors.
+  A series goes by its `name_key`. Lists and pages get the keys from
+  `authorKeys`, `seriesKey` and a contributor's `key`.
+- Their books are `GET /books` with the rule as `base` in `books/book-browser.tsx`
+  (`filterTree(picks, base)`), the library's sorting, filters and selection.
+  `sort=series` (`catalog.OrderSeries`) is each series in `series_index`, then
+  title, then the books of no series. No index covers it over a whole library,
+  so only a list narrowed to an author or a series asks for it.
+- `GET /series/{seriesKey}` (`catalog.Service.Series`) gives what `user_books`
+  says the viewer read, the next book of status unread or wishlist, the places
+  no book takes (`catalog.Gaps`, whole numbers up to the last book) and what
+  `releases` lists that no visible library holds (`releases.Service.OfSeries`,
+  known while someone follows the series or an author of it). A listing at a
+  place a book takes is that book under another title and is left out; a
+  placeholder of it says `wished`. "Add to wishlist" sends it to
+  `POST /books/wishes` in the library that holds most of the series. An author
+  or a series with no visible book is a 404 like a name nobody has.
+- `books/name-links.tsx` holds the links to them, used wherever a book's
+  authors and series are written. The quick search answers `names` beside
+  `books` (`catalog.Service.SearchNames`), a person once, offered first.
+- `GET /authors` and `GET /series` (`routes/names.tsx`) are A to Z, by
+  `catalog.NameList`: `NamesPeople` lists a person once, where the first of
+  their spellings stands, under the spelling their visible books use mostly;
+  the OPDS feeds keep `NamesAuthors`, one entry per spelling, of ebooks alone.
 
 ## Scanning
 
@@ -248,6 +425,40 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   records the new `sha256`, size and time; `original_sha256` stays. A file
   whose hash is not the recorded one is left for the scan.
 
+## Calibre import
+
+- `internal/calibre` (#394) brings a Calibre library's `metadata.db` into an
+  external library that holds its folder (`docs/moving-from-calibre.md`).
+  `Open` reads the file with `modernc.org/sqlite` (BSD-3, no cgo, about
+  5.6 MB of binary) read-only and `immutable=1`, so Calibre may be running
+  and nothing is written beside it; the integration tests hold its bytes,
+  modification time and folder unchanged. The Calibre schema is tolerated
+  as Calibre writes it (`calibretest` writes a small one for the tests and,
+  with `GOTOME_WRITE_CALIBRE_FIXTURE`, `e2e/fixtures/calibre`).
+- A Calibre folder (`Author/Title (12)`, two levels down) is one book
+  whatever its files are called (`calibreFolder` in `grouping.go`). A row of
+  Calibre's is matched to files by `books.path` + `data.name` + format
+  against `book_files.rel_path`, never by title; one whose files lie in
+  several GOtome books is left out.
+- `POST /calibre/imports` previews (`storage:manage`): `calibre_imports`
+  holds the counts and `calibre_import_books` a row per Calibre book, with
+  no metadata kept. `.../start` (ratings, and a choice of `ignore`, `status`
+  or `tags` per custom column) queues the `calibre.import` job (queue
+  `metadata`), which reads each book again from `metadata.db` and writes it
+  in a transaction of its own with its outcome (`changed`, `unchanged`,
+  `skipped`, `failed`), so a run cut off and run again does each once. Running
+  an import again is a new preview and import.
+- A book is described through `ingest.Service.EditTx` with `Source`
+  `calibre` (`catalog.SourceCalibre`), which skips locked fields and locks
+  nothing. A field is replaced only while its source is empty, a guess, a
+  file's or Calibre's own (`replaceable`); a person's or a provider's stays,
+  and `ApplyFileMetadataTx` leaves Calibre's. Whether a book changed is
+  decided by `BookDescribedDigest` before and after. Ratings and the status of
+  a custom column are the importing person's own and go through
+  `catalog.ImportReadingTx` without overwriting. Not done: watching
+  `metadata.db` for changes (an import is run by hand), and Calibre's sort
+  title (GOtome works out its own).
+
 ## Uploads
 
 - `ingest.Service.Upload` is the one writer into a library, and only into a
@@ -256,6 +467,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   transaction that records it; a failed commit takes the file back out. An
   interrupted upload leaves only a staged part, removed at once or, after a
   crash, by the first upload once the part is a day old.
+- A file is checked by its first bytes against the format its name claims
+  (`ingest/sniff.go`): an upload that is not is refused (422
+  `wrong_content`), and a scanned one is recorded as unreadable before any
+  reader sees it (`safely`). A new format gets its signature there.
 - Uploads and scans both choose new paths in a library under the advisory lock
   `LockLibraryFiles`. A scan that finds a path it took as new already has a row
   leaves that folder to the next scan (`errTaken`).
@@ -276,7 +491,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   writable library (managed, or external with `writable`) to
   `<library>/.trash/<file id>/<name>` by a rename, last in the transaction
   that sets `trashed_at` and `trashed_by`, under `LockLibraryFiles`; a
-  failed commit moves it back. The record keeps its `rel_path`, which stays
+  failed commit moves it back. A write the system refuses there (EACCES,
+  EPERM, EROFS on a mkdir or rename, `folderError`) is
+  `ErrFolderReadOnly`, a 409 naming the folder, and marks the library as
+  a failed probe does. The record keeps its `rel_path`, which stays
   taken; the scan passes by both the dot folder and the trashed record.
   The file's chunks and signature go and the book's text is chosen again
   (`textGoneTx`); `OnFilesChanged` queues its duplicate check.
@@ -312,12 +530,42 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   was guessed from a file name, or was last set by the same file. Locked fields and
   values from other sources stay. New sources of metadata follow the same rule
   through `field_sources`.
+- Every zip is opened through `format/zipsafe`, which refuses before
+  anything is inflated an archive of too many entries, too many bytes
+  inflated, an entry over 1 MiB that inflates past 200 times its size (a
+  zip bomb), or an entry whose name leaves the archive, stands twice or is
+  a link. A new reader of zips, such as CBZ, uses it.
 - Programs that read untrusted files (poppler, ffprobe, ffmpeg) run through
   `internal/procexec`: timeout, memory and CPU limits, output cap, own process
   group. A failure, crash or timeout of such a program is the file's fault and
   is recorded as `ErrUnreadable`. They are installed in the app image and in the
   test toolchain image (`deploy/toolchain.Dockerfile`), which `mk/go.mk` builds
   on demand; `make stack-check` fails when the app image lacks one.
+- FFmpeg is GOtome's own build (#271): the `ffmpeg` stage of `deploy/Dockerfile`
+  compiles the release pinned there by version and SHA-256 with
+  `--disable-everything` and only what `ingest/audio.go` asks: the `file` and
+  `pipe` protocols, the demuxers mov, mp3, flac and ogg, the parsers their
+  durations need, the `image2pipe` muxer. It decodes and encodes nothing; it
+  links only libc, so zlib-compressed `moov` boxes and ID3 frames are not read.
+  The toolchain image copies the same programs (`mk/ffmpeg.mk`). The source lies
+  in the git-ignored `deploy/vendor`, which `make ffmpeg-fetch` fills once (the
+  owner runs it; a worktree links the main checkout's; CI fetches it). As it
+  cannot encode, the tests read the files of `ingest/testdata/audio`, made
+  under Debian's full FFmpeg by `make-files.sh`. Its `reference.json` is what
+  came of them there; `gotome audio-check`, in `make stack-check`, and
+  `TestAudioReadsAsTheReferenceSays` hold every build to it.
+- What a book prints about itself (#488): `ingest.ImprintOf` reads an ISBN
+  (after the word ISBN, checksum valid; an e-book's first, an unlabelled one
+  next; one beside Print/Taschenbuch only is `Imprint.PrintISBN`, kept in
+  `book_files.text_print_isbn` as `Book.PrintISBNs`, asked about by
+  `metadata.lookupIDs` when the book has no ISBN and never stored as an
+  identifier, nor taken from a record by `enrich.gaps`; a document naming more than four is a list of other titles, and the
+  last six documents count only for a single one), the publisher and the year
+  from the first and last six documents or pages. `catalog.ApplyImprintTx`
+  gives them to the book as source `text`, only where nothing else said
+  anything (no ISBN at all, no publisher, no date; no lock); a file's own
+  metadata replaces them. It runs with extraction and with `ingest.chunk_file`,
+  so a raise of `ChunkVersion` reads existing books for it.
 - When two files of one book say different things, the format decides: EPUB over
   MOBI and AZW3 over PDF (`formatRanks` in `catalog`); within a rank, the file
   read first.
@@ -325,9 +573,62 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   image under the SHA-256 of the original, as JPEGs in two widths. `books.cover_key`
   is that hash. A route that sends something other than JSON declares `Produces`.
 
+## E-reader checks
+
+- What makes an EPUB slow or troublesome on an e-reader (#233) is measured
+  by `epub.Measure` from the archive's directory, the package document,
+  the images' headers, the XHTML documents and the tables of contents: the
+  largest content document, the embedded fonts, the largest image in bytes
+  and pixels, manifest items the archive lacks, XHTML documents that are
+  not well-formed XML (entities a DTD declares, such as HTML's under the
+  XHTML DTD, are allowed), and NCX or nav entries that lead nowhere (a
+  document the archive lacks, a fragment no element has) (#262).
+  `Measures.Findings` names those past the limits (`epub.Findings`,
+  constants to be tuned). Extraction stores both on the file
+  (`epub_measures`, `ereader_findings`, `measures_version`); the
+  `ingest.measure_files` job measures EPUBs read before or measured by an
+  older `epub.MeasuresVersion` (raise it with a change to what is
+  measured), every ten minutes in batches, and a trigger clears all three
+  when `sha256` changes. A file that cannot be measured has no findings.
+  The filter field is `ereader`, with its facet.
+- `epub.Fix` fixes findings on the zip entries, a step each: splitting
+  content documents at chapters, else between blocks, into parts of at
+  most `SplitBytes` (manifest, spine, NCX, nav, guide and links pointed at
+  the parts), scaling JPEG and PNG down to `MaxImageSide`, removing fonts
+  (entries, items, `@font-face`, their encryption.xml entries), and taking
+  manifest items without a file out, writing a document that is not well
+  formed again from `golang.org/x/net/html`'s parse (kept only when it
+  parses as XML and has the original's text and ids in their order), and
+  mending tables of contents (an entry whose document is missing goes,
+  or points at the first entry below it that leads somewhere; one whose
+  fragment is missing points at its document; a table is changed only
+  when it parses after and keeps every entry that led somewhere). The
+  fix `epub.SubsetFonts` (`subset-fonts`, another way to fix `large-fonts`;
+  `epub.Fixes` is the findings and it) cuts TrueType (glyf) and OpenType (CFF) fonts, plain, WOFF or
+  obfuscated (IDPF and Adobe, keyed by the package's unique identifier,
+  scrambled again under the same name), down to the characters of the
+  documents whose style sheets declare them plus a safety set
+  (`fix_fonts.go`), with `internal/format/fontsubset`, a writer of our own:
+  a glyf font is renumbered (cmap, hmtx, loca and post rewritten); a CFF
+  font (`fontsubset/cff.go`) keeps its glyph numbers, empties the other
+  glyphs' charstrings, stubs the subroutines no kept glyph calls (found by
+  following charstrings, `seac` accents through the Standard Encoding),
+  blanks unused strings and drops the glyphs after the last one kept. Tables
+  keyed by glyph (GSUB, GPOS, kern, ...) are dropped; the result is
+  checked against the original with x/image's reader before it replaces
+  anything. WOFF2, collections and fonts it cannot read stay, and are removed only while the
+  fonts together are still past `MaxFontBytes`. `ingest.Service.Fix` is the one writer:
+  written beside the file and read back, then in one transaction the
+  original goes into the trash as a file of its own (`<name>
+  (original).epub`, `AddTrashedOriginal`) and the fixed file takes its
+  place and record, `original_sha256` kept; it queues the file's
+  extraction, turns places read in it into fractions and queues the book
+  again for devices that had it. `POST /files/{id}/fix` and the bulk
+  action `fix` (`FixBook`) call it.
+
 ## Chunks
 
-- A book's text is kept as `book_chunks`, read from its primary text file
+- A book's text is cut into `book_chunks`, read from its primary text file
   only: the best of its readable files, an EPUB, then a Kindle file, then a
   PDF (`choosePrimaryTx`, by `catalog.FormatRank`). `internal/textproc`
   normalises the extractor's sections and cuts them at paragraph breaks into
@@ -335,15 +636,25 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   pages (a PDF's own, or estimated at `charsPerPage`), its offset and its
   language (`textproc.Detect`, by function words, the book's language when a
   chunk cannot tell).
-- The text goes into `body_en`, `body_de` or `body_xx` by language, the
-  columns the search index stems each its own way. `library_id` follows the
-  book's through the foreign key on `(book_id, library_id)`.
+- No copy of the text is kept (#265, `docs/decisions/text-store.md`): a
+  chunk row records where its text is in the file (`sources`: an EPUB's
+  documents or a PDF's page numbers, empty for a format read whole;
+  `source_from`, `source_to`, from `textproc.Chunk`'s sections), and
+  `ingest.ReadPassages` reads it again from there (`textproc.Slice`), or
+  the file whole where it has none. What needs the text reads the file:
+  snippets, embeddings (`similar.Service.Passages`), and signing for
+  overlap again (`dedupe.Service.Texts`, `ingest.Service.FileTexts`).
+  `library_id` follows the book's through the foreign key on
+  `(book_id, library_id)`.
 - Extraction writes the chunks in the transaction that records the file, and
-  replaces what was there: the book's chunks and the file's. When another
-  file becomes the primary one, it is queued as `ingest.chunk_file`
-  (`Service.Chunk`), which reads the file again for its text only. The app
-  queues every primary text file whose `chunked_at` is NULL at start
-  (`EnqueueUnchunked`); clearing it is how chunks are rebuilt.
+  replaces what was there: the book's chunks and the file's, keeping the IDs
+  of chunks the text cuts into as before (`sameChunks`), so the index finds
+  them throughout; the texts go to the full-text index, the vocabulary and
+  `OnChunked` (signing) from memory.
+  When another file becomes the primary one, it is queued as
+  `ingest.chunk_file` (`Service.Chunk`), which reads the file again for its
+  text only. The app queues every primary text file whose `chunked_at` is
+  NULL at start (`EnqueueUnchunked`); clearing it is how chunks are rebuilt.
 - `search_words` is every word of every chunk, lower case and as written,
   for repairing typos (#55). Words are only added, never counted or removed,
   so books chunked in parallel do not wait on each other. It holds the words
@@ -351,26 +662,49 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - Placeholders have no files and so no chunks. A merge of books chooses the
   surviving book's primary text file again and rechunks it if it changed.
 
+## Full-text index
+
+- The index is Tantivy in the app (#265, `docs/decisions/text-store.md`):
+  `internal/fulltext` over the engine of `engine/`, under
+  `GOTOME_DATA_DIR/search/tantivy`, derived and not backed up. It holds no
+  text: per chunk its ID, book, library and words, in the field of its
+  language (English and German stemmed by Snowball, every other language
+  as written), with positions for phrases. One process holds its writer,
+  with a buffer of `fulltext.Heap`; others may open it to search.
+- Chunks reach it through the outbox `fulltext_outbox`, in the transaction
+  that changes them: `writeChunksTx` adds a book's chunks with their text
+  (`fulltext.AddTx`), and a trigger on `book_chunks` records every delete,
+  however the chunks go. The `fulltext.apply_outbox` job (queue `index`,
+  one worker; queued with each add and every minute) applies it in id
+  order, commits the index, then deletes the rows; each add deletes its
+  chunk first, so a row applied twice adds it once. What the index finds is
+  checked against `book_chunks`, which may be ahead of it.
+- `book_files.indexed_at` says the index has been given a file's chunks.
+  A new index, or one of another format (`index_versions` `fulltext`, the
+  "format N" of the engine's version, raised with a change to its schema
+  or tokenizers), clears it for every file, and `ingest.index_files` (a
+  snoozing job, queued at start) reads those files again (`Reindex`):
+  chunks that cut the same keep their IDs and `chunked_at`, so nothing is
+  embedded or signed again. A book that changes library has its file read
+  again (trigger), as the index has no text to write it anew from.
+
 ## Full-text search
 
-- `internal/search` is the `Searcher`; `PGSearch` runs it on the BM25 index
-  `book_chunks_bm25` (migration 00022), as `docs/decisions/search-engine.md`
-  decided. `GET /search` takes words, all of which a chunk must hold in any
-  form (`&&&`), and phrases in double quotes (`###`), in every language
-  column at once.
+- `internal/search` is the `Searcher`; `TantivySearch` runs it on the index
+  above. `GET /search` takes words, all of which a chunk must hold in any
+  form, and phrases in double quotes, in one of the language fields.
 - Visibility is inside the index: the visible libraries
   (`visible_library_ids`), and the books of a filter when
-  `catalog.Service.Select` names few enough, are term sets in the query, so
-  the best chunks are taken among them alone. The outer query checks
-  `catalog.BookConditions` again on the books found.
+  `catalog.Service.Select` names few enough, are term sets in the query
+  (`where`), so the best chunks are taken among them alone. The outer query
+  joins the hits to `book_chunks` and checks `catalog.BookConditions` again
+  on the books found.
 - The best `window` chunks are grouped by book in Go, the best book first,
   and pages are counted by `offset`: ranked results have no keys to page by.
-  Snippets are read for the page's passages only, wrapped in control
-  characters and returned as parts, so no client puts HTML from a book on a
-  page.
-- Its transaction sets `plan_cache_mode = force_custom_plan`: pg_search
-  needs the query text as a constant, and a prepared statement's generic
-  plan hands it a parameter instead.
+  Snippets are made for the page's passages only, from their text read
+  again from the files, by the engine's `SnippetGenerator`, and returned as
+  parts, so no client puts HTML from a book on a page. A passage whose file
+  cannot be read is shown without one.
 - Stemming is Snowball's: "running" finds "runs", but irregular forms such
   as "ran" are other words to it.
 - Typos are repaired only when the query as written finds fewer than
@@ -390,17 +724,18 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   the word itself, in foliate-js's search or in the pages' text, and takes
   the place whose words the snippet shares most (`reader/passage.ts`). A
   place opened so is not saved until the person moves on from it.
-- Rebuilding, as `docs/search-index.md` tells an operator: `index_versions`
-  holds the pg_search version the index was built with and the
-  `ingest.ChunkVersion` the chunks were cut with. At start,
-  `search.Index.CheckEngine` updates the extension to the image's and
-  queues `search.rebuild_index` (`REINDEX INDEX CONCURRENTLY`, which records
-  the version when done) on a change; `ingest.Service.CheckChunkVersion`
-  marks every file to be read again. Raise `ChunkVersion` with a change to
-  how text is extracted or cut. `POST /search/reread` and
-  `POST /search/rebuild` do the same by hand (`index:rebuild`);
-  `GET /search/status` counts the visible books' text files and how many
-  are chunked. Old chunks and the old index answer until replaced.
+- Rebuilding, as `docs/search-index.md` tells an operator:
+  `ingest.Service.CheckChunkVersion` marks every file to be read again when
+  `ingest.ChunkVersion` changed (raise it with a change to how text is
+  extracted or cut), and `fulltext.OpenService` makes the index anew when
+  its format changed. `POST /search/reread` reads text again by hand,
+  `POST /search/rebuild` (`search.rebuild_index`) hands every file to the
+  index again (`index:rebuild`); `GET /search/status` counts the visible
+  books' text files and how many the index has. Old chunks and index
+  entries answer until replaced.
+- The integration tests' app searches the index of its own, applying the
+  outbox before each search (`drainingSearch`); `GOTOME_TEST_FULLTEXT`
+  names the engine, which `make check-engine` builds.
 
 ## Duplicates
 
@@ -429,7 +764,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   estimates the Jaccard and the containment both ways from the signatures
   and their sizes; at least 0.5, or 0.8 contained, is evidence, with the
   numbers in its detail (`jaccard=… a_in_b=… b_in_a=…`, from the pair's
-  first book). Texts under 500 shingles get a row without a signature.
+  first book). A pair all of whose evidence is overlap under a
+  Jaccard of 0.5 is `contained` (`duplicate_contains`, kept with the score):
+  one book holds the other, as a story its collection; `GET /duplicates`
+  filters by it and the page lists such pairs as "Contained in". Texts under 500 shingles get a row without a signature.
   Raising `SignatureVersion` re-signs every file from its chunks at start
   (`EnqueueUnsigned`, `dedupe.sign_file`).
 - A pair's `score` is that of its strongest evidence, by the SQL function
@@ -475,6 +813,104 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   set `replaced`. Keeping both may link the two in `book_relations` as an
   edition, a translation or related (`PUT /duplicates/{id}/state`).
 
+## Curation runs
+
+- `internal/curation` (#464) records what is changed to books apart from a
+  hand edit in the editor, so that it can be undone: `curation_runs` (kind
+  `duplicates`, `cleanup`, `matches`; a person's run has `started_by` and no
+  rule; `automatic` runs keep their trash and wait to write into files until
+  confirmed) and `curation_actions` (one per pair or book, with the rows of
+  the books in every table of `curation.Tables` before and after, as JSON).
+  `Tables` is the one list of what a merge moves; `TestTablesCoverWhatAMergeWrites`
+  fails when `merge.sql` (or the queries `mergeTx` calls) writes a table it lacks.
+  A new table that points at a book goes into `Tables` (or `Rebuilt`, if it only
+  holds what is made again from the files).
+- A merge, a replace (`ingest.Service`, `s.Curation.Begin` before and `Done`
+  after, inside its transaction) and each book of a clean-up (`bulk.StartEach`
+  makes the run; the job records an action in the transaction that changes
+  the book) are recorded. `curation.WithRun` puts later rules into a run of
+  their own; `curation.Deferred(ctx)` holds the write-back of an automatic run
+  until `Confirm`.
+- Undo (`POST /curation/actions/{id}/undo`; a run's is the job described under
+  Automatic duplicates) is one transaction per action, holding the books' libraries first: the files the
+  action trashed must still lie in the trash (else `notUndoable`); the rows
+  now must equal the action's `after` (tables marked `Quiet` or unsettled
+  suggestions excepted), else the action is a `conflict` and is left as it
+  is; then `Restore` puts the rows back, and `ingest.AfterUndoTx` queues the
+  text of books that lost their chunks. Runs and actions are listed only
+  where a library is visible (`visible_library_ids`).
+- `ListExpiredTrash` leaves the files of an automatic run that is not
+  confirmed, and until the retention has passed since it was.
+
+## Automatic runs
+
+- `internal/autocurate` (#467) applies by rule what the data decides, as
+  `automatic` runs of `internal/curation` (a `dryRun` run records an action
+  with its reason for each book and changes nothing; it cannot be confirmed
+  or undone). `POST /curation/cleanup {kinds, dryRun}` and `POST
+  /curation/matches {dryRun, provider?, band?}` create the run and queue
+  `curation.auto_cleanup` / `curation.auto_matches`; the daily
+  `curation.daily` starts both for every library (`SeesAll`, no
+  `started_by`; a run that did nothing is deleted) as the settings
+  `curation.cleanup.kinds` and `curation.matches.auto` (off) say. A book with
+  an action of the run is passed by (`curation.Service.HasBook`), so a job
+  cut off and run again does each book once; a pass over matches queues its
+  successor with `After`.
+- Clean-up: `cleanup.Service.Automatic` is the one place that says which
+  suggestions need no person: `placeholders` always, `titles` (the fixed
+  list), `authors` only when `cleanup.SpellingOnly` holds for every spelling
+  (the kept one is reconcile's, by use: `autocurate.PreferredSpelling`),
+  `series` with at least `cleanup.MinSeriesBooks` titles that agree, no two
+  at one place, and the series known to a visible library or a stored
+  provider answer. Clashes are never automatic. A new automatic kind goes
+  into `cleanup.AutoKinds`, `settings.CleanupKinds` and its texts.
+- Matches: `autocurate.Decide` is pure. A match is trusted when it shares an
+  ISBN with the book or another provider's pending match of the book names
+  the same ISBN or `Record.Work`; `reconcile` then decides each field, and a
+  provider's value is taken only for an empty field, a filename guess or the
+  same value untidy. A field in real conflict is left, and the match stays
+  pending (the action's reason names the fields taken and left). A record
+  whose language is not the text's (`book_chunks.lang`, at least
+  `MinTextChunks` chunks and four in five agreeing) or whose year is more
+  than `MaxYearGap` from a file-sourced date is dismissed. `curation.SetMatch`
+  snapshots the book's edit tables and its `metadata_matches`; a group
+  accepted by a person (`provider` and `band`, a tenth of the score) skips the
+  agreement. `match-check` counts the agreement rule (`metadata.Agreement`).
+
+## Automatic duplicates
+
+- `dedupe.Classify` (#466) gives an open pair its class from its stored
+  evidence, nothing else: `same_text` (sha256 or content evidence),
+  `overlap_high` (Jaccard 0.95 and up), `overlap_mid` (0.8 to 0.95),
+  `contained` (one holds 0.95 of the other, Jaccard under 0.5) and
+  `part_inside` (0.8 to 0.95). The first three merge, the last two keep both
+  books, link them (`book_relations` kind `contains` / `contained_in`, for the
+  smaller ID's book) and set the pair `kept_both`. Linking needs overlap to be
+  all the evidence; an ISBN beside it makes the pair a person's.
+- `internal/autodupe` plans (`PlanFor`: survivor by `Survivor`, fields by
+  `reconcile` with `Merging`, copies to trash by `Copies`) and does it, one
+  action per pair in a `curation_runs` row of rule `auto-duplicates`
+  (`automatic`, so its trash waits for `Confirm`). A merge is
+  `ingest.Service.MergeAutomatically`: the fields taken (and the other's tags
+  and credits added), the copies of a file trashed as `Replace` does, one
+  curation action. A dry run (`curation_runs.dry_run`) records actions that
+  changed nothing (`Service.RecordPlan`, kinds `merge`, `replace`, `link`, and
+  `skip` for a pair left) and cannot be undone or confirmed. Pairs are
+  taken in ID order and the run keeps its place (`resume_after`), so the
+  `duplicates.run` job (queue `metadata`) can snooze; one run goes at a time
+  (advisory lock). `POST /curation/duplicates` queues it; the daily
+  `duplicates.daily` job queues one for `curation.duplicates.classes` as no
+  person's (an administrator's scope that sees every library) and leaves no
+  run behind when it found nothing. `curation.duplicates.onConflict`: `skip`
+  leaves a pair with a field in conflict whole, `mergeAgreeing` merges and
+  the survivor keeps its own value there.
+- Undoing a whole run (`POST /curation/runs/{id}/undo`) is a job (`curation.undo_run`, `Service.RequestUndo` then
+  `WorkUndo`, which remembers the last action it tried in
+  `undo_cursor_*` so a conflict is not retried); it answers 202 and the run
+  says `undoing`. A dry run, of either kind, has nothing to undo.
+- `gotome duplicate-check` (`autodupe.Service.Check`) prints counts and field
+  names for a sample per class, never a title.
+
 ## Metadata providers
 
 - A source of metadata is a `metadata.Provider` (name, limits, lookup by
@@ -482,8 +918,7 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `metadata.Record`s. It reaches the network only through the `metadata.Web`
   it is handed: requests spaced by the provider's `Limits.Interval` across the
   whole process, answers (200 and 404) kept for 30 days in `provider_records`,
-  a user agent, timeouts and size caps, and a dialler that refuses loopback,
-  private, link-local and other non-public addresses (also after redirects).
+  a user agent, timeouts and size caps, and the `internal/outbound` client.
 - API keys and tokens go in `Request.SecretQuery` or `Request.Header`, which
   are never stored, never part of the cache key and never in an error.
 - `metadata.Service.Candidates` looks a book up by its ISBNs and its DOI,
@@ -513,7 +948,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   it Google's small anonymous quota. Google says a used-up quota as a 403
   with a reason, which `Request.Busy` turns into a back-off like a 429;
   `Request.Reason` puts the message of any other refusal into the error.
-  Its tests take the key from `GOTOME_GOOGLE_BOOKS_KEY`). All four are in
+  Its tests take the key from `GOTOME_GOOGLE_BOOKS_KEY`, and skip a request
+  with no recorded answer). Hardcover, CrossRef, Open Library and Google are in
   `metadata.providers` by default.
 - `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
   `enrich.match_book` job (unique, 30 s later) when a file is read and
@@ -533,6 +969,51 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   locked fields and locks nothing. A candidate's cover reaches the browser
   only through `GET /metadata/covers/{token}`: tokens are HMACs the process
   signs, so the server never fetches an address a client made up.
+- `gotome match-check` (`metadata.Service.Check`, `make match-check`)
+  looks a sample of books with an ISBN (by a hash of the ID, at most
+  `-n`) up by title, authors and language alone, through the providers'
+  Webs, and counts the first candidate as right (one of its ISBNs), of
+  the same work (`Record.Work`, which the provider's lookup by the ISBN
+  names too), wrong or none, per provider and language, with the scores
+  of right and wrong ones (`docs/metadata.md`). #367 and any change to
+  ranking are measured with it.
+- The score can be learned (#490, `metadata/features.go`, `model.go`,
+  `train.go`): `features` names what `Score` compares, as a map that is
+  zero where a side is silent (`FeatureVersion`: raise it with a change
+  to what a feature means; a feature added with weight zero for a model
+  that lacks it keeps the version), `fit` is a logistic regression by
+  Newton's method of whether a candidate carries the book's ISBN,
+  `gotome match-train` and the settings page's "Learn from my library"
+  (`Service.Train`, job `metadata.match_run`, progress and last report in
+  `match_runs`) fit it on a sample looked up as match-check does, a fifth
+  held out by a hash of the ID. The weights are `match_score_models` (slot
+  `learned` or `imported`), used by `Service.Candidates` through
+  `activeScorer` when `metadata.scoreWeights` allows: `learned` is the
+  installation's own, else a shipped profile that fits its languages
+  (`profiles.go`, numbers only), else `Score`. `Score` stays the
+  hand-set one. A `Profile` (export, import, shipped) holds weights and
+  counts and no title, author, ISBN, path or ID; `ParseProfile` refuses
+  another version and any name that is no feature. `match-check` ranks
+  the sample with every score there is (`Variants`) and reports the
+  calibration. `Check` and `Train` ask through `gather`, once, and rank
+  with `evaluate`.
+  `profiles.go` ships `german` (learned on a German library, 1,000 books):
+  it is the score of a library mostly in German until its own is learned.
+  A learned score is the probability of the exact ISBN, so `enrich` keeps
+  matches for review from `Service.ReviewFloor` (0.2; 0.5 for the hand-set
+  score), and `metadata.matchThreshold` is the owner's to move to what
+  Measure's table says.
+- A candidate's description is one more feature, `description` (#491): for
+  a book looked up by its title that has a content vector, the first three
+  descriptions of at least 60 characters of each provider's answer are
+  embedded as queries with the model's prefix and their cosine to the
+  book's content vector is the feature, centred and scaled
+  (`Service.Describe`, set to `similar.Service.CompareToBook`; the vectors
+  of descriptions are kept in memory by the hash of model and text). It is
+  nil, and the feature absent, where the book has no content vector,
+  embedding is off, the model cannot run, or the record has no description.
+  `match-check` and `match-train` take `-descriptions=false` to measure
+  without it.
 
 ## Reading state
 
@@ -596,8 +1077,8 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   in. Its locator is the millisecond of the whole. Formats the browser's
   `canPlayType` refuses are said, with the files to download, rather than
   tried.
-- `e2e/fixtures/audio` holds two short MP3 parts, made with the toolchain's
-  ffmpeg as its README says. Firefox in the test container has no audio
+- `e2e/fixtures/audio` holds two short MP3 parts, made with a full FFmpeg
+  as its README says. Firefox in the test container has no audio
   output, so the player's browser test skips it.
 - `e2e/fixtures/pdf.ts` makes PDFs of any size for the browser tests.
 
@@ -625,6 +1106,17 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   is only what a scan made (no lock, no manual or provider value, nobody's
   state), the book's files move to the placeholder and the scan's book is
   merged into it (`merged_into_id`).
+- A placeholder joins the library's book later (#459): `queuePlaceholderJoinTx`
+  (from `describedTx` and extraction) queues `ingest.join_placeholders` when
+  `ListPlaceholdersOfBook` finds one by ISBN, else title key and an author;
+  `ingest.Service.JoinPlaceholders` merges it through `mergeTx` (a placeholder
+  may join a book of another library) as a curation action of a run of kind
+  `placeholders`, only if every reader of the placeholder sees the book and,
+  for the rule's own join, `catalog.MatchBooks` (the import's rule) finds that
+  book alone for each of them. `POST /books/{id}/join-library-book` is the
+  person's own join (`JoinPlaceholder`, undone through
+  `POST /placeholder-joins/{actionId}/undo`). An import row with no strict match
+  but a similar title and a shared author is `maybe` (`MaybeImportBooks`).
 
 ## Collections
 
@@ -670,6 +1162,43 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   leaves fields locked before as they are and reports them (`skipped`),
   unless `includeLocked`.
 
+## Clean-up
+
+- `internal/cleanup` suggests fixes for how books are described (#179), of
+  five kinds: one person under several spellings (`authors`, by
+  `authors.person_key`, the words of `name_key` sorted, the SQL function
+  `person_key` and `catalog.PersonKey`), a value a tool left in place of an
+  author (`placeholders`, the keys in `placeholderAuthors`), an author
+  whose books are in a series of the same name (`clashes`: the author goes
+  where every book is in it; where only some are, the fix is `choose` and
+  the pick names `nameIsSeries` or `clearSeries`, never a default, #470), what a
+  shop added to a title (`titles`, `cleanup.TitleAdditions`, which the SQL
+  function `title_has_addition` repeats into the stored column
+  `books.title_addition`; a test holds the two to one answer), and a
+  series in the titles of books without one (`series` (#351),
+  `cleanup.SeriesInTitle`, which `title_series_key` repeats into
+  `books.title_series` as `loose_key`; only where two books of a library
+  hold it or a visible book is in it, one suggestion per series, its
+  value the books' IDs).
+- Nothing is stored about what is found: the SQL functions
+  `cleanup_<kind>` work it out from the books the viewer sees each time
+  (`GET /cleanup`, `metadata:edit`). `GET /cleanup/preview` (#462) shows one
+  suggestion's books before and after from the same `changes()` Apply makes
+  (`catalog.PreviewBook` over `planChange`, locked fields marked), with what
+  providers are already known to say (kept `metadata_matches`, and cached
+  `provider_records` answers through `metadata.Service.Cached`); it asks
+  no provider. A dismissal (`cleanup_dismissals`)
+  holds for the value it was dismissed at, so a suggestion comes back when
+  what it was about changes.
+- Applying (`POST /cleanup/apply`) is a bulk change of each book its own
+  way (`bulk.StartEach`, `bulk_change_books.change`): a person's edit that
+  leaves locked fields as they are. `catalog.Change` renames authors in
+  place (`RenameAuthors`) and sets a title and a position in a series
+  (`SeriesIndex`) for this.
+- Matching compares `person_key`: duplicates by title and author, and
+  placeholders a file fulfils. An edit that changes how a book is described
+  queues its duplicate check (`ingest.Service.OnDescribed`).
+
 ## Notifications
 
 - `internal/notify` keeps what people are told: a row in `notifications`
@@ -704,16 +1233,62 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   /me/notification-settings`); the web app is the only channel so far,
   and the owner put the others (#68) off on 2026-10-06.
 
+## Following authors and series
+
+- `internal/releases` follows an author or a series for new books (#69). A
+  `release_subjects` row is one author or series, by kind and
+  `catalog.Key`, an author's in the order providers write names
+  (`metadata.NaturalName`: "Devlin, Gerald" is Gerald Devlin);
+  `trackers` are who follows it, and a subject nobody follows goes with
+  what was found for it. `POST`/`GET /trackers`, `DELETE
+  /trackers/{id}` (`personal:manage`); the book page follows its authors
+  and series (`releases/follow.tsx`), and `routes/releases.tsx`
+  (`/releases`, "New books") lists them.
+- A provider that lists works implements `metadata.Works` (`ByAuthor`,
+  `BySeries`; Hardcover both, by the ID its search finds under exactly the
+  name; Open Library authors only), asked through
+  `metadata.Service.WorksOf` with `NoCache`: what is new is the point. The
+  `releases.poll` job (metadata queue, hourly and when a subject is first
+  followed) asks about each followed subject once a day (`pollEvery`),
+  for `passBudget`, then snoozes.
+- `releases` holds each book once per subject, by the key of its title
+  without what providers add after a colon or in brackets (`titleKey`);
+  another provider's listing of it adds a more exact date and what was
+  missing, and the provider that listed it first may move its date. A
+  date is the first day of its span and `precision` (day, month, year).
+- What a provider lists in its first answer about a subject
+  (`release_polls`) is the subject's past (`backlog`): never told as
+  news, only as out once its day comes. A release found later is told
+  (`stageOf`) as announced while its span is still to come, or as out if
+  it ended within `recentlyOut`; a release whose day came in the last
+  week is told as out to those who followed before that day
+  (`ListDueReleases`). `QueueReleaseNotices` picks the people, each once
+  per book and stage (`release_notices`), and leaves out whoever sees a
+  library with the book already: the same `title_key` and an author's
+  key (`author_keys`, both orders), or an ISBN, through
+  `visible_library_ids`. They are told through `notify.Events` with
+  recipients (`release.announced`, `release.out`), so a poll that finds
+  several is one notification.
+- `GET /releases` (`when=upcoming|recent`) lists the books of what the
+  caller follows, each once, with `inLibrary` for the libraries they see;
+  `TestAReleaseIsInTheLibraryOnlyWhereItIsSeen` is its visibility proof.
+
 ## Embeddings
 
 - `internal/embed` is the `Embedder` (`docs/decisions/embedding-runtime.md`):
   `Onnx` runs `E5Small` (multilingual-e5-small, int8) on ONNX Runtime with
   the package's own Unigram tokenizer and mean pooling; `Fake` makes
-  vectors from a text's hash for tests. Passages are prefixed `Prefix`.
+  vectors from a text's hash for tests. Texts are prefixed with the spec's `Prefix`.
 - The binary is built with cgo and loads the library at run time
   (`LoadRuntime`, `GOTOME_ONNXRUNTIME`); the Dockerfile's `onnxruntime`
   stage takes it from ONNX Runtime's release for the image's architecture,
-  checked by SHA-256. Nothing of it is needed to build or test: the binding
+  checked by SHA-256. Version and hashes are `ARG`s of the Dockerfile
+  (`mk/onnxruntime.mk` reads them); the archives for both architectures lie in
+  the git-ignored `deploy/vendor`, which `make onnxruntime-fetch` fills once
+  (the owner runs it; it writes into the main checkout's, and a worktree links
+  from there; CI fetches them with retries and caches them with FFmpeg's
+  source). The image build asks nobody: no `ADD` of a URL, and `up`,
+  `stack-up` and `upgrade-test` need `onnxruntime-source` first. Nothing of it is needed to build or test: the binding
   carries its headers, and a build without cgo answers that it has none.
 - The model is not in the image. `Fetch` puts its files under
   `GOTOME_MODEL_DIR` (`<data>/models`) and checks size and SHA-256 every
@@ -730,13 +1305,30 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `TestOnnxMatchesTheReference` does the same in the toolchain when
   `GOTOME_TEST_EMBED_MODEL` and `GOTOME_TEST_ONNXRUNTIME` name the files.
 - `internal/similar` keeps `book_vectors`: per book a `metadata` vector of
-  `book_metadata_text` (title, authors, series, tags, description; the SQL
+  `book_metadata_text` (title without a shop's additions, authors but not placeholder ones, series, tags, description; the SQL
   function is the one place that says what it is made of) and, for a book
   with chunked text, a `content` vector, the mean of `Samples` passages
-  spread over its chunks, weighted by the tokens the model read. Each row
+  spread over its chunks (`embedding.contentSamples`, 16 unless set; part of the recipe hashed into the source), weighted by the tokens the model read. Each row
   holds the model, its revision and weights (`Version`), and the hash of
   its source: the metadata text, or the primary text file with when it was
   chunked and `recipe`. Placeholders and deleted or merged books have none.
+- A spec with a `Server` (`embed.BGEM3`) runs on an Ollama server, on a
+  GPU where there is one (#173, `docs/embedding-server.md`):
+  `similar.ServerOpener` opens it at the setting `embedding.server`
+  (`embed.OpenOllama`), which first checks the server's vectors (length,
+  and two sentences of one meaning nearer each other than a third);
+  otherwise the spec runs on ONNX Runtime. Ollama cuts each text at
+  `MaxTokens` (`num_ctx`), and the pass embeds `Parallel` books at once.
+  A server that stops answering (`embed.ErrServer`) ends the pass as
+  `ErrUnavailable`. Without `embedding.server`, a spec that has its files
+  (`Spec.Runs`) runs on ONNX Runtime instead (#228): bge-m3 from BAAI's
+  ONNX export (weights in `Spec.Data` beside the model file, downloaded at
+  `Spec.Download`, the dense output or the first token, `PoolCLS`), under
+  the same `Model` as the server's, so its vectors stay. `gotome
+  embed-check -model bge-m3 -against-stored N` (`similar.CompareStored`)
+  checks that against the stored vectors. Each model has its own vectors (`book_vectors` keyed by
+  book, kind and model, of any length), so the one before stays while
+  another is made, and answers again when chosen. The prefix is the spec's.
 - Nothing records which books are done but the vectors: `Service.Embed`
   walks the books in ID order and embeds those whose vectors are missing,
   of another model or of another source, so any pass may stop and the next
@@ -749,23 +1341,242 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   offline) is `ErrUnavailable`: the pass ends without a retry and the next
   one tries again. `GOTOME_EMBED_THREADS` (half the CPUs) bounds a pass.
   Tests embed with `embed.Fake` under the model the settings name.
+- `GET /embedding/status` (`Service.Status`, `index:rebuild`) counts the
+  visible books and those with each vector of the chosen model, and says
+  whether embedding is on; the jobs page shows it (`jobs/embedding.tsx`)
+  with a Pause / Start button for `settings:manage`, which sets
+  `embedding.enabled` through the settings route.
+- A model not chosen goes (#357): `unused_embedding_models` holds since
+  when each of `embed.Specs` is not (`settings.Update` records a switch;
+  `similar.RemoveUnused` counts one found unused from then), and once
+  that is `embedding.removeUnusedAfterDays` ago, the hourly
+  `similar.remove_models` job (queue `embed`, so never beside a pass)
+  removes its files but those the chosen spec shares (`embed.Remove`),
+  its passages (`passages.Service.Remove`) and its `book_vectors` in
+  batches (`DeleteVectorsOfModel`), stopping if it is chosen again.
+  `POST /embedding/models/{modelName}/remove` queues it at once.
+- `GET /embedding/models` (`Service.Models`, `settings:manage`) lists
+  `embed.Specs` for the settings page, which offers `embedding.model` as
+  a choice from it: size on disk, `Spec.Memory` (an estimate on the CPU),
+  whether it runs here (`Service.Probe`: `ServerProbe` over `OnnxProbe`,
+  what the openers would find, downloading nothing and comparing file
+  sizes only) and the visible books with its vectors. Choosing one that
+  lacks most of them asks first; the setting's check stays the rule.
 - `GET /books/{id}/similar` (`Service.Similar`, `ListSimilarBooks`) is an
   exact cosine scan over the vectors of the chosen model, with no ANN
   index: two vectors a book stay small enough (a test holds it under
-  500 ms on 50,000 books). Content and metadata are blended 0.6 to 0.4
+  500 ms on 50,000 books; `book_vectors.embedding` is stored `PLAIN`, in the row,
+  as a 4 KB bge-m3 vector in TOAST made it three times slower, #456;
+  a row then holds at most about 8 KB, so a model of more than about
+  1,900 numbers cannot be stored and needs another storage first). Content and metadata are blended 0.6 to 0.4
   where both books have both, otherwise the kind they share decides.
   Visibility is `visible_library_ids` in the query; the book itself, books
   it shares a duplicate pair with in any state, and its `book_relations`
-  are left out. The book page shows them as a rail (`books/similar.tsx`),
+  are left out. Of the nearest `candidates` times as many as it shows,
+  `pick` takes at most `perAuthor` by one author and `perSeries` from one
+  series, and no copy of the book or of one taken (`isCopy`: the same
+  title once a shop's additions are off, or one the other's with a
+  subtitle, and an author in common). The book page shows them as a rail (`books/similar.tsx`),
   and nothing while there are none.
+- `GET /search/similar?q=` (`Service.Describe`, `ListBooksNearQuery`)
+  finds books by a description of what they are about: the text is
+  embedded with `embed.Prefix` by a model opened on the first search and
+  kept (`queries`), and compared with every visible book's vectors as
+  similar books are, blended; a copy of a book before it on the page is
+  left out, and pages go by offset, as ranked results do. No model that can
+  run is `ErrUnavailable`, a 503. The search page offers it as a mode
+  (`mode=description`). `similar-check -describe "…"` prints what it finds
+  on a library.
+- Passage vectors (#174, `docs/decisions/passage-vectors.md`):
+  `internal/passages`, off unless `embedding.passages` is on. A vector per
+  chunk (its first 512 tokens, `Spec.PassageText`), kept not in Postgres
+  but in a `Store` under `GOTOME_DATA_DIR/passages`: per passage its
+  chunk, library, signs around a centre (the mean of the first 2,000
+  stored) and an int8 copy, 446 bytes. `passage_files` says which files
+  have them, of which model and `chunked_at`; both are derived (backup.sh
+  leaves them out). The `passages.embed` job (queue `embed`) embeds the
+  stale files; another model empties the store. A search scans the signs
+  of the visible libraries, rescores a fiftieth by int8, and checks the
+  hits in SQL (`ListPassageBooks`, `visible_library_ids`); the store may
+  be behind and is compacted daily or once a fifth is dead.
+  `similar.Service.Describe` blends a book's best passage (0.6) with its
+  metadata vector (0.4) through `NearPassages`.
+- `gotome similar-check` (`Service.Check`, `make similar-check`) measures
+  them on an installation's own library: a sample by a hash of the book
+  ID, the shares by the book's own author and series, copies, and authors
+  among them (`docs/similarity.md`, with the measurements). A change to how
+  similar books are found or embedded is measured with it before and
+  after.
+
+## Genres
+
+- `internal/genres` gives books genres of a fixed list (#175): `List`
+  (key, Thema code where certain, English and German names, a
+  description in each language to embed), which the owner reviews; the
+  web app's names (`genre.<key>` in `en.ts`/`de.ts`) and
+  `web/src/books/genres.ts` are held to it by a test. `Spellings` maps
+  tags to genres by `catalog.Key`, part by part for headings such as
+  "Belletristik/Kriminalromane" (`FromTag`); an unmapped tag gives none.
+- A genre is a row of `book_genres` (source `tags` or `automatic`, state
+  `suggested`, `accepted`, `rejected`); a book's tags and locked fields
+  are never written. A pass (`genres.suggest_books`, queue `embed`,
+  hourly) writes only while the setting `genres.suggest` is not `off`
+  (the default): `tags`, `vector` (zero-shot: the book's vectors against
+  each genre's descriptions embedded as queries, `Margins` over the
+  per-genre threshold), `neighbours` (the genres of the nearest books of
+  its library, `Shares`) or `combined`. It changes only undecided rows;
+  `book_genre_checks` records the recipe each book was looked at with.
+- The filter field `genre` finds the genres of tags and those a person
+  accepted, never a waiting suggestion. `GET /genres/suggestions`
+  (`routes/genres.tsx`) is the review; `PUT /books/{id}/genres/{genre}`
+  accepts or rejects. A merge keeps what a person decided.
+- `gotome genre-check` (`Service.Check`, `make genre-check`) measures
+  precision and recall per method and genre on a sample of tagged books,
+  their metadata embedded again without tags, thresholds swept. Its
+  queries stay light: one row per book and tag, then per sampled book
+  its vectors and one scan of its library's. The thresholds
+  (`Genre.Threshold`, `DefaultThreshold`, `NeighbourShare`) are set from
+  its numbers (`docs/genres.md`).
+
+## Devices and the OPDS catalogue
+
+- A device (`devices`, `auth.Service.CreateDevice`, #195) is an e-reader
+  that signs in with a token of its own, made on the profile (`POST
+  /auth/devices`) and shown once: 20 letters of an alphabet without look-
+  alikes, in dashed groups, stored as SHA-256 (and the SHA-256 of its MD5,
+  which KOReader's progress sync sends). It is sent as HTTP Basic auth with
+  the user name; `authenticate` takes it where no session cookie is, under
+  the login limiters, and answers wrong ones 401 with `WWW-Authenticate`.
+  A device's token reaches only routes with `Route.Devices`: the OPDS
+  feeds, file downloads and covers, the book lists, search and detail,
+  reading progress, and `/device` (the device itself and its queue, for
+  its own app); `require` refuses it everywhere else.
+- An e-reader's app may ask to be added instead (`internal/pairing`,
+  #218): `POST /device/requests` (public, limited per address) with a user
+  name answers a secret and a four-digit code alike whether the account
+  exists; the person sees it on the profile (`GET
+  /auth/device-requests`, a `device.requested` notification) and accepts or
+  declines it; the app polls `POST /device/requests/{id}/token` with its
+  secret and, once accepted, gets the token of a new device, once
+  (`auth.CreateDeviceTx`). A name that is nobody's, or an account with
+  `MaxWaiting` requests, makes a row nobody sees; requests end after
+  `Lifetime`.
+- `internal/opds` writes OPDS 1.2 (Atom) and the OpenSearch description;
+  `httpapi/opds_handlers.go` serves them under `/api/v1/opds`
+  (`docs/koreader.md`): newest, authors and series (`catalog.NameList`,
+  which walks the names' index and counts each one's visible books, so a
+  page never reads the catalogue), shelves, Reading and Want to read, and
+  search (`catalog.Search`). Feeds list only books with an ebook
+  (`catalog.HasEbook`), with a download link per file and the cover
+  (`catalog.FeedBooks`), and never repeat what the query asked for, so a
+  feed about nothing reads like one about a book the caller may not see.
+
+- Sending to a device (`internal/deliveries`, #196): `deliveries` holds
+  one row per device and book, queued until the device downloads it.
+  `POST /devices/{id}/books` takes IDs or a library and filter (books with
+  an ebook the sender sees; one delivered before is queued again);
+  `GET /opds/device`, for a device's token only (`DeviceFrom`), lists what
+  waits, its downloads at `/opds/device/files/{id}`, where a whole file
+  sent (200, not a range) marks the book delivered. A merge carries the
+  deliveries over (`MergeDeliveries`). `GET /devices/{id}/books` (#237,
+  `routes/device.tsx`) lists a device's books, the last sent first, as
+  waiting, synced (a Kobo reader was told of it) or delivered;
+  `DELETE /deliveries/{id}` takes one off while it waits, or off a Kobo
+  reader, whose next sync removes it. Other devices keep what they
+  downloaded, so it is not offered there.
+- The KOReader plugin (#197) is `backend/internal/koplugin/gotome.koplugin`
+  (Lua), embedded so that `GET /koreader/plugin.zip` hands it out with
+  `gotome_server.lua` naming the address the browser used. It reads the
+  device's feed with Basic auth and saves each book under its title.
+  What it does outside KOReader is `gotome_feed.lua`, tested in LuaJIT
+  (`make test-koplugin`, in the push gate; LuaJIT is in the toolchain
+  image), which also checks that the rest compiles.
+- The feed the plugin is tested with (`koplugin/testdata/device-feed.xml`)
+  and the Tolino app's answers (`clients/android/app/src/test/resources/api`)
+  are the server's own, IDs numbered and times and secrets fixed:
+  `TestTheDeviceClientsFixturesAreTheServersAnswers` fails when an answer
+  changes, and `make device-fixtures` writes them anew.
+- A Kobo reader, and a Tolino in Kobo mode, syncs over Kobo's own sync
+  (`internal/kobo`, `httpapi/kobo_handlers.go`, #230): its
+  `api_endpoint` is `/api/v1/kobo/<device token>`, as the reader sends no
+  credentials to a store it is given; `authenticate` takes the token from
+  the path (`AuthenticateDeviceToken`, by its hash alone; a string without
+  a token's shape is refused uncounted) and `loggedPath` keeps it out of
+  the log. `/v1/initialization` gives the reader's resource map with the
+  library, details, reading places and covers at GOtome and the store's
+  pages at Kobo. `kobo_books` records what each reader was told:
+  `/v1/library/sync` sends the device's deliveries with an EPUB as new
+  entitlements, again when the book's details or another client's ebook
+  progress changed, and as removed once they leave the deliveries, 100 at a
+  time with `x-kobo-sync: continue`; a sync without `x-kobo-synctoken`
+  starts over. A reading state it sends is saved as `fraction:<f>` under
+  #44's rule with `basedOn` the place it was last told of; archiving takes
+  the book off the device.
+- KOReader's progress sync (`internal/kosync`, #198) is served under
+  `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
+  its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched
+  by `devices.sync_key_hash`) as a device's sign-in. A document is a
+  file's `koreader_md5` (`PartialMD5`, KOReader's "binary" matching),
+  which the `kosync.hash_files` job works out every ten minutes for ebook
+  files without one and a trigger clears when `sha256` changes; empty is
+  a file it could not read. A place KOReader sends is kept as the ebook
+  progress, `koreader:<xpointer>` for an EPUB (the web reader opens it by
+  its fraction) and `page:<n>` for a PDF, under #44's rule; one asked for
+  is KOReader's own, a PDF's page, or the chapter of a CFI of the same
+  file as `/body/DocFragment[n]`, and empty where none can be given.
+
+- GOtome for Tolino (#209) is an Android app in `clients/android`
+  (Kotlin, Android 8.1, no libraries), built by `mk/android.mk` in its own
+  container; `make check-android` is in the full gate only, as its SDK and
+  Gradle are gigabytes. Gradle's dependencies are pinned by
+  `gradle/verification-metadata.xml`. It signs in as a device, fetches
+  `GET /device/books` into `Books/GOtome/`, which the Tolino reader
+  imports, and tells GOtome what it holds (`PUT`/`DELETE
+  /device/books/{id}`). Progress comes from the reader's log lines
+  (`READ_LOGS`, granted over adb), in Adobe's pages, sent as
+  `fraction:<f>`; nothing else of the log is read. What the device allows
+  and refuses is in #209. Releases carry it signed with the owner's key
+  (`make android-release`, `release.yml` from the secrets `TOLINO_KEYSTORE`
+  and `TOLINO_KEYSTORE_PASSWORD`, alias `gotome-tolino`); `versionCode`
+  follows `VERSION`. The app updates itself from the latest release
+  (`Updates.kt`) only with an APK signed by its own key.
+
+## Overview
+
+- `internal/stats` counts for the overview page (`routes/overview.tsx`,
+  #176), of the visible books and of one library when asked:
+  `GET /statistics` (`library:read`, `queries/stats.sql`) what they hold,
+  and `GET /statistics/work` (`index:rebuild`) how far the background
+  work is, each piece as done of all with the count of the last hour and
+  the minutes left at that pace (`stats.Step`). Files read go by
+  `extract_state` and `updated_at`, texts by `chunked_at`, vectors by
+  `similar.Service.Status`, and lookups and duplicate checks by their
+  River jobs (`jobsQuery`, by hand as sqlc does not know River's tables),
+  which the queue keeps for a while once finished. Both count every book
+  by design and are in the scale test.
+
+## Machine resources
+
+- `internal/resources` checks the machine against what is set to run on it
+  (#240): Postgres's memory settings (`shared_buffers`, one
+  `maintenance_work_mem`, `work_mem` per pool connection), the app
+  (`AppBytes`) and the embedding model on the CPU (`Spec.Memory`) against
+  `Budget` of the memory GOtome's container sees (cgroup limit, else
+  `MemTotal`), parallel workers against the CPUs, and the free space of
+  `GOTOME_DATA_DIR`'s disk. Postgres's own container and volume are not
+  visible to the app. `serve` runs `Watch` (every ten minutes, logging on
+  a change and hourly while warnings stand); `GET /system/health`
+  (`settings:manage`) is the overview's "This machine" panel, with the
+  `ALTER SYSTEM` commands that fit.
 
 ## Background jobs
 
 - `internal/jobs` wraps River, which keeps its jobs in the same Postgres. Workers run
   inside the app process; there is no separate worker container.
 - A feature defines its job as an args type with a `Kind()` and a worker, registers
-  the worker in `cmd/gotome` with `river.AddWorker`, and enqueues through the
-  `jobs.Runner`. Use `InsertTx` when the job follows from a change in the same
+  the worker in `registrations` (`cmd/gotome/background.go`), a periodic one's
+  `jobs.Schedule` in `schedules`, and enqueues through the `jobs.Runner`; a test
+  fails for a `Kind()` without a worker or a schedule function not called. Use `InsertTx` when the job follows from a change in the same
   transaction, and `Unique` for work that must not be queued twice.
 - The jobs page reads `river_job` directly (`ingest/jobs.go`), joined to the
   library, book or file a job names in its arguments as `libraryId`, `bookId`
@@ -773,6 +1584,10 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   library is shown to everyone with `index:rebuild`. A job about one of those
   must name it by that argument, or it shows without one. Retry and cancel go through River's
   client, after the same visibility check.
+- `serve` sets Go's soft memory limit to three quarters of the container's
+  (`internal/memlimit`, unless `GOMEMLIMIT` is set): the runtime does not
+  read a cgroup's limit, and the rest is for ONNX Runtime and the programs
+  extraction runs.
 - Queues: `scan`, `extract`, `metadata`, `embed`, `notify`, and `default` for
   housekeeping. A job may run twice (after a crash or a cancelled shutdown), so it
   must be safe to repeat.

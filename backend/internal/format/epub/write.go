@@ -59,12 +59,9 @@ func Rewrite(r io.ReaderAt, size int64, w io.Writer, u Update) error {
 	if strings.TrimSpace(u.Metadata.Title) == "" {
 		return errors.New("a book needs a title")
 	}
-	zr, err := zip.NewReader(r, size)
+	zr, err := openZip(r, size, DefaultLimits)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrNotEPUB, err)
-	}
-	if len(zr.File) > DefaultLimits.MaxEntries {
-		return fmt.Errorf("%w: %d entries", ErrTooLarge, len(zr.File))
+		return err
 	}
 	a := newArchive(zr, DefaultLimits)
 	opfPath, err := a.packagePath()
@@ -118,6 +115,9 @@ func Rewrite(r io.ReaderAt, size int64, w io.Writer, u Update) error {
 				return err
 			}
 		case dropped[f.Name]:
+		case strings.HasSuffix(f.Name, "/"):
+			// A directory entry is left out: no reader needs it, and Go's
+			// zip writer refuses the bytes a deflated empty entry holds.
 		default:
 			// As stored, compressed or not: nothing is read in full.
 			if err := zw.Copy(f); err != nil {

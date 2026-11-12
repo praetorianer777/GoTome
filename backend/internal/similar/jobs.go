@@ -27,7 +27,8 @@ const embedKind = "similar.embed_books"
 func (EmbedArgs) Kind() string { return embedKind }
 
 // The embed queue has one worker, so books are embedded one at a time, and
-// the queue only this job: it never holds up scanning or extraction.
+// holds only the jobs that work on vectors: they never hold up scanning or
+// extraction.
 var embedOpts = jobs.InsertOpts{Queue: jobs.QueueEmbed, Unique: true, MaxAttempts: 5}
 
 // Enqueue asks for a pass over the books; a pass already waiting or
@@ -46,7 +47,7 @@ func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx) error {
 
 // Periodic is the scheduled pass, also at start, which picks up what changed
 // while a pass was running and edits to books, which ask for none.
-func Periodic(interval time.Duration) *river.PeriodicJob {
+func Periodic(interval time.Duration) jobs.Schedule {
 	return jobs.Every(interval, true, EmbedArgs{}, jobs.QueueEmbed)
 }
 
@@ -60,6 +61,12 @@ func (w *EmbedWorker) Timeout(*river.Job[EmbedArgs]) time.Duration { return pass
 
 func (w *EmbedWorker) Work(ctx context.Context, _ *river.Job[EmbedArgs]) error {
 	complete, err := w.Service.Embed(ctx, time.Now().Add(passBudget), 0)
+	if err == nil && complete {
+		// A book chunked while this pass ran, with an ID before the one the
+		// pass had reached, asked for a pass that this one's uniqueness
+		// swallowed, and would wait for the hourly one.
+		complete, err = w.Service.Embed(ctx, time.Now().Add(passBudget), 1)
+	}
 	switch {
 	case errors.Is(err, ErrUnavailable):
 		w.Service.log.Warn("books are not embedded", "error", err)

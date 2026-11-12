@@ -4,10 +4,10 @@
 # Bookworm rather than alpine: the race detector needs cgo, and alpine ships no
 # C compiler. The version is pinned; see CLAUDE.md. The tests run in an image
 # built on it with the programs the app calls (deploy/toolchain.Dockerfile),
-# tagged by what it is built from, so a change to either builds a new one.
+# tagged by what it is built from, so a change to any of it builds a new one.
 GO_BASE ?= golang:1.27-bookworm
 GO_TOOLCHAIN_FILE := $(ROOT)/deploy/toolchain.Dockerfile
-GO_IMAGE ?= gotome-toolchain:$(shell printf '%s' '$(GO_BASE)' | cat - '$(GO_TOOLCHAIN_FILE)' | cksum | cut -d' ' -f1)
+GO_IMAGE ?= gotome-toolchain:$(shell printf '%s' '$(GO_BASE)$(FFMPEG_IMAGE)' | cat - '$(GO_TOOLCHAIN_FILE)' | cksum | cut -d' ' -f1)
 GO_CACHE := $(ROOT)/.cache/go
 GO_PKG   := github.com/praetorianer777/gotome/backend
 GO_LDFLAGS := -X $(GO_PKG)/internal/version.Version=$(VERSION)
@@ -23,6 +23,7 @@ go_run = docker run --rm \
 	-e GOMODCACHE=/cache/mod \
 	-e GOFLAGS=-buildvcs=false \
 	-e GOTOOLCHAIN=local \
+	$(if $(wildcard $(ENGINE_LIB)),-e GOTOME_TEST_FULLTEXT=/work/.cache/engine/libgotome_fulltext.so) \
 	$(1) \
 	-w /work/backend $(GO_IMAGE)
 DOCKER_GO = $(call go_run,)
@@ -34,8 +35,10 @@ $(GO_CACHE):
 # first: building it again, even from docker's cache, takes longer than the look.
 .PHONY: go-toolchain
 go-toolchain:
-	@docker image inspect $(GO_IMAGE) >/dev/null 2>&1 || \
-		docker build --quiet --build-arg GO_BASE=$(GO_BASE) -t $(GO_IMAGE) - < $(GO_TOOLCHAIN_FILE)
+	@docker image inspect $(GO_IMAGE) >/dev/null 2>&1 || { \
+		$(MAKE) --no-print-directory ffmpeg-image && \
+		docker build --quiet --build-arg GO_BASE=$(GO_BASE) --build-arg FFMPEG_IMAGE=$(FFMPEG_IMAGE) \
+			-t $(GO_IMAGE) - < $(GO_TOOLCHAIN_FILE); }
 
 .PHONY: fmt
 fmt: | $(GO_CACHE) go-toolchain ## Format the Go sources in place
@@ -71,8 +74,14 @@ openapi-check: | $(GO_CACHE) go-toolchain ## Fail when api/openapi.json differs 
 	@$(DOCKER_GO) sh -c 'go run ./cmd/gotome openapi /tmp/openapi.json && diff -u ../api/openapi.json /tmp/openapi.json' \
 		|| { echo "api/openapi.json is out of date. Run make openapi and commit the result."; exit 1; }
 
+# Uncached: Go's test cache does not see files outside the module, such as
+# docs/configuration.md, so test-go alone could pass on a stale result.
+.PHONY: config-reference-check
+config-reference-check: | $(GO_CACHE) go-toolchain ## Fail when docs/configuration.md lacks a GOTOME_* variable or a setting
+	$(DOCKER_GO) go test -count=1 -run '^TestTheReference' ./internal/config/
+
 .PHONY: check-go
-check-go: fmt-check vet test-go openapi-check sqlc-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift
+check-go: fmt-check vet test-go openapi-check sqlc-check config-reference-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift, the configuration reference
 
 # Both reach the internet, which nothing in the gate does. Providers' keys in
 # the environment, GOTOME_HARDCOVER_TOKEN and GOTOME_GOOGLE_BOOKS_KEY, are
@@ -84,3 +93,7 @@ record-fixtures: | $(GO_CACHE) go-toolchain ## Record the provider answers their
 .PHONY: contract-test
 contract-test: | $(GO_CACHE) go-toolchain ## Ask the live metadata providers whether they still answer as the fixtures say
 	$(call go_run,-e GOTOME_LIVE=1 -e GOTOME_HARDCOVER_TOKEN -e GOTOME_GOOGLE_BOOKS_KEY) go test -count=1 -run Live -v ./internal/metadata/...
+
+.PHONY: test-koplugin
+test-koplugin: | $(GO_CACHE) go-toolchain ## Run the KOReader plugin's tests in LuaJIT, as KOReader runs it
+	$(DOCKER_GO) sh -c 'cd internal/koplugin && luajit testdata/feed_test.lua'

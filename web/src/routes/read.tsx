@@ -32,6 +32,8 @@ export interface ReaderSearch {
 	to?: number;
 	find?: string;
 	near?: string;
+	/** For an ebook: how far into the book to open, 0 to 1. */
+	fraction?: number;
 }
 
 function pageNumber(value: unknown): number | undefined {
@@ -39,8 +41,15 @@ function pageNumber(value: unknown): number | undefined {
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
+function shareOf(value: unknown): number | undefined {
+	if (value === undefined || value === "") return undefined;
+	const n = Number(value);
+	return Number.isFinite(n) && n >= 0 && n <= 1 ? n : undefined;
+}
+
 export function readerSearch(search: Record<string, unknown>): ReaderSearch {
 	return {
+		fraction: shareOf(search.fraction),
 		page: pageNumber(search.page),
 		to: pageNumber(search.to),
 		find: typeof search.find === "string" && search.find ? search.find : undefined,
@@ -53,7 +62,7 @@ export function ReaderRoute() {
 	const { bookId, fileId } = useParams({
 		from: "/app/books/$bookId/read/$fileId",
 	});
-	const { page, to, find, near } = useSearch({
+	const { page, to, find, near, fraction } = useSearch({
 		from: "/app/books/$bookId/read/$fileId",
 	});
 	const book = useQuery(bookQuery(bookId));
@@ -90,6 +99,7 @@ export function ReaderRoute() {
 					fileName={file.name}
 					title={book.data.title}
 					find={find ? { word: find, passage: near ?? find } : undefined}
+					at={fraction}
 				/>
 			</Suspense>
 		);
@@ -102,10 +112,53 @@ export function ReaderRoute() {
 			<Link
 				to="/books/$bookId"
 				params={{ bookId }}
-				className="text-brand-strong underline underline-offset-4 dark:text-brand"
+				className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand"
 			>
 				{t("reader.back")}
 			</Link>
 		</div>
+	);
+}
+
+/**
+ * The first readable file of a book in its reader, opened at the start and
+ * saving nothing, for a look inside from a review queue.
+ */
+export function ReaderPreview({ bookId }: { bookId: string }) {
+	const book = useQuery(bookQuery(bookId));
+	if (!book.data) {
+		return (
+			<>
+				{book.isPending && (
+					<p className="text-slate-500">{t("reader.opening")}</p>
+				)}
+				<FormError error={book.error} />
+			</>
+		);
+	}
+	const file = book.data.files.find((f) => !f.missing && readable(f.format));
+	const opening = <p className="text-slate-500">{t("reader.opening")}</p>;
+	if (file?.format === "pdf") {
+		return (
+			<Suspense fallback={opening}>
+				<PdfReader bookId={bookId} fileId={file.id} preview />
+			</Suspense>
+		);
+	}
+	if (file) {
+		return (
+			<Suspense fallback={opening}>
+				<EbookReader
+					bookId={bookId}
+					fileId={file.id}
+					fileName={file.name}
+					title={book.data.title}
+					preview
+				/>
+			</Suspense>
+		);
+	}
+	return (
+		<p className="text-slate-600 dark:text-slate-400">{t("reader.cannotRead")}</p>
 	);
 }

@@ -1,18 +1,25 @@
 -- name: ListVisibleLibraries :many
 SELECT l.*
 FROM libraries l
-WHERE l.id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE l.id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY lower(l.name);
 
 -- name: GetVisibleLibrary :one
 SELECT l.*
 FROM libraries l
 WHERE l.id = $1
-  AND l.id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND l.id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListLibraryRoots :many
 -- Every root, whoever may see it: a new library must not overlap any of them.
 SELECT id, root_path FROM libraries;
+
+-- name: ListWatchedLibraries :many
+SELECT id, root_path FROM libraries WHERE watch;
+
+-- name: GetLibraryRoot :one
+-- For storage managers, who see every library.
+SELECT root_path FROM libraries WHERE id = $1;
 
 -- name: CreateLibrary :one
 INSERT INTO libraries (id, name, root_path, mode, writable, visibility, owner_id)
@@ -24,12 +31,62 @@ UPDATE libraries
 SET name       = COALESCE(sqlc.narg(name), name),
     visibility = COALESCE(sqlc.narg(visibility), visibility),
     writable   = COALESCE(sqlc.narg(writable), writable),
+    join_formats = COALESCE(sqlc.narg(join_formats), join_formats),
+    watch      = COALESCE(sqlc.narg(watch), watch),
+    fulltext   = COALESCE(sqlc.narg(fulltext), fulltext),
+    -- Whoever sets it has just seen the folder written to, or turned it off.
+    unwritable_since  = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_since END,
+    unwritable_reason = CASE WHEN sqlc.narg(writable)::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
 
+-- name: LockLibraryForUpdate :one
+-- Waits for the writers that hold the library (HoldLibrary), and keeps new
+-- ones off until the transaction ends; returns whether it is searched by
+-- text now.
+SELECT fulltext FROM libraries WHERE id = $1 FOR UPDATE;
+
+-- name: MarkLibraryUnwritable :one
+-- Only the first time: the name comes back only when the library was not
+-- marked yet, which is when its managers are told.
+UPDATE libraries
+SET unwritable_since = now(), unwritable_reason = sqlc.arg(reason)
+WHERE id = sqlc.arg(id) AND writable AND unwritable_since IS NULL
+RETURNING name;
+
+-- name: ClearLibraryUnwritable :exec
+UPDATE libraries
+SET unwritable_since = NULL, unwritable_reason = NULL
+WHERE id = $1 AND unwritable_since IS NOT NULL;
+
 -- name: DeleteLibrary :execrows
 DELETE FROM libraries WHERE id = $1;
+
+-- name: HoldLibrary :exec
+-- Deleting a library cascades through its books, files and chunks and locks
+-- them in an order of its own, while extraction, chunking, merges, the
+-- trash, uploads, scans and edits lock a book and its files in theirs: the
+-- two deadlocked (#199). Such a writer holds the library's row first, as
+-- the first lock of its transaction. FOR KEY SHARE keeps writers from
+-- waiting for each other, as every insert of a book takes it already; the
+-- delete, whose first lock is this row's, waits until they are done, or
+-- they until it is, and then find nothing.
+SELECT 1 FROM libraries WHERE id = $1 FOR KEY SHARE;
+
+-- name: HoldLibrariesOfFiles :exec
+-- HoldLibrary for the libraries of the files, in one order.
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM book_files WHERE id = ANY(sqlc.arg(ids)::uuid[]))
+ORDER BY id
+FOR KEY SHARE;
+
+-- name: HoldLibrariesOfBooks :exec
+-- HoldLibrary for the libraries of the books, in one order.
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM books WHERE id = ANY(sqlc.arg(ids)::uuid[]))
+ORDER BY id
+FOR KEY SHARE;
 
 -- name: ListLibraryMembers :many
 SELECT u.id, u.username, u.role, m.added_at

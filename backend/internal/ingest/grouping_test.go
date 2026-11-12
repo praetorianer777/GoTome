@@ -25,54 +25,75 @@ func TestGroupUnit(t *testing.T) {
 	}{
 		{
 			name: "one title in several formats is one book",
-			unit: "Herbert",
+			unit: "Halden",
 			paths: []string{
-				"Herbert/Dune.epub", "Herbert/Dune.pdf", "Herbert/dune.m4b", "Herbert/Children of Dune.epub",
+				"Halden/Dusk.epub", "Halden/Dusk.pdf", "Halden/dusk.m4b", "Halden/Children of Dusk.epub",
 			},
 			want: []want{
-				{title: "Children of Dune", files: []string{"Herbert/Children of Dune.epub"}},
-				{title: "Dune", files: []string{"Herbert/Dune.epub", "Herbert/Dune.pdf", "Herbert/dune.m4b"}},
+				{title: "Children of Dusk", files: []string{"Halden/Children of Dusk.epub"}},
+				{title: "Dusk", files: []string{"Halden/Dusk.epub", "Halden/Dusk.pdf", "Halden/dusk.m4b"}},
+			},
+		},
+		{
+			name: "a Calibre folder is one book, whatever its formats are called",
+			unit: "Halden/Dusk (12)",
+			paths: []string{
+				"Halden/Dusk (12)/Dusk - Halden.epub", "Halden/Dusk (12)/Dusk.mobi", "Halden/Dusk (12)/Dusk - Halden.pdf",
+			},
+			want: []want{
+				{title: "Dusk", files: []string{"Halden/Dusk (12)/Dusk - Halden.epub", "Halden/Dusk (12)/Dusk - Halden.pdf", "Halden/Dusk (12)/Dusk.mobi"}},
+			},
+		},
+		{
+			name: "a numbered folder deeper down is not a Calibre folder",
+			unit: "Halden/Dusk (2)/Extras",
+			paths: []string{
+				"Halden/Dusk (2)/Extras/Map.epub", "Halden/Dusk (2)/Extras/Notes.epub",
+			},
+			want: []want{
+				{title: "Map", files: []string{"Halden/Dusk (2)/Extras/Map.epub"}},
+				{title: "Notes", files: []string{"Halden/Dusk (2)/Extras/Notes.epub"}},
 			},
 		},
 		{
 			name: "files named after their position are the book the folder is named after",
-			unit: "Herbert/Dune",
+			unit: "Halden/Dusk",
 			paths: []string{
-				"Herbert/Dune/10 - End.mp3", "Herbert/Dune/2 - Middle.mp3", "Herbert/Dune/01 - Start.mp3",
+				"Halden/Dusk/10 - End.mp3", "Halden/Dusk/2 - Middle.mp3", "Halden/Dusk/01 - Start.mp3",
 			},
 			want: []want{{
-				title: "Dune",
-				files: []string{"Herbert/Dune/01 - Start.mp3", "Herbert/Dune/2 - Middle.mp3", "Herbert/Dune/10 - End.mp3"},
-				parts: []string{"Herbert/Dune/01 - Start.mp3", "Herbert/Dune/2 - Middle.mp3", "Herbert/Dune/10 - End.mp3"},
+				title: "Dusk",
+				files: []string{"Halden/Dusk/01 - Start.mp3", "Halden/Dusk/2 - Middle.mp3", "Halden/Dusk/10 - End.mp3"},
+				parts: []string{"Halden/Dusk/01 - Start.mp3", "Halden/Dusk/2 - Middle.mp3", "Halden/Dusk/10 - End.mp3"},
 			}},
 		},
 		{
 			name: "the book in the folder joins its audio parts",
-			unit: "Dune",
+			unit: "Dusk",
 			paths: []string{
-				"Dune/Track 1.mp3", "Dune/Track 2.mp3", "Dune/Dune.epub", "Dune/Notes on Dune.pdf",
+				"Dusk/Track 1.mp3", "Dusk/Track 2.mp3", "Dusk/Dusk.epub", "Dusk/Notes on Dusk.pdf",
 			},
 			want: []want{
 				{
-					title: "Dune",
-					files: []string{"Dune/Dune.epub", "Dune/Track 1.mp3", "Dune/Track 2.mp3"},
-					parts: []string{"Dune/Track 1.mp3", "Dune/Track 2.mp3"},
+					title: "Dusk",
+					files: []string{"Dusk/Dusk.epub", "Dusk/Track 1.mp3", "Dusk/Track 2.mp3"},
+					parts: []string{"Dusk/Track 1.mp3", "Dusk/Track 2.mp3"},
 				},
-				{title: "Notes on Dune", files: []string{"Dune/Notes on Dune.pdf"}},
+				{title: "Notes on Dusk", files: []string{"Dusk/Notes on Dusk.pdf"}},
 			},
 		},
 		{
 			name: "parts named after the book and their position",
 			unit: "Audio",
 			paths: []string{
-				"Audio/Dune - Part 02.mp3", "Audio/Dune - Part 01.mp3",
+				"Audio/Dusk - Part 02.mp3", "Audio/Dusk - Part 01.mp3",
 				"Audio/Emma (1).m4a", "Audio/Emma (2).m4a", "Audio/Persuasion.mp3",
 			},
 			want: []want{
 				{
-					title: "Dune",
-					files: []string{"Audio/Dune - Part 01.mp3", "Audio/Dune - Part 02.mp3"},
-					parts: []string{"Audio/Dune - Part 01.mp3", "Audio/Dune - Part 02.mp3"},
+					title: "Dusk",
+					files: []string{"Audio/Dusk - Part 01.mp3", "Audio/Dusk - Part 02.mp3"},
+					parts: []string{"Audio/Dusk - Part 01.mp3", "Audio/Dusk - Part 02.mp3"},
 				},
 				{
 					title: "Emma",
@@ -86,25 +107,25 @@ func TestGroupUnit(t *testing.T) {
 			name: "a number in a title is not a position",
 			unit: "Audio",
 			paths: []string{
-				"Audio/Fahrenheit 451.mp3", "Audio/1984.mp3", "Audio/Catch-22.m4b", "Audio/Blade Runner 2049.mp3",
+				"Audio/Celsius 212.mp3", "Audio/1957.mp3", "Audio/Trap-17.m4b", "Audio/Night Courier 2049.mp3",
 			},
 			want: []want{
-				{title: "1984", files: []string{"Audio/1984.mp3"}},
-				{title: "Blade Runner 2049", files: []string{"Audio/Blade Runner 2049.mp3"}},
-				{title: "Catch-22", files: []string{"Audio/Catch-22.m4b"}},
-				{title: "Fahrenheit 451", files: []string{"Audio/Fahrenheit 451.mp3"}},
+				{title: "1957", files: []string{"Audio/1957.mp3"}},
+				{title: "Celsius 212", files: []string{"Audio/Celsius 212.mp3"}},
+				{title: "Night Courier 2049", files: []string{"Audio/Night Courier 2049.mp3"}},
+				{title: "Trap-17", files: []string{"Audio/Trap-17.m4b"}},
 			},
 		},
 		{
 			name: "discs are ordered before their tracks",
-			unit: "Dune",
+			unit: "Dusk",
 			paths: []string{
-				"Dune/CD2/01.mp3", "Dune/CD1/02.mp3", "Dune/CD1/01.mp3", "Dune/CD 10/01.mp3",
+				"Dusk/CD2/01.mp3", "Dusk/CD1/02.mp3", "Dusk/CD1/01.mp3", "Dusk/CD 10/01.mp3",
 			},
 			want: []want{{
-				title: "Dune",
-				files: []string{"Dune/CD1/01.mp3", "Dune/CD1/02.mp3", "Dune/CD2/01.mp3", "Dune/CD 10/01.mp3"},
-				parts: []string{"Dune/CD1/01.mp3", "Dune/CD1/02.mp3", "Dune/CD2/01.mp3", "Dune/CD 10/01.mp3"},
+				title: "Dusk",
+				files: []string{"Dusk/CD1/01.mp3", "Dusk/CD1/02.mp3", "Dusk/CD2/01.mp3", "Dusk/CD 10/01.mp3"},
+				parts: []string{"Dusk/CD1/01.mp3", "Dusk/CD1/02.mp3", "Dusk/CD2/01.mp3", "Dusk/CD 10/01.mp3"},
 			}},
 		},
 		{
@@ -159,12 +180,12 @@ func reversed(s []string) []string {
 
 func TestUnitOf(t *testing.T) {
 	for relPath, want := range map[string]string{
-		"Dune.epub":                 ".",
-		"Herbert/Dune.epub":         "Herbert",
-		"Herbert/Dune/CD1/01.mp3":   "Herbert/Dune",
-		"Herbert/Dune/Disc 2/1.mp3": "Herbert/Dune",
-		"CD1/01.mp3":                "CD1",
-		"Herbert/Part Two/x.epub":   "Herbert/Part Two",
+		"Dusk.epub":                ".",
+		"Halden/Dusk.epub":         "Halden",
+		"Halden/Dusk/CD1/01.mp3":   "Halden/Dusk",
+		"Halden/Dusk/Disc 2/1.mp3": "Halden/Dusk",
+		"CD1/01.mp3":               "CD1",
+		"Halden/Part Two/x.epub":   "Halden/Part Two",
 	} {
 		if got := unitOf(relPath); got != want {
 			t.Errorf("unitOf(%q) = %q, want %q", relPath, got, want)
@@ -188,8 +209,8 @@ func TestCompareNatural(t *testing.T) {
 // every file of a known format lands in exactly one group, and the parts of a
 // group are numbered without gaps.
 func FuzzGroupUnit(f *testing.F) {
-	f.Add("Dune", "01.mp3\n02.mp3\nDune.epub")
-	f.Add("a/b", "CD1/x.mp3\nDune (1).m4b\nDune (2).m4b\n\x00.pdf")
+	f.Add("Dusk", "01.mp3\n02.mp3\nDusk.epub")
+	f.Add("a/b", "CD1/x.mp3\nDusk (1).m4b\nDusk (2).m4b\n\x00.pdf")
 	f.Fuzz(func(t *testing.T, unit, names string) {
 		var paths []string
 		for _, name := range strings.Split(names, "\n") {

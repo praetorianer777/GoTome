@@ -41,7 +41,7 @@ SELECT library_id, count(*)::int AS failed
 FROM book_files
 WHERE extract_state = 'failed'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY library_id
 `
 
@@ -81,7 +81,7 @@ SELECT library_id, count(*)::int AS pending
 FROM book_files
 WHERE extract_state = 'pending'
   AND missing_at IS NULL AND trashed_at IS NULL
-  AND library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY library_id
 `
 
@@ -182,7 +182,7 @@ func (q *Queries) GetFileForExtraction(ctx context.Context, id uuid.UUID) (GetFi
 }
 
 const getFileForWriteBack = `-- name: GetFileForWriteBack :one
-SELECT f.id, f.book_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
+SELECT f.id, f.book_id, f.library_id, f.format, f.rel_path, f.size_bytes, f.sha256, f.content_sha256,
        f.extract_state, f.drm, f.missing_at, f.trashed_at, l.root_path, l.writable
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
@@ -192,6 +192,7 @@ WHERE f.id = $1
 type GetFileForWriteBackRow struct {
 	ID            uuid.UUID
 	BookID        uuid.UUID
+	LibraryID     uuid.UUID
 	Format        string
 	RelPath       string
 	SizeBytes     int64
@@ -211,6 +212,7 @@ func (q *Queries) GetFileForWriteBack(ctx context.Context, id uuid.UUID) (GetFil
 	err := row.Scan(
 		&i.ID,
 		&i.BookID,
+		&i.LibraryID,
 		&i.Format,
 		&i.RelPath,
 		&i.SizeBytes,
@@ -229,7 +231,7 @@ func (q *Queries) GetFileForWriteBack(ctx context.Context, id uuid.UUID) (GetFil
 const latestVisibleScans = `-- name: LatestVisibleScans :many
 SELECT DISTINCT ON (s.library_id) s.id, s.library_id, s.state, s.requested_by, s.requested_at, s.job_id, s.started_at, s.finished_at, s.files_seen, s.files_added, s.files_changed, s.files_moved, s.files_restored, s.files_missing, s.files_skipped, s.books_added, s.error
 FROM library_scans s
-WHERE s.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE s.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY s.library_id, s.requested_at DESC, s.id DESC
 `
 
@@ -819,6 +821,7 @@ UPDATE book_files
 SET sha256      = $1,
     size_bytes  = $2,
     modified_at = $3,
+    write_back_pending = false,
     updated_at  = now()
 WHERE id = $4
 `
@@ -853,6 +856,15 @@ type SetScanJobParams struct {
 
 func (q *Queries) SetScanJob(ctx context.Context, arg SetScanJobParams) error {
 	_, err := q.db.Exec(ctx, setScanJob, arg.ID, arg.JobID)
+	return err
+}
+
+const setWriteBackPending = `-- name: SetWriteBackPending :exec
+UPDATE book_files SET write_back_pending = true WHERE id = $1 AND NOT write_back_pending
+`
+
+func (q *Queries) SetWriteBackPending(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setWriteBackPending, id)
 	return err
 }
 
@@ -894,6 +906,34 @@ func (q *Queries) StartScan(ctx context.Context, arg StartScanParams) (LibrarySc
 		&i.Error,
 	)
 	return i, err
+}
+
+const takeWriteBacksPending = `-- name: TakeWriteBacksPending :many
+UPDATE book_files SET write_back_pending = false
+WHERE library_id = $1 AND write_back_pending
+RETURNING id
+`
+
+// The files of a library whose write-back was passed by while its folder
+// could not be written, taken off the list as they are queued again.
+func (q *Queries) TakeWriteBacksPending(ctx context.Context, libraryID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, takeWriteBacksPending, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateFileContent = `-- name: UpdateFileContent :exec

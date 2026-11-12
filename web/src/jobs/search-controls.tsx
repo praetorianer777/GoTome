@@ -57,10 +57,16 @@ export function SearchIndexPanel() {
 			{status.data && (
 				<div role="status" className="flex flex-col gap-1 text-sm">
 					<p>
-						{t("searchIndex.known", {
-							indexed: status.data.indexed,
-							files: status.data.files,
-						})}
+						{status.data.rereading > 0
+							? t("searchIndex.rereading", {
+									done: status.data.files - status.data.rereading,
+									files: status.data.files,
+									waiting: status.data.rereading,
+								})
+							: t("searchIndex.known", {
+									indexed: status.data.indexed,
+									files: status.data.files,
+								})}
 					</p>
 					{status.data.rebuilding && <p>{t("searchIndex.rebuilding")}</p>}
 				</div>

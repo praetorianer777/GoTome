@@ -69,7 +69,8 @@ function paragraphs(chapter: number, count: number, from = 1): string {
  * entry. With hostile, the first chapter carries a script, an event
  * handler and an image from another host, none of which may do anything.
  * A chapter numbered in passages has that text as a paragraph halfway
- * through.
+ * through. The table of contents names the chapters titles gives, else
+ * "Chapter n".
  */
 export function makeEpub(
 	title: string,
@@ -77,6 +78,7 @@ export function makeEpub(
 	tag: string,
 	hostile = false,
 	passages: Record<number, string> = {},
+	titles: string[] = [],
 ): Buffer {
 	const ids = Array.from({ length: chapters }, (_, i) => i + 1);
 	const attack = hostile
@@ -99,7 +101,7 @@ ${paragraphs(n, 20, 21)}
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 <head><title>Contents</title></head>
 <body><nav epub:type="toc"><ol>
-${ids.map((n) => `<li><a href="c${n}.xhtml">Chapter ${n}</a></li>`).join("\n")}
+${ids.map((n) => `<li><a href="c${n}.xhtml">${titles[n - 1] ?? `Chapter ${n}`}</a></li>`).join("\n")}
 </ol></nav></body>
 </html>`;
 	const opf = `<?xml version="1.0" encoding="UTF-8"?>
@@ -125,6 +127,60 @@ ${ids.map((n) => `<item id="c${n}" href="c${n}.xhtml" media-type="application/xh
 		["OEBPS/content.opf", opf],
 		["OEBPS/nav.xhtml", nav],
 		...ids.map((n): [string, string] => [`OEBPS/c${n}.xhtml`, chapter(n)]),
+	]);
+}
+
+/**
+ * An EPUB of one short chapter of the text given: too short to be signed
+ * for shared text, so books made of it are no duplicates of each other,
+ * while the stack's vectors, made from words, find those that share words
+ * near. With missingFile, its manifest lists a file the archive lacks,
+ * which the e-reader check finds.
+ */
+export function makeShortEpub(
+	title: string,
+	tag: string,
+	text: string,
+	{ missingFile = false }: { missingFile?: boolean } = {},
+): Buffer {
+	const opf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:identifier id="id">urn:test:${tag}</dc:identifier>
+<dc:title>${title}</dc:title>
+<dc:language>en</dc:language>
+<meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>
+</metadata>
+<manifest>
+<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>
+${missingFile ? '<item id="art" href="images/plate.jpg" media-type="image/jpeg"/>' : ""}
+</manifest>
+<spine><itemref idref="c1"/></spine>
+</package>`;
+	return zip([
+		["mimetype", "application/epub+zip"],
+		[
+			"META-INF/container.xml",
+			`<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`,
+		],
+		["OEBPS/content.opf", opf],
+		[
+			"OEBPS/nav.xhtml",
+			`<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>Contents</title></head>
+<body><nav epub:type="toc"><ol><li><a href="c1.xhtml">One</a></li></ol></nav></body>
+</html>`,
+		],
+		[
+			"OEBPS/c1.xhtml",
+			`<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>One</title></head>
+<body><h1>One</h1><p>${text}</p></body>
+</html>`,
+		],
 	]);
 }
 

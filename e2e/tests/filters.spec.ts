@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 
 test("the books are narrowed by a filter, which the address keeps", async ({
@@ -21,7 +22,10 @@ test("the books are narrowed by a filter, which the address keeps", async ({
 					file: {
 						name,
 						mimeType: "application/octet-stream",
-						buffer: Buffer.from(`${name}\n`),
+						buffer: name.endsWith(".pdf")
+							? Buffer.from(`%PDF-1.4\n% ${name}\n`)
+							: // A Palm database's header, as a MOBI starts.
+								Buffer.concat([Buffer.alloc(60), Buffer.from(`BOOKMOBI${name}\n`)]),
 					},
 				},
 			},

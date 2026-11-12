@@ -1,4 +1,5 @@
 import { FormError } from "@/components/form";
+import { formatDateTime } from "@/lib/format";
 import { type MessageKey, t } from "@/i18n";
 import {
 	type Library,
@@ -9,11 +10,6 @@ import {
 import { Link } from "@tanstack/react-router";
 import { RereadText } from "@/jobs/search-controls";
 import { useRereadLibrary } from "@/jobs/api";
-
-const when = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
 
 const CHANGES: [keyof Scan, MessageKey][] = [
 	["filesAdded", "scan.added"],
@@ -34,14 +30,14 @@ function describe(scan: Scan | undefined): string {
 	if (scan.state === "running") {
 		return t("scan.running");
 	}
-	const at = when.format(new Date(scan.finishedAt ?? scan.requestedAt));
+	const at = formatDateTime(scan.finishedAt ?? scan.requestedAt);
 	if (scan.state === "failed") {
 		return t("scan.failed", { when: at, error: scan.error ?? "" });
 	}
 	const changes = CHANGES.filter(([field]) => Number(scan[field]) > 0).map(
 		([field, key]) => t(key, { count: Number(scan[field]) }),
 	);
-	return t("scan.done", {
+	return t(scan.filesSeen === 1 ? "scan.done.one" : "scan.done", {
 		when: at,
 		count: scan.filesSeen,
 		changes: changes.length > 0 ? changes.join(", ") : t("scan.nothingNew"),
@@ -109,7 +105,7 @@ export function ScanStatus({
 							>
 								{t("scan.rereadFailed")}
 							</button>
-							<Link to="/jobs" className="text-brand-strong underline underline-offset-4 dark:text-brand">
+							<Link to="/jobs" className="inline-flex min-h-6 items-center text-brand-strong underline underline-offset-4 dark:text-brand">
 								{t("scan.toJobs")}
 							</Link>
 						</>

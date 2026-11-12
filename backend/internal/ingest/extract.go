@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/covers"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
@@ -38,7 +39,11 @@ type Section struct {
 	// Label names the section for a person: a chapter's title, a page's
 	// number. It may be empty.
 	Label string
-	Text  string
+	// Source is what the format calls the section, by which a passage is
+	// read from it again (readPassages): an EPUB's document, a PDF's page
+	// number. Empty for a format that is read whole.
+	Source string
+	Text   string
 }
 
 // Extracted is what reading one file yields.
@@ -61,6 +66,9 @@ type Extracted struct {
 	DurationMS  *int64
 	Track, Disc *int32
 	Chapters    []Chapter
+	// Measures are an EPUB's, nil for other formats and an EPUB that could
+	// not be measured.
+	Measures *epub.Measures
 }
 
 // ErrUnreadable is what an Extractor wraps when the file is not what its
@@ -106,6 +114,20 @@ func (s *Service) EnqueuePending(ctx context.Context, libraryID uuid.UUID) error
 	return err
 }
 
+// queueReadTx has a file read once the transaction commits. A read that is
+// running may have read the file before the change that asks for this one,
+// and the queue marks it finished only after its result is committed, so a
+// second read is queued beside it.
+func (s *Service) queueReadTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID) error {
+	opts := jobs.InsertOpts{Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts}
+	res, err := s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: fileID}, opts)
+	if err != nil || !res.Running {
+		return err
+	}
+	_, err = s.Queue.InsertTx(ctx, tx, ExtractArgs{FileID: fileID, Again: true}, opts)
+	return err
+}
+
 // readableFormats are the formats a reader is registered for.
 func readableFormats() []string { return slices.Sorted(maps.Keys(extractors)) }
 
@@ -127,7 +149,7 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 	}
 	path := filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath))
 
-	got, err := safely(ctx, extract, path)
+	got, err := safely(ctx, file.Format, extract, path)
 	got.Metadata.Format = file.Format
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -143,6 +165,9 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		}
 		return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 			qtx := sqlc.New(tx)
+			if err := qtx.HoldLibrary(ctx, file.LibraryID); err != nil {
+				return err
+			}
 			if err := qtx.SetFileExtractFailed(ctx, sqlc.SetFileExtractFailedParams{ID: fileID, Sha256: file.Sha256, Error: &message}); err != nil {
 				return err
 			}
@@ -175,6 +200,9 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, file.LibraryID); err != nil {
+			return err
+		}
 		n, err := q.SetFileExtracted(ctx, sqlc.SetFileExtractedParams{
 			ID: fileID, Sha256: file.Sha256, ContentSha256: got.ContentSHA256, Drm: got.DRM,
 			HasText: &got.HasText, PageCount: got.Pages, PagesEstimated: got.PagesEstimated,
@@ -182,6 +210,11 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 		})
 		if err != nil || n == 0 {
 			return err
+		}
+		if file.Format == "epub" {
+			if err := setMeasures(ctx, q, fileID, file.Sha256, got.Measures); err != nil {
+				return err
+			}
 		}
 		// A file a placeholder waited for joins it first, so that what the
 		// file says describes the placeholder.
@@ -195,6 +228,12 @@ func (s *Service) Extract(ctx context.Context, fileID uuid.UUID) error {
 			}
 		}
 		if err := catalog.ApplyFileMetadataTx(ctx, tx, fileID, got.Metadata); err != nil {
+			return err
+		}
+		if err := catalog.ApplyImprintTx(ctx, tx, fileID, file.Format, ImprintOf(got.Sections)); err != nil {
+			return err
+		}
+		if err := s.queuePlaceholderJoinTx(ctx, tx, bookID); err != nil {
 			return err
 		}
 		if s.OnExtracted != nil {
@@ -264,8 +303,14 @@ func orderParts(ctx context.Context, q *sqlc.Queries, bookID uuid.UUID) error {
 
 // safely runs the extractor and turns a panic into a failure of that one
 // file. The parsers read files from anywhere; one that trips a parser must
-// not be tried again and again by the queue.
-func safely(ctx context.Context, extract Extractor, path string) (got Extracted, err error) {
+// not be tried again and again by the queue. A file whose content is not of its format never reaches the reader: a
+// parser handed the wrong bytes is a parser fed what nobody tested it on.
+func safely(ctx context.Context, format string, extract Extractor, path string) (got Extracted, err error) {
+	if err := checkContent(path, format); errors.Is(err, ErrWrongContent) {
+		return Extracted{}, fmt.Errorf("%w: %w", ErrUnreadable, err)
+	} else if err != nil {
+		return Extracted{}, err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%w: the reader crashed: %v", ErrUnreadable, r)
@@ -277,6 +322,9 @@ func safely(ctx context.Context, extract Extractor, path string) (got Extracted,
 // ExtractArgs is the job that reads one file.
 type ExtractArgs struct {
 	FileID uuid.UUID `json:"fileId"`
+	// Again marks a read queued while another of the file was running,
+	// which River would otherwise take for that one (#142).
+	Again bool `json:"again,omitempty"`
 }
 
 // extractKind names the job in the queue. It is stored with every job, so it

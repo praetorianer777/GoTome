@@ -4,6 +4,7 @@ import { type DragEvent, useEffect, useId, useRef, useState } from "react";
 import { type CurrentUser, can } from "@/auth/session";
 import { UPLOAD_FORMATS, type Uploaded, uploadFile } from "@/books/upload";
 import { errorMessage, FormError, fieldErrors } from "@/components/form";
+import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatSize } from "@/lib/format";
 import { librariesQuery } from "@/libraries/api";
@@ -107,11 +108,11 @@ export function Upload({ user }: { user: CurrentUser }) {
 				<h1 className="text-2xl font-semibold">{t("upload.title")}</h1>
 				<StorageUse />
 			</div>
-			{libraries.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{libraries.isPending && <Loading />}
 			<FormError error={libraries.error} />
 
 			{libraries.isSuccess && managed.length === 0 && (
-				<div className="rounded-lg border border-dashed border-slate-300 px-6 py-10 text-center dark:border-slate-700">
+				<div className="rounded-lg border border-dashed border-[var(--color-slate-300)] px-6 py-10 text-center dark:border-slate-700">
 					<p className="mx-auto max-w-md text-slate-600 dark:text-slate-400">
 						{t(
 							can(user, "storage:manage")
@@ -122,7 +123,7 @@ export function Upload({ user }: { user: CurrentUser }) {
 					{can(user, "storage:manage") && (
 						<Link
 							to="/admin/libraries"
-							className="mt-4 inline-block rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800"
+							className="mt-4 inline-block rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300"
 						>
 							{t("library.none.add")}
 						</Link>
@@ -161,28 +162,30 @@ export function Upload({ user }: { user: CurrentUser }) {
 						onDragLeave={() => setDragging(false)}
 						onDrop={drop}
 						data-dragging={dragging || undefined}
-						className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-slate-300 px-6 py-12 text-center data-dragging:border-sky-600 data-dragging:bg-sky-50 dark:border-slate-700 dark:data-dragging:bg-sky-950"
+						className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-[var(--color-slate-300)] px-6 py-12 text-center data-dragging:border-sky-600 data-dragging:bg-sky-50 dark:border-slate-700 dark:data-dragging:bg-sky-950"
 					>
 						<p className="text-lg">
 							{t("upload.drop", { library: target.name })}
 						</p>
 						<label
 							htmlFor={inputId}
-							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2"
+							className="cursor-pointer rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-strong dark:has-focus-visible:outline-brand"
 						>
 							{t("upload.choose")}
+							{/* Inside its label, so that the label shows the ring when the
+							    hidden input has the keyboard's focus. */}
+							<input
+								id={inputId}
+								type="file"
+								multiple
+								accept={UPLOAD_FORMATS.join(",")}
+								className="sr-only"
+								onChange={(e) => {
+									add(e.target.files);
+									e.target.value = "";
+								}}
+							/>
 						</label>
-						<input
-							id={inputId}
-							type="file"
-							multiple
-							accept={UPLOAD_FORMATS.join(",")}
-							className="sr-only"
-							onChange={(e) => {
-								add(e.target.files);
-								e.target.value = "";
-							}}
-						/>
 						<p className="text-sm text-slate-600 dark:text-slate-400">
 							{t("upload.formats")}
 						</p>
@@ -247,12 +250,15 @@ function UploadRow({ item }: { item: Item }) {
 					</span>
 				</div>
 			)}
-			{item.result && <Outcome result={item.result} />}
-			{item.state === "failed" && (
-				<p className="text-sm text-red-700 dark:text-red-300">
-					{fieldErrors(item.error).file ?? errorMessage(item.error)}
-				</p>
-			)}
+			{/* Each file's outcome is announced as it comes; its percentages are not. */}
+			<div role="status">
+				{item.result && <Outcome result={item.result} />}
+				{item.state === "failed" && (
+					<p className="text-sm text-red-700 dark:text-red-300">
+						{fieldErrors(item.error).file ?? errorMessage(item.error)}
+					</p>
+				)}
+			</div>
 		</li>
 	);
 }
@@ -262,7 +268,7 @@ function Outcome({ result }: { result: Uploaded }) {
 		<Link
 			to="/books/$bookId"
 			params={{ bookId: result.bookId }}
-			className="font-medium text-sky-800 hover:underline dark:text-sky-300"
+			className="font-medium text-brand-strong hover:underline dark:text-brand"
 		>
 			{t("upload.open")}
 		</Link>

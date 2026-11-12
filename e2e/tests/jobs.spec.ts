@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
+import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a file that cannot be read shows on the jobs page and its book, and is read again", async ({ page }, testInfo) => {
 	const stamp = `${testInfo.project.name} ${Date.now()}`;
@@ -8,19 +9,22 @@ test("a file that cannot be read shows on the jobs page and its book, and is rea
 		data: { name: `Jobs ${stamp}`, mode: "managed", visibility: "shared" },
 	});
 	const { id } = await created.json();
-	// Not a zip, so not an EPUB: reading it fails for good.
+	// A zip's first bytes and nothing of one after them: the upload takes
+	// it, and reading it fails for good.
 	const uploaded = await page.request.post(`/api/v1/libraries/${id}/uploads`, {
-		multipart: { file: { name: `Broken ${stamp}.epub`, mimeType: "application/epub+zip", buffer: Buffer.from(`not a zip ${stamp}`) } },
+		multipart: { file: { name: `Broken ${stamp}.epub`, mimeType: "application/epub+zip", buffer: Buffer.from(`PK\x03\x04 not a zip ${stamp}`, "latin1") } },
 	});
 	expect(uploaded.status()).toBe(200);
 	const { bookId } = await uploaded.json();
 
 	await page.goto(`/books/${bookId}`);
 	await expect(page.getByText(/^Could not be read: /)).toBeVisible({ timeout: 15_000 });
+	const reread = page.waitForResponse((r) => r.url().endsWith("/extraction") && r.request().method() === "POST");
 	await page.getByRole("button", { name: `Read Broken ${stamp}.epub again` }).click();
+	expect((await reread).status()).toBe(202);
 	await expect(page.getByText(/^Could not be read: /)).toBeVisible({ timeout: 15_000 });
 
-	await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Jobs" }).click();
+	await (await mainNav(page)).getByRole("link", { name: "Jobs" }).click();
 	await expect(page.getByRole("heading", { name: "Background jobs", level: 1 })).toBeVisible();
 	await expect(page.getByRole("link", { name: new RegExp(`^Read .*Broken ${stamp}\\.epub$`) }).first()).toBeVisible();
 

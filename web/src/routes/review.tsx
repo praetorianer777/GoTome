@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { BookPanelLayout } from "@/books/book-panel";
 import { Cover } from "@/books/cover";
 import {
 	type ReviewBook,
@@ -10,13 +11,23 @@ import {
 	useRejectMatch,
 } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { AutoMatches } from "@/curation/auto-matches";
+import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
-import { Compare, typing } from "@/routes/book-find";
+import { dialogOpen, typing } from "@/lib/keys";
+import { Compare } from "@/routes/book-find";
 
 const quietButton =
 	"rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
 
-export function Review() {
+export function Review({
+	book: open,
+	onBook,
+}: {
+	/** The book open beside the list, as the address has it. */
+	book?: string;
+	onBook: (id: string | undefined, replace?: boolean) => void;
+}) {
 	const review = useQuery(reviewQuery);
 	const [at, setAt] = useState(0);
 	const books = review.data?.books ?? [];
@@ -24,12 +35,22 @@ export function Review() {
 	const index = Math.min(at, Math.max(books.length - 1, 0));
 	const current = books[index];
 
+	const opened = useRef({ open, onBook });
+	opened.current = { open, onBook };
+	const currentId = current?.book.id;
+	useEffect(() => {
+		const now = opened.current;
+		if (now.open && currentId && now.open !== currentId) {
+			now.onBook(currentId, true);
+		}
+	}, [currentId]);
+
 	const move = useRef((step: number) => setAt((i) => i + step));
 	move.current = (step: number) =>
 		setAt(Math.min(Math.max(index + step, 0), Math.max(books.length - 1, 0)));
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
-			if (typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+			if (typing(e) || dialogOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
 			if (e.key === "j" || e.key === "ArrowDown") {
 				e.preventDefault();
 				move.current(1);
@@ -43,14 +64,11 @@ export function Review() {
 	}, []);
 
 	return (
+		<BookPanelLayout bookId={open} onClose={() => onBook(undefined, true)}>
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("review.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("review.intro")}
-				</p>
-			</div>
-			{review.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			<PageHeader title={t("review.title")} intro={t("review.intro")} />
+			<AutoMatches onOpen={(id) => onBook(id)} />
+			{review.isPending && <Loading />}
 			<FormError error={review.error} />
 			{review.data && books.length === 0 && (
 				<p className="text-slate-600 dark:text-slate-400">{t("review.none")}</p>
@@ -84,14 +102,19 @@ export function Review() {
 					<p className="text-sm text-slate-500 dark:text-slate-400">
 						{t("review.keys")}
 					</p>
-					<Waiting key={current.book.id} item={current} />
+					<Waiting
+						key={current.book.id}
+						item={current}
+						onOpen={() => onBook(current.book.id)}
+					/>
 				</>
 			)}
 		</div>
+		</BookPanelLayout>
 	);
 }
 
-function Waiting({ item }: { item: ReviewBook }) {
+function Waiting({ item, onOpen }: { item: ReviewBook; onOpen: () => void }) {
 	const { book, matches } = item;
 	const [picked, setPicked] = useState(0);
 	const accept = useAcceptMatch(book.id);
@@ -105,7 +128,7 @@ function Waiting({ item }: { item: ReviewBook }) {
 	};
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
-			if (typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+			if (typing(e) || dialogOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
 			const n = Number(e.key);
 			if (n >= 1 && n <= matches.length) {
 				e.preventDefault();
@@ -129,14 +152,14 @@ function Waiting({ item }: { item: ReviewBook }) {
 					<Cover book={book} size="small" />
 				</div>
 				<div className="flex flex-col gap-1">
-					<h2 className="text-xl font-semibold">
-						<Link
-							to="/books/$bookId"
-							params={{ bookId: book.id }}
-							className="hover:underline"
+					<h2 className="text-lg font-semibold">
+						<button
+							type="button"
+							onClick={onOpen}
+							className="text-left font-semibold hover:underline"
 						>
 							{book.title}
-						</Link>
+						</button>
 					</h2>
 					{book.contributors.length > 0 && (
 						<p>{book.contributors.map((c) => c.name).join(", ")}</p>

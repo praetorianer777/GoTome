@@ -5,7 +5,7 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.missing_at, f.trashed_at,
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = sqlc.arg(id)
-  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: SetFileTrashed :exec
 UPDATE book_files
@@ -26,12 +26,21 @@ JOIN books b ON b.id = f.book_id
 JOIN libraries l ON l.id = f.library_id
 LEFT JOIN users u ON u.id = f.trashed_by
 WHERE f.trashed_at IS NOT NULL
-  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (sqlc.narg(library_id)::uuid IS NULL OR f.library_id = sqlc.narg(library_id)::uuid)
 ORDER BY f.trashed_at DESC, f.id DESC;
 
 -- name: ListExpiredTrash :many
-SELECT id FROM book_files WHERE trashed_at < sqlc.arg(before)::timestamptz ORDER BY trashed_at;
+-- Not of a library whose folder cannot be written now: each would fail.
+-- Not what an automatic curation run trashed until a person confirmed the
+-- run, and then not before the retention has passed since.
+SELECT f.id FROM book_files f JOIN libraries l ON l.id = f.library_id
+WHERE f.trashed_at < sqlc.arg(before)::timestamptz AND l.unwritable_since IS NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM curation_actions a JOIN curation_runs r ON r.id = a.run_id
+      WHERE r.automatic AND f.id = ANY(a.trashed_files) AND a.state = 'done'
+        AND (r.state NOT IN ('confirmed', 'undone') OR r.confirmed_at >= sqlc.arg(before)::timestamptz))
+ORDER BY f.trashed_at;
 
 -- name: GetTrashedFile :one
 SELECT f.id, f.book_id, f.rel_path, l.root_path

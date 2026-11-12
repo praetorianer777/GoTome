@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
+import { mainNav, openSignedIn } from "../fixtures/app";
 
 test("a token is saved encrypted and never shown again", async ({
 	page,
@@ -13,10 +14,7 @@ test("a token is saved encrypted and never shown again", async ({
 	const token = `hc-${Date.now()}`;
 	await openSignedIn(page);
 
-	await page
-		.getByRole("navigation", { name: "Main" })
-		.getByRole("link", { name: "Settings" })
-		.click();
+	await (await mainNav(page)).getByRole("link", { name: "Settings" }).click();
 	await expect(
 		page.getByRole("heading", { name: "Settings", level: 1 }),
 	).toBeVisible();
@@ -26,12 +24,59 @@ test("a token is saved encrypted and never shown again", async ({
 
 	await page.reload();
 	await expect(page.getByLabel("Hardcover API token")).toHaveValue("");
-	await expect(page.getByText(/Saved on/)).toBeVisible();
+	// Of this token: other secrets may be set beside it.
+	await expect(page.getByLabel("Hardcover API token")).toHaveAccessibleDescription(/Saved on/);
 	const answer = await page.request.get("/api/v1/settings");
 	expect(await answer.text()).not.toContain(token);
 
 	await page
 		.getByRole("button", { name: "Remove the Hardcover API token" })
 		.click();
-	await expect(page.getByText(/Not set\./).first()).toBeVisible();
+	await expect(page.getByLabel("Hardcover API token")).toHaveAccessibleDescription(/Not set\./);
+});
+
+test("a setting of a few values is chosen, not typed", async ({
+	page,
+}, testInfo) => {
+	test.skip(
+		testInfo.project.name !== "chromium",
+		"settings are global to the stack",
+	);
+	// The development stack looks books up in its test records whichever
+	// sources this names, so changing it disturbs no other test.
+	await openSignedIn(page);
+	// From the default, whatever a run before left.
+	const reset = await page.request.patch("/api/v1/settings", {
+		data: { values: { "metadata.providers": null } },
+	});
+	expect(reset.status()).toBe(200);
+	await page.goto("/admin/settings");
+	const sources = page.getByRole("group", { name: "Sources to ask" });
+	const crossref = sources.getByRole("checkbox", { name: "Crossref" });
+	await expect(crossref).toBeChecked();
+	await crossref.uncheck();
+	await page.getByRole("button", { name: "Save" }).click();
+	await expect(page.getByRole("status")).toHaveText("Saved.");
+
+	await page.reload();
+	await expect(crossref).not.toBeChecked();
+	const answer = await (await page.request.get("/api/v1/settings")).json();
+	const providers = answer.settings.find(
+		(s: { key: string }) => s.key === "metadata.providers",
+	);
+	expect(providers).toMatchObject({
+		value: "openlibrary,hardcover",
+		multiple: true,
+		choices: ["openlibrary", "crossref", "hardcover", "dnb"],
+	});
+	await expect(
+		page.getByRole("combobox", { name: "Genres for books" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("switch", { name: "Look up new books by themselves" }),
+	).toBeVisible();
+
+	await crossref.check();
+	await page.getByRole("button", { name: "Save" }).click();
+	await expect(page.getByRole("status")).toHaveText("Saved.");
 });

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import type { BookDetail } from "@/books/api";
+import { celebrate } from "@/components/gopher";
 import type { MessageKey } from "@/i18n";
 
 export type Reading = components["schemas"]["ReadingState"];
@@ -22,8 +23,21 @@ export const STATUS_LABELS: Record<ReadingStatus, MessageKey> = {
 	reading: "status.reading",
 	completed: "status.completed",
 	abandoned: "status.abandoned",
-	wishlist: "status.wishlist",
+	wishlist: "status.wantToRead",
 };
+
+/**
+ * The status as said of one book: `wishlist` is wanting to read a book one
+ * has, and wanting to have one the library does not hold yet.
+ */
+export function statusLabel(
+	status: ReadingStatus,
+	placeholder: boolean,
+): MessageKey {
+	return placeholder && status === "wishlist"
+		? "status.wishlist"
+		: STATUS_LABELS[status];
+}
 
 export const MAX_RATING = 5;
 
@@ -39,6 +53,10 @@ export function useSetReading(id: string) {
 				})
 			).data,
 		onSuccess: (reading) => {
+			const before = queryClient.getQueryData<BookDetail>(["book", id]);
+			if (reading?.status === "completed" && before?.reading.status !== "completed") {
+				celebrate();
+			}
 			if (reading) {
 				queryClient.setQueryData<BookDetail>(["book", id], (book) =>
 					book ? { ...book, reading } : book,

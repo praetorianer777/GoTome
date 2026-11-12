@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -60,17 +61,25 @@ ORDER BY b.sort_title, b.id LIMIT ` + arg(MaxSelection+1)
 // locks it; unlike one, it leaves a field that was locked before as it is,
 // unless IncludeLocked.
 type Change struct {
+	// Title is set on one book at a time, as a clean-up does.
+	Title     *string `json:"title,omitempty"`
 	Language  *string `json:"language,omitempty"`
 	Published *string `json:"published,omitempty"`
 	Publisher *string `json:"publisher,omitempty"`
 	// Series names the series; each book keeps its position. "" takes the
 	// books out of their series.
 	Series *string `json:"series,omitempty"`
+	// SeriesIndex is the position in Series instead of the book's own; it
+	// is set on one book at a time, as a clean-up does.
+	SeriesIndex *float64 `json:"seriesIndex,omitempty"`
 	// Authors replace the authors; narrators and the other contributors
 	// stay.
 	Authors       *[]string `json:"authors,omitempty"`
 	AddAuthors    []string  `json:"addAuthors,omitempty"`
 	RemoveAuthors []string  `json:"removeAuthors,omitempty"`
+	// RenameAuthors puts each To in the place of the author of the same key
+	// as From, so the order of the authors stays.
+	RenameAuthors []Rename  `json:"renameAuthors,omitempty"`
 	Tags          *[]string `json:"tags,omitempty"`
 	AddTags       []string  `json:"addTags,omitempty"`
 	RemoveTags    []string  `json:"removeTags,omitempty"`
@@ -79,15 +88,22 @@ type Change struct {
 	IncludeLocked bool            `json:"includeLocked,omitempty"`
 }
 
+// Rename is one name in place of another.
+type Rename struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
 // fields are the fields the change sets values of.
 func (c Change) fields() []string {
 	var out []string
 	for field, set := range map[string]bool{
+		FieldTitle:        c.Title != nil,
 		FieldLanguage:     c.Language != nil,
 		FieldPublished:    c.Published != nil,
 		FieldPublisher:    c.Publisher != nil,
 		FieldSeries:       c.Series != nil,
-		FieldContributors: c.Authors != nil || len(c.AddAuthors) > 0 || len(c.RemoveAuthors) > 0,
+		FieldContributors: c.Authors != nil || len(c.AddAuthors) > 0 || len(c.RemoveAuthors) > 0 || len(c.RenameAuthors) > 0,
 		FieldTags:         c.Tags != nil || len(c.AddTags) > 0 || len(c.RemoveTags) > 0,
 	} {
 		if set {
@@ -104,11 +120,22 @@ func (c *Change) Check() error {
 	if len(c.fields()) == 0 && len(c.Locks) == 0 {
 		return EditError{"change": "Say what to change."}
 	}
-	probe := Edit{Language: c.Language, Published: c.Published, Locks: c.Locks}
+	probe := Edit{Title: c.Title, Language: c.Language, Published: c.Published, Locks: c.Locks}
+	if c.SeriesIndex != nil {
+		if c.Series == nil {
+			return EditError{FieldSeries: "Name the series of the position."}
+		}
+		probe.Series = &SeriesPlace{Name: *c.Series, Index: c.SeriesIndex}
+	}
 	if err := probe.check(); err != nil {
 		return err
 	}
 	c.Language = probe.Language
+	for _, r := range c.RenameAuthors {
+		if Key(r.From) == "" || Key(r.To) == "" {
+			return EditError{"renameAuthors": "Name the author and what to call them."}
+		}
+	}
 	return nil
 }
 
@@ -138,15 +165,37 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 	if err != nil {
 		return Changed{}, err
 	}
-	var out Changed
-	for _, field := range c.fields() {
-		if slices.Contains(book.Locked, field) && !c.IncludeLocked {
-			out.Skipped = append(out.Skipped, field)
+	e, skipped := planChange(book, c)
+	out := Changed{Skipped: skipped}
+	out.Values = e.ChangesValues()
+	for field, on := range c.Locks {
+		if slices.Contains(book.Locked, field) != on {
+			e.Locks = maps.Clone(c.Locks)
+			out.Locks = !out.Values
+			break
 		}
 	}
-	use := func(field string) bool { return !slices.Contains(out.Skipped, field) }
+	if !out.Values && !out.Locks {
+		return out, nil
+	}
+	return out, EditTx(ctx, tx, scope, id, e)
+}
 
-	var e Edit
+// planChange works out what a change does to a book: the edit that carries
+// it out, and the fields it leaves alone because they are locked. ChangeTx
+// makes the edit and PreviewChange shows it, so that a preview is what the
+// change does.
+func planChange(book Book, c Change) (e Edit, skipped []string) {
+	for _, field := range c.fields() {
+		if slices.Contains(book.Locked, field) && !c.IncludeLocked {
+			skipped = append(skipped, field)
+		}
+	}
+	use := func(field string) bool { return !slices.Contains(skipped, field) }
+
+	if c.Title != nil && use(FieldTitle) && clean(*c.Title) != book.Title {
+		e.Title = c.Title
+	}
 	if c.Language != nil && use(FieldLanguage) && *c.Language != book.Language {
 		e.Language = c.Language
 	}
@@ -159,8 +208,14 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 	if c.Publisher != nil && use(FieldPublisher) && Key(*c.Publisher) != Key(book.Publisher) {
 		e.Publisher = c.Publisher
 	}
-	if c.Series != nil && use(FieldSeries) && Key(*c.Series) != Key(book.Series) {
-		e.Series = &SeriesPlace{Name: *c.Series, Index: book.SeriesIndex}
+	if c.Series != nil && use(FieldSeries) {
+		index := book.SeriesIndex
+		if c.SeriesIndex != nil {
+			index = c.SeriesIndex
+		}
+		if Key(*c.Series) != Key(book.Series) || !sameIndex(index, book.SeriesIndex) {
+			e.Series = &SeriesPlace{Name: *c.Series, Index: index}
+		}
 	}
 	if use(FieldContributors) {
 		var authors, others []NewContributor
@@ -173,10 +228,18 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 			}
 		}
 		names := make([]string, len(authors))
+		renamed := make([]string, len(authors))
 		for i, a := range authors {
 			names[i] = a.Name
+			renamed[i] = a.Name
+			for _, r := range c.RenameAuthors {
+				if Key(r.From) == Key(a.Name) {
+					renamed[i] = r.To
+					authors[i] = NewContributor{Name: r.To, Role: RoleAuthor}
+				}
+			}
 		}
-		if after := revise(names, c.Authors, c.AddAuthors, c.RemoveAuthors); !slices.Equal(keys(after), keys(names)) {
+		if after := revise(renamed, c.Authors, c.AddAuthors, c.RemoveAuthors); !slices.Equal(keys(after), keys(names)) {
 			var credits []NewContributor
 			for _, name := range after {
 				credit := NewContributor{Name: name, Role: RoleAuthor}
@@ -195,18 +258,68 @@ func ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID,
 			e.Tags = &after
 		}
 	}
-	out.Values = e.ChangesValues()
-	for field, on := range c.Locks {
-		if slices.Contains(book.Locked, field) != on {
-			e.Locks = maps.Clone(c.Locks)
-			out.Locks = !out.Values
-			break
+	return e, skipped
+}
+
+// FieldPreview is one field of a book as a change leaves it. Locked says the
+// change leaves it as it is because a person locked it; After is then what
+// it would be otherwise.
+type FieldPreview struct {
+	Field  string
+	Before string
+	After  string
+	Locked bool
+}
+
+// PreviewBook says what a change does to a book, without making it: the
+// title, the series with its place and the authors, those it would change
+// and those it would change were they not locked. Nothing is listed for a
+// book the change leaves as it is.
+func PreviewBook(book Book, c Change) []FieldPreview {
+	_, skipped := planChange(book, c)
+	c.IncludeLocked = true
+	e, _ := planChange(book, c)
+	var out []FieldPreview
+	add := func(field, before, after string) {
+		out = append(out, FieldPreview{Field: field, Before: before, After: after, Locked: slices.Contains(skipped, field)})
+	}
+	if e.Title != nil {
+		add(FieldTitle, book.Title, clean(*e.Title))
+	}
+	if e.Series != nil {
+		add(FieldSeries, SeriesText(book.Series, book.SeriesIndex), SeriesText(e.Series.Name, e.Series.Index))
+	}
+	if e.Contributors != nil {
+		var before, after []string
+		for _, p := range book.Contributors {
+			if p.Role == RoleAuthor {
+				before = append(before, p.Name)
+			}
 		}
+		for _, p := range *e.Contributors {
+			if p.Role == RoleAuthor {
+				after = append(after, p.Name)
+			}
+		}
+		add(FieldContributors, strings.Join(before, "; "), strings.Join(after, "; "))
 	}
-	if !out.Values && !out.Locks {
-		return out, nil
+	return out
+}
+
+// SeriesText is a series with the book's place in it, as "Name #1".
+func SeriesText(name string, index *float64) string {
+	name = clean(name)
+	if name == "" {
+		return ""
 	}
-	return out, EditTx(ctx, tx, scope, id, e)
+	if index == nil {
+		return name
+	}
+	return name + " #" + strconv.FormatFloat(*index, 'f', -1, 64)
+}
+
+func sameIndex(a, b *float64) bool {
+	return (a == nil && b == nil) || (a != nil && b != nil && *a == *b)
 }
 
 // revise is a list of names replaced by set when it is given, then with

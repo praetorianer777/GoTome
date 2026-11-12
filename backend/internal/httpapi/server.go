@@ -6,38 +6,55 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/autocurate"
+	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
+	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/kindle"
+	"github.com/praetorianer777/gotome/backend/internal/kobo"
+	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/readimport"
 	"github.com/praetorianer777/gotome/backend/internal/reading"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/sso"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
 const HealthPath = "/healthz"
 
-// ReadyPath answers 200 only while the database does. The container health
-// check and the healthcheck subcommand probe it.
+// ReadyPath answers 200 only while every component works (Readiness). The
+// container health check and the healthcheck subcommand probe it.
 const ReadyPath = "/readyz"
-
-// readinessTimeout bounds the database round trip behind ReadyPath, so a probe
-// gets an answer before its own deadline passes.
-const readinessTimeout = 3 * time.Second
 
 // Database is what the server asks of the database directly; *pgxpool.Pool
 // is the real one.
@@ -49,9 +66,17 @@ type Database interface {
 type Server struct {
 	Log *slog.Logger
 	DB  Database
+	// Ready is what /readyz answers from; nil asks the database alone.
+	Ready *Readiness
 	// Auth signs people in; Logins slows down guessing at passwords.
-	Auth      *auth.Service
-	Logins    *LoginLimits
+	Auth   *auth.Service
+	Logins *LoginLimits
+	// TrustedProxies are the reverse proxies whose X-Forwarded-For and
+	// X-Forwarded-Proto are believed. None leaves every limit on the
+	// connection's address.
+	TrustedProxies []netip.Prefix
+	// SSO signs people in through an identity provider; nil offers none.
+	SSO       *sso.Service
 	Libraries *library.Service
 	// Settings are what an administrator changes while GOtome runs.
 	Settings *settings.Store
@@ -68,6 +93,10 @@ type Server struct {
 	Bulk *bulk.Service
 	// Reading keeps where each person is in a book.
 	Reading *reading.Service
+	// Imports brings in reading histories from other services.
+	Imports *readimport.Service
+	// Calibre brings in the metadata of a Calibre library.
+	Calibre *calibre.Service
 	// Shelves keeps the collections people put books on.
 	Shelves *shelves.Service
 	// Search finds books by the words of their text; Index looks after the
@@ -78,6 +107,45 @@ type Server struct {
 	Duplicates *dedupe.Service
 	// Similar finds books about the same as another.
 	Similar *similar.Service
+	// Genres gives books genres of a fixed list and keeps the suggestions
+	// that wait for a person.
+	Genres *genres.Service
+	// Pairing adds an e-reader whose app asked to be added and was accepted.
+	Pairing *pairing.Service
+	// Kobo keeps what each Kobo reader's library sync told it.
+	Kobo *kobo.Service
+	// Deliveries sends books to people's devices.
+	Deliveries *deliveries.Service
+	// Copies are the fixed copies of EPUBs that devices are sent (#501).
+	Copies *devicecopy.Service
+	// Kindle sends books to people's Kindles by e-mail.
+	Kindle *kindle.Service
+	// Sync is the server KOReader's progress sync talks to.
+	Sync *kosync.Service
+	// Stats counts what the libraries hold and how far the work on them is.
+	Stats *stats.Service
+	// Resources checks the machine's memory and disk against what
+	// Postgres, the app and the embedding model are set to take.
+	Resources *resources.Service
+	// Updates is what is known of the latest release.
+	Updates *updates.Service
+	// Checks gathers how each part of GOtome is doing, for administrators.
+	Checks *syscheck.Collector
+	// Metrics writes the Prometheus numbers; nil serves none and counts
+	// no requests.
+	Metrics *metrics.Service
+	// Webhooks tells other services of events.
+	Webhooks *webhooks.Service
+	// Releases follows authors and series for their new books.
+	Releases *releases.Service
+	// Cleanup suggests fixes for how books are described.
+	Cleanup *cleanup.Service
+	// Auto makes the automatic runs of clean-up and of matches.
+	Auto *autocurate.Service
+	// Curation keeps the runs of changes to books and undoes them.
+	Curation *curation.Service
+	// AutoDuplicates resolves the duplicate pairs the rules are sure of.
+	AutoDuplicates *autodupe.Service
 	// Notifications keeps what people are told; NotifyHub wakes their
 	// open streams.
 	Notifications *notify.Service
@@ -85,22 +153,28 @@ type Server struct {
 	// Web serves the web app for every path that is not the API's. Nil
 	// answers those paths as not found, which is what the API tests want.
 	Web http.Handler
+	// BasePath is the path the server is served under, such as /gotome/;
+	// empty or "/" at the root.
+	BasePath string
+	// PublicURLs are the addresses an administrator named for clients
+	// (GOTOME_PUBLIC_URLS); devices learn them from GET /device.
+	PublicURLs []string
 }
 
 // Routes is the handler for every path the server answers.
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(requestID, logging(s.Log), recovery)
+	r.Use(requestID, forwarded(s.TrustedProxies), securityHeaders, logging(s.Log), measure(s.Metrics), recovery)
 	r.NotFound(s.notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 
 	r.Get(HealthPath, s.health)
-	r.Get(ReadyPath, s.ready)
+	r.Get(ReadyPath, readyHandler(s.readiness(), s.Log))
 	r.Route(APIPrefix, func(api chi.Router) {
 		api.Use(sameOrigin, s.authenticate)
 		mount(api, s.routes())
 	})
-	return r
+	return underBase(s.BasePath, r)
 }
 
 // mount puts the routes of a table on the router, each behind its permission.
@@ -114,7 +188,11 @@ func mount(api chi.Router, routes []Route) {
 		if rt.Method == http.MethodGet && rt.Reads == readsUnset {
 			panic(fmt.Sprintf("httpapi: route %s %s does not say what it reads", rt.Method, rt.Path))
 		}
-		api.Method(rt.Method, rt.Path, handle(require(rt.Permission, rt.Handler)))
+		h := handle(require(rt.Permission, rt.Devices, rt.Keys, rt.Handler))
+		if rt.Produces == "" {
+			h = compressed(h)
+		}
+		api.Method(rt.Method, rt.Path, h)
 	}
 }
 
@@ -142,19 +220,24 @@ func methodNotAllowed(w http.ResponseWriter, r *http.Request) {
 	writeError(w, r, ErrMethodNotAllowed())
 }
 
-func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+func (s *Server) health(w http.ResponseWriter, r *http.Request) { health(w, r) }
+
+func health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, r, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
-	defer cancel()
-	if err := s.DB.Ping(ctx); err != nil {
-		loggerFrom(r.Context()).Warn("not ready: the database does not answer", "error", err)
-		writeError(w, r, ErrUnavailable("The database does not answer."))
-		return
+// readiness is the server's, or, for a server built without one, a database
+// that is asked and nothing else.
+func (s *Server) readiness() *Readiness {
+	if s.Ready != nil {
+		return s.Ready
 	}
-	writeJSON(w, r, http.StatusOK, map[string]string{"status": "ready"})
+	rd := NewReadiness()
+	rd.Set(CheckDatabase, s.DB.Ping)
+	for _, n := range []string{CheckSearchIndex, CheckJobs, CheckDataDir} {
+		rd.Set(n, func(context.Context) error { return nil })
+	}
+	rd.Migrated()
+	return rd
 }

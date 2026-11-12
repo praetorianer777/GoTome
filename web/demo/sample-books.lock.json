@@ -1,0 +1,188 @@
+{
+ "b-emma": {
+  "sha256": "72117dec3a2f6162bc9ea9d930bc40d84bb06872427cce32ccb5b4c33b958aca",
+  "size": 798849,
+  "url": "https://standardebooks.org/ebooks/jane-austen/emma/downloads/jane-austen_emma.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-persuasion": {
+  "sha256": "c31a1802502b59821ba0250ecd6635a4efeab33c91406823d7e3fc6cb6ffdfc9",
+  "size": 640519,
+  "url": "https://standardebooks.org/ebooks/jane-austen/persuasion/downloads/jane-austen_persuasion.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-pride": {
+  "sha256": "85814417c1a74d2ca7f3b077b47454d0cfc728392d40d846d1c97d44f24c5279",
+  "size": 831959,
+  "url": "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice/downloads/jane-austen_pride-and-prejudice.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-sense": {
+  "sha256": "01552f8320731c87e0d5c19bca81fd129ce6f4d25d760a30647ca628c1ec416c",
+  "size": 793249,
+  "url": "https://standardebooks.org/ebooks/jane-austen/sense-and-sensibility/downloads/jane-austen_sense-and-sensibility.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-study": {
+  "sha256": "66a2dc09cbc4c1fe3d6f32256c9dd49901b4585306fa3955e0932f7ab1cf12fc",
+  "size": 616394,
+  "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/a-study-in-scarlet/downloads/arthur-conan-doyle_a-study-in-scarlet.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-sign": {
+  "sha256": "298bfa7ebe6c6759ab4ad7cb71e0ab8e33235d6d774ac350a4a307536d3bcf51",
+  "size": 884276,
+  "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-sign-of-the-four/downloads/arthur-conan-doyle_the-sign-of-the-four.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-hound": {
+  "sha256": "39c1d3dc38438f9a2a8c48c2cf2ac540603a0200cbbae79c1801ec15047d7cfa",
+  "size": 539617,
+  "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-hound-of-the-baskervilles/downloads/arthur-conan-doyle_the-hound-of-the-baskervilles.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-adventures": {
+  "sha256": "328a1cdb370d8f6d990ac1107b403c6fae8e5fc5ce80258aa785a4ba9ffb3e68",
+  "size": 742054,
+  "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes/downloads/arthur-conan-doyle_the-adventures-of-sherlock-holmes.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-timemachine": {
+  "sha256": "3931b56fecfb0b0d00737f5fabcd00a46a96c26a6b1c9b8a60751d154057d9a6",
+  "size": 535571,
+  "url": "https://standardebooks.org/ebooks/h-g-wells/the-time-machine/downloads/h-g-wells_the-time-machine.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-war": {
+  "sha256": "d1456a82234399d0e004ed5d9fe9a9c6d411f63cbc5413e048bc27e24c3ff210",
+  "size": 800674,
+  "url": "https://standardebooks.org/ebooks/h-g-wells/the-war-of-the-worlds/downloads/h-g-wells_the-war-of-the-worlds.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-invisible": {
+  "sha256": "571acb8fdf3fd46e0b37ab406f4e02fb3f6d602837dd53639d52e26d73801ef7",
+  "size": 680180,
+  "url": "https://standardebooks.org/ebooks/h-g-wells/the-invisible-man/downloads/h-g-wells_the-invisible-man.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-frankenstein": {
+  "sha256": "0b5c070e2cde4d8bb36ef707f9d024465b00d0c49c078f0a148270f55b8c8780",
+  "size": 685797,
+  "url": "https://standardebooks.org/ebooks/mary-shelley/frankenstein/downloads/mary-shelley_frankenstein.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-dracula": {
+  "sha256": "7189e267ffd12aeb59eed09850d5ba0c4caa9ccefcffc3025b38d25563c138f3",
+  "size": 633843,
+  "url": "https://standardebooks.org/ebooks/bram-stoker/dracula/downloads/bram-stoker_dracula.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-dorian": {
+  "sha256": "8613aa7fd5874c4b9fce62245220545711bff0cc128cc914648ff0e20241ec78",
+  "size": 634177,
+  "url": "https://standardebooks.org/ebooks/oscar-wilde/the-picture-of-dorian-gray/downloads/oscar-wilde_the-picture-of-dorian-gray.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-twist": {
+  "sha256": "57b655bf36b1c5949e2c64f5439bda98ef58f68a99827b73750bc33cc4441005",
+  "size": 918093,
+  "url": "https://standardebooks.org/ebooks/charles-dickens/oliver-twist/downloads/charles-dickens_oliver-twist.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-carol": {
+  "sha256": "4f32f0ffe6fab0daacd6ba6319454d91932220f7dfe6be06a2019c0f5b441a98",
+  "size": 548592,
+  "url": "https://standardebooks.org/ebooks/charles-dickens/a-christmas-carol/downloads/charles-dickens_a-christmas-carol.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-expectations": {
+  "sha256": "d92c288fa94c4929f3e38bd119b977705a121bb1fa4232ec9bf5a7ec350af205",
+  "size": 1002504,
+  "url": "https://standardebooks.org/ebooks/charles-dickens/great-expectations/downloads/charles-dickens_great-expectations.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-jane": {
+  "sha256": "9edf2fb3fe2ff39b72f393ef28eb1b378d22fc60cec41a209016e0490e18f049",
+  "size": 933423,
+  "url": "https://standardebooks.org/ebooks/charlotte-bronte/jane-eyre/downloads/charlotte-bronte_jane-eyre.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-heights": {
+  "sha256": "900446c891686a18eaae14c0fef7e505ef6796cb5df7b7ac12ca35bb69a6a251",
+  "size": 820444,
+  "url": "https://standardebooks.org/ebooks/emily-bronte/wuthering-heights/downloads/emily-bronte_wuthering-heights.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-moby": {
+  "sha256": "4f0a70cac781ab8f30b5efb8d20ee78db9e7e1fc23e0c261e35c8690f48db34c",
+  "size": 1165503,
+  "url": "https://standardebooks.org/ebooks/herman-melville/moby-dick/downloads/herman-melville_moby-dick.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-faust": {
+  "sha256": "c9f43aa402c72e24e7fb9c0090b89206cd29b649eb93b561cf3e5d8eace055b4",
+  "size": 192387,
+  "url": "https://www.gutenberg.org/ebooks/2229.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-metamorphose": {
+  "sha256": "9fc9a802421caf591d674ffafa6d17eaf08b2e3d54849c081c9276a5174ee60e",
+  "size": 99770,
+  "url": "https://www.gutenberg.org/ebooks/22367.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-werther": {
+  "sha256": "cf951b95c5dd5d53342fcbff0ad1e6e2e36e54b67742b111b4acf2141a79916c",
+  "size": 130237,
+  "url": "https://www.gutenberg.org/ebooks/2407.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-effi": {
+  "sha256": "0f3f75eee6297472d499f92f02c426f2bf60a9ce8d7ba56617f680969d78f45a",
+  "size": 314297,
+  "url": "https://www.gutenberg.org/ebooks/5323.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-kabale": {
+  "sha256": "16cd8c437db89d47255f4e242bfae4e7d5ff3d157b048a8e698ef4761580a781",
+  "size": 170237,
+  "url": "https://www.gutenberg.org/ebooks/6498.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-twenty": {
+  "sha256": "5bf874dc29a9fe3e08d08be5c50aead3643631a60a51f028cb63abde2f9bc64b",
+  "size": 2815846,
+  "url": "https://www.gutenberg.org/ebooks/2488.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ },
+ "b-around": {
+  "sha256": "115e6bd0317d98f86fe3f74571beeadbbb345ee7b04bccbf139db858610cc7bf",
+  "size": 667271,
+  "url": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle/downloads/jules-verne_around-the-world-in-eighty-days_george-makepeace-towle.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-centre": {
+  "sha256": "c1ba6c2564ad2491d47947df359e0ceea763940aaf52b779155a9309117951a6",
+  "size": 900388,
+  "url": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson/downloads/jules-verne_journey-to-the-center-of-the-earth_f-a-malleson.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-alice": {
+  "sha256": "431719c25bcb0b6a67fc03938b4633723d775324ac2c62a06a04f98862148bef",
+  "size": 18398869,
+  "url": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel/downloads/lewis-carroll_alices-adventures-in-wonderland_john-tenniel.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-glass": {
+  "sha256": "616b0f03690304f6c22ef7488fa4faf1673c0f114276a2e64a4bec2f62fdbb3a",
+  "size": 24709469,
+  "url": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel/downloads/lewis-carroll_through-the-looking-glass_john-tenniel.epub?source=download",
+  "licence": "CC0 1.0 (Standard Ebooks)"
+ },
+ "b-metamorphosis": {
+  "sha256": "81a841cac683831522c7ae24ba6de819f1e360494ed0a122895efe93b4feeb97",
+  "size": 317251,
+  "url": "https://www.gutenberg.org/ebooks/5200.epub3.images",
+  "licence": "Public domain (Project Gutenberg)"
+ }
+}

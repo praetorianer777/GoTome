@@ -34,11 +34,11 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 		}
 		return id.String()
 	}
-	mistborn := book(shelf, "Mistborn", "Brandon Sanderson")
-	elantris := book(shelf, "Elantris", "Brandon Sanderson")
-	warbreaker := book(shelf, "Warbreaker", "Brandon Sanderson")
+	mistborn := book(shelf, "Moorwalker", "Bastian Landorf")
+	elantris := book(shelf, "Eldmoor", "Bastian Landorf")
+	warbreaker := book(shelf, "Wavebreaker", "Bastian Landorf")
 	emma := book(shelf, "Emma", "Jane Austen")
-	book(vault, "The Way of Kings", "Brandon Sanderson")
+	book(vault, "The Path of Lanterns", "Bastian Landorf")
 	set := func(c *http.Client, id string, change map[string]any) {
 		t.Helper()
 		if status, out, _ := a.call(c, http.MethodPut, "/books/"+id+"/reading", change); status != 200 {
@@ -50,13 +50,13 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 	set(reader, warbreaker, map[string]any{"rating": 3})
 	set(reader, emma, map[string]any{"rating": 5})
 
-	// Author is Brandon Sanderson AND rating >= 4 AND status is unread.
+	// Author is Bastian Landorf AND rating >= 4 AND status is unread.
 	rules, _ := json.Marshal(map[string]any{"all": []map[string]any{
-		{"field": "author", "op": "in", "values": []string{"Brandon Sanderson"}},
+		{"field": "author", "op": "in", "values": []string{"Bastian Landorf"}},
 		{"field": "rating", "op": "between", "values": []string{"4", ""}},
 		{"field": "status", "op": "in", "values": []string{"unread"}},
 	}})
-	status, created, _ := a.call(reader, http.MethodPost, "/smart-shelves", map[string]any{"name": "Next Sanderson", "filter": string(rules)})
+	status, created, _ := a.call(reader, http.MethodPost, "/smart-shelves", map[string]any{"name": "Next Landorf", "filter": string(rules)})
 	if status != 201 || created["books"].(float64) != 1 || created["visibility"] != "private" || created["mine"] != true {
 		t.Fatalf("create: %d %v", status, created)
 	}
@@ -73,23 +73,23 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 		}
 		return titles
 	}
-	if got := on(reader, id); !slices.Equal(got, []string{"Mistborn"}) {
+	if got := on(reader, id); !slices.Equal(got, []string{"Moorwalker"}) {
 		t.Errorf("on the shelf: %v", got)
 	}
 
 	// A change of the reader's own state moves books on and off at once.
 	set(reader, warbreaker, map[string]any{"rating": 4})
 	set(reader, mistborn, map[string]any{"status": "completed"})
-	if got := on(reader, id); !slices.Equal(got, []string{"Warbreaker"}) {
+	if got := on(reader, id); !slices.Equal(got, []string{"Wavebreaker"}) {
 		t.Errorf("after rating and finishing: %v", got)
 	}
 	// So does a change of a book's metadata.
 	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+emma, map[string]any{
-		"contributors": []map[string]string{{"name": "Brandon Sanderson", "role": "author"}},
+		"contributors": []map[string]string{{"name": "Bastian Landorf", "role": "author"}},
 	}); status != 200 {
 		t.Fatalf("edit: %d %v", status, out)
 	}
-	if got := on(reader, id); !slices.Equal(got, []string{"Emma", "Warbreaker"}) {
+	if got := on(reader, id); !slices.Equal(got, []string{"Emma", "Wavebreaker"}) {
 		t.Errorf("after the edit: %v", got)
 	}
 	_, count, _ := a.call(reader, http.MethodGet, "/books/count?"+url.Values{"filter": {string(rules)}}.Encode(), nil)
@@ -100,7 +100,7 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 	// A shared shelf of the admin's holds, for the reader, the reader's own
 	// matches, and never a book of a library the reader may not see.
 	unrated, _ := json.Marshal(map[string]any{"all": []map[string]any{
-		{"field": "author", "op": "in", "values": []string{"Brandon Sanderson"}},
+		{"field": "author", "op": "in", "values": []string{"Bastian Landorf"}},
 		{"not": map[string]any{"field": "rating", "op": "empty"}},
 	}})
 	_, shared, _ := a.call(admin, http.MethodPost, "/smart-shelves", map[string]any{"name": "Rated", "filter": string(unrated), "visibility": "shared"})
@@ -108,7 +108,7 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 	if shared["books"].(float64) != 0 {
 		t.Errorf("the admin rated nothing, yet their shelf holds %v", shared["books"])
 	}
-	if got := on(reader, sharedID); !slices.Equal(got, []string{"Elantris", "Emma", "Mistborn", "Warbreaker"}) {
+	if got := on(reader, sharedID); !slices.Equal(got, []string{"Eldmoor", "Emma", "Moorwalker", "Wavebreaker"}) {
 		t.Errorf("the reader's view of the shared shelf: %v", got)
 	}
 	_, list, _ := a.call(reader, http.MethodGet, "/smart-shelves", nil)
@@ -132,7 +132,7 @@ func TestASmartShelfHoldsWhatMatchesNowForWhoeverLooks(t *testing.T) {
 		"an unknown op":    `{"field":"author","op":"like","values":["B"]}`,
 		"a bad value":      `{"field":"rating","op":"in","values":["6"]}`,
 		"an unknown key":   `{"every":[]}`,
-		"not JSON":         `author is Sanderson`,
+		"not JSON":         `author is Landorf`,
 		"no rules":         ``,
 	} {
 		status, out, _ := a.call(reader, http.MethodPost, "/smart-shelves", map[string]any{"name": "Broken", "filter": filter})

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"path/filepath"
 
 	ort "github.com/microsoft/onnxruntime/go/onnxruntime"
@@ -52,6 +51,9 @@ type OnnxOptions struct {
 // OpenOnnx loads the runtime, fetches the spec's files where they are
 // missing or not the pinned ones, and opens the model.
 func OpenOnnx(ctx context.Context, spec Spec, opts OnnxOptions) (*Onnx, error) {
+	if !spec.Runs() {
+		return nil, fmt.Errorf("%s runs only on an embedding server", spec.Model.Name)
+	}
 	if _, err := LoadRuntime(opts.Runtime); err != nil {
 		return nil, err
 	}
@@ -88,7 +90,14 @@ func OpenOnnx(ctx context.Context, spec Spec, opts OnnxOptions) (*Onnx, error) {
 		return nil, errors.New("the model takes no input_ids and attention_mask")
 	}
 	o.typeIDs = inputs["token_type_ids"]
+	// An export that gives several vectors names the one wanted; one that
+	// gives the token vectors gives only those.
 	o.output = s.Outputs()[0].Name
+	for _, out := range s.Outputs() {
+		if out.Name == denseOutput {
+			o.output = out.Name
+		}
+	}
 	return o, nil
 }
 
@@ -99,9 +108,11 @@ func (o *Onnx) Tokens(text string) []int {
 	return o.tokenizer.Encode(text, o.spec.Model.MaxTokens)
 }
 
-// Embed pads the batch to its longest text, runs the model, and mean-pools
-// each text's token vectors over its own tokens, as the model's
-// sentence-transformers configuration does.
+// Embed pads the batch to its longest text, runs the model, and pools each
+// text's token vectors as its spec says: their mean over its own tokens, as
+// e5-small's sentence-transformers configuration does, or the first. A
+// model that gives one vector per text is taken as it gives it. Every
+// vector is normalised.
 func (o *Onnx) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	if len(texts) == 0 {
 		return nil, nil
@@ -153,28 +164,9 @@ func (o *Onnx) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	if err != nil {
 		return nil, err
 	}
-	dim := int(hidden.Shape()[2])
-	vecs := make([][]float32, n)
+	lengths := make([]int, n)
 	for i, row := range ids {
-		v := make([]float64, dim)
-		for j := range row {
-			off := (i*width + j) * dim
-			for k := range dim {
-				v[k] += float64(values[off+k])
-			}
-		}
-		var norm float64
-		for k := range v {
-			v[k] /= float64(len(row))
-			norm += v[k] * v[k]
-		}
-		norm = math.Sqrt(norm)
-		vecs[i] = make([]float32, dim)
-		for k := range v {
-			vecs[i][k] = float32(v[k] / norm)
-		}
+		lengths[i] = len(row)
 	}
-	return vecs, nil
+	return pool(values, hidden.Shape(), lengths, o.spec.Pooling), nil
 }
-
-func (o *Onnx) Close() error { return o.session.Close() }

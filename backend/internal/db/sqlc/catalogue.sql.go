@@ -103,7 +103,7 @@ INSERT INTO books (
     field_sources
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort, placeholder
+RETURNING id, library_id, title, sort_title, title_key, subtitle, description, language, published_on, published_precision, publisher_id, series_id, series_index, external_rating, page_count, cover_key, locked_fields, field_sources, merged_into_id, deleted_at, created_at, updated_at, primary_text_file_id, author_sort, placeholder, title_addition, title_series
 `
 
 type CreateBookParams struct {
@@ -167,6 +167,8 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, e
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
 		&i.Placeholder,
+		&i.TitleAddition,
+		&i.TitleSeries,
 	)
 	return i, err
 }
@@ -177,7 +179,7 @@ INSERT INTO book_files (
     sha256, original_sha256, part_index, uploaded_by
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10)
-RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by
+RETURNING id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending, text_print_isbn
 `
 
 type CreateBookFileParams struct {
@@ -236,6 +238,13 @@ func (q *Queries) CreateBookFile(ctx context.Context, arg CreateBookFileParams) 
 		&i.DiscNumber,
 		&i.ChunkedAt,
 		&i.TrashedBy,
+		&i.KoreaderMd5,
+		&i.EpubMeasures,
+		&i.EreaderFindings,
+		&i.IndexedAt,
+		&i.MeasuresVersion,
+		&i.WriteBackPending,
+		&i.TextPrintIsbn,
 	)
 	return i, err
 }
@@ -277,6 +286,20 @@ func (q *Queries) DeleteFileIdentifiers(ctx context.Context, fileID *uuid.UUID) 
 	return err
 }
 
+const deleteFileIdentifiersOfType = `-- name: DeleteFileIdentifiersOfType :exec
+DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2
+`
+
+type DeleteFileIdentifiersOfTypeParams struct {
+	FileID *uuid.UUID
+	Type   string
+}
+
+func (q *Queries) DeleteFileIdentifiersOfType(ctx context.Context, arg DeleteFileIdentifiersOfTypeParams) error {
+	_, err := q.db.Exec(ctx, deleteFileIdentifiersOfType, arg.FileID, arg.Type)
+	return err
+}
+
 const getPublisher = `-- name: GetPublisher :one
 SELECT id, name, name_key FROM publishers WHERE id = $1
 `
@@ -305,11 +328,11 @@ func (q *Queries) GetSeries(ctx context.Context, id uuid.UUID) (Series, error) {
 }
 
 const getVisibleBook = `-- name: GetVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleBookParams struct {
@@ -349,6 +372,8 @@ func (q *Queries) GetVisibleBook(ctx context.Context, arg GetVisibleBookParams) 
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
 		&i.Placeholder,
+		&i.TitleAddition,
+		&i.TitleSeries,
 	)
 	return i, err
 }
@@ -359,7 +384,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleBookCoverParams struct {
@@ -385,7 +410,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleFileParams struct {
@@ -506,7 +531,7 @@ func (q *Queries) ListBookContributors(ctx context.Context, bookID uuid.UUID) ([
 }
 
 const listBookFiles = `-- name: ListBookFiles :many
-SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by FROM book_files
+SELECT id, book_id, library_id, kind, format, rel_path, size_bytes, modified_at, sha256, original_sha256, content_sha256, part_index, duration_ms, page_count, pages_estimated, has_text, drm, extract_state, extract_error, uploaded_by, missing_at, trashed_at, created_at, updated_at, track_number, disc_number, chunked_at, trashed_by, koreader_md5, epub_measures, ereader_findings, indexed_at, measures_version, write_back_pending, text_print_isbn FROM book_files
 WHERE book_id = $1 AND trashed_at IS NULL
 ORDER BY kind, part_index NULLS FIRST, rel_path
 `
@@ -549,6 +574,13 @@ func (q *Queries) ListBookFiles(ctx context.Context, bookID uuid.UUID) ([]BookFi
 			&i.DiscNumber,
 			&i.ChunkedAt,
 			&i.TrashedBy,
+			&i.KoreaderMd5,
+			&i.EpubMeasures,
+			&i.EreaderFindings,
+			&i.IndexedAt,
+			&i.MeasuresVersion,
+			&i.WriteBackPending,
+			&i.TextPrintIsbn,
 		); err != nil {
 			return nil, err
 		}
@@ -632,6 +664,32 @@ func (q *Queries) ListBookTags(ctx context.Context, bookID uuid.UUID) ([]ListBoo
 	return items, nil
 }
 
+const listBookTextPrintISBNs = `-- name: ListBookTextPrintISBNs :many
+SELECT DISTINCT text_print_isbn::text FROM book_files
+WHERE book_id = $1 AND text_print_isbn IS NOT NULL AND trashed_at IS NULL
+ORDER BY 1
+`
+
+func (q *Queries) ListBookTextPrintISBNs(ctx context.Context, bookID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listBookTextPrintISBNs, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var text_print_isbn string
+		if err := rows.Scan(&text_print_isbn); err != nil {
+			return nil, err
+		}
+		items = append(items, text_print_isbn)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFileChapters = `-- name: ListFileChapters :many
 SELECT file_id, position, title, start_ms, end_ms
 FROM audio_chapters
@@ -666,7 +724,7 @@ func (q *Queries) ListFileChapters(ctx context.Context, fileIds []uuid.UUID) ([]
 }
 
 const lockBookOfFile = `-- name: LockBookOfFile :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
 FROM books b
 JOIN book_files f ON f.book_id = b.id
 WHERE f.id = $1
@@ -704,16 +762,18 @@ func (q *Queries) LockBookOfFile(ctx context.Context, id uuid.UUID) (Book, error
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
 		&i.Placeholder,
+		&i.TitleAddition,
+		&i.TitleSeries,
 	)
 	return i, err
 }
 
 const lockVisibleBook = `-- name: LockVisibleBook :one
-SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder
+SELECT b.id, b.library_id, b.title, b.sort_title, b.title_key, b.subtitle, b.description, b.language, b.published_on, b.published_precision, b.publisher_id, b.series_id, b.series_index, b.external_rating, b.page_count, b.cover_key, b.locked_fields, b.field_sources, b.merged_into_id, b.deleted_at, b.created_at, b.updated_at, b.primary_text_file_id, b.author_sort, b.placeholder, b.title_addition, b.title_series
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 FOR UPDATE
 `
 
@@ -754,6 +814,8 @@ func (q *Queries) LockVisibleBook(ctx context.Context, arg LockVisibleBookParams
 		&i.PrimaryTextFileID,
 		&i.AuthorSort,
 		&i.Placeholder,
+		&i.TitleAddition,
+		&i.TitleSeries,
 	)
 	return i, err
 }
@@ -787,6 +849,20 @@ type SetBookLocksParams struct {
 
 func (q *Queries) SetBookLocks(ctx context.Context, arg SetBookLocksParams) error {
 	_, err := q.db.Exec(ctx, setBookLocks, arg.ID, arg.LockedFields)
+	return err
+}
+
+const setFileTextPrintISBN = `-- name: SetFileTextPrintISBN :exec
+UPDATE book_files SET text_print_isbn = $2 WHERE id = $1 AND text_print_isbn IS DISTINCT FROM $2
+`
+
+type SetFileTextPrintISBNParams struct {
+	ID            uuid.UUID
+	TextPrintIsbn *string
+}
+
+func (q *Queries) SetFileTextPrintISBN(ctx context.Context, arg SetFileTextPrintISBNParams) error {
+	_, err := q.db.Exec(ctx, setFileTextPrintISBN, arg.ID, arg.TextPrintIsbn)
 	return err
 }
 
@@ -855,7 +931,7 @@ const upsertAuthor = `-- name: UpsertAuthor :one
 INSERT INTO authors (name, sort_name, name_key)
 VALUES ($1, $2, $3)
 ON CONFLICT (name_key) DO UPDATE SET name_key = EXCLUDED.name_key
-RETURNING id, name, sort_name, name_key, created_at
+RETURNING id, name, sort_name, name_key, created_at, person_key
 `
 
 type UpsertAuthorParams struct {
@@ -876,6 +952,7 @@ func (q *Queries) UpsertAuthor(ctx context.Context, arg UpsertAuthorParams) (Aut
 		&i.SortName,
 		&i.NameKey,
 		&i.CreatedAt,
+		&i.PersonKey,
 	)
 	return i, err
 }

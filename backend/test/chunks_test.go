@@ -27,8 +27,7 @@ type storedChunk struct {
 func (a *app) chunks(bookID uuid.UUID) []storedChunk {
 	a.t.Helper()
 	rows, err := a.pool.Query(context.Background(), `
-		SELECT file_id, library_id, position, chapter, page_from, page_to, char_offset, lang,
-		       coalesce(body_en, body_de, body_xx)
+		SELECT file_id, library_id, position, chapter, page_from, page_to, char_offset, lang
 		FROM book_chunks WHERE book_id = $1 ORDER BY position`, bookID)
 	if err != nil {
 		a.t.Fatal(err)
@@ -37,10 +36,25 @@ func (a *app) chunks(bookID uuid.UUID) []storedChunk {
 	var out []storedChunk
 	for rows.Next() {
 		var c storedChunk
-		if err := rows.Scan(&c.FileID, &c.LibraryID, &c.Position, &c.Chapter, &c.PageFrom, &c.PageTo, &c.Offset, &c.Lang, &c.Text); err != nil {
+		if err := rows.Scan(&c.FileID, &c.LibraryID, &c.Position, &c.Chapter, &c.PageFrom, &c.PageTo, &c.Offset, &c.Lang); err != nil {
 			a.t.Fatal(err)
 		}
 		out = append(out, c)
+	}
+	rows.Close()
+	// No copy of the text is kept: it is read again from the file.
+	texts := map[uuid.UUID][]string{}
+	for i, c := range out {
+		if _, ok := texts[c.FileID]; !ok {
+			got, err := a.scans.FileTexts(context.Background(), c.FileID)
+			if err != nil {
+				a.t.Fatal(err)
+			}
+			texts[c.FileID] = got
+		}
+		if t := texts[c.FileID]; c.Position < len(t) {
+			out[i].Text = t[c.Position]
+		}
 	}
 	return out
 }

@@ -1,6 +1,8 @@
+import { Overlayer } from "foliate-js/overlayer.js";
 import "foliate-js/view.js";
 import type { FoliateTocItem, View } from "foliate-js/view.js";
 import { closest, type Found } from "@/reader/passage";
+import { type Sentence, type Source, moveGuard, sentenceSpans } from "@/reader/speech";
 
 export type Flow = "paginated" | "scrolled";
 export type Theme = "light" | "sepia" | "dark";
@@ -29,8 +31,18 @@ export interface TocEntry {
 	depth: number;
 }
 
+/** A sentence of the book's text, with where it stands in the section. */
+export interface Spoken extends Sentence {
+	start: number;
+	end: number;
+}
+
 export interface Ebook {
 	toc: TocEntry[];
+	/** The language the book says it is in, as a BCP 47 tag. */
+	language?: string;
+	/** What read-aloud reads from. */
+	speech: Source<Spoken>;
 	/** Goes to a CFI or a table of contents entry's href. */
 	goTo(target: string): Promise<void>;
 	/**
@@ -39,6 +51,14 @@ export interface Ebook {
 	 * nowhere in the book.
 	 */
 	find(word: string, passage: string): Promise<boolean>;
+	/**
+	 * The places that hold the words, at most limit of them, outlined in the
+	 * book until clearSearch.
+	 */
+	search(query: string, limit: number): Promise<Found[]>;
+	clearSearch(): void;
+	/** Goes as far into the book as the fraction, 0 its start and 1 its end. */
+	goToFraction(fraction: number): Promise<void>;
 	/** Turns the page towards the left or the right, whichever way the book reads. */
 	goLeft(): Promise<void>;
 	goRight(): Promise<void>;
@@ -47,6 +67,63 @@ export interface Ebook {
 	prev(): Promise<void>;
 	setLook(look: Look): void;
 	close(): void;
+}
+
+const SPOKEN_KEY = "gotome-speech";
+const BLOCKS = "p,div,li,h1,h2,h3,h4,h5,h6,blockquote,td,th,dd,dt,section,article,pre,figcaption";
+const SKIPPED = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "RT", "RP", "HEAD"]);
+
+interface Piece {
+	node: Text;
+	from: number;
+	at: number;
+}
+
+/**
+ * The text of a section from the range on, with where each text node starts
+ * in it. Blocks are told apart by a line break, as no text ends a heading.
+ */
+function textFrom(doc: Document, from: Range | undefined) {
+	const pieces: Piece[] = [];
+	let text = "";
+	let block: Element | null = null;
+	const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+	for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+		const parent = node.parentElement;
+		if (!parent || SKIPPED.has(parent.tagName) || parent.closest("script,style,noscript,rt")) {
+			continue;
+		}
+		let begin = 0;
+		if (from) {
+			if (from.comparePoint(node, node.length) < 0) continue;
+			if (node === from.startContainer) begin = from.startOffset;
+		}
+		const now = parent.closest(BLOCKS);
+		if (text && now !== block) text += "\n";
+		block = now;
+		pieces.push({ node, from: begin, at: text.length });
+		text += node.data.slice(begin);
+	}
+	return { pieces, text };
+}
+
+/** The point in the section's text, as a position in a text node. */
+function pointAt(pieces: Piece[], offset: number, end: boolean): [Text, number] | undefined {
+	let low = 0;
+	let high = pieces.length - 1;
+	while (low < high) {
+		const mid = Math.ceil((low + high) / 2);
+		if ((pieces[mid]?.at ?? 0) <= offset) low = mid;
+		else high = mid - 1;
+	}
+	const piece = pieces[low];
+	if (!piece) return undefined;
+	const inNode = offset - piece.at + piece.from;
+	if (end && inNode === 0 && low > 0) {
+		const before = pieces[low - 1];
+		if (before) return [before.node, before.node.length];
+	}
+	return [piece.node, Math.min(inNode, piece.node.length)];
 }
 
 const COLORS: Record<
@@ -150,6 +227,55 @@ export async function openEbook(
 	// A jump made while a page is still turning is undone when the turn
 	// settles, so every move waits for the one before.
 	let moving: Promise<unknown> = Promise.resolve();
+	let seen: Range | undefined;
+	const guard = moveGuard();
+	const movedListeners = new Set<() => void>();
+	view.addEventListener("relocate", (e) => {
+		seen = (e as CustomEvent<View["lastLocation"]>).detail?.range;
+		if (guard.personal(seen)) for (const listener of movedListeners) listener();
+	});
+	const ownMove = guard.own;
+	let pieces: Piece[] = [];
+	const marking = () => view.renderer.getContents()[0];
+	const speech: Source<Spoken> = {
+		sentences() {
+			const doc = marking()?.doc;
+			if (!doc?.body) return [];
+			const read = textFrom(doc, seen);
+			pieces = read.pieces;
+			return sentenceSpans(read.text, view.language?.canonical).map((span) => ({
+				...span,
+				text: read.text.slice(span.start, span.end).replace(/\s+/g, " "),
+			}));
+		},
+		async mark(sentence) {
+			const now = marking();
+			now?.overlayer?.remove(SPOKEN_KEY);
+			guard.mark(undefined);
+			if (!sentence || !now?.doc) return;
+			const from = pointAt(pieces, sentence.start, false);
+			const to = pointAt(pieces, sentence.end, true);
+			if (!from || !to) return;
+			const range = now.doc.createRange();
+			range.setStart(...from);
+			range.setEnd(...to);
+			guard.mark(range);
+			await ownMove(() => view.renderer.scrollToAnchor(range));
+			marking()?.overlayer?.add(SPOKEN_KEY, range, Overlayer.highlight, {
+				color: "#facc15",
+			});
+		},
+		async nextSection() {
+			const at = view.lastLocation?.section;
+			if (!at || at.current + 1 >= at.total) return false;
+			await ownMove(() => view.renderer.nextSection());
+			return true;
+		},
+		onMoved(listener) {
+			movedListeners.add(listener);
+			return () => movedListeners.delete(listener);
+		},
+	};
 	const inTurn =
 		<A extends unknown[], R>(move: (...args: A) => Promise<R>) =>
 		(...args: A): Promise<R> => {
@@ -157,6 +283,16 @@ export async function openEbook(
 			moving = next.catch(() => {});
 			return next;
 		};
+	const search = async (query: string, limit: number) => {
+		const found: Found[] = [];
+		for await (const result of view.search({ query })) {
+			if (typeof result === "object" && "subitems" in result) {
+				found.push(...result.subitems);
+				if (found.length >= limit) break;
+			}
+		}
+		return found.slice(0, limit);
+	};
 	const find = async (word: string, passage: string) => {
 		const found: Found[] = [];
 		for await (const result of view.search({ query: word })) {
@@ -170,8 +306,18 @@ export async function openEbook(
 	};
 	return {
 		toc: flatten(view.book.toc),
+		language: view.language?.canonical || undefined,
+		speech: {
+			sentences: speech.sentences,
+			mark: inTurn(speech.mark),
+			nextSection: inTurn(speech.nextSection),
+			onMoved: speech.onMoved,
+		},
 		goTo: inTurn((target: string) => view.goTo(target)),
 		find: inTurn(find),
+		search: inTurn(search),
+		clearSearch: () => view.clearSearch(),
+		goToFraction: inTurn((fraction: number) => view.goToFraction(fraction)),
 		goLeft: inTurn(() => view.goLeft()),
 		goRight: inTurn(() => view.goRight()),
 		next: inTurn(() => view.next()),

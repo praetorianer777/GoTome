@@ -5,6 +5,7 @@ export type RuleOp = "in" | "between" | "empty";
 /** The comparisons each field takes, as the server's filter registry has them. */
 export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	author: ["in", "empty"],
+	narrator: ["in", "empty"],
 	series: ["in", "empty"],
 	tag: ["in", "empty"],
 	language: ["in", "empty"],
@@ -12,13 +13,59 @@ export const RULE_OPS: Record<FacetField, RuleOp[]> = {
 	format: ["in"],
 	status: ["in"],
 	rating: ["in", "between", "empty"],
+	files: ["in"],
+	ereader: ["in"],
+	genre: ["in", "empty"],
 };
+
+/** Where a book's files are, as the files field compares it. */
+export const FILE_STATES = ["missing", "none-on-disk"] as const;
+
+/** What makes a book's EPUB slow or troublesome on an e-reader, as the ereader field compares it. */
+export const EREADER_FINDINGS = [
+	"large-document",
+	"large-fonts",
+	"large-image",
+	"missing-resources",
+	"malformed-document",
+	"broken-toc",
+] as const;
+
+/** The formats GOtome knows, as the format field compares them (catalog.kindOf). */
+export const FORMATS = [
+	"epub",
+	"pdf",
+	"mobi",
+	"azw3",
+	"azw",
+	"m4b",
+	"m4a",
+	"mp3",
+	"flac",
+	"ogg",
+	"opus",
+] as const;
+
+/** The stars a person may give, as the rating field compares them. */
+export const RATINGS = ["1", "2", "3", "4", "5"] as const;
+
+/** Whether the field's in rule picks from a fixed few values rather than taking typed ones. */
+export function picksValues(field: FacetField): boolean {
+	return (
+		field === "status" ||
+		field === "files" ||
+		field === "ereader" ||
+		field === "genre" ||
+		field === "format" ||
+		field === "rating"
+	);
+}
 
 export const RULE_FIELDS = FACET_FIELDS;
 
 /**
  * One rule as the builder edits it. Values of in are typed as one text,
- * split at commas when the tree is made, except for status, which is
+ * split at commas when the tree is made, except for the fields of picksValues, which are
  * picked; between keeps its lower and upper bound.
  */
 export interface RuleItem {
@@ -83,7 +130,7 @@ function valuesOf(rule: RuleItem): string[] {
 		case "between":
 			return [rule.from.trim(), rule.to.trim()];
 		default:
-			return rule.field === "status"
+			return picksValues(rule.field)
 				? rule.picked
 				: rule.text
 						.split(",")
@@ -125,8 +172,12 @@ function fromNode(node: Node, negate: boolean): RuleItem | RuleGroup {
 			...newRule(field),
 			negate,
 			op,
-			text: op === "in" && field !== "status" ? values.join(", ") : "",
-			picked: field === "status" ? values : [],
+			text: op === "in" && !picksValues(field) ? values.join(", ") : "",
+			picked: !picksValues(field)
+				? []
+				: field === "format"
+					? values.map((v) => v.trim().toLowerCase().replace(/^\./, ""))
+					: values,
 			from: op === "between" ? (values[0] ?? "") : "",
 			to: op === "between" ? (values[1] ?? "") : "",
 		};

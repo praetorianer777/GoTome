@@ -14,6 +14,20 @@ import {
 	progressQuery,
 	saveProgress,
 } from "@/books/progress";
+import { storeBoost, storedBoost, storedNight, storedQuiet, storeNight, storeQuiet } from "@/player/prefs";
+import { saveQueue, takeNext } from "@/player/queue";
+import {
+	EXTEND_MS,
+	fadeFactor,
+	inNight,
+	nightEnd,
+	NIGHT,
+	type Night,
+	RESUME_MS,
+	SHAKE_FROM_MS,
+	ShakeDetector,
+	sleepLeftMs,
+} from "@/player/sleep";
 import {
 	chapterAt,
 	partAt,
@@ -39,14 +53,24 @@ export interface PlayerState {
 	playing: boolean;
 	rate: number;
 	sleep: Sleep;
+	/** True for a moment after the sleep timer stopped the player. */
+	resumable: boolean;
+	/** The volume boost, 1 for none; this browser's own. */
+	boost: number;
+	/** The hours a sleep timer starts by itself in; this browser's own. */
+	night: Night;
 	/** A further place another device saved, which saving here met. */
 	further?: Progress;
 }
 
 export interface Player {
 	state: PlayerState;
-	/** Loads a book at its saved place, without playing it yet. */
-	open(bookId: string): void;
+	/** Loads a book at its saved place, and plays it when asked to. */
+	/**
+	 * Loads a book. With at, a millisecond of the whole, it starts there
+	 * instead of at the saved place, or moves there if the book is loaded.
+	 */
+	open(bookId: string, options?: { play?: boolean; at?: number }): void;
 	play(): void;
 	pause(): void;
 	toggle(): void;
@@ -55,6 +79,13 @@ export interface Player {
 	skip(deltaMs: number): void;
 	setRate(rate: number): void;
 	setSleep(sleep: Sleep): void;
+	/**
+	 * Gives the sleep timer more time: fifteen minutes, or one more chapter.
+	 * Just after it stopped the player, it starts it again.
+	 */
+	extendSleep(): void;
+	setBoost(boost: number): void;
+	setNight(night: Night): void;
 	goFurther(): void;
 	stayHere(): void;
 	close(): void;
@@ -73,7 +104,20 @@ const INITIAL: PlayerState = {
 	playing: false,
 	rate: 1,
 	sleep: { kind: "off" },
+	resumable: false,
+	boost: 1,
+	night: NIGHT,
 };
+
+/** Whether this browser can raise the volume past the element's own. */
+export function canBoost(): boolean {
+	return typeof AudioContext !== "undefined";
+}
+
+/** What a book opened or closed leaves as it was. */
+function kept(s: PlayerState) {
+	return { rate: s.rate, boost: s.boost, night: s.night };
+}
 
 /** How often the place is saved while playing. */
 const SAVE_EVERY_MS = 15_000;
@@ -97,7 +141,11 @@ export function usePlayer(): Player {
 export function PlayerProvider({ children }: { children: ReactNode }) {
 	const queryClient = useQueryClient();
 	const audio = useRef<HTMLAudioElement>(null);
-	const [state, setState] = useState<PlayerState>(INITIAL);
+	const [state, setState] = useState<PlayerState>(() => ({
+		...INITIAL,
+		boost: storedBoost(),
+		night: storedNight(),
+	}));
 	// The state as the actions last left it, ahead of what has rendered.
 	const current = useRef(state);
 	// Which part is in the audio element, and a seek and play that wait for
@@ -105,6 +153,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 	const part = useRef(-1);
 	const pending = useRef<{ seconds: number; play: boolean } | null>(null);
 	const lastSaved = useRef<number | null>(null);
+	// The Web Audio graph that boosts the volume, made when a boost is first
+	// wanted: an element can be given to a context once and for all.
+	const graph = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
+	// How far the sleep timer has faded the volume, 1 being not at all.
+	const fade = useRef(1);
+	const resumeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 	// The listeners are set once; these let them reach the helpers the
 	// actions are made of.
 	const saveRef = useRef<(opts?: { force?: boolean; keepalive?: boolean }) => void>(() => {});
@@ -116,6 +170,49 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 		setState(current.current);
 	});
 	const update = updateRef.current;
+
+	// Made once: they read and write only refs.
+	const tools = useRef<{ applyVolume(): void; ensureGraph(): void } | null>(null);
+	if (tools.current === null) {
+		const applyVolume = () => {
+			const el = audio.current;
+			if (!el) return;
+			const g = graph.current;
+			if (g) {
+				g.gain.gain.value = current.current.boost * fade.current;
+				el.volume = 1;
+			} else {
+				el.volume = fade.current;
+			}
+		};
+		const ensureGraph = () => {
+			const el = audio.current;
+			if (!el || typeof AudioContext === "undefined") return;
+			if (!graph.current) {
+				try {
+					const ctx = new AudioContext();
+					const gain = ctx.createGain();
+					// A limiter, so that the boost does not clip.
+					const limiter = ctx.createDynamicsCompressor();
+					limiter.threshold.value = -3;
+					limiter.knee.value = 0;
+					limiter.ratio.value = 20;
+					limiter.attack.value = 0.003;
+					limiter.release.value = 0.25;
+					ctx.createMediaElementSource(el).connect(gain);
+					gain.connect(limiter);
+					limiter.connect(ctx.destination);
+					graph.current = { ctx, gain };
+				} catch {
+					return;
+				}
+			}
+			// A context made before a click waits for one.
+			void graph.current.ctx.resume?.().catch(() => {});
+		};
+		tools.current = { applyVolume, ensureGraph };
+	}
+	const { applyVolume, ensureGraph } = tools.current;
 
 	const actions = useRef<Omit<Player, "state">>(
 		null as unknown as Omit<Player, "state">,
@@ -193,12 +290,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 			);
 		};
 		actions.current = {
-			open(bookId) {
-				if (current.current.bookId === bookId) return;
+			open(bookId, options) {
+				if (current.current.bookId === bookId) {
+					if (options?.at !== undefined) actions.current.seek(options.at);
+					return;
+				}
+				const { sleep } = current.current;
 				if (current.current.bookId) actions.current.close();
 				update({
 					...INITIAL,
-					rate: current.current.rate,
+					...kept(current.current),
+					// A chapter of the book before means nothing in this one.
+					sleep: sleep.kind === "until" ? sleep : INITIAL.sleep,
 					bookId,
 					loading: true,
 				});
@@ -218,7 +321,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 							),
 						];
 						const saved = progress.audio?.positionMs ?? 0;
-						const start = saved < timeline.durationMs ? saved : 0;
+						const start =
+							options?.at !== undefined
+								? Math.min(Math.max(options.at, 0), timeline.durationMs)
+								: saved < timeline.durationMs
+									? saved
+									: 0;
 						lastSaved.current = progress.audio ? saved : null;
 						update({
 							book,
@@ -227,7 +335,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 							unsupported,
 							positionMs: start,
 						});
-						if (unsupported.length === 0) load(start, false);
+						if (unsupported.length === 0) load(start, options?.play ?? false);
 					},
 					(err: unknown) => {
 						if (current.current.bookId !== bookId) return;
@@ -269,7 +377,42 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				update({ rate });
 			},
 			setSleep(sleep) {
+				const { night } = current.current;
+				if (sleep.kind === "off" && inNight(night, new Date())) {
+					// Said off on purpose: the night timer waits for the next night.
+					storeQuiet(nightEnd(night, new Date()));
+				}
+				fade.current = 1;
+				applyVolume();
 				update({ sleep });
+			},
+			extendSleep() {
+				const s = current.current;
+				const tl = s.timeline;
+				if (!tl) return;
+				if (s.sleep.kind === "until") {
+					actions.current.setSleep({
+						kind: "until",
+						at: Math.max(s.sleep.at, Date.now()) + EXTEND_MS,
+					});
+				} else if (s.sleep.kind === "chapter") {
+					if (s.sleep.chapter + 1 < tl.chapters.length) {
+						actions.current.setSleep({ kind: "chapter", chapter: s.sleep.chapter + 1 });
+					}
+				} else if (s.resumable) {
+					actions.current.setSleep({ kind: "until", at: Date.now() + EXTEND_MS });
+					actions.current.play();
+				}
+			},
+			setBoost(boost) {
+				storeBoost(boost);
+				update({ boost });
+				if (boost > 1) ensureGraph();
+				applyVolume();
+			},
+			setNight(night) {
+				storeNight(night);
+				update({ night });
 			},
 			goFurther() {
 				const s = current.current;
@@ -295,7 +438,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				part.current = -1;
 				pending.current = null;
 				lastSaved.current = null;
-				update({ ...INITIAL, rate: current.current.rate });
+				update({ ...INITIAL, ...kept(current.current) });
 			},
 		};
 		saveRef.current = save;
@@ -306,6 +449,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 		const el = audio.current;
 		if (!el) return;
 		const update = updateRef.current;
+		const { applyVolume, ensureGraph } = tools.current as NonNullable<typeof tools.current>;
 		const timeline = () => current.current.timeline;
 		const onMetadata = () => {
 			el.playbackRate = current.current.rate;
@@ -331,8 +475,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				(sleep.kind === "until" && Date.now() >= sleep.at) ||
 				(sleep.kind === "chapter" && chapterAt(tl, ms) !== sleep.chapter)
 			) {
-				update({ sleep: { kind: "off" } });
+				stopForSleep();
 				el.pause();
+				fade.current = 1;
+				applyVolume();
+			} else if (sleep.kind !== "off") {
+				const factor = fadeFactor(sleepLeftMs(sleep, tl, ms, el.playbackRate, Date.now()));
+				if (factor !== fade.current) {
+					fade.current = factor;
+					applyVolume();
+				}
 			}
 			if (
 				"mediaSession" in navigator &&
@@ -357,10 +509,59 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 				loadRef.current(next.startMs, true);
 				return;
 			}
-			if (tl) update({ positionMs: tl.durationMs, playing: false });
+			if (!tl) return;
+			update({ positionMs: tl.durationMs, playing: false });
 			saveRef.current();
+			const { sleep, bookId } = current.current;
+			if (sleep.kind === "chapter") {
+				update({ sleep: { kind: "off" } });
+				return;
+			}
+			if (sleep.kind === "until" && Date.now() >= sleep.at) {
+				update({ sleep: { kind: "off" } });
+				return;
+			}
+			void playNext(bookId);
 		};
-		const onPlay = () => update({ playing: true });
+		const playNext = async (finished: string | undefined) => {
+			let next: string | undefined;
+			try {
+				next = await takeNext(queryClient);
+			} catch {
+				// No queue to be had: the book ends where it ends.
+				return;
+			}
+			if (!next) return;
+			if (current.current.bookId !== finished) {
+				// The person moved on meanwhile; the book stays next.
+				const waiting = queryClient.getQueryData<string[]>(["queue"]) ?? [];
+				void saveQueue(queryClient, [next, ...waiting]).catch(() => {});
+				return;
+			}
+			// Opening the book that just ended starts it over.
+			if (next === finished) actions.current.close();
+			actions.current.open(next, { play: true });
+		};
+		const stopForSleep = () => {
+			update({ sleep: { kind: "off" }, resumable: true });
+			clearTimeout(resumeTimer.current);
+			resumeTimer.current = setTimeout(() => update({ resumable: false }), RESUME_MS);
+		};
+		const onPlay = () => {
+			clearTimeout(resumeTimer.current);
+			const s = current.current;
+			if (s.boost > 1) {
+				ensureGraph();
+				applyVolume();
+			}
+			const arm =
+				s.sleep.kind === "off" &&
+				inNight(s.night, new Date()) &&
+				Date.now() >= storedQuiet()
+					? { sleep: { kind: "until" as const, at: Date.now() + s.night.minutes * 60_000 } }
+					: {};
+			update({ playing: true, resumable: false, ...arm });
+		};
 		const onPause = () => {
 			update({ playing: false });
 			saveRef.current();
@@ -395,13 +596,39 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 			el.removeEventListener("error", onError);
 			window.removeEventListener("pagehide", onHide);
 		};
-	}, []);
+	}, [queryClient]);
 
 	useEffect(() => {
 		if (!state.playing) return;
 		const timer = setInterval(() => saveRef.current(), SAVE_EVERY_MS);
 		return () => clearInterval(timer);
 	}, [state.playing]);
+
+	const shaking = state.sleep.kind !== "off" || state.resumable;
+	useEffect(() => {
+		if (!shaking || typeof DeviceMotionEvent === "undefined") return;
+		// Where a browser asks leave for the motion sensor (iOS), a page
+		// cannot listen without a prompt; there is no shake there.
+		if (
+			typeof (DeviceMotionEvent as { requestPermission?: unknown }).requestPermission ===
+			"function"
+		)
+			return;
+		const detector = new ShakeDetector();
+		const onMotion = (e: DeviceMotionEvent) => {
+			const a = e.acceleration;
+			if (!a || !detector.push(a.x ?? 0, a.y ?? 0, a.z ?? 0, Date.now())) return;
+			const s = current.current;
+			const left = s.timeline
+				? sleepLeftMs(s.sleep, s.timeline, s.positionMs, s.rate, Date.now())
+				: undefined;
+			if (s.resumable || (left !== undefined && left < SHAKE_FROM_MS)) {
+				actions.current.extendSleep();
+			}
+		};
+		window.addEventListener("devicemotion", onMotion);
+		return () => window.removeEventListener("devicemotion", onMotion);
+	}, [shaking]);
 
 	const { book } = state;
 	useEffect(() => {

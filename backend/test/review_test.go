@@ -36,7 +36,7 @@ func TestDoubtfulMatchesAreReviewed(t *testing.T) {
 		}
 		return id
 	}
-	first, second, secret := doubtful(shared, "Emma Donoghue"), doubtful(shared, "Emma Tennant"), doubtful(hidden, "Emma Thompson")
+	first, second, secret := doubtful(shared, "Emma Holloway"), doubtful(shared, "Emma Tenby"), doubtful(hidden, "Emma Thornby")
 
 	if status, _, _ := a.call(reader, http.MethodGet, "/matches", nil); status != 403 {
 		t.Errorf("a reader reviews: %d", status)
@@ -62,6 +62,11 @@ func TestDoubtfulMatchesAreReviewed(t *testing.T) {
 	match := item["matches"].([]any)[0].(map[string]any)
 	if match["provider"] != "shelf" || match["title"] != "Emma" || match["coverToken"] == nil {
 		t.Errorf("match %v", match)
+	}
+	// The book's author, of no known source, is kept; the publisher it lacks is taken.
+	if f, _ := match["fields"].(map[string]any); f["publisher"] == nil || f["contributors"] == nil ||
+		f["publisher"].(map[string]any)["suggested"] != true || f["contributors"].(map[string]any)["suggested"] != false {
+		t.Errorf("the match's suggestions: %v", match["fields"])
 	}
 
 	// Hidden: as if it were not there.

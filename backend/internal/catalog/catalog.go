@@ -21,6 +21,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -107,6 +108,12 @@ const (
 	SourceFilename = "filename"
 	// SourceManual is a value a person typed.
 	SourceManual = "manual"
+	// SourceText is a value read from the printed imprint of a book's text,
+	// worth less than anything a file's metadata says.
+	SourceText = "text"
+	// SourceCalibre is a value taken from a Calibre library's metadata.db:
+	// worth more than a file's own, less than a person's or a provider's.
+	SourceCalibre = "calibre"
 )
 
 // NewFile is a file found on disk or uploaded.
@@ -143,6 +150,11 @@ type File struct {
 	PageCount  *int32
 	HasText    *bool
 	DRM        bool
+	// Measures are an EPUB's, nil until it is measured.
+	Measures *epub.Measures
+	// EReaderFindings name what makes the file slow or troublesome on an
+	// e-reader (epub.Findings); nil until it is measured.
+	EReaderFindings []string
 }
 
 // BookIdentifier is an identifier and, when it belongs to one format only,
@@ -172,7 +184,11 @@ type Book struct {
 	Contributors       []Contributor
 	Tags               []string
 	Identifiers        []BookIdentifier
-	Files              []File
+	// PrintISBNs are ISBNs the text of the book's files names beside a print
+	// edition. They are another edition's, not the book's: a lookup asks about
+	// them when the book has no ISBN, and nothing stores them.
+	PrintISBNs []string
+	Files      []File
 	// CoverKey names the cover in the cover store; empty without one.
 	CoverKey string
 	AddedAt  time.Time
@@ -185,6 +201,38 @@ type Book struct {
 	Reading Reading
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool
+	// Recordings are the book's other recordings the scope sees: the same
+	// audiobook read by other narrators, linked by a person.
+	Recordings []Recording
+	// Forms are the books linked as this book in another form, an ebook
+	// and its audiobook in other libraries, which the scope sees.
+	Forms []Form
+	// Joins are the books automatically made one with this, which can be
+	// split off again.
+	Joins []Join
+}
+
+// Form is a book linked as the same book in another form.
+type Form struct {
+	ID    uuid.UUID
+	Title string
+	// Kinds are the kinds of file it holds, ebook or audio.
+	Kinds []string
+}
+
+// Join is a book made one with another by the library's own joining, which
+// a person can take back.
+type Join struct {
+	ID        uuid.UUID
+	Title     string
+	CreatedAt time.Time
+}
+
+// Recording is another recording of a book: its book and who narrates it.
+type Recording struct {
+	ID        uuid.UUID
+	Title     string
+	Narrators []string
 }
 
 // Service reads and writes the catalogue.
@@ -376,6 +424,12 @@ func (s *Service) Get(ctx context.Context, scope library.Scope, id uuid.UUID) (B
 	return get(ctx, sqlc.New(s.pool), scope, id)
 }
 
+// GetTx is Get on a transaction (or any connection) the caller runs, so that
+// it sees what the transaction changed.
+func GetTx(ctx context.Context, db sqlc.DBTX, scope library.Scope, id uuid.UUID) (Book, error) {
+	return get(ctx, sqlc.New(db), scope, id)
+}
+
 func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID) (Book, error) {
 	row, err := q.GetVisibleBook(ctx, sqlc.GetVisibleBookParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -441,7 +495,37 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 			Identifier: Identifier{Type: ident.Type, Value: ident.Value}, FileID: ident.FileID,
 		})
 	}
+	if book.PrintISBNs, err = q.ListBookTextPrintISBNs(ctx, id); err != nil {
+		return Book{}, err
+	}
 	if book.Reading, err = readingTx(ctx, q, scope.Viewer, id); err != nil {
+		return Book{}, err
+	}
+	recordings, err := q.ListBookRecordings(ctx, sqlc.ListBookRecordingsParams{BookID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Book{}, err
+	}
+	for _, r := range recordings {
+		book.Recordings = append(book.Recordings, Recording{ID: r.ID, Title: r.Title, Narrators: r.Narrators})
+	}
+	forms, err := q.ListBookForms(ctx, sqlc.ListBookFormsParams{BookID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+	if err != nil {
+		return Book{}, err
+	}
+	for _, f := range forms {
+		book.Forms = append(book.Forms, Form{ID: f.ID, Title: f.Title, Kinds: f.Kinds})
+	}
+	joins, err := q.ListBookJoins(ctx, id)
+	if err != nil {
+		return Book{}, err
+	}
+	for _, j := range joins {
+		book.Joins = append(book.Joins, Join{ID: j.ID, Title: j.Title, CreatedAt: j.CreatedAt})
+	}
+	switch note, err := q.GetBookNote(ctx, sqlc.GetBookNoteParams{UserID: scope.Viewer, BookID: id}); {
+	case err == nil:
+		book.Reading.Note = note
+	case !errors.Is(err, pgx.ErrNoRows):
 		return Book{}, err
 	}
 	files, err := q.ListBookFiles(ctx, id)
@@ -449,11 +533,19 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		return Book{}, err
 	}
 	for _, f := range files {
-		book.Files = append(book.Files, File{
+		file := File{
 			ID: f.ID, Kind: f.Kind, Format: f.Format, RelPath: f.RelPath, Size: f.SizeBytes,
 			ModifiedAt: f.ModifiedAt, SHA256: f.Sha256, PartIndex: f.PartIndex, ExtractState: f.ExtractState, ExtractError: deref(f.ExtractError),
 			Missing: f.MissingAt != nil, DurationMS: f.DurationMs, PageCount: f.PageCount, HasText: f.HasText, DRM: f.Drm,
-		})
+			EReaderFindings: f.EreaderFindings,
+		}
+		if f.EpubMeasures != nil {
+			var m epub.Measures
+			if json.Unmarshal(f.EpubMeasures, &m) == nil {
+				file.Measures = &m
+			}
+		}
+		book.Files = append(book.Files, file)
 	}
 	return book, nil
 }

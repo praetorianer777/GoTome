@@ -4,8 +4,15 @@ import (
 	"net/http"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/resources"
 	"github.com/praetorianer777/gotome/backend/internal/search"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/stats"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/updates"
 	"github.com/praetorianer777/gotome/backend/internal/version"
 )
 
@@ -50,7 +57,18 @@ type Route struct {
 	Permission auth.Permission
 	// Reads says what a GET route answers with; the router refuses to
 	// start with one that does not say.
-	Reads   Reads
+	Reads Reads
+	// Devices lets a device's token (HTTP Basic auth) sign in to the route,
+	// as well as a browser's session; no other route takes one.
+	Devices bool
+	// Keys lets an API key reach a route that declares SignedIn. Routes with
+	// any other permission are reached through the key's scopes; the others
+	// that concern the caller's account stay closed to keys.
+	Keys bool
+	// Stable names the versioned subset of the API a route belongs to, such
+	// as "audio/1". Its shape then changes only with a new version
+	// (TestTheStableSubsetKeepsItsShape).
+	Stable  string
 	Handler HandlerFunc
 }
 
@@ -69,6 +87,12 @@ const (
 	ReadsNoLibrary
 )
 
+// keyReaches says whether an API key can call the route at all, given the
+// right scope.
+func (rt Route) keyReaches() bool {
+	return rt.Permission != auth.Public && (rt.Permission != auth.SignedIn || rt.Keys)
+}
+
 func (rt Route) successStatus() int {
 	switch {
 	case rt.Status != 0:
@@ -85,11 +109,26 @@ func (s *Server) Table() []Route { return s.routes() }
 
 // routes is the table of every API endpoint.
 func (s *Server) routes() []Route {
-	return []Route{
+	return append([]Route{
 		{
 			Method: http.MethodGet, Path: "/version", ID: "getVersion",
 			Summary: "Which build of GOtome is running", Tag: "system",
 			Response: buildInfo{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getVersion,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/health", ID: "getSystemHealth",
+			Summary: "Whether the machine has the memory and the disk space for Postgres's settings, the app and the embedding model, with commands that make them fit", Tag: "system",
+			Response: resources.Health{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemHealth,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/update", ID: "getSystemUpdate",
+			Summary: "The latest GOtome release GitHub named at the last daily check, and whether it is newer than the running version", Tag: "system",
+			Response: updates.ReleaseStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemUpdate,
+		},
+		{
+			Method: http.MethodGet, Path: "/system/checks", ID: "getSystemChecks",
+			Summary: "How each part of GOtome is doing: the readiness checks, the embedding model, the metadata providers, the search index's backlog, failed jobs and scans, disk and memory", Tag: "system",
+			Response: syscheck.Report{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getSystemChecks,
 		},
 		{
 			Method: http.MethodGet, Path: "/setup", ID: "getSetup",
@@ -113,9 +152,39 @@ func (s *Server) routes() []Route {
 			Permission: auth.Public, Handler: s.postLogout,
 		},
 		{
+			Method: http.MethodGet, Path: "/auth/methods", ID: "getSignInMethods",
+			Summary: "How one may sign in: with a password, through an identity provider, or both", Tag: "auth",
+			Response: signInMethods{}, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.getSignInMethods,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/oidc/start", ID: "startSingleSignOn",
+			Summary: "Begin signing in through the identity provider: where to send the browser", Tag: "auth",
+			Request: ssoStartRequest{}, Response: ssoRedirect{}, Permission: auth.Public, Handler: s.postSSOStart,
+		},
+		{
+			Method: http.MethodGet, Path: callbackPath, ID: "finishSingleSignOn",
+			Summary: "Where the identity provider sends the browser back to; redirects into the app", Tag: "auth",
+			Query: ssoCallbackQuery{}, Status: http.StatusFound, Reads: ReadsNoLibrary, Permission: auth.Public, Handler: s.ssoCallback,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/identities", ID: "listOwnIdentities",
+			Summary: "The identity provider accounts linked to the caller's account", Tag: "auth",
+			Response: identityList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listIdentities,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/identities", ID: "linkOwnIdentity",
+			Summary: "Begin linking an identity provider account to the caller's: where to send the browser", Tag: "auth",
+			Response: ssoRedirect{}, Permission: auth.SignedIn, Handler: s.postIdentity,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/identities/{identityId}", ID: "unlinkOwnIdentity",
+			Summary: "Unlink an identity provider account from the caller's", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.deleteIdentity,
+		},
+		{
 			Method: http.MethodGet, Path: "/auth/me", ID: "getCurrentUser",
 			Summary: "Who is signed in", Tag: "auth",
-			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getMe,
+			Response: currentUser{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Keys: true, Handler: s.getMe,
 		},
 
 		{
@@ -182,6 +251,146 @@ func (s *Server) routes() []Route {
 			Method: http.MethodDelete, Path: "/auth/sessions/{sessionId}", ID: "endOwnSession",
 			Summary: "End one of the caller's own sessions", Tag: "auth",
 			Permission: auth.SignedIn, Handler: s.endOwnSession,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/devices", ID: "listOwnDevices",
+			Summary: "The caller's devices: e-readers that sign in with a token of their own", Tag: "auth",
+			Response: deviceList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnDevices,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/devices", ID: "createOwnDevice",
+			Summary: "Add a device, and get the token it signs in with, shown this once", Tag: "auth",
+			Request: createDeviceRequest{}, Response: createdDevice{}, Status: http.StatusCreated,
+			Permission: auth.SignedIn, Handler: s.createOwnDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/api-keys", ID: "listOwnAPIKeys",
+			Summary: "The caller's API keys: bearer tokens for scripts, each limited to its scopes", Tag: "auth",
+			Response: apiKeyList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listOwnAPIKeys,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/api-keys", ID: "createOwnAPIKey",
+			Summary: "Make an API key, shown this once", Tag: "auth",
+			Request: createAPIKeyRequest{}, Response: createdAPIKey{}, Status: http.StatusCreated,
+			Permission: auth.SignedIn, Handler: s.createOwnAPIKey,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/api-keys/{keyId}", ID: "revokeOwnAPIKey",
+			Summary: "Revoke one of the caller's API keys", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.revokeOwnAPIKey,
+		},
+		{
+			Method: http.MethodGet, Path: "/auth/device-requests", ID: "listDeviceRequests",
+			Summary: "E-readers asking to be added to the caller's account, waiting for a decision", Tag: "auth",
+			Response: deviceRequestList{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.listDeviceRequests,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/accept", ID: "acceptDeviceRequest",
+			Summary: "Accept a device's request: its app then collects the token of a new device", Tag: "auth",
+			Request: acceptDeviceRequestBody{}, Permission: auth.SignedIn, Handler: s.acceptDeviceRequest,
+		},
+		{
+			Method: http.MethodPost, Path: "/auth/device-requests/{requestId}/decline", ID: "declineDeviceRequest",
+			Summary: "Decline a device's request", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.declineDeviceRequest,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/requests", ID: "requestDevice",
+			Summary: "Ask, as an e-reader's app, to be added to an account; answered alike whether the account exists", Tag: "auth",
+			Request: deviceRequestCreate{}, Response: deviceTicket{}, Status: http.StatusCreated,
+			Permission: auth.Public, Handler: s.requestDevice,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/requests/{requestId}/token", ID: "collectDeviceToken",
+			Summary: "Ask, with the request's secret, whether it was accepted; once accepted, the device's token, this once", Tag: "auth",
+			Request: deviceCollect{}, Response: deviceAnswer{}, Permission: auth.Public, Handler: s.collectDeviceToken,
+		},
+		{
+			Method: http.MethodGet, Path: "/koreader/plugin.zip", ID: "getKOReaderPlugin",
+			Summary: "The KOReader plugin that fetches the books sent to a device, as a zip for KOReader's plugins folder", Tag: "auth",
+			Produces: "application/zip", Status: http.StatusOK, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Handler: s.getKOReaderPlugin,
+		},
+		{
+			Method: http.MethodPatch, Path: "/auth/devices/{deviceId}", ID: "updateOwnDevice",
+			Summary: "Change a setting of one of the caller's devices: whether a Kobo reader is sent KEPUBs", Tag: "auth",
+			Request: updateDeviceRequest{}, Response: deviceView{}, Permission: auth.SignedIn, Handler: s.updateOwnDevice,
+		},
+		{
+			Method: http.MethodDelete, Path: "/auth/devices/{deviceId}", ID: "deleteOwnDevice",
+			Summary: "Revoke one of the caller's devices: its token signs nobody in from then on", Tag: "auth",
+			Permission: auth.SignedIn, Handler: s.deleteOwnDevice,
+		},
+		{
+			Method: http.MethodPost, Path: "/devices/{deviceId}/books", ID: "sendToDevice",
+			Summary: "Send books to one of the caller's devices: by IDs, or a library and filter", Tag: "auth",
+			Request: sendRequest{}, Response: sendResult{}, Permission: auth.PersonalManage, Handler: s.sendToDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/devices/{deviceId}/books", ID: "listDeviceBooks",
+			Summary: "The books of one of the caller's devices, waiting, synced or delivered, the last sent first", Tag: "auth",
+			Query: deviceBooksQuery{}, Response: deviceBookList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listDeviceBooks,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/deliveries", ID: "listBookDeliveries",
+			Summary: "The book's deliveries to the caller's devices, waiting or done", Tag: "books",
+			Response: deliveryList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookDeliveries,
+		},
+		{
+			Method: http.MethodDelete, Path: "/deliveries/{deliveryId}", ID: "takeBackDelivery",
+			Summary: "Take a book off a device: out of its queue before the device has it, or off a Kobo reader at its next sync", Tag: "auth",
+			Permission: auth.PersonalManage, Handler: s.takeBackDelivery,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/kindle", ID: "getKindle",
+			Summary: "Whether books can be sent to a Kindle by e-mail, the address they come from and the caller's Kindle address", Tag: "auth",
+			Response: kindleStatus{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.getKindle,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/kindle", ID: "putKindle",
+			Summary: "Set the caller's Kindle address, or remove it with an empty one", Tag: "auth",
+			Request: kindleAddress{}, Response: kindleStatus{}, Permission: auth.PersonalManage, Handler: s.putKindle,
+		},
+		{
+			Method: http.MethodPost, Path: "/kindle/sends", ID: "sendToKindle",
+			Summary: "Send the EPUBs of books to the caller's Kindle by e-mail, one job each: by IDs, or a library and filter", Tag: "books",
+			Request: sendRequest{}, Response: kindleResult{}, Permission: auth.PersonalManage, Handler: s.sendToKindle,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/kindle", ID: "listBookKindleSends",
+			Summary: "The caller's latest sends of the book to their Kindle, with their outcome", Tag: "books",
+			Response: kindleSendList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookKindleSends,
+		},
+		{
+			Method: http.MethodGet, Path: "/device", ID: "getThisDevice",
+			Summary: "The device that asks, and whom its token signs in; only for a device's token", Tag: "auth",
+			Response: thisDevice{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Devices: true, Handler: s.getThisDevice,
+		},
+		{
+			Method: http.MethodGet, Path: "/device/books", ID: "listDeviceQueue",
+			Summary: "The books sent to the device that asks, until it has them; only for a device's token", Tag: "auth",
+			Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.listDeviceQueue,
+		},
+		{
+			Method: http.MethodPut, Path: "/device/books/{bookId}", ID: "putOnDevice",
+			Summary: "Record that the device that asks has the book; only for a device's token", Tag: "auth",
+			Permission: auth.PersonalManage, Devices: true, Handler: s.putOnDevice,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/matches", ID: "matchDeviceFiles",
+			Summary: "Which visible books have a file with one of the SHA-256 hashes of the files the device holds; they are recorded as on the device; only for a device's token", Tag: "auth",
+			Request: deviceFilesRequest{}, Response: deviceFileMatches{}, Reads: ReadsLibraries,
+			Permission: auth.PersonalManage, Devices: true, Handler: s.matchDeviceFiles,
+		},
+		{
+			Method: http.MethodPost, Path: "/device/uploads", ID: "uploadFromDevice",
+			Summary: "Store a book file the device holds in the account's upload library, if the device was allowed to upload (the book is then put on the device with PUT /device/books/{bookId}); only for a device's token", Tag: "auth",
+			Consumes: "multipart/form-data", Request: uploadForm{}, Response: ingest.Uploaded{},
+			Permission: auth.BooksUpload, Devices: true, Handler: s.uploadFromDevice,
+		},
+		{
+			Method: http.MethodDelete, Path: "/device/books/{bookId}", ID: "takeOffDevice",
+			Summary: "Record that the device that asks no longer has the book, nor waits for it; only for a device's token", Tag: "auth",
+			Permission: auth.PersonalManage, Devices: true, Handler: s.takeOffDevice,
 		},
 		{
 			Method: http.MethodGet, Path: "/auth/storage", ID: "getOwnStorage",
@@ -252,6 +461,16 @@ func (s *Server) routes() []Route {
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.trashFile,
 		},
 		{
+			Method: http.MethodPost, Path: "/files/{fileId}/fix", ID: "fixFile",
+			Summary: "Fix what makes an EPUB of a writable library slow or troublesome on e-readers; the original goes into the trash", Tag: "files",
+			Request: fixRequest{}, Response: fixResult{}, Permission: auth.MetadataEdit, Handler: s.fixFile,
+		},
+		{
+			Method: http.MethodPost, Path: "/files/{fileId}/convert", ID: "convertFile",
+			Summary: "Write an EPUB from a MOBI, AZW or AZW3 file of a writable library, as a new file of the same book beside it; the original stays", Tag: "files",
+			Response: convertResult{}, Status: http.StatusCreated, Permission: auth.MetadataEdit, Handler: s.convertFile,
+		},
+		{
 			Method: http.MethodPost, Path: "/files/{fileId}/restore", ID: "restoreFile",
 			Summary: "Bring a trashed file back to where it was and to its book", Tag: "files",
 			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.restoreFile,
@@ -280,14 +499,100 @@ func (s *Server) routes() []Route {
 		},
 
 		{
+			Method: http.MethodGet, Path: "/webhooks", ID: "listWebhooks",
+			Summary: "The webhooks, and the kinds of event they may ask for; a secret says only that it is set", Tag: "webhooks",
+			Response: webhookList{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.listWebhooks,
+		},
+		{
+			Method: http.MethodPost, Path: "/webhooks", ID: "createWebhook",
+			Summary: "Register an address to be sent events", Tag: "webhooks",
+			Request: webhookRequest{}, Response: webhook{}, Status: http.StatusCreated, Permission: auth.SettingsManage, Handler: s.createWebhook,
+		},
+		{
+			Method: http.MethodPut, Path: "/webhooks/{webhookId}", ID: "updateWebhook",
+			Summary: "Change a webhook; without a secret it keeps its own", Tag: "webhooks",
+			Request: webhookRequest{}, Response: webhook{}, Permission: auth.SettingsManage, Handler: s.updateWebhook,
+		},
+		{
+			Method: http.MethodDelete, Path: "/webhooks/{webhookId}", ID: "deleteWebhook",
+			Summary: "Remove a webhook and its log", Tag: "webhooks",
+			Permission: auth.SettingsManage, Handler: s.deleteWebhook,
+		},
+		{
+			Method: http.MethodPost, Path: "/webhooks/{webhookId}/test", ID: "testWebhook",
+			Summary: "Send a test event to a webhook, as a background job", Tag: "webhooks",
+			Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.testWebhook,
+		},
+		{
+			Method: http.MethodGet, Path: "/webhooks/{webhookId}/deliveries", ID: "listWebhookDeliveries",
+			Summary: "The latest deliveries to a webhook, with how each went and what was sent", Tag: "webhooks",
+			Response: webhookDeliveryList{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.listWebhookDeliveries,
+		},
+		{
+			Method: http.MethodGet, Path: "/metrics", ID: "getMetrics",
+			Summary: "Prometheus metrics: counts, job queues, requests by route, the database pool and the search index's backlog. Answers 404 unless the setting metrics.enabled is on; an API key of the metrics scope reaches it", Tag: "system",
+			Produces: "text/plain", Reads: ReadsNoLibrary, Permission: auth.MetricsRead, Handler: s.getMetrics,
+		},
+		{
+			Method: http.MethodGet, Path: "/metadata/scoring", ID: "getMatchScoring",
+			Summary: "Which weights rank the candidates of a lookup, what was learned from the library and the last measure and learning, with their reports", Tag: "settings",
+			Response: metadata.ScoringStatus{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.getScoring,
+		},
+		{
+			Method: http.MethodPost, Path: "/metadata/scoring/measure", ID: "measureMatchScoring",
+			Summary: "Look a sample of the books with an ISBN up without it and count how often the first candidate is the book (match-check), as a background job", Tag: "settings",
+			Request: scoringRun{}, Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.requestScoringRun(false),
+		},
+		{
+			Method: http.MethodPost, Path: "/metadata/scoring/learn", ID: "learnMatchScoring",
+			Summary: "Learn the match score from the library's books with an ISBN (match-train), as a background job", Tag: "settings",
+			Request: scoringRun{}, Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.requestScoringRun(true),
+		},
+		{
+			Method: http.MethodGet, Path: "/metadata/scoring/export", ID: "exportMatchScoring",
+			Summary: "The learned weights as a file to read and share: weights and counts, nothing of the books", Tag: "settings",
+			Response: metadata.Profile{}, Reads: ReadsNoLibrary, Permission: auth.SettingsManage, Handler: s.exportScoring,
+		},
+		{
+			Method: http.MethodPut, Path: "/metadata/scoring/import", ID: "importMatchScoring",
+			Summary: "Keep a file of weights someone shared, to measure beside the others; refused for another version of the features", Tag: "settings",
+			Request: metadata.Profile{}, Permission: auth.SettingsManage, Handler: s.importScoring,
+		},
+		{
+			Method: http.MethodDelete, Path: "/metadata/scoring/import", ID: "deleteImportedMatchScoring",
+			Summary: "Forget the imported weights", Tag: "settings",
+			Permission: auth.SettingsManage, Handler: s.deleteImportedScoring,
+		},
+
+		{
 			Method: http.MethodGet, Path: "/books", ID: "listBooks",
 			Summary: "One page of the books the caller may see, in one library or all", Tag: "books",
-			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listBooks,
+			Query: listBooksQuery{}, Response: bookList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.listBooks,
+		},
+		{
+			Method: http.MethodGet, Path: "/authors", ID: "listAuthors",
+			Summary: "The authors of the books the caller sees, each person once, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesPeople),
+		},
+		{
+			Method: http.MethodGet, Path: "/series", ID: "listSeries",
+			Summary: "The series of the books the caller sees, alphabetically", Tag: "books",
+			Query: namedQuery{}, Response: namedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listNamed(catalog.NamesSeries),
+		},
+		{
+			Method: http.MethodGet, Path: "/authors/{authorKey}", ID: "getAuthor",
+			Summary: "An author, under every spelling of their name, as the caller's books name them", Tag: "books",
+			Response: authorDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAuthor,
+		},
+		{
+			Method: http.MethodGet, Path: "/series/{seriesKey}", ID: "getSeries",
+			Summary: "A series: how far the caller has read it, what is missing and what the sources list of it", Tag: "books",
+			Response: seriesDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getSeries,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/search", ID: "searchBooks",
-			Summary: "Books whose title, author or series looks like the words, the best first", Tag: "books",
-			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchBooks,
+			Summary: "Books, authors and series whose title or name looks like the words, the best first", Tag: "books",
+			Query: searchQuery{}, Response: searchResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.searchBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/search", ID: "searchText",
@@ -295,9 +600,34 @@ func (s *Server) routes() []Route {
 			Query: fullTextQuery{}, Response: fullTextResult{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchText,
 		},
 		{
+			Method: http.MethodGet, Path: "/statistics", ID: "getLibraryFigures",
+			Summary: "What the libraries the caller sees hold: books, files, formats, languages, what is missing", Tag: "books",
+			Query: figuresQuery{}, Response: stats.Figures{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getLibraryFigures,
+		},
+		{
+			Method: http.MethodGet, Path: "/statistics/work", ID: "getWorkProgress",
+			Summary: "How far the background work on the caller's books is, with its pace and the time left", Tag: "books",
+			Query: figuresQuery{}, Response: stats.Work{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.getWorkProgress,
+		},
+		{
 			Method: http.MethodGet, Path: "/search/status", ID: "searchStatus",
 			Summary: "How much of the books' text search knows, and whether its index is being rebuilt", Tag: "books",
 			Query: searchStatusQuery{}, Response: search.IndexStatus{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.searchStatus,
+		},
+		{
+			Method: http.MethodGet, Path: "/embedding/status", ID: "embeddingStatus",
+			Summary: "How far the books the caller sees are embedded with the chosen model, and whether embedding goes on", Tag: "books",
+			Response: similar.Status{}, Reads: ReadsLibraries, Permission: auth.IndexRebuild, Handler: s.embeddingStatus,
+		},
+		{
+			Method: http.MethodGet, Path: "/embedding/models", ID: "listEmbeddingModels",
+			Summary: "The models embedding.model may name, with their size, whether each runs here and how many of the caller's books have its vectors", Tag: "settings",
+			Response: similar.ModelList{}, Reads: ReadsLibraries, Permission: auth.SettingsManage, Handler: s.listEmbeddingModels,
+		},
+		{
+			Method: http.MethodPost, Path: "/embedding/models/{modelName}/remove", ID: "removeEmbeddingModel",
+			Summary: "Remove the files and vectors of a model that is not the chosen one now, rather than when it has not been chosen for embedding.removeUnusedAfterDays", Tag: "settings",
+			Status: http.StatusAccepted, Permission: auth.SettingsManage, Handler: s.removeEmbeddingModel,
 		},
 		{
 			Method: http.MethodPost, Path: "/search/reread", ID: "rereadText",
@@ -307,7 +637,7 @@ func (s *Server) routes() []Route {
 		},
 		{
 			Method: http.MethodPost, Path: "/search/rebuild", ID: "rebuildSearchIndex",
-			Summary: "Build the search index again from the text already read; searches use the old one until then", Tag: "books",
+			Summary: "Build the search index again from the books' files; searches find what it has of a book until the book is read again", Tag: "books",
 			Response: rebuildResult{}, Status: http.StatusAccepted,
 			Permission: auth.IndexRebuild, Handler: s.rebuildSearchIndex,
 		},
@@ -329,6 +659,96 @@ func (s *Server) routes() []Route {
 			Permission: auth.MetadataEdit, Handler: s.replaceDuplicate,
 		},
 		{
+			Method: http.MethodGet, Path: "/cleanup", ID: "listCleanup",
+			Summary: "Suggested fixes for how the books the caller sees are described, of one kind, with how many there are of each", Tag: "books",
+			Query: cleanupQuery{}, Response: cleanupList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCleanup,
+		},
+		{
+			Method: http.MethodGet, Path: "/cleanup/preview", ID: "previewCleanup",
+			Summary: "What applying one suggested fix does to each of its books, and what the providers are known to say about them", Tag: "books",
+			Query: cleanupPreviewQuery{}, Response: cleanupPreview{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.previewCleanup,
+		},
+		{
+			Method: http.MethodPost, Path: "/cleanup/apply", ID: "applyCleanup",
+			Summary: "Apply suggested fixes, or every one of a kind, as a bulk change of the books the caller sees", Tag: "books",
+			Request: cleanupApplyRequest{}, Response: cleanupApplied{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.applyCleanup,
+		},
+		{
+			Method: http.MethodPost, Path: "/cleanup/dismiss", ID: "dismissCleanup",
+			Summary: "Leave a suggested fix: it stays away while what it was about stays as it is", Tag: "books",
+			Request: cleanupDismissRequest{}, Status: http.StatusNoContent,
+			Permission: auth.MetadataEdit, Handler: s.dismissCleanup,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/cleanup", ID: "getAutoCleanup",
+			Summary: "How many suggestions of each kind that the data decides an automatic clean-up would apply to the books the caller sees", Tag: "books",
+			Response: autoCleanupCounts{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.autoCleanupCounts,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/cleanup", ID: "startAutoCleanup",
+			Summary: "Queue an automatic clean-up of the kinds named as a run on the Changes page; a dry run records what it would do and changes nothing", Tag: "books",
+			Request: autoRunRequest{}, Response: autoRunStarted{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.startAutoCleanup,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/matches", ID: "getAutoMatches",
+			Summary: "What an automatic pass over the matches that wait would do, and the rest of them by provider and score with a sample of each group", Tag: "books",
+			Response: autoMatchCounts{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.autoMatchCounts,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/matches", ID: "startAutoMatches",
+			Summary: "Queue a run that takes the fields of matches providers agree on and dismisses those that contradict the text, or accepts one group of matches whole; a dry run changes nothing", Tag: "books",
+			Request: autoRunRequest{}, Response: autoRunStarted{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.startAutoMatches,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/runs", ID: "listCurationRuns",
+			Summary: "The runs of changes to books that can be undone: merges, replaces and clean-ups, the newest first", Tag: "books",
+			Query: curationRunsQuery{}, Response: curationRunList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listCurationRuns,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/runs/{runId}", ID: "getCurationRun",
+			Summary: "A run with its actions in libraries the caller sees, each with the books' details before and after", Tag: "books",
+			Query: curationActionsQuery{}, Response: curationRunDetail{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.getCurationRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/runs/{runId}/undo", ID: "undoCurationRun",
+			Summary: "Undo every action of a run that is not undone, in a job; one whose books changed since is left and reported on the action. The run says undoing until it is done", Tag: "books",
+			Response: curationUndoQueued{}, Status: http.StatusAccepted, Permission: auth.MetadataEdit, Handler: s.undoCurationRun,
+		},
+		{
+			Method: http.MethodGet, Path: "/curation/duplicates", ID: "listDuplicateClasses",
+			Summary: "How many open pairs of duplicates the rules can resolve by themselves, per class, and which classes the settings have them resolve every day", Tag: "books",
+			Response: duplicateClassList{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listDuplicateClasses,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/duplicates", ID: "startDuplicateRun",
+			Summary: "Resolve the open pairs of the classes chosen in a job: merge books of the same text, link books that hold one another; a dry run records what it would do and changes nothing", Tag: "books",
+			Request: duplicateRunRequest{}, Response: duplicateRunStarted{}, Status: http.StatusAccepted,
+			Permission: auth.MetadataEdit, Handler: s.startDuplicateRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/runs/{runId}/confirm", ID: "confirmCurationRun",
+			Summary: "Accept a run: the files it trashed start their time in the trash, and what it changed is written into the files", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.confirmCurationRun,
+		},
+		{
+			Method: http.MethodPost, Path: "/curation/actions/{actionId}/undo", ID: "undoCurationAction",
+			Summary: "Undo one action of a run; if its books changed since it is left and reported", Tag: "books",
+			Response: curationOutcome{}, Permission: auth.MetadataEdit, Handler: s.undoCurationAction,
+		},
+		{
+			Method: http.MethodGet, Path: "/genres/suggestions", ID: "listGenreSuggestions",
+			Summary: "Genres suggested for the books the caller sees that wait for a person, the surest first, with how many wait per genre", Tag: "books",
+			Query: genreSuggestionsQuery{}, Response: genreSuggestions{}, Reads: ReadsLibraries, Permission: auth.MetadataEdit, Handler: s.listGenreSuggestions,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/genres/{genre}", ID: "decideGenre",
+			Summary: "Accept or reject a genre of a book; what a person decided is not changed by suggestions", Tag: "books",
+			Request: genreDecision{}, Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.decideGenre,
+		},
+		{
 			Method: http.MethodPost, Path: "/duplicates/checks", ID: "checkDuplicates",
 			Summary: "Look for duplicates among the books of a library, or of every library the caller sees", Tag: "books",
 			Request: duplicateCheckRequest{}, Response: duplicateCheckResult{}, Status: http.StatusAccepted,
@@ -340,6 +760,21 @@ func (s *Server) routes() []Route {
 			Request: mergeRequest{}, Response: bookDetail{}, Permission: auth.MetadataEdit, Handler: s.mergeBooks,
 		},
 		{
+			Method: http.MethodPost, Path: "/books/{bookId}/join-library-book", ID: "joinPlaceholder",
+			Summary: "Say that a book read but not owned is a book of the library, and move everyone's reading of it there", Tag: "books",
+			Request: placeholderJoinRequest{}, Response: placeholderJoin{}, Permission: auth.PersonalManage, Handler: s.joinPlaceholder,
+		},
+		{
+			Method: http.MethodPost, Path: "/placeholder-joins/{actionId}/undo", ID: "undoPlaceholderJoin",
+			Summary: "Take back a join of a book read but not owned that the caller made", Tag: "books",
+			Response: curationOutcome{}, Permission: auth.PersonalManage, Handler: s.undoPlaceholderJoin,
+		},
+		{
+			Method: http.MethodPost, Path: "/joins/{joinId}/undo", ID: "undoJoin",
+			Summary: "Split a book the library made of an ebook and its audiobook into the two again", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.MetadataEdit, Handler: s.undoJoin,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/facets", ID: "listBookFacets",
 			Summary: "How many books of a list have each author, series, tag, language, decade and format", Tag: "books",
 			Query: facetsQuery{}, Response: facetList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listFacets,
@@ -347,7 +782,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}", ID: "getBook",
 			Summary: "One book with everything that describes it and its files", Tag: "books",
-			Response: bookDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBook,
+			Response: bookDetail{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.getBook,
 		},
 		{
 			Method: http.MethodPatch, Path: "/books/{bookId}", ID: "editBook",
@@ -383,7 +818,12 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/audio", ID: "getAudio",
 			Summary: "A book's audio as one recording: its parts in order and the chapters across them", Tag: "books",
-			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getAudio,
+			Response: audioTimeline{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getAudio,
+		},
+		{
+			Method: http.MethodGet, Path: "/search/similar", ID: "searchDescribed",
+			Summary: "Books whose text and description are nearest a description of what they are to be about, best first", Tag: "books",
+			Query: describedQuery{}, Response: describedList{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.searchDescribed,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/similar", ID: "listSimilarBooks",
@@ -402,19 +842,140 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.createWish,
 		},
 		{
+			Method: http.MethodGet, Path: "/trackers", ID: "listTrackers",
+			Summary: "The authors and series the caller follows for new books", Tag: "releases",
+			Response: trackerList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listTrackers,
+		},
+		{
+			Method: http.MethodPost, Path: "/trackers", ID: "follow",
+			Summary: "Follow an author or a series for new books; following it again is the same tracker", Tag: "releases",
+			Request: followRequest{}, Response: tracker{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.follow,
+		},
+		{
+			Method: http.MethodDelete, Path: "/trackers/{trackerId}", ID: "unfollow",
+			Summary: "Stop following an author or a series", Tag: "releases",
+			Permission: auth.PersonalManage, Handler: s.unfollow,
+		},
+		{
+			Method: http.MethodGet, Path: "/feeds", ID: "listFeeds",
+			Summary: "The RSS and Atom feeds the caller follows for new books, and how fetching each goes", Tag: "releases",
+			Response: feedList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listFeeds,
+		},
+		{
+			Method: http.MethodPost, Path: "/feeds", ID: "addFeed",
+			Summary: "Follow an RSS or Atom feed for items naming keywords or authors; following it again gives it the new filters", Tag: "releases",
+			Request: feedRequest{}, Response: feed{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.addFeed,
+		},
+		{
+			Method: http.MethodGet, Path: "/feeds/items", ID: "listFeedItems",
+			Summary: "The items of the caller's feeds that name what their filters ask for, the newest first", Tag: "releases",
+			Response: feedItemList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listFeedItems,
+		},
+		{
+			Method: http.MethodPost, Path: "/feeds/{feedId}/fetch", ID: "fetchFeed",
+			Summary: "Fetch one of the caller's feeds soon, also one that stopped after failing too often", Tag: "releases",
+			Response: feed{}, Permission: auth.PersonalManage, Handler: s.retryFeed,
+		},
+		{
+			Method: http.MethodDelete, Path: "/feeds/{feedId}", ID: "removeFeed",
+			Summary: "Stop following a feed", Tag: "releases",
+			Permission: auth.PersonalManage, Handler: s.removeFeed,
+		},
+		{
+			Method: http.MethodGet, Path: "/releases", ID: "listReleases",
+			Summary: "Upcoming and recent books of what the caller follows, and whether a library they see has each", Tag: "releases",
+			Query: releasesQuery{}, Response: releaseList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReleases,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/queue", ID: "getPlayQueue",
+			Summary: "The audiobooks the caller has lined up to play one after another, of those they still see", Tag: "books",
+			Response: playQueue{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getPlayQueue,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/queue", ID: "setPlayQueue",
+			Summary: "Replace the caller's play queue; books they may not see are left out", Tag: "books",
+			Request: playQueue{}, Response: playQueue{}, Permission: auth.PersonalManage, Handler: s.putPlayQueue,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/stats", ID: "getStats",
 			Summary: "What the caller read and listened to: per day, in total, per year, and when", Tag: "books",
 			Query: statsQuery{}, Response: readingStats{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getStats,
 		},
 		{
+			Method: http.MethodPut, Path: "/books/{bookId}/note", ID: "setNote",
+			Summary: "Write the caller's private note or review of a book; an empty note removes it", Tag: "books",
+			Request: noteRequest{}, Permission: auth.PersonalManage, Handler: s.setNote,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/recommendations", ID: "listRecommendations",
+			Summary: "Unread books of the libraries the caller sees that are near what they liked, with why", Tag: "books",
+			Query: recommendationsQuery{}, Response: recommendationList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listRecommendations,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/recommendations/{bookId}/dismiss", ID: "dismissRecommendation",
+			Summary: "Say the caller is not interested in a book: it is left out of their recommendations", Tag: "books",
+			Permission: auth.PersonalManage, Handler: s.dismissRecommendation,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
+			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
+			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports", ID: "createReadingImport",
+			Summary: "Read a Goodreads or StoryGraph export and preview what importing it would do", Tag: "books",
+			Consumes: "multipart/form-data", Request: importForm{}, Response: readingImport{}, Status: http.StatusCreated,
+			Permission: auth.PersonalManage, Handler: s.createImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/reading-imports/{importId}", ID: "getReadingImport",
+			Summary: "An import of a reading history: its preview, then what it came to", Tag: "books",
+			Response: readingImport{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getImport,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/reading-imports/{importId}/rows/{row}", ID: "chooseReadingImportRow",
+			Summary: "Pick the book an ambiguous row of an import is, or skip the row", Tag: "books",
+			Request: importChoice{}, Permission: auth.PersonalManage, Handler: s.chooseImportRow,
+		},
+		{
+			Method: http.MethodPost, Path: "/me/reading-imports/{importId}/start", ID: "startReadingImport",
+			Summary: "Write a previewed import; a job sets the books one at a time", Tag: "books",
+			Request: importStart{}, Response: readingImport{}, Status: http.StatusAccepted,
+			Permission: auth.PersonalManage, Handler: s.startImport,
+		},
+		{
+			Method: http.MethodPost, Path: "/calibre/imports", ID: "createCalibreImport",
+			Summary: "Read a Calibre library's metadata.db and preview what importing it would do", Tag: "libraries",
+			Request: calibreRequest{}, Response: calibreImport{}, Status: http.StatusCreated,
+			Permission: auth.StorageManage, Handler: s.createCalibreImport,
+		},
+		{
+			Method: http.MethodGet, Path: "/calibre/imports/{importId}", ID: "getCalibreImport",
+			Summary: "An import of a Calibre library: its preview, then what it came to", Tag: "libraries",
+			Response: calibreImport{}, Reads: ReadsLibraries, Permission: auth.StorageManage, Handler: s.getCalibreImport,
+		},
+		{
+			Method: http.MethodPost, Path: "/calibre/imports/{importId}/start", ID: "startCalibreImport",
+			Summary: "Import a previewed Calibre library; a job describes the books one at a time", Tag: "libraries",
+			Request: calibreStart{}, Response: calibreImport{}, Status: http.StatusAccepted,
+			Permission: auth.StorageManage, Handler: s.startCalibreImport,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/progress", ID: "getProgress",
 			Summary: "Where the caller is in a book, in its text and in its audio", Tag: "books",
-			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getProgress,
+			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.getProgress,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/continuation", ID: "getContinuation",
+			Summary: "Where the caller could go on in the other medium, a text or its audiobook, when that is further along", Tag: "books",
+			Response: continuation{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getContinuation,
 		},
 		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
 			Summary: "Record where the caller is in a book; medium is ebook or audio", Tag: "books",
-			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Handler: s.putProgress,
+			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.putProgress,
 		},
 		{
 			Method: http.MethodGet, Path: "/collections", ID: "listCollections",
@@ -460,7 +1021,7 @@ func (s *Server) routes() []Route {
 		{
 			Method: http.MethodGet, Path: "/books/count", ID: "countBooks",
 			Summary: "How many books the caller may see match a filter", Tag: "books",
-			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.countBooks,
+			Query: countBooksQuery{}, Response: bookCount{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Handler: s.countBooks,
 		},
 		{
 			Method: http.MethodGet, Path: "/notifications", ID: "listNotifications",
@@ -563,15 +1124,15 @@ func (s *Server) routes() []Route {
 			Method: http.MethodGet, Path: "/files/{fileId}/download", ID: "downloadFile",
 			Summary: "A book's file as it lies on disk; answers range requests", Tag: "books",
 			Produces: "application/octet-stream", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.downloadFile,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.downloadFile,
 		},
 		{
 			Method: http.MethodGet, Path: "/books/{bookId}/covers/{size}", ID: "getBookCover",
 			Summary: "A book's cover as a JPEG; size is small or large", Tag: "books",
 			Produces: "image/jpeg", Status: http.StatusOK,
-			Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.getBookCover,
+			Reads: ReadsLibraries, Permission: auth.LibraryRead, Devices: true, Stable: "audio/1", Handler: s.getBookCover,
 		},
-	}
+	}, append(append(s.opdsRoutes(), s.kosyncRoutes()...), s.koboRoutes()...)...)
 }
 
 // buildInfo is version.Info under the name clients see it by: "Info" alone
@@ -580,5 +1141,32 @@ type buildInfo version.Info
 
 func (s *Server) getVersion(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, r, http.StatusOK, buildInfo(version.Current()))
+	return nil
+}
+
+func (s *Server) getSystemChecks(w http.ResponseWriter, r *http.Request) error {
+	if s.Checks == nil {
+		writeJSON(w, r, http.StatusOK, syscheck.Report{Checks: s.readiness().Checks(r.Context())})
+		return nil
+	}
+	writeJSON(w, r, http.StatusOK, s.Checks.Collect(r.Context()))
+	return nil
+}
+
+func (s *Server) getSystemUpdate(w http.ResponseWriter, r *http.Request) error {
+	status, err := s.Updates.Status(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, status)
+	return nil
+}
+
+func (s *Server) getSystemHealth(w http.ResponseWriter, r *http.Request) error {
+	health, err := s.Resources.Check(r.Context())
+	if err != nil {
+		return err
+	}
+	writeJSON(w, r, http.StatusOK, health)
 	return nil
 }

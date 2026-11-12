@@ -99,6 +99,7 @@ export function useDeleteCover(id: string) {
 
 export type Candidate = components["schemas"]["CandidateView"];
 export type CandidateApply = components["schemas"]["ApplyCandidateRequest"];
+export type FieldSuggestion = components["schemas"]["FieldSuggestion"];
 
 /** What the providers know about a book. Asking them is slow, so once is enough. */
 export function candidatesQuery(id: string) {

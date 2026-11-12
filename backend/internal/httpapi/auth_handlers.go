@@ -3,11 +3,13 @@ package httpapi
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 )
@@ -27,12 +29,20 @@ const (
 	loginWindow         = 5 * time.Minute
 	loginFailuresPerKey = 5
 	loginFailuresPerIP  = 30
+	// ssoStartsPerIP bounds the sign-ins through the identity provider one
+	// address may start in the window: each leaves a row until it expires.
+	ssoStartsPerIP = 30
+	// deviceRequestsPerIP bounds the devices one address may ask to add in
+	// the window: each may tell a person of it.
+	deviceRequestsPerIP = 10
 )
 
 // LoginLimits is the pair of limiters the login route consults.
 type LoginLimits struct {
 	perAccount *auth.Limiter
 	perAddress *auth.Limiter
+	ssoStarts  *auth.Limiter
+	devices    *auth.Limiter
 }
 
 // NewLoginLimits returns limiters on the given clock.
@@ -40,6 +50,8 @@ func NewLoginLimits(now func() time.Time) *LoginLimits {
 	return &LoginLimits{
 		perAccount: auth.NewLimiter(loginFailuresPerKey, loginWindow, now),
 		perAddress: auth.NewLimiter(loginFailuresPerIP, loginWindow, now),
+		ssoStarts:  auth.NewLimiter(ssoStartsPerIP, loginWindow, now),
+		devices:    auth.NewLimiter(deviceRequestsPerIP, loginWindow, now),
 	}
 }
 
@@ -111,6 +123,9 @@ func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) error {
 		s.Logins.perAddress.Fail(address)
 		return ErrUnauthorized("The user name or the password is wrong.")
 	}
+	if errors.Is(err, auth.ErrPasswordsOff) {
+		return ErrForbidden("Signing in with a password is turned off here. Use single sign-on.")
+	}
 	if err != nil {
 		return err
 	}
@@ -138,8 +153,18 @@ type currentUser struct {
 
 func (s *Server) getMe(w http.ResponseWriter, r *http.Request) error {
 	user := UserFrom(r.Context())
-	writeJSON(w, r, http.StatusOK, currentUser{User: *user, Permissions: auth.Permissions(user.Role)})
+	permissions := auth.Permissions(user.Role)
+	if key := APIKeyFrom(r.Context()); key != nil {
+		permissions = slices.DeleteFunc(permissions, func(p auth.Permission) bool { return !auth.ScopesAllow(key.Scopes, p) })
+	}
+	writeJSON(w, r, http.StatusOK, currentUser{User: *user, Permissions: permissions})
 	return nil
+}
+
+// WithUser is ctx with user signed in, for a caller that serves requests in
+// its own process, on a Server without Auth, and so writes no session.
+func WithUser(ctx context.Context, user auth.User) context.Context {
+	return context.WithValue(ctx, userKey, &user)
 }
 
 // UserFrom is the signed-in user of the request, or nil.
@@ -160,7 +185,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
 		Value:    token,
-		Path:     "/",
+		Path:     withBase(r, "/"),
 		MaxAge:   int(cookieLifetime.Seconds()),
 		HttpOnly: true,
 		Secure:   overTLS(r),
@@ -171,7 +196,7 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
-		Path:     "/",
+		Path:     withBase(r, "/"),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   overTLS(r),
@@ -179,31 +204,43 @@ func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// overTLS reports whether the browser reached the server over HTTPS, directly
-// or through a reverse proxy that says so. Home installations often run plain
-// HTTP on a local network, where a Secure cookie would never be sent back.
-func overTLS(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
-}
-
-// clientAddress is the address the connection came from. Behind a reverse
-// proxy that is the proxy's, which makes the per-address limit one shared by
-// everybody; the per-account limit still holds.
-func clientAddress(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
-// authenticate resolves the session cookie to a user for the handlers. A
-// missing or dead session is not an error here: public routes are served
-// either way, and requireUser refuses the rest.
+// authenticate resolves the session cookie, or a device's token sent as
+// HTTP Basic auth, to a user for the handlers. A missing or dead session is
+// not an error here: public routes are served either way, and require
+// refuses the rest. Wrong device credentials are, as a client that sent
+// them wants to be told.
 func (s *Server) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := sessionToken(r)
-		if token == "" || s.Auth == nil {
+		if s.Auth == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// A Kobo reader carries its device token in the address it syncs
+		// with, and sends Kobo's own token, never GOtome's, in its headers.
+		if device, ok := koboToken(r.URL.Path); ok {
+			if !auth.LooksLikeDeviceToken(device) {
+				writeError(w, r, ErrUnauthorized("The address holds no device token."))
+				return
+			}
+			s.authenticateDevice(w, r, next, "kobo", device, s.Auth.AuthenticateDeviceToken)
+			return
+		}
+		if key, ok := bearerToken(r); ok {
+			s.authenticateKey(w, r, next, key)
+			return
+		}
+		if token == "" {
+			if name, secret, ok := r.BasicAuth(); ok {
+				s.authenticateDevice(w, r, next, name, secret, s.Auth.AuthenticateDevice)
+				return
+			}
+			// KOReader's progress sync sends its own headers: the user name,
+			// and the MD5 of the device token.
+			if name, key := r.Header.Get("x-auth-user"), r.Header.Get("x-auth-key"); name != "" && key != "" {
+				s.authenticateDevice(w, r, next, name, key, s.Auth.AuthenticateSyncKey)
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -221,20 +258,122 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 	})
 }
 
+// authenticateDevice signs a device in by its token, or what KOReader
+// sends for it, limited as password sign-ins are.
+func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string,
+	check func(context.Context, string, string) (auth.User, uuid.UUID, error)) {
+	address := clientAddress(r)
+	account := strings.ToLower(strings.TrimSpace(name)) + "|" + address
+	if wait := max(s.Logins.perAccount.RetryAfter(account), s.Logins.perAddress.RetryAfter(address)); wait > 0 {
+		writeError(w, r, ErrTooManyRequests("Too many failed sign-in attempts. Wait a little and try again.", wait))
+		return
+	}
+	user, device, err := check(r.Context(), name, secret)
+	if errors.Is(err, auth.ErrInvalidCredentials) {
+		s.Logins.perAccount.Fail(account)
+		s.Logins.perAddress.Fail(address)
+		askForDevice(w)
+		writeError(w, r, ErrUnauthorized("The user name or the device token is wrong."))
+		return
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s.Logins.perAccount.Reset(account)
+	ctx := context.WithValue(r.Context(), userKey, &user)
+	next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, device)))
+}
+
+// bearerToken is the token of an "Authorization: Bearer" header.
+func bearerToken(r *http.Request) (string, bool) {
+	scheme, token, ok := strings.Cut(strings.TrimSpace(r.Header.Get("Authorization")), " ")
+	if !ok || !strings.EqualFold(scheme, "bearer") {
+		return "", false
+	}
+	return strings.TrimSpace(token), true
+}
+
+// authenticateKey signs an API key in, limited as password sign-ins are. A
+// token without a key's shape is refused uncounted. A key beats a session
+// cookie sent beside it: the client asked for it.
+func (s *Server) authenticateKey(w http.ResponseWriter, r *http.Request, next http.Handler, token string) {
+	if !auth.LooksLikeAPIKey(token) {
+		writeError(w, r, ErrUnauthorized("The bearer token is not an API key."))
+		return
+	}
+	address := clientAddress(r)
+	account := "api-key|" + address
+	if wait := max(s.Logins.perAccount.RetryAfter(account), s.Logins.perAddress.RetryAfter(address)); wait > 0 {
+		writeError(w, r, ErrTooManyRequests("Too many failed sign-in attempts. Wait a little and try again.", wait))
+		return
+	}
+	user, use, err := s.Auth.AuthenticateAPIKey(r.Context(), token)
+	if errors.Is(err, auth.ErrInvalidCredentials) {
+		s.Logins.perAccount.Fail(account)
+		s.Logins.perAddress.Fail(address)
+		writeError(w, r, ErrUnauthorized("The API key is wrong, expired or revoked."))
+		return
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s.Logins.perAccount.Reset(account)
+	ctx := context.WithValue(r.Context(), userKey, &user)
+	next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, apiKeyKey, &use)))
+}
+
+// APIKeyFrom is the API key a request was signed in with, or nil.
+func APIKeyFrom(ctx context.Context) *auth.APIKeyUse {
+	use, _ := ctx.Value(apiKeyKey).(*auth.APIKeyUse)
+	return use
+}
+
+// DeviceFrom is the device a request was signed in with, or uuid.Nil for a
+// browser's session.
+func DeviceFrom(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(deviceKey).(uuid.UUID)
+	return id
+}
+
+// askForDevice tells an OPDS client to send a user name and device token.
+func askForDevice(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="GOtome", charset="UTF-8"`)
+}
+
 // require lets a request through when its caller holds the permission: 401
 // when nobody is signed in, 403 when somebody is and their role does not
-// reach that far.
-func require(permission auth.Permission, next HandlerFunc) HandlerFunc {
+// reach that far. A device's token reaches only the routes for devices.
+//
+// An API key reaches a route only through its scopes, and only what its
+// owner's role also holds: the routes about the caller's own account, which
+// declare SignedIn, are closed to it unless they say keys (/auth/me).
+func require(permission auth.Permission, devices, keys bool, next HandlerFunc) HandlerFunc {
 	if permission == auth.Public {
 		return next
 	}
 	return func(w http.ResponseWriter, r *http.Request) error {
 		user := UserFrom(r.Context())
+		if user != nil && !devices && DeviceFrom(r.Context()) != uuid.Nil {
+			return ErrUnauthorized("A device token signs in only to the catalogue for devices.")
+		}
 		if user == nil {
+			if devices {
+				askForDevice(w)
+			}
 			return ErrUnauthorized("")
 		}
 		if permission != auth.SignedIn && !auth.Allows(user.Role, permission) {
 			return ErrForbidden("")
+		}
+		if key := APIKeyFrom(r.Context()); key != nil {
+			if permission == auth.SignedIn && !keys {
+				return ErrForbidden("An API key cannot use the routes about the account.")
+			}
+			if permission != auth.SignedIn && !auth.ScopesAllow(key.Scopes, permission) {
+				return ErrForbidden("This API key's scopes do not reach this route.")
+			}
 		}
 		return next(w, r)
 	}

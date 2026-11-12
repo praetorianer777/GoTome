@@ -30,6 +30,9 @@ const (
 	QueueMetadata = "metadata"
 	QueueEmbed    = "embed"
 	QueueNotify   = "notify"
+	// QueueIndex is the full-text index's: one writer, which applies the
+	// outbox in order.
+	QueueIndex = "index"
 )
 
 // queues is how many jobs of each queue run at once. The numbers are for
@@ -42,11 +45,12 @@ var queues = map[string]river.QueueConfig{
 	QueueMetadata: {MaxWorkers: 2},
 	QueueEmbed:    {MaxWorkers: 1},
 	QueueNotify:   {MaxWorkers: 4},
+	QueueIndex:    {MaxWorkers: 1},
 }
 
 // Queues lists the names of the queues.
 func Queues() []string {
-	return []string{QueueDefault, QueueScan, QueueExtract, QueueMetadata, QueueEmbed, QueueNotify}
+	return []string{QueueDefault, QueueScan, QueueExtract, QueueMetadata, QueueEmbed, QueueNotify, QueueIndex}
 }
 
 // shutdownGrace is how long Stop lets running jobs finish before it cancels
@@ -65,7 +69,7 @@ type Config struct {
 	Logger  *slog.Logger
 	Workers *Workers
 	// Periodic jobs are enqueued on a schedule for as long as the Runner runs.
-	Periodic []*river.PeriodicJob
+	Periodic []Schedule
 	// RetryPolicy replaces River's exponential backoff. Tests use it to retry
 	// at once; nothing else should.
 	RetryPolicy river.ClientRetryPolicy
@@ -111,10 +115,12 @@ func SchemaVersion() int {
 // New builds a Runner. It does not start working jobs; Start does.
 func New(pool *pgxpool.Pool, cfg Config) (*Runner, error) {
 	riverCfg := &river.Config{
-		Logger:       slog.New(quiet{cfg.Logger.Handler()}),
-		RetryPolicy:  cfg.RetryPolicy,
-		Workers:      cfg.Workers,
-		PeriodicJobs: cfg.Periodic,
+		Logger:      slog.New(quiet{cfg.Logger.Handler()}),
+		RetryPolicy: cfg.RetryPolicy,
+		Workers:     cfg.Workers,
+	}
+	for _, p := range cfg.Periodic {
+		riverCfg.PeriodicJobs = append(riverCfg.PeriodicJobs, p.job())
 	}
 	if !cfg.InsertOnly {
 		riverCfg.Queues = queues
@@ -138,6 +144,20 @@ func (r *Runner) Start(ctx context.Context) error {
 		return fmt.Errorf("start the job queue: %w", err)
 	}
 	return nil
+}
+
+// Check fails once the queue has stopped, as after a fatal error of its own.
+// A runner that does not work jobs has nothing to be ready.
+func (r *Runner) Check(context.Context) error {
+	if !r.works {
+		return nil
+	}
+	select {
+	case <-r.client.Stopped():
+		return errors.New("the job queue has stopped")
+	default:
+		return nil
+	}
 }
 
 // Stop takes no new jobs and waits for the running ones to finish. Those that
@@ -196,6 +216,16 @@ type Inserted struct {
 	// Duplicate is true when a unique insert found the job already there; ID
 	// is then that job's.
 	Duplicate bool
+	// Running is true when that job is running: it may have read what it
+	// works on before the change that asked for it again.
+	Running bool
+}
+
+func inserted(res *rivertype.JobInsertResult) Inserted {
+	return Inserted{
+		ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate,
+		Running: res.UniqueSkippedAsDuplicate && res.Job.State == rivertype.JobStateRunning,
+	}
 }
 
 // Insert enqueues a job.
@@ -204,17 +234,36 @@ func (r *Runner) Insert(ctx context.Context, args river.JobArgs, opts InsertOpts
 	if err != nil {
 		return Inserted{}, err
 	}
-	return Inserted{ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate}, nil
+	return inserted(res), nil
 }
 
 // InsertTx enqueues a job as part of a transaction: it becomes visible to the
 // workers when the transaction commits and never exists if it rolls back.
 func (r *Runner) InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts InsertOpts) (Inserted, error) {
-	res, err := r.client.InsertTx(ctx, tx, args, opts.river())
+	// River finds a unique job's duplicate by updating its row, which locks
+	// it until the transaction ends. A running duplicate's completion then
+	// waits on the transaction, and once that wait outlasts River's
+	// completer timeout, its retry can read the job as still running and
+	// panic (#303). A duplicate inserts nothing, so rolling back to a
+	// savepoint loses nothing and releases the lock.
+	sp, err := tx.Begin(ctx)
 	if err != nil {
 		return Inserted{}, err
 	}
-	return Inserted{ID: res.Job.ID, Duplicate: res.UniqueSkippedAsDuplicate}, nil
+	res, err := r.client.InsertTx(ctx, sp, args, opts.river())
+	if err != nil {
+		_ = sp.Rollback(ctx)
+		return Inserted{}, err
+	}
+	if res.UniqueSkippedAsDuplicate {
+		err = sp.Rollback(ctx)
+	} else {
+		err = sp.Commit(ctx)
+	}
+	if err != nil {
+		return Inserted{}, err
+	}
+	return inserted(res), nil
 }
 
 // insertBatch keeps one bulk insert well below the number of parameters a
@@ -332,15 +381,29 @@ func (r *Runner) List(ctx context.Context, limit int, queues ...string) ([]Job, 
 	return out, nil
 }
 
-// Every returns a periodic job that enqueues args at the given interval, and
-// once at start when runOnStart is set. It is inserted as unique, so a run
-// that is still waiting or working is not joined by a second.
-func Every(interval time.Duration, runOnStart bool, args river.JobArgs, queue string) *river.PeriodicJob {
-	opts := InsertOpts{Queue: queue, Unique: true}.river()
+// Schedule is a job enqueued at an interval for as long as a Runner runs.
+// It is inserted as unique, so a run that is still waiting or working is
+// not joined by a second.
+type Schedule struct {
+	Interval time.Duration
+	// RunOnStart enqueues it once at start too.
+	RunOnStart bool
+	Args       river.JobArgs
+	Queue      string
+}
+
+// Every returns the schedule that enqueues args at the given interval, and
+// once at start when runOnStart is set.
+func Every(interval time.Duration, runOnStart bool, args river.JobArgs, queue string) Schedule {
+	return Schedule{Interval: interval, RunOnStart: runOnStart, Args: args, Queue: queue}
+}
+
+func (s Schedule) job() *river.PeriodicJob {
+	opts := InsertOpts{Queue: s.Queue, Unique: true}.river()
 	return river.NewPeriodicJob(
-		river.PeriodicInterval(interval),
-		func() (river.JobArgs, *river.InsertOpts) { return args, opts },
-		&river.PeriodicJobOpts{RunOnStart: runOnStart},
+		river.PeriodicInterval(s.Interval),
+		func() (river.JobArgs, *river.InsertOpts) { return s.Args, opts },
+		&river.PeriodicJobOpts{RunOnStart: s.RunOnStart},
 	)
 }
 

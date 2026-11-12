@@ -34,35 +34,35 @@ func provider() *Provider { return New(token) }
 // GOTOME_RECORD_FIXTURES=1 (make record-fixtures).
 func web() metadata.Web { return metadata.NewFixtures("testdata", provider()) }
 
-// fellowship is the Mariner paperback of The Fellowship of the Ring, the
-// first book of a series.
-var fellowship = catalog.Identifier{Type: catalog.IDISBN, Value: "9780547928210"}
+// scarlet is a paperback of A Study in Scarlet, the first book of the
+// Sherlock Holmes series.
+var scarlet = catalog.Identifier{Type: catalog.IDISBN, Value: "9780007558049"}
 
-func checkFellowship(t *testing.T, r metadata.Record) {
+func checkScarlet(t *testing.T, r metadata.Record) {
 	t.Helper()
-	if !strings.Contains(r.Title, "Fellowship of the Ring") || len(r.Contributors) == 0 ||
-		!strings.Contains(r.Contributors[0].Name, "Tolkien") || r.Contributors[0].Role != catalog.RoleAuthor {
+	if !strings.Contains(r.Title, "Study in Scarlet") || len(r.Contributors) == 0 ||
+		!strings.Contains(r.Contributors[0].Name, "Doyle") || r.Contributors[0].Role != catalog.RoleAuthor {
 		t.Errorf("record = %+v", r)
 	}
-	if !strings.Contains(r.Series, "Lord of the Rings") || r.SeriesIndex == nil || *r.SeriesIndex != 1 {
-		t.Errorf("series %q, index %v; want The Lord of the Rings, 1", r.Series, r.SeriesIndex)
+	if !strings.Contains(r.Series, "Sherlock Holmes") || r.SeriesIndex == nil || *r.SeriesIndex != 1 {
+		t.Errorf("series %q, index %v; want Sherlock Holmes, 1", r.Series, r.SeriesIndex)
 	}
 }
 
 func TestLookupByISBNNamesTheSeries(t *testing.T) {
-	got, err := provider().Lookup(context.Background(), web(), fellowship)
+	got, err := provider().Lookup(context.Background(), web(), scarlet)
 	if err != nil || len(got) != 1 {
 		t.Fatalf("Lookup: %+v, %v", got, err)
 	}
 	r := got[0]
-	checkFellowship(t, r)
-	if !slices.Contains(r.Tags, "Fantasy") || r.CoverURL == "" || r.Language != "en" || r.Description == "" {
+	checkScarlet(t, r)
+	if len(r.Tags) == 0 || r.CoverURL == "" || r.Language != "en" || r.Description == "" {
 		t.Errorf("tags %q, cover %q, language %q, description %.40q", r.Tags, r.CoverURL, r.Language, r.Description)
 	}
-	if !slices.Contains(r.Identifiers, fellowship) || r.ID == "" || r.Publisher == "" || r.Published == "" {
+	if !slices.Contains(r.Identifiers, scarlet) || r.ID == "" || r.Publisher == "" || r.Published == "" {
 		t.Errorf("identifiers %v, ID %q, publisher %q, published %q", r.Identifiers, r.ID, r.Publisher, r.Published)
 	}
-	if score := metadata.Score(catalog.Book{Title: "Fellowship", Identifiers: []catalog.BookIdentifier{{Identifier: fellowship}}}, r); score != 1 {
+	if score := metadata.Score(catalog.Book{Title: "Scarlet", Identifiers: []catalog.BookIdentifier{{Identifier: scarlet}}}, r); score != 1 {
 		t.Errorf("score %.2f, want 1 for the same ISBN", score)
 	}
 }
@@ -76,16 +76,16 @@ func TestLookupOfAnUnknownISBN(t *testing.T) {
 
 func TestSearchByTitleAndAuthor(t *testing.T) {
 	got, err := provider().Search(context.Background(), web(), metadata.Query{
-		Title: "The Fellowship of the Ring", Authors: []string{"J.R.R. Tolkien"},
+		Title: "A Study in Scarlet", Authors: []string{"Arthur Conan Doyle"},
 	})
 	if err != nil || len(got) == 0 {
 		t.Fatalf("Search: %+v, %v", got, err)
 	}
-	i := slices.IndexFunc(got, func(r metadata.Record) bool { return strings.Contains(r.Title, "Fellowship of the Ring") })
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return strings.Contains(r.Title, "Study in Scarlet") })
 	if i < 0 {
 		t.Fatalf("not among %d results", len(got))
 	}
-	checkFellowship(t, got[i])
+	checkScarlet(t, got[i])
 }
 
 // asked is a Web that keeps the requests and answers each as given.
@@ -102,7 +102,7 @@ func (a *asked) Get(_ context.Context, r metadata.Request) ([]byte, error) {
 func TestWithoutATokenNothingIsAsked(t *testing.T) {
 	for _, p := range []*Provider{New(nil), New(func(context.Context) string { return " " })} {
 		w := &asked{}
-		got, err := p.Lookup(context.Background(), w, fellowship)
+		got, err := p.Lookup(context.Background(), w, scarlet)
 		if got != nil || err != nil {
 			t.Errorf("Lookup: %+v, %v", got, err)
 		}
@@ -119,7 +119,7 @@ func TestWithoutATokenNothingIsAsked(t *testing.T) {
 func TestTheTokenGoesInTheHeaderOnly(t *testing.T) {
 	w := &asked{answer: `{"data":{"editions":[]}}`}
 	p := New(func(context.Context) string { return "Bearer abc" })
-	if _, err := p.Lookup(context.Background(), w, fellowship); !errors.Is(err, metadata.ErrNotFound) {
+	if _, err := p.Lookup(context.Background(), w, scarlet); !errors.Is(err, metadata.ErrNotFound) {
 		t.Fatalf("err = %v", err)
 	}
 	r := w.requests[0]
@@ -130,7 +130,7 @@ func TestTheTokenGoesInTheHeaderOnly(t *testing.T) {
 
 func TestAnErrorHardcoverAnswersIsAnError(t *testing.T) {
 	w := &asked{answer: `{"errors":[{"message":"field 'nonsense' not found in type: 'editions'"}]}`}
-	_, err := provider().Lookup(context.Background(), w, fellowship)
+	_, err := provider().Lookup(context.Background(), w, scarlet)
 	if err == nil || !strings.Contains(err.Error(), "nonsense") {
 		t.Errorf("err = %v", err)
 	}
@@ -142,9 +142,76 @@ func TestLiveContract(t *testing.T) {
 	if os.Getenv(liveVariable) == "" || os.Getenv(tokenVariable) == "" {
 		t.Skip("set " + liveVariable + "=1 and " + tokenVariable + " to ask the live API")
 	}
-	got, err := provider().Lookup(context.Background(), metadata.LiveWeb(provider()), fellowship)
+	got, err := provider().Lookup(context.Background(), metadata.LiveWeb(provider()), scarlet)
 	if err != nil || len(got) != 1 {
 		t.Fatalf("Lookup: %+v, %v", got, err)
 	}
-	checkFellowship(t, got[0])
+	checkScarlet(t, got[0])
+}
+
+// The works tests ask about an author and a series.
+func TestTheBooksOfAnAuthor(t *testing.T) {
+	got, err := provider().ByAuthor(context.Background(), web(), "Doyle, Arthur Conan")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
+	}
+	dated := 0
+	for _, r := range got {
+		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Arthur Conan Doyle") }) {
+			t.Errorf("%q does not credit the author: %+v", r.Title, r.Contributors)
+		}
+		if r.Published != "" {
+			dated++
+		}
+	}
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return strings.Contains(r.Title, "Sherlock Holmes") }) {
+		t.Errorf("no Sherlock Holmes book among %d books", len(got))
+	}
+	if dated == 0 {
+		t.Error("no book has a release date")
+	}
+	// Hardcover keeps translations as books of their own; each says its
+	// language, for WorksOf to keep those asked for.
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.Language != "" && r.Language != "en" }) {
+		t.Error("no translation says its language")
+	}
+}
+
+func TestTheBooksOfASeries(t *testing.T) {
+	got, err := provider().BySeries(context.Background(), web(), "Sherlock Holmes")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("BySeries: %d records, %v", len(got), err)
+	}
+	// The newest of a series this old are translations and collections,
+	// so the first book is one of several at the first place.
+	for _, r := range got {
+		if !strings.Contains(r.Series, "Sherlock Holmes") {
+			t.Errorf("%q is in the series %q", r.Title, r.Series)
+		}
+	}
+	if !slices.ContainsFunc(got, func(r metadata.Record) bool { return r.SeriesIndex != nil && *r.SeriesIndex == 1 }) {
+		t.Errorf("no book of the first place among %d", len(got))
+	}
+}
+
+func TestTheBooksOfNobody(t *testing.T) {
+	if got, err := provider().ByAuthor(context.Background(), web(), "Qwzx Vrbnkt"); !errors.Is(err, metadata.ErrNotFound) || len(got) != 0 {
+		t.Errorf("an unknown author: %d records, %v", len(got), err)
+	}
+	if got, err := New(nil).ByAuthor(context.Background(), web(), "Arthur Conan Doyle"); err != nil || got != nil {
+		t.Errorf("without a token: %+v, %v", got, err)
+	}
+}
+
+func TestTheEditionNamesTheBookTheSearchFinds(t *testing.T) {
+	edition, err := provider().Lookup(context.Background(), web(), scarlet)
+	if err != nil || len(edition) != 1 || edition[0].Work == "" {
+		t.Fatalf("Lookup: %+v, %v", edition, err)
+	}
+	found, err := provider().Search(context.Background(), web(), metadata.Query{
+		Title: "A Study in Scarlet", Authors: []string{"Arthur Conan Doyle"},
+	})
+	if err != nil || !slices.ContainsFunc(found, func(r metadata.Record) bool { return r.Work == edition[0].Work }) {
+		t.Errorf("the edition's book %q is not among %d results: %v", edition[0].Work, len(found), err)
+	}
 }

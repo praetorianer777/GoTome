@@ -49,7 +49,7 @@ export function useRereadText() {
 	});
 }
 
-/** Builds the search index again from the text already read. */
+/** Builds the search index again from the books' files. */
 export function useRebuildIndex() {
 	return useMutation({
 		mutationFn: async () => (await api.POST("/search/rebuild")).data,

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,6 +29,7 @@ type vectorApp struct {
 	*app
 	vectors *similar.Service
 	opened  atomic.Int32
+	admin   *http.Client
 	adminID uuid.UUID
 	text    uuid.UUID
 	bare    uuid.UUID
@@ -37,7 +39,7 @@ type vectorApp struct {
 func newVectorApp(t *testing.T) *vectorApp {
 	a := &vectorApp{app: newApp(t)}
 	admin, adminID := a.signedIn("admin", "admin")
-	a.adminID = uuid.MustParse(adminID)
+	a.admin, a.adminID = admin, uuid.MustParse(adminID)
 	books := t.TempDir()
 	long := strings.Repeat("Emma Woodhouse, handsome, clever, and rich, with a comfortable home and a happy disposition. ", 400)
 	writeEPUB(t, filepath.Join(books, "Emma.epub"), emmaMetadata, nil, long, long, "The end.")
@@ -64,6 +66,7 @@ func newVectorApp(t *testing.T) *vectorApp {
 			a.opened.Add(1)
 			return &embed.Fake{}, nil
 		}, slog.New(slog.DiscardHandler))
+	a.vectors.Passages = a.scans.Passages
 	return a
 }
 
@@ -148,7 +151,7 @@ func TestEveryBookWithTextGetsBothVectorsAndTheRestTheMetadataOne(t *testing.T) 
 			t.Errorf("the metadata text %q lacks %q", metaText, want)
 		}
 	}
-	fake, _ := (&embed.Fake{}).Embed(context.Background(), []string{embed.Prefix + metaText})
+	fake, _ := (&embed.Fake{}).Embed(context.Background(), []string{embed.E5Small.Prefix + metaText})
 	var distance float64
 	if err := a.pool.QueryRow(context.Background(), `
 		SELECT embedding <=> $2::text::vector FROM book_vectors WHERE book_id = $1 AND kind = 'metadata'`,
@@ -284,8 +287,6 @@ func TestChangingTheModelQueuesEmbeddingEveryBookAgain(t *testing.T) {
 	}
 }
 
-func ptr(s string) *string { return &s }
-
 func TestAModelThatCannotRunLeavesTheBooksForLater(t *testing.T) {
 	t.Parallel()
 	a := newVectorApp(t)
@@ -313,6 +314,7 @@ func TestTheRealModelEmbedsABook(t *testing.T) {
 	a.vectors = similar.NewService(a.pool, a.settings.Embedding, similar.OnnxOpener(embed.OnnxOptions{
 		Runtime: lib, ModelDir: dir, Threads: 2, Fetch: embed.FetchOptions{Offline: true},
 	}), slog.New(slog.DiscardHandler))
+	a.vectors.Passages = a.scans.Passages
 	a.embedAll()
 	if got := kinds(a.storedVectors(a.text)); !slices.Equal(got, []string{"content", "metadata"}) {
 		t.Fatalf("the book with text has %v", got)
@@ -331,3 +333,119 @@ func TestTheRealModelEmbedsABook(t *testing.T) {
 		t.Errorf("Emma's text is no nearer its own metadata (%.3f) than another book's (%.3f)", near, far)
 	}
 }
+
+func TestAPlaceholderSomeoneReadGetsOnlyAMetadataVector(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	a.embedAll()
+	if got := a.storedVectors(a.wish); len(got) != 0 {
+		t.Fatalf("a placeholder no one read has %v", kinds(got))
+	}
+	if _, err := a.pool.Exec(context.Background(),
+		`INSERT INTO user_books (user_id, book_id, status) VALUES ($1, $2, 'completed')`, a.adminID, a.wish); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	if got := kinds(a.storedVectors(a.wish)); !slices.Equal(got, []string{"metadata"}) {
+		t.Fatalf("the placeholder someone read has %v", got)
+	}
+
+	library := a.bare
+	if titles := a.similarTitles(a.admin, library); slices.Contains(titles, "Sanditon") {
+		t.Errorf("a placeholder is a similar book: %v", titles)
+	}
+	status, out, _ := a.call(a.admin, http.MethodGet, "/search/similar?q=Sanditon", nil)
+	if status == 200 {
+		for _, b := range out["books"].([]any) {
+			if b.(map[string]any)["title"] == "Sanditon" {
+				t.Errorf("a placeholder is found by description: %v", out)
+			}
+		}
+	}
+
+	if _, err := a.pool.Exec(context.Background(), `DELETE FROM user_books WHERE book_id = $1`, a.wish); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	if got := a.storedVectors(a.wish); len(got) != 0 {
+		t.Errorf("once no one has read it the placeholder has %v", kinds(got))
+	}
+}
+
+func TestTheMetadataTextLeavesOutAdditionsAndPlaceholderAuthorsAndOnlyThatVectorIsRemade(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	ctx := context.Background()
+	var oldText string
+	if err := a.pool.QueryRow(ctx, `SELECT book_metadata_text($1)`, a.text).Scan(&oldText); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	before := a.storedVectors(a.text)
+
+	// A source hash made from the title as it was written stands for a vector
+	// made before the text was cleaned.
+	var author uuid.UUID
+	if err := a.pool.QueryRow(ctx, `
+		INSERT INTO authors (name, sort_name, name_key) VALUES ('authors_sort', 'authors_sort', 'authors sort') RETURNING id`).Scan(&author); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_contributors (book_id, author_id, role, position) VALUES ($1, $2, 'author', 9)`, a.text, author); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `UPDATE books SET title = title || ' (German Edition)' WHERE id = $1`, a.text); err != nil {
+		t.Fatal(err)
+	}
+	var cleaned string
+	if err := a.pool.QueryRow(ctx, `SELECT book_metadata_text($1)`, a.text).Scan(&cleaned); err != nil {
+		t.Fatal(err)
+	}
+	if cleaned != oldText {
+		t.Errorf("the text is %q, not %q", cleaned, oldText)
+	}
+	if strings.Contains(cleaned, "German Edition") || strings.Contains(cleaned, "authors_sort") {
+		t.Errorf("the text keeps an addition or a placeholder author: %q", cleaned)
+	}
+	a.embedAll()
+	if again := a.storedVectors(a.text); !again["metadata"].EmbeddedAt.Equal(before["metadata"].EmbeddedAt) {
+		t.Error("a title addition and a placeholder author made the metadata vector again")
+	}
+
+	if _, err := a.pool.Exec(ctx, `
+		UPDATE book_vectors SET source_hash = sha256(convert_to(
+			(SELECT title || E'\n' || 'Jane Austen' FROM books WHERE id = $1), 'UTF8'))
+		WHERE book_id = $1 AND kind = 'metadata'`, a.text); err != nil {
+		t.Fatal(err)
+	}
+	a.embedAll()
+	after := a.storedVectors(a.text)
+	if !after["metadata"].EmbeddedAt.After(before["metadata"].EmbeddedAt) {
+		t.Error("a source hash of the old text left the metadata vector as it was")
+	}
+	if !after["content"].EmbeddedAt.Equal(before["content"].EmbeddedAt) {
+		t.Error("the metadata text made the content vector again")
+	}
+}
+
+func TestAnotherNumberOfSamplesMakesTheContentVectorsAgain(t *testing.T) {
+	t.Parallel()
+	a := newVectorApp(t)
+	a.vectors.ContentSamples = a.settings.EmbeddingContentSamples
+	a.embedAll()
+	before := a.storedVectors(a.text)
+
+	a.set("embedding.contentSamples", "32")
+	a.embedAll()
+	after := a.storedVectors(a.text)
+	if !after["content"].EmbeddedAt.After(before["content"].EmbeddedAt) {
+		t.Error("another number of samples left the content vector as it was")
+	}
+	if !after["metadata"].EmbeddedAt.Equal(before["metadata"].EmbeddedAt) {
+		t.Error("another number of samples made the metadata vector again")
+	}
+	if err := a.settings.Update(context.Background(), a.adminID, map[string]*string{"embedding.contentSamples": ptr("4")}); err == nil {
+		t.Error("4 samples were accepted")
+	}
+}
+
+func ptr(s string) *string { return &s }

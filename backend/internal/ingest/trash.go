@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -42,6 +43,44 @@ func trashPath(root string, id uuid.UUID, relPath string) string {
 	return filepath.Join(root, trashFolder, id.String(), path.Base(relPath))
 }
 
+// TrashPath is where a trashed file lies.
+func TrashPath(root string, id uuid.UUID, relPath string) string { return trashPath(root, id, relPath) }
+
+// CurationHooks are what the service lends curation for undoing actions.
+func (s *Service) CurationHooks() curation.Hooks {
+	return curation.Hooks{TrashPath: TrashPath, AfterUndoTx: s.AfterUndoTx, WriteBackTx: s.WriteBackTx}
+}
+
+// AfterUndoTx follows the undoing of an action on the books: each reads its
+// text again from its primary file where the merge took the chunks away,
+// and its duplicates are looked for.
+func (s *Service) AfterUndoTx(ctx context.Context, tx pgx.Tx, books []uuid.UUID) error {
+	q := sqlc.New(tx)
+	for _, book := range books {
+		primary, _, err := choosePrimaryTx(ctx, q, book)
+		if err != nil {
+			return err
+		}
+		if primary != uuid.Nil {
+			chunks, err := q.ListFileChunks(ctx, primary)
+			if err != nil {
+				return err
+			}
+			if len(chunks) == 0 {
+				if _, err := s.Queue.InsertTx(ctx, tx, ChunkArgs{FileID: primary}, jobs.InsertOpts{
+					Queue: jobs.QueueExtract, Unique: true, MaxAttempts: extractAttempts,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+		if err := s.filesChangedTx(ctx, tx, book); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Trash moves a file of a writable library the scope sees into the
 // library's trash. The record keeps its path, which stays taken, and the
 // book reads its text from another file if this one was it. Nothing is
@@ -50,6 +89,9 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 	var from, to string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: fileID, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -62,6 +104,9 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 			return ErrReadOnly
 		case f.MissingAt != nil:
 			return ErrFileMissing
+		}
+		if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+			return err
 		}
 		if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
 			return err
@@ -79,14 +124,15 @@ func (s *Service) Trash(ctx context.Context, scope library.Scope, fileID uuid.UU
 		from = filepath.Join(f.RootPath, filepath.FromSlash(f.RelPath))
 		to = trashPath(f.RootPath, fileID, f.RelPath)
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
-		return os.Rename(from, to)
+		return folderError(f.LibraryID, f.RootPath, os.Rename(from, to))
 	})
 	if err != nil && to != "" {
 		s.moveBack(to, from)
+		_ = os.Remove(filepath.Dir(to))
 	}
-	return err
+	return s.noteUnwritable(ctx, err)
 }
 
 // Restore brings a trashed file of a writable library the scope sees back
@@ -95,6 +141,9 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 	var from, to string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetFileToTrash(ctx, sqlc.GetFileToTrashParams{ID: fileID, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -106,6 +155,9 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 		case !f.Writable:
 			return ErrReadOnly
 		}
+		if err := probeFolder(f.LibraryID, f.RootPath); err != nil {
+			return err
+		}
 		if err := q.LockLibraryFiles(ctx, f.LibraryID); err != nil {
 			return err
 		}
@@ -113,7 +165,7 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 		if _, err := os.Lstat(to); err == nil {
 			return ErrPathTaken
 		} else if !errors.Is(err, fs.ErrNotExist) {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
 		if err := q.SetFileRestored(ctx, fileID); err != nil {
 			return err
@@ -134,16 +186,16 @@ func (s *Service) Restore(ctx context.Context, scope library.Scope, fileID uuid.
 		}
 		from = trashPath(f.RootPath, fileID, f.RelPath)
 		if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
-			return err
+			return folderError(f.LibraryID, f.RootPath, err)
 		}
-		return os.Rename(from, to)
+		return folderError(f.LibraryID, f.RootPath, os.Rename(from, to))
 	})
 	if err != nil && from != "" {
 		s.moveBack(to, from)
 	} else if err == nil {
 		_ = os.Remove(filepath.Dir(from))
 	}
-	return err
+	return s.noteUnwritable(ctx, err)
 }
 
 // moveBack undoes a move whose record failed to commit.
@@ -189,6 +241,9 @@ func (s *Service) filesChangedTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUI
 func (s *Service) Purge(ctx context.Context, fileID uuid.UUID) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		f, err := q.GetTrashedFile(ctx, fileID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoFile
@@ -255,14 +310,21 @@ const purgeKind = "ingest.purge_trash"
 func (PurgeTrashArgs) Kind() string { return purgeKind }
 
 // PurgeTrashWorker runs PurgeTrashArgs. Retention says how long a file
-// stays in the trash, as the settings have it now.
+// stays in the trash, as the settings have it now; while it cannot say,
+// nothing is purged.
 type PurgeTrashWorker struct {
 	river.WorkerDefaults[PurgeTrashArgs]
 	Service   *Service
-	Retention func(context.Context) time.Duration
+	Retention func(context.Context) (time.Duration, error)
 }
 
 func (w *PurgeTrashWorker) Work(ctx context.Context, _ *river.Job[PurgeTrashArgs]) error {
-	_, err := w.Service.PurgeExpired(ctx, w.Retention(ctx))
+	retention, err := w.Retention(ctx)
+	if err != nil {
+		// Not retried: the next run, six hours on, reads the setting again.
+		w.Service.log.Warn("trash retention unreadable; keeping files", "error", err)
+		return nil
+	}
+	_, err = w.Service.PurgeExpired(ctx, retention)
 	return err
 }

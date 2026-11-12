@@ -124,7 +124,8 @@ type Uploaded struct {
 // suggests, with the other formats and parts of that book. A file whose
 // exact bytes the uploader can already see in any library is not stored
 // again. A file that would take the uploader past their quota is refused
-// with a *QuotaError.
+// with a *QuotaError, one whose content is not the format its name says
+// with ErrWrongContent.
 //
 // The file is written to the library's staging folder first and moved into
 // place in the same transaction that records it, so an upload that fails or
@@ -178,12 +179,18 @@ func (s *Service) Upload(ctx context.Context, lib library.Library, scope library
 	if err != nil {
 		return Uploaded{}, err
 	}
+	if err := checkContent(staged, format); err != nil {
+		return Uploaded{}, err
+	}
 	sum := h.Sum(nil)
 
 	var out Uploaded
 	var placed string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, lib.ID); err != nil {
+			return err
+		}
 		if err := q.LockLibraryFiles(ctx, lib.ID); err != nil {
 			return err
 		}
@@ -373,7 +380,7 @@ func splitName(name string) (stem, format string) {
 }
 
 // folderFor names the folder an upload goes into after the book its name
-// suggests: "Dune - Part 02.mp3" into "Dune", "Emma.epub" into "Emma".
+// suggests: "Dusk - Part 02.mp3" into "Dusk", "Emma.epub" into "Emma".
 func folderFor(stem, format string) string {
 	title := stem
 	if kind, _ := catalog.KindOf(format); kind == catalog.KindAudio {

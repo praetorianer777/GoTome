@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { expect, type Page, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { expect, type Page } from "@playwright/test";
+import { test } from "../fixtures/test";
+import { gotoUnderPolicy, openSignedIn } from "../fixtures/app";
 
 function part(n: 1 | 2, stamp: string): Buffer {
 	const audio = readFileSync(fileURLToPath(new URL(`../fixtures/audio/part${n}.mp3`, import.meta.url)));
@@ -13,17 +14,57 @@ function part(n: 1 | 2, stamp: string): Buffer {
 	return Buffer.concat([audio, tag]);
 }
 
-/** Waits for the player's clock to show at least the seconds. */
-async function heard(page: Page, seconds: number) {
+// HTMLMediaElement's readyState values, which Node does not have.
+const HAVE_METADATA = 1;
+
+interface Part {
+	fileId: string;
+	startMs: number;
+}
+
+/** What the audio element holds and does, as the browser has it. */
+function media(page: Page) {
+	return page.locator("audio").evaluate((el: HTMLAudioElement) => ({
+		src: el.currentSrc,
+		paused: el.paused,
+		readyState: el.readyState,
+		seconds: el.currentTime,
+	}));
+}
+
+/**
+ * Waits for the part to be in the audio element and playing: not paused,
+ * and its time moving between two looks. Until then the clock shows only
+ * the place the player was asked to go to. Not by readyState: WebKit plays
+ * at HAVE_CURRENT_DATA.
+ */
+async function playing(page: Page, p: Part) {
+	let last = Number.NaN;
 	await expect
 		.poll(
 			async () => {
-				const [m, s] = ((await page.getByTestId("position").textContent()) ?? "0:00").split(":").map(Number);
-				return (m ?? 0) * 60 + (s ?? 0);
+				const m = await media(page);
+				const moving = m.seconds > last;
+				last = m.seconds;
+				return m.src.includes(`/files/${p.fileId}/`) && !m.paused && moving;
 			},
-			{ timeout: 15_000 },
+			{ timeout: 10_000 },
 		)
-		.toBeGreaterThanOrEqual(seconds);
+		.toBe(true);
+}
+
+/** The seconds the player's clock shows. */
+async function clock(page: Page): Promise<number> {
+	const [m, s] = ((await page.getByTestId("position").textContent()) ?? "0:00").split(":").map(Number);
+	return (m ?? 0) * 60 + (s ?? 0);
+}
+
+/**
+ * Waits for the player's clock to show at least the seconds. The part plays
+ * already (playing), so what is left to wait for is the audio itself.
+ */
+async function heard(page: Page, seconds: number) {
+	await expect.poll(() => clock(page), { timeout: 15_000 }).toBeGreaterThanOrEqual(seconds);
 }
 
 test("an audiobook in two parts plays as one, seeks across the parts, and resumes on another device", async ({
@@ -58,23 +99,32 @@ test("an audiobook in two parts plays as one, seeks across the parts, and resume
 		expect(answer.bookId).toBe(bookId);
 	}
 	// The parts' lengths are known once they have been read.
+	let parts: Part[] = [];
 	await expect
-		.poll(async () => (await (await page.request.get(`/api/v1/books/${bookId}/audio`)).json()).complete && "read", {
-			timeout: 20_000,
-		})
+		.poll(
+			async () => {
+				const timeline = await (await page.request.get(`/api/v1/books/${bookId}/audio`)).json();
+				parts = timeline.parts;
+				return timeline.complete && "read";
+			},
+			{ timeout: 20_000 },
+		)
 		.toBe("read");
+	const [first, second] = parts as [Part, Part];
 
-	await page.goto(`/books/${bookId}`);
+	await gotoUnderPolicy(page, `/books/${bookId}`);
 	await page.getByRole("link", { name: "Listen" }).click();
 	await expect(page.getByRole("button", { name: /^Arrival/ })).toBeVisible();
 	await expect(page.getByRole("button", { name: /^The Keeper/ })).toBeVisible();
 	await page.getByRole("button", { name: "Play", exact: true }).click();
 	await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible();
+	await playing(page, first);
 	await heard(page, 1);
 
 	// Into the second part, which is another file.
 	await page.getByRole("button", { name: /Lighthouse - Part 2/ }).click();
 	await expect(page.locator("audio")).toHaveAttribute("data-part", "1");
+	await playing(page, second);
 	await heard(page, 8);
 	const saved = page.waitForResponse((r) => r.url().includes("/progress/audio") && r.request().method() === "PUT");
 	await page.getByRole("button", { name: "Pause", exact: true }).click();
@@ -85,13 +135,21 @@ test("an audiobook in two parts plays as one, seeks across the parts, and resume
 	await page.getByRole("link", { name: "Back to the book" }).click();
 	await expect(page.getByRole("region", { name: "Now playing" })).toBeVisible();
 
-	// Another device, another browser, picks up there.
+	// Another device, another browser, picks up there: the part the place
+	// is in, loaded, at the place, ready to play.
 	const other = await browser.newPage();
 	await openSignedIn(other);
 	await other.goto(`/books/${bookId}/listen`);
 	await other.getByRole("button", { name: "Listen" }).click();
-	await heard(other, Math.floor(place.positionMs / 1000));
 	await expect(other.locator("audio")).toHaveAttribute("data-part", "1");
+	const offset = (place.positionMs - second.startMs) / 1000;
+	await expect
+		.poll(async () => {
+			const m = await media(other);
+			return m.src.includes(`/files/${second.fileId}/`) && m.readyState >= HAVE_METADATA && Math.abs(m.seconds - offset) < 0.25;
+		})
+		.toBe(true);
+	expect(await clock(other)).toBe(Math.floor(place.positionMs / 1000));
 	await other.close();
 
 	expect((await page.request.delete(`/api/v1/libraries/${id}`)).status()).toBe(204);

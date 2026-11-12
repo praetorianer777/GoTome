@@ -41,7 +41,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: CreateBookFile :one
 INSERT INTO book_files (
@@ -113,7 +113,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 FOR UPDATE;
 
 -- name: SetBookLocks :exec
@@ -167,7 +167,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: RefreshAuthorSort :exec
 UPDATE books b
@@ -190,7 +190,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListAudioFiles :many
 -- A book's audio files that are there to be played: the parts of an
@@ -205,3 +205,14 @@ SELECT file_id, position, title, start_ms, end_ms
 FROM audio_chapters
 WHERE file_id = ANY(sqlc.arg(file_ids)::uuid[])
 ORDER BY file_id, position;
+
+-- name: DeleteFileIdentifiersOfType :exec
+DELETE FROM book_identifiers WHERE file_id = $1 AND type = $2;
+
+-- name: SetFileTextPrintISBN :exec
+UPDATE book_files SET text_print_isbn = $2 WHERE id = $1 AND text_print_isbn IS DISTINCT FROM $2;
+
+-- name: ListBookTextPrintISBNs :many
+SELECT DISTINCT text_print_isbn::text FROM book_files
+WHERE book_id = $1 AND text_print_isbn IS NOT NULL AND trashed_at IS NULL
+ORDER BY 1;

@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,7 +21,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, EmbedThreads: max(1, runtime.NumCPU()/2), ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
+	want := Config{BasePath: "/", Env: EnvProduction, HTTPAddr: ":8080", LogLevel: slog.LevelInfo, DataDir: "/data", ModelDir: "/data/models", OnnxRuntime: DefaultOnnxRuntime, Fulltext: DefaultFulltext, EmbedThreads: max(1, runtime.NumCPU()/2), ScanInterval: 6 * time.Hour, UploadLimit: 4 << 30}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -36,17 +37,26 @@ func TestLoadOverrides(t *testing.T) {
 		"GOTOME_LOG_LEVEL": "DEBUG",
 		"GOTOME_DATA_DIR":  "/srv/gotome",
 		// Zero switches scheduled scans off.
-		"GOTOME_SCAN_INTERVAL":   "0",
-		"GOTOME_UPLOAD_LIMIT_MB": "100",
-		"GOTOME_OFFLINE":         "true",
-		"GOTOME_MODEL_DIR":       "/models",
-		"GOTOME_ONNXRUNTIME":     "/opt/libonnxruntime.so",
-		"GOTOME_EMBED_THREADS":   "3",
+		"GOTOME_SCAN_INTERVAL":    "0",
+		"GOTOME_UPLOAD_LIMIT_MB":  "100",
+		"GOTOME_OFFLINE":          "true",
+		"GOTOME_MODEL_DIR":        "/models",
+		"GOTOME_ONNXRUNTIME":      "/opt/libonnxruntime.so",
+		"GOTOME_FULLTEXT_LIBRARY": "/opt/libgotome_fulltext.so",
+		"GOTOME_EMBED_THREADS":    "3",
+		"GOTOME_BASE_PATH":        " gotome/library ",
+		"GOTOME_TRUSTED_PROXIES":  "172.18.0.0/16, 192.0.2.7 2001:db8::1,10.1.2.3/8",
+		"GOTOME_PUBLIC_URLS":      " http://192.168.1.5:8080/, https://Books.Example.org/gotome/ ,http://192.168.1.5:8080",
 	}))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	want := Config{Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true}
+	want := Config{BasePath: "/gotome/library/", Env: EnvDevelopment, HTTPAddr: "127.0.0.1:9000", LogLevel: slog.LevelDebug, DataDir: "/srv/gotome", ModelDir: "/models", OnnxRuntime: "/opt/libonnxruntime.so", Fulltext: "/opt/libgotome_fulltext.so", EmbedThreads: 3, UploadLimit: 100 << 20, Offline: true,
+		PublicURLs: []string{"http://192.168.1.5:8080", "https://books.example.org/gotome"},
+		TrustedProxies: []netip.Prefix{
+			netip.MustParsePrefix("172.18.0.0/16"), netip.MustParsePrefix("192.0.2.7/32"),
+			netip.MustParsePrefix("2001:db8::1/128"), netip.MustParsePrefix("10.0.0.0/8"),
+		}}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -67,6 +77,19 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{"GOTOME_UPLOAD_LIMIT_MB", "0"},
 		{"GOTOME_UPLOAD_LIMIT_MB", "2GB"},
 		{"GOTOME_OFFLINE", "sometimes"},
+		{"GOTOME_BASE_PATH", "/a/../b"},
+		{"GOTOME_BASE_PATH", "https://example.org/gotome"},
+		{"GOTOME_BASE_PATH", "//example.org/"},
+		{"GOTOME_BASE_PATH", "/a//b"},
+		{"GOTOME_BASE_PATH", "/a b/"},
+		{"GOTOME_BASE_PATH", "/gotome?x=1"},
+		{"GOTOME_PUBLIC_URLS", "books.example.org"},
+		{"GOTOME_PUBLIC_URLS", "ftp://books.example.org"},
+		{"GOTOME_PUBLIC_URLS", "https://u:p@books.example.org"},
+		{"GOTOME_PUBLIC_URLS", "https://books.example.org/?a=1"},
+		{"GOTOME_PUBLIC_URLS", "https://books.example.org/a/../b"},
+		{"GOTOME_TRUSTED_PROXIES", "proxy.local"},
+		{"GOTOME_TRUSTED_PROXIES", "10.0.0.0/33"},
 	}
 	for _, c := range cases {
 		_, err := load(env(map[string]string{c.key: c.value}))
@@ -156,6 +179,15 @@ func TestSecretKeyFile(t *testing.T) {
 		_, err := load(env(map[string]string{"GOTOME_SECRET_KEY_FILE": file}))
 		if err == nil || !strings.Contains(err.Error(), "GOTOME_SECRET_KEY_FILE") || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want one naming the variable and saying %q", file, err, want)
+		}
+	}
+}
+
+func TestNormalizeBasePath(t *testing.T) {
+	for in, want := range map[string]string{"": "/", "/": "/", "gotome": "/gotome/", "/gotome": "/gotome/", "/gotome/": "/gotome/", "/a/b": "/a/b/"} {
+		got, err := NormalizeBasePath(in)
+		if err != nil || got != want {
+			t.Errorf("NormalizeBasePath(%q) = %q, %v, want %q", in, got, err, want)
 		}
 	}
 }

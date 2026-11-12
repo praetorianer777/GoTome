@@ -1,0 +1,6 @@
+{
+  "method": "GET",
+  "url": "https://openlibrary.org/search.json?author=Qwzx+Vrbnkt\u0026fields=key%2Ctitle%2Csubtitle%2Cauthor_name%2Cfirst_publish_year%2Ccover_i%2Clanguage\u0026limit=50\u0026sort=new",
+  "status": 200,
+  "answer": "eyJudW1Gb3VuZCI6MCwic3RhcnQiOjAsIm51bUZvdW5kRXhhY3QiOnRydWUsIm51bV9mb3VuZCI6MCwiZG9jdW1lbnRhdGlvbl91cmwiOiJodHRwczovL29wZW5saWJyYXJ5Lm9yZy9kZXYvZG9jcy9hcGkvc2VhcmNoIiwicSI6IiIsIm9mZnNldCI6bnVsbCwiZG9jcyI6W119"
+}

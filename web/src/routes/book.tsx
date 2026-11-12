@@ -10,13 +10,23 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
+import { ContinueOffers } from "@/books/continue-offer";
+import { EReaderFindings, useConvertFile } from "@/books/ereader";
+import { SendToDevice } from "@/books/deliveries";
+import { SendToKindle } from "@/books/kindle";
+import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
+import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
+import { FollowButtons } from "@/releases/follow";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
+import { QueueButtons } from "@/player/up-next";
 import { useRouteContext } from "@tanstack/react-router";
 import { can } from "@/auth/session";
+import { useUndoJoin } from "@/duplicates/api";
 import { FormError } from "@/components/form";
+import { button, Skeleton } from "@/components/ui";
 import { useRereadFile } from "@/jobs/api";
 import { RereadText } from "@/jobs/search-controls";
 import { librariesQuery } from "@/libraries/api";
@@ -33,8 +43,9 @@ const ROLES: Record<string, MessageKey> = {
 const back = (
 	<Link
 		to="/"
-		className="self-start text-sm text-brand-strong underline underline-offset-4 dark:text-brand"
+		className="inline-flex min-h-6 items-center self-start text-sm text-brand-strong hover:underline underline-offset-4 dark:text-brand"
 	>
+		<span aria-hidden="true">← </span>
 		{t("book.back")}
 	</Link>
 );
@@ -65,7 +76,16 @@ export function Book({ id }: { id: string }) {
 		return (
 			<div className="flex flex-col gap-4">
 				{back}
-				{book.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{book.isPending && (
+					<div className="grid gap-6 sm:grid-cols-[14rem_1fr] sm:gap-10">
+						<Skeleton className="mx-auto aspect-[2/3] w-40 sm:w-full" />
+						<div className="flex flex-col gap-3">
+							<Skeleton className="h-9 w-2/3" />
+							<Skeleton className="h-5 w-1/3" />
+							<span className="sr-only">{t("loading")}</span>
+						</div>
+					</div>
+				)}
 				<FormError error={book.error} />
 			</div>
 		);
@@ -81,7 +101,7 @@ function ListenButton({ bookId }: { bookId: string }) {
 			to="/books/$bookId/listen"
 			params={{ bookId }}
 			onClick={() => player.open(bookId)}
-			className="mt-2 self-start rounded-md bg-brand-strong px-4 py-1.5 font-medium text-white hover:bg-sky-800"
+			className={button("primary", "md")}
 		>
 			{t("book.listen")}
 		</Link>
@@ -100,7 +120,7 @@ function BookPage({ book }: { book: BookDetail }) {
 	const authors = names(book, "author");
 	const narrators = names(book, "narrator");
 	const others = book.contributors.filter((c) => ROLES[c.role]);
-	const details: [MessageKey, string][] = [];
+	const details: [MessageKey, string | string[]][] = [];
 	if (book.publisher) details.push(["book.publisher", book.publisher]);
 	if (book.published) details.push(["book.published", book.published]);
 	if (book.language)
@@ -115,69 +135,106 @@ function BookPage({ book }: { book: BookDetail }) {
 	if (book.identifiers.length > 0) {
 		details.push([
 			"book.identifiers",
-			book.identifiers
-				.map((i) => `${i.type.toUpperCase()} ${i.value}`)
-				.join(", "),
+			book.identifiers.map((i) => `${i.type.toUpperCase()} ${i.value}`),
 		]);
 	}
 
+	const readableFile = book.files.find((f) => !f.missing && readable(f.format));
+	const listenable = book.files.some((f) => f.kind === "audio" && !f.missing);
+	const personal = can(user, "personal:manage");
+
 	return (
-		<article className="flex flex-col gap-6">
+		// Names, file names and identifiers may be words longer than a line:
+		// "anywhere" lets grid and flex items shrink below them, which
+		// "break-word" does not.
+		<article className="flex flex-col gap-8 wrap-anywhere">
 			{back}
-			<div className="grid gap-6 sm:grid-cols-[minmax(0,14rem)_1fr] sm:gap-8">
-				<div className="mx-auto w-40 sm:w-full">
-					<Cover book={book} size="large" />
+			<div className="grid gap-6 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-10">
+				<div className="mx-auto w-44 sm:w-full">
+					<Cover
+						book={book}
+						size="large"
+						named
+						className={book.reading.status === "reading" ? "shadow-candle" : ""}
+					/>
 				</div>
-				<div className="flex min-w-0 flex-col gap-4">
-					<header className="flex flex-col gap-1">
-						<h1 className="text-3xl font-semibold leading-tight">
+				<div className="flex min-w-0 flex-col gap-5">
+					<header className="flex flex-col gap-1.5">
+						{book.series && (
+							<p className="text-sm font-medium tracking-wide text-brand-strong dark:text-brand">
+								<Around
+									text={
+										book.seriesIndex != null
+											? t("book.seriesPosition", {
+													index: book.seriesIndex,
+													series: MARK,
+												})
+											: t("book.series", { series: MARK })
+									}
+								>
+									<SeriesLink name={book.series} seriesKey={book.seriesKey ?? book.series} />
+								</Around>
+							</p>
+						)}
+						<h1 className="text-3xl leading-tight font-semibold sm:text-4xl">
 							{book.title}
 						</h1>
 						{book.subtitle && (
-							<p className="text-lg text-slate-600 dark:text-slate-400">
+							<p className="font-serif text-lg text-slate-600 dark:text-slate-400">
 								{book.subtitle}
 							</p>
 						)}
 						{authors && (
-							<p className="text-lg">{t("book.by", { names: authors })}</p>
+							<p className="text-lg">
+								<Around text={t("book.by", { names: MARK })}>
+									<PeopleLinks people={book.contributors.filter((c) => c.role === "author")} />
+								</Around>
+							</p>
 						)}
 						{narrators && (
 							<p className="text-slate-600 dark:text-slate-400">
 								{t("book.readBy", { names: narrators })}
 							</p>
 						)}
-						{book.series && (
-							<p className="text-slate-600 dark:text-slate-400">
-								{book.seriesIndex != null
-									? t("book.seriesPosition", {
-											index: book.seriesIndex,
-											series: book.series,
-										})
-									: t("book.series", { series: book.series })}
-							</p>
-						)}
-						{book.files.some((f) => f.kind === "audio" && !f.missing) && (
-							<ListenButton bookId={book.id} />
-						)}
-						{can(user, "metadata:edit") && (
-							<div className="mt-2 flex flex-wrap gap-2">
-								<Link
-									to="/books/$bookId/edit"
-									params={{ bookId: book.id }}
-									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
-								>
-									{t("book.edit")}
-								</Link>
-								<Link
-									to="/books/$bookId/find"
-									params={{ bookId: book.id }}
-									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
-								>
-									{t("book.find")}
-								</Link>
-							</div>
-						)}
 					</header>
+
+					{(readableFile || listenable || can(user, "metadata:edit")) && (
+						<div className="flex flex-wrap items-center gap-2">
+							{readableFile && (
+								<Link
+									to="/books/$bookId/read/$fileId"
+									params={{ bookId: book.id, fileId: readableFile.id }}
+									className={button("primary", "md")}
+								>
+									{t("book.file.read")}
+								</Link>
+							)}
+							{listenable && <ListenButton bookId={book.id} />}
+							{personal && (readableFile || listenable) && <ContinueOffers bookId={book.id} />}
+							{listenable && personal && (
+								<QueueButtons bookId={book.id} className={button("secondary", "md")} />
+							)}
+							{can(user, "metadata:edit") && (
+								<>
+									<Link
+										to="/books/$bookId/edit"
+										params={{ bookId: book.id }}
+										className={button("secondary", "md")}
+									>
+										{t("book.edit")}
+									</Link>
+									<Link
+										to="/books/$bookId/find"
+										params={{ bookId: book.id }}
+										className={button("secondary", "md")}
+									>
+										{t("book.find")}
+									</Link>
+								</>
+							)}
+						</div>
+					)}
+					{personal && <FollowButtons book={book} />}
 
 					{book.placeholder && (
 						<p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm dark:border-sky-900 dark:bg-sky-950">
@@ -185,32 +242,16 @@ function BookPage({ book }: { book: BookDetail }) {
 						</p>
 					)}
 
-					{can(user, "personal:manage") && <ReadingControls book={book} />}
-					{can(user, "personal:manage") && <CollectionPicker bookId={book.id} />}
+					{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
+					{personal && <JoinedNotice book={book.id} />}
+
+					{personal && <ReadingControls book={book} />}
 
 					{book.description && (
 						<section aria-label={t("book.description")}>
-							<p className="max-w-prose whitespace-pre-line leading-relaxed">
+							<p className="max-w-prose leading-normal whitespace-pre-line">
 								{book.description}
 							</p>
-						</section>
-					)}
-
-					{details.length > 0 && (
-						<section aria-labelledby="book-details">
-							<h2 id="book-details" className="sr-only">
-								{t("book.details")}
-							</h2>
-							<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-								{details.map(([label, value]) => (
-									<div key={`${label}${value}`} className="contents">
-										<dt className="text-slate-500 dark:text-slate-400">
-											{t(label)}
-										</dt>
-										<dd className="break-words">{value}</dd>
-									</div>
-								))}
-							</dl>
 						</section>
 					)}
 
@@ -219,14 +260,14 @@ function BookPage({ book }: { book: BookDetail }) {
 							aria-labelledby="book-tags"
 							className="flex flex-col gap-2"
 						>
-							<h2 id="book-tags" className="text-sm font-medium">
+							<h2 id="book-tags" className="sr-only">
 								{t("book.tags")}
 							</h2>
 							<ul className="flex flex-wrap gap-2">
 								{book.tags.map((tag) => (
 									<li
 										key={tag}
-										className="rounded-full bg-slate-100 px-3 py-0.5 text-sm dark:bg-slate-800"
+										className="rounded-full border border-slate-200 bg-white px-3 py-0.5 text-sm dark:border-slate-700 dark:bg-slate-900"
 									>
 										{tag}
 									</li>
@@ -234,13 +275,141 @@ function BookPage({ book }: { book: BookDetail }) {
 							</ul>
 						</section>
 					)}
-
-					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
-
-					<SimilarBooks bookId={book.id} />
 				</div>
 			</div>
+
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+				<div className="flex min-w-0 flex-col gap-6">
+					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
+					{personal && <CollectionPicker bookId={book.id} />}
+					{personal &&
+						book.files.some((f) => f.kind === "ebook" && !f.missing) && (
+							<SendToDevice bookId={book.id} />
+						)}
+					{personal &&
+						book.files.some(
+							(f) => f.format === "epub" && !f.missing,
+						) && <SendToKindle bookId={book.id} />}
+				</div>
+				{details.length > 0 && (
+					<section
+						aria-labelledby="book-details"
+						className="self-start rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+					>
+						<h2 id="book-details" className="mb-3 text-lg font-medium">
+							{t("book.details")}
+						</h2>
+						<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
+							{details.map(([label, value]) => (
+								<div key={`${label}${value}`} className="contents">
+									<dt className="text-slate-600 dark:text-slate-400">
+										{t(label)}
+									</dt>
+									<dd className="min-w-0">
+										{Array.isArray(value)
+											? value.map((v) => (
+													<span key={v} className="block">
+														{v}
+													</span>
+												))
+											: value}
+									</dd>
+								</div>
+							))}
+						</dl>
+					</section>
+				)}
+			</div>
+
+			{book.recordings.length > 0 && (
+				<section aria-labelledby="recordings-heading" className="flex flex-col gap-2">
+					<h2 id="recordings-heading" className="font-serif text-lg">
+						{t("book.recordings")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.recordings.map((r) => (
+							<li key={r.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: r.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{r.title}
+								</Link>
+								{r.narrators.length > 0 && (
+									<span className="text-slate-600 dark:text-slate-400">
+										{" · "}
+										{t("book.readBy", { names: r.narrators.join(", ") })}
+									</span>
+								)}
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{book.forms.length > 0 && (
+				<section aria-labelledby="forms-heading" className="flex flex-col gap-2">
+					<h2 id="forms-heading" className="font-serif text-lg">
+						{t("book.forms")}
+					</h2>
+					<ul className="flex flex-col gap-1">
+						{book.forms.map((f) => (
+							<li key={f.id}>
+								<Link
+									to="/books/$bookId"
+									params={{ bookId: f.id }}
+									className="text-brand-strong hover:underline underline-offset-4 dark:text-brand"
+								>
+									{f.title}
+								</Link>
+								<span className="text-slate-600 dark:text-slate-400">
+									{" · "}
+									{f.kinds
+										.map((k) => t(k === "audio" ? "book.form.audio" : "book.form.ebook"))
+										.join(", ")}
+								</span>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{book.joins.length > 0 && (
+				<Joins joins={book.joins} canSplit={can(user, "metadata:edit")} />
+			)}
+
+			<SimilarBooks bookId={book.id} />
 		</article>
+	);
+}
+
+function Joins({ joins, canSplit }: { joins: BookDetail["joins"]; canSplit: boolean }) {
+	const undo = useUndoJoin();
+	return (
+		<section aria-labelledby="joins-heading" className="flex flex-col gap-2">
+			<h2 id="joins-heading" className="font-serif text-lg">
+				{t("book.joins")}
+			</h2>
+			<ul className="flex flex-col gap-2">
+				{joins.map((j) => (
+					<li key={j.id} className="flex flex-wrap items-center gap-3">
+						<span>{t("book.joined", { title: j.title })}</span>
+						{canSplit && (
+							<button
+								type="button"
+								disabled={undo.isPending}
+								onClick={() => undo.mutate(j.id)}
+								className="rounded-md border border-slate-300 px-2 py-1 text-sm hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("book.split")}
+							</button>
+						)}
+					</li>
+				))}
+			</ul>
+			<FormError error={undo.error} />
+		</section>
 	);
 }
 
@@ -257,6 +426,9 @@ function fileNotes(file: BookFile): string[] {
 	return notes;
 }
 
+/** The formats GOtome writes an EPUB from. */
+const KINDLE_FORMATS = ["mobi", "azw", "azw3"];
+
 function Files({
 	bookId,
 	libraryId,
@@ -270,11 +442,15 @@ function Files({
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
 	const trash = useTrashFile();
+	const convert = useConvertFile();
 	const libraries = useQuery(librariesQuery);
 	// Files go to the trash only in a library GOtome writes to.
 	const canTrash =
 		can(user, "metadata:edit") &&
 		Boolean(libraries.data?.find((l) => l.id === libraryId)?.writable);
+	const readOnly =
+		can(user, "metadata:edit") &&
+		libraries.data?.find((l) => l.id === libraryId)?.writable === false;
 	if (files.length === 0) {
 		return null;
 	}
@@ -283,20 +459,23 @@ function Files({
 			<h2 id="book-files" className="text-lg font-medium">
 				{t("book.files")}
 			</h2>
-			<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+			<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
 				{files.map((file) => (
 					<li
 						key={file.id}
-						className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm"
+						className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 text-sm"
 					>
-						<span className="w-12 font-semibold uppercase">{file.format}</span>
-						<span className="min-w-0 flex-1 break-all">
+						<span className="w-14 rounded bg-slate-100 py-0.5 text-center text-xs font-semibold tracking-wide uppercase dark:bg-slate-800">
+							{file.format}
+						</span>
+						<span className="min-w-[10rem] flex-1">
 							{file.name}
 							{fileNotes(file).length > 0 && (
 								<span className="block text-slate-500 dark:text-slate-400">
 									{fileNotes(file).join(" · ")}
 								</span>
 							)}
+							<EReaderFindings file={file} canFix={canTrash} readOnly={readOnly} />
 							{file.extractState === "failed" && (
 								<span className="block text-red-700 dark:text-red-400">
 									{file.extractError
@@ -311,7 +490,7 @@ function Files({
 								disabled={reread.isPending}
 								onClick={() => reread.mutate(file.id)}
 								aria-label={t("book.file.rereadNamed", { name: file.name })}
-								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+								className={button()}
 							>
 								{t("book.file.reread")}
 							</button>
@@ -324,10 +503,21 @@ function Files({
 								to="/books/$bookId/read/$fileId"
 								params={{ bookId, fileId: file.id }}
 								aria-label={t("book.file.readNamed", { name: file.name })}
-								className="rounded-md bg-brand-strong px-3 py-1 font-medium text-white hover:bg-sky-800"
+								className={button()}
 							>
 								{t("book.file.read")}
 							</Link>
+						)}
+						{canTrash && !file.missing && !file.drm && KINDLE_FORMATS.includes(file.format) && (
+							<button
+								type="button"
+								disabled={convert.isPending}
+								onClick={() => convert.mutate(file.id)}
+								aria-label={t("book.file.convertNamed", { name: file.name })}
+								className={button()}
+							>
+								{t("book.file.convert")}
+							</button>
 						)}
 						{canTrash && !file.missing && (
 							<button
@@ -335,7 +525,7 @@ function Files({
 								disabled={trash.isPending}
 								onClick={() => trash.mutate(file.id)}
 								aria-label={t("book.file.trashNamed", { name: file.name })}
-								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+								className={button("danger")}
 							>
 								{t("book.file.trash")}
 							</button>
@@ -345,7 +535,7 @@ function Files({
 								href={downloadUrl(file)}
 								download
 								aria-label={t("book.file.downloadNamed", { name: file.name })}
-								className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+								className={button()}
 							>
 								{t("book.file.download")}
 							</a>
@@ -353,7 +543,7 @@ function Files({
 					</li>
 				))}
 			</ul>
-			<FormError error={reread.error ?? trash.error} />
+			<FormError error={reread.error ?? trash.error ?? convert.error} />
 			{canReread && files.some((f) => f.hasText) && (
 				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />
 			)}

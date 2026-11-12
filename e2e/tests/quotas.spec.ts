@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { openSignedIn, signIn } from "../fixtures/app";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
+import { chooseUploadLibrary, openSignedIn, signIn } from "../fixtures/app";
 
 test("an upload past the quota is refused and says why", async ({
 	page,
@@ -37,10 +38,7 @@ test("an upload past the quota is refused and says why", async ({
 	await expect(
 		them.getByText("Your uploads take up 0 B of the 1 KB you may use."),
 	).toBeVisible();
-	const choice = them.getByRole("combobox", { name: "Into the library" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: `Quota ${stamp}` });
-	}
+	await chooseUploadLibrary(them, `Quota ${stamp}`);
 	await them.getByLabel("Choose files").setInputFiles({
 		name: `Too big ${stamp}.pdf`,
 		mimeType: "application/pdf",

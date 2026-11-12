@@ -22,7 +22,7 @@ func TestSpreadTakesTheMiddlesOfEqualParts(t *testing.T) {
 }
 
 func TestLiteralIsWhatPgvectorReads(t *testing.T) {
-	if got := literal([]float32{0.5, -0.25, 1e-7}); got != "[0.5,-0.25,1e-07]" {
+	if got := Literal([]float32{0.5, -0.25, 1e-7}); got != "[0.5,-0.25,1e-07]" {
 		t.Errorf("literal = %s", got)
 	}
 }

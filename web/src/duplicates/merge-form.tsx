@@ -165,7 +165,7 @@ export function MergeForm({
 			<button
 				type="submit"
 				disabled={merge.isPending}
-				className="self-start rounded-md bg-brand-strong px-3 py-1 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+				className="self-start rounded-md bg-brand-strong px-3 py-1 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 			>
 				{t("merge.submit", { title: kept.title })}
 			</button>

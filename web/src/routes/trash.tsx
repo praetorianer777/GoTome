@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { type CurrentUser, can } from "@/auth/session";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatDate, formatSize } from "@/lib/format";
 import {
@@ -21,14 +22,9 @@ export function Trash({ user }: { user: CurrentUser }) {
 	const canPurge = can(user, "storage:manage");
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="text-2xl font-semibold">{t("trash.title")}</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("trash.intro")}
-				</p>
-			</div>
+			<PageHeader title={t("trash.title")} intro={t("trash.intro")} />
 			<FormError error={files.error} />
-			{files.isPending && <p className="text-slate-500">{t("loading")}</p>}
+			{files.isPending && <Loading />}
 			{files.data?.length === 0 && (
 				<p role="status" className="text-slate-600 dark:text-slate-400">
 					{t("trash.empty")}

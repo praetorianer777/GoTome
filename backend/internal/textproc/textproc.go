@@ -44,6 +44,12 @@ type Chunk struct {
 	// Lang is the chunk's language as Detect says it.
 	Lang string
 	Text string
+	// SectionFrom and SectionTo are the indexes of the sections the chunk
+	// starts and ends in; From is where it starts in the first, To where it
+	// ends in the last, in characters of their normalised text. Slice cuts
+	// the chunk out of those sections again.
+	SectionFrom, SectionTo int
+	From, To               int
 }
 
 // sectionSeparator stands between two sections in the whole text, as in
@@ -68,6 +74,8 @@ func Split(sections []Section, opts Options) []Chunk {
 		chapter string
 		page    int
 		offset  int
+		section int
+		pos     int
 	}
 	var paras []para
 	offset := 0
@@ -79,7 +87,7 @@ func Split(sections []Section, opts Options) []Chunk {
 		pos := 0
 		for p := range strings.SplitSeq(text, "\n\n") {
 			if strings.TrimSpace(p) != "" {
-				paras = append(paras, para{text: p, chapter: s.Label, page: s.Page, offset: offset + pos})
+				paras = append(paras, para{text: p, chapter: s.Label, page: s.Page, offset: offset + pos, section: i, pos: pos})
 			}
 			pos += utf8.RuneCountInString(p) + 2
 		}
@@ -113,13 +121,14 @@ func Split(sections []Section, opts Options) []Chunk {
 	add := func(p para, text string, length int) {
 		from, to := page(p, length)
 		if cur == nil {
-			cur = &Chunk{Chapter: p.chapter, Offset: p.offset, PageFrom: from, PageTo: to}
+			cur = &Chunk{Chapter: p.chapter, Offset: p.offset, PageFrom: from, PageTo: to, SectionFrom: p.section, From: p.pos}
 		} else {
 			b.WriteString("\n\n")
 			cur.PageTo = max(cur.PageTo, to)
 		}
 		b.WriteString(text)
 		n += length
+		cur.SectionTo, cur.To = p.section, p.pos+length
 	}
 	for _, p := range paras {
 		l := utf8.RuneCountInString(p.text)
@@ -130,7 +139,9 @@ func Split(sections []Section, opts Options) []Chunk {
 			head, rest, headLen := cutAtSpace(p.text, ChunkSize)
 			add(p, head, headLen)
 			flush()
-			p.offset += utf8.RuneCountInString(p.text) - utf8.RuneCountInString(rest)
+			consumed := utf8.RuneCountInString(p.text) - utf8.RuneCountInString(rest)
+			p.offset += consumed
+			p.pos += consumed
 			p.text, l = rest, utf8.RuneCountInString(rest)
 		}
 		if l > 0 {
@@ -144,6 +155,30 @@ func Split(sections []Section, opts Options) []Chunk {
 		out[i].Lang = Detect(out[i].Text, book)
 	}
 	return out
+}
+
+// Slice is a chunk's text read again from its sections: texts are the
+// sections from the chunk's SectionFrom to its SectionTo as extraction gave
+// them, and from and to its From and To. It differs from the chunk's Text
+// only in whitespace, where Split left blank paragraphs out. Offsets past the
+// text, as from a file that changed, are cut to it.
+func Slice(texts []string, from, to int) string {
+	if len(texts) == 0 {
+		return ""
+	}
+	var runes []rune
+	last := 0
+	for i, t := range texts {
+		if i > 0 {
+			runes = append(runes, []rune(sectionSeparator)...)
+		}
+		r := []rune(Normalize(t))
+		last = len(runes)
+		runes = append(runes, r...)
+	}
+	end := min(max(last+to, 0), len(runes))
+	start := min(max(from, 0), end)
+	return strings.TrimSpace(string(runes[start:end]))
 }
 
 // cutAtSpace splits s after at most limit characters, at the last space

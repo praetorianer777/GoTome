@@ -1,6 +1,24 @@
 package main
 
-import "testing"
+import (
+	"slices"
+	"testing"
+
+	"github.com/praetorianer777/gotome/backend/internal/metadata/crossref"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/dnb"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/googlebooks"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/hardcover"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
+	"github.com/praetorianer777/gotome/backend/internal/settings"
+)
+
+// The setting offers the providers serve registers, and no other.
+func TestTheProvidersSettingNamesTheRegisteredProviders(t *testing.T) {
+	registered := []string{openlibrary.Name, crossref.Name, hardcover.Name, dnb.Name, googlebooks.Name}
+	if !slices.Equal(registered, settings.ProviderNames) {
+		t.Errorf("serve registers %v, the setting offers %v", registered, settings.ProviderNames)
+	}
+}
 
 func TestHealthURL(t *testing.T) {
 	cases := []struct{ addr, want string }{

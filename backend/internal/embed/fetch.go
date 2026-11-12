@@ -2,18 +2,22 @@ package embed
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
+
+	"github.com/praetorianer777/gotome/backend/internal/outbound"
 )
 
 // DefaultSource is where model files come from: Hugging Face, which serves
@@ -70,7 +74,7 @@ func Fetch(ctx context.Context, root string, spec Spec, opts FetchOptions) (stri
 		if opts.Offline {
 			return "", fmt.Errorf("%w: %s is missing or not the pinned file, and GOTOME_OFFLINE forbids downloading it", ErrModelMissing, path)
 		}
-		url := fmt.Sprintf("%s/%s/resolve/%s/onnx/%s", source, spec.Model.Name, spec.Model.Revision, f.Name)
+		url := fmt.Sprintf("%s/%s/resolve/%s/onnx/%s", source, spec.Model.Name, spec.revision(), f.Name)
 		log.Info("downloading the embedding model", "file", f.Name, "bytes", f.Size, "from", url)
 		if err := download(ctx, client, url, path, f); err != nil {
 			return "", fmt.Errorf("download %s: %w", f.Name, err)
@@ -79,13 +83,83 @@ func Fetch(ctx context.Context, root string, spec Spec, opts FetchOptions) (stri
 	return dir, nil
 }
 
+// Present reports whether the spec's files lie in root/spec.Dir with their
+// pinned sizes. It reads no file, so it is cheap enough to ask on every
+// look at the settings; opening the model checks the hashes.
+func Present(root string, spec Spec) bool {
+	if !spec.Runs() {
+		return false
+	}
+	for _, f := range spec.Files() {
+		info, err := os.Stat(filepath.Join(root, spec.Dir, f.Name))
+		if err != nil || info.Size() != f.Size {
+			return false
+		}
+	}
+	return true
+}
+
+// own are the spec's files that keep does not have too: the same name in
+// the same folder, as the two weights of e5-small share their tokenizer.
+func own(spec, keep Spec) []File {
+	if !spec.Runs() {
+		return nil
+	}
+	var out []File
+	for _, f := range spec.Files() {
+		if spec.Dir == keep.Dir && keep.Runs() && slices.ContainsFunc(keep.Files(), func(k File) bool { return k.Name == f.Name }) {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// StoredBytes is what the spec's files take in root/spec.Dir now, of those
+// keep does not have too, whatever their state: a file half downloaded or
+// corrupted counts as it lies.
+func StoredBytes(root string, spec, keep Spec) int64 {
+	var n int64
+	for _, f := range own(spec, keep) {
+		if info, err := os.Stat(filepath.Join(root, spec.Dir, f.Name)); err == nil && info.Mode().IsRegular() {
+			n += info.Size()
+		}
+	}
+	return n
+}
+
+// Remove deletes the spec's files from root/spec.Dir, but those keep has
+// too, and the folder once nothing else is in it; it returns the bytes it
+// freed. A model only a server runs has none.
+func Remove(root string, spec, keep Spec) (int64, error) {
+	var freed int64
+	var errs []error
+	for _, f := range own(spec, keep) {
+		path := filepath.Join(root, spec.Dir, f.Name)
+		info, err := os.Lstat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err == nil {
+			err = os.Remove(path)
+		}
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		freed += info.Size()
+	}
+	if spec.Runs() {
+		// Fails while anything else is in it, such as the files of keep.
+		_ = os.Remove(filepath.Join(root, spec.Dir))
+	}
+	return freed, errors.Join(errs...)
+}
+
+// defaultClient is guarded like every other outbound request: the address
+// is GOtome's own, but a redirect from it could point anywhere.
 func defaultClient() *http.Client {
-	return &http.Client{Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
-		TLSHandshakeTimeout:   15 * time.Second,
-		ResponseHeaderTimeout: 30 * time.Second,
-	}}
+	return outbound.NewClient(outbound.Options{HeaderTimeout: 30 * time.Second})
 }
 
 // matches reports whether the file at path has f's size and hash.
@@ -105,11 +179,22 @@ func matches(path string, f File) (bool, error) {
 	if info.Size() != f.Size {
 		return false, nil
 	}
-	h := sha256.New()
+	h, want, _ := digest(f)
 	if _, err := io.Copy(h, file); err != nil {
 		return false, err
 	}
-	return hex.EncodeToString(h.Sum(nil)) == f.SHA256, nil
+	return hex.EncodeToString(h.Sum(nil)) == want, nil
+}
+
+// digest is the hash a file is checked by and the value it must have: its
+// SHA-256, or the SHA-1 git names a blob by, of a header and the content.
+func digest(f File) (h hash.Hash, want, name string) {
+	if f.SHA256 != "" {
+		return sha256.New(), f.SHA256, "SHA-256"
+	}
+	h = sha1.New()
+	fmt.Fprintf(h, "blob %d\x00", f.Size)
+	return h, f.GitBlob, "git blob ID"
 }
 
 func download(ctx context.Context, client *http.Client, url, path string, f File) (err error) {
@@ -135,7 +220,7 @@ func download(ctx context.Context, client *http.Client, url, path string, f File
 			os.Remove(part.Name())
 		}
 	}()
-	h := sha256.New()
+	h, want, name := digest(f)
 	n, err := io.Copy(io.MultiWriter(part, h), io.LimitReader(resp.Body, f.Size+1))
 	if err != nil {
 		return err
@@ -143,8 +228,8 @@ func download(ctx context.Context, client *http.Client, url, path string, f File
 	if n != f.Size {
 		return fmt.Errorf("got %d bytes, want %d", n, f.Size)
 	}
-	if sum := hex.EncodeToString(h.Sum(nil)); sum != f.SHA256 {
-		return fmt.Errorf("SHA-256 is %s, want %s; nothing kept", sum, f.SHA256)
+	if sum := hex.EncodeToString(h.Sum(nil)); sum != want {
+		return fmt.Errorf("%s is %s, want %s; nothing kept", name, sum, want)
 	}
 	if err := part.Close(); err != nil {
 		return err

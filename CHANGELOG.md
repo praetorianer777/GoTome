@@ -8,6 +8,1118 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Google Books as a source of book details, by ISBN, title and author:
+  descriptions, page counts, dates, categories and covers. It works without
+  a key within Google's anonymous quota; an API key can be set under
+  Settings. A source whose quota is used up is left alone for a while and
+  lookups go on afterwards instead of failing ([metadata](docs/metadata.md)).
+
+## [0.24.0] - 2026-11-12
+
+### Added
+
+- A book with a text and an audiobook offers to go on in the other medium:
+  "Continue in the audiobook at 2:14:05" or "Continue reading at Chapter 12"
+  on its page, in the reader and in the player, when the other is further
+  along. Chapters both name alike place it exactly; otherwise it is the same
+  share of the whole. Nothing moves until you choose
+  ([getting started](docs/getting-started.md)).
+- Import a Calibre library: add the Calibre folder as an existing folder,
+  let it be scanned, and under Libraries choose "Import from Calibre". A
+  preview counts the books, formats, covers, series and tags and names what
+  is left out; the import then gives each book Calibre's title, authors,
+  series, tags, publisher, date, language, identifiers, description and
+  cover, and on request your ratings and, from custom columns, your reading
+  status or tags. `metadata.db` is only read, so Calibre may keep running.
+  What you set in GOtome is kept, and running the import again brings in
+  what changed in Calibre since. A Calibre book's formats are now always
+  one book in GOtome.
+- KEPUB for Kobo readers: a device's page has a switch (off at first) that
+  makes GOtome tell a Kobo reader, or a Tolino in Kobo mode, of each EPUB as
+  a KEPUB, which the reader reads with better statistics and page turns.
+  GOtome makes it itself when the reader syncs and keeps it with the other
+  copies for devices ([devices](docs/devices.md#kepub-for-kobo-readers)).
+- Convert to EPUB: a book's page offers to write an EPUB from a MOBI, AZW or
+  AZW3 file as a new file of the same book beside it, in a library GOtome
+  writes to. The original stays ([devices](docs/devices.md#kindle-files-to-epub)).
+
+### Changed
+
+- Similar books and the search by description compare books by a cleaner
+  text: titles without a shop's additions ("(German Edition)", ": Roman")
+  and without placeholder authors ("authors_sort"). Every book's metadata
+  vector is made again after the upgrade, in the background; the text
+  vectors stay.
+- New setting `embedding.contentSamples` (16 unless set): how many passages
+  of a book's text its content vector is made from.
+
+### Fixed
+
+- Reopening an e-book no longer saves a coarser place (the start of the
+  section, in Safari) over the exact one it opened at.
+
+## [0.23.0] - 2026-11-12
+
+### Added
+
+- Webhooks: an administrator registers addresses that GOtome tells of events
+  (books added, scan failed, duplicates found, a release out, an update
+  available and the others people are notified of). Each delivery is a small
+  signed JSON of IDs and counts, never a title, retried with a growing wait,
+  with a log per webhook and a "send test" button. Only public addresses are
+  reached unless the webhook is marked trusted ([webhooks](docs/webhooks.md)).
+- Prometheus metrics at `GET /api/v1/metrics`, off until the setting
+  `metrics.enabled` is on, for an API key of the new `metrics` scope: counts
+  of books, files and users, job queues and failures, requests and their
+  latency by route, the database pool and the search index's backlog
+  ([metrics](docs/metrics.md)).
+
+### Changed
+
+- With Windows high contrast (forced colours) on, focus rings, buttons,
+  switches and what is selected or current are drawn in system colours;
+  with "more contrast" on, borders and grey text become stronger and the
+  glass panels solid; with reduced motion on, no transition or animation
+  runs anywhere.
+- The audiobook player announces the chapter it has come to and the sleep
+  timer when set, and the ebook reader announces the chapter as it changes.
+- New page: accessibility (`docs/accessibility.md`), with what is checked and
+  how to report a barrier.
+
+### Fixed
+
+- The "finished" toast is announced by screen readers that ignored it, as it
+  now appears inside a live region that was already on the page.
+
+## [0.22.0] - 2026-11-12
+
+### Added
+
+- A documented, versioned audio API for third-party players
+  (`docs/api-audio.md`): the audio timeline, series and downloads now accept
+  device tokens as well as API keys, and the stable routes are marked in the
+  OpenAPI document.
+- A library can be left out of full-text search. The switch is on the
+  Libraries page, with how many of the library's books are in the index; off,
+  its text is still read for similar books and duplicates but not indexed,
+  and the search page names the libraries it did not look in.
+- A GOtome that is reached at two addresses, one at home and one on the road,
+  can name them in `GOTOME_PUBLIC_URLS`. The Tolino app learns them from GOtome
+  and the KOReader plugin download carries them; each tries them in order with
+  a short timeout, the one that worked last first. The profile shows them when
+  a device is added.
+- A book with e-reader findings is sent to a device (OPDS, Kobo sync, the Tolino
+  app) as a fixed copy, made in the background when the book is queued, so it
+  also works for libraries GOtome cannot write to. The library's file is never
+  changed; a download that finds no copy ready yet gets the file as it is. The
+  device's book list says "sent fixed", and KOReader's progress sync finds the
+  book by the copy's hash too. The setting `devices.fixOnSend` turns it off;
+  the copies are not part of a backup.
+- The overview splits the books with e-reader findings by kind, each linking to
+  its own list. A list filtered by e-reader findings says so above the books,
+  with a button to remove it, and marks each book that has findings, naming
+  them. Where a library's folder is read-only for GOtome, the book page and
+  the bulk bar say why Fix is not offered.
+
+### Fixed
+
+- Deleting a library while duplicate checks, text signing or embedding of
+  its books were running could fail with an error instead of removing it.
+- A book that two followed authors or series list shows once under New
+  books, in the list its date says and with the cover either source has,
+  instead of once in each list (#507).
+
+## [0.21.0] - 2026-11-11
+
+### Added
+
+- GOtome for Tolino shows the DRM-free EPUBs and PDFs that are already on the
+  Tolino: those GOtome has count as on the device, so their reading progress
+  arrives, and the store has a tab "Nicht in GOtome" with the rest, each with
+  "Zu GOtome hochladen". Uploading needs an account that may upload books and
+  a device added with "Allow this device to upload books" on the profile.
+- Embedded fonts that make an EPUB heavy for an e-reader can be shrunk instead
+  of removed: "Shrink the fonts" on the book's page and in "Fix for
+  e-readers" keeps each TrueType and OpenType (CFF) font, cut down to the
+  characters the book uses, so a typeface the book relies on stays at a fraction of its size.
+  Fonts it cannot cut (WOFF2, or damaged ones) stay as they are
+  unless the fonts are still over 1 MB, when they are removed.
+
+### Changed
+
+- "Fix for e-readers" with "Everything found" shrinks the fonts rather than
+  removing them.
+
+### Fixed
+
+- Read aloud no longer says a sentence twice when the page settles after it
+  has turned to the sentence.
+- GOtome for Tolino: the store comes up again from the "GOtome" book after the
+  app has run for hours. Reading the reader's log no longer waits on the
+  database or the network, and the app restarts the log reader when it has
+  heard nothing for three minutes.
+- GOtome for Tolino: the store is brought up once the reader has shown the
+  book, and again if the reader's viewer covered it, instead of at a fixed
+  moment that the viewer could miss.
+- GOtome for Tolino: the app finds the newest release with its APK, looks for
+  it even when GOtome cannot be reached, no longer offers the version it
+  already is, and hands a new version to Android's installer by itself.
+- GOtome for Tolino: the database is opened once, so Android no longer reports
+  leaked SQLite connections.
+
+## [0.20.0] - 2026-11-11
+
+### Added
+
+- A book that has an ISBN only from its imprint page is looked up by it, once
+  per ISBN: an hourly pass queues those not yet looked up, among them the
+  books that got one while their text was read again after 0.19.0. It runs
+  while `metadata.autoMatch` is on; turned on later, it catches up. With
+  `metadata.matchThreshold` at 1 only a source that has the same ISBN fills
+  gaps, and everything else waits on the Review page.
+- The overview counts the books with an ISBN from their imprint page.
+
+### Fixed
+
+- While texts are read again after an update, the search index's status says
+  how many are done and that search answers with the earlier reading of the
+  rest, instead of counting only those read again as known to search; and
+  the overview no longer counts the books waiting to be read again as ebooks
+  whose text was not read.
+
+## [0.19.0] - 2026-11-11
+
+### Added
+
+- A book whose file names no ISBN gets the one printed on its imprint page,
+  looked for after the word ISBN in the first and last pages of an EPUB or
+  PDF, so it can be looked up by ISBN. An ISBN marked as the e-book's comes
+  first; a list of other titles is not taken. One that stands only beside
+  "Print" or "Taschenbuch" is another edition's: it is asked about when the
+  book is looked up but never stored as the book's ISBN. The publisher and
+  the year printed there (`© 2019 Beispielverlag`, `1. Auflage 2019`) fill
+  those fields where the book has none. Nothing a file's metadata, a
+  provider or a person set is replaced. The first start after the update
+  reads the text of every book again in the background, which keeps the CPU
+  busy for hours on a large library.
+- GOtome can learn how sure a match is from your own books. Books with an
+  ISBN are looked up without it, and the weights of the score (title,
+  authors, year, language, publisher, pages, series, kind of edition,
+  which source) are fitted to which candidates were right, so that a
+  threshold of 0.95 takes matches that are right 95 times in 100 on your
+  library. On the settings page, under Book details, **Measure** and
+  **Learn from my library** run in the background with their progress and
+  show their results as tables: what comes first, what each threshold
+  takes, the hand-set weights beside the learned ones, and how well the
+  score's figures match what was found. `gotome match-train` does the
+  same from the command line, and `gotome match-check` ranks with every
+  score side by side. Nothing changes until you choose: the setting
+  `metadata.scoreWeights` stays on the hand-set weights, and `learned`
+  or `imported` switches; a learned score seldom gives another edition
+  0.95, so lower `metadata.matchThreshold` to what Measure shows (about
+  0.7 on a German library measured). `metadata.learnScore` (off) learns
+  again every week.
+- The learned weights can be exported as a small file that holds numbers
+  only (no title, author, ISBN or path), and a file someone shared can be
+  imported and measured on your library before you use it. A release
+  brings starting weights for a library in German, learned on one: with
+  `learned` chosen, a library whose books are mostly in German ranks with
+  them until it has learned its own.
+- Where books have been embedded and a source returns a description with
+  its search results (Hardcover, CrossRef), a candidate found by title
+  also counts by its description: how near it is to the book's own text is one more
+  thing the learned score weighs, which tells another book of the same
+  author and a like title from the book itself.
+
+### Changed
+
+- The Deutsche Nationalbibliothek is asked again when the exact title and
+  author find no book: with the title cut at a colon, dash or bracket and
+  without a volume number, with the author's last name alone, and with the
+  words of both anywhere in the record. Books it knew under another
+  spelling of title or author are now found.
+- With learned weights chosen, matches that wait for review are kept
+  from a score of 0.2 instead of 0.5, as their score is a probability of
+  the exact edition.
+
+### Fixed
+
+- The **Not interested** button under a recommendation is tall enough to tap
+  easily.
+- A book card on the library page no longer grows wider than a narrow screen
+  when its author or series name is very long or its "Completed" and star
+  rating do not fit side by side: the names are cut off with an ellipsis and
+  the standing wraps.
+- A book chunked while the embedding pass was running no longer waits for the
+  next hourly pass before its similar books appear.
+
+## [0.18.0] - 2026-11-11
+
+### Added
+
+- The setting `curation.matches.edition` (off to begin with) lets automatic
+  match runs take a match no second source confirms when it has the book's
+  title, an author and the publisher of the file, and a year at most one
+  off. For German books the Deutsche Nationalbibliothek is often the only
+  source that knows them. `gotome match-check` shows what it would take on
+  your library and how much of it is right.
+
+### Changed
+
+- Looking a book up ranks its editions better: of one title, author and
+  publisher, the e-book comes before the printed edition when the book's
+  files are e-books, as the Deutsche Nationalbibliothek says which is
+  which. `gotome match-check` counts another edition of the book apart
+  from another book, and weighs the book's publisher, pages and series as
+  a lookup does; `docs/metadata.md` has the numbers and advises putting
+  `dnb` first for a library mostly in German.
+
+## [0.17.0] - 2026-11-11
+
+### Added
+
+- The Deutsche Nationalbibliothek can be asked for book details: by ISBN,
+  by title and author, and for the books of an author or a series, which
+  includes German titles publishers have announced, with the month they are
+  due, so following an author shows them under New books. Add `dnb` to the
+  setting `metadata.providers` to use it; it is not asked by default.
+- GOtome can be served under a path of a shared host name, such as
+  `https://example.org/gotome/`: set `GOTOME_BASE_PATH=/gotome/` and have the
+  proxy pass the prefix on. The web app, the API, the OPDS catalogue, Kobo and
+  KOReader addresses, the KOReader plugin download, the cookies and the single
+  sign-on redirect address follow it. The new page
+  `docs/reverse-proxy-sub-path.md` has Caddy, nginx and Traefik examples.
+- A book you read but do not own is joined to the library's book once that
+  book gains an ISBN, or its title or authors change to fit it (an edit, a
+  lookup, Fetch details, a clean-up, a file read): your status, stars, dates,
+  note and collections move to it and the history shows the book once. The
+  join is on the Changes page and can be undone. On a book you read but do not
+  own, **This is a book of the library** does the same by hand, with an undo.
+  The import preview lists rows that look like a book of the library
+  (a translation, a retitled edition) as "maybe" for you to accept.
+- Clean-ups where the data decides can be applied at once. On the clean-up
+  page each such kind (a tool's stand-in as author, a shop's addition to a
+  title, one person's name spelled differently only in order, case, accents
+  or initials, a series that at least three titles name) says how many
+  suggestions it would apply and has a **Dry run** and a **Run** button. The
+  run is on the Changes page with the reason of each change, can be undone,
+  and writes nothing into the files until you confirm it. With the new
+  setting `curation.cleanup.kinds` a daily run does the same.
+- The Review page takes over what is plain: with `curation.matches.auto` on
+  (off to begin with) a daily run takes fields from matches that two sources
+  agree on or that share the book's ISBN, leaves a field in real conflict for
+  you and keeps the match, and dismisses matches in another language than the
+  text or years from the file's date. The page shows what the rule would do
+  with **Dry run** and **Run**, and groups the other matches by source and
+  score so you can look at a sample and accept the group. `gotome
+  match-check` prints how many of the sampled books the rule would accept
+  and how many of those are right.
+- Duplicate pairs the evidence leaves no doubt about can be resolved by
+  GOtome itself. On the Duplicates page each class (same file or same text,
+  nearly the same text, mostly the same text, one book holding the other
+  whole, one holding most of the other) shows its open pairs with a **Dry run**
+  and a **Run**. Books of the same text are made one: the book anyone reads
+  or set a field of by hand survives, the fields are decided one by one
+  (a locked field is never overwritten), and of two files of one format the
+  worse goes to the trash. Books that hold one another stay two and are
+  linked. A dry run lists what would be done and changes nothing; every run
+  shows under Changes and can be undone. The settings
+  `curation.duplicates.classes` (none by default) and
+  `curation.duplicates.onConflict` let a daily run handle new pairs.
+  `gotome duplicate-check` shows what the rules would do with a sample of
+  your pairs, naming no book ([docs/duplicates.md](docs/duplicates.md)).
+
+### Changed
+
+- Looking a book up without an ISBN ranks candidates better: a candidate in
+  another language than the book is scored much lower, and page count,
+  publisher, series and place in the series count where both know them, so
+  a translation or the next volume is less often taken as the book. Among
+  equal scores the book's own language comes first.
+- Undoing a run under Changes is done by a job, so a run of hundreds of
+  merges can be taken back: the button answers at once and the run says
+  how far the undo has got.
+
+## [0.16.0] - 2026-11-10
+
+### Added
+
+- Every suggestion on the clean-up page can show its books before and after:
+  each book with the fields the fix changes, the old value struck through and
+  the new one beside it, and the fields you locked marked as staying. The
+  first five show, "and n more" shows the rest. Beside each book it says what
+  a provider is already known to say about it (a match kept for the book, or
+  an answer cached from an earlier lookup by its ISBN) and whether that
+  agrees with the suggestion. Nothing is asked of a provider for this.
+
+### Changed
+
+- Similar books, recommendations, the search by description and the facets of
+  a quick search answer two to five times faster on a library embedded with
+  bge-m3: the vectors are stored in the database's rows, and the facets look
+  the matching books up once. The first start after upgrading writes every
+  vector again, which takes a few minutes on a large library before GOtome
+  answers. The
+  search by description opens its model when GOtome starts, if its files are
+  there, and answers "the embedding model is loading" while it opens instead
+  of waiting for it.
+
+### Fixed
+
+- Clean-up no longer offers to take the series off the books of an author
+  whose name is also a series just because some of their books lack it. House
+  names of series look exactly like that, and applying the old suggestion would have cleared the series, and the places in
+  it, from dozens of novels. The page now asks which the name is: the series
+  (the author goes from every book and the books without the series get it,
+  at the place their title says) or the author (the books leave the series).
+  Each choice shows what it does to every book first, and one is ticked
+  beforehand only where the titles or a provider's answer point to it. "Apply
+  all" leaves these suggestions for you to decide.
+- `gotome perf-check` reports a view that does not answer within its time
+  limit as "over 10 s" in its row, fails at the end, and times the views after
+  it, instead of stopping there.
+- On a phone, the wishlist's lookup results no longer squeeze their text
+  into a narrow column: the buttons now sit below the text.
+
+## [0.15.0] - 2026-11-10
+
+### Added
+
+- A new page, Changes, lists what was merged, replaced or cleaned up, run by
+  run, with each book's details before and after. A run, or one change of
+  it, can be undone: the merged book comes back with its files, shelves and
+  reading, and files moved to the trash return to their book. A change to a
+  book that was edited since is left as it is and reported.
+- The match review, the genre review and the clean-up page show a book beside
+  the list when you click it (a full-screen view on a phone): cover, names,
+  description, files, tags, a link to its page and "Look inside", which opens
+  the book in its reader without saving a place, a reading session or a
+  status. The open book is in the address, so back closes it.
+- A genre suggestion shows the book's description (folded to a few lines) and
+  tags in its row.
+
+### Changed
+
+- Comparing a found match with a book (review and "Find details online") now
+  lists every field side by side, not only the ones that differ: equal fields
+  are plain, differing ones highlighted and ticked as before, empty ones
+  marked. On a phone the two sides are stacked.
+- On a wide window each clean-up suggestion is one row, with its buttons at
+  the right end, instead of three or four lines.
+- On the clean-up page a suggestion goes away as soon as you click it, and
+  comes back with the error if the server refuses; applying or dismissing one
+  no longer works out every suggestion of its kind first.
+
+### Fixed
+
+- The list of authors no longer runs past a phone's screen when a name is
+  very long.
+- On the duplicates page the two "Keep this" buttons of a pair stand at the
+  same height whatever the books' titles say, and the books' details line up.
+
+## [0.14.1] - 2026-11-10
+
+### Fixed
+
+- A library's last scan of a single file says "one file", not "1 files".
+- `gotome similar-check -recommend` says when nobody has enough books rated
+  4 or 5 stars to measure, instead of printing a table of zeros.
+
+## [0.14.0] - 2026-11-10
+
+### Added
+
+- Libraries watch their folders: files put into (or taken out of) a library's
+  folder are found by a scan about a minute later, without pressing "Scan
+  now". Network shares are checked every minute instead, and the overview
+  tells when the kernel's limit of watches is reached. It can be turned off
+  per library.
+- Send to Kindle: when an administrator has set up a mail server (Settings,
+  Mail), a book's EPUB goes to your Kindle by e-mail, from the book's page or
+  for books selected in a list. Add your Kindle address on your profile and
+  approve the sender address in your Amazon account. Only EPUB files up to
+  50 MB are sent, unchanged; each send is a job whose outcome is on the book's
+  page and in a notification. See `docs/kindle.md`.
+- Books you read but the library does not hold (most of an imported Goodreads
+  or StoryGraph history) now count in what "For you" learns from your taste,
+  and are never recommended themselves. See `docs/similarity.md`.
+- Statistics count the books completed with no finish date, such as those an
+  imported history gave none, apart from the years ("Completed without a
+  date"), without inventing a date for them.
+- Books an imported Goodreads or StoryGraph history adds that the library
+  does not hold are looked up by their ISBN like a new file is, so they get
+  a cover and a description. See `docs/importing-reading-history.md`.
+
+- The audiobook player's sleep timer fades the volume down before it stops,
+  can be extended by 15 minutes (a button, or shaking the phone where the
+  browser allows it, also just after it stopped), and can start by itself
+  when you play a book between hours you choose. A volume boost of up to
+  twice, with a limiter against clipping, helps with quiet recordings. The
+  night hours and the boost are kept per browser.
+- A queue for audiobooks: "Play next" and "Add to queue" on a book's page,
+  "Add to the queue" for books selected in a list and "Queue the rest of
+  this series" on a series' page. The next book starts by itself when one
+  ends, from where you left it. The queue is yours, kept on the server, so
+  it is the same in every browser, and is listed under the player, where you
+  can reorder or clear it.
+- Two recordings of one audiobook by different narrators are no longer
+  suggested as duplicates to merge: the Duplicates page says "another
+  narrator" and links them as other recordings, which each book's page then
+  lists with their narrators. The library can be filtered by narrator.
+- An ebook and its audiobook of the same title and author, which a scan
+  makes two books because they lie in different folders, are shown on the
+  Duplicates page as such. A library can join them by itself (Libraries
+  page, "Make one book of an ebook and its audiobook ..."); a book joined
+  so says so on its page and can be split again. Between two libraries
+  nothing is merged, as a file stays in its library's folder: the pair can
+  be linked, and each book's page lists the other under "Also as".
+- "For you": a row in the library's strip, and a page with more, recommend
+  unread books of the libraries you see that are near what you finished or
+  rated well, each with the books it is "because you liked". Someone who
+  reads crime and fantasy gets both. "Not interested" leaves a book out
+  for good. It needs three finished or rated books and the embedding of
+  similar books; nothing is sent anywhere. `gotome similar-check -recommend`
+  measures it on your ratings (`docs/similarity.md`).
+- Your reading history now includes books the library does not hold: on
+  Wishlist, "Add as read" (with stars and the day you finished it) and
+  "Currently reading" sit beside "Wish for it", and "Your reading" lists
+  everything you read with filters by year, status and stars and a search.
+  Every book page has a private note. See `docs/importing-reading-history.md`.
+- Profile, "Import reading history": bring in a Goodreads or StoryGraph
+  export (a CSV file). You see a preview first, pick the right book for
+  rows that could be several, and the import sets status, stars, finish
+  dates, notes and collections for custom shelves; what you set already
+  stays, and importing the same file again changes nothing.
+- Administrators are told when a new GOtome release is out: a line in the
+  footer, a notification once per version (you can switch it off on the
+  profile), and the latest version on the overview page with a link to the
+  upgrade guide. GOtome asks GitHub once a day, with no account and no
+  token; the setting "Check for new releases" and `GOTOME_OFFLINE=true`
+  turn it off. It never updates itself.
+- Read aloud in the web reader for EPUB, MOBI and AZW3 books: a "Read aloud"
+  button (or the R key) reads from the top of the page with the browser's own
+  voices, highlights the sentence being read and turns pages as it goes. The
+  voice (the book's language picks the first) and the speed are chosen under
+  "Display" and kept per browser. Nothing leaves the browser; the button is
+  left out where the browser has no voices, and PDFs are not read aloud.
+
+### Fixed
+
+- On a phone every button, field and link is at least 44 pixels high with
+  8 pixels between neighbours, text fields are 16 pixels so iOS no longer
+  zooms into them, and bars at the screen's edge keep clear of the notch and
+  the home indicator.
+- On a 320 pixel wide screen the settings page and the library and search
+  pages with several libraries no longer slide sideways, the search page no
+  longer jumps when its first results arrive, and small links and the rating
+  stars are at least 24 pixels high. The profile no longer shows three
+  filled buttons at once.
+
+## [0.13.0] - 2026-11-09
+
+### Added
+
+- API keys on the profile, for scripts and other programs that use GOtome
+  without a browser: give a key a name, the scopes it may use (read the
+  library, reading status and progress, upload, edit metadata, administer)
+  and an optional expiry. It is shown once, sent as `Authorization:
+  Bearer`, and never does more than your role allows. The list shows when
+  each was last used; revoking one stops it at once. See `docs/api.md`.
+- `gotome perf-check` times the main views on your own library and prints a
+  table that names none of its books, with the memory in use. It only reads.
+
+### Changed
+
+- An upgrade with long database migrations no longer shows the app as
+  `unhealthy` or makes `docker compose up --wait` fail: GOtome listens at
+  once, `/readyz` says `migrating` (and how far it is) until they are done,
+  and Docker's health check allows ten minutes for that. The monitoring
+  addresses are described in the troubleshooting guide.
+- `/readyz` now answers 200 only when the database, the migrations, the
+  search index, the job queue and the data folder all work, and otherwise
+  503 naming the parts that fail (and nothing else, as it is public).
+  Administrators see how each part is doing, and what is degraded without
+  stopping GOtome, on the Overview page and at `/api/v1/system/checks`, and
+  are told when a part has failed for ten minutes.
+
+### Fixed
+
+- The dark theme's field and button borders are a little lighter, so they
+  stay easy to see over the glass panels, and the library behind the panels
+  shows more at night: only its lamps are held down, not the whole picture.
+- The "GO" of the small wordmark in the top bar reads cyan again instead of
+  teal, and the gopher's pictures no longer show a white patch between its
+  head and its headphone band; the sleeping gopher's speech bubble has a "z".
+
+## [0.12.0] - 2026-11-09
+
+### Added
+
+- A strip at the top of the library: "Continue reading" with the books you
+  are in the middle of, their progress and one tap to where you were, and
+  "New in the library" with the newest books. It folds away and stays
+  folded, starts folded on a phone, and is left out when you search or
+  filter.
+
+### Changed
+
+- The name in the top bar and on the sign-in and setup pages is a new
+  wordmark: an illuminated "GO" and "tome" in gold lettering, one for each
+  colour theme.
+- Books in the library's grid, on author and series pages and in "similar
+  books" are shown as rounded cards, with a round badge on the cover's
+  corner saying whether the book is an ebook, an audiobook or both.
+- The dark theme's colours follow the owner's draft more closely: a deep
+  midnight blue with a faint warm glow at the corners, translucent navy
+  panels with soft borders, a brighter cyan accent, gold page titles, and
+  a lighter blue-grey pill for the current tab and menu entry. The light
+  theme keeps its parchment, with muted text and borders slightly bluer.
+- The app now carries GOtome's own artwork: the library at night or by day
+  shows through the glass-like panels, the gopher stands at the sidebar's
+  foot and in the page corner, sleeps in empty lists, searches where nothing
+  matched, looks confused on errors and missing pages, reads while a page
+  loads, and cheers with a few stars when you mark a book finished. The
+  medium badges on covers are the new round badges, and covers lift with a
+  soft glow under the pointer in the dark theme. Nothing moves with
+  "reduce motion" set; panels are opaque with "reduce transparency" and on
+  phones. The sign-in and setup pages open with the gopher reading in its
+  library, by night or by day with the colours.
+
+## [0.11.0] - 2026-11-09
+
+### Added
+
+- `gotome match-check` measures how often a lookup by title and author
+  alone finds the right book, on a sample of your books that have an
+  ISBN: per source and language, with the scores of right and wrong
+  first candidates, to choose `metadata.matchThreshold` by
+  ([metadata.md](docs/metadata.md)).
+- An embedding model no longer in use has its downloaded files, its
+  vectors and its passage vectors removed once it has not been chosen for
+  a day (the new setting "Days an unused model is kept",
+  `embedding.removeUnusedAfterDays`). The model list on the settings page
+  shows what each model takes on disk and in the database, and "Remove
+  now" frees one not in use at once.
+- Enter in the header's search, with no suggestion chosen, lists every
+  book the words find, like the library: sorting, covers or a list,
+  filters, selection and bulk changes. Its address keeps the words, so
+  back and reload return to it. A suggestion chosen with the arrow keys
+  still opens that book, author or series.
+- Clean up suggests a series for books without one whose titles name it,
+  such as "Sternwanderer 01 - Leuchtturmwärter" or "Leuchtturmwärter
+  (Sternwanderer #1)", where two books of a library name it or it is a
+  series already. Applying it puts the books into the series at the
+  places their titles say and takes the series off their titles.
+
+### Changed
+
+- The app has a new look, after the owner's draft
+  ([design.md](docs/design.md)): the top bar carries the wordmark, the
+  sections (Library, Wishlist, New books, Statistics), a rounded search and
+  the bell and account menu; the sidebar is a panel grouped as Ebooks and
+  Audiobooks, with "All ebooks" and "All audiobooks" opening the library
+  filtered to one medium; pages sit on rounded panels over a dimmed
+  backdrop in the dark theme, and the light theme has the same layout.
+  Below 1024 px the menu button opens all of it as the drawer.
+- The web app opens faster, the first time and after a hard refresh: its
+  files are sent compressed (brotli or gzip), pages other than the
+  library, a book and sign-in load when first visited, and large API
+  answers are compressed as well. The first load moves about 170 KB
+  instead of 800 KB.
+- The reading status "Wishlist" is called "Want to read" for a book the
+  library holds, and stays "Wishlist" for one it does not hold yet. The
+  Wishlist page lists the two apart, as "Want to read" and "Not in the
+  library yet".
+- The settings page is grouped in sections (sign-in, book details,
+  similar books and search, genres, trash) with a list to jump to each,
+  two columns where the screen is wide enough, and shorter
+  descriptions. A setting of a few values is chosen rather than typed:
+  on and off is a switch, the genre mode and the role of everyone else
+  are lists, and the sources to ask a box each. The server refuses a
+  value that is not one of them, such as an unknown source.
+- Smart shelf rules pick formats and stars from a list instead of
+  taking them typed.
+- **Review** and **Find details online** tick the fields worth taking:
+  those the book lacks, a title from the file name, and, from a candidate
+  of the same ISBN, those no person set. A field whose value would
+  replace your edit, the file's, or text in another language starts
+  unticked, each says why, and values that would be replaced are
+  highlighted. Accepting a match takes what is ticked.
+- The header's search suggestions are wider than the box where there is
+  room, and show a title over two lines instead of cutting it.
+- The duplicates page shows the two books of a pair side by side as
+  cards, with their covers, files with size and pages, e-reader
+  findings, your reading, library and added date, and what differs
+  marked; stacked on a phone. Each card has one **Keep this one**, which
+  says what happens to the other book. In a library GOtome does not
+  write to, it merges the other book in with its files instead of
+  trashing them.
+
+### Fixed
+
+- A book's page keeps long titles, author lists, series, publishers,
+  identifiers, tags and file names inside their boxes at every width:
+  they wrap, and words too long for a line break, instead of running
+  over the details card and off the screen. The details card is a little
+  wider, and lists each identifier on a line of its own.
+- Keeping one book of a pair, moving a file to the trash, restoring it
+  or fixing it in a folder GOtome may not write to (a `.trash` or an
+  author's folder owned by another user, a read-only mount) failed with
+  a server error and did nothing visible. It now says which folder
+  cannot be written and why, right at the button, and marks the library
+  as one whose folder cannot be written.
+
+## [0.10.0] - 2026-11-06
+
+### Changed
+
+- More tags give genres: tags a store marks, such as "Science Fiction
+  (st)" or "Frei - Fantasy", count as the tag beneath, and "Star Trek",
+  "Darkover", "Geschichtswissenschaft", "Erzählung" and "Zeitgenössisch"
+  are known spellings. `gotome genre-check` no longer lists tags that
+  rightly give no genre, such as "Roman", "eBook", publishers and
+  countries, among those to map.
+
+### Fixed
+
+- An author or series followed while GOtome was looking up the others is
+  looked up right after, instead of only at the next hourly round.
+- A book's page shows the status reading gave it straight away: going
+  back from the reader or the player after reading to the end said
+  "Unread" or "Reading" until the page was loaded again.
+- Searching by description could rank passages by another passage's
+  vector after GOtome stopped while it was compacting the passage store.
+  The store now switches to its compacted files in one step, and one
+  left half switched by an earlier version is started over at the next
+  start, its passages embedded again.
+- A feed whose items cannot be recorded, such as one with a very long
+  link, is reported as failed and tried again later, instead of keeping
+  every other feed from being fetched.
+- Changing a feed's keywords or authors applies them to the items already
+  fetched, not only to new ones.
+- A series' page lists the books the sources announce for it however they
+  spell its name, such as "the expanse" for "The Expanse".
+- A series page no longer hangs on a book at an absurd place in its
+  series, such as one an EPUB gives as 1e12. A position above 100,000, or
+  one that is not a number, is refused in an edit and left out when a file
+  or a metadata source gives it.
+- Edits made while a writable library's folder could not be written are
+  written into its EPUBs once it can be again, at the next scan or when
+  the library is made writable, instead of staying in the catalogue only.
+
+## [0.9.0] - 2026-11-06
+
+### Added
+
+- `gotome reset-password <user name>` sets a new password from the shell
+  when no administrator can sign in, and signs the account out; `-enable`
+  and `-admin` also enable it and make it an administrator
+  ([docs/troubleshooting.md](docs/troubleshooting.md#signing-in-and-changes)).
+- `GOTOME_TRUSTED_PROXIES` names the reverse proxies in front of GOtome.
+  From those, the client's address is taken from `X-Forwarded-For`, so the
+  limits on failed sign-ins, device requests and single sign-on starts
+  count each person apart instead of everyone behind the proxy together;
+  once it is set, `X-Forwarded-Proto` is believed only from them
+  ([docs/getting-started.md](docs/getting-started.md#trust-the-proxy)).
+- The Libraries page lists a private library's members and lets an
+  administrator add and remove them, without the API.
+
+### Fixed
+
+- **GOtome may change files here** is refused, with the reason and the
+  folder's path, on a folder GOtome cannot write to, such as one mounted
+  with `:ro`. A writable library whose folder turns read-only later is
+  shown so on the Libraries page and told once to administrators, instead
+  of failing file by file.
+- `GOTOME_EMBED_THREADS` set in `.env` now reaches the app; it needed an
+  override file before ([docs/configuration.md](docs/configuration.md)).
+- Background work no longer can stop for good with "completion subscriber
+  received a job that wasn't finalized" on a heavily loaded machine: queueing
+  a job that was already running kept that job from being marked finished
+  until the change that queued it was saved.
+
+## [0.8.0] - 2026-11-05
+
+### Changed
+
+- More tags give a genre: romance imprints, Jugend, Mord, Historisch,
+  Historischer Krimi, several horror, science fiction and fantasy series
+  and Sex.
+- Genre suggestions from the nearest books need 40% of them to agree
+  instead of half, and `combined` now follows them, using the comparison
+  with the genres' descriptions only for a book whose neighbours have no
+  genres: on a real library that comparison was no better than guessing
+  ([docs/genres.md](docs/genres.md)). Use `neighbours`.
+
+### Security
+
+- An identity provider's signing keys are read with go-jose 4.1.6, which
+  no longer can be made to spend unbounded time on a crafted RSA key.
+
+## [0.7.0] - 2026-11-05
+
+### Added
+
+- A page for each author, with all their books under every spelling of
+  their name, series by series, and a page for each series, in its order,
+  saying how many you have read, which is next, which are missing, and
+  offering the books the sources list that the library lacks for the
+  wishlist.
+- Authors and series are links wherever a book is shown, and the quick
+  search offers them.
+- Authors and Series in the navigation list every author and series from
+  A to Z, with how many books each has.
+- Documentation for installing and running GOtome
+  ([docs/README.md](docs/README.md)): getting started with a reverse
+  proxy, every environment variable and setting, NAS, arm64 and small
+  machines, roles and libraries, metadata sources, single sign-on,
+  e-readers, and troubleshooting.
+- New books can come from publishers' and authors' RSS and Atom feeds: on
+  New books, follow a feed's address with words or authors an item must
+  name, and you are told once of each new item that does. A feed is read
+  hourly, asking only for what changed; one that cannot be read says why
+  and is tried less often, then stops until you try it again. Feeds on
+  GOtome's own network are refused.
+- Genres from a fixed list of 44, in English and German: books get the
+  genres their tags mean ("Krimi", "Kriminalroman" and
+  "Belletristik/Kriminalromane" are all Crime), and GOtome can suggest more
+  from what a book is about or from the books most like it, for review
+  under Genres. The library's filter and smart shelves find books by
+  genre. Nothing is written until an administrator sets "Genres for books"
+  (`genres.suggest`); `gotome genre-check` measures the suggestions on a
+  library first. A book's tags are never changed.
+- The search by description can find books by their passages: with the
+  new setting "A vector for every passage" (`embedding.passages`, off by
+  default) every passage of a book's text gets a vector of its own, so
+  that a description of a scene finds the book it happens in. It reads
+  every book again, which on a large library takes days of the CPU, and
+  keeps about 1.5 GB per 50,000 books under `/data/passages`, outside the
+  database and the backups. The jobs page shows how far it is.
+- The e-reader check also finds chapter files that are not well-formed
+  XHTML, which some readers such as the Tolino's refuse, and tables of
+  contents with entries that lead nowhere, and repairs both: a chapter file
+  is written again only where its text stays the same, and an entry is
+  taken out only when it leads nowhere, or pointed at its chapter's start
+  when only the place in it is gone. EPUBs checked before are checked again
+  once.
+
+### Changed
+
+- The app image is far smaller, about 260 MB instead of 865 MB: it carries
+  a small FFmpeg of its own that only reads audio files' tags, chapters
+  and covers, in place of Debian's whole FFmpeg. Fewer libraries are within
+  reach of a hostile file.
+
+### Fixed
+
+- A file asked to be read again just as its last read finished is read
+  again, instead of staying "Not read yet" until the next scan.
+
+## [0.6.0] - 2026-10-15
+
+### Changed
+
+- The web app has a new look taken from GOtome's artwork: a midnight-blue
+  dark theme with the gopher's cyan, a parchment light theme, and serif
+  headings. The navigation is a sidebar in groups (the catalogue's and the
+  administration's fold away) and, on phones and tablets, a menu that opens
+  from the left.
+- An account menu at the top right holds Profile, E-readers, the language,
+  the colours and Sign out; Profile is also in the navigation, so it is
+  easy to find. Someone single sign-on does not know yet is taken to their
+  profile once they sign in with their password.
+- The library shows its covers larger, like books on a shelf, with the
+  book being read marked in candlelight; the filters stay in view while
+  the list scrolls, and the first page loads behind placeholders of the
+  covers to come.
+- A book's page leads with its cover and title, with Read (or Listen) as
+  its first button, and gives the details a box of their own beside the
+  files.
+- Every other page follows the same design: one kind of page heading,
+  buttons and toggles in the accent colour, placeholders while lists load,
+  and progress bars and checkboxes in the accent.
+
+### Added
+
+- The web app's pages end in a footer that says which version of GOtome runs,
+  linked to its release notes, and, when GOtome was updated while the page
+  was open, that it should be reloaded.
+- The overview tells administrators when the machine is too small for
+  what runs on it: Postgres's memory settings (which travel with the
+  database's volume, sized for the machine it was first made on) with the
+  app's and the embedding model's, more parallel workers than CPUs, or a
+  nearly full disk (under 10 GB or 10% free). Each warning comes with the
+  commands that make the settings fit, and is logged at start and hourly
+  while it stands. `docs/backup-and-upgrade.md` says how to move to another
+  machine and how much room an installation needs.
+
+## [0.5.0] - 2026-10-15
+
+### Added
+
+- The EPUB and PDF readers and the audiobook player can be used from the
+  keyboard alone: pages turn with the arrows, Page Up and Page Down and the
+  space bar; C opens the contents, F a search in the book, D the display
+  settings; the player plays and pauses with the space bar or K, seeks with
+  the arrows and changes chapter with Shift and the arrows. The "Keys" button,
+  or ?, lists them all.
+- The EPUB and PDF readers search the book they show.
+- What makes an EPUB slow on an e-reader can be fixed, in libraries
+  GOtome writes to: each finding on the book's page has its button, and
+  "Fix for e-readers" does it for every selected book. A long chapter file
+  is split at its chapters, images are scaled down to 1600 pixels, the
+  embedded fonts are removed, and files the EPUB lists but lacks are taken
+  off its list. The file as it was goes into the trash, from where it can
+  be restored beside the fixed one; where you were reading is kept, and
+  e-readers that had the book are sent it again.
+
+### Changed
+
+- GOtome no longer keeps a copy of the books' text: full-text search runs on
+  an index of its own on the data volume (`search/`), and snippets are read
+  from the books' files. The database shrinks by most of its size (for
+  48,000 EPUBs from about 28 GB to about 3.5 GB, beside an index of about
+  7.6 GB); the space is freed during the first start after the update,
+  which takes a few minutes longer on a large library. That start then
+  reads every book once more in the background to build the index ("Read
+  the books' text into the search index" on the jobs page), which takes
+  about as long as reading the library did the first time, an hour or two
+  for 48,000 EPUBs; until a book is read, full-text search does not find
+  it. Backups leave the index out; a restore builds it again from the
+  books. The database no longer needs ParadeDB's `pg_search`. This
+  update cannot be undone: back up first (`deploy/backup.sh`), as going
+  back to 0.4 means restoring that backup on the 0.4 image.
+- Screen readers are told of new notifications, of each finished upload and
+  of the page a PDF turns to; panels and dialogs take the focus when they
+  open and give it back when they close. The focus ring, grey text on the
+  dark colours and the empty rating stars are easier to see.
+
+### Security
+
+- An upload whose content is not the format its name says, such as a web
+  page saved as a PDF, is refused with the reason, and a file like it in a
+  library folder is marked as unreadable without being read.
+- EPUBs built to hurt their reader, such as zip bombs or archives whose
+  entries point outside them or stand twice, are marked as unreadable.
+
+## [0.4.0] - 2026-10-14
+
+### Added
+
+- Each e-reader on your profile has a page of its own with the books sent
+  to it: waiting, announced to a Kobo reader, or on the device, with their
+  dates. A book still waiting, or on a Kobo reader, can be taken off from
+  there; a Kobo reader removes it at its next sync.
+- Books whose files a scan no longer found in the library folder can be
+  found: the library's filters offer "Files", with books that miss some
+  and books that have none left; the grid and the table mark a book none
+  of whose files is left; and the overview counts them, with a link to the
+  list, after a move or a mount that went wrong.
+- The settings page offers the embedding model as a choice from a list,
+  with each model's download size, roughly how much memory it needs on the
+  CPU, whether it can run here and how many books already have its
+  vectors. Switching to one that lacks most of them asks first, as every
+  book is then embedded again. The jobs page links to it.
+- GOtome speaks German. It follows the browser's language, and each
+  browser can choose another on the profile. Dates and numbers are written
+  the way the language writes them. Messages the server words about a
+  particular case, such as why a field was refused, stay in English.
+- A failure on the server shows its request ID, by which an administrator
+  finds it in the log.
+- EPUBs that may turn pages slowly on an e-reader are found: a chapter file
+  over about 300 KB, embedded fonts over 1 MB, an image over 4 megapixels
+  or 1 MB, or files the EPUB lists but lacks. The book's page says which
+  of these a file has, the library's filters offer "On e-readers" (also
+  as a rule of a smart shelf), and the overview counts such books.
+  Files read before are measured in the background.
+
+### Fixed
+
+- Deleting a library while its books are being read, moved to the trash or
+  merged no longer fails now and then with an error.
+- The GOtome book on a Tolino opens GOtome for Tolino again while it is
+  signed out, after a restart or an update: it then shows the setup screen.
+- bge-m3 runs in GOtome on the CPU when no embedding server is set, as
+  0.2.0 said it would; until now it waited for a server.
+- Changes to a book are written into its EPUB file again when the file's
+  archive lists its folders as entries of their own, as many tools write
+  them; before, writing failed with "zip: write to directory".
+
+### Security
+
+- Every request GOtome makes to another server refuses addresses inside
+  your network, also after a redirect or when a name resolves to one,
+  except the identity provider and the embedding server you set up. An
+  identity provider whose discovery names an endpoint on another address
+  inside the network is refused. The embedding model's download no longer
+  goes through a proxy from `HTTPS_PROXY`.
+- Every answer carries headers that keep browsers from guessing a file's
+  type, from sending GOtome's addresses to other sites and from framing
+  its pages, and everything outside the web app is sandboxed.
+
+## [0.3.1] - 2026-10-14
+
+### Fixed
+
+- A Kobo reader, or a Tolino in Kobo mode, now shows the books it is sent:
+  newer firmware dropped them without a word. Readers synced before are
+  sent their books again.
+
+## [0.3.0] - 2026-10-14
+
+### Added
+
+- Kobo readers, and Tolinos switched to Kobo mode, sync with GOtome over
+  their own sync: books sent to the device arrive with covers and details,
+  and the reading place goes both ways. Add the reader as a device on your
+  profile and paste the line it shows into the reader's config; see
+  `docs/tolino-kobo-mode.md`.
+- `docs/tolino-kobo-mode.md` explains how a Tolino on the Kobo-based firmware
+  (Shine 5, Shine Color, Vision Color) is switched to Kobo mode, where it
+  syncs with a server named in its config, and what was found on a Shine 5
+  doing it: what wipes the reader, the Kobo account it needs, and the
+  firmware updates offered afterwards.
+
+## [0.2.0] - 2026-10-14
+
+### Added
+
+- GOtome runs bge-m3 itself on the CPU when no embedding server is set: a
+  library embedded on a machine with a GPU keeps its vectors on a machine
+  without one, and new books and searches by description go on with the
+  same model. The first use downloads 2.3 GB. `gotome embed-check -model
+  bge-m3 -against-stored 50` checks the CPU's vectors against the stored
+  ones; see `docs/embedding-server.md`.
+- GOtome for Tolino signs in without a token typed on the e-reader: give it
+  the address and your user name, tap **Request access**, and accept the
+  Tolino on your profile under E-readers when it shows the same code. The
+  device token stays as the other way.
+- GOtome for Tolino shows its version on its settings page, and speaks
+  English or German as chosen there, English unless changed, whatever
+  language the Tolino is set to.
+- `deploy/.env.example` lists every setting of the compose deployment with
+  its default; copied to `.env`, it pins the image to a version you choose.
+
+## [0.1.1] - 2026-10-14
+
+### Added
+
+- `make android-install FROM=release` puts the latest release of GOtome for
+  Tolino on a connected Tolino (`TAG=vX.Y.Z` for another), with the same
+  grants as a build from the checkout; that release then updates itself.
+- GOtome for Tolino's settings page has a **Check for updates** button,
+  which looks for a new release at once instead of waiting for the daily
+  check, and says when the app is up to date.
+
+## [0.1.0] - 2026-10-14
+
+### Fixed
+
+- The database no longer restarts itself, dropping every connection, when
+  the machine is busy enough for its health check to time out. Take the
+  `init: true` of the `db` service into your compose file.
+
+### Changed
+
+- The duplicates page lists a book whose text another one holds, such as a
+  story and its collection or an episode and its omnibus, under its own
+  heading, "Contained in", instead of among the copies to decide about.
+
+- GOtome is licensed under the Apache License 2.0 instead of the AGPL-3.0.
+- Similar books show at most two books by one author and two from one
+  series, and no copy of the book: on a library of 50,000 books, a book's
+  similar books now have eight authors on average instead of five, and
+  fewer than one in five is by its own author instead of more than half.
+
+### Added
+
+- GOtome for Tolino comes with each release as a signed APK, and an
+  installed release offers the next one on the Tolino and installs it after
+  one confirmation (`clients/android/README.md`).
+- A GOtome plugin for KOReader, downloaded from the profile page, fetches
+  the books sent to the device by itself whenever Wi-Fi comes up, into a
+  folder of your choosing (`docs/koreader.md`).
+- Books are sent to an e-reader from their page or a selection in the
+  library: they wait in the catalogue's "Sent to this device" on the
+  device until it downloads them, and the book's page says since when the
+  device has it.
+- KOReader's own progress sync works with GOtome as its server: a place
+  read in KOReader opens in the web reader, and one from the web reader is
+  offered in KOReader, at its chapter for an EPUB and its page for a PDF
+  (`docs/koreader.md`).
+- GOtome for Tolino, an app for Tolino e-readers on firmware 16, installed
+  over USB (`clients/android/README.md`) and signed in with a device token.
+  Books sent to the Tolino arrive on the reader by themselves, a store on
+  the reader browses and searches your library and puts books on it, and
+  how far you read in the Tolino's own reader shows up in GOtome. Opening a book you read further
+  elsewhere, the Tolino offers to jump to that page.
+- E-readers with KOReader, or any app that reads OPDS catalogues, browse
+  the library by newest, author, series and shelf, search it and download
+  books, signed in with a token made for the device on the profile page
+  (`docs/koreader.md`).
+- An overview page shows what the libraries hold (books, files by format,
+  size, pages, audiobook hours, authors, series, languages, books added per
+  month, and books without a cover, an author or text) and, for editors,
+  how far the background work is, with its pace and the time left: files
+  read, texts indexed, books worked out for similar books, lookups and
+  duplicate checks. One library or all of them.
+- The jobs page shows how far GOtome has got working out what books are
+  about, and lets an administrator pause it and start it again with one
+  button, for instance to have the GPU back for a while.
+- Books can be embedded on a GPU: with an Ollama server set as the
+  embedding server, the larger multilingual model bge-m3 works out what
+  books are about, about two and a half times as fast as the CPU did with
+  the smaller one (`docs/embedding-server.md`). Switching models keeps the
+  vectors of the one before, so going back is at once.
+- Search by description: on the search page, describe what you want to
+  read ("Ein Kommissar ermittelt in Venedig", "a family saga over three
+  generations") and get the books whose text and description come
+  nearest, best first. It needs the embedding model and the books'
+  vectors; while they are not there, the page says so.
+- `gotome similar-check` measures how good the similar books are on your
+  own library: how many are by the book's own author or from its series,
+  and how many are copies of it (`docs/similarity.md`).
+- A "Clean up" page suggests fixes for how books are described, each to
+  apply or leave with one click, or all of a kind at once: one author under
+  several spellings ("Weidner, Ulrike" and "Ulrike Weidner") made
+  one, values such as "authors_sort" or "Unknown" taken off as authors, an
+  author who is the name of their books' series, and what shops add to
+  titles, such as "(German Edition)" or ": Roman". A fix is your edit:
+  fields you locked stay as they are.
+- Duplicates are found, and wishes fulfilled, whichever way round an
+  author's name is written; editing a book's title or authors looks for
+  its duplicates again.
+- Follow authors and series for their new books: from a book's page, or by
+  name on the new "New books" page, which lists what is announced and what
+  came out in the last year. GOtome asks Hardcover (with its token) and
+  Open Library once a day and tells you when a book is announced and when
+  it comes out, unless a library you see has it already. Following an
+  author does not tell you of their older books. Both kinds of
+  notification can be switched off on your profile.
+- Scrolling far into a large library stays smooth: the page keeps only the
+  books near the window, however many it has loaded, and going back from
+  a book returns to the same place in the list. In Safari the list no
+  longer stops loading after its second page.
+- Large libraries are fast: at 50,000 books every page answers within a
+  quarter of a second, most within a few milliseconds, and the library's
+  filters count in about a tenth of a second.
+  docs/performance.md has the figures. The database now takes random reads
+  for cheap (`random_page_cost = 1.1` in the compose file), and GOtome keeps
+  its memory under the container's limit when it has one.
+- Sign in through your own identity provider (OpenID Connect, such as
+  Authentik, Authelia or Keycloak). An administrator sets it up in
+  Settings, where the address to register at the provider is shown. A first
+  sign-in makes an account, or takes the one with the address the provider
+  verified if you allow that; anyone signed in can link their account from
+  their profile. Groups at the provider can decide who is an administrator,
+  an editor or a reader. Signing in with a password can then be turned off;
+  administrators keep it until one of them has linked an account, and
+  `GOTOME_FORCE_PASSWORD_LOGIN=true` brings it back if the provider is
+  gone.
+- `deploy/backup.sh` backs a running installation up (database, covers,
+  managed libraries and the secret key), and `deploy/restore.sh` brings a
+  backup back into a new installation, which makes the search again in the
+  background. docs/backup-and-upgrade.md says how, and how to upgrade.
 - Every installation gets its own random database password on its first
   start, written by a short-lived `init` container and kept in the `secrets`
   volume. There is no default password any more. An installation that set
@@ -60,8 +1172,8 @@ What changes for someone who runs or uses GOtome. The format follows
   address carries the filters, so a filtered view can be bookmarked or shared.
   On a phone the panel is behind a "Filters" button.
 - Quick search. The box in the header finds books by title, author or series
-  as you type, even misspelt or only begun: "Sandersen" finds Brandon
-  Sanderson. Press "/" to get to it from anywhere, the arrow keys to pick a
+  as you type, even misspelt or only begun: "Landorff" finds Bastian
+  Landorf. Press "/" to get to it from anywhere, the arrow keys to pick a
   book and Enter to open it. It answers in well under a tenth of a second on
   50,000 books.
 - Settings. Administrators set the language book details are fetched in and

@@ -1,0 +1,55 @@
+{
+  "realm": "gotome",
+  "enabled": true,
+  "sslRequired": "none",
+  "groups": [{ "name": "gotome-editors" }],
+  "clients": [
+    {
+      "clientId": "gotome",
+      "name": "GOtome",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "e2e-keycloak-client-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:*"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "kc-editor",
+      "enabled": true,
+      "email": "kc-editor@example.org",
+      "emailVerified": true,
+      "firstName": "Kim",
+      "lastName": "Editor",
+      "credentials": [{ "type": "password", "value": "e2e-keycloak-only", "temporary": false }],
+      "groups": ["gotome-editors"]
+    },
+    {
+      "username": "kc-reader",
+      "enabled": true,
+      "email": "kc-reader@example.org",
+      "emailVerified": true,
+      "firstName": "Rae",
+      "lastName": "Reader",
+      "credentials": [{ "type": "password", "value": "e2e-keycloak-only", "temporary": false }]
+    }
+  ]
+}

@@ -7,14 +7,17 @@ import { Cover } from "@/books/cover";
 import {
 	type Candidate,
 	type CandidateApply,
+	type FieldSuggestion,
 	type Lockable,
 	candidateCoverUrl,
 	candidatesQuery,
 	useApplyCandidate,
 } from "@/books/edit";
 import { FormError } from "@/components/form";
+import { PageHeader, Loading } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
 import { formatLanguage } from "@/lib/format";
+import { typing } from "@/lib/keys";
 
 export function FindDetails({ id }: { id: string }) {
 	const book = useQuery(bookQuery(id));
@@ -26,7 +29,7 @@ export function FindDetails({ id }: { id: string }) {
 	if (!book.data) {
 		return (
 			<div className="flex flex-col gap-4">
-				{book.isPending && <p className="text-slate-500">{t("loading")}</p>}
+				{book.isPending && <Loading />}
 				<FormError error={book.error} />
 			</div>
 		);
@@ -43,16 +46,44 @@ function seriesText(series?: string, index?: number): string {
 	return index != null ? `${series} #${index}` : series;
 }
 
-/** One field a candidate would change. */
+/**
+ * How a field stands: the same on both sides, different (the candidate has
+ * a value to take), or one without a value to compare.
+ */
+type Standing = "same" | "differs" | "theirsEmpty" | "bothEmpty";
+
+/** One field of the book beside the candidate's. */
 interface Change {
 	field: Lockable;
 	label: MessageKey;
 	mine: ReactNode;
 	theirs: ReactNode;
-	take: CandidateApply;
+	standing: Standing;
+	/** What taking the field sends; only a field that differs has one. */
+	take?: CandidateApply;
+	/** The book has a value here that taking would replace. */
+	replaces: boolean;
 }
 
-/** What taking the candidate would change, field by field. */
+const REASONS: Record<FieldSuggestion["reason"], MessageKey> = {
+	empty: "find.reason.empty",
+	filename: "find.reason.filename",
+	sameEdition: "find.reason.sameEdition",
+	adds: "find.reason.adds",
+	locked: "find.reason.locked",
+	manual: "find.reason.manual",
+	language: "find.reason.language",
+	file: "find.reason.file",
+	other: "find.reason.other",
+};
+
+const blank = () => (
+	<span className="italic text-slate-500 dark:text-slate-400">
+		{t("find.blank")}
+	</span>
+);
+
+/** Every field of the book beside the candidate's, and how each stands. */
 function changes(book: BookDetail, c: Candidate): Change[] {
 	const out: Change[] = [];
 	const text = (
@@ -63,15 +94,23 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 		take: CandidateApply,
 		shown = (s: string) => s,
 	) => {
-		if (theirs !== "" && theirs !== mine) {
-			out.push({
-				field,
-				label,
-				mine: mine ? shown(mine) : t("find.empty"),
-				theirs: shown(theirs),
-				take,
-			});
-		}
+		const standing: Standing =
+			theirs === ""
+				? mine === ""
+					? "bothEmpty"
+					: "theirsEmpty"
+				: theirs === mine
+					? "same"
+					: "differs";
+		out.push({
+			field,
+			label,
+			mine: mine ? shown(mine) : blank(),
+			theirs: theirs ? shown(theirs) : blank(),
+			standing,
+			take: standing === "differs" ? take : undefined,
+			replaces: standing === "differs" && mine !== "",
+		});
 	};
 	text("title", "edit.field.title", book.title, c.title, {
 		provider: c.provider,
@@ -143,21 +182,30 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 	// Identifiers are added to the book's own, never put in their place.
 	const have = new Set(book.identifiers.map((i) => `${i.type}:${i.value}`));
 	const added = c.identifiers.filter((i) => !have.has(`${i.type}:${i.value}`));
-	if (added.length > 0) {
-		const own = book.identifiers
-			.filter((i) => !i.fromFile)
-			.map((i) => ({ type: i.type, value: i.value }));
-		out.push({
-			field: "identifiers",
-			label: "edit.field.identifiers",
-			mine:
-				book.identifiers
-					.map((i) => `${i.type.toUpperCase()} ${i.value}`)
-					.join(", ") || t("find.empty"),
-			theirs: `${t("find.addIdentifiers")}: ${added.map((i) => `${i.type.toUpperCase()} ${i.value}`).join(", ")}`,
-			take: { provider: c.provider, identifiers: [...own, ...added] },
-		});
-	}
+	const own = book.identifiers
+		.filter((i) => !i.fromFile)
+		.map((i) => ({ type: i.type, value: i.value }));
+	const written = (list: { type: string; value: string }[]) =>
+		list.map((i) => `${i.type.toUpperCase()} ${i.value}`).join(", ");
+	out.push({
+		field: "identifiers",
+		label: "edit.field.identifiers",
+		mine: book.identifiers.length > 0 ? written(book.identifiers) : blank(),
+		theirs: c.identifiers.length > 0 ? written(c.identifiers) : blank(),
+		standing:
+			c.identifiers.length === 0
+				? book.identifiers.length === 0
+					? "bothEmpty"
+					: "theirsEmpty"
+				: added.length > 0
+					? "differs"
+					: "same",
+		take:
+			added.length > 0
+				? { provider: c.provider, identifiers: [...own, ...added] }
+				: undefined,
+		replaces: false,
+	});
 	text(
 		"description",
 		"edit.field.description",
@@ -169,25 +217,33 @@ function changes(book: BookDetail, c: Candidate): Change[] {
 		},
 		(s) => (s.length > 400 ? `${s.slice(0, 400)}…` : s),
 	);
-	if (c.coverToken) {
-		out.unshift({
-			field: "cover",
-			label: "edit.field.cover",
-			mine: (
-				<div className="w-16">
-					<Cover book={book} size="small" />
-				</div>
-			),
-			theirs: (
-				<img
-					src={candidateCoverUrl(c.coverToken)}
-					alt=""
-					className="w-16 rounded-md bg-slate-200 shadow-sm dark:bg-slate-800"
-				/>
-			),
-			take: { provider: c.provider, coverToken: c.coverToken },
-		});
-	}
+	out.unshift({
+		field: "cover",
+		label: "edit.field.cover",
+		mine: (
+			<div className="w-16">
+				<Cover book={book} size="small" />
+			</div>
+		),
+		theirs: c.coverToken ? (
+			<img
+				src={candidateCoverUrl(c.coverToken)}
+				alt=""
+				className="w-16 rounded-md bg-slate-200 shadow-sm dark:bg-slate-800"
+			/>
+		) : (
+			blank()
+		),
+		standing: c.coverToken
+			? "differs"
+			: book.coverKey
+				? "theirsEmpty"
+				: "bothEmpty",
+		take: c.coverToken
+			? { provider: c.provider, coverToken: c.coverToken }
+			: undefined,
+		replaces: Boolean(c.coverToken && book.coverKey),
+	});
 	return out;
 }
 
@@ -204,14 +260,10 @@ function FindPage({ book }: { book: BookDetail }) {
 			>
 				{t("find.back")}
 			</Link>
-			<div>
-				<h1 className="text-2xl font-semibold">
-					{t("find.title", { title: book.title })}
-				</h1>
-				<p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">
-					{t("find.intro")}
-				</p>
-			</div>
+			<PageHeader
+				title={t("find.title", { title: book.title })}
+				intro={t("find.intro")}
+			/>
 			{found.isPending && (
 				<p className="text-slate-500">{t("find.searching")}</p>
 			)}
@@ -297,8 +349,9 @@ function FindPage({ book }: { book: BookDetail }) {
 
 /**
  * What taking a candidate would change, a tick per field, and the button
- * that takes the ticked ones. Locked fields cannot be ticked. With keys set,
- * "a" takes too, unless a text field has the focus.
+ * that takes the ticked ones. The fields the server suggests are ticked to
+ * begin with, and each says why; locked fields cannot be ticked. With keys
+ * set, "a" takes too, unless a text field has the focus.
  */
 export function Compare({
 	book,
@@ -318,14 +371,23 @@ export function Compare({
 	children?: ReactNode;
 }) {
 	const rows = changes(book, candidate);
+	const takeable = rows.some((r) => r.take);
 	const locked = (field: Lockable) => book.fields[field]?.locked ?? false;
+	const suggestion = (field: Lockable) => candidate.fields?.[field];
 	const [take, setTake] = useState(
-		() => new Set(rows.filter((r) => !locked(r.field)).map((r) => r.field)),
+		() =>
+			new Set(
+				rows
+					.filter(
+						(r) => r.take && !locked(r.field) && suggestion(r.field)?.suggested,
+					)
+					.map((r) => r.field),
+			),
 	);
 	function submit() {
 		const body: CandidateApply = { provider: candidate.provider };
 		for (const row of rows) {
-			if (take.has(row.field)) {
+			if (row.take && take.has(row.field)) {
 				Object.assign(body, row.take);
 			}
 		}
@@ -345,18 +407,19 @@ export function Compare({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [keys]);
 
-	if (rows.length === 0) {
-		return (
-			<div className="flex flex-col gap-4">
-				<p className="text-slate-600 dark:text-slate-400">{t("find.nothing")}</p>
-				{children}
-			</div>
-		);
-	}
+	const standings: Record<Standing, MessageKey> = {
+		same: "find.same",
+		differs: "find.differs",
+		theirsEmpty: "find.theirsEmpty",
+		bothEmpty: "find.bothEmpty",
+	};
 	return (
 		<div className="flex flex-col gap-4">
-			<table className="w-full text-left text-sm">
-				<thead>
+			{!takeable && (
+				<p className="text-slate-600 dark:text-slate-400">{t("find.nothing")}</p>
+			)}
+			<table className="block w-full text-left text-sm sm:table">
+				<thead className="hidden sm:table-header-group">
 					<tr className="border-b border-slate-200 dark:border-slate-800">
 						<th className="py-2 pr-2 font-medium">{t("find.field")}</th>
 						<th className="py-2 pr-2 font-medium">{t("find.current")}</th>
@@ -365,43 +428,68 @@ export function Compare({
 						</th>
 					</tr>
 				</thead>
-				<tbody>
-					{rows.map((row) => (
-						<tr
-							key={row.field}
-							className="border-b border-slate-100 align-top dark:border-slate-800/60"
-						>
-							<th scope="row" className="py-2 pr-2 font-normal">
-								<label className="flex items-start gap-2">
-									<input
-										type="checkbox"
-										checked={take.has(row.field)}
-										disabled={locked(row.field)}
-										onChange={(e) => {
-											const next = new Set(take);
-											if (e.target.checked) next.add(row.field);
-											else next.delete(row.field);
-											setTake(next);
-										}}
-										aria-label={t("find.take", { field: t(row.label) })}
-										className="mt-0.5"
-									/>
-									<span>
-										{t(row.label)}
-										{locked(row.field) && (
-											<span className="block text-xs text-slate-500">
-												{t("find.locked")}
-											</span>
+				<tbody className="block sm:table-row-group">
+					{rows.map((row) => {
+						const reason = locked(row.field)
+							? "locked"
+							: row.take
+								? suggestion(row.field)?.reason
+								: undefined;
+						return (
+							<tr
+								key={row.field}
+								data-standing={row.standing}
+								className={`block border-b border-slate-100 py-2 align-top sm:table-row sm:py-0 dark:border-slate-800/60 ${row.standing === "differs" ? "bg-amber-50 dark:bg-amber-950" : ""}`}
+							>
+								<th scope="row" className="block py-1 pr-2 font-normal sm:table-cell sm:py-2">
+									<label className="flex items-start gap-2">
+										{row.take ? (
+											<input
+												type="checkbox"
+												checked={take.has(row.field)}
+												disabled={locked(row.field)}
+												onChange={(e) => {
+													const next = new Set(take);
+													if (e.target.checked) next.add(row.field);
+													else next.delete(row.field);
+													setTake(next);
+												}}
+												aria-label={t("find.take", { field: t(row.label) })}
+												className="mt-0.5"
+											/>
+										) : (
+											<span aria-hidden="true" className="w-4 shrink-0" />
 										)}
+										<span>
+											<span className={row.standing === "differs" ? "font-medium" : ""}>
+												{t(row.label)}
+											</span>
+											<span className="block text-xs text-slate-500 dark:text-slate-400">
+												{t(standings[row.standing])}
+											</span>
+											{reason && (
+												<span className="block text-xs text-slate-500 dark:text-slate-400">
+													{t(REASONS[reason])}
+												</span>
+											)}
+										</span>
+									</label>
+								</th>
+								<td className="block break-words py-1 pr-2 text-slate-600 sm:table-cell sm:py-2 dark:text-slate-400">
+									<span className="block text-xs font-medium sm:hidden">
+										{t("find.current")}
 									</span>
-								</label>
-							</th>
-							<td className="break-words py-2 pr-2 text-slate-600 dark:text-slate-400">
-								{row.mine}
-							</td>
-							<td className="break-words py-2">{row.theirs}</td>
-						</tr>
-					))}
+									{row.mine}
+								</td>
+								<td className="block break-words py-1 sm:table-cell sm:py-2">
+									<span className="block text-xs font-medium text-slate-600 sm:hidden dark:text-slate-400">
+										{t("find.theirs", { provider: candidate.provider })}
+									</span>
+									{row.theirs}
+								</td>
+							</tr>
+						);
+					})}
 				</tbody>
 			</table>
 			<FormError error={error} />
@@ -410,7 +498,7 @@ export function Compare({
 					type="button"
 					disabled={busy || take.size === 0}
 					onClick={submit}
-					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 				>
 					{t("find.apply")}
 				</button>
@@ -418,14 +506,6 @@ export function Compare({
 			</div>
 		</div>
 	);
-}
-
-/** Whether a key goes into a field that takes text, where it is no command. */
-export function typing(e: KeyboardEvent): boolean {
-	const el = e.target as HTMLElement | null;
-	if (!el) return false;
-	if (el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
-	return el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes((el as HTMLInputElement).type);
 }
 
 function TakeFromCandidate({ book, candidate }: { book: BookDetail; candidate: Candidate }) {

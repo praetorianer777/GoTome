@@ -32,7 +32,7 @@ func extractEPUB(_ context.Context, path string) (Extracted, error) {
 	}
 	defer f.Close()
 	book, err := epub.Parse(f, size)
-	if errors.Is(err, epub.ErrNotEPUB) || errors.Is(err, epub.ErrTooLarge) {
+	if errors.Is(err, epub.ErrNotEPUB) || errors.Is(err, epub.ErrTooLarge) || errors.Is(err, epub.ErrUnsafe) {
 		return Extracted{}, fmt.Errorf("%w: %v", ErrUnreadable, err)
 	}
 	if err != nil {
@@ -66,11 +66,14 @@ func extractEPUB(_ context.Context, path string) (Extracted, error) {
 	if book.Cover != nil {
 		out.Cover = book.Cover.Data
 	}
+	if m, err := epub.Measure(f, size); err == nil {
+		out.Measures = &m
+	}
 
 	chars := 0
 	for _, ch := range book.Chapters {
 		chars += utf8.RuneCountInString(ch.Text)
-		out.Sections = append(out.Sections, Section{Label: ch.Title, Text: ch.Text})
+		out.Sections = append(out.Sections, Section{Label: ch.Title, Source: ch.Href, Text: ch.Text})
 	}
 	if chars > 0 {
 		pages := int32((chars + charsPerPage - 1) / charsPerPage)

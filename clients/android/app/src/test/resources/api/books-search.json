@@ -1,0 +1,31 @@
+{
+  "books": [
+    {
+      "id": "0192f0a0-0000-7000-8000-000000000001",
+      "libraryId": "0192f0a0-0000-7000-8000-000000000007",
+      "title": "Pride \u0026 Prejudice: A Novel",
+      "authors": [
+        "Jane Austen"
+      ],
+      "authorKeys": [
+        "austen jane"
+      ],
+      "series": "Austen's Novels",
+      "seriesKey": "austen s novels",
+      "seriesIndex": 2,
+      "coverKey": "568fa34a63d8615987a28565dfa9516baa18ea1b8e819ee50a2faf88de2ee53d",
+      "formats": [
+        "epub",
+        "pdf"
+      ],
+      "addedAt": "2026-10-11T12:00:00Z",
+      "status": "unread",
+      "placeholder": false,
+      "filesMissing": false,
+      "ereaderFindings": [],
+      "match": "title"
+    }
+  ],
+  "names": []
+}
+

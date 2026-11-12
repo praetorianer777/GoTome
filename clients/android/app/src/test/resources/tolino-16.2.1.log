@@ -1,0 +1,117 @@
+10-11 12:34:43.281  2245  2245 D EpubViewerActivity: storing screenshot started on view de.telekom.epub.ui.views.EpubView{ec3e5a1 V.ED..... ........ 0,0-1072,1448 #7f0802a2 app:id/epub_viewer_activity_epub_view}
+10-11 12:34:43.369  2245  2245 D EpubViewerActivity: pre deregisterBroadcastReceiver()
+10-11 12:34:43.376  2245  2245 D EpubViewerActivity: post deregisterBroadcastReceiver()
+10-11 12:41:29.536  2245  2245 D EpubViewerActivity: pre registerBroadcastReceiver()
+10-11 12:41:29.548  2245  2245 D EpubViewerActivity: post registerBroadcastReceiver()
+10-11 12:41:30.943  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:30.944  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_DOWN, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100124655, downTime=100124655, deviceId=-1, source=0x101 }
+10-11 12:41:30.947  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:30.948  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_UP, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100124660, downTime=100124655, deviceId=-1, source=0x101 }
+10-11 12:41:30.968  2245  2245 D EpubViewerActivity: start Home from Backbutton
+10-11 12:41:31.090  2245  2245 D EpubViewerActivity: storing screenshot started on view de.telekom.epub.ui.views.EpubView{ec3e5a1 V.ED..... ........ 0,0-1072,1448 #7f0802a2 app:id/epub_viewer_activity_epub_view}
+10-11 12:41:31.211  2245  2245 D EpubViewerActivity: pre deregisterBroadcastReceiver()
+10-11 12:41:31.217  2245  2245 D EpubViewerActivity: post deregisterBroadcastReceiver()
+10-11 12:41:31.665  2245  2245 D EpubViewerActivity: onDestroy from Activity: EpubViewerActivity
+10-11 12:41:34.473  2245  2245 D HomeActivity$DeliverableClickListener: startReader - book: GOtome Testbuch, path: /storage/emulated/0/Books/GoTome-Test.epub
+10-11 12:41:35.551  2245  2245 D BasicViewerActivity: handleIntent(Intent { act=ACTION_START_EPUB_VIEWER_FROM_DELIVERABLE flg=0x14000000 cmp=de.telekom.epub/.ui.activities.EpubViewerActivity (has extras) }) from Activity: BasicViewerActivity
+10-11 12:41:35.559  2245  2245 D BasicViewerActivity: reco -> no recommendations available for edata_1791714630694, downloading..
+10-11 12:41:35.577  2245  2245 D BasicViewerActivity: open deliverable in portrait
+10-11 12:41:35.583  2245  2245 D BasicViewerActivity: registerSyncReceiver()  deliverable=GOtome Testbuch Format: epub  getPrefIsWifiActive():true  hasRefreshToken():false  isOfflineEdata():true -> synchronizeDeliverable=false
+10-11 12:41:35.589  2245  5258 D EpubViewerActivity: openDocument: file:///storage/emulated/0/Books/GoTome-Test.epub
+10-11 12:41:35.590  2245  2245 D EpubViewerActivity: pre registerBroadcastReceiver()
+10-11 12:41:35.590  2245  5258 D EpubViewerActivity: openDocument: fontSettings:  ->fontType: publisher ->fontType displayname: Verlagsschrift ->fontType family: publisher ->fontType regular path:  ->fontType bold path:  ->fontType italic path:  ->fontType bolditalic path:  ->fontType fontsizearray: [16, 18, 20, 23, 26, 31, 38, 48, 64, 82, 102] ->fontType lineheight: [125, 140, 160] ->fontSizeCategory: XL ->fontLineHeightMultiplier: NONE ->textAlignType: NONE ->textFrameSizeType: NONE
+10-11 12:41:35.591  2245  5258 D EpubViewerActivity: openDocument(): deliverable css: body,html{widows : 1;orphans : 1;margin: 0px;;padding:0px;}
+10-11 12:41:35.591  2245  5258 D EpubViewerActivity: p {}
+10-11 12:41:35.608  2245  5258 D EpubViewerActivity: openDocument: changingFontsInProgress: false
+10-11 12:41:35.608  2245  5258 D EpubView: initEpubView.isInitialized=false
+10-11 12:41:35.609  2245  5258 D EpubViewerActivity: openDocument: opening at start page
+10-11 12:41:35.615  2245  2245 D EpubViewerActivity: post registerBroadcastReceiver()
+10-11 12:41:35.639  2245  5258 D EpubViewerActivity: openDocument: screen begin: OEBPS/c1.xhtml#point(/1/2/1/1:0)
+10-11 12:41:35.640  2245  5258 D EpubViewerActivity: openDocument: screen end: OEBPS/c1.xhtml#point(/1/2/3/1:70)
+10-11 12:41:35.681  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:35.698  2245  2245 D EpubView: initEpubView.isInitialized=false
+10-11 12:41:35.700  2245  2245 D EpubView: doPrepareTiles=true
+10-11 12:41:37.130  2245  2245 D EpubView: notifyPageChanged(): page position = 0.025076837105336685
+10-11 12:41:37.134  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:37.143  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:37.147  2245  2245 D EpubView: touchDogear(
+10-11 12:41:37.275  2245  2245 D EpubView: notifyPageChanged(): page position = 0.057488125174629784
+10-11 12:41:37.276  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:37.278  2245  2245 D EpubView: paging refresh: default refresh with mode: GLR16_PARTIAL
+10-11 12:41:38.491  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:38.497  2245  2245 D EpubView: touchDogear(
+10-11 12:41:38.508  2245  5261 D EpubView: preloadNextPage()  pageDrawable
+10-11 12:41:40.042  2245  2245 D EpubView: notifyPageChanged(): page position = 0.0892707460184409
+10-11 12:41:40.043  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:40.044  2245  2245 D EpubView: paging refresh: default refresh with mode: GLR16_PARTIAL
+10-11 12:41:40.790  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:40.796  2245  2245 D EpubView: touchDogear(
+10-11 12:41:40.806  2245  5258 D EpubView: preloadNextPage()  pageDrawable
+10-11 12:41:41.616  2245  2245 D EpubView: notifyPageChanged(): page position = 0.12196144174350378
+10-11 12:41:41.617  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:41.617  2245  2245 D EpubView: paging refresh: default refresh with mode: GLR16_PARTIAL
+10-11 12:41:41.854  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:41.857  2245  2245 D EpubView: touchDogear(
+10-11 12:41:41.861  2245  5263 D EpubView: preloadNextPage()  pageDrawable
+10-11 12:41:42.607  2245  2245 D EpubView: notifyPageChanged(): page position = 0.1537440625873149
+10-11 12:41:42.608  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:42.609  2245  2245 D EpubView: paging refresh: default refresh with mode: GLR16_PARTIAL
+10-11 12:41:42.872  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:42.878  2245  2245 D EpubView: touchDogear(
+10-11 12:41:42.889  2245  5261 D EpubView: preloadNextPage()  pageDrawable
+10-11 12:41:43.636  2245  2245 D EpubView: notifyPageChanged(): page position = 0.18643475831237777
+10-11 12:41:43.637  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:43.914  2245  2245 D EpubView: touchDogear(
+10-11 12:41:43.926  2245  2245 D EpubView: notifyPageChanged(): page position = 0.21821737915618888
+10-11 12:41:43.927  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:44.862  2245  2245 D EpubView: touchDogear(
+10-11 12:41:44.889  2245  2245 D EpubView: notifyPageChanged(): page position = 0.2509080748812517
+10-11 12:41:44.889  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:46.898  2245  2245 D BasicViewerActivity: link: showing back button with backLocation OEBPS/c1.xhtml#point(/1/2/26/1:42) and targetPage text 1
+10-11 12:41:46.953  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:46.953  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_DOWN, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100140637, downTime=100140637, deviceId=-1, source=0x101 }
+10-11 12:41:46.956  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:46.956  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_UP, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100140642, downTime=100140637, deviceId=-1, source=0x101 }
+10-11 12:41:47.011  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:47.014  2245  2245 D EpubView: touchDogear(
+10-11 12:41:50.246  2245  2245 D EpubViewerActivity: start Home from Backbutton
+10-11 12:41:50.363  2245  2245 D EpubViewerActivity: storing screenshot started on view de.telekom.epub.ui.views.EpubView{ca85493 V.ED..... ........ 0,0-1072,1448 #7f0802a2 app:id/epub_viewer_activity_epub_view}
+10-11 12:41:50.440  2245  2245 E BasicViewerActivity: callin update Metadata with: /storage/emulated/0/Books/GoTome-Test.epub 
+10-11 12:41:50.440  2245  2245 D BasicViewerActivity: TableDeliverable.BOOKMARK_POSITION:= OEBPS/c1.xhtml#point(/1/2/46/1:0)
+10-11 12:41:50.465  2245  2245 D EpubViewerActivity: pre deregisterBroadcastReceiver()
+10-11 12:41:50.479  2245  2245 D EpubViewerActivity: post deregisterBroadcastReceiver()
+10-11 12:41:51.050  2245  2245 D EpubViewerActivity: onDestroy from Activity: EpubViewerActivity
+10-11 12:41:53.598  2245  2245 D HomeActivity$DeliverableClickListener: startReader - book: GOtome Testbuch, path: /storage/emulated/0/Books/GoTome-Test.epub
+10-11 12:41:54.727  2245  2245 D BasicViewerActivity: handleIntent(Intent { act=ACTION_START_EPUB_VIEWER_FROM_DELIVERABLE flg=0x14000000 cmp=de.telekom.epub/.ui.activities.EpubViewerActivity (has extras) }) from Activity: BasicViewerActivity
+10-11 12:41:54.735  2245  2245 D BasicViewerActivity: reco -> no recommendations available for edata_1791714630694, downloading..
+10-11 12:41:54.747  2245  2245 D BasicViewerActivity: open deliverable in portrait
+10-11 12:41:54.755  2245  2245 D BasicViewerActivity: registerSyncReceiver()  deliverable=GOtome Testbuch Format: epub  getPrefIsWifiActive():true  hasRefreshToken():false  isOfflineEdata():true -> synchronizeDeliverable=false
+10-11 12:41:54.760  2245  5261 D EpubViewerActivity: openDocument: file:///storage/emulated/0/Books/GoTome-Test.epub
+10-11 12:41:54.761  2245  2245 D EpubViewerActivity: pre registerBroadcastReceiver()
+10-11 12:41:54.761  2245  5261 D EpubViewerActivity: openDocument: fontSettings:  ->fontType: publisher ->fontType displayname: Verlagsschrift ->fontType family: publisher ->fontType regular path:  ->fontType bold path:  ->fontType italic path:  ->fontType bolditalic path:  ->fontType fontsizearray: [16, 18, 20, 23, 26, 31, 38, 48, 64, 82, 102] ->fontType lineheight: [125, 140, 160] ->fontSizeCategory: XL ->fontLineHeightMultiplier: NONE ->textAlignType: NONE ->textFrameSizeType: NONE
+10-11 12:41:54.762  2245  5261 D EpubViewerActivity: openDocument(): deliverable css: body,html{widows : 1;orphans : 1;margin: 0px;;padding:0px;}
+10-11 12:41:54.762  2245  5261 D EpubViewerActivity: p {}
+10-11 12:41:54.774  2245  5261 D EpubViewerActivity: openDocument: changingFontsInProgress: false
+10-11 12:41:54.775  2245  5261 D EpubView: initEpubView.isInitialized=false
+10-11 12:41:54.776  2245  5261 D EpubViewerActivity: openDocument: opening book at Location: OEBPS/c1.xhtml#point(/1/2/46/1:0)
+10-11 12:41:54.776  2245  2245 D EpubViewerActivity: post registerBroadcastReceiver()
+10-11 12:41:54.913  2245  5261 D EpubView: notifyPageChanged(): page position = 0.23309583682592902
+10-11 12:41:54.914  2245  5261 D EpubViewerActivity: openDocument: screen begin: OEBPS/c1.xhtml#point(/1/2/46/1:0)
+10-11 12:41:54.915  2245  5261 D EpubViewerActivity: openDocument: screen end: OEBPS/c1.xhtml#point(/1/2/48/1:71)
+10-11 12:41:54.958  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:54.960  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:55.005  2245  2245 D EpubView: initEpubView.isInitialized=false
+10-11 12:41:55.009  2245  2245 D EpubView: doPrepareTiles=true
+10-11 12:41:55.819  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:55.820  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_DOWN, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100149497, downTime=100149497, deviceId=-1, source=0x101 }
+10-11 12:41:55.823  2245  2245 I BasicViewerActivity: BasicViewerActivity.dispatchKeyEvent(4)
+10-11 12:41:55.823  2245  2245 D EpubViewerActivity: dispatchKeyEvent  event = KeyEvent { action=ACTION_UP, keyCode=KEYCODE_BACK, scanCode=0, metaState=0, flags=0x0, repeatCount=0, eventTime=100149502, downTime=100149497, deviceId=-1, source=0x101 }
+10-11 12:41:55.924  2245  2245 D EpubView: notifyPageChanged(): page position = 0.2509080748812517
+10-11 12:41:55.925  2245  2245 D BasicViewerActivity: setNavigationPagePosition(): 0
+10-11 12:41:55.928  2245  2245 D EpubView: getLinkTargetLocationIfItIsALink.l=0
+10-11 12:41:55.930  2245  2245 D EpubView: touchDogear(
+10-11 12:41:59.471  2245  2245 D EpubViewerActivity: storing screenshot started on view de.telekom.epub.ui.views.EpubView{edeed57 V.ED..... ........ 0,0-1072,1448 #7f0802a2 app:id/epub_viewer_activity_epub_view}
+10-11 12:41:59.577  2245  2245 E BasicViewerActivity: callin update Metadata with: /storage/emulated/0/Books/GoTome-Test.epub 
+10-11 12:41:59.579  2245  2245 D BasicViewerActivity: TableDeliverable.BOOKMARK_POSITION:= OEBPS/c1.xhtml#point(/1/2/46/1:0)
+10-11 12:41:59.601  2245  2245 D EpubViewerActivity: pre deregisterBroadcastReceiver()
+10-11 12:41:59.608  2245  2245 D EpubViewerActivity: post deregisterBroadcastReceiver()

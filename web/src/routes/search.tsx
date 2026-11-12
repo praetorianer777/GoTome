@@ -2,12 +2,15 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+	type BookSummary,
 	type TextBook,
 	type TextHit,
+	describedQuery,
 	facetsQuery,
 	textSearchQuery,
 } from "@/books/api";
 import { Cover } from "@/books/cover";
+import { AuthorLinks, SeriesLine } from "@/books/name-links";
 import { FilterPanel } from "@/books/filter-panel";
 import {
 	FACET_FIELDS,
@@ -16,6 +19,7 @@ import {
 	pickCount,
 } from "@/books/filters";
 import { FormError } from "@/components/form";
+import { EmptyState, Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { librariesQuery } from "@/libraries/api";
 import { EBOOK_FORMATS, type ReaderSearch } from "@/routes/read";
@@ -24,12 +28,16 @@ import { EBOOK_FORMATS, type ReaderSearch } from "@/routes/read";
 export interface TextSearch extends FilterPicks {
 	q?: string;
 	library?: string;
+	/** Searching by a description of what the books are about, not their words. */
+	mode?: "description";
 }
 
 const control =
 	"rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
 const button =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
+const pill =
+	"rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-100 aria-pressed:border-brand-strong aria-pressed:bg-brand-strong aria-pressed:text-white dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:border-brand dark:aria-pressed:bg-brand dark:aria-pressed:text-ink";
 
 /** The text of the books searched, with the libraries and filters of the library page. */
 export function SearchPage({
@@ -58,12 +66,20 @@ export function SearchPage({
 		setWords(q);
 	}
 
+	const describing = search.mode === "description";
 	const results = useInfiniteQuery({
 		...textSearchQuery({ q, library, filter }),
-		enabled: q !== "",
+		enabled: q !== "" && !describing,
 	});
+	const described = useInfiniteQuery({
+		...describedQuery({ q, library }),
+		enabled: q !== "" && describing,
+	});
+	const near = described.data?.pages.flatMap((page) => page.books) ?? [];
+	const shown = describing ? described : results;
 	const facets = useQuery(facetsQuery({ library, filter }));
 	const books = results.data?.pages.flatMap((page) => page.books) ?? [];
+	const notSearched = results.data?.pages[0]?.notSearched ?? [];
 	const setPicks = (next: FilterPicks) =>
 		onSearch(
 			Object.fromEntries(FACET_FIELDS.map((field) => [field, next[field]])),
@@ -72,6 +88,25 @@ export function SearchPage({
 	return (
 		<div className="flex flex-col gap-6">
 			<h1 className="text-2xl font-semibold">{t("fulltext.title")}</h1>
+			<fieldset className="flex flex-wrap gap-2 text-sm">
+				<legend className="sr-only">{t("fulltext.mode")}</legend>
+				<button
+					type="button"
+					aria-pressed={!describing}
+					onClick={() => onSearch({ mode: undefined })}
+					className={pill}
+				>
+					{t("fulltext.mode.words")}
+				</button>
+				<button
+					type="button"
+					aria-pressed={describing}
+					onClick={() => onSearch({ mode: "description" })}
+					className={pill}
+				>
+					{t("fulltext.mode.description")}
+				</button>
+			</fieldset>
 			<search>
 			<form
 				className="flex flex-wrap items-center gap-2"
@@ -82,8 +117,8 @@ export function SearchPage({
 			>
 				<input
 					type="search"
-					aria-label={t("fulltext.label")}
-					placeholder={t("fulltext.placeholder")}
+					aria-label={t(describing ? "fulltext.describe.label" : "fulltext.label")}
+					placeholder={t(describing ? "fulltext.describe.placeholder" : "fulltext.placeholder")}
 					value={words}
 					onChange={(e) => setWords(e.target.value)}
 					className={`${control} min-w-0 flex-1 px-3 sm:max-w-xl`}
@@ -93,9 +128,11 @@ export function SearchPage({
 				</button>
 			</form>
 			</search>
-			<div className="flex flex-wrap items-end gap-x-6 gap-y-3 text-sm">
+			<div
+				className={`flex flex-wrap items-end gap-x-6 gap-y-3 text-sm ${libraries.isPending ? "min-h-7" : ""}`}
+			>
 				{list.length > 1 && (
-					<label className="flex items-center gap-2">
+					<label className="flex max-w-full min-w-0 items-center gap-2">
 						<span>{t("library.choose")}</span>
 						<select
 							value={library ?? ""}
@@ -113,69 +150,121 @@ export function SearchPage({
 						</select>
 					</label>
 				)}
-				<button
-					type="button"
-					aria-expanded={filtersOpen}
-					aria-controls="filters"
-					onClick={() => setFiltersOpen(!filtersOpen)}
-					className={`${button} lg:hidden`}
-				>
-					{filtered > 0
-						? t("filter.toggleActive", { count: filtered })
-						: t("filter.toggle")}
-				</button>
+				{!describing && (
+					<button
+						type="button"
+						aria-expanded={filtersOpen}
+						aria-controls="filters"
+						onClick={() => setFiltersOpen(!filtersOpen)}
+						className={`${button} lg:hidden`}
+					>
+						{filtered > 0
+							? t("filter.toggleActive", { count: filtered })
+							: t("filter.toggle")}
+					</button>
+				)}
 			</div>
 
 			<div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-				<aside
-					id="filters"
-					aria-label={t("filter.title")}
-					className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:block lg:w-60`}
-				>
-					<FilterPanel
-						facets={facets.data ?? []}
-						picks={picks}
-						onChange={setPicks}
-					/>
-				</aside>
+				{!describing && (
+					<aside
+						id="filters"
+						aria-label={t("filter.title")}
+						className={`${filtersOpen ? "" : "hidden"} shrink-0 lg:block lg:w-60`}
+					>
+						<FilterPanel
+							facets={facets.data ?? []}
+							picks={picks}
+							onChange={setPicks}
+						/>
+					</aside>
+				)}
 				<section
 					aria-label={t("fulltext.results")}
 					className="flex min-w-0 flex-1 flex-col gap-6"
 				>
-					<FormError error={results.error} />
+					<FormError error={shown.error} />
 					{q === "" && (
 						<p className="text-slate-600 dark:text-slate-400">
-							{t("fulltext.prompt")}
+							{t(describing ? "fulltext.describe.prompt" : "fulltext.prompt")}
 						</p>
 					)}
-					{results.isPending && q !== "" && (
-						<p className="text-slate-500">{t("loading")}</p>
+					{shown.isPending && q !== "" && (
+						<Loading />
 					)}
-					{results.isSuccess && books.length === 0 && (
-						<p role="status" className="text-slate-600 dark:text-slate-400">
-							{t("fulltext.none")}
+					{!describing && notSearched.length > 0 && (
+						<p
+							role="status"
+							className="text-sm text-slate-600 dark:text-slate-400"
+						>
+							{t("fulltext.notSearched", {
+								names: notSearched.map((l) => l.name).join(", "),
+							})}
 						</p>
 					)}
-					{books.length > 0 && (
+					{shown.isSuccess && (describing ? near : books).length === 0 && (
+						<div role="status">
+							<EmptyState mood="search">
+								{t(describing ? "fulltext.describe.none" : "fulltext.none")}
+							</EmptyState>
+						</div>
+					)}
+					{describing && near.length > 0 && (
+						<ol className="flex flex-col gap-4">
+							{near.map((book) => (
+								<Near key={book.id} book={book} />
+							))}
+						</ol>
+					)}
+					{!describing && books.length > 0 && (
 						<ol className="flex flex-col gap-6">
 							{books.map((found) => (
 								<Found key={found.book.id} found={found} />
 							))}
 						</ol>
 					)}
-					{results.hasNextPage && (
+					{shown.hasNextPage && (
 						<button
 							type="button"
-							disabled={results.isFetchingNextPage}
-							onClick={() => results.fetchNextPage()}
+							disabled={shown.isFetchingNextPage}
+							onClick={() => shown.fetchNextPage()}
 							className={`${button} self-center px-4 py-2`}
 						>
-							{results.isFetchingNextPage ? t("loading") : t("fulltext.more")}
+							{shown.isFetchingNextPage ? t("loading") : t("fulltext.more")}
 						</button>
 					)}
 				</section>
 			</div>
 		</div>
+	);
+}
+
+function Near({ book }: { book: BookSummary }) {
+	return (
+		<li className="flex gap-4">
+			<Link
+				to="/books/$bookId"
+				params={{ bookId: book.id }}
+				tabIndex={-1}
+				aria-hidden="true"
+				className="w-12 shrink-0"
+			>
+				<Cover book={book} size="small" />
+			</Link>
+			<div className="flex min-w-0 flex-col">
+				<h2 className="font-medium">
+					<Link to="/books/$bookId" params={{ bookId: book.id }} className="hover:underline">
+						{book.title}
+					</Link>
+				</h2>
+				{book.authors.length > 0 && (
+					<p className="text-sm text-slate-600 dark:text-slate-400">
+						<AuthorLinks book={book} />
+					</p>
+				)}
+				<SeriesLine book={book} />
+			</div>
+		</li>
 	);
 }
 
@@ -205,9 +294,10 @@ function Found({ found }: { found: TextBook }) {
 					</h2>
 					{book.authors.length > 0 && (
 						<p className="text-sm text-slate-600 dark:text-slate-400">
-							{book.authors.join(", ")}
+							<AuthorLinks book={book} />
 						</p>
 					)}
+					<SeriesLine book={book} />
 					{found.corrected && (
 						<p className="text-sm text-amber-700 dark:text-amber-400">
 							{t("fulltext.corrected")}

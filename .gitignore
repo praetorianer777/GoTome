@@ -9,12 +9,17 @@ coverage.out
 
 node_modules/
 /web/dist/
+/web/dist-demo/
+# Fetched by make sample-books; the pins in sample-books.lock.json are kept.
+/web/demo/files/
+/web/demo/covers/
 /web/coverage/
 # Filled by the image build and by make web-embed; only the placeholder is kept.
 /backend/internal/webui/dist/*
 !/backend/internal/webui/dist/.gitkeep
 
 /e2e/test-results/
+/e2e/test-results-demo/
 /e2e/playwright-report/
 
 # foliate-js is kept to what the EPUB and MOBI reader loads: upstream's demo
@@ -41,3 +46,20 @@ node_modules/
 /web/vendor/foliate-js/vendor/*
 !/web/vendor/foliate-js/vendor/zip.js
 !/web/vendor/foliate-js/vendor/fflate.js
+
+/clients/android/.gradle/
+/clients/android/.kotlin/
+/clients/android/build/
+/clients/android/app/build/
+/clients/android/local.properties
+
+# An installation's own settings for docker compose (deploy/.env.example).
+/deploy/.env
+
+# FFmpeg's source, fetched by make ffmpeg-fetch.
+/deploy/vendor/*
+!/deploy/vendor/.gitkeep
+
+# The engine's crates, vendored by make engine-fetch, and its build.
+/engine/vendor/
+/engine/target/

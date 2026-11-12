@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
-import { API_BASE, api } from "@/api/client";
+import { api, assetUrl } from "@/api/client";
 import type { components, paths } from "@/api/schema";
 
 export type BookSummary = components["schemas"]["BookSummary"];
@@ -68,15 +68,67 @@ export function facetsQuery(
 	});
 }
 
+export type NamedEntry = components["schemas"]["NamedEntry"];
+
+const NAMES_PAGE_SIZE = 100;
+
+/** Every author or every series the person sees, a page at a time. */
+export function namesQuery(kind: "/authors" | "/series") {
+	return infiniteQueryOptions({
+		queryKey: ["books", "names", kind],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET(kind, {
+					params: {
+						query: { limit: NAMES_PAGE_SIZE, after: pageParam || undefined },
+					},
+				})
+			).data ?? { names: [] },
+		initialPageParam: "",
+		getNextPageParam: (last) => last.nextCursor || undefined,
+	});
+}
+
+export type SeriesDetail = components["schemas"]["SeriesDetail"];
+export type ListedBook = components["schemas"]["ListedBook"];
+
+/** An author as the books the person sees name them. */
+export function authorQuery(key: string) {
+	return queryOptions({
+		queryKey: ["books", "author", key],
+		queryFn: async () =>
+			(
+				await api.GET("/authors/{authorKey}", {
+					params: { path: { authorKey: key } },
+				})
+			).data,
+	});
+}
+
+/** A series as far as the person sees it. */
+export function seriesQuery(key: string) {
+	return queryOptions({
+		queryKey: ["books", "series", key],
+		queryFn: async () =>
+			(
+				await api.GET("/series/{seriesKey}", {
+					params: { path: { seriesKey: key } },
+				})
+			).data,
+	});
+}
+
 export type SearchHit = components["schemas"]["SearchHit"];
 
-/** The books whose title, author or series looks like the words. */
+export type NameHit = components["schemas"]["NameHit"];
+
+/** The books, authors and series whose title or name looks like the words. */
 export function searchQuery(words: string) {
 	return queryOptions({
 		queryKey: ["books", "search", words],
 		queryFn: async () =>
-			(await api.GET("/books/search", { params: { query: { q: words } } })).data
-				?.books ?? [],
+			(await api.GET("/books/search", { params: { query: { q: words } } }))
+				.data ?? { books: [], names: [] },
 		// While the next answer is on its way, the last one stays in view.
 		placeholderData: (previous) => previous,
 	});
@@ -91,6 +143,25 @@ const TEXT_PAGE_SIZE = 20;
  * The books whose text holds the words, best first, a page at a time. The
  * results are ranked, so pages are counted rather than keyed.
  */
+const DESCRIBED_PAGE_SIZE = 24;
+
+/** The books nearest a description of what they are to be about, a page at a time. */
+export function describedQuery(params: { q: string; library?: string }) {
+	return infiniteQueryOptions({
+		queryKey: ["books", "described", params],
+		queryFn: async ({ pageParam }) =>
+			(
+				await api.GET("/search/similar", {
+					params: {
+						query: { ...params, limit: DESCRIBED_PAGE_SIZE, offset: pageParam || undefined },
+					},
+				})
+			).data ?? { books: [] },
+		initialPageParam: 0,
+		getNextPageParam: (last) => last.nextOffset,
+	});
+}
+
 export function textSearchQuery(params: {
 	q: string;
 	library?: string;
@@ -106,7 +177,7 @@ export function textSearchQuery(params: {
 						query: { ...params, limit: TEXT_PAGE_SIZE, offset: pageParam || undefined },
 					},
 				})
-			).data ?? { books: [], more: false },
+			).data ?? { books: [], more: false, notSearched: [] },
 		initialPageParam: 0,
 		getNextPageParam: (last, pages) =>
 			last.more ? pages.length * TEXT_PAGE_SIZE : undefined,
@@ -157,9 +228,9 @@ export function coverUrl(
 	if (!book.coverKey) {
 		return undefined;
 	}
-	return `${API_BASE}/books/${book.id}/covers/${size}?v=${book.coverKey}`;
+	return assetUrl(`/books/${book.id}/covers/${size}?v=${book.coverKey}`);
 }
 
 export function downloadUrl(file: { id: string }): string {
-	return `${API_BASE}/files/${file.id}/download`;
+	return assetUrl(`/files/${file.id}/download`);
 }

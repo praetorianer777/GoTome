@@ -1,0 +1,22 @@
+name: Load the images
+description: >
+  Loads the docker images that the images job built (artifacts named
+  images-<name>) into this job's docker, under the tags they were saved with.
+inputs:
+  pattern:
+    description: Which artifacts to load, as a glob on their names
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ inputs.pattern }}
+        merge-multiple: true
+        path: ${{ runner.temp }}/images
+    - shell: bash
+      run: |
+        for f in "$RUNNER_TEMP"/images/*.tar.gz; do
+          gzip -dc "$f" | docker load
+          rm "$f"
+        done

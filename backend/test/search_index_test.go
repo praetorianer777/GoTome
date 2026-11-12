@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -138,18 +138,10 @@ func TestTheTextAndItsIndexAreBuiltAgain(t *testing.T) {
 	}
 	a.chunkQueued()
 
-	// A new pg_search, as an upgraded database image brings, queues the
-	// rebuild at start; the rebuild needs the chunks alone, not the files.
-	var engine string
-	if err := a.pool.QueryRow(ctx, "SELECT extversion FROM pg_extension WHERE extname = 'pg_search'").Scan(&engine); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := a.pool.Exec(ctx, `INSERT INTO index_versions (name, version) VALUES ('pg_search', '0.0.1')
-		ON CONFLICT (name) DO UPDATE SET version = EXCLUDED.version`); err != nil {
-		t.Fatal(err)
-	}
-	if err := a.server.Index.CheckEngine(ctx); err != nil {
-		t.Fatal(err)
+	// A rebuild reads every file again for the index; search finds what
+	// the index has of a book meanwhile.
+	if status, out, _ := a.call(admin, http.MethodPost, "/search/rebuild", nil); status != 202 || out["queued"] != true {
+		t.Errorf("a rebuild: %d %v", status, out)
 	}
 	if _, got := a.searchStatus(admin, ""); got["rebuilding"] != true {
 		t.Errorf("no rebuild queued: %v", got)
@@ -157,19 +149,25 @@ func TestTheTextAndItsIndexAreBuiltAgain(t *testing.T) {
 	if status, out, _ := a.call(admin, http.MethodPost, "/search/rebuild", nil); status != 202 || out["queued"] != false {
 		t.Errorf("a second rebuild: %d %v", status, out)
 	}
-	if err := os.RemoveAll(books); err != nil {
-		t.Fatal(err)
-	}
 	if err := a.server.Index.Rebuild(ctx); err != nil {
 		t.Fatal(err)
 	}
-	var recorded string
-	if err := a.pool.QueryRow(ctx, "SELECT version FROM index_versions WHERE name = 'pg_search'").Scan(&recorded); err != nil || recorded != engine {
-		t.Errorf("recorded %q, %v; want %q", recorded, err, engine)
+	if _, got := a.searchStatus(admin, ""); got["indexed"] != 0.0 {
+		t.Errorf("while rebuilding: %v", got)
+	}
+	if got := whale(); !slices.Equal(got, []string{"Sea"}) {
+		t.Errorf("while rebuilding: %v", got)
+	}
+	if more, err := a.scans.IndexFiles(ctx, time.Now().Add(time.Minute)); err != nil || more {
+		t.Fatalf("index the files: %v, %v", more, err)
+	}
+	if _, got := a.searchStatus(admin, ""); got["indexed"] != 2.0 {
+		t.Errorf("after the rebuild: %v", got)
 	}
 	if got := whale(); !slices.Equal(got, []string{"Sea"}) {
 		t.Errorf("after the rebuild: %v", got)
 	}
+	var recorded string
 
 	// A new chunker marks every file to be read again, and search keeps
 	// what it has meanwhile.

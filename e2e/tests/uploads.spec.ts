@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { openSignedIn } from "../fixtures/app";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
+import { chooseUploadLibrary, openSignedIn } from "../fixtures/app";
 
 test("a book is uploaded, found in the library, and not taken twice", async ({
 	page,
@@ -27,10 +28,7 @@ test("a book is uploaded, found in the library, and not taken twice", async ({
 	await expect(
 		page.getByRole("heading", { name: "Add books", level: 1 }),
 	).toBeVisible();
-	const choice = page.getByRole("combobox", { name: "Into the library" });
-	if (await choice.isVisible()) {
-		await choice.selectOption({ label: library });
-	}
+	await chooseUploadLibrary(page, library);
 	await page.getByLabel("Choose files").setInputFiles(file);
 
 	const row = page.getByRole("listitem", { name: file.name });
@@ -58,4 +56,40 @@ test("a book is uploaded, found in the library, and not taken twice", async ({
 	expect((await page.request.delete(`/api/v1/libraries/${id}`)).status()).toBe(
 		204,
 	);
+});
+
+test("a book dropped on the page is uploaded", async ({ page }, testInfo) => {
+	const stamp = `${testInfo.project.name} ${Date.now()}`;
+	const library = `Dropped ${stamp}`;
+	const name = `Dropped ${stamp}.pdf`;
+	await openSignedIn(page);
+	const created = await page.request.post("/api/v1/libraries", {
+		data: { name: library, mode: "managed", visibility: "private" },
+	});
+	expect(created.status()).toBe(201);
+	const { id } = await created.json();
+
+	await page.goto("/upload");
+	await chooseUploadLibrary(page, library);
+	const zone = page.getByRole("region", { name: "Files to add" });
+	// What a file dragged in from the desktop carries: Playwright cannot
+	// drag from outside the page, so the drop is made in it.
+	const dropped = await page.evaluateHandle(
+		({ name, text }) => {
+			const data = new DataTransfer();
+			data.items.add(new File([text], name, { type: "application/pdf" }));
+			return data;
+		},
+		{ name, text: `%PDF-1.4\n% ${stamp}\n` },
+	);
+	await zone.dispatchEvent("dragover", { dataTransfer: dropped });
+	await expect(zone).toHaveAttribute("data-dragging", "true");
+	await zone.dispatchEvent("drop", { dataTransfer: dropped });
+
+	const row = page.getByRole("listitem", { name });
+	await expect(row.getByText("Added.")).toBeVisible();
+	await row.getByRole("link", { name: "Open the book" }).click();
+	await expect(page.getByRole("heading", { name: `Dropped ${stamp}`, level: 1 })).toBeVisible();
+
+	expect((await page.request.delete(`/api/v1/libraries/${id}`)).status()).toBe(204);
 });

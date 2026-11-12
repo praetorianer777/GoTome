@@ -28,10 +28,21 @@ func (q *Queries) AddLibraryMember(ctx context.Context, arg AddLibraryMemberPara
 	return err
 }
 
+const clearLibraryUnwritable = `-- name: ClearLibraryUnwritable :exec
+UPDATE libraries
+SET unwritable_since = NULL, unwritable_reason = NULL
+WHERE id = $1 AND unwritable_since IS NOT NULL
+`
+
+func (q *Queries) ClearLibraryUnwritable(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearLibraryUnwritable, id)
+	return err
+}
+
 const createLibrary = `-- name: CreateLibrary :one
 INSERT INTO libraries (id, name, root_path, mode, writable, visibility, owner_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch, fulltext
 `
 
 type CreateLibraryParams struct {
@@ -65,6 +76,11 @@ func (q *Queries) CreateLibrary(ctx context.Context, arg CreateLibraryParams) (L
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
+		&i.JoinFormats,
+		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
 }
@@ -81,11 +97,23 @@ func (q *Queries) DeleteLibrary(ctx context.Context, id uuid.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const getLibraryRoot = `-- name: GetLibraryRoot :one
+SELECT root_path FROM libraries WHERE id = $1
+`
+
+// For storage managers, who see every library.
+func (q *Queries) GetLibraryRoot(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getLibraryRoot, id)
+	var root_path string
+	err := row.Scan(&root_path)
+	return root_path, err
+}
+
 const getVisibleLibrary = `-- name: GetVisibleLibrary :one
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch, l.fulltext
 FROM libraries l
 WHERE l.id = $1
-  AND l.id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND l.id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleLibraryParams struct {
@@ -107,8 +135,56 @@ func (q *Queries) GetVisibleLibrary(ctx context.Context, arg GetVisibleLibraryPa
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
+		&i.JoinFormats,
+		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
+}
+
+const holdLibrariesOfBooks = `-- name: HoldLibrariesOfBooks :exec
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM books WHERE id = ANY($1::uuid[]))
+ORDER BY id
+FOR KEY SHARE
+`
+
+// HoldLibrary for the libraries of the books, in one order.
+func (q *Queries) HoldLibrariesOfBooks(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrariesOfBooks, ids)
+	return err
+}
+
+const holdLibrariesOfFiles = `-- name: HoldLibrariesOfFiles :exec
+SELECT 1 FROM libraries
+WHERE id IN (SELECT library_id FROM book_files WHERE id = ANY($1::uuid[]))
+ORDER BY id
+FOR KEY SHARE
+`
+
+// HoldLibrary for the libraries of the files, in one order.
+func (q *Queries) HoldLibrariesOfFiles(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrariesOfFiles, ids)
+	return err
+}
+
+const holdLibrary = `-- name: HoldLibrary :exec
+SELECT 1 FROM libraries WHERE id = $1 FOR KEY SHARE
+`
+
+// Deleting a library cascades through its books, files and chunks and locks
+// them in an order of its own, while extraction, chunking, merges, the
+// trash, uploads, scans and edits lock a book and its files in theirs: the
+// two deadlocked (#199). Such a writer holds the library's row first, as
+// the first lock of its transaction. FOR KEY SHARE keeps writers from
+// waiting for each other, as every insert of a book takes it already; the
+// delete, whose first lock is this row's, waits until they are done, or
+// they until it is, and then find nothing.
+func (q *Queries) HoldLibrary(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, holdLibrary, id)
+	return err
 }
 
 const listLibraryMembers = `-- name: ListLibraryMembers :many
@@ -182,9 +258,9 @@ func (q *Queries) ListLibraryRoots(ctx context.Context) ([]ListLibraryRootsRow, 
 }
 
 const listVisibleLibraries = `-- name: ListVisibleLibraries :many
-SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at
+SELECT l.id, l.name, l.root_path, l.mode, l.writable, l.visibility, l.owner_id, l.created_at, l.updated_at, l.unwritable_since, l.unwritable_reason, l.join_formats, l.watch, l.fulltext
 FROM libraries l
-WHERE l.id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+WHERE l.id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 ORDER BY lower(l.name)
 `
 
@@ -212,6 +288,11 @@ func (q *Queries) ListVisibleLibraries(ctx context.Context, arg ListVisibleLibra
 			&i.OwnerID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UnwritableSince,
+			&i.UnwritableReason,
+			&i.JoinFormats,
+			&i.Watch,
+			&i.Fulltext,
 		); err != nil {
 			return nil, err
 		}
@@ -221,6 +302,70 @@ func (q *Queries) ListVisibleLibraries(ctx context.Context, arg ListVisibleLibra
 		return nil, err
 	}
 	return items, nil
+}
+
+const listWatchedLibraries = `-- name: ListWatchedLibraries :many
+SELECT id, root_path FROM libraries WHERE watch
+`
+
+type ListWatchedLibrariesRow struct {
+	ID       uuid.UUID
+	RootPath string
+}
+
+func (q *Queries) ListWatchedLibraries(ctx context.Context) ([]ListWatchedLibrariesRow, error) {
+	rows, err := q.db.Query(ctx, listWatchedLibraries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWatchedLibrariesRow{}
+	for rows.Next() {
+		var i ListWatchedLibrariesRow
+		if err := rows.Scan(&i.ID, &i.RootPath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockLibraryForUpdate = `-- name: LockLibraryForUpdate :one
+SELECT fulltext FROM libraries WHERE id = $1 FOR UPDATE
+`
+
+// Waits for the writers that hold the library (HoldLibrary), and keeps new
+// ones off until the transaction ends; returns whether it is searched by
+// text now.
+func (q *Queries) LockLibraryForUpdate(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, lockLibraryForUpdate, id)
+	var fulltext bool
+	err := row.Scan(&fulltext)
+	return fulltext, err
+}
+
+const markLibraryUnwritable = `-- name: MarkLibraryUnwritable :one
+UPDATE libraries
+SET unwritable_since = now(), unwritable_reason = $1
+WHERE id = $2 AND writable AND unwritable_since IS NULL
+RETURNING name
+`
+
+type MarkLibraryUnwritableParams struct {
+	Reason *string
+	ID     uuid.UUID
+}
+
+// Only the first time: the name comes back only when the library was not
+// marked yet, which is when its managers are told.
+func (q *Queries) MarkLibraryUnwritable(ctx context.Context, arg MarkLibraryUnwritableParams) (string, error) {
+	row := q.db.QueryRow(ctx, markLibraryUnwritable, arg.Reason, arg.ID)
+	var name string
+	err := row.Scan(&name)
+	return name, err
 }
 
 const removeLibraryMember = `-- name: RemoveLibraryMember :execrows
@@ -245,16 +390,25 @@ UPDATE libraries
 SET name       = COALESCE($2, name),
     visibility = COALESCE($3, visibility),
     writable   = COALESCE($4, writable),
+    join_formats = COALESCE($5, join_formats),
+    watch      = COALESCE($6, watch),
+    fulltext   = COALESCE($7, fulltext),
+    -- Whoever sets it has just seen the folder written to, or turned it off.
+    unwritable_since  = CASE WHEN $4::boolean IS NULL THEN unwritable_since END,
+    unwritable_reason = CASE WHEN $4::boolean IS NULL THEN unwritable_reason END,
     updated_at = now()
 WHERE id = $1
-RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at
+RETURNING id, name, root_path, mode, writable, visibility, owner_id, created_at, updated_at, unwritable_since, unwritable_reason, join_formats, watch, fulltext
 `
 
 type UpdateLibraryParams struct {
-	ID         uuid.UUID
-	Name       *string
-	Visibility *string
-	Writable   *bool
+	ID          uuid.UUID
+	Name        *string
+	Visibility  *string
+	Writable    *bool
+	JoinFormats *bool
+	Watch       *bool
+	Fulltext    *bool
 }
 
 func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (Library, error) {
@@ -263,6 +417,9 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (L
 		arg.Name,
 		arg.Visibility,
 		arg.Writable,
+		arg.JoinFormats,
+		arg.Watch,
+		arg.Fulltext,
 	)
 	var i Library
 	err := row.Scan(
@@ -275,6 +432,11 @@ func (q *Queries) UpdateLibrary(ctx context.Context, arg UpdateLibraryParams) (L
 		&i.OwnerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UnwritableSince,
+		&i.UnwritableReason,
+		&i.JoinFormats,
+		&i.Watch,
+		&i.Fulltext,
 	)
 	return i, err
 }

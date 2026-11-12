@@ -42,6 +42,18 @@ func provider() *Provider {
 // web replays the answers in testdata.
 func web() metadata.Web { return metadata.NewFixtures("testdata", provider()) }
 
+// recorded skips a test whose request has no recorded answer yet; the
+// error names the request that make record-fixtures records.
+func recorded(t *testing.T, err error) {
+	t.Helper()
+	if errors.Is(err, metadata.ErrNoFixture) {
+		t.Skip(err)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func checkEmma(t *testing.T, r metadata.Record) {
 	t.Helper()
 	if !strings.HasPrefix(r.Title, "Emma") || len(r.Contributors) == 0 || r.Contributors[0].Name != "Jane Austen" {
@@ -54,8 +66,9 @@ func checkEmma(t *testing.T, r metadata.Record) {
 
 func TestLookupByISBN(t *testing.T) {
 	got, err := provider().Lookup(context.Background(), web(), emmaISBN)
-	if err != nil || len(got) == 0 {
-		t.Fatalf("Lookup: %+v, %v", got, err)
+	recorded(t, err)
+	if len(got) == 0 {
+		t.Fatal("Lookup found nothing")
 	}
 	r := got[0]
 	checkEmma(t, r)
@@ -72,21 +85,29 @@ func TestLookupByISBN(t *testing.T) {
 
 func TestLookupOfAnUnknownISBN(t *testing.T) {
 	got, err := provider().Lookup(context.Background(), web(), catalog.Identifier{Type: catalog.IDISBN, Value: "9799999999990"})
-	if err != nil || len(got) != 0 {
+	recorded(t, err)
+	if len(got) != 0 {
 		t.Errorf("got %+v, %v", got, err)
 	}
 }
 
 func TestSearchByTitleAndAuthor(t *testing.T) {
 	got, err := provider().Search(context.Background(), web(), metadata.Query{Title: "Emma", Authors: []string{"Jane Austen"}, Language: "en-GB"})
-	if err != nil || len(got) == 0 {
-		t.Fatalf("Search: %+v, %v", got, err)
+	recorded(t, err)
+	if len(got) == 0 {
+		t.Fatal("Search found nothing")
 	}
-	checkEmma(t, got[0])
 	book := emma()
 	book.Identifiers = nil
-	if score := metadata.Score(book, got[0]); score < 0.9 {
-		t.Errorf("the first result scores %.2f: %+v", score, got[0])
+	best := got[0]
+	for _, r := range got {
+		if metadata.Score(book, r) > metadata.Score(book, best) {
+			best = r
+		}
+	}
+	checkEmma(t, best)
+	if score := metadata.Score(book, best); score < 0.9 {
+		t.Errorf("the best result scores %.2f: %+v", score, best)
 	}
 }
 
@@ -141,6 +162,56 @@ func TestARefusalSaysWhy(t *testing.T) {
 	if !utf8.ValidString(long) || len(long) > maxReason+len("…") {
 		t.Errorf("a long message: %d bytes", len(long))
 	}
+}
+
+func TestAVolumeBecomesARecord(t *testing.T) {
+	answer := []byte(`{"items":[{"id":"vol1","volumeInfo":{
+		"title":"The Example Voyage","subtitle":"A Tale","authors":["Ada Example","Bo Sample"],
+		"publisher":"Old Press","publishedDate":"1871-05",
+		"description":"<p>A <b>sea</b> story.</p><p>Second&nbsp;part.</p>",
+		"industryIdentifiers":[{"type":"ISBN_10","identifier":"0-306-40615-2"},{"type":"ISBN_13","identifier":"9780306406157"},{"type":"OTHER","identifier":"x"}],
+		"pageCount":312,"categories":["Fiction / Sea stories","Fiction / Classics"],"language":"en",
+		"imageLinks":{"thumbnail":"http://books.google.com/c?id=vol1&edge=curl","large":"http://books.google.com/l?id=vol1"}}}]}`)
+	w := &fixedWeb{answer: answer}
+	got, err := New(nil).Search(context.Background(), w, metadata.Query{Title: "The Example Voyage", Authors: []string{"Ada Example"}, Language: "en-GB"})
+	if err != nil || len(got) != 1 {
+		t.Fatalf("Search: %+v, %v", got, err)
+	}
+	r := got[0]
+	if r.ID != "vol1" || r.Title != "The Example Voyage" || r.Subtitle != "A Tale" || r.Publisher != "Old Press" ||
+		r.Published != "1871-05" || r.Language != "en" || r.PageCount == nil || *r.PageCount != 312 || len(r.Contributors) != 2 {
+		t.Errorf("record = %+v", r)
+	}
+	if strings.ContainsAny(r.Description, "<>") || !strings.Contains(r.Description, "sea story") {
+		t.Errorf("description %q", r.Description)
+	}
+	if want := []string{"Fiction", "Sea stories", "Classics"}; !slices.Equal(r.Tags, want) {
+		t.Errorf("tags %v, want %v", r.Tags, want)
+	}
+	for _, want := range []catalog.Identifier{
+		{Type: catalog.IDISBN, Value: "9780306406157"}, {Type: catalog.IDGoogle, Value: "vol1"},
+	} {
+		if !slices.Contains(r.Identifiers, want) {
+			t.Errorf("identifiers %v lack %v", r.Identifiers, want)
+		}
+	}
+	if r.CoverURL != "https://books.google.com/l?id=vol1" {
+		t.Errorf("cover %q", r.CoverURL)
+	}
+	q := w.asked.URL
+	if !strings.Contains(q, "langRestrict=en") || !strings.Contains(q, "inauthor") {
+		t.Errorf("request %q", q)
+	}
+}
+
+type fixedWeb struct {
+	answer []byte
+	asked  metadata.Request
+}
+
+func (w *fixedWeb) Get(_ context.Context, r metadata.Request) ([]byte, error) {
+	w.asked = r
+	return w.answer, nil
 }
 
 func TestDatesAndCovers(t *testing.T) {

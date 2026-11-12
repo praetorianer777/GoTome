@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -52,6 +53,7 @@ func readCases() map[string][]readCase {
 		return v
 	}
 	byAuthor := `{"field":"author","op":"in","values":["{author}"]}`
+	byWords := `{"field":"words","op":"like","values":["{title}"]}`
 	return map[string][]readCase{
 		"listLibraries":      {{path: "/libraries", control: "insider"}},
 		"getLibrary":         {{path: "/libraries/{library}", control: "insider"}},
@@ -61,6 +63,7 @@ func readCases() map[string][]readCase {
 			{path: "/books", control: "insider"},
 			{path: "/books", query: q("library", "{library}"), control: "insider"},
 			{path: "/books", query: q("filter", byAuthor), control: "insider"},
+			{path: "/books", query: q("filter", byWords), control: "insider"},
 		},
 		"searchBooks": {{path: "/books/search", query: q("q", "{title}"), control: "insider"}},
 		"searchText": {
@@ -70,6 +73,14 @@ func readCases() map[string][]readCase {
 		// Counts name no book; the call about the library proves it is
 		// kept to those who see it.
 		"searchStatus": {{path: "/search/status", query: q("library", "{library}"), control: "insider"}},
+		"getLibraryFigures": {
+			{path: "/statistics", query: q("library", "{library}"), control: "insider"},
+			{path: "/statistics", why: "counts only; TestTheStatisticsCountWhatTheCallerSees holds them to the caller's libraries"},
+		},
+		"getWorkProgress": {
+			{path: "/statistics/work", query: q("library", "{library}"), control: "insider"},
+			{path: "/statistics/work", why: "counts only; TestTheStatisticsCountWhatTheCallerSees holds them to the caller's libraries"},
+		},
 		"listDuplicates": {
 			{path: "/duplicates", control: "insider"},
 			{path: "/duplicates", query: q("library", "{library}"), control: "insider"},
@@ -78,9 +89,14 @@ func readCases() map[string][]readCase {
 			{path: "/trash", control: "insider"},
 			{path: "/trash", query: q("library", "{library}"), control: "insider"},
 		},
+		"listAuthors": {{path: "/authors", query: q("limit", "200"), control: "insider"}},
+		"listSeries":  {{path: "/series", query: q("limit", "200"), control: "insider"}},
+		"getAuthor":   {{path: "/authors/{author}", control: "insider"}},
+		"getSeries":   {{path: "/series/{series}", control: "insider"}},
 		"listBookFacets": {
 			{path: "/books/facets", control: "insider"},
 			{path: "/books/facets", query: q("library", "{library}"), control: "insider"},
+			{path: "/books/facets", query: q("filter", byWords), control: "insider"},
 		},
 		"countBooks": {
 			{path: "/books/count", query: q("filter", byAuthor), control: "insider"},
@@ -97,11 +113,43 @@ func readCases() map[string][]readCase {
 			{path: "/books/{book}/similar", control: "insider"},
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
-		"getProgress":     {{path: "/books/{book}/progress", control: "insider"}},
-		"getBookCover":    {{path: "/books/{book}/covers/small", control: "insider"}},
-		"downloadFile":    {{path: "/files/{file}/download", control: "insider"}},
-		"getStats":        {{path: "/me/stats", control: "insider"}},
-		"listReview":      {{path: "/matches", control: "insider"}},
+		"getProgress":         {{path: "/books/{book}/progress", control: "insider"}},
+		"getContinuation":     {{path: "/books/{book}/continuation", control: "insider"}},
+		"getBookCover":        {{path: "/books/{book}/covers/small", control: "insider"}},
+		"downloadFile":        {{path: "/files/{file}/download", control: "insider"}},
+		"getStats":            {{path: "/me/stats", control: "insider"}},
+		"listReading":         {{path: "/me/reading", control: "insider"}},
+		"listRecommendations": {{path: "/me/recommendations", why: "the book is the insider's own, which is never recommended; TestRecommendationsStayWithinTheLibrariesThePersonSees proves it"}},
+		"getCalibreImport":    {{path: "/calibre/imports/{calibreImport}", why: "for storage managers alone, who see every library, and the import is the caller's own; TestACalibreLibraryIsPreviewedImportedAndImportedAgain proves it"}},
+		"getReadingImport": {
+			{path: "/me/reading-imports/{insiderImport}", control: "insider"},
+			{path: "/me/reading-imports/{formerImport}", control: "former"},
+		},
+		"getPlayQueue": {{path: "/me/queue", why: "the caller's own queue, kept to what they see by ListPlayQueue; TestAPlayQueueHoldsOnlyWhatIsSeen proves it"}},
+		// The releases are of what the caller follows, which the sources
+		// list for anyone; that one is in a library only those who see it
+		// are told: TestAReleaseIsInTheLibraryOnlyWhereItIsSeen.
+		"listReleases":        {{path: "/releases", why: "the caller's own follows; proven in TestAReleaseIsInTheLibraryOnlyWhereItIsSeen"}},
+		"listReview":          {{path: "/matches", control: "insider"}},
+		"embeddingStatus":     {{path: "/embedding/status", why: "counts only; TestEmbeddingProgressCountsTheBooksTheCallerSees holds them to the caller's libraries"}},
+		"listEmbeddingModels": {{path: "/embedding/models", why: "counts only; TestEmbeddingModelsCountTheBooksTheCallerSees holds them to the caller's libraries"}},
+		// Every book with vectors is ranked, by its book vectors and its
+		// passages', the secret too where it is seen:
+		// TestADescriptionFindsTheNearestBooksTheViewerSees and
+		// TestPassagesFindTheBooksTheyAreFromOnlyWhereTheyAreSeen.
+		// Not by the title, which a twin would be ranked by otherwise.
+		"searchDescribed":      {{path: "/search/similar", query: q("q", "a book about anything"), control: "insider"}},
+		"listCleanup":          {{path: "/cleanup", query: q("kind", "authors"), control: "insider"}},
+		"previewCleanup":       {{path: "/cleanup/preview", query: q("kind", "authors", "subject", "{person}"), control: "insider"}},
+		"getAutoCleanup":       {{path: "/curation/cleanup", why: "counts only; TestAutomaticCleanupAppliesOnlyWhatTheDataDecides holds them to the caller's libraries"}},
+		"getAutoMatches":       {{path: "/curation/matches", control: "insider"}},
+		"listCurationRuns":     {{path: "/curation/runs", why: "a run names no book, only how many actions the caller sees; TestRunsAreListedToThoseWhoSeeTheirLibraries proves it"}},
+		"getCurationRun":       {{path: "/curation/runs/{curationRun}", control: "insider"}},
+		"listDuplicateClasses": {{path: "/curation/duplicates", why: "counts only, of pairs in libraries the caller sees; TestAPairInALibraryTheCallerDoesNotSeeIsNeverCountedOrTouched proves it"}},
+		"listGenreSuggestions": {
+			{path: "/genres/suggestions", control: "insider"},
+			{path: "/genres/suggestions", query: q("genre", "crime"), control: "insider"},
+		},
 		"listCollections": {{path: "/collections", query: q("book", "{book}"), control: "insider"}},
 		"getCollection": {
 			{path: "/collections/{sharedCollection}", control: "insider"},
@@ -119,13 +167,46 @@ func readCases() map[string][]readCase {
 			{path: "/bulk/{insiderBulk}", control: "insider"},
 			{path: "/bulk/{formerBulk}", control: "former"},
 		},
+		"searchOpds": {{path: "/opds/search", query: q("q", "{title}"), control: "insider"}},
+		"listOpdsBooks": {
+			{path: "/opds/books", control: "insider"},
+			{path: "/opds/books", query: q("author", "{author}"), control: "insider"},
+		},
+		"listOpdsAuthors": {{path: "/opds/authors", control: "insider"}},
+		"listOpdsSeries":  {{path: "/opds/series", control: "insider"}},
+		"listOpdsShelves": {{path: "/opds/shelves", why: "shelves list names and counts, which each shelf's own feed checks"}},
+		"listOpdsCollection": {
+			{path: "/opds/collections/{sharedCollection}", control: "insider"},
+			{path: "/opds/collections/{formerCollection}", control: "former"},
+		},
+		"listBookDeliveries":  {{path: "/books/{book}/deliveries", control: "insider"}},
+		"listBookKindleSends": {{path: "/books/{book}/kindle", control: "insider"}},
+		"listDeviceBooks": {
+			{path: "/devices/{insiderDevice}/books", control: "insider"},
+			{path: "/devices/{formerDevice}/books", control: "former"},
+		},
+		"listOpdsDeviceBooks":    {{path: "/opds/device", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"listDeviceQueue":        {{path: "/device/books", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
+		"koboSync":               {{path: "/kobo/not-a-token/v1/library/sync", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboMetadata":           {{path: "/kobo/not-a-token/v1/library/{book}/metadata", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboReadingState":       {{path: "/kobo/not-a-token/v1/library/{book}/state", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
+		"koboCover":              {{path: "/kobo/not-a-token/{book}/300/400/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
+		"koboCoverQuality":       {{path: "/kobo/not-a-token/{book}/300/400/80/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
+		"koboDownload":           {{path: "/kobo/not-a-token/download/{file}", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboDownloadKepub":      {{path: "/kobo/not-a-token/download/{file}/kepub", why: "only a device's token in the address reaches it; TestAKoboReaderIsSentAKepubOnlyWhereItsOwnerSwitchedThatOn proves it"}},
+		"kosyncPull":             {{path: "/kosync/syncs/progress/{book}", why: "a document is named by an MD5 of its file; TestKOReaderSyncsTheProgressOfBooksThePersonSees proves one of a private library is unknown"}},
+		"listOpdsSmartShelf": {
+			{path: "/opds/smart-shelves/{sharedShelf}", control: "insider"},
+			{path: "/opds/smart-shelves/{formerShelf}", control: "former"},
+		},
 	}
 }
 
 // twinned are the placeholders that name the secret itself. A call that
 // uses one must be answered to someone outside the library exactly as the
 // same call about something that does not exist.
-var twinned = []string{"book", "file", "library", "title", "author", "tag"}
+var twinned = []string{"book", "file", "library", "title", "author", "tag", "series", "person"}
 
 var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
@@ -158,7 +239,7 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	a.withProvider()
 	a.matcher()
 	ctx := context.Background()
-	admin, _ := a.signedIn("admin", "admin")
+	admin, adminID := a.signedIn("admin", "admin")
 	insider, insiderID := a.signedIn("insider", "editor")
 	former, formerID := a.signedIn("former", "editor")
 	stranger, _ := a.signedIn("stranger", "reader")
@@ -183,17 +264,18 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	}
 	secret := map[string]string{
 		"book": up["bookId"].(string), "file": up["fileId"].(string), "library": vault,
-		"title": "Secretum " + mark, "author": "Abditus " + mark, "tag": "Arcanum" + mark,
+		"title": "Secretum " + mark, "author": "Abditus " + mark, "tag": "Arcanum" + mark, "series": "Occultum " + mark,
 	}
 	twin := map[string]string{
 		"book": uuid.NewString(), "file": uuid.NewString(), "library": uuid.NewString(),
 		// Other words than the secret's: the quick search and the names
 		// match words alike, which would find the secret for its twin.
-		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark,
+		"title": "Quaesitum " + twinMark, "author": "Ignotus " + twinMark, "tag": "Nullum" + twinMark, "series": "Nescitum " + twinMark,
 	}
+	secret["person"], twin["person"] = catalog.PersonKey(secret["author"]), catalog.PersonKey(twin["author"])
 	book := secret["book"]
 	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+book, map[string]any{
-		"title": secret["title"], "series": map[string]any{"name": "Occultum " + mark},
+		"title": secret["title"], "series": map[string]any{"name": secret["series"]},
 		"contributors": []map[string]string{{"name": secret["author"], "role": "author"}},
 		"tags":         []string{secret["tag"]},
 	}); status != 200 {
@@ -208,11 +290,18 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The file is no PDF, so its text is the test's: a passage that names
-	// the book, for the full-text search to find.
-	if _, err := a.pool.Exec(ctx, `INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang, body_en)
-		VALUES ($1, $2, $3, 0, 0, 'en', $4)`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
+	// the book, for the full-text index to find.
+	if _, err := a.pool.Exec(ctx, `WITH c AS (
+			INSERT INTO book_chunks (book_id, library_id, file_id, position, char_offset, lang)
+			VALUES ($1, $2, $3, 0, 0, 'en') RETURNING id, book_id, library_id)
+		INSERT INTO fulltext_outbox (docs)
+		SELECT jsonb_build_array(jsonb_build_object('id', id, 'book', book_id, 'library', library_id, 'lang', 'en', 'text', $4::text))
+		FROM c`, book, vault, secret["file"], "A passage about "+secret["title"]+" and nothing else."); err != nil {
 		t.Fatal(err)
 	}
+	// With passages on, that passage has a vector, right where a
+	// description of the title is.
+	a.passageOf(adminID, book, secret["file"], secret["title"])
 	// The secret and a book of the open library look like one: a pair the
 	// stranger, who sees only the one, must not be shown.
 	pairA, pairB := book, plain["bookId"].(string)
@@ -222,6 +311,18 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	if _, err := a.pool.Exec(ctx, `WITH p AS (INSERT INTO duplicate_pairs (book_a, book_b) VALUES ($1, $2) RETURNING id)
 		INSERT INTO duplicate_evidence (pair_id, kind, detail) SELECT id, 'isbn', '9780306406157' FROM p`, pairA, pairB); err != nil {
 		t.Fatal(err)
+	}
+	// Another book of the vault by the secret's author, with the name the
+	// other way round: one person under two spellings, for the clean-up to
+	// suggest making one.
+	status, other := a.upload(admin, vault, "other.pdf", []byte("%PDF-1.4 other "+mark))
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, other)
+	}
+	if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+other["bookId"].(string), map[string]any{
+		"contributors": []map[string]string{{"name": mark + ", Abditus", "role": "author"}},
+	}); status != 200 {
+		t.Fatalf("edit: %d %v", status, out)
 	}
 	// A trashed file of the secret, for the trash to list.
 	if _, err := a.pool.Exec(ctx, `INSERT INTO book_files (book_id, library_id, kind, format, rel_path, size_bytes, modified_at, trashed_at)
@@ -238,11 +339,25 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	for _, b := range []string{book, near["bookId"].(string)} {
 		a.putVector(uuid.MustParse(b), similar.KindMetadata, same)
 	}
-	markers := []string{secret["title"], secret["author"], secret["tag"], "Occultum " + mark, book, secret["file"], vault, vaultName}
+	// A genre suggested for it, which the review of genres lists.
+	if _, err := a.pool.Exec(ctx, `INSERT INTO book_genres (book_id, genre, source, method, score)
+		VALUES ($1, 'crime', 'automatic', 'vector', 0.2)`, book); err != nil {
+		t.Fatal(err)
+	}
+	// A run of the secret book's library, which the book's details name.
+	var run string
+	if err := a.pool.QueryRow(ctx, `WITH r AS (INSERT INTO curation_runs (kind, state) VALUES ('duplicates', 'done') RETURNING id)
+		INSERT INTO curation_actions (run_id, library_id, kind, books, before, after)
+		SELECT r.id, $2::uuid, 'edit', ARRAY[$1::uuid], '{}', '{}' FROM r RETURNING run_id::text`, book, vault).Scan(&run); err != nil {
+		t.Fatal(err)
+	}
+	// The list of people shows either spelling of the secret's author, by how
+	// the mark sorts.
+	markers := []string{secret["title"], secret["author"], mark + ", Abditus", secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.
-	owned := map[string]string{"neighbour": near["bookId"].(string)}
+	owned := map[string]string{"neighbour": near["bookId"].(string), "curationRun": run}
 	// A shelf's rules are its owner's own words, which they may share; so
 	// that they tell nothing, the shelves here match the book by rating.
 	rated := `{"field":"rating","op":"in","values":["5"]}`
@@ -259,10 +374,26 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		_, col, _ := a.call(c, http.MethodPost, "/collections", map[string]any{"name": "Shelf of " + name, "visibility": visibility})
 		a.call(c, http.MethodPost, "/collections/"+col["id"].(string)+"/books", map[string]any{"books": []string{book}})
 		_, shelf, _ := a.call(c, http.MethodPost, "/smart-shelves", map[string]any{"name": "By the author", "filter": rated, "visibility": visibility})
+		_, made, _ := a.call(c, http.MethodPost, "/auth/devices", map[string]any{"name": "Reader of " + name})
+		device := made["device"].(map[string]any)["id"].(string)
+		if status, out, _ := a.call(c, http.MethodPost, "/devices/"+device+"/books", map[string]any{"books": []string{book}}); status != 200 || out["queued"] != 1.0 {
+			t.Fatalf("send to a device: %d %v", status, out)
+		}
+		owned[name+"Device"] = device
 		bulk := a.runBulk(c, map[string]any{"books": []string{book}, "action": "writeBack"})
 		owned[map[string]string{"insider": "sharedCollection", "former": "formerCollection"}[name]] = col["id"].(string)
 		owned[map[string]string{"insider": "sharedShelf", "former": "formerShelf"}[name]] = shelf["id"].(string)
 		owned[name+"Bulk"] = bulk["id"].(string)
+		// An import with the secret among the books a row may be.
+		var imp string
+		if err := a.pool.QueryRow(ctx, `WITH i AS (
+				INSERT INTO reading_imports (user_id, source, library_id, sees_all) VALUES ($1, 'goodreads', $2, false) RETURNING id)
+			INSERT INTO reading_import_rows (import_id, row_no, title, match, candidates)
+			SELECT id, 1, 'Some book', 'ambiguous', ARRAY[$3::uuid, $4::uuid] FROM i RETURNING import_id::text`,
+			map[string]string{"insider": insiderID, "former": formerID}[name], open, book, near["bookId"]).Scan(&imp); err != nil {
+			t.Fatal(err)
+		}
+		owned[name+"Import"] = imp
 	}
 
 	if err := db.InTx(ctx, a.pool, func(tx pgx.Tx) error {

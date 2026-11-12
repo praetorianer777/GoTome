@@ -1,0 +1,74 @@
+// Package koplugin is GOtome's plugin for KOReader (#197), which fetches
+// the books sent to a device, offered as a zip from the profile page. Its
+// Lua is embedded here so that the binary can hand it out; its logic
+// outside KOReader is tested in LuaJIT (make test-koplugin).
+package koplugin
+
+import (
+	"archive/zip"
+	"embed"
+	"io"
+	"io/fs"
+	"regexp"
+	"slices"
+	"strings"
+)
+
+//go:embed all:gotome.koplugin
+var plugin embed.FS
+
+// Folder is the plugin's folder in the zip, which goes into KOReader's
+// plugins folder as it is.
+const Folder = "gotome.koplugin"
+
+// origin is a server address a plugin may be told: a scheme, a host, a
+// port and the path GOtome is served under, nothing a Lua string would have
+// to escape.
+var origin = regexp.MustCompile(`^https?://([A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])(:\d+)?(/[A-Za-z0-9._~\-]+)*$`)
+
+// Zip writes the plugin as a zip. server, the address the browser used,
+// and addresses, the ones the administrator named, become the plugin's
+// servers where they are plain addresses: the browser's first unless it is
+// among them already, which keeps their order.
+func Zip(w io.Writer, server string, addresses []string) error {
+	z := zip.NewWriter(w)
+	err := fs.WalkDir(plugin, Folder, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		data, err := plugin.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		f, err := z.Create(path)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(data)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	var list []string
+	seen := map[string]bool{}
+	if len(addresses) == 0 || !slices.Contains(addresses, server) {
+		addresses = append([]string{server}, addresses...)
+	}
+	for _, a := range addresses {
+		if origin.MatchString(a) && !seen[a] {
+			seen[a] = true
+			list = append(list, `"`+a+`"`)
+		}
+	}
+	if len(list) > 0 {
+		f, err := z.Create(Folder + "/gotome_server.lua")
+		if err != nil {
+			return err
+		}
+		if _, err := io.WriteString(f, "-- Where this copy of the plugin was downloaded from, and the other addresses of the server.\nreturn { "+strings.Join(list, ", ")+" }\n"); err != nil {
+			return err
+		}
+	}
+	return z.Close()
+}

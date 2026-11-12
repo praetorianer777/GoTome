@@ -17,7 +17,7 @@ FROM book_files f
 JOIN books b ON b.id = f.book_id
 WHERE f.sha256 = $1
   AND f.missing_at IS NULL AND f.trashed_at IS NULL AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 ORDER BY f.created_at, f.id
 LIMIT 1
 `

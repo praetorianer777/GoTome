@@ -27,6 +27,10 @@ const (
 	// KindScanFailed is a scan that could not read the library's folder.
 	// Data: library, error.
 	KindScanFailed = "scan.failed"
+	// KindLibraryUnwritable is a writable library whose folder GOtome
+	// found it cannot write to, told once until it can again. Data:
+	// library, error.
+	KindLibraryUnwritable = "library.unwritable"
 	// KindFilesUnreadable is a file that could not be read as its format.
 	// Data: library, file, title.
 	KindFilesUnreadable = "files.unreadable"
@@ -38,6 +42,23 @@ const (
 	KindReviewNeeded = "review.needed"
 	// KindWishFulfilled is a wished-for book that arrived. Data: title.
 	KindWishFulfilled = "wish.fulfilled"
+	// KindReleaseAnnounced is a new book of an author or a series the
+	// person follows, still to come. Data: title, authors, subject, and
+	// date and precision where known.
+	KindReleaseAnnounced = "release.announced"
+	// KindReleaseOut is a book the person follows that came out. Data as
+	// KindReleaseAnnounced.
+	KindReleaseOut = "release.out"
+	// KindSystemDegraded is a part of GOtome that has been failing for ten
+	// minutes. Data: component, message.
+	KindSystemDegraded = "system.degraded"
+	// KindUpdateAvailable is a GOtome release newer than the running one,
+	// told once per version. Data: version, current, security (whether its
+	// notes have a Security section), url.
+	KindUpdateAvailable = "update.available"
+	// KindFeedItem is a new item of a feed the person follows that names
+	// what they asked for. Data: title, feed, and authors where named.
+	KindFeedItem = "feed.item"
 )
 
 // EventKind says who hears of a kind of event and where a summary of
@@ -57,10 +78,16 @@ type EventKind struct {
 var EventKinds = []EventKind{
 	{Kind: KindBooksAdded, Permission: auth.LibraryRead, Default: true, Summary: libraryPage},
 	{Kind: KindWishFulfilled, Permission: auth.PersonalManage, Default: true, Summary: page("/wishlist")},
+	{Kind: KindReleaseAnnounced, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
+	{Kind: KindReleaseOut, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
+	{Kind: KindFeedItem, Permission: auth.PersonalManage, Default: true, Summary: page("/releases")},
 	{Kind: KindReviewNeeded, Permission: auth.MetadataEdit, Default: true, Summary: page("/review")},
 	{Kind: KindDuplicatesFound, Permission: auth.MetadataEdit, Default: true, Summary: page("/duplicates")},
 	{Kind: KindFilesUnreadable, Permission: auth.MetadataEdit, Default: true, Summary: page("/jobs")},
 	{Kind: KindScanFailed, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
+	{Kind: KindLibraryUnwritable, Permission: auth.StorageManage, Default: true, Summary: page("/admin/libraries")},
+	{Kind: KindSystemDegraded, Permission: auth.SettingsManage, Default: true, Summary: page("/overview")},
+	{Kind: KindUpdateAvailable, Permission: auth.SettingsManage, Default: true, Summary: page("/overview")},
 }
 
 func libraryPage(library *uuid.UUID) string {
@@ -120,11 +147,19 @@ type Queue interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
 }
 
+// Hooks is where an event goes besides the people: the webhooks of #418.
+// It is given each event once, in the transaction of what happened.
+type Hooks interface {
+	SendTx(ctx context.Context, tx pgx.Tx, ev Event) error
+}
+
 // Events queues events and folds them into notifications. A nil Events
 // queues nothing.
 type Events struct {
 	Pool  *pgxpool.Pool
 	Queue Queue
+	// Hooks, when set, is told of every event, whether or not anyone is.
+	Hooks Hooks
 }
 
 // QueueTx queues the event, in the transaction of what happened, for each
@@ -136,6 +171,11 @@ func (e *Events) QueueTx(ctx context.Context, tx pgx.Tx, ev Event) error {
 	k, ok := eventKind(ev.Kind)
 	if !ok {
 		return fmt.Errorf("no event kind %q", ev.Kind)
+	}
+	if e.Hooks != nil {
+		if err := e.Hooks.SendTx(ctx, tx, ev); err != nil {
+			return err
+		}
 	}
 	data, err := json.Marshal(ev.Data)
 	if err != nil {

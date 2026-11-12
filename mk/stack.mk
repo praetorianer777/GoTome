@@ -11,10 +11,26 @@ STACK_NET := $(STACK_PROJECT)_default
 # ephemeral range so an outgoing connection never holds one of them.
 STACK_PORT_SLOTS := 500
 STACK_PORT_STRIDE := 20
-STACK_PORT_BASE ?= $(shell echo $$((20000 + $(STACK_HASH) % $(STACK_PORT_SLOTS) * $(STACK_PORT_STRIDE))))
+# A slot whose first port another program holds (another project with the
+# same scheme, say) is passed over for the next one; the one this checkout's
+# own stack holds is kept.
+STACK_PORT_BASE ?= $(shell \
+	slot=$$(( $(STACK_HASH) % $(STACK_PORT_SLOTS) )); \
+	for _ in $$(seq $(STACK_PORT_SLOTS)); do \
+		port=$$(( 20000 + slot * $(STACK_PORT_STRIDE) )); \
+		if ! ss -Hltn "sport = :$$port" 2>/dev/null | grep -q . || \
+			[ "$$(docker ps --filter publish=$$port --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null)" = "$(STACK_PROJECT)" ]; then \
+			echo $$port; break; \
+		fi; \
+		slot=$$(( (slot + 1) % $(STACK_PORT_SLOTS) )); \
+	done)
 stack_port = $(shell echo $$(($(STACK_PORT_BASE) + $(1))))
 
 GOTOME_PORT := $(call stack_port,0)
+# Keycloak, for the single sign-on tests (make sso-up), on the next port,
+# inside its container too: the app and the browser use one issuer URL.
+KEYCLOAK_PORT := $(call stack_port,1)
+KEYCLOAK_URL := http://keycloak:$(KEYCLOAK_PORT)
 
 # The image is built from this checkout and tagged with its project, so a
 # worktree never runs another worktree's build, and nothing is pulled.
@@ -25,7 +41,7 @@ GOTOME_ENV ?= development
 # the tests need.
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml:$(ROOT)/deploy/docker-compose.dev.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV
+export GOTOME_PORT GOTOME_IMAGE GOTOME_ENV KEYCLOAK_PORT
 
 # The Go toolchain container on the stack's network, with the database URL the
 # integration suite makes its own databases through. The password is the one
@@ -45,21 +61,27 @@ stack-env:
 		'STACK_NETWORK=$(STACK_NET)' \
 		'GOTOME_PORT=$(GOTOME_PORT)' \
 		'GOTOME_URL=http://localhost:$(GOTOME_PORT)' \
+		'KEYCLOAK_URL=$(KEYCLOAK_URL)' \
 		> $(STACK_ENV_FILE)
 
 .PHONY: up
-up: stack-env ## Build and start the stack in the background, and say where it is
+up: stack-env ffmpeg-source onnxruntime-source ## Build and start the stack in the background, and say where it is
 	docker compose up -d --build --wait
 	@echo "GOtome  http://localhost:$(GOTOME_PORT)"
 	@echo "Port and project name are in $(STACK_ENV_FILE)."
 
+.PHONY: sso-up
+sso-up: stack-env ## Start Keycloak beside the stack, for the single sign-on browser tests
+	COMPOSE_PROFILES=sso docker compose up -d --wait --quiet-pull keycloak
+	@echo "Keycloak  $(KEYCLOAK_URL), realm gotome; from this machine http://localhost:$(KEYCLOAK_PORT)"
+
 .PHONY: down
 down: ## Stop the stack, keeping its data
-	docker compose down
+	COMPOSE_PROFILES=sso docker compose down
 
 .PHONY: clean
 clean: ## Stop the stack and delete its volumes
-	docker compose down -v --remove-orphans
+	COMPOSE_PROFILES=sso docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)
 
 .PHONY: logs
@@ -74,9 +96,26 @@ stack-logs: ## Print the stack's logs so far and return
 psql: ## Open psql in the running stack's database
 	docker compose exec db psql -U gotome -d gotome
 
+.PHONY: similar-check
+similar-check: ## Measure the similar books of the running stack's library: make similar-check ARGS="-n 300 -v"
+	docker compose exec -T app gotome similar-check $(ARGS)
+
+.PHONY: genre-check
+genre-check: ## Measure how well genres are found again for the running stack's tagged books: make genre-check ARGS="-n 300"
+	docker compose exec -T app gotome genre-check $(ARGS)
+
+.PHONY: match-check
+match-check: ## Measure how often a lookup by title and author finds the running stack's books: make match-check ARGS="-n 100"
+	docker compose exec -T app gotome match-check $(ARGS)
+
 .PHONY: stack-up
-stack-up: stack-env ## The gate's stack: build and start it, and wait until both services are healthy
-	docker compose up -d --build --wait --quiet-pull
+# Its database is thrown away after the run, so it need not survive a crash.
+stack-up: export GOTOME_DB_DURABLE := off
+# STACK_PREBUILT=1 starts the image that is already there (CI builds it once
+# in a job of its own and hands it on) and builds nothing.
+STACK_BUILD := $(if $(STACK_PREBUILT),--no-build,--build)
+stack-up: stack-env $(if $(STACK_PREBUILT),,ffmpeg-source onnxruntime-source) ## The gate's stack: build and start it, and wait until both services are healthy
+	docker compose up -d $(STACK_BUILD) --wait --quiet-pull
 
 # The suite runs against the stack's Postgres rather than one of its own, so
 # the gate never starts a second database. Each test gets a database copied
@@ -85,14 +124,40 @@ stack-up: stack-env ## The gate's stack: build and start it, and wait until both
 test-integration: | $(GO_CACHE) go-toolchain ## Run the integration suite against this checkout's running stack
 	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
 		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
-	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/...
+	$(DOCKER_GO_STACK) go test -race -tags integration -count=1 $(TESTFLAGS) ./test/... ./cmd/gotome/
 
-# The pinned database image is what promises pg_search and pgvector; this fails
-# the gate when a new pin no longer carries them.
+# The KOReader plugin's and the Tolino app's fixtures are the server's
+# answers (test/client_fixtures_test.go); this writes them anew after an
+# answer changed on purpose.
+.PHONY: device-fixtures
+device-fixtures: | $(GO_CACHE) go-toolchain ## Write the device clients' test fixtures anew from the running stack's answers
+	$(DOCKER_GO_STACK) go test -tags integration -count=1 -run '^TestTheDeviceClientsFixturesAreTheServersAnswers$$' ./test/ -update
+
+# The main views on a library of 50,000 books (test/scale_test.go), with the
+# plans of their queries written to .cache/scale-plans, and with the
+# app, which runs inside the test, held to the 2 GB and two CPUs a modest
+# server gives it. The database is held to two CPUs as well (#455): the
+# smallest machine GOtome supports, where Postgres still plans parallel
+# workers by the host's CPUs, as in an LXC. The limit stays on the stack's
+# database until it is started again; the rest of the suite runs without it.
+# Without the race detector, which would measure itself. Minutes, so not in
+# the gate.
+.PHONY: scale-test
+scale-test: | $(GO_CACHE) go-toolchain ## Time the main views at 50,000 books and check their plans, against the running stack
+	@docker compose ps --status running --services 2>/dev/null | grep -qx db \
+		|| { echo "The stack for this checkout is not running. Start it with make up or make stack-up, then run this again."; exit 1; }
+	docker update --cpus 2 $$(docker compose ps -q db) > /dev/null
+	$(call go_run,--memory 2g --cpus 2 --network $(STACK_NET) -e GOTOME_SCALE=1 -e GOTOME_SCALE_PLANS=/work/.cache/scale-plans \
+		-e GOTOME_TEST_DATABASE_URL="postgres://gotome:$$(docker compose exec -T db cat /secrets/db-password)@db:5432/gotome?sslmode=disable") \
+		go test -tags integration -count=1 -timeout 30m -v -run TestTheMainViewsAtFiftyThousandBooks ./test/
+
+# The pinned database image is what promises pgvector; this fails the gate
+# when a new pin no longer carries it. Full-text search no longer runs in the
+# database (#265).
 .PHONY: stack-check
 stack-check: ## Check the running stack: two services, web app and API answering, extensions and programs available
-	@test "$$(docker compose ps --status running --services | sort | tr '\n' ' ')" = "app db " \
-		|| { echo "expected exactly the services app and db to run:"; docker compose ps; exit 1; }
+	@test "$$(docker compose ps --status running --services | grep -vx keycloak | sort | tr '\n' ' ')" = "app db " \
+		|| { echo "expected exactly the services app and db to run, beside the tests' Keycloak:"; docker compose ps; exit 1; }
 	@docker compose exec -T app gotome healthcheck \
 		|| { echo "the app does not answer its health check"; exit 1; }
 	@test "$$(docker compose exec -T app gotome version | cut -d' ' -f1)" = "$(VERSION)" \
@@ -101,18 +166,24 @@ stack-check: ## Check the running stack: two services, web app and API answering
 		|| { echo "the app does not serve the web app at /"; exit 1; }
 	@curl -fsS http://localhost:$(GOTOME_PORT)/api/v1/version | grep -q '"version"' \
 		|| { echo "the app does not serve the API under /api/v1"; exit 1; }
-	@for ext in pg_search vector; do \
+	@for ext in vector; do \
 		docker compose exec -T db psql -U gotome -d gotome -Atc \
 			"select 1 from pg_available_extensions where name = '$$ext'" | grep -qx 1 \
 			|| { echo "the database image offers no $$ext extension"; exit 1; }; \
 	done
+	@test "$$(docker compose exec -T db cat /proc/1/comm)" != postgres \
+		|| { echo "Postgres is process 1 in its container: without init, a stray child restarts it (#168)"; exit 1; }
 	@for program in pdfinfo pdftotext pdftoppm ffprobe ffmpeg prlimit; do \
 		docker compose exec -T app sh -c "command -v $$program" >/dev/null \
 			|| { echo "the app image has no $$program"; exit 1; }; \
 	done
+	@docker compose exec -T app gotome audio-check /fixtures/audio /fixtures/audio-e2e >/dev/null \
+		|| { echo "the app image's FFmpeg does not read the audio files as the reference says: gotome audio-check tells how"; exit 1; }
 	@docker compose exec -T app gotome embed-check >/dev/null \
 		|| { echo "the app image cannot load ONNX Runtime"; exit 1; }
-	@echo "stack ok: app and db healthy, web app and API served, pg_search and vector available, poppler, ffmpeg and ONNX Runtime installed"
+	@docker compose exec -T app gotome fulltext-check >/dev/null \
+		|| { echo "the app image cannot load the full-text engine"; exit 1; }
+	@echo "stack ok: app and db healthy, web app and API served, vector available, db behind an init, poppler, an FFmpeg that reads the four audio formats, ONNX Runtime and the full-text engine installed"
 
 # The embedding model is downloaded into EMBED_MODEL_CACHE when it is not
 # there already, so this reaches Hugging Face once per cache; the gate leaves
@@ -129,7 +200,14 @@ embed-check: ## Run the app image's embedding model against the reference vector
 		-v $(ROOT)/backend/internal/embed/testdata:/reference:ro \
 		$(GOTOME_IMAGE) embed-check -reference /reference/reference.json
 
+
+.PHONY: upgrade-test
+upgrade-test: ffmpeg-source onnxruntime-source ## Upgrade an earlier image's installation to this checkout's, and restore its backup into a new one (builds both images)
+	$(if $(STACK_PREBUILT),@true,docker compose build app)
+	@# A stack of its own, beside the checkout's.
+	tests/test-upgrade.sh "$$(tests/upgrade-from.sh)" $(GOTOME_IMAGE) $(STACK_PROJECT)-upgrade
+
 .PHONY: stack-down
 stack-down: ## Remove the gate's stack and its volumes
-	docker compose down -v --remove-orphans
+	COMPOSE_PROFILES=sso docker compose down -v --remove-orphans
 	@rm -f $(STACK_ENV_FILE)

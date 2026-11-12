@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -15,6 +16,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+
+	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 )
 
 // prose is n words of made-up text, the same for the same seed.
@@ -174,6 +178,29 @@ func TestSharedTextIsFoundAcrossFormatsAndInOmnibuses(t *testing.T) {
 		}
 	}
 
+	// A novel in its omnibus is listed apart from the copies.
+	pairTitles := func(pairs []pairView) []string {
+		var out []string
+		for _, p := range pairs {
+			names := []string{p.Books[0].Title, p.Books[1].Title}
+			slices.Sort(names)
+			out = append(out, strings.Join(names, "+"))
+		}
+		slices.Sort(out)
+		return out
+	}
+	if got := pairTitles(a.duplicates(admin, "?contained=true")); !slices.Equal(got, []string{"Middle+Trilogy"}) {
+		t.Errorf("contained pairs: %v", got)
+	}
+	if got := pairTitles(a.duplicates(admin, "?contained=false")); !slices.Equal(got, []string{"Flow+River"}) {
+		t.Errorf("pairs not contained: %v", got)
+	}
+	for _, p := range pairs {
+		if want := p.Books[0].Title == "Middle" || p.Books[0].Title == "Trilogy"; p.Contained != want {
+			t.Errorf("%s and %s: contained %v", p.Books[0].Title, p.Books[1].Title, p.Contained)
+		}
+	}
+
 	// Among 50,000 signed files, checking a book looks its buckets up in
 	// the index, which answers at once; reading every bucket would not.
 	if _, err := a.pool.Exec(ctx, `
@@ -220,5 +247,99 @@ func TestSharedTextIsFoundAcrossFormatsAndInOmnibuses(t *testing.T) {
 	}
 	if d := overlapOf(a.duplicates(admin, "?limit=100"), "Middle", "Trilogy"); d != detail {
 		t.Errorf("after the fixture: %q, want %q", d, detail)
+	}
+}
+
+func TestUnsignedTextsAreSignedByTheirJobs(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	books := t.TempDir()
+	for i, title := range []string{"River", "Lake"} {
+		meta := `<dc:identifier id="uid">urn:uuid:` + title + `</dc:identifier>
+    <dc:title>` + title + `</dc:title>
+    <dc:language>en</dc:language>`
+		writeEPUB(t, filepath.Join(books, title+".epub"), meta, nil, strings.Join(paragraphs(prose(uint64(40+i), 3000)), "\n\n"))
+	}
+	a.scanNow(a.externalLibrary(admin, "Shelf", "shared", books))
+	files := a.shelfFiles()
+	for _, f := range files {
+		a.extract(f.ID)
+	}
+
+	signJobs := func() []dedupe.SignArgs {
+		t.Helper()
+		rows, err := a.pool.Query(ctx, `SELECT args FROM river_job WHERE kind = 'dedupe.sign_file' AND state = 'available' ORDER BY id`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out []dedupe.SignArgs
+		for rows.Next() {
+			var args dedupe.SignArgs
+			if err := rows.Scan(&args); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, args)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	signed := func() int {
+		t.Helper()
+		var n int
+		if err := a.pool.QueryRow(ctx, `SELECT count(*) FROM file_signatures WHERE signature IS NOT NULL`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if n := signed(); n != 0 {
+		t.Fatalf("%d files signed before anything asked for it", n)
+	}
+
+	for range 2 {
+		if err := a.server.Duplicates.EnqueueUnsigned(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	queued := signJobs()
+	if len(queued) != 2 {
+		t.Fatalf("queued %+v, want one job per file", queued)
+	}
+	worker := &dedupe.SignWorker{Service: a.server.Duplicates}
+	for _, args := range queued {
+		if err := worker.Work(ctx, &river.Job[dedupe.SignArgs]{Args: args}); err != nil {
+			t.Fatal(err)
+		}
+		if !slices.ContainsFunc(slices.Collect(maps.Values(files)), func(f shelfFile) bool { return f.ID == args.FileID && f.BookID == args.BookID }) {
+			t.Errorf("a job names file %v of book %v", args.FileID, args.BookID)
+		}
+	}
+	if n := signed(); n != 2 {
+		t.Errorf("%d files signed, want 2", n)
+	}
+	if _, err := a.pool.Exec(ctx, `DELETE FROM river_job WHERE kind = 'dedupe.sign_file'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.server.Duplicates.EnqueueUnsigned(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if again := signJobs(); len(again) != 0 {
+		t.Errorf("signed files queued again: %+v", again)
+	}
+
+	// A file that is no longer its book's text is passed by.
+	stream := files["River.epub"]
+	if _, err := a.pool.Exec(ctx, `DELETE FROM file_signatures WHERE file_id = $1`, stream.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.server.Duplicates.SignFile(ctx, files["Lake.epub"].BookID, stream.ID); err != nil {
+		t.Errorf("signing a file for another book: %v", err)
+	}
+	if n := signed(); n != 1 {
+		t.Errorf("%d files signed after signing a file for a book it is not the text of", n)
 	}
 }

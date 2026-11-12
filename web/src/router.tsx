@@ -1,43 +1,82 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import {
 	createRootRouteWithContext,
 	createRoute,
 	createRouter,
+	lazyRouteComponent,
 	Outlet,
 	type RouterHistory,
 	redirect,
+	type RouteComponent,
 	useRouteContext,
 } from "@tanstack/react-router";
+import { BASE_PATH } from "@/base";
 import { can, currentUserQuery, setupNeededQuery } from "@/auth/session";
+import { CLEANUP_KINDS, type CleanupKind } from "@/books/cleanup";
+import { GENRES, type Genre } from "@/books/genres";
+import type { BookSearch } from "@/books/book-browser";
 import { picksFrom } from "@/books/filters";
+import { isDemo } from "@/demo/mode";
+import { Gopher } from "@/components/gopher";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
-import { AdminLibraries } from "@/routes/admin-libraries";
-import { AdminSettings } from "@/routes/admin-settings";
-import { AdminUsers } from "@/routes/admin-users";
 import { Book } from "@/routes/book";
 import { Listen } from "@/player/controls";
-import { BulkProgress } from "@/routes/bulk";
-import { Stats } from "@/routes/stats";
 import { ReaderRoute, readerSearch } from "@/routes/read";
-import { CollectionPage } from "@/routes/collection";
-import { Collections } from "@/routes/collections";
-import { NewSmartShelf, SmartShelfPage } from "@/routes/smart-shelf";
-import { Wishlist } from "@/routes/wishlist";
-import { BookEditPage } from "@/routes/book-edit";
-import { FindDetails } from "@/routes/book-find";
-import { Review } from "@/routes/review";
-import { Jobs } from "@/routes/jobs";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
-import { Profile } from "@/routes/profile";
 import { RouteError } from "@/routes/route-error";
-import { SearchPage, type TextSearch } from "@/routes/search";
-import { Duplicates, type DuplicatesSearch } from "@/routes/duplicates";
-import { Setup } from "@/routes/setup";
-import { Trash } from "@/routes/trash";
-import { Upload } from "@/routes/upload";
+import type { TextSearch } from "@/routes/search";
+import type { DuplicatesSearch } from "@/routes/duplicates";
+
+// Pages other than the library, a book and sign-in load with the first visit
+// to them, so the first load carries only what most visits show.
+const AdminCalibre = lazyRouteComponent(() => import("@/routes/admin-calibre"), "AdminCalibre");
+const AdminLibraries = lazyRouteComponent(() => import("@/routes/admin-libraries"), "AdminLibraries");
+const AdminSettings = lazyRouteComponent(() => import("@/routes/admin-settings"), "AdminSettings");
+const AdminUsers = lazyRouteComponent(() => import("@/routes/admin-users"), "AdminUsers");
+const AdminWebhooks = lazyRouteComponent(() => import("@/routes/admin-webhooks"), "AdminWebhooks");
+const AuthorPage = lazyRouteComponent(() => import("@/routes/author"), "AuthorPage");
+const BulkProgress = lazyRouteComponent(() => import("@/routes/bulk"), "BulkProgress");
+const Overview = lazyRouteComponent(() => import("@/routes/overview"), "Overview");
+const Stats = lazyRouteComponent(() => import("@/routes/stats"), "Stats");
+const CollectionPage = lazyRouteComponent(() => import("@/routes/collection"), "CollectionPage");
+const DevicePage = lazyRouteComponent(() => import("@/routes/device"), "DevicePage");
+const Collections = lazyRouteComponent(() => import("@/routes/collections"), "Collections");
+const NewSmartShelf = lazyRouteComponent(() => import("@/routes/smart-shelf"), "NewSmartShelf");
+const SmartShelfPage = lazyRouteComponent(() => import("@/routes/smart-shelf"), "SmartShelfPage");
+const Wishlist = lazyRouteComponent(() => import("@/routes/wishlist"), "Wishlist");
+const Recommendations = lazyRouteComponent(() => import("@/routes/recommendations"), "Recommendations");
+const BookEditPage = lazyRouteComponent(() => import("@/routes/book-edit"), "BookEditPage");
+const FindDetails = lazyRouteComponent(() => import("@/routes/book-find"), "FindDetails");
+const Curation = lazyRouteComponent(() => import("@/routes/curation"), "Curation");
+const Cleanup = lazyRouteComponent(() => import("@/routes/cleanup"), "Cleanup");
+const Genres = lazyRouteComponent(() => import("@/routes/genres"), "Genres");
+const Review = lazyRouteComponent(() => import("@/routes/review"), "Review");
+const Jobs = lazyRouteComponent(() => import("@/routes/jobs"), "Jobs");
+const NamesPage = lazyRouteComponent(() => import("@/routes/names"), "NamesPage");
+const Profile = lazyRouteComponent(() => import("@/routes/profile"), "Profile");
+const SearchPage = lazyRouteComponent(() => import("@/routes/search"), "SearchPage");
+const SeriesPage = lazyRouteComponent(() => import("@/routes/series"), "SeriesPage");
+const Duplicates = lazyRouteComponent(() => import("@/routes/duplicates"), "Duplicates");
+const Setup = lazyRouteComponent(() => import("@/routes/setup"), "Setup");
+const Trash = lazyRouteComponent(() => import("@/routes/trash"), "Trash");
+const Releases = lazyRouteComponent(() => import("@/routes/releases"), "Releases");
+const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
+
+// The router waits for a route component's preload before it shows the
+// route, so a component that only hands a lazy page its props takes the
+// page's: otherwise the page would suspend after the route had been shown.
+// It is read through, not copied: a lazy page drops its preload once loaded,
+// and a copy would import the module again on every navigation, which makes
+// even a change of the address's search wait a turn, so a ticked filter
+// showed its old state until then (#370).
+function loads<P>(page: Pick<RouteComponent, "preload">, component: (props: P) => ReactNode) {
+	return Object.defineProperty(component, "preload", { get: () => page.preload }) as
+		((props: P) => ReactNode) & Pick<RouteComponent, "preload">;
+}
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -48,7 +87,10 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 	notFoundComponent: NotFound,
 	errorComponent: RouteError,
 	pendingComponent: () => (
-		<p className="p-6 text-center text-slate-500">{t("loading")}</p>
+		<div className="panel mx-auto my-8 flex w-fit flex-col items-center gap-2 rounded-2xl px-8 py-6 text-center text-slate-600 dark:text-slate-400">
+			<Gopher mood="reading" size={72} className="motion-safe:animate-pulse" />
+			<p>{t("loading")}</p>
+		</div>
 	),
 });
 
@@ -70,8 +112,10 @@ const setupRoute = createRoute({
 const loginRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/login",
-	validateSearch: (search): { redirect?: string } =>
-		typeof search.redirect === "string" ? { redirect: search.redirect } : {},
+	validateSearch: (search): { redirect?: string; sso?: string } => ({
+		...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
+		...(typeof search.sso === "string" ? { sso: search.sso } : {}),
+	}),
 	beforeLoad: async ({ context }) => {
 		if (await context.queryClient.ensureQueryData(setupNeededQuery)) {
 			throw redirect({ to: "/setup" });
@@ -81,7 +125,8 @@ const loginRoute = createRoute({
 		}
 	},
 	component: function LoginPage() {
-		return <Login redirect={loginRoute.useSearch().redirect} />;
+		const { redirect: to, sso } = loginRoute.useSearch();
+		return <Login redirect={to} sso={sso} />;
 	},
 });
 
@@ -109,6 +154,7 @@ const appRoute = createRoute({
 });
 
 const SORTS = ["title", "author", "added"] as const;
+const AUTHOR_SORTS = ["series", "title", "added"] as const;
 const VIEWS = ["grid", "list"] as const;
 
 function oneOf<T extends string>(values: readonly T[], value: unknown): T | undefined {
@@ -121,6 +167,7 @@ const libraryRoute = createRoute({
 	validateSearch: (search): LibrarySearch => ({
 		...picksFrom(search),
 		library: typeof search.library === "string" ? search.library : undefined,
+		q: typeof search.q === "string" && search.q.trim() ? search.q : undefined,
 		sort: oneOf(SORTS, search.sort),
 		view: oneOf(VIEWS, search.view),
 	}),
@@ -145,8 +192,9 @@ const searchRoute = createRoute({
 		...picksFrom(search),
 		q: typeof search.q === "string" && search.q ? search.q : undefined,
 		library: typeof search.library === "string" ? search.library : undefined,
+		mode: search.mode === "description" ? "description" : undefined,
 	}),
-	component: function SearchRoute() {
+	component: loads(SearchPage, function SearchRoute() {
 		const navigate = searchRoute.useNavigate();
 		return (
 			<SearchPage
@@ -156,7 +204,7 @@ const searchRoute = createRoute({
 				}
 			/>
 		);
-	},
+	}),
 });
 
 const KINDS = ["sha256", "content", "isbn", "title_author", "overlap"] as const;
@@ -168,12 +216,13 @@ const duplicatesRoute = createRoute({
 		const least = Number(search.least);
 		return {
 			state: search.state === "kept_both" ? "kept_both" : undefined,
+			contained: search.contained === true || search.contained === "true" ? true : undefined,
 			kind: oneOf(KINDS, search.kind),
 			least: Number.isInteger(least) && least > 0 && least <= 100 ? least : undefined,
 			library: typeof search.library === "string" ? search.library : undefined,
 		};
 	},
-	component: function DuplicatesRoute() {
+	component: loads(Duplicates, function DuplicatesRoute() {
 		const navigate = duplicatesRoute.useNavigate();
 		return (
 			<Duplicates
@@ -182,7 +231,55 @@ const duplicatesRoute = createRoute({
 				onSearch={(change) => navigate({ search: (previous) => ({ ...previous, ...change }) })}
 			/>
 		);
-	},
+	}),
+});
+
+const authorsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/authors",
+	component: loads(NamesPage, () => <NamesPage kind="authors" />),
+});
+
+const allSeriesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/series",
+	component: loads(NamesPage, () => <NamesPage kind="series" />),
+});
+
+const authorRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/authors/$authorKey",
+	validateSearch: (search): BookSearch => ({
+		...picksFrom(search),
+		sort: oneOf(AUTHOR_SORTS, search.sort),
+		view: oneOf(VIEWS, search.view),
+	}),
+	component: loads(AuthorPage, function AuthorRoute() {
+		const navigate = authorRoute.useNavigate();
+		return (
+			<AuthorPage
+				user={useRouteContext({ from: "/app" }).user}
+				authorKey={authorRoute.useParams().authorKey}
+				search={authorRoute.useSearch()}
+				onSearch={(change) =>
+					navigate({ search: (previous) => ({ ...previous, ...change }), replace: true })
+				}
+			/>
+		);
+	}),
+});
+
+const seriesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/series/$seriesKey",
+	component: loads(SeriesPage, function SeriesRoute() {
+		return (
+			<SeriesPage
+				user={useRouteContext({ from: "/app" }).user}
+				seriesKey={seriesRoute.useParams().seriesKey}
+			/>
+		);
+	}),
 });
 
 const bookRoute = createRoute({
@@ -201,9 +298,9 @@ const bookEditRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BookEditRoute() {
+	component: loads(BookEditPage, function BookEditRoute() {
 		return <BookEditPage id={bookEditRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const bookFindRoute = createRoute({
@@ -214,9 +311,9 @@ const bookFindRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BookFindRoute() {
+	component: loads(FindDetails, function BookFindRoute() {
 		return <FindDetails id={bookFindRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const uploadRoute = createRoute({
@@ -227,9 +324,9 @@ const uploadRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function UploadPage() {
+	component: loads(Upload, function UploadPage() {
 		return <Upload user={useRouteContext({ from: "/app" }).user} />;
-	},
+	}),
 });
 
 const adminLibrariesRoute = createRoute({
@@ -243,6 +340,17 @@ const adminLibrariesRoute = createRoute({
 		}
 	},
 	component: AdminLibraries,
+});
+
+const adminCalibreRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/calibre",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "storage:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: AdminCalibre,
 });
 
 const adminSettingsRoute = createRoute({
@@ -259,12 +367,77 @@ const adminSettingsRoute = createRoute({
 const reviewRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/review",
+	validateSearch: (search): { book?: string } => ({
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "metadata:edit")) {
 			throw redirect({ to: "/" });
 		}
 	},
-	component: Review,
+	component: loads(Review, function ReviewPage() {
+		const navigate = reviewRoute.useNavigate();
+		return (
+			<Review
+				book={reviewRoute.useSearch().book}
+				onBook={(book, replace) => navigate({ search: { book }, replace })}
+			/>
+		);
+	}),
+});
+
+const cleanupRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/cleanup",
+	validateSearch: (search): { kind?: CleanupKind; book?: string } => ({
+		kind: oneOf(CLEANUP_KINDS, search.kind),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Cleanup, function CleanupPage() {
+		const navigate = cleanupRoute.useNavigate();
+		return (
+			<Cleanup
+				kind={cleanupRoute.useSearch().kind ?? "authors"}
+				onKind={(kind) => navigate({ search: { kind } })}
+				book={cleanupRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
+			/>
+		);
+	}),
+});
+
+const genresRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/genres",
+	validateSearch: (search): { genre?: Genre; book?: string } => ({
+		genre: oneOf(GENRES, search.genre),
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Genres, function GenresPage() {
+		const navigate = genresRoute.useNavigate();
+		return (
+			<Genres
+				genre={genresRoute.useSearch().genre}
+				onGenre={(genre) => navigate({ search: { genre } })}
+				book={genresRoute.useSearch().book}
+				onBook={(book, replace) =>
+					navigate({ search: (previous) => ({ ...previous, book }), replace })
+				}
+			/>
+		);
+	}),
 });
 
 const readPdfRoute = createRoute({
@@ -293,6 +466,39 @@ const wishlistRoute = createRoute({
 	component: Wishlist,
 });
 
+const recommendationsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/recommendations",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Recommendations,
+});
+
+const releasesRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/releases",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Releases,
+});
+
+const overviewRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/overview",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "library:read")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Overview,
+});
+
 const statsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/stats",
@@ -313,9 +519,9 @@ const collectionsRoute = createRoute({
 const collectionRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/collections/$collectionId",
-	component: function CollectionRoute() {
+	component: loads(CollectionPage, function CollectionRoute() {
 		return <CollectionPage collectionId={collectionRoute.useParams().collectionId} />;
-	},
+	}),
 });
 
 const newSmartShelfRoute = createRoute({
@@ -332,9 +538,9 @@ const newSmartShelfRoute = createRoute({
 const smartShelfRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/smart-shelves/$shelfId",
-	component: function SmartShelfRoute() {
+	component: loads(SmartShelfPage, function SmartShelfRoute() {
 		return <SmartShelfPage shelfId={smartShelfRoute.useParams().shelfId} />;
-	},
+	}),
 });
 
 const bulkRoute = createRoute({
@@ -345,9 +551,9 @@ const bulkRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function BulkRoute() {
+	component: loads(BulkProgress, function BulkRoute() {
 		return <BulkProgress id={bulkRoute.useParams().bulkId} />;
-	},
+	}),
 });
 
 const jobsRoute = createRoute({
@@ -361,6 +567,22 @@ const jobsRoute = createRoute({
 	component: Jobs,
 });
 
+const curationRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/curation",
+	validateSearch: (search): { run?: string } => ({
+		run: typeof search.run === "string" && search.run ? search.run : undefined,
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "metadata:edit")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Curation, function CurationPage() {
+		return <Curation run={curationRoute.useSearch().run} />;
+	}),
+});
+
 const trashRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/trash",
@@ -369,9 +591,9 @@ const trashRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function TrashPage() {
+	component: loads(Trash, function TrashPage() {
 		return <Trash user={useRouteContext({ from: "/app" }).user} />;
-	},
+	}),
 });
 
 const adminUsersRoute = createRoute({
@@ -382,28 +604,66 @@ const adminUsersRoute = createRoute({
 			throw redirect({ to: "/" });
 		}
 	},
-	component: function AdminUsersPage() {
+	component: loads(AdminUsers, function AdminUsersPage() {
 		return <AdminUsers user={useRouteContext({ from: "/app" }).user} />;
+	}),
+});
+
+const adminWebhooksRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/admin/webhooks",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "settings:manage")) {
+			throw redirect({ to: "/" });
+		}
 	},
+	component: loads(AdminWebhooks, function AdminWebhooksPage() {
+		return <AdminWebhooks />;
+	}),
+});
+
+const deviceRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/devices/$deviceId",
+	component: loads(DevicePage, function DeviceRoute() {
+		return <DevicePage deviceId={deviceRoute.useParams().deviceId} />;
+	}),
 });
 
 const profileRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/profile",
-	component: function ProfilePage() {
-		return <Profile user={useRouteContext({ from: "/app" }).user} />;
-	},
+	validateSearch: (search): { sso?: string } =>
+		typeof search.sso === "string" ? { sso: search.sso } : {},
+	component: loads(Profile, function ProfilePage() {
+		return (
+			<Profile
+				user={useRouteContext({ from: "/app" }).user}
+				sso={profileRoute.useSearch().sso}
+			/>
+		);
+	}),
 });
 
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, readPdfRoute, listenRoute, wishlistRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminUsersRoute, adminSettingsRoute, profileRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
 export function makeRouter(queryClient: QueryClient, history?: RouterHistory) {
-	return createRouter({ routeTree, context: { queryClient }, history, defaultPreload: false });
+	// Back from a book returns to where the list was scrolled to: its pages
+	// are still cached, so the list is as long as it was.
+	return createRouter({
+		routeTree,
+		context: { queryClient },
+		history,
+		defaultPreload: false,
+		scrollRestoration: true,
+		// The demo lives under the Pages project's path, not at the root.
+		basepath: isDemo ? import.meta.env.BASE_URL : BASE_PATH === "/" ? undefined : BASE_PATH,
+	});
 }
 
 // Registers the router's type, so links and params are checked against the

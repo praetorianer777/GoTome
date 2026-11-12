@@ -28,11 +28,14 @@ var (
 	// discFolder is a folder that holds one disc of an audiobook, not a book.
 	discFolder = regexp.MustCompile(`(?i)^(?:cd|disc|disk|part|teil|vol|volume)[\s._-]*(\d{1,3})$`)
 	// trackNumber leads a file named after its position: "01 - Arrival".
-	// Three digits at most, so that "1984" and "2001" stay titles.
+	// Three digits at most, so that "1957" and "2077" stay titles.
 	trackNumber = regexp.MustCompile(`^(\d{1,3})(?:\D|$)`)
 	// partSuffix ends a file named after its book and its position:
-	// "Dune - Part 02", "Dune (3)", "Dune_04".
-	partSuffix = regexp.MustCompile(`(?i)^(.*?)[\s._,(\[-]*(?:(?:part|pt|teil|cd|disc|disk|track|chapter|kapitel)[\s._]*)?(\d{1,3})[)\]]?$`)
+	// "Dusk - Part 02", "Dusk (3)", "Dusk_04".
+	// calibreFolder is the folder Calibre makes for a book: Author/Title (12).
+	// Everything in it is that one book, whatever the formats are called.
+	calibreFolder = regexp.MustCompile(`^(.+?) \(\d+\)$`)
+	partSuffix    = regexp.MustCompile(`(?i)^(.*?)[\s._,(\[-]*(?:(?:part|pt|teil|cd|disc|disk|track|chapter|kapitel)[\s._]*)?(\d{1,3})[)\]]?$`)
 )
 
 // unitOf is the folder whose files are grouped together: the file's own, or
@@ -79,7 +82,16 @@ func groupUnit(unit string, paths []string) []Group {
 		}
 		return d
 	}
+	calibre := calibreFolder.FindStringSubmatch(path.Base(unit))
+	if strings.Count(unit, "/") != 1 {
+		calibre = nil
+	}
 	whole := func(p string) {
+		if calibre != nil {
+			d := add("\x00calibre", cleanTitle(calibre[1]))
+			d.whole = append(d.whole, p)
+			return
+		}
 		stem := stemOf(p)
 		d := add(nameKey(stem), cleanTitle(stem))
 		d.whole = append(d.whole, p)
@@ -115,7 +127,7 @@ func groupUnit(unit string, paths []string) []Group {
 	}
 
 	// One file with a number in its name is a title with a number in it:
-	// "Fahrenheit 451", "Catch-22".
+	// "Celsius 212", "Trap-17".
 	for _, key := range bases {
 		parts := byBase[key]
 		if len(parts) < 2 {
@@ -181,7 +193,7 @@ func partOf(unit, p string) part {
 	}
 	if m := partSuffix.FindStringSubmatch(stem); m != nil {
 		base := strings.TrimSpace(m[1])
-		// "Blade Runner 2049" ends in a year, not in part 49 of "Blade Runner 2".
+		// "Night Courier 2049" ends in a year, not in part 49 of "Blade Runner 2".
 		if base == "" || !isDigit(base[len(base)-1]) {
 			pt.number, _ = strconv.Atoi(m[2])
 			if catalog.Key(base) != "" {

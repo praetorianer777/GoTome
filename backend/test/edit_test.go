@@ -86,7 +86,7 @@ func TestAnEditedFieldIsLockedAgainstTheNextRead(t *testing.T) {
 		"series": map[string]any{"name": "Penguin Austen", "index": 2.5},
 		"contributors": []map[string]any{
 			{"name": "Jane Austen", "role": "author"},
-			{"name": "Fiona Stafford", "role": "editor"},
+			{"name": "Fiona Stanhope", "role": "editor"},
 		},
 		"tags":        []string{"Romance", "Classics"},
 		"identifiers": []map[string]any{{"type": "isbn", "value": "978-0-14-143958-7"}},

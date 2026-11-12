@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -37,6 +39,11 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.storeUpload(w, r, lib, scope, user)
+}
+
+// storeUpload streams the multipart form's file into the managed library.
+func (s *Server) storeUpload(w http.ResponseWriter, r *http.Request, lib library.Library, scope library.Scope, user *auth.User) error {
 	if lib.Mode != library.ModeManaged {
 		return ErrConflict("Books can only be uploaded into a managed library. Put files for an external library into its folder, and scan it.")
 	}
@@ -73,6 +80,13 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) error {
 		return uploadError(err)
 	case errors.Is(err, ingest.ErrUnknownFormat):
 		return ErrValidation(map[string]string{"file": "GOtome does not read this kind of file. It takes " + knownFormats() + "."})
+	case errors.Is(err, ingest.ErrWrongContent):
+		format := strings.ToLower(strings.TrimPrefix(path.Ext(part.FileName()), "."))
+		message := "This file is not " + ingest.FormatName(format) + ", whatever its name says: it may be broken or another kind of file."
+		return &APIError{
+			Status: http.StatusUnprocessableEntity, Code: "wrong_content",
+			Message: message, Fields: map[string]string{"file": message},
+		}
 	case errors.Is(err, ingest.ErrUploadTooLarge):
 		return &APIError{
 			Status: http.StatusRequestEntityTooLarge, Code: "too_large",

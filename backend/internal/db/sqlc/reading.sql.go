@@ -41,7 +41,7 @@ SELECT b.id
 FROM books b
 WHERE b.id = ANY($1::uuid[])
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 ORDER BY b.id
 FOR SHARE
 `

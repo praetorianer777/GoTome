@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 import { makePdf } from "../fixtures/pdf";
 
@@ -41,6 +42,8 @@ test("a file moved to the trash is restored to its book, and deleted for good on
 	await expect(page.getByRole("link", { name: `Read ${name}` })).toBeVisible();
 
 	await page.getByRole("button", { name: `Move ${name} to the trash` }).click();
+	// Leaving before the move is answered would cancel it.
+	await expect(page.getByRole("link", { name: `Read ${name}` })).toBeHidden();
 	await page.goto("/trash");
 	await item.getByRole("button", { name: "Delete now" }).click();
 	await expect(item).toBeVisible();

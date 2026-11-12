@@ -18,6 +18,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
@@ -41,30 +42,58 @@ var errWrittenMeanwhile = errors.New("the file was written by another job meanwh
 
 // Edit changes how a book is described, as catalog.EditTx does, and has the
 // change written into the book's EPUBs in libraries GOtome may change, so
-// that it travels with the files.
+// that it travels with the files, and the book's duplicates looked for
+// again.
 func (s *Service) Edit(ctx context.Context, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return s.EditTx(ctx, tx, scope, id, e) })
+}
+
+// EditTx is Edit inside a transaction the caller runs. It must come first in
+// that transaction, as it holds the book's library (HoldLibrary).
+func (s *Service) EditTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, e catalog.Edit) error {
+	if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+		return err
+	}
+	if err := catalog.EditTx(ctx, tx, scope, id, e); err != nil {
+		return err
+	}
+	if !e.ChangesValues() {
+		return nil
+	}
+	return s.describedTx(ctx, tx, id)
+}
+
+// describedTx follows a change to how a book is described: its EPUBs are
+// written and its duplicates looked for again.
+func (s *Service) describedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	// An automatic run's changes reach the files when a person confirms it.
+	if !curation.Deferred(ctx) {
+		if _, err := s.WriteBackTx(ctx, tx, id); err != nil {
 			return err
 		}
-		if !e.ChangesValues() {
-			return nil
-		}
-		_, err := s.WriteBackTx(ctx, tx, id)
+	}
+	if err := s.queuePlaceholderJoinTx(ctx, tx, id); err != nil {
 		return err
-	})
+	}
+	if s.OnDescribed == nil {
+		return nil
+	}
+	return s.OnDescribed(ctx, tx, id)
 }
 
 // ChangeTx makes one book's part of a bulk change, as catalog.ChangeTx
-// does, inside a transaction the caller runs, and has what it changed
-// written into the book's EPUBs as Edit does.
+// does, inside a transaction the caller runs, and follows it up as Edit
+// does. It must come first in that transaction, as it holds the book's
+// library (HoldLibrary).
 func (s *Service) ChangeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, id uuid.UUID, c catalog.Change) (catalog.Changed, error) {
+	if err := sqlc.New(tx).HoldLibrariesOfBooks(ctx, []uuid.UUID{id}); err != nil {
+		return catalog.Changed{}, err
+	}
 	changed, err := catalog.ChangeTx(ctx, tx, scope, id, c)
 	if err != nil || !changed.Values {
 		return changed, err
 	}
-	_, err = s.WriteBackTx(ctx, tx, id)
-	return changed, err
+	return changed, s.describedTx(ctx, tx, id)
 }
 
 // WriteBackTx queues the writing of the book's metadata into each of its
@@ -75,16 +104,20 @@ func (s *Service) WriteBackTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) 
 		return 0, err
 	}
 	for _, file := range files {
-		// Not unique: a job already running may have read the book before
-		// this change, and the one after it must write it again.
-		_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: file}, jobs.InsertOpts{
-			Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
-		})
-		if err != nil {
+		if err := s.queueWriteBackTx(ctx, tx, file); err != nil {
 			return 0, err
 		}
 	}
 	return len(files), nil
+}
+
+func (s *Service) queueWriteBackTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID) error {
+	// Not unique: a job already running may have read the book before
+	// this change, and the one after it must write it again.
+	_, err := s.Queue.InsertTx(ctx, tx, WriteBackArgs{FileID: fileID}, jobs.InsertOpts{
+		Queue: jobs.QueueMetadata, MaxAttempts: writeBackAttempts,
+	})
+	return err
 }
 
 // catalogRoles are the MARC relator codes of the roles the catalogue knows.
@@ -114,6 +147,15 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 	if file.Format != "epub" || !file.Writable || file.Drm || file.ExtractState != "done" ||
 		file.MissingAt != nil || file.TrashedAt != nil || file.Sha256 == nil {
 		return nil
+	}
+	// Told once for the library and not tried again: a job per file would
+	// fail as often as the library has EPUBs. The file is remembered, and
+	// written once the folder can be again (WritableAgain).
+	if err := s.noteUnwritable(ctx, probeFolder(file.LibraryID, file.RootPath)); err != nil {
+		if errors.Is(err, ErrFolderReadOnly) {
+			return sqlc.New(s.pool).SetWriteBackPending(ctx, fileID)
+		}
+		return err
 	}
 	book, err := catalog.NewService(s.pool).Get(ctx, library.Scope{SeesAll: true}, file.BookID)
 	if errors.Is(err, catalog.ErrNotFound) {
@@ -166,7 +208,7 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 	written := &countingWriter{w: io.MultiWriter(out, sum)}
 	err = epub.Rewrite(src, info.Size(), written, update)
 	switch {
-	case errors.Is(err, epub.ErrNotWritable), errors.Is(err, epub.ErrNotEPUB), errors.Is(err, epub.ErrTooLarge):
+	case errors.Is(err, epub.ErrNotWritable), errors.Is(err, epub.ErrNotEPUB), errors.Is(err, epub.ErrTooLarge), errors.Is(err, epub.ErrUnsafe):
 		return fmt.Errorf("%w: %v", ErrNotWritten, err)
 	case err != nil:
 		return fmt.Errorf("write %s: %w", file.RelPath, err)
@@ -183,6 +225,9 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
+			return err
+		}
 		current, err := q.LockFileHash(ctx, fileID)
 		if err != nil {
 			return err

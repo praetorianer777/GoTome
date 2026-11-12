@@ -24,7 +24,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY s.medium
 ORDER BY s.medium
 `
@@ -112,7 +112,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $2
   AND s.started_at >= $3
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $4::boolean))
 GROUP BY 1, 2
 ORDER BY 1, 2
 `
@@ -228,7 +228,7 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = $2
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 GROUP BY 1
 ORDER BY 1 DESC
 `
@@ -401,9 +401,13 @@ FROM (
     FROM reading_finishes rf
     WHERE rf.user_id = $1
 ) h
-JOIN books b ON b.id = h.book_id
-WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $3::boolean))
+JOIN LATERAL (
+    SELECT bk.title
+    FROM books bk
+    WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
+    OFFSET 0
+) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
 LIMIT $4
 `
@@ -422,7 +426,11 @@ type ReadingHistoryRow struct {
 	Day    *time.Time
 }
 
-// When a person began and finished books, the latest first.
+// When a person began and finished books, the latest first. Each event
+// finds its book by its key: a person's events are a few thousand at most,
+// and joined as a set the planner may read every book of the library
+// instead. OFFSET 0 keeps the subquery from being flattened into such a
+// join.
 func (q *Queries) ReadingHistory(ctx context.Context, arg ReadingHistoryParams) ([]ReadingHistoryRow, error) {
 	rows, err := q.db.Query(ctx, readingHistory,
 		arg.UserID,
@@ -477,4 +485,29 @@ func (q *Queries) StartSession(ctx context.Context, arg StartSessionParams) erro
 		arg.ToFraction,
 	)
 	return err
+}
+
+const undatedFinishes = `-- name: UndatedFinishes :one
+SELECT count(*)
+FROM user_books ub
+JOIN books b ON b.id = ub.book_id
+WHERE ub.user_id = $1
+  AND ub.status = 'completed'
+  AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id)
+`
+
+type UndatedFinishesParams struct {
+	UserID  uuid.UUID
+	SeesAll bool
+}
+
+// Books a person has as completed that no finish is recorded for: an import
+// of a read book with no date. They are in no year, and no date is made up.
+func (q *Queries) UndatedFinishes(ctx context.Context, arg UndatedFinishesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, undatedFinishes, arg.UserID, arg.SeesAll)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }

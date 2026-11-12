@@ -1,6 +1,7 @@
 package epub
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -59,7 +60,9 @@ func (m Metadata) Authors() []string {
 }
 
 type opfPackage struct {
-	Version  string `xml:"version,attr"`
+	Version string `xml:"version,attr"`
+	// UniqueID names the identifier that keys obfuscated fonts.
+	UniqueID string `xml:"unique-identifier,attr"`
 	Metadata struct {
 		Titles       []opfText    `xml:"title"`
 		Creators     []opfCreator `xml:"creator"`
@@ -76,7 +79,8 @@ type opfPackage struct {
 	Spine    struct {
 		Toc   string `xml:"toc,attr"`
 		Items []struct {
-			IDRef string `xml:"idref,attr"`
+			IDRef  string `xml:"idref,attr"`
+			Linear string `xml:"linear,attr"`
 		} `xml:"itemref"`
 	} `xml:"spine"`
 }
@@ -130,6 +134,17 @@ func (i *opfItem) isImage() bool { return strings.HasPrefix(i.MediaType, "image/
 
 // isDocument accepts the media types content documents are declared with,
 // and the extension where a file declares none.
+// isXHTML reports whether the item is a document that must be XML.
+func (i *opfItem) isXHTML() bool {
+	switch strings.ToLower(i.MediaType) {
+	case "application/xhtml+xml":
+		return true
+	case "":
+		return strings.HasSuffix(strings.ToLower(i.Href), ".xhtml")
+	}
+	return false
+}
+
 func (i *opfItem) isDocument() bool {
 	switch i.MediaType {
 	case "application/xhtml+xml", "text/html", "application/x-dtbook+xml":
@@ -290,7 +305,7 @@ func (p *opfPackage) series() (string, *float64) {
 
 func parseIndex(s string) *float64 {
 	v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-	if err != nil || v < 0 || v != v {
+	if err != nil || v < 0 || v != v || math.IsInf(v, 0) {
 		return nil
 	}
 	return &v

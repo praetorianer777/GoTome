@@ -6,6 +6,12 @@ services:
       # The test gate reaches no provider: what a match or a search finds
       # out there is not the gate's to know.
       GOTOME_OFFLINE: "true"
+      # In their place, what the browser tests look books up in: the
+      # records of e2e/fixtures/metadata.json, and vectors made from the
+      # words of each text, as the model is not downloaded either. Neither
+      # variable is set in a deployment.
+      GOTOME_TEST_METADATA: /fixtures/metadata.json
+      GOTOME_TEST_EMBEDDINGS: "true"
     volumes:
       # The browser tests add this folder as an external library. Two libraries
       # cannot share a folder, and the browser projects run side by side, so
@@ -14,3 +20,89 @@ services:
       - ../e2e/fixtures/books:/fixtures/books-firefox:ro
       - ../e2e/fixtures/books:/fixtures/books-webkit:ro
       - ../e2e/fixtures/books:/fixtures/books-phone:ro
+      # A small Calibre library, for previewing its import (written by
+      # calibre's TestWriteTheBrowserFixture).
+      - ../e2e/fixtures/calibre:/fixtures/calibre-chromium:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-firefox:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-webkit:ro
+      - ../e2e/fixtures/calibre:/fixtures/calibre-phone:ro
+      # Two copies of one book, for keeping one of them: once read-only, and
+      # once as a folder inside one GOtome may write to (the tmpfs below)
+      # whose trash it may not, as when the folder belongs to another user.
+      - ../e2e/fixtures/twins:/fixtures/twins-chromium:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-firefox:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-webkit:ro
+      - ../e2e/fixtures/twins:/fixtures/twins-phone:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-chromium/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-firefox/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-webkit/books:ro
+      - ../e2e/fixtures/twins:/fixtures/shelf-phone/books:ro
+      - ../e2e/fixtures/metadata.json:/fixtures/metadata.json:ro
+      # What make stack-check has FFmpeg read.
+      - ../backend/internal/ingest/testdata/audio:/fixtures/audio:ro
+      - ../e2e/fixtures/audio:/fixtures/audio-e2e:ro
+    tmpfs:
+      - /fixtures/shelf-chromium:mode=1777
+      - /fixtures/shelf-firefox:mode=1777
+      - /fixtures/shelf-webkit:mode=1777
+      - /fixtures/shelf-phone:mode=1777
+      - /fixtures/shelf-chromium/.trash:mode=0555
+      - /fixtures/shelf-firefox/.trash:mode=0555
+      - /fixtures/shelf-webkit/.trash:mode=0555
+      - /fixtures/shelf-phone/.trash:mode=0555
+
+  db:
+    # What a stall in the tests is made of, in the logs CI keeps when they
+    # fail: lock waits past deadlock_timeout (1 s), slow statements,
+    # checkpoints and autovacuum runs. The gate's stack, which is thrown
+    # away after each run, also waits for no disk (GOTOME_DB_DURABLE=off,
+    # make stack-up): commits that waited seconds on fsync stalled every
+    # test at once on CI (#189).
+    command:
+      - postgres
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - fsync=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - synchronous_commit=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - full_page_writes=${GOTOME_DB_DURABLE:-on}
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_checkpoints=on
+      - -c
+      - log_autovacuum_min_duration=1000
+
+  # An identity provider for the single sign-on browser tests, started only
+  # with the profile (make sso-up). Its realm, client and people are test
+  # values from keycloak/gotome-realm.json and exist nowhere else.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2@sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9
+    profiles: [sso]
+    command: [start-dev, --import-realm]
+    environment:
+      # One address for the app and the browser: the app reaches the
+      # service by its name on the stack's network, the browser test maps
+      # the name to this machine (mk/e2e.mk), where the same port is
+      # published.
+      KC_HOSTNAME: http://keycloak:${KEYCLOAK_PORT:-8180}
+      KC_HTTP_PORT: ${KEYCLOAK_PORT:-8180}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: e2e-keycloak-only
+    volumes:
+      - ./keycloak/gotome-realm.json:/opt/keycloak/data/import/gotome-realm.json:ro
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:${KEYCLOAK_PORT:-8180}"
+    healthcheck:
+      # The image has no curl; bash talks HTTP to the management port.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 10s

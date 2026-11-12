@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,6 +22,9 @@ import (
 
 // The app container may start alongside Postgres rather than after it, so
 // Open waits this long for the database before giving up.
+// minConns is the least the pool holds unless the URL says otherwise.
+const minConns = 16
+
 const (
 	connectAttempts = 30
 	connectPause    = time.Second
@@ -33,6 +37,13 @@ func Open(ctx context.Context, url string, log *slog.Logger) (*pgxpool.Pool, err
 	if err != nil {
 		// pgx quotes the URL in its error, password included.
 		return nil, errors.New("GOTOME_DATABASE_URL is not a valid Postgres URL, such as postgres://gotome:secret@db:5432/gotome")
+	}
+	// pgx's default is four connections or one per CPU, and the
+	// notification hub and River's notifier each hold one for good: on a
+	// small machine the requests and jobs were left with two between them
+	// (#189). The URL's pool_max_conns still decides where it is given.
+	if !strings.Contains(url, "pool_max_conns") {
+		cfg.MaxConns = max(cfg.MaxConns, minConns)
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
@@ -63,6 +74,12 @@ func Open(ctx context.Context, url string, log *slog.Logger) (*pgxpool.Pool, err
 // many that were. It holds a Postgres advisory lock while it works, so two
 // processes starting together apply each migration once, one after the other.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) (applied int, err error) {
+	return MigrateWithProgress(ctx, pool, nil)
+}
+
+// MigrateWithProgress is Migrate, telling progress how many of the migrations
+// that were pending when it began are done, before the first and after each.
+func MigrateWithProgress(ctx context.Context, pool *pgxpool.Pool, progress func(done, total int)) (applied int, err error) {
 	sqlDB := stdlib.OpenDBFromPool(pool)
 	defer sqlDB.Close()
 
@@ -79,11 +96,37 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) (applied int, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("migrations: %w", err)
 	}
-	results, err := provider.Up(ctx)
-	if err != nil {
-		return len(results), fmt.Errorf("migrate: %w", err)
+	if progress == nil {
+		results, err := provider.Up(ctx)
+		if err != nil {
+			return len(results), fmt.Errorf("migrate: %w", err)
+		}
+		return len(results), nil
 	}
-	return len(results), nil
+	statuses, err := provider.Status(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("migrate: %w", err)
+	}
+	total := 0
+	for _, st := range statuses {
+		if st.State == goose.StatePending {
+			total++
+		}
+	}
+	progress(0, total)
+	// One at a time, so that each one done can be told; the lock is taken
+	// and let go of around each.
+	for applied < total {
+		if _, err := provider.UpByOne(ctx); err != nil {
+			if errors.Is(err, goose.ErrNoNextVersion) {
+				break
+			}
+			return applied, fmt.Errorf("migrate: %w", err)
+		}
+		applied++
+		progress(applied, total)
+	}
+	return applied, nil
 }
 
 // SchemaVersion is the highest migration applied.

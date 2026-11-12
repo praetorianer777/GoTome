@@ -1,0 +1,24 @@
+[package]
+name = "gotome-fulltext"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "GOtome's full-text index: Tantivy behind a C interface (#265)"
+
+[lib]
+name = "gotome_fulltext"
+crate-type = ["cdylib", "rlib"]
+
+# Tantivy at the version the text-store spike measured (#244), which is the
+# one in the crate cache the agent builds from; no document store, so not its
+# compression features either.
+[dependencies]
+tantivy = { version = "=0.22.1", default-features = false, features = ["mmap"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+debug = false
+lto = "thin"
+codegen-units = 4
+panic = "unwind"

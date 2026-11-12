@@ -21,13 +21,24 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 )
 
+// What a record's edition is (Record.Medium).
+const (
+	MediumEbook = "ebook"
+	MediumPrint = "print"
+	MediumAudio = "audio"
+)
+
 // Record is what one provider says about one book. An empty field says
 // nothing.
 type Record struct {
 	// Provider is the Name of the provider that said it, and ID what that
 	// provider calls the book.
-	Provider     string
-	ID           string
+	Provider string
+	ID       string
+	// Work is what the provider calls the work the record is an edition
+	// of, where it says so: the same for every edition, so that two
+	// records of one work can be told apart from two books.
+	Work         string
 	Title        string
 	Subtitle     string
 	Contributors []catalog.NewContributor
@@ -40,7 +51,10 @@ type Record struct {
 	Series      string
 	SeriesIndex *float64
 	PageCount   *int32
-	Tags        []string
+	// Medium is what the edition is, where the provider says so:
+	// MediumEbook, MediumPrint or MediumAudio.
+	Medium string
+	Tags   []string
 	// Identifiers are in the form catalog.NormalizeIdentifier gives.
 	Identifiers []catalog.Identifier
 	// CoverURL is where the provider keeps a cover, fetched with Cover.
@@ -76,6 +90,85 @@ type Provider interface {
 	Search(ctx context.Context, web Web, q Query) ([]Record, error)
 }
 
+// Works is a provider that also lists the books of an author or of a
+// series, for following them (#69). A record's Published says when a book
+// came or comes out, as exactly as the provider knows it. A name the
+// provider does not know is ErrNotFound.
+type Works interface {
+	ByAuthor(ctx context.Context, web Web, name string) ([]Record, error)
+	BySeries(ctx context.Context, web Web, name string) ([]Record, error)
+}
+
+// What WorksOf lists the books of.
+const (
+	WorksAuthor = "author"
+	WorksSeries = "series"
+)
+
+// Answer is what one provider listed.
+type Answer struct {
+	Provider string
+	Records  []Record
+}
+
+// WorksOf asks every enabled provider that lists works for the books of an
+// author or a series. It keeps those in the metadata language, in English,
+// where most books are announced first, and those of no one language: the
+// providers list every translation as a book of its own. A provider that
+// knows no such name answers with none; one that fails is reported in the
+// error, joined from ProviderErrors, beside the answers of the others.
+func (s *Service) WorksOf(ctx context.Context, kind, name string) ([]Answer, error) {
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	wanted := []string{"en"}
+	if s.language != nil {
+		if l := baseLanguage(s.language(ctx)); l != "" {
+			wanted = append(wanted, l)
+		}
+	}
+	var out []Answer
+	var errs []error
+	for _, p := range s.providers {
+		w, ok := p.(Works)
+		if !ok || (s.enabled != nil && !slices.Contains(enabled, p.Name())) {
+			continue
+		}
+		web := s.webs[p.Name()]
+		var records []Record
+		var err error
+		if kind == WorksSeries {
+			records, err = w.BySeries(ctx, web, name)
+		} else {
+			records, err = w.ByAuthor(ctx, web, name)
+		}
+		switch {
+		case errors.Is(err, ErrNotFound):
+			records, err = nil, nil
+		case err != nil && ctx.Err() != nil:
+			return nil, ctx.Err()
+		case err != nil:
+			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
+			continue
+		}
+		records = slices.DeleteFunc(records, func(r Record) bool {
+			return r.Language != "" && !slices.Contains(wanted, baseLanguage(r.Language))
+		})
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		out = append(out, Answer{Provider: p.Name(), Records: records})
+	}
+	return out, errors.Join(errs...)
+}
+
+// baseLanguage is a BCP 47 tag's language alone: "de" of "de-AT".
+func baseLanguage(tag string) string {
+	base, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(tag)), "-")
+	return base
+}
+
 // Candidate is a record and how well it fits the book it was found for.
 type Candidate struct {
 	Record
@@ -102,21 +195,13 @@ const maxLookups = 3
 // best first. A provider that fails is reported in the error, joined from
 // ProviderErrors, beside what the others found.
 func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidate, error) {
-	var ids []catalog.Identifier
-	for _, id := range book.Identifiers {
-		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
-			ids = append(ids, id.Identifier)
-		}
-	}
-	// Papers and many scholarly books have a DOI and no ISBN.
-	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
-		ids = append(ids, book.Identifiers[i].Identifier)
-	}
+	ids := lookupIDs(book)
 	q := Query{Title: book.Title, Authors: book.Authors(), Language: book.Language}
 	if q.Language == "" && s.language != nil {
 		q.Language = s.language(ctx)
 	}
 
+	score := s.activeScorer(ctx)
 	var found []Candidate
 	var errs []error
 	var enabled []string
@@ -128,6 +213,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			continue
 		}
 		web := s.webs[p.Name()]
+		searched := false
 		records, err := func() ([]Record, error) {
 			var records []Record
 			for _, id := range ids {
@@ -140,6 +226,7 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			if len(records) > 0 {
 				return records, nil
 			}
+			searched = true
 			records, err := p.Search(ctx, web, q)
 			if errors.Is(err, ErrNotFound) {
 				return nil, nil
@@ -153,13 +240,98 @@ func (s *Service) Candidates(ctx context.Context, book catalog.Book) ([]Candidat
 			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
 			continue
 		}
-		for _, r := range records {
-			r.Provider = p.Name()
-			found = append(found, Candidate{Record: r, Score: Score(book, r)})
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		// Only a book looked up by its title needs its candidates told
+		// apart by what they are about.
+		cosines := make([]*float64, len(records))
+		if searched {
+			cosines = s.describe(ctx, book, records)
+		}
+		for i, r := range records {
+			found = append(found, Candidate{Record: r, Score: score(book, r, scoreInput{rank: i, cosine: cosines[i]})})
 		}
 	}
-	slices.SortStableFunc(found, func(a, b Candidate) int { return cmp.Compare(b.Score, a.Score) })
-	return found, errors.Join(errs...)
+	lang := book.Language
+	if lang == "" {
+		lang = q.Language
+	}
+	return sortCandidates(found, lang), errors.Join(errs...)
+}
+
+// sortCandidates puts the best score first, and among equal scores the
+// records in the language wanted before the others.
+func sortCandidates(c []Candidate, lang string) []Candidate {
+	wanted := baseLanguage(lang)
+	own := func(x Candidate) bool { return wanted != "" && baseLanguage(x.Language) == wanted }
+	slices.SortStableFunc(c, func(a, b Candidate) int {
+		if d := cmp.Compare(b.Score, a.Score); d != 0 {
+			return d
+		}
+		switch {
+		case own(a) && !own(b):
+			return -1
+		case own(b) && !own(a):
+			return 1
+		}
+		return 0
+	})
+	return c
+}
+
+// lookupIDs are the identifiers a book is looked up by: its ISBNs, and a
+// DOI, which papers and many scholarly books have instead of an ISBN.
+func lookupIDs(book catalog.Book) []catalog.Identifier {
+	var ids []catalog.Identifier
+	for _, id := range book.Identifiers {
+		if id.Type == catalog.IDISBN && !slices.Contains(ids, id.Identifier) && len(ids) < maxLookups {
+			ids = append(ids, id.Identifier)
+		}
+	}
+	if len(ids) == 0 {
+		for _, isbn := range book.PrintISBNs {
+			if id, ok := catalog.NormalizeIdentifier(catalog.IDISBN, isbn); ok && len(ids) < maxLookups {
+				ids = append(ids, id)
+			}
+		}
+	}
+	// Papers and many scholarly books have a DOI and no ISBN.
+	if i := slices.IndexFunc(book.Identifiers, func(id catalog.BookIdentifier) bool { return id.Type == catalog.IDDOI }); i >= 0 {
+		ids = append(ids, book.Identifiers[i].Identifier)
+	}
+	return ids
+}
+
+// Cached returns what the providers answered about the book's identifiers
+// earlier and still keep in provider_records. It asks nobody: an answer not
+// kept is none, whatever the provider would say.
+func (s *Service) Cached(ctx context.Context, book catalog.Book) []Record {
+	ids := lookupIDs(book)
+	if len(ids) == 0 {
+		return nil
+	}
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	var out []Record
+	for _, p := range s.providers {
+		if s.enabled != nil && !slices.Contains(enabled, p.Name()) {
+			continue
+		}
+		for _, id := range ids {
+			got, err := p.Lookup(ctx, s.cached[p.Name()], id)
+			if err != nil {
+				continue
+			}
+			for _, r := range got {
+				r.Provider = p.Name()
+				out = append(out, r)
+			}
+		}
+	}
+	return out
 }
 
 // Has reports whether a provider of that name is asked.

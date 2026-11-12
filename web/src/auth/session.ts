@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { api, ApiError } from "@/api/client";
 import type { components } from "@/api/schema";
+import { leave } from "@/auth/sso";
 
 export type CurrentUser = components["schemas"]["CurrentUser"];
 export type Permission = CurrentUser["permissions"][number];
@@ -103,4 +104,32 @@ export function safeRedirect(target: string | undefined): string {
 		return "/";
 	}
 	return target;
+}
+
+export type SignInMethods = components["schemas"]["SignInMethods"];
+
+/** How one may sign in here: with a password, single sign-on, or both. */
+export const signInMethodsQuery = queryOptions({
+	queryKey: ["auth", "methods"],
+	queryFn: async (): Promise<SignInMethods> =>
+		(await api.GET("/auth/methods")).data ?? { password: true },
+});
+
+/**
+ * Sends the browser to the identity provider, to sign in or, with `link`,
+ * to link an account there to the one signed in. It comes back through the
+ * server, which takes it to `returnTo`, or to the profile after a link.
+ */
+export function useSingleSignOn() {
+	return useMutation({
+		mutationFn: async ({ returnTo, link }: { returnTo?: string; link?: boolean }) =>
+			link
+				? (await api.POST("/auth/identities")).data
+				: (await api.POST("/auth/oidc/start", { body: { returnTo } })).data,
+		onSuccess: (data) => {
+			if (data) {
+				leave.to(data.url);
+			}
+		},
+	});
 }

@@ -30,6 +30,12 @@ function stackEnv(): Record<string, string> {
 export const BASE_URL = process.env.GOTOME_URL ?? stackEnv().GOTOME_URL ?? "";
 
 /**
+ * Keycloak, when make sso-up started it: the same address for the browser
+ * and the app, through the name the test container maps to this machine.
+ */
+export const KEYCLOAK_URL = process.env.KEYCLOAK_URL ?? stackEnv().KEYCLOAK_URL ?? "";
+
+/**
  * The account the suite sets a fresh stack up with. The stack is a throwaway:
  * these are test values and exist nowhere else.
  */

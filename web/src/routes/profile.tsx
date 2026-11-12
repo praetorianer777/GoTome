@@ -1,8 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import type { CurrentUser } from "@/auth/session";
+import {
+	type CurrentUser,
+	signInMethodsQuery,
+	useSingleSignOn,
+} from "@/auth/session";
+import { ssoMessage } from "@/auth/sso";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
-import { type MessageKey, t } from "@/i18n";
+import {
+	LOCALES,
+	type Locale,
+	localeChosen,
+	type MessageKey,
+	setLocale,
+	t,
+	useLocale,
+} from "@/i18n";
 import { formatDate } from "@/lib/format";
 import {
 	EVENT_LABELS,
@@ -10,10 +23,16 @@ import {
 	useSetNotificationSetting,
 } from "@/notifications/api";
 import {
+	ownIdentitiesQuery,
 	ownSessionsQuery,
 	useChangePassword,
 	useEndOwnSession,
+	useUnlinkIdentity,
 } from "@/users/api";
+import { ApiKeys } from "@/users/api-keys";
+import { Devices } from "@/users/devices";
+import { KindleAddress } from "@/users/kindle";
+import { ReadingImport } from "@/users/reading-import";
 import { StorageUse } from "@/users/storage";
 
 const ROLE_LABELS: Record<string, MessageKey> = {
@@ -50,7 +69,7 @@ export function describeAgent(agent: string): string {
 	return agent.length > 60 ? `${agent.slice(0, 57)}…` : agent;
 }
 
-export function Profile({ user }: { user: CurrentUser }) {
+export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 	return (
 		<div className="flex max-w-2xl flex-col gap-8">
 			<div>
@@ -70,10 +89,52 @@ export function Profile({ user }: { user: CurrentUser }) {
 				</h2>
 				<StorageUse />
 			</section>
+			<LanguageChoice />
 			<NotificationSettings />
+			<SingleSignOn sso={sso} />
 			<ChangePassword />
 			<Sessions />
+			<ReadingImport />
+			<Devices username={user.username} />
+			<KindleAddress />
+			<ApiKeys />
 		</div>
+	);
+}
+
+// Each language is named in itself, so that someone who cannot read the
+// one shown finds their own.
+const LANGUAGE_NAMES: Record<Locale, string> = { en: "English", de: "Deutsch" };
+
+/** The language of the app, which is each browser's own, like its colours. */
+function LanguageChoice() {
+	const current = useLocale();
+	const chosen = localeChosen() ? current : "browser";
+	return (
+		<section aria-labelledby="language" className="flex flex-col gap-2">
+			<h2 id="language" className="text-lg font-medium">
+				{t("profile.language")}
+			</h2>
+			<label className="flex flex-col gap-1">
+				<span className="text-sm text-slate-600 dark:text-slate-400">
+					{t("profile.language.hint")}
+				</span>
+				<select
+					value={chosen}
+					onChange={(e) =>
+						void setLocale(e.target.value === "browser" ? null : (e.target.value as Locale))
+					}
+					className="w-fit rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+				>
+					<option value="browser">{t("profile.language.browser")}</option>
+					{LOCALES.map((l) => (
+						<option key={l} value={l} lang={l}>
+							{LANGUAGE_NAMES[l]}
+						</option>
+					))}
+				</select>
+			</label>
+		</section>
 	);
 }
 
@@ -104,6 +165,68 @@ function NotificationSettings() {
 					</li>
 				))}
 			</ul>
+		</section>
+	);
+}
+
+function SingleSignOn({ sso }: { sso?: string }) {
+	const methods = useQuery(signInMethodsQuery);
+	const identities = useQuery(ownIdentitiesQuery);
+	const link = useSingleSignOn();
+	const unlink = useUnlinkIdentity();
+	const provider = methods.data?.sso;
+	if (!provider && !identities.data?.length) return null;
+	const message = ssoMessage(sso);
+	return (
+		<section aria-labelledby="single-sign-on" className="flex flex-col gap-3">
+			<h2 id="single-sign-on" className="text-lg font-medium">
+				{t("profile.sso")}
+			</h2>
+			{message && (
+				<p
+					role={sso === "linked" ? "status" : "alert"}
+					className={
+						sso === "linked"
+							? "text-sm text-green-800 dark:text-green-300"
+							: "text-sm text-red-700 dark:text-red-400"
+					}
+				>
+					{message}
+				</p>
+			)}
+			{identities.data?.length ? (
+				<ul className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+					{identities.data.map((i) => (
+						<li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+							<span className="font-medium">{i.email ?? i.issuer}</span>
+							<span className="text-sm text-slate-600 dark:text-slate-400">
+								{t("profile.sso.lastUsed", { date: formatDate(i.lastUsedAt) })}
+							</span>
+							<button
+								type="button"
+								disabled={unlink.isPending}
+								onClick={() => unlink.mutate(i.id)}
+								className="ml-auto rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("profile.sso.unlink")}
+							</button>
+						</li>
+					))}
+				</ul>
+			) : (
+				<p className="text-slate-600 dark:text-slate-400">{t("profile.sso.none")}</p>
+			)}
+			<FormError error={identities.error ?? unlink.error ?? link.error} />
+			{provider && (
+				<button
+					type="button"
+					disabled={link.isPending}
+					onClick={() => link.mutate({ link: true })}
+					className="self-start rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+				>
+					{t("profile.sso.link", { name: provider.name })}
+				</button>
+			)}
 		</section>
 	);
 }
@@ -158,7 +281,7 @@ function ChangePassword() {
 				/>
 				{Object.keys(errors).length === 0 && <FormError error={change.error} />}
 				<div className="flex items-center gap-4">
-					<SubmitButton pending={change.isPending}>
+					<SubmitButton pending={change.isPending} kind="secondary">
 						{t("profile.password.submit")}
 					</SubmitButton>
 					{done && (

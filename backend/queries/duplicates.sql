@@ -1,9 +1,10 @@
 -- name: FindDuplicateEvidence :many
 -- Every other book that looks like this one, with why: a file of the same
 -- bytes, a file of the same content where the bytes differ, a shared ISBN,
--- or the same title and an author in common. Only books in the library,
--- neither deleted, merged nor wished for, count. Each branch starts from the
--- book's own rows and reaches the others through an index.
+-- or the same title and an author in common, whichever way round the
+-- author's name is written. Only books in the library, neither deleted,
+-- merged nor wished for, count. Each branch starts from the book's own rows
+-- and reaches the others through an index.
 WITH me AS (
     SELECT bk.id, bk.title_key FROM books bk
     WHERE bk.id = sqlc.arg(book_id) AND bk.deleted_at IS NULL AND NOT bk.placeholder
@@ -32,8 +33,9 @@ FROM me
 JOIN books ob ON ob.title_key = me.title_key AND ob.id <> me.id
                AND ob.deleted_at IS NULL AND NOT ob.placeholder
 JOIN book_contributors c ON c.book_id = me.id AND c.role = 'author'
-JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = c.author_id
 JOIN authors a ON a.id = c.author_id
+JOIN authors oa ON oa.person_key = a.person_key
+JOIN book_contributors oc ON oc.book_id = ob.id AND oc.role = 'author' AND oc.author_id = oa.id
 WHERE me.title_key <> '';
 
 -- name: UpsertDuplicatePair :one
@@ -67,25 +69,27 @@ WHERE p.state = 'open'
 -- name: ListLibraryBookIDs :many
 -- The books of the visible libraries, of one when named, to check.
 SELECT b.id FROM books b
-WHERE b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND (sqlc.narg(library_id)::uuid IS NULL OR b.library_id = sqlc.narg(library_id)::uuid)
   AND b.deleted_at IS NULL AND NOT b.placeholder;
 
 -- name: ListDuplicatePairs :many
 -- The pairs in the state whose books the viewer both sees, of a library when
--- named (either book in it), with evidence of the kind and a score of at
--- least the least when named, the strongest first, after the cursor's.
-SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score
+-- named (either book in it), contained or not when asked, with evidence of
+-- the kind and a score of at least the least when named, the strongest
+-- first, after the cursor's.
+SELECT p.id, p.book_a, p.book_b, p.state, p.found_at, p.score, p.contained
 FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.state = sqlc.arg(state)
-  AND a.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
   AND (sqlc.narg(library_id)::uuid IS NULL OR sqlc.narg(library_id)::uuid IN (a.library_id, b.library_id))
   AND (sqlc.narg(kind)::text IS NULL OR EXISTS (
       SELECT 1 FROM duplicate_evidence e WHERE e.pair_id = p.id AND e.kind = sqlc.narg(kind)::text))
+  AND (sqlc.narg(contained)::boolean IS NULL OR p.contained = sqlc.narg(contained)::boolean)
   AND p.score >= sqlc.arg(least)::real
   AND (sqlc.narg(after_id)::uuid IS NULL
        OR (p.score, p.id) < (sqlc.arg(after_score)::real, sqlc.narg(after_id)::uuid))
@@ -98,8 +102,8 @@ SELECT p.id, p.state, p.book_a, p.book_b FROM duplicate_pairs p
 JOIN books a ON a.id = p.book_a
 JOIN books b ON b.id = p.book_b
 WHERE p.id = sqlc.arg(id)
-  AND a.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL
 FOR UPDATE OF p;
 
@@ -107,20 +111,18 @@ FOR UPDATE OF p;
 UPDATE duplicate_pairs SET state = $2, updated_at = now() WHERE id = $1;
 
 -- name: RefreshPairScores :exec
--- The book's pairs' scores, from their evidence as it now is.
+-- The book's pairs' scores, and whether one book only holds the other,
+-- from their evidence as it now is.
 UPDATE duplicate_pairs p SET score = coalesce(
-    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0)
+    (SELECT max(duplicate_score(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), 0),
+    contained = coalesce(
+    (SELECT bool_and(duplicate_contains(e.kind, e.detail)) FROM duplicate_evidence e WHERE e.pair_id = p.id), false)
 WHERE p.book_a = sqlc.arg(book_id) OR p.book_b = sqlc.arg(book_id);
 
 -- name: ListDuplicateEvidence :many
 SELECT pair_id, kind, detail, duplicate_score(kind, detail) AS score FROM duplicate_evidence
 WHERE pair_id = ANY(sqlc.arg(pair_ids)::uuid[])
 ORDER BY pair_id, score DESC, kind, detail;
-
--- name: ListFileChunkTexts :many
--- The file's text as its chunks hold it, in order.
-SELECT coalesce(body_en, body_de, body_xx)::text AS body
-FROM book_chunks WHERE file_id = $1 ORDER BY position;
 
 -- name: DropBookSignatures :exec
 -- The signatures of the book's files other than the one its text is read
@@ -174,3 +176,27 @@ JOIN book_files f ON f.id = b.primary_text_file_id
 LEFT JOIN file_signatures s ON s.file_id = f.id
 WHERE f.chunked_at IS NOT NULL AND b.deleted_at IS NULL AND NOT b.placeholder
   AND (s.file_id IS NULL OR s.version <> sqlc.arg(version)::smallint);
+
+-- name: ListRecordingPairs :many
+-- Of the pairs, those whose books are both audiobooks with narrators that
+-- differ: the same book read by someone else, not a copy. The narrators of
+-- each book are named as the pair's first and second book.
+SELECT p.id AS pair_id, na.names::text[] AS narrators_a, nb.names::text[] AS narrators_b
+FROM duplicate_pairs p
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_a AND c.role = 'narrator') na
+CROSS JOIN LATERAL (
+    SELECT array_agg(DISTINCT au.name ORDER BY au.name) AS names
+    FROM book_contributors c JOIN authors au ON au.id = c.author_id
+    WHERE c.book_id = p.book_b AND c.role = 'narrator') nb
+WHERE p.id = ANY(sqlc.arg(pair_ids)::uuid[])
+  AND na.names IS NOT NULL AND nb.names IS NOT NULL
+  AND (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_a AND c.role = 'narrator')
+      IS DISTINCT FROM
+      (SELECT array_agg(DISTINCT au.person_key ORDER BY au.person_key) FROM book_contributors c
+       JOIN authors au ON au.id = c.author_id WHERE c.book_id = p.book_b AND c.role = 'narrator')
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_a AND f.kind = 'audio' AND f.trashed_at IS NULL)
+  AND EXISTS (SELECT 1 FROM book_files f WHERE f.book_id = p.book_b AND f.kind = 'audio' AND f.trashed_at IS NULL);

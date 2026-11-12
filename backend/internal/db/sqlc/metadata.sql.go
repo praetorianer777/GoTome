@@ -12,13 +12,28 @@ import (
 	"github.com/google/uuid"
 )
 
+const countMatchCheckBooks = `-- name: CountMatchCheckBooks :one
+SELECT count(*)
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+`
+
+// The books a match-check may ask about: those with an ISBN.
+func (q *Queries) CountMatchCheckBooks(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countMatchCheckBooks)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countReviewBooks = `-- name: CountReviewBooks :one
 SELECT count(DISTINCT b.id)
 FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 `
 
 type CountReviewBooksParams struct {
@@ -31,6 +46,26 @@ func (q *Queries) CountReviewBooks(ctx context.Context, arg CountReviewBooksPara
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deleteEmptyCurationRun = `-- name: DeleteEmptyCurationRun :exec
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)
+`
+
+// A scheduled run that found nothing to do leaves no trace.
+func (q *Queries) DeleteEmptyCurationRun(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteEmptyCurationRun, id)
+	return err
+}
+
+const deleteScoreModel = `-- name: DeleteScoreModel :exec
+DELETE FROM match_score_models WHERE slot = $1
+`
+
+func (q *Queries) DeleteScoreModel(ctx context.Context, slot string) error {
+	_, err := q.db.Exec(ctx, deleteScoreModel, slot)
+	return err
 }
 
 const dismissOtherMatches = `-- name: DismissOtherMatches :exec
@@ -46,6 +81,29 @@ type DismissOtherMatchesParams struct {
 // Once one match of a book is taken, the others it waited with are done.
 func (q *Queries) DismissOtherMatches(ctx context.Context, arg DismissOtherMatchesParams) error {
 	_, err := q.db.Exec(ctx, dismissOtherMatches, arg.BookID, arg.ID)
+	return err
+}
+
+const finishMatchRun = `-- name: FinishMatchRun :exec
+UPDATE match_runs SET state = $1, finished_at = now(), error = $2,
+       report = $3::jsonb
+WHERE kind = $4
+`
+
+type FinishMatchRunParams struct {
+	State  string
+	Error  string
+	Report []byte
+	Kind   string
+}
+
+func (q *Queries) FinishMatchRun(ctx context.Context, arg FinishMatchRunParams) error {
+	_, err := q.db.Exec(ctx, finishMatchRun,
+		arg.State,
+		arg.Error,
+		arg.Report,
+		arg.Kind,
+	)
 	return err
 }
 
@@ -78,7 +136,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetVisibleMatchParams struct {
@@ -102,6 +160,252 @@ func (q *Queries) GetVisibleMatch(ctx context.Context, arg GetVisibleMatchParams
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const languageShares = `-- name: LanguageShares :many
+SELECT COALESCE(lower(split_part(language, '-', 1)), '')::text AS language, count(*) AS books
+FROM books
+WHERE deleted_at IS NULL AND NOT placeholder
+GROUP BY 1
+`
+
+type LanguageSharesRow struct {
+	Language string
+	Books    int64
+}
+
+// How many books of the library are in each language, for the profile that
+// fits it. Counts only.
+func (q *Queries) LanguageShares(ctx context.Context) ([]LanguageSharesRow, error) {
+	rows, err := q.db.Query(ctx, languageShares)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LanguageSharesRow{}
+	for rows.Next() {
+		var i LanguageSharesRow
+		if err := rows.Scan(&i.Language, &i.Books); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchCheckBooks = `-- name: ListMatchCheckBooks :many
+WITH sample AS (
+    SELECT b.id
+    FROM books b
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+      AND (NOT $1::boolean
+           OR EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'))
+    ORDER BY md5(b.id::text), b.id
+    LIMIT $2
+)
+SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
+       b.page_count, b.series_index, p.name AS publisher, sr.name AS series,
+       ARRAY(SELECT DISTINCT f.kind FROM book_files f
+             WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL ORDER BY f.kind)::text[] AS kinds,
+       ARRAY(SELECT DISTINCT i.value FROM book_identifiers i
+             WHERE i.book_id = b.id AND i.type = 'isbn' ORDER BY i.value)::text[] AS isbns,
+       ARRAY(SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+             WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position)::text[] AS authors
+FROM sample s
+JOIN books b ON b.id = s.id
+LEFT JOIN publishers p ON p.id = b.publisher_id
+LEFT JOIN series sr ON sr.id = b.series_id
+ORDER BY md5(b.id::text), b.id
+`
+
+type ListMatchCheckBooksParams struct {
+	EmbeddedOnly bool
+	MaxBooks     int32
+}
+
+type ListMatchCheckBooksRow struct {
+	ID                 uuid.UUID
+	Title              string
+	Subtitle           *string
+	Language           *string
+	PublishedOn        *time.Time
+	PublishedPrecision *string
+	PageCount          *int32
+	SeriesIndex        *float64
+	Publisher          *string
+	Series             *string
+	Kinds              []string
+	Isbns              []string
+	Authors            []string
+}
+
+// A match-check's sample, picked by a hash of the ID so that a library
+// gives the same one each time; the names and ISBNs are read for it alone,
+// with what tells one edition from another (publisher, pages, series,
+// the kinds of its files).
+func (q *Queries) ListMatchCheckBooks(ctx context.Context, arg ListMatchCheckBooksParams) ([]ListMatchCheckBooksRow, error) {
+	rows, err := q.db.Query(ctx, listMatchCheckBooks, arg.EmbeddedOnly, arg.MaxBooks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchCheckBooksRow{}
+	for rows.Next() {
+		var i ListMatchCheckBooksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Subtitle,
+			&i.Language,
+			&i.PublishedOn,
+			&i.PublishedPrecision,
+			&i.PageCount,
+			&i.SeriesIndex,
+			&i.Publisher,
+			&i.Series,
+			&i.Kinds,
+			&i.Isbns,
+			&i.Authors,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchGroupSample = `-- name: ListMatchGroupSample :many
+SELECT m.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending' AND m.provider = $1
+  AND LEAST(floor(m.score * 10), 9)::int = $2::int
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+ORDER BY m.score DESC, m.id
+LIMIT $5
+`
+
+type ListMatchGroupSampleParams struct {
+	Provider string
+	Band     int32
+	Viewer   uuid.UUID
+	SeesAll  bool
+	MaxRows  int32
+}
+
+// Some of the matches of a group, the best fitting first.
+func (q *Queries) ListMatchGroupSample(ctx context.Context, arg ListMatchGroupSampleParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listMatchGroupSample,
+		arg.Provider,
+		arg.Band,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchGroups = `-- name: ListMatchGroups :many
+SELECT m.provider, LEAST(floor(m.score * 10), 9)::int AS band, count(*)::int AS matches
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+GROUP BY 1, 2
+ORDER BY 1, 2 DESC
+`
+
+type ListMatchGroupsParams struct {
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type ListMatchGroupsRow struct {
+	Provider string
+	Band     int32
+	Matches  int32
+}
+
+// The matches that wait, of books the viewer may see, by provider and band:
+// the tenth of the score they lie in (0.9 and over is 9).
+func (q *Queries) ListMatchGroups(ctx context.Context, arg ListMatchGroupsParams) ([]ListMatchGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listMatchGroups, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMatchGroupsRow{}
+	for rows.Next() {
+		var i ListMatchGroupsRow
+		if err := rows.Scan(&i.Provider, &i.Band, &i.Matches); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchRuns = `-- name: ListMatchRuns :many
+SELECT kind, state, done, total, estimate_seconds, requested, started_at, finished_at, error, report
+FROM match_runs
+`
+
+func (q *Queries) ListMatchRuns(ctx context.Context) ([]MatchRun, error) {
+	rows, err := q.db.Query(ctx, listMatchRuns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchRun{}
+	for rows.Next() {
+		var i MatchRun
+		if err := rows.Scan(
+			&i.Kind,
+			&i.State,
+			&i.Done,
+			&i.Total,
+			&i.EstimateSeconds,
+			&i.Requested,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.Error,
+			&i.Report,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPendingMatches = `-- name: ListPendingMatches :many
@@ -146,7 +450,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
 GROUP BY b.id
 ORDER BY min(m.created_at), b.id
 LIMIT $3
@@ -180,6 +484,165 @@ func (q *Queries) ListReviewBooks(ctx context.Context, arg ListReviewBooksParams
 	return items, nil
 }
 
+const listReviewBooksAfter = `-- name: ListReviewBooksAfter :many
+SELECT DISTINCT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.id > $1::uuid
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+ORDER BY b.id
+LIMIT $4
+`
+
+type ListReviewBooksAfterParams struct {
+	AfterID  uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+	MaxBooks int32
+}
+
+// The books with matches waiting that the viewer may see, after a book, by
+// ID, for a run that works through them in batches.
+func (q *Queries) ListReviewBooksAfter(ctx context.Context, arg ListReviewBooksAfterParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listReviewBooksAfter,
+		arg.AfterID,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.MaxBooks,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listScoreModels = `-- name: ListScoreModels :many
+SELECT slot, model, books, trained_at FROM match_score_models
+`
+
+func (q *Queries) ListScoreModels(ctx context.Context) ([]MatchScoreModel, error) {
+	rows, err := q.db.Query(ctx, listScoreModels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchScoreModel{}
+	for rows.Next() {
+		var i MatchScoreModel
+		if err := rows.Scan(
+			&i.Slot,
+			&i.Model,
+			&i.Books,
+			&i.TrainedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTextISBNsToLookUp = `-- name: ListTextISBNsToLookUp :many
+SELECT b.id, i.value AS isbn
+FROM books b
+JOIN book_identifiers i ON i.book_id = b.id AND i.type = 'isbn'
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.field_sources->>'identifiers' = 'text'
+  AND NOT EXISTS (SELECT 1 FROM text_isbn_lookups l WHERE l.book_id = b.id AND l.isbn = i.value)
+ORDER BY b.id, i.value
+LIMIT $1
+`
+
+type ListTextISBNsToLookUpRow struct {
+	ID   uuid.UUID
+	Isbn string
+}
+
+// Books whose ISBN came from their text and that were not queued for a
+// lookup by it yet, in ID order.
+func (q *Queries) ListTextISBNsToLookUp(ctx context.Context, maxBooks int32) ([]ListTextISBNsToLookUpRow, error) {
+	rows, err := q.db.Query(ctx, listTextISBNsToLookUp, maxBooks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTextISBNsToLookUpRow{}
+	for rows.Next() {
+		var i ListTextISBNsToLookUpRow
+		if err := rows.Scan(&i.ID, &i.Isbn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTextLanguages = `-- name: ListTextLanguages :many
+SELECT lang, count(*)::int AS chunks FROM book_chunks
+WHERE book_id = $1 AND lang <> ''
+GROUP BY lang ORDER BY count(*) DESC
+`
+
+type ListTextLanguagesRow struct {
+	Lang   string
+	Chunks int32
+}
+
+// The languages the chunks of a book were detected in, and how many each.
+func (q *Queries) ListTextLanguages(ctx context.Context, bookID uuid.UUID) ([]ListTextLanguagesRow, error) {
+	rows, err := q.db.Query(ctx, listTextLanguages, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTextLanguagesRow{}
+	for rows.Next() {
+		var i ListTextLanguagesRow
+		if err := rows.Scan(&i.Lang, &i.Chunks); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const progressMatchRun = `-- name: ProgressMatchRun :exec
+UPDATE match_runs SET done = $1 WHERE kind = $2 AND state = 'running'
+`
+
+type ProgressMatchRunParams struct {
+	Done int32
+	Kind string
+}
+
+func (q *Queries) ProgressMatchRun(ctx context.Context, arg ProgressMatchRunParams) error {
+	_, err := q.db.Exec(ctx, progressMatchRun, arg.Done, arg.Kind)
+	return err
+}
+
 const putProviderRecord = `-- name: PutProviderRecord :exec
 INSERT INTO provider_records (provider, request_key, url, status, body, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -207,6 +670,47 @@ func (q *Queries) PutProviderRecord(ctx context.Context, arg PutProviderRecordPa
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const putScoreModel = `-- name: PutScoreModel :exec
+INSERT INTO match_score_models (slot, model, books, trained_at)
+VALUES ($1, $2::jsonb, $3, now())
+ON CONFLICT (slot) DO UPDATE SET model = excluded.model, books = excluded.books, trained_at = now()
+`
+
+type PutScoreModelParams struct {
+	Slot  string
+	Model []byte
+	Books int32
+}
+
+func (q *Queries) PutScoreModel(ctx context.Context, arg PutScoreModelParams) error {
+	_, err := q.db.Exec(ctx, putScoreModel, arg.Slot, arg.Model, arg.Books)
+	return err
+}
+
+const queueMatchRun = `-- name: QueueMatchRun :one
+INSERT INTO match_runs (kind, state, requested, started_at, finished_at, done, total, error, report)
+VALUES ($1, 'queued', $2, now(), NULL, 0, 0, '', NULL)
+ON CONFLICT (kind) DO UPDATE
+SET state = 'queued', requested = excluded.requested, started_at = now(), finished_at = NULL,
+    done = 0, total = 0, error = '', report = NULL
+WHERE match_runs.state IN ('done', 'failed') OR match_runs.started_at < now() - interval '2 days'
+RETURNING kind
+`
+
+type QueueMatchRunParams struct {
+	Kind      string
+	Requested int32
+}
+
+// Takes the run for a kind unless one is waiting or running; one that has
+// stood for two days is a job that was lost.
+func (q *Queries) QueueMatchRun(ctx context.Context, arg QueueMatchRunParams) (string, error) {
+	row := q.db.QueryRow(ctx, queueMatchRun, arg.Kind, arg.Requested)
+	var kind string
+	err := row.Scan(&kind)
+	return kind, err
 }
 
 const recordMatch = `-- name: RecordMatch :one
@@ -244,6 +748,21 @@ func (q *Queries) RecordMatch(ctx context.Context, arg RecordMatchParams) (bool,
 	return inserted, err
 }
 
+const recordTextISBNLookup = `-- name: RecordTextISBNLookup :exec
+INSERT INTO text_isbn_lookups (book_id, isbn) VALUES ($1, $2)
+ON CONFLICT (book_id) DO UPDATE SET isbn = EXCLUDED.isbn, queued_at = now()
+`
+
+type RecordTextISBNLookupParams struct {
+	BookID uuid.UUID
+	Isbn   string
+}
+
+func (q *Queries) RecordTextISBNLookup(ctx context.Context, arg RecordTextISBNLookupParams) error {
+	_, err := q.db.Exec(ctx, recordTextISBNLookup, arg.BookID, arg.Isbn)
+	return err
+}
+
 const setMatchState = `-- name: SetMatchState :exec
 UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1
 `
@@ -255,5 +774,22 @@ type SetMatchStateParams struct {
 
 func (q *Queries) SetMatchState(ctx context.Context, arg SetMatchStateParams) error {
 	_, err := q.db.Exec(ctx, setMatchState, arg.ID, arg.State)
+	return err
+}
+
+const startMatchRun = `-- name: StartMatchRun :exec
+UPDATE match_runs SET state = 'running', total = $1, done = 0,
+       estimate_seconds = $2, started_at = now()
+WHERE kind = $3
+`
+
+type StartMatchRunParams struct {
+	Total           int32
+	EstimateSeconds int32
+	Kind            string
+}
+
+func (q *Queries) StartMatchRun(ctx context.Context, arg StartMatchRunParams) error {
+	_, err := q.db.Exec(ctx, startMatchRun, arg.Total, arg.EstimateSeconds, arg.Kind)
 	return err
 }

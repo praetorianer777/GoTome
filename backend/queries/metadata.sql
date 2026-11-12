@@ -30,7 +30,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 GROUP BY b.id
 ORDER BY min(m.created_at), b.id
 LIMIT sqlc.arg(max_books);
@@ -41,7 +41,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.state = 'pending'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: ListPendingMatches :many
 SELECT * FROM metadata_matches
@@ -54,7 +54,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.id = sqlc.arg(id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
 
 -- name: SetMatchState :exec
 UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1;
@@ -63,3 +63,150 @@ UPDATE metadata_matches SET state = $2, updated_at = now() WHERE id = $1;
 -- Once one match of a book is taken, the others it waited with are done.
 UPDATE metadata_matches SET state = 'dismissed', updated_at = now()
 WHERE book_id = $1 AND id <> $2 AND state = 'pending';
+
+-- name: CountMatchCheckBooks :one
+-- The books a match-check may ask about: those with an ISBN.
+SELECT count(*)
+FROM books b
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn');
+
+-- name: ListMatchCheckBooks :many
+-- A match-check's sample, picked by a hash of the ID so that a library
+-- gives the same one each time; the names and ISBNs are read for it alone,
+-- with what tells one edition from another (publisher, pages, series,
+-- the kinds of its files).
+WITH sample AS (
+    SELECT b.id
+    FROM books b
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND EXISTS (SELECT 1 FROM book_identifiers i WHERE i.book_id = b.id AND i.type = 'isbn')
+      AND (NOT sqlc.arg(embedded_only)::boolean
+           OR EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content'))
+    ORDER BY md5(b.id::text), b.id
+    LIMIT sqlc.arg(max_books)
+)
+SELECT b.id, b.title, b.subtitle, b.language, b.published_on, b.published_precision,
+       b.page_count, b.series_index, p.name AS publisher, sr.name AS series,
+       ARRAY(SELECT DISTINCT f.kind FROM book_files f
+             WHERE f.book_id = b.id AND f.missing_at IS NULL AND f.trashed_at IS NULL ORDER BY f.kind)::text[] AS kinds,
+       ARRAY(SELECT DISTINCT i.value FROM book_identifiers i
+             WHERE i.book_id = b.id AND i.type = 'isbn' ORDER BY i.value)::text[] AS isbns,
+       ARRAY(SELECT a.name FROM book_contributors c JOIN authors a ON a.id = c.author_id
+             WHERE c.book_id = b.id AND c.role = 'author' ORDER BY c.position)::text[] AS authors
+FROM sample s
+JOIN books b ON b.id = s.id
+LEFT JOIN publishers p ON p.id = b.publisher_id
+LEFT JOIN series sr ON sr.id = b.series_id
+ORDER BY md5(b.id::text), b.id;
+
+-- name: ListReviewBooksAfter :many
+-- The books with matches waiting that the viewer may see, after a book, by
+-- ID, for a run that works through them in batches.
+SELECT DISTINCT b.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.id > sqlc.arg(after_id)::uuid
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY b.id
+LIMIT sqlc.arg(max_books);
+
+-- name: ListMatchGroups :many
+-- The matches that wait, of books the viewer may see, by provider and band:
+-- the tenth of the score they lie in (0.9 and over is 9).
+SELECT m.provider, LEAST(floor(m.score * 10), 9)::int AS band, count(*)::int AS matches
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending'
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+GROUP BY 1, 2
+ORDER BY 1, 2 DESC;
+
+-- name: ListMatchGroupSample :many
+-- Some of the matches of a group, the best fitting first.
+SELECT m.id
+FROM metadata_matches m
+JOIN books b ON b.id = m.book_id
+WHERE m.state = 'pending' AND m.provider = sqlc.arg(provider)
+  AND LEAST(floor(m.score * 10), 9)::int = sqlc.arg(band)::int
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY m.score DESC, m.id
+LIMIT sqlc.arg(max_rows);
+
+-- name: ListTextLanguages :many
+-- The languages the chunks of a book were detected in, and how many each.
+SELECT lang, count(*)::int AS chunks FROM book_chunks
+WHERE book_id = $1 AND lang <> ''
+GROUP BY lang ORDER BY count(*) DESC;
+
+-- name: DeleteEmptyCurationRun :exec
+-- A scheduled run that found nothing to do leaves no trace.
+DELETE FROM curation_runs r
+WHERE r.id = $1 AND r.started_by IS NULL AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id);
+
+-- name: ListScoreModels :many
+SELECT slot, model, books, trained_at FROM match_score_models;
+
+-- name: PutScoreModel :exec
+INSERT INTO match_score_models (slot, model, books, trained_at)
+VALUES (sqlc.arg(slot), sqlc.arg(model)::jsonb, sqlc.arg(books), now())
+ON CONFLICT (slot) DO UPDATE SET model = excluded.model, books = excluded.books, trained_at = now();
+
+-- name: DeleteScoreModel :exec
+DELETE FROM match_score_models WHERE slot = sqlc.arg(slot);
+
+-- name: LanguageShares :many
+-- How many books of the library are in each language, for the profile that
+-- fits it. Counts only.
+SELECT COALESCE(lower(split_part(language, '-', 1)), '')::text AS language, count(*) AS books
+FROM books
+WHERE deleted_at IS NULL AND NOT placeholder
+GROUP BY 1;
+
+-- name: ListMatchRuns :many
+SELECT kind, state, done, total, estimate_seconds, requested, started_at, finished_at, error, report
+FROM match_runs;
+
+-- name: QueueMatchRun :one
+-- Takes the run for a kind unless one is waiting or running; one that has
+-- stood for two days is a job that was lost.
+INSERT INTO match_runs (kind, state, requested, started_at, finished_at, done, total, error, report)
+VALUES (sqlc.arg(kind), 'queued', sqlc.arg(requested), now(), NULL, 0, 0, '', NULL)
+ON CONFLICT (kind) DO UPDATE
+SET state = 'queued', requested = excluded.requested, started_at = now(), finished_at = NULL,
+    done = 0, total = 0, error = '', report = NULL
+WHERE match_runs.state IN ('done', 'failed') OR match_runs.started_at < now() - interval '2 days'
+RETURNING kind;
+
+-- name: StartMatchRun :exec
+UPDATE match_runs SET state = 'running', total = sqlc.arg(total), done = 0,
+       estimate_seconds = sqlc.arg(estimate_seconds), started_at = now()
+WHERE kind = sqlc.arg(kind);
+
+-- name: ProgressMatchRun :exec
+UPDATE match_runs SET done = sqlc.arg(done) WHERE kind = sqlc.arg(kind) AND state = 'running';
+
+-- name: FinishMatchRun :exec
+UPDATE match_runs SET state = sqlc.arg(state), finished_at = now(), error = sqlc.arg(error),
+       report = sqlc.narg(report)::jsonb
+WHERE kind = sqlc.arg(kind);
+
+-- name: ListTextISBNsToLookUp :many
+-- Books whose ISBN came from their text and that were not queued for a
+-- lookup by it yet, in ID order.
+SELECT b.id, i.value AS isbn
+FROM books b
+JOIN book_identifiers i ON i.book_id = b.id AND i.type = 'isbn'
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.field_sources->>'identifiers' = 'text'
+  AND NOT EXISTS (SELECT 1 FROM text_isbn_lookups l WHERE l.book_id = b.id AND l.isbn = i.value)
+ORDER BY b.id, i.value
+LIMIT sqlc.arg(max_books);
+
+-- name: RecordTextISBNLookup :exec
+INSERT INTO text_isbn_lookups (book_id, isbn) VALUES ($1, $2)
+ON CONFLICT (book_id) DO UPDATE SET isbn = EXCLUDED.isbn, queued_at = now();

@@ -1,0 +1,272 @@
+# Troubleshooting
+
+Most answers start in the log:
+
+```bash
+cd deploy
+docker compose ps
+docker compose logs --tail 100 app
+```
+
+`GOTOME_LOG_LEVEL=debug` in `.env`, then `docker compose up -d`, makes it
+say more. `docker compose exec app gotome version` names the version.
+
+## GOtome does not start
+
+| The log says | What to do |
+|---|---|
+| `GOTOME_SECRET_KEY_FILE is not set` | The compose file is older than the secret key. Take the current `docker-compose.yml`, which sets it and runs `init`. |
+| `GOTOME_SECRET_KEY_FILE holds another key than the one GOtome's secrets were encrypted with` | The `secrets` volume is not the one this database was used with: a new volume, or a restore that left out the key. Put back the `secret-key` from the backup ([backup-and-upgrade.md](backup-and-upgrade.md)). Without it the stored tokens are lost: only a new installation starts. |
+| `GOTOME_... is "...", want ...` | A variable in `.env` or the override file has a value GOtome cannot use; the message says what it wants ([configuration.md](configuration.md)). |
+| `init` exited with an error | It cannot write into the `secrets` volume. It runs as root to do that: check that nothing overrides its `user`. |
+
+**`db` restarts again and again**, or the app loses its connections now
+and then: Postgres is being killed for memory. See
+[platforms.md](platforms.md#with-little-memory) and the **This machine**
+panel on the Overview page.
+
+**`db` stops and does not start, the log saying `No space left on
+device`**: the disk is full. Free some (`docker image prune` removes old
+images after updates; empty the trash), then start it again; Postgres
+recovers by itself once there is room.
+
+## Monitoring
+
+GOtome answers two addresses for a monitor (Uptime Kuma and the like).
+Both are public and cheap, and say nothing but a status:
+
+| Address | Answers 200 | Use it for |
+|---|---|---|
+| `/healthz` | while the process runs and its web server answers; it asks nothing else, so a slow database never makes it fail | a container restart policy |
+| `/readyz` | `{"status":"ready"}` while GOtome can serve: the database answers, the migrations are done, the search index is open, the job queue runs and the data folder can be written to | a load balancer or an uptime monitor |
+
+When something is missing, `/readyz` answers 503 with
+`{"status":"not_ready","failing":["search_index"]}`: the names of the parts
+that fail (`database`, `migrations`, `search_index`, `jobs`, `data_dir`) and
+nothing else; the reason is in the log and in the administrators' details
+below. The answer is kept for a few seconds, so polling every second costs
+nothing. Things that leave GOtome working, such as an embedding model that
+cannot run, a metadata source that is down or a search index that is behind,
+do not make it not ready; they show in the details.
+
+While GOtome starts, `/readyz` answers 503. During an upgrade's database
+migrations it says `{"status":"migrating","migrationsApplied":3,"migrationsTotal":13}`
+and the log says `migrating the database` for each; a large library can
+spend minutes there. That is not a failure: Docker's health check gives the
+app ten minutes (`start_period`) and turns it `healthy` the moment it
+answers, and a monitor should wait for `/readyz` rather than alert on the
+first 503 after an upgrade.
+
+`docker compose ps` shows the state of the containers: `app` and `db` should be `healthy`
+(`starting` for a while after a start or an upgrade), `init` has exited.
+After `ALTER SYSTEM` changes that need Postgres restarted, the `db`
+container is `starting` again until it accepts connections; the app
+reconnects by itself.
+
+**Details for administrators**: `GET /api/v1/system/checks`, with the
+session of an administrator, answers for each part its status (`ok`,
+`degraded`, `failing`), a short message, a measured value and when it was
+checked: the five parts above with how long each took, the embedding model,
+each metadata source's last answer, how long the oldest change has waited
+for the search index, jobs that fail, were given up or hang, libraries
+whose last scan failed, free disk space and memory. The Overview page's
+"This machine" panel lists them with a colour for each. An administrator
+is told in the app when a part has been failing for ten minutes, once until
+it works again.
+
+## Signing in and changes
+
+- **Every change is refused with "This request came from another site and
+  was refused"**: a reverse proxy changes the host name on the way. It
+  must pass on the `Host` the browser used
+  ([getting-started.md](getting-started.md#a-reverse-proxy-and-https)).
+- **Signing in seems to work, then the sign-in page comes back**: the
+  browser does not send the session cookie back. It is marked Secure when
+  the request came over HTTPS or the proxy said so with
+  `X-Forwarded-Proto: https`; a proxy that says so for a page opened over
+  plain HTTP makes a cookie the browser keeps to itself. Open GOtome over
+  HTTPS, or fix the proxy.
+- **"Too many failed sign-in attempts"**: after several wrong passwords,
+  an account and an address are refused for a while. Wait a few minutes.
+  Behind a reverse proxy everyone shares the proxy's address unless
+  `GOTOME_TRUSTED_PROXIES` names it
+  ([getting-started.md](getting-started.md#trust-the-proxy)).
+- **After setting `GOTOME_TRUSTED_PROXIES`, the identity provider refuses
+  the redirect URI, or e-reader setup names an `http://` address**: the
+  proxy's address is not among those named, so its `X-Forwarded-Proto` is
+  no longer believed. Name the address the requests arrive from.
+- **Someone forgot their password**: an administrator sets a new one on the
+  Users page. If no administrator can sign in, whoever runs the containers
+  sets one from the shell:
+
+  ```sh
+  docker compose exec app gotome reset-password <user name>
+  ```
+
+  It asks for the new password twice, without showing it, and signs the
+  account out everywhere. `-enable` also enables a disabled account,
+  `-admin` makes it an administrator. The password is never an argument
+  or a variable, so it stays out of the process list and the shell's
+  history; to give it from a script, pipe it in on one line
+  (`docker compose exec -T app gotome reset-password <user name> < file`).
+  A sign-in refused for too many wrong passwords stays refused for a few
+  minutes. With passwords turned off for single sign-on, see below.
+- **Single sign-on fails**: [single-sign-on.md](single-sign-on.md#when-it-fails).
+  Locked out after turning passwords off:
+  `GOTOME_FORCE_PASSWORD_LOGIN=true`.
+
+## A library finds no books
+
+On the Libraries page, the library's line says what its last scan found.
+
+- **"There is no such folder inside the GOtome container"** when adding
+  it: the folder is not mounted, or under another path. The path is the
+  one after the colon in the compose file's mount (`/books`), not the
+  path on the host.
+- **The scan finds 0 files**: GOtome cannot read the folder. Check from
+  inside the container: `docker compose exec app ls /books`. A
+  "Permission denied" is the folder's permissions: the app runs as user
+  10001 ([getting-started.md](getting-started.md#2-mount-your-books)).
+- **Some files are passed by**: only EPUB, PDF, MOBI, AZW, AZW3 and audio
+  (M4B, M4A, MP3, FLAC, Ogg, Opus) are taken in, and folders whose names
+  start with a dot are not looked into.
+- **New files are not there yet**: libraries are scanned every
+  `GOTOME_SCAN_INTERVAL`; **Scan now** does it at once.
+- **Books have files missing**: the files were moved or deleted from the
+  folder since. They come back when the files do. A file moved within the
+  library is found again by its content.
+
+## GOtome cannot write to a library's folder
+
+- **"GOtome cannot write to /books: read-only file system"** when
+  turning on **GOtome may change files here**: the folder is mounted with
+  `:ro` in the compose file. Remove `:ro` from that mount, run `docker
+  compose up -d`, and turn it on again. "permission denied" instead is
+  the folder's permissions: the app's user 10001 needs write access to
+  it ([getting-started.md](getting-started.md#2-mount-your-books)).
+- **"Since …, GOtome cannot write to this folder"** on the Libraries
+  page, with a notification to administrators: a scan of a writable
+  library found the folder read-only, usually a mount changed since or a
+  disk that the system remounted read-only after an error. Edits stay in
+  GOtome without reaching the files, and trash and fixes are refused,
+  until the folder is writable again; then **Scan now** clears it and
+  writes the edits made meanwhile into the files.
+- **"GOtome cannot write to /books/.trash now (permission denied)"** at
+  **Keep this one**, **Move to trash**, **Restore** or **Fix**: the
+  library's folder can be written, but a folder inside it cannot, often
+  `.trash` or an author's folder made by another user. Give the app's
+  user 10001 write access to the folder named (`chown -R 10001:10001` on
+  the host), then try again. The library is marked as above until the
+  next scan.
+
+## Files that cannot be read
+
+When GOtome cannot read a file, its book still exists, under the file's
+name, but without the details, cover and text the file would give. Where
+to see them:
+
+- The book's page, under **Files**: "Could not be read", with the reason.
+- The Libraries page: "Files that could not be read", with **Read them
+  again**.
+- The jobs page, under **Failed**; the Overview counts them too.
+- Editors are notified ("Files that cannot be read").
+
+Common reasons:
+
+| Reason | What it means |
+|---|---|
+| not the format its name says | The file's first bytes are not those of an EPUB (a zip), a PDF, and so on: a download that went wrong, or a file renamed. GOtome refuses it, as it would refuse such an upload. |
+| a broken or truncated zip, a missing package document | The EPUB is damaged. Other readers usually fail on it too. Replace the file. |
+| too many entries, too large when unpacked, a name that leaves the archive | GOtome refuses archives built to harm whatever unpacks them: over 20,000 entries, over 4 GB unpacked, an entry inflating to more than 200 times its size. A real book does not come near these. |
+| a program timed out or ran out of memory | PDFs and audio files are read by separate programs that get two minutes and 1 GB each. A huge scanned PDF may exceed that. |
+| encrypted, DRM | GOtome cannot read the text of a book with DRM: the file fails, or its book has no text to search. |
+
+A file that failed is not tried again by itself. After replacing it in
+the folder, the next scan reads it. After an update that reads a format
+better, **Read again** (on the book) or **Read them again** (on the
+library) tries again.
+
+## E-reader findings and fixes
+
+GOtome measures every EPUB for what makes e-readers slow or crash, and
+lists it on the book's page as "May be slow on e-readers". The library's
+filter **On e-readers** finds every such book.
+
+| Finding | Fix | What the fix does |
+|---|---|---|
+| One chapter file holds several megabytes | **Split into chapters** | Splits it at its chapters, or else between paragraphs, into parts of at most 260 KB, with the table of contents and links following. |
+| Images of tens of megapixels, or megabytes each | **Scale the images down** | Scales JPEG and PNG images to at most 1600 pixels on their longer side. |
+| Embedded fonts of megabytes | **Shrink the fonts** | Cuts each TrueType or OpenType font (also as WOFF, or scrambled as the EPUB standard allows) down to the characters of the chapters that use it, plus ASCII and common punctuation, and keeps it under its name. Kerning and ligature tables go, as they refer to the glyphs that are gone. A font it cannot cut (WOFF2, or one it cannot read) stays; if the fonts still take more than 1 MB, those are removed. |
+| Embedded fonts of megabytes | **Remove the fonts** | Removes the fonts; the e-reader uses its own. |
+| Files the EPUB lists but lacks | **Repair the list of files** | Takes what is missing out of the EPUB's list. |
+| Chapter files that are not well-formed XHTML, which some readers (the Tolino's among them) refuse | **Repair the chapter files** | Writes each such file again as well-formed XHTML, only where its text stays the same. |
+| Entries of the table of contents that lead nowhere | **Repair the table of contents** | Points an entry at its chapter's start where only the place in it is gone, and takes it out where the chapter itself is gone. |
+
+Fixing needs an editor and a writable library. The fixed EPUB replaces
+the file, keeping its book, details and reading places; the file as it
+was goes into the trash, from where it can be restored beside the fixed
+one until the trash is emptied. A device that had the book gets the fixed
+one at its next sync. Several books are fixed at once from the library's
+selection.
+
+Where the library is read-only for GOtome, a book sent to an e-reader is
+still sent fixed: [devices.md](devices.md#sent-fixed).
+
+## Search does not find a book
+
+- The book's text may not be in the index yet: the Overview's **Texts in
+  the search index** and the jobs page show how far it is.
+- Search finds books with every word of the query, in any form English or
+  German stemming knows ("running" finds "runs"), and phrases in double
+  quotes. Irregular forms ("ran") are other words to it.
+- Books of libraries you do not see are not found.
+
+When the index seems wrong or incomplete, **Rebuild the index** on the
+jobs page reads every book into it again, while search keeps working.
+[search-index.md](search-index.md) explains the layers and what an update
+rebuilds by itself.
+
+## Similar books on slow hardware
+
+Working out what books are about runs a language model over sixteen
+passages of every book: a few seconds per book on an ordinary CPU, much
+longer on a small ARM board, and a day or more for a large library. It
+runs in the background, one book at a time, in five-minute turns, and
+nothing else waits for it. What there is to do when it is too slow or
+takes too much from the machine:
+
+- **Pause it**: **Pause** on the jobs page, or **Work out what books are
+  about** off in the settings. Everything else works; similar books and
+  the search by description are shown for books already done. **Start**
+  goes on where it stopped.
+- **No passage vectors**: **A vector for every passage**
+  (`embedding.passages`) embeds every passage of every book, many times
+  the work of the rest. Leave it off on a server without a GPU, or expect
+  the first pass to take days.
+- **Fewer threads**: `GOTOME_EMBED_THREADS` (half the CPUs by default)
+  leaves the rest of the machine free.
+- **Another model**: on a CPU without int8 instructions (older x86, some
+  ARM boards), `multilingual-e5-small-fp32` may be faster than the default
+  int8 model, at four times the download and more memory. Measure it on the
+  Overview's pace ("in the last hour") before and after: going back within
+  a day costs nothing, as the model before keeps its files and vectors for
+  `embedding.removeUnusedAfterDays`.
+- **A GPU elsewhere**: an Ollama server with a GPU runs `bge-m3`
+  ([embedding-server.md](embedding-server.md)).
+- **No download**: with `GOTOME_OFFLINE=true` the model is not downloaded,
+  and the settings page says the model cannot run. Copy the model's
+  folder into `/data/models` from another installation, or allow the
+  download once.
+
+The model settings page shows for each model whether it runs here, its
+download size and memory, and how many books have its vectors.
+
+## Read aloud is missing in the reader
+
+Read aloud uses the voices the browser or the operating system brings, and
+nothing is sent to the server. The "Read aloud" button appears in the EPUB,
+MOBI and AZW3 reader only where the browser lists at least one voice; PDFs are
+not read aloud. On Linux, Chromium has none unless a speech service such as
+speech-dispatcher is installed, and Firefox needs it too. Installing a voice
+for the book's language in the system's settings makes it the default for
+that book; another can be chosen under "Display".

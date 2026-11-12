@@ -11,12 +11,21 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
+	"github.com/praetorianer777/gotome/backend/internal/metadata"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/openapi"
+	"github.com/praetorianer777/gotome/backend/internal/pairing"
+	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
+	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 )
 
 // specVersion is the version of the API, not of the build: the document is
@@ -27,6 +36,9 @@ const jsonMedia = "application/json"
 
 // sessionScheme names the security scheme of routes that need a session.
 const sessionScheme = "session"
+
+// keyScheme names the security scheme of an API key sent as a bearer token.
+const keyScheme = "apiKey"
 
 var pathParam = regexp.MustCompile(`\{([^}/]+)\}`)
 
@@ -40,9 +52,11 @@ func Spec() *openapi.Document {
 	}
 	b.Enums[reflect.TypeOf(auth.Permission(""))] = permissions
 	b.FieldOverrides["Facet.field"] = &openapi.Schema{Type: "string", Enum: []string{
-		catalog.FieldAuthor, catalog.FieldSeries, catalog.FieldTag,
-		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat,
+		catalog.FieldAuthor, catalog.FieldNarrator, catalog.FieldSeries, catalog.FieldTag,
+		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat, catalog.FieldFiles, catalog.FieldEReader, catalog.FieldGenre,
 	}}
+	b.FieldOverrides["GenreSuggestion.method"] = &openapi.Schema{Type: "string", Enum: []string{genres.MethodVector, genres.MethodNeighbours}}
+	b.FieldOverrides["GenreDecision.state"] = &openapi.Schema{Type: "string", Enum: []string{genres.Accepted, genres.Rejected}}
 	statuses := &openapi.Schema{Type: "string", Enum: catalog.Statuses}
 	for _, field := range []string{"ReadingState.status", "ReadingChange.status", "ReadingBulkRequest.status", "BookSummary.status", "SearchHit.status"} {
 		b.FieldOverrides[field] = statuses
@@ -50,18 +64,36 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["SearchHit.match"] = &openapi.Schema{Type: "string", Enum: []string{
 		catalog.MatchTitle, catalog.MatchAuthor, catalog.MatchSeries,
 	}}
+	b.FieldOverrides["NameHit.kind"] = &openapi.Schema{Type: "string", Enum: []string{catalog.MatchAuthor, catalog.MatchSeries}}
 	visibility := &openapi.Schema{Type: "string", Enum: []string{shelves.Private, shelves.Shared}}
 	b.FieldOverrides["Collection.visibility"] = visibility
 	b.FieldOverrides["CollectionDetail.visibility"] = visibility
 	b.FieldOverrides["CollectionRequest.visibility"] = visibility
 	b.FieldOverrides["SmartShelf.visibility"] = visibility
 	b.FieldOverrides["SmartShelfRequest.visibility"] = visibility
-	kinds := []string{notify.KindBulkFinished}
+	var events []string
 	for _, k := range notify.EventKinds {
-		kinds = append(kinds, k.Kind)
+		events = append(events, k.Kind)
 	}
+	kinds := append([]string{notify.KindBulkFinished, notify.KindDeviceRequested, notify.KindKindleSent, notify.KindKindleFailed}, events...)
 	b.FieldOverrides["Notification.kind"] = &openapi.Schema{Type: "string", Enum: kinds}
-	b.FieldOverrides["NotificationSetting.kind"] = &openapi.Schema{Type: "string", Enum: kinds[1:]}
+	b.FieldOverrides["NotificationSetting.kind"] = &openapi.Schema{Type: "string", Enum: events}
+	b.FieldOverrides["DeviceBook.state"] = &openapi.Schema{Type: "string", Enum: deliveries.States}
+	b.FieldOverrides["DeviceAnswer.state"] = &openapi.Schema{Type: "string", Enum: []string{
+		pairing.StatePending, pairing.StateAccepted, pairing.StateDeclined, pairing.StateExpired,
+	}}
+	b.FieldOverrides["Check.status"] = &openapi.Schema{Type: "string", Enum: syscheck.Statuses}
+	b.FieldOverrides["Check.unit"] = &openapi.Schema{Type: "string", Enum: []string{
+		syscheck.UnitMillis, syscheck.UnitSeconds, syscheck.UnitCount, syscheck.UnitBytes,
+	}}
+	b.FieldOverrides["Readiness.state"] = &openapi.Schema{Type: "string", Enum: similar.ReadinessStates}
+	findings := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Findings}}
+	b.FieldOverrides["EreaderCheck.findings"] = findings
+	b.FieldOverrides["BookSummary.ereaderFindings"] = findings
+	fixes := &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: epub.Fixes}}
+	for _, field := range []string{"FixRequest.findings", "BulkRequest.findings"} {
+		b.FieldOverrides[field] = fixes
+	}
 	b.FieldOverrides["SettingView.kind"] = &openapi.Schema{Type: "string", Enum: []string{settings.KindText, settings.KindSecret}}
 	roles := &openapi.Schema{Type: "string", Enum: []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleReader}}
 	for _, field := range []string{"User.role", "Account.role", "CurrentUser.role", "CreateAccountRequest.role", "UpdateAccountRequest.role"} {
@@ -73,8 +105,9 @@ func Spec() *openapi.Document {
 		catalog.RoleAuthor, catalog.RoleNarrator, catalog.RoleTranslator, catalog.RoleEditor, catalog.RoleIllustrator,
 	}}
 	b.FieldOverrides["FieldState.source"] = &openapi.Schema{Type: "string", Enum: []string{
-		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider,
+		catalog.ProvenanceFile, catalog.ProvenanceFilename, catalog.ProvenanceManual, catalog.ProvenanceProvider, catalog.ProvenanceCalibre,
 	}}
+	b.FieldOverrides["FieldSuggestion.reason"] = &openapi.Schema{Type: "string", Enum: metadata.Reasons}
 	b.FieldOverrides["Uploaded.outcome"] = &openapi.Schema{
 		Type: "string", Enum: []string{ingest.UploadAdded, ingest.UploadDuplicate},
 	}
@@ -85,6 +118,16 @@ func Spec() *openapi.Document {
 	b.FieldOverrides["DuplicatePair.state"] = &openapi.Schema{Type: "string", Enum: dedupe.States}
 	b.FieldOverrides["PairStateRequest.relation"] = &openapi.Schema{Type: "string", Enum: dedupe.Relations}
 	b.FieldOverrides["PairStateRequest.state"] = &openapi.Schema{Type: "string", Enum: []string{dedupe.StateKeptBoth, dedupe.StateOpen}}
+	follows := &openapi.Schema{Type: "string", Enum: releases.Kinds}
+	b.FieldOverrides["Tracker.kind"] = follows
+	b.FieldOverrides["FollowRequest.kind"] = follows
+	b.FieldOverrides["Following.kind"] = follows
+	b.FieldOverrides["Release.precision"] = &openapi.Schema{Type: "string", Enum: []string{"day", "month", "year"}}
+	cleanups := &openapi.Schema{Type: "string", Enum: cleanup.Kinds}
+	b.FieldOverrides["CleanupSuggestion.kind"] = cleanups
+	b.FieldOverrides["CleanupApplyRequest.kind"] = cleanups
+	b.FieldOverrides["CleanupDismissRequest.kind"] = cleanups
+	b.FieldOverrides["CleanupSuggestion.fix"] = &openapi.Schema{Type: "string", Enum: cleanup.Fixes}
 	b.FieldOverrides["StatsEvent.event"] = &openapi.Schema{Type: "string", Enum: []string{"started", "finished"}}
 	failure := &openapi.Response{
 		Description: "The request failed.",
@@ -111,8 +154,12 @@ func Spec() *openapi.Document {
 			Responses:   map[string]*openapi.Response{"default": failure},
 		}
 		op.Permission = string(rt.Permission)
+		op.Stable = rt.Stable
 		if rt.Permission != auth.Public {
 			op.Security = []map[string][]string{{sessionScheme: {}}}
+			if rt.keyReaches() {
+				op.Security = append(op.Security, map[string][]string{keyScheme: {}})
+			}
 		}
 		for _, m := range pathParam.FindAllStringSubmatch(rt.Path, -1) {
 			op.Parameters = append(op.Parameters, openapi.Parameter{
@@ -152,6 +199,10 @@ func Spec() *openapi.Document {
 		sessionScheme: {
 			Type: "apiKey", In: "cookie", Name: SessionCookie,
 			Description: "The session cookie that signing in sets.",
+		},
+		keyScheme: {
+			Type: "http", Scheme: "bearer", BearerFormat: "gotome_…",
+			Description: "An API key made on the profile, sent as Authorization: Bearer. It reaches the routes its scopes allow and never more than its owner's role, and none about the account itself except GET /auth/me.",
 		},
 	}
 	return doc

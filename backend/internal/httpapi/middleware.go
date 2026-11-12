@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 )
 
 // RequestIDHeader carries the ID back to the client on every response.
@@ -20,6 +24,9 @@ const (
 	requestIDKey ctxKey = iota
 	loggerKey
 	userKey
+	deviceKey
+	apiKeyKey
+	clientKey
 )
 
 // RequestIDFrom is the ID of the request a context belongs to, or "".
@@ -45,6 +52,28 @@ func requestID(next http.Handler) http.Handler {
 		id := hex.EncodeToString(raw[:])
 		w.Header().Set(RequestIDHeader, id)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey, id)))
+	})
+}
+
+// apiContentSecurityPolicy goes with every answer that is not the web app's,
+// which sets its own. Nothing the API sends is a page: a file opened in the
+// browser by its address, or an error, runs no script, loads nothing and is
+// framed by nobody.
+const apiContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox"
+
+// securityHeaders sets the headers every answer carries. The browser is
+// to take a file's type as sent, never guessed from what a book holds; to
+// send no address of GOtome's, which may name a book or what was searched
+// for, to another site; and to offer the app nothing it does not use.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", apiContentSecurityPolicy)
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "SAMEORIGIN")
+		h.Set("Referrer-Policy", "same-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()")
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -93,7 +122,7 @@ func logging(base *slog.Logger) func(http.Handler) http.Handler {
 			}
 			log.Log(r.Context(), level, "request",
 				"method", r.Method,
-				"path", r.URL.Path,
+				"path", loggedPath(r.URL.Path),
 				"status", rec.status,
 				"bytes", rec.bytes,
 				"duration", time.Since(started),
@@ -120,4 +149,28 @@ func recovery(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+// measure counts each request and its time by the route pattern the table
+// matched, so that a path with an ID in it is one series, never one per ID.
+func measure(m *metrics.Service) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if m == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			started := time.Now()
+			rec := &statusRecorder{ResponseWriter: w}
+			next.ServeHTTP(rec, r)
+			pattern := ""
+			if rc := chi.RouteContext(r.Context()); rc != nil {
+				pattern = rc.RoutePattern()
+			}
+			status := rec.status
+			if status == 0 {
+				status = http.StatusOK
+			}
+			m.Observe(pattern, r.Method, status, time.Since(started))
+		})
+	}
 }

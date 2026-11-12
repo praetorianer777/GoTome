@@ -19,7 +19,7 @@ SELECT $1, b.id,
 FROM unnest($2::uuid[]) WITH ORDINALITY AS n(id, ord)
 JOIN books b ON b.id = n.id
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
 ON CONFLICT (collection_id, book_id) DO NOTHING
 `
 
@@ -52,7 +52,7 @@ FROM collection_items i
 JOIN books b ON b.id = i.book_id
 WHERE i.collection_id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 ORDER BY i.position, i.added_at, i.book_id
 `
 
@@ -205,10 +205,10 @@ SELECT c.id, c.owner_id, u.username::text AS owner_name, c.name, c.description, 
        c.created_at, c.updated_at,
        (SELECT count(*) FROM collection_items i JOIN books b ON b.id = i.book_id
         WHERE i.collection_id = c.id AND b.deleted_at IS NULL
-          AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean)))::int AS books,
+          AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS books,
        EXISTS (SELECT 1 FROM collection_items i JOIN books b ON b.id = i.book_id
                WHERE i.collection_id = c.id AND i.book_id = $3::uuid AND b.deleted_at IS NULL
-                 AND b.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))) AS has_book
+                 AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))) AS has_book
 FROM collections c
 JOIN users u ON u.id = c.owner_id
 WHERE c.owner_id = $1::uuid OR c.visibility = 'shared'
@@ -289,7 +289,7 @@ DELETE FROM collection_items i
 USING books b
 WHERE i.collection_id = $1 AND i.book_id = $2
   AND b.id = i.book_id AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
 `
 
 type RemoveCollectionItemParams struct {

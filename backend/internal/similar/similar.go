@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +24,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/cleanup"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
@@ -38,12 +42,20 @@ const (
 )
 
 // Samples is how many passages of a book's text its content vector is made
-// from, spread evenly over it.
+// from, spread evenly over it, unless the setting embedding.contentSamples
+// says another number.
 const Samples = 16
 
 // recipe is how a content vector is made, part of its source's hash: a
 // change to it has every book's made again.
-var recipe = "samples=" + strconv.Itoa(Samples)
+func recipe(samples int) string { return "samples=" + strconv.Itoa(samples) }
+
+func (s *Service) samples(ctx context.Context) (int, error) {
+	if s.ContentSamples == nil {
+		return Samples, nil
+	}
+	return s.ContentSamples(ctx)
+}
 
 // batch is how many passages go to the model at once, as in #15.
 const batch = 8
@@ -64,11 +76,44 @@ type Opener func(ctx context.Context, spec embed.Spec) (embed.Embedder, error)
 // is ErrUnavailable.
 func OnnxOpener(opts embed.OnnxOptions) Opener {
 	return func(ctx context.Context, spec embed.Spec) (embed.Embedder, error) {
+		if !spec.Runs() {
+			return nil, fmt.Errorf("%w: %s runs only on an embedding server", ErrUnavailable, spec.Model.Name)
+		}
 		if _, err := embed.LoadRuntime(opts.Runtime); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		o, err := embed.OpenOnnx(ctx, spec, opts)
 		if errors.Is(err, embed.ErrModelMissing) {
+			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return o, nil
+	}
+}
+
+// ServerOpener opens a model of an embedding server (a spec with a Server)
+// on the server the address names, and any other one with local. No
+// server named, one that does not answer, or one with another model is
+// ErrUnavailable, with why.
+func ServerOpener(local Opener, address func(ctx context.Context) (string, error)) Opener {
+	return func(ctx context.Context, spec embed.Spec) (embed.Embedder, error) {
+		if spec.Server == "" {
+			return local(ctx, spec)
+		}
+		url, err := address(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if url == "" {
+			if spec.Runs() {
+				return local(ctx, spec)
+			}
+			return nil, fmt.Errorf("%w: %s runs on an embedding server, and embedding.server names none", ErrUnavailable, spec.Model.Name)
+		}
+		o, err := embed.OpenOllama(ctx, url, spec)
+		if errors.Is(err, embed.ErrServer) || errors.Is(err, embed.ErrNotTheModel) {
 			return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
 		if err != nil {
@@ -95,6 +140,38 @@ type Service struct {
 	config Config
 	open   Opener
 	Queue  Queue
+	// Probe tells Models whether each model runs here.
+	Probe Probe
+	// queries embeds the descriptions Describe is asked about.
+	queries queries
+	// compared remembers the vectors CompareToBook made.
+	compared comparedTexts
+	// WaitForModel makes CompareToBook wait for a model that is loading
+	// instead of answering ErrLoading, for a command that measures.
+	WaitForModel bool
+	// Passages reads a file's chunks at positions from the file, which is
+	// where their text is kept (ingest.Service.Passages).
+	Passages func(ctx context.Context, fileID uuid.UUID, positions []int32) ([]string, error)
+	// NearPassages, when set, finds the books whose passages are nearest a
+	// query, each with its best passage's cosine (passages.Service.Near);
+	// Describe blends them in.
+	NearPassages func(ctx context.Context, scope library.Scope, libraryID *uuid.UUID, spec embed.Spec, query []float32) (map[uuid.UUID]float64, error)
+	// PassageStatus, when set, says how far the passages are embedded,
+	// nil while they are not (passages.Service.Status).
+	PassageStatus func(ctx context.Context, scope library.Scope, libraryID *uuid.UUID) (*PassageStatus, error)
+	// ModelDir is where the models' files are (GOTOME_MODEL_DIR); empty,
+	// Models counts none and removing a model removes no file.
+	ModelDir string
+	// ContentSamples is how many passages a content vector is made from
+	// (embedding.contentSamples); nil, Samples.
+	ContentSamples func(ctx context.Context) (int, error)
+	// RemoveAfter is how long a model is not chosen before RemoveUnused
+	// removes it; nil, it removes none.
+	RemoveAfter func(ctx context.Context) (time.Duration, error)
+	// PassageBytes and RemovePassages, when set, measure and remove a
+	// model's passages (passages.Service.Bytes and Remove).
+	PassageBytes   func(m embed.Model) int64
+	RemovePassages func(ctx context.Context, m embed.Model) (int64, error)
 }
 
 // NewService returns the Service; Queue is set once the runner exists.
@@ -105,10 +182,13 @@ func NewService(pool *pgxpool.Pool, config Config, open Opener, log *slog.Logger
 // Version is how a model's revision and weights are stored.
 func Version(m embed.Model) string { return m.Revision + "/" + m.Weights }
 
-// Embed works through the books whose vectors are missing or stale, in ID
-// order, until none is left, the deadline has passed, at most max books
-// were embedded (0 is no limit), or embedding is switched off. It reports
-// whether it got through all of them; switched off counts as through.
+// Embed works through the books whose vectors of the chosen model are
+// missing or stale, in ID order, until none is left, the deadline has
+// passed, at most max books were embedded (0 is no limit), or embedding is
+// switched off. It reports whether it got through all of them; switched
+// off counts as through. A model on a server embeds as many books at once
+// as the server takes; one that stops answering ends the pass as
+// ErrUnavailable.
 func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (complete bool, err error) {
 	spec, enabled, err := s.config(ctx)
 	if err != nil || !enabled {
@@ -119,6 +199,10 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 		return false, err
 	}
 	model, version := spec.Model.Name, Version(spec.Model)
+	samples, err := s.samples(ctx)
+	if err != nil {
+		return false, err
+	}
 	var e embed.Embedder
 	defer func() {
 		if e != nil {
@@ -127,15 +211,35 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 	}()
 	done := 0
 	after := uuid.Nil
+	var group []sqlc.ListBooksToEmbedRow
+	// flush embeds the books gathered, at once where the model allows.
+	flush := func() error {
+		g, gctx := errgroup.WithContext(ctx)
+		for _, r := range group {
+			g.Go(func() error {
+				if err := s.embedBook(gctx, e, spec, samples, r); err != nil {
+					return fmt.Errorf("embed book %s: %w", r.BookID, err)
+				}
+				return nil
+			})
+		}
+		err := g.Wait()
+		done += len(group)
+		group = group[:0]
+		if errors.Is(err, embed.ErrServer) {
+			return fmt.Errorf("%w: %v", ErrUnavailable, err)
+		}
+		return err
+	}
 	for {
 		rows, err := q.ListBooksToEmbed(ctx, sqlc.ListBooksToEmbedParams{
-			Model: model, ModelVersion: version, Recipe: recipe, After: after, Page: page,
+			Model: model, ModelVersion: version, Recipe: recipe(samples), After: after, Page: page,
 		})
 		if err != nil {
 			return false, err
 		}
 		if len(rows) == 0 {
-			return true, nil
+			return true, flush()
 		}
 		for _, r := range rows {
 			after = r.BookID
@@ -147,34 +251,45 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 			if !r.MetadataStale && !r.ContentStale {
 				continue
 			}
-			if (max > 0 && done >= max) || time.Now().After(deadline) {
-				return false, nil
+			if (max > 0 && done+len(group) >= max) || time.Now().After(deadline) {
+				return false, flush()
 			}
 			// Asked for each book, so that switching it off stops a
 			// pass within a book's time, and another model starts the
 			// next one.
 			now, on, err := s.config(ctx)
 			if err != nil || !on {
-				return true, err
+				return true, errors.Join(err, flush())
 			}
 			if now.Model != spec.Model {
-				return false, nil
+				return false, flush()
 			}
 			if e == nil {
 				if e, err = s.open(ctx, spec); err != nil {
 					return false, err
 				}
 			}
-			if err := s.embedBook(ctx, e, model, version, r); err != nil {
-				return false, fmt.Errorf("embed book %s: %w", r.BookID, err)
+			group = append(group, r)
+			if len(group) >= parallel(e) {
+				if err := flush(); err != nil {
+					return false, err
+				}
 			}
-			done++
 		}
 	}
 }
 
+// parallel is how many books an embedder takes at once: one, unless it says
+// otherwise, as a server that runs several requests side by side does.
+func parallel(e embed.Embedder) int {
+	if p, ok := e.(interface{ Parallel() int }); ok {
+		return max(p.Parallel(), 1)
+	}
+	return 1
+}
+
 // embedBook makes the book's stale vectors and stores them together.
-func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, version string, r sqlc.ListBooksToEmbedRow) error {
+func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Spec, samples int, r sqlc.ListBooksToEmbedRow) error {
 	q := sqlc.New(s.pool)
 	type made struct {
 		kind string
@@ -187,7 +302,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 		if err != nil {
 			return err
 		}
-		vecs, err := e.Embed(ctx, []string{embed.Prefix + text})
+		vecs, err := e.Embed(ctx, []string{spec.Prefix + text})
 		if err != nil {
 			return err
 		}
@@ -197,7 +312,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 		out = append(out, made{KindMetadata, sum[:], vecs[0]})
 	}
 	if r.ContentStale && r.TextFileID != nil {
-		vec, err := s.contentVector(ctx, e, *r.TextFileID)
+		vec, err := s.contentVector(ctx, e, spec.Prefix, samples, *r.TextFileID)
 		if err != nil {
 			return err
 		}
@@ -211,10 +326,13 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{r.BookID}); err != nil {
+			return err
+		}
 		for _, m := range out {
 			if err := q.PutBookVector(ctx, sqlc.PutBookVectorParams{
-				BookID: r.BookID, Kind: m.kind, Model: model, ModelVersion: version,
-				SourceHash: m.hash, Embedding: literal(m.vec),
+				BookID: r.BookID, Kind: m.kind, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
+				SourceHash: m.hash, Embedding: Literal(m.vec),
 			}); err != nil {
 				return err
 			}
@@ -223,16 +341,19 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, model, versio
 	})
 }
 
-// contentVector embeds Samples passages spread evenly over the file's
+// contentVector embeds samples passages spread evenly over the file's
 // chunks and takes their mean, each weighted by how much of it the model
 // read; nil for a file without chunks.
-func (s *Service) contentVector(ctx context.Context, e embed.Embedder, fileID uuid.UUID) ([]float32, error) {
+func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix string, samples int, fileID uuid.UUID) ([]float32, error) {
 	q := sqlc.New(s.pool)
 	positions, err := q.ListChunkPositions(ctx, fileID)
 	if err != nil || len(positions) == 0 {
 		return nil, err
 	}
-	bodies, err := q.ListChunkBodies(ctx, sqlc.ListChunkBodiesParams{FileID: fileID, Positions: spread(positions, Samples)})
+	if s.Passages == nil {
+		return nil, errors.New("embedding a book's text needs its passages read")
+	}
+	bodies, err := s.Passages(ctx, fileID, spread(positions, samples))
 	if err != nil || len(bodies) == 0 {
 		return nil, err
 	}
@@ -242,7 +363,7 @@ func (s *Service) contentVector(ctx context.Context, e embed.Embedder, fileID uu
 	for start := 0; start < len(bodies); start += batch {
 		texts := make([]string, 0, batch)
 		for _, b := range bodies[start:min(start+batch, len(bodies))] {
-			texts = append(texts, embed.Prefix+b)
+			texts = append(texts, prefix+b)
 		}
 		got, err := e.Embed(ctx, texts)
 		if err != nil {
@@ -273,8 +394,8 @@ func spread(positions []int32, n int) []int32 {
 	return out
 }
 
-// literal is a vector as pgvector reads it: [0.1,-0.2,…].
-func literal(v []float32) string {
+// Literal is a vector as pgvector reads it: [0.1,-0.2,…].
+func Literal(v []float32) string {
 	var b strings.Builder
 	b.WriteByte('[')
 	for i, x := range v {
@@ -290,25 +411,131 @@ func literal(v []float32) string {
 // MaxSimilar is the most books Similar returns.
 const MaxSimilar = 50
 
+// A list of similar books takes at most perAuthor books by one author and
+// perSeries from one series, the nearest of each: the book page links to
+// an author's and a series' other books already, and without the caps
+// half the list is by the book's own author (docs/similarity.md). It looks
+// through candidates times as many of the nearest books as it shows.
+const (
+	perAuthor  = 2
+	perSeries  = 2
+	candidates = 20
+)
+
 // Similar returns the books nearest the given one among those the scope
-// sees, the nearest first, at most limit of them (MaxSimilar at most). A book
-// without vectors of the chosen model has none yet; whether the caller may
-// see the book itself is the caller's to check.
+// sees, the nearest first, at most limit of them (MaxSimilar at most):
+// none that is a copy of the book or of one taken before, and no more than
+// perAuthor by one author and perSeries from one series. A book without
+// vectors of the chosen model has none yet; whether the caller may see the
+// book itself is the caller's to check.
 func (s *Service) Similar(ctx context.Context, scope library.Scope, bookID uuid.UUID, limit int) ([]uuid.UUID, error) {
 	spec, _, err := s.config(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := sqlc.New(s.pool).ListSimilarBooks(ctx, sqlc.ListSimilarBooksParams{
+	limit = min(max(limit, 1), MaxSimilar)
+	q := sqlc.New(s.pool)
+	rows, err := q.ListSimilarBooks(ctx, sqlc.ListSimilarBooksParams{
 		BookID: bookID, Model: spec.Model.Name, ModelVersion: Version(spec.Model),
-		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: int32(min(max(limit, 1), MaxSimilar)),
+		Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: int32(limit * candidates),
 	})
-	if err != nil {
+	if err != nil || len(rows) == 0 {
 		return nil, err
 	}
 	ids := make([]uuid.UUID, len(rows))
 	for i, r := range rows {
 		ids[i] = r.BookID
 	}
-	return ids, nil
+	all, err := traitsOf(ctx, q, append([]uuid.UUID{bookID}, ids...))
+	if err != nil {
+		return nil, err
+	}
+	near := make([]traits, len(ids))
+	for i, id := range ids {
+		near[i] = all[id]
+	}
+	return pick(all[bookID], near, limit), nil
+}
+
+// traits are what a list of similar books is chosen by.
+type traits struct {
+	id     uuid.UUID
+	title  string
+	series *uuid.UUID
+	// people are the authors' person_keys, the first author first.
+	people []string
+}
+
+func traitsOf(ctx context.Context, q *sqlc.Queries, ids []uuid.UUID) (map[uuid.UUID]traits, error) {
+	rows, err := q.ListBookTraits(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]traits, len(rows))
+	for _, r := range rows {
+		out[r.ID] = traits{id: r.ID, title: r.Title, series: r.SeriesID, people: r.People}
+	}
+	return out, nil
+}
+
+// pick takes from the nearest books, in order, up to limit that are no copy
+// of the book or of one taken, within the caps per author and series.
+func pick(book traits, near []traits, limit int) []uuid.UUID {
+	return pickAmong([]traits{book}, near, limit)
+}
+
+// pickAmong is pick for several books at once: a copy of any of them is
+// left out.
+func pickAmong(books []traits, near []traits, limit int) []uuid.UUID {
+	var taken []traits
+	byAuthor := map[string]int{}
+	bySeries := map[uuid.UUID]int{}
+	for _, t := range near {
+		if len(taken) == limit {
+			break
+		}
+		if slices.ContainsFunc(books, func(b traits) bool { return isCopy(b, t) }) || slices.ContainsFunc(taken, func(o traits) bool { return isCopy(o, t) }) {
+			continue
+		}
+		if len(t.people) > 0 && byAuthor[t.people[0]] >= perAuthor {
+			continue
+		}
+		if t.series != nil && bySeries[*t.series] >= perSeries {
+			continue
+		}
+		taken = append(taken, t)
+		if len(t.people) > 0 {
+			byAuthor[t.people[0]]++
+		}
+		if t.series != nil {
+			bySeries[*t.series]++
+		}
+	}
+	ids := make([]uuid.UUID, len(taken))
+	for i, t := range taken {
+		ids[i] = t.id
+	}
+	return ids
+}
+
+// isCopy reports whether two books are one with an author in common: the
+// same title once a shop's additions are off, or one the other's with a
+// subtitle after a colon ("Brennholds Sohn" and "Brennholds Sohn: Brennhold
+// Trilogie"). Two titles that both have a subtitle of their own after the
+// same words are two books, as the volumes of a series often are.
+func isCopy(a, b traits) bool {
+	if !slices.ContainsFunc(a.people, func(p string) bool { return slices.Contains(b.people, p) }) {
+		return false
+	}
+	ka, kb := titleKey(a.title), titleKey(b.title)
+	return ka == kb || ka == mainTitleKey(b.title) || mainTitleKey(a.title) == kb
+}
+
+// titleKey is a title as copies of a book share it.
+func titleKey(title string) string { return catalog.Key(cleanup.CleanTitle(title)) }
+
+// mainTitleKey is titleKey of what comes before a subtitle.
+func mainTitleKey(title string) string {
+	main, _, _ := strings.Cut(cleanup.CleanTitle(title), ":")
+	return catalog.Key(main)
 }

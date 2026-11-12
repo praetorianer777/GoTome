@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { FormError } from "@/components/form";
 import { t } from "@/i18n";
+import { formatDateTime } from "@/lib/format";
 import {
 	type Notification,
 	notificationText,
@@ -20,17 +21,24 @@ export function Bell() {
 	const notifications = useQuery(notificationsQuery);
 	const [open, setOpen] = useState(false);
 	const box = useRef<HTMLDivElement>(null);
+	const toggle = useRef<HTMLButtonElement>(null);
 	const unread = notifications.data?.unread ?? 0;
+	// A screen reader is told when more come in, not of those there on arrival.
+	const [counted, setCounted] = useState<number>();
+	const [news, setNews] = useState("");
+	if (notifications.data && unread !== counted) {
+		if (counted !== undefined && unread > counted) {
+			setNews(t("notifications.bell", { count: unread }));
+		}
+		setCounted(unread);
+	}
 
 	useEffect(() => {
 		if (!open) return;
 		const close = (e: Event) => {
-			if (
-				e instanceof KeyboardEvent
-					? e.key === "Escape"
-					: !box.current?.contains(e.target as Node)
-			) {
+			if (e instanceof KeyboardEvent ? e.key === "Escape" : !box.current?.contains(e.target as Node)) {
 				setOpen(false);
+				if (e instanceof KeyboardEvent) toggle.current?.focus();
 			}
 		};
 		document.addEventListener("keydown", close);
@@ -43,13 +51,17 @@ export function Bell() {
 
 	return (
 		<div ref={box} className="relative">
+			<span aria-live="polite" className="sr-only">
+				{news}
+			</span>
 			<button
+				ref={toggle}
 				type="button"
 				aria-expanded={open}
 				aria-controls="notifications"
 				aria-label={t("notifications.bell", { count: unread })}
 				onClick={() => setOpen(!open)}
-				className="relative rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+				className="relative rounded-full border border-slate-300 p-2 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
 			>
 				<svg
 					aria-hidden="true"
@@ -72,7 +84,7 @@ export function Bell() {
 				<section
 					id="notifications"
 					aria-label={t("notifications.title")}
-					className="absolute right-0 z-20 mt-2 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+					className="absolute right-0 z-20 mt-2 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
 				>
 					<NotificationList
 						items={notifications.data?.notifications ?? []}
@@ -138,7 +150,7 @@ function NotificationList({
 									</span>
 								)}
 								<time dateTime={n.createdAt} className="text-xs text-slate-500">
-									{new Date(n.createdAt).toLocaleString()}
+									{formatDateTime(n.createdAt)}
 								</time>
 							</button>
 						</li>

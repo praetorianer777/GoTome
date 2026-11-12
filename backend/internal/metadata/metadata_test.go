@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -134,6 +133,24 @@ func TestCandidatesLookUpByISBNThenSearch(t *testing.T) {
 	}
 }
 
+func TestAPrintISBNOfTheTextIsAskedAboutButNotTheBooks(t *testing.T) {
+	srv := newProviderServer(t)
+	s := NewService(nil, []Provider{&fakeProvider{name: "fake", base: srv.URL}}, Options{AllowPrivate: true})
+
+	book := emmaBook(false)
+	book.PrintISBNs = []string{"9780141439587"}
+	got, err := s.Candidates(context.Background(), book)
+	if err != nil || len(got) != 1 || got[0].ID != "emma-1815" {
+		t.Fatalf("by the print ISBN: %+v, %v", got, err)
+	}
+	if got[0].Score >= 1 {
+		t.Errorf("score %v: a print ISBN of the text is not an identifier the book shares", got[0].Score)
+	}
+	if asked := srv.requests(); !slices.Equal(asked, []string{"/isbn/9780141439587?"}) {
+		t.Errorf("asked %v", asked)
+	}
+}
+
 func TestOnlyEnabledProvidersAreAsked(t *testing.T) {
 	srv := newProviderServer(t)
 	enabled := []string{"other"}
@@ -253,16 +270,6 @@ func TestInternalAddressesAreRefused(t *testing.T) {
 		t.Error("a cover from a file was fetched")
 	}
 
-	for addr, want := range map[string]bool{
-		"8.8.8.8": true, "2a00:1450:4001::200e": true,
-		"127.0.0.1": false, "10.1.2.3": false, "172.16.0.1": false, "192.168.1.1": false,
-		"169.254.169.254": false, "100.64.0.1": false, "0.0.0.0": false, "::1": false,
-		"fd00::1": false, "fe80::1": false, "::ffff:127.0.0.1": false, "224.0.0.1": false,
-	} {
-		if got := public(netip.MustParseAddr(addr)); got != want {
-			t.Errorf("public(%s) = %v", addr, got)
-		}
-	}
 }
 
 func TestScore(t *testing.T) {
@@ -275,9 +282,9 @@ func TestScore(t *testing.T) {
 	}{
 		{"the same book", emmaRecord, 0.95, 0.99},
 		{"another spelling of the author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Austen, Jane"}}, Published: "1815"}, 0.95, 0.99},
-		{"another author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Donoghue"}}, Published: "2010"}, 0.5, 0.65},
+		{"another author", Record{Title: "Emma", Contributors: []catalog.NewContributor{{Name: "Emma Holloway"}}, Published: "2010"}, 0.5, 0.65},
 		{"another book", Record{Title: "Persuasion", Contributors: []catalog.NewContributor{{Name: "Jane Austen"}}}, 0.3, 0.5},
-		{"nothing alike", Record{Title: "Dune", Contributors: []catalog.NewContributor{{Name: "Frank Herbert"}}, Language: "en"}, 0, 0.1},
+		{"nothing alike", Record{Title: "Dusk", Contributors: []catalog.NewContributor{{Name: "Henrik Halden"}}, Language: "en"}, 0, 0.1},
 	}
 	for _, c := range cases {
 		if got := Score(book, c.r); got < c.low || got > c.top {
@@ -354,5 +361,60 @@ func TestABookIsLookedUpByItsDOITooAsPapersHaveNoISBN(t *testing.T) {
 	}
 	if !slices.Equal(p.ids, []catalog.Identifier{isbn, doi}) {
 		t.Errorf("looked up %v, want the ISBN and the DOI", p.ids)
+	}
+}
+
+// listing is a provider that lists works in several languages.
+type listing struct{ records []Record }
+
+func (*listing) Name() string                                                      { return "listing" }
+func (*listing) Limits() Limits                                                    { return Limits{} }
+func (*listing) Lookup(context.Context, Web, catalog.Identifier) ([]Record, error) { return nil, nil }
+func (*listing) Search(context.Context, Web, Query) ([]Record, error)              { return nil, nil }
+func (l *listing) ByAuthor(context.Context, Web, string) ([]Record, error) {
+	return slices.Clone(l.records), nil
+}
+func (l *listing) BySeries(context.Context, Web, string) ([]Record, error) { return nil, nil }
+
+func TestWorksAreKeptInTheLanguagesAsked(t *testing.T) {
+	l := &listing{records: []Record{
+		{Title: "The Original", Language: "en"},
+		{Title: "Die Übersetzung", Language: "de-AT"},
+		{Title: "La traducción", Language: "es"},
+		{Title: "Unknown"},
+	}}
+	s := NewService(nil, []Provider{l}, Options{Language: func(context.Context) string { return "de" }})
+	answers, err := s.WorksOf(context.Background(), WorksAuthor, "Someone")
+	if err != nil || len(answers) != 1 {
+		t.Fatalf("WorksOf: %+v, %v", answers, err)
+	}
+	var titles []string
+	for _, r := range answers[0].Records {
+		titles = append(titles, r.Title)
+		if r.Provider != "listing" {
+			t.Errorf("%q has provider %q", r.Title, r.Provider)
+		}
+	}
+	if !slices.Equal(titles, []string{"The Original", "Die Übersetzung", "Unknown"}) {
+		t.Errorf("kept %v", titles)
+	}
+}
+
+func TestTwoProvidersAgreeOnOneISBNOrOneWork(t *testing.T) {
+	isbn := catalog.Identifier{Type: catalog.IDISBN, Value: "9780141439587"}
+	a := Candidate{Record: Record{Provider: "openlibrary", Identifiers: []catalog.Identifier{isbn}, Work: "w1"}}
+	for name, c := range map[string]struct {
+		b    Candidate
+		want bool
+	}{
+		"the same ISBN":        {Candidate{Record: Record{Provider: "hardcover", Identifiers: []catalog.Identifier{isbn}}}, true},
+		"the same work":        {Candidate{Record: Record{Provider: "hardcover", Work: "w1"}}, true},
+		"another work":         {Candidate{Record: Record{Provider: "hardcover", Work: "w2"}}, false},
+		"nothing in common":    {Candidate{Record: Record{Provider: "hardcover"}}, false},
+		"one provider's twice": {Candidate{Record: Record{Provider: "openlibrary", Identifiers: []catalog.Identifier{isbn}}}, false},
+	} {
+		if got := Agrees(a, c.b); got != c.want {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
 	}
 }

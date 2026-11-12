@@ -2,8 +2,16 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
+	"slices"
+	"strings"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -36,7 +44,7 @@ func (s *Service) Names(ctx context.Context, scope library.Scope, kind, typed st
 SELECT n.name
 FROM `+from+`
 WHERE b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($1, $2))
+  AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2))
   AND (n.name_key LIKE $3 || '%' OR n.name_key LIKE '% ' || $3 || '%')
 GROUP BY n.name, n.name_key
 ORDER BY n.name_key LIKE $3 || '%' DESC, count(*) DESC, n.name_key
@@ -54,4 +62,160 @@ LIMIT $4`, scope.Viewer, scope.SeesAll, key, limit)
 		names = append(names, name)
 	}
 	return names, rows.Err()
+}
+
+// Author is one person, however their name is spelled, as the books the
+// viewer sees name them.
+type Author struct {
+	// Name is the spelling most of those books use.
+	Name string
+	// Key is the person's PersonKey.
+	Key string
+	// Spellings are every spelling among those books, Name included.
+	Spellings []string
+	Books     int
+}
+
+// Author returns the person a name or a person's key stands for. One without
+// a book the scope may see is ErrNotFound, like a name nobody has.
+func (s *Service) Author(ctx context.Context, scope library.Scope, key string) (Author, error) {
+	a := Author{Key: PersonKey(key)}
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	where, err := visibleBooks(scope, nil, filter.Node{}, false, arg)
+	if err != nil {
+		return Author{}, err
+	}
+	err = s.pool.QueryRow(ctx, `
+SELECT mode() WITHIN GROUP (ORDER BY a.name), array_agg(DISTINCT a.name), count(DISTINCT b.id)
+FROM authors a
+JOIN book_contributors c ON c.author_id = a.id AND c.role = '`+RoleAuthor+`'
+JOIN books b ON b.id = c.book_id
+WHERE a.person_key = `+arg(a.Key)+` AND `+strings.Join(where, " AND ")+`
+GROUP BY a.person_key`, args...).Scan(&a.Name, &a.Spellings, &a.Books)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Author{}, ErrNotFound
+	}
+	return a, err
+}
+
+// Series is a series as far as the viewer sees it.
+type Series struct {
+	Name string
+	Key  string
+	// Books counts its books the viewer sees, Read those they completed.
+	Books int
+	Read  int
+	// Indexes are the places in it of the books that have one.
+	Indexes []float64
+	// LibraryID is the library that holds most of those books, where a book
+	// wished for would join them.
+	LibraryID uuid.UUID
+	// Next is the first book in series order the viewer has not read or
+	// begun; nil when there is none.
+	Next *Summary
+}
+
+// Series returns the series a name or its key stands for. One without a book
+// the scope may see is ErrNotFound, like a name nothing has.
+func (s *Service) Series(ctx context.Context, scope library.Scope, key string) (Series, error) {
+	out := Series{Key: Key(key), Indexes: []float64{}}
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	where, err := visibleBooks(scope, nil, filter.Node{}, false, arg)
+	if err != nil {
+		return Series{}, err
+	}
+	viewer := arg(scope.Viewer)
+	err = s.pool.QueryRow(ctx, `
+SELECT s.name, count(*), count(*) FILTER (WHERE ub.status = '`+StatusCompleted+`'),
+       COALESCE(array_agg(b.series_index) FILTER (WHERE b.series_index IS NOT NULL), '{}'),
+       mode() WITHIN GROUP (ORDER BY b.library_id)
+FROM series s
+JOIN books b ON b.series_id = s.id
+`+summaryJoin(viewer)+`
+WHERE s.name_key = `+arg(out.Key)+` AND `+strings.Join(where, " AND ")+`
+GROUP BY s.id`, args...).Scan(&out.Name, &out.Books, &out.Read, &out.Indexes, &out.LibraryID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Series{}, ErrNotFound
+	}
+	if err != nil {
+		return Series{}, err
+	}
+	next, err := s.List(ctx, scope, ListParams{
+		Filter: filter.Node{All: []filter.Node{
+			{Field: FieldSeries, Op: OpIn, Values: []string{out.Key}},
+			{Field: FieldStatus, Op: OpIn, Values: []string{StatusUnread, StatusWishlist}},
+		}},
+		Order: OrderSeries, Limit: 1,
+	})
+	if err != nil {
+		return Series{}, err
+	}
+	if len(next.Books) > 0 {
+		out.Next = &next.Books[0]
+	}
+	return out, nil
+}
+
+// Gap is a stretch of a series no book stands for, both ends included.
+type Gap struct {
+	From int
+	To   int
+}
+
+// MaxSeriesIndex is the highest position a book may hold in a series. The
+// longest series there are, such as Nordlicht-Saga past 3,300 issues, stay far
+// below it; a position above it is a slip or a file's attempt to make the
+// series page count places without end (#320).
+const MaxSeriesIndex = 100_000
+
+// SeriesIndexOf is index when it is a position a series can have (finite,
+// from 0 to MaxSeriesIndex), else nil.
+func SeriesIndexOf(index *float64) *float64 {
+	if index == nil || !validSeriesIndex(*index) {
+		return nil
+	}
+	return index
+}
+
+// validSeriesIndex is false for NaN and the infinities as for any number
+// out of range, as every comparison with NaN is false.
+func validSeriesIndex(index float64) bool {
+	return index >= 0 && index <= MaxSeriesIndex
+}
+
+// Gaps says which whole places from 1 up to the last of the indexes are
+// taken by none of them. A book at 2.5 fills no place: it lies between two.
+// Indexes no series can have are passed over. It goes through the places
+// held, not every place up to the last, so a stray large index costs one
+// gap and no time.
+func Gaps(indexes []float64) []Gap {
+	var held []int
+	last := 0
+	for _, index := range indexes {
+		if !validSeriesIndex(index) {
+			continue
+		}
+		if place := int(index); float64(place) == index {
+			held = append(held, place)
+		}
+		last = max(last, int(math.Ceil(index)))
+	}
+	slices.Sort(held)
+	gaps := []Gap{}
+	next := 1
+	for _, place := range append(slices.Compact(held), last) {
+		if place > next {
+			gaps = append(gaps, Gap{From: next, To: place - 1})
+		}
+		next = max(next, place+1)
+	}
+	return gaps
 }

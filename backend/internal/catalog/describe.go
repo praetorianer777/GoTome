@@ -92,7 +92,7 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 			return false
 		}
 		switch source := sources[field]; {
-		case source == SourceFilename, source == own:
+		case source == SourceFilename, source == SourceText, source == own:
 		case source == SourceManual:
 			// A person typed it and then took the lock off: it may go.
 		case source == "":
@@ -142,7 +142,7 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 		if err != nil {
 			return fmt.Errorf("series: %w", err)
 		}
-		update.SeriesID, update.SeriesIndex = &series.ID, m.SeriesIndex
+		update.SeriesID, update.SeriesIndex = &series.ID, SeriesIndexOf(m.SeriesIndex)
 	}
 	if take("pageCount", m.PageCount != nil, update.PageCount == nil) {
 		update.PageCount = m.PageCount
@@ -184,6 +184,11 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 
 	if err := q.DeleteFileIdentifiers(ctx, &fileID); err != nil {
 		return err
+	}
+	// The text's ISBN went with the file's identifiers; ApplyImprintTx finds
+	// it again if the book still has none.
+	if sources[FieldIdentifiers] == SourceText {
+		delete(sources, FieldIdentifiers)
 	}
 	for _, ident := range m.Identifiers {
 		err := q.AddBookIdentifier(ctx, sqlc.AddBookIdentifierParams{

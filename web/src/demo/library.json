@@ -1,0 +1,1049 @@
+{
+ "user": "demo",
+ "library": "Public-domain sample",
+ "books": [
+  {
+   "id": "b-emma",
+   "title": "Emma",
+   "authors": [
+    "Jane Austen"
+   ],
+   "language": "en",
+   "published": "1815",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Fiction"
+   ],
+   "description": "Emma Woodhouse is handsome, clever and rich, and sure she knows best about everyone's affairs but her own. A comedy of matchmaking gone wrong in a small English village.",
+   "status": "reading",
+   "pageCount": 474,
+   "files": [
+    {
+     "name": "emma.epub",
+     "format": "epub",
+     "kind": "ebook",
+     "source": "e2e/fixtures/books/Jane Austen/Emma.epub"
+    }
+   ],
+   "startedOn": "2026-10-28",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jane-austen/emma",
+    "url": "https://standardebooks.org/ebooks/jane-austen/emma/downloads/jane-austen_emma.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-01T09:00:00Z"
+  },
+  {
+   "id": "b-persuasion",
+   "title": "Persuasion",
+   "authors": [
+    "Jane Austen"
+   ],
+   "language": "en",
+   "published": "1817",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Fiction"
+   ],
+   "description": "Anne Elliot, persuaded at nineteen to refuse the man she loved, meets Captain Wentworth again eight years later. Austen's last and quietest novel.",
+   "status": "completed",
+   "pageCount": 249,
+   "files": [
+    {
+     "name": "persuasion.epub",
+     "format": "epub",
+     "kind": "ebook",
+     "source": "e2e/fixtures/books/Jane Austen/Persuasion.epub"
+    }
+   ],
+   "rating": 5,
+   "startedOn": "2026-09-02",
+   "finishedOn": "2026-09-20",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jane-austen/persuasion",
+    "url": "https://standardebooks.org/ebooks/jane-austen/persuasion/downloads/jane-austen_persuasion.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-02T09:01:00Z"
+  },
+  {
+   "id": "b-pride",
+   "title": "Pride and Prejudice",
+   "authors": [
+    "Jane Austen"
+   ],
+   "language": "en",
+   "published": "1813",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Fiction"
+   ],
+   "description": "Elizabeth Bennet and Mr Darcy misjudge each other on first sight, and the whole neighbourhood has an opinion.",
+   "status": "completed",
+   "pageCount": 432,
+   "rating": 5,
+   "startedOn": "2026-07-01",
+   "finishedOn": "2026-07-19",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice",
+    "url": "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice/downloads/jane-austen_pride-and-prejudice.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-03T09:02:00Z"
+  },
+  {
+   "id": "b-sense",
+   "title": "Sense and Sensibility",
+   "authors": [
+    "Jane Austen"
+   ],
+   "language": "en",
+   "published": "1811",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Fiction"
+   ],
+   "description": "Two sisters, one governed by reason and one by feeling, learn what a loss of fortune does to hopes of love.",
+   "status": "unread",
+   "pageCount": 352,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jane-austen/sense-and-sensibility",
+    "url": "https://standardebooks.org/ebooks/jane-austen/sense-and-sensibility/downloads/jane-austen_sense-and-sensibility.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-04T09:03:00Z"
+  },
+  {
+   "id": "b-study",
+   "title": "A Study in Scarlet",
+   "authors": [
+    "Arthur Conan Doyle"
+   ],
+   "language": "en",
+   "published": "1887",
+   "tags": [
+    "Mystery",
+    "Classics",
+    "Fiction"
+   ],
+   "description": "Dr Watson meets Sherlock Holmes and their first case: a body in an empty house and a word written in blood.",
+   "status": "completed",
+   "series": "Sherlock Holmes",
+   "seriesIndex": 1,
+   "pageCount": 176,
+   "rating": 4,
+   "startedOn": "2026-08-01",
+   "finishedOn": "2026-08-05",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/arthur-conan-doyle/a-study-in-scarlet",
+    "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/a-study-in-scarlet/downloads/arthur-conan-doyle_a-study-in-scarlet.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-05T09:04:00Z"
+  },
+  {
+   "id": "b-sign",
+   "title": "The Sign of the Four",
+   "authors": [
+    "Arthur Conan Doyle"
+   ],
+   "language": "en",
+   "published": "1890",
+   "tags": [
+    "Mystery",
+    "Classics",
+    "Fiction"
+   ],
+   "description": "A treasure, a pair of footprints and a missing heiress take Holmes across London.",
+   "status": "completed",
+   "series": "Sherlock Holmes",
+   "seriesIndex": 2,
+   "pageCount": 176,
+   "rating": 4,
+   "startedOn": "2026-08-06",
+   "finishedOn": "2026-08-09",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-sign-of-the-four",
+    "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-sign-of-the-four/downloads/arthur-conan-doyle_the-sign-of-the-four.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-06T09:05:00Z"
+  },
+  {
+   "id": "b-hound",
+   "title": "The Hound of the Baskervilles",
+   "authors": [
+    "Arthur Conan Doyle"
+   ],
+   "language": "en",
+   "published": "1902",
+   "tags": [
+    "Mystery",
+    "Classics",
+    "Fiction"
+   ],
+   "description": "A family curse, a spectral dog and the fog of Dartmoor.",
+   "status": "completed",
+   "series": "Sherlock Holmes",
+   "seriesIndex": 5,
+   "pageCount": 256,
+   "rating": 5,
+   "startedOn": "2026-08-12",
+   "finishedOn": "2026-08-16",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-hound-of-the-baskervilles",
+    "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-hound-of-the-baskervilles/downloads/arthur-conan-doyle_the-hound-of-the-baskervilles.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-07T09:06:00Z"
+  },
+  {
+   "id": "b-adventures",
+   "title": "The Adventures of Sherlock Holmes",
+   "authors": [
+    "Arthur Conan Doyle"
+   ],
+   "language": "en",
+   "published": "1892",
+   "tags": [
+    "Mystery",
+    "Classics",
+    "Short stories"
+   ],
+   "description": "Twelve short cases, from a scandal in Bohemia to the adventure of the copper beeches.",
+   "status": "reading",
+   "series": "Sherlock Holmes",
+   "seriesIndex": 3,
+   "pageCount": 307,
+   "startedOn": "2026-11-02",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes",
+    "url": "https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes/downloads/arthur-conan-doyle_the-adventures-of-sherlock-holmes.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-08T09:07:00Z"
+  },
+  {
+   "id": "b-twenty",
+   "title": "Twenty Thousand Leagues Under the Seas",
+   "authors": [
+    "Jules Verne"
+   ],
+   "language": "en",
+   "published": "1870",
+   "tags": [
+    "Science fiction",
+    "Adventure",
+    "Classics"
+   ],
+   "description": "Professor Aronnax is taken aboard the Nautilus by the enigmatic Captain Nemo and sees the ocean as no one had.",
+   "status": "unread",
+   "series": "Voyages extraordinaires",
+   "seriesIndex": 6,
+   "pageCount": 480,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/2488",
+    "url": "https://www.gutenberg.org/ebooks/2488.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "translators": [
+    "F. P. Walter"
+   ],
+   "addedAt": "2026-10-09T09:08:00Z"
+  },
+  {
+   "id": "b-around",
+   "title": "Around the World in Eighty Days",
+   "authors": [
+    "Jules Verne"
+   ],
+   "language": "en",
+   "published": "1872",
+   "tags": [
+    "Adventure",
+    "Classics",
+    "Fiction"
+   ],
+   "description": "Phileas Fogg wagers half his fortune that he can circle the globe on schedule.",
+   "status": "unread",
+   "series": "Voyages extraordinaires",
+   "seriesIndex": 11,
+   "pageCount": 256,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle",
+    "url": "https://standardebooks.org/ebooks/jules-verne/around-the-world-in-eighty-days/george-makepeace-towle/downloads/jules-verne_around-the-world-in-eighty-days_george-makepeace-towle.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-10T09:09:00Z"
+  },
+  {
+   "id": "b-centre",
+   "title": "Journey to the Centre of the Earth",
+   "authors": [
+    "Jules Verne"
+   ],
+   "language": "en",
+   "published": "1864",
+   "tags": [
+    "Science fiction",
+    "Adventure",
+    "Classics"
+   ],
+   "description": "A professor, his nephew and a guide climb down an Icelandic volcano.",
+   "status": "unread",
+   "series": "Voyages extraordinaires",
+   "seriesIndex": 3,
+   "pageCount": 240,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson",
+    "url": "https://standardebooks.org/ebooks/jules-verne/journey-to-the-center-of-the-earth/f-a-malleson/downloads/jules-verne_journey-to-the-center-of-the-earth_f-a-malleson.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-11T09:10:00Z"
+  },
+  {
+   "id": "b-timemachine",
+   "title": "The Time Machine",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "language": "en",
+   "published": "1895",
+   "tags": [
+    "Science fiction",
+    "Classics"
+   ],
+   "description": "A Victorian inventor travels to the year 802,701 and finds the Eloi and the Morlocks.",
+   "status": "completed",
+   "pageCount": 118,
+   "rating": 4,
+   "startedOn": "2026-06-10",
+   "finishedOn": "2026-06-11",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/h-g-wells/the-time-machine",
+    "url": "https://standardebooks.org/ebooks/h-g-wells/the-time-machine/downloads/h-g-wells_the-time-machine.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-12T09:11:00Z"
+  },
+  {
+   "id": "b-war",
+   "title": "The War of the Worlds",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "language": "en",
+   "published": "1898",
+   "tags": [
+    "Science fiction",
+    "Classics"
+   ],
+   "description": "Cylinders fall on Surrey and the Martians begin.",
+   "status": "unread",
+   "pageCount": 192,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/h-g-wells/the-war-of-the-worlds",
+    "url": "https://standardebooks.org/ebooks/h-g-wells/the-war-of-the-worlds/downloads/h-g-wells_the-war-of-the-worlds.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-13T09:12:00Z"
+  },
+  {
+   "id": "b-invisible",
+   "title": "The Invisible Man",
+   "authors": [
+    "H. G. Wells"
+   ],
+   "language": "en",
+   "published": "1897",
+   "tags": [
+    "Science fiction",
+    "Classics"
+   ],
+   "description": "A stranger with bandaged face and dark glasses arrives in a Sussex village.",
+   "status": "unread",
+   "pageCount": 176,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/h-g-wells/the-invisible-man",
+    "url": "https://standardebooks.org/ebooks/h-g-wells/the-invisible-man/downloads/h-g-wells_the-invisible-man.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-14T09:13:00Z"
+  },
+  {
+   "id": "b-frankenstein",
+   "title": "Frankenstein",
+   "authors": [
+    "Mary Shelley"
+   ],
+   "language": "en",
+   "published": "1818",
+   "tags": [
+    "Horror",
+    "Classics",
+    "Gothic"
+   ],
+   "description": "Victor Frankenstein gives life to a creature and then cannot bear to look at it.",
+   "status": "completed",
+   "pageCount": 280,
+   "rating": 4,
+   "startedOn": "2026-10-01",
+   "finishedOn": "2026-10-14",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/mary-shelley/frankenstein",
+    "url": "https://standardebooks.org/ebooks/mary-shelley/frankenstein/downloads/mary-shelley_frankenstein.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-15T09:14:00Z"
+  },
+  {
+   "id": "b-dracula",
+   "title": "Dracula",
+   "authors": [
+    "Bram Stoker"
+   ],
+   "language": "en",
+   "published": "1897",
+   "tags": [
+    "Horror",
+    "Classics",
+    "Gothic"
+   ],
+   "description": "Told in letters, diaries and clippings: a solicitor's journey to Transylvania and what follows him home.",
+   "status": "unread",
+   "pageCount": 418,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/bram-stoker/dracula",
+    "url": "https://standardebooks.org/ebooks/bram-stoker/dracula/downloads/bram-stoker_dracula.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-16T09:15:00Z"
+  },
+  {
+   "id": "b-dorian",
+   "title": "The Picture of Dorian Gray",
+   "authors": [
+    "Oscar Wilde"
+   ],
+   "language": "en",
+   "published": "1890",
+   "tags": [
+    "Classics",
+    "Gothic",
+    "Fiction"
+   ],
+   "description": "A beautiful young man stays unchanged while his portrait grows old.",
+   "status": "unread",
+   "pageCount": 254,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/oscar-wilde/the-picture-of-dorian-gray",
+    "url": "https://standardebooks.org/ebooks/oscar-wilde/the-picture-of-dorian-gray/downloads/oscar-wilde_the-picture-of-dorian-gray.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-17T09:16:00Z"
+  },
+  {
+   "id": "b-twist",
+   "title": "Oliver Twist",
+   "authors": [
+    "Charles Dickens"
+   ],
+   "language": "en",
+   "published": "1838",
+   "tags": [
+    "Classics",
+    "Fiction"
+   ],
+   "description": "An orphan escapes the workhouse and falls in with the thieves of London.",
+   "status": "unread",
+   "pageCount": 608,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/charles-dickens/oliver-twist",
+    "url": "https://standardebooks.org/ebooks/charles-dickens/oliver-twist/downloads/charles-dickens_oliver-twist.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-18T09:17:00Z"
+  },
+  {
+   "id": "b-carol",
+   "title": "A Christmas Carol",
+   "authors": [
+    "Charles Dickens"
+   ],
+   "language": "en",
+   "published": "1843",
+   "tags": [
+    "Classics",
+    "Fiction",
+    "Short stories"
+   ],
+   "description": "Three ghosts visit Ebenezer Scrooge on Christmas Eve.",
+   "status": "completed",
+   "pageCount": 96,
+   "rating": 3,
+   "startedOn": "2025-12-20",
+   "finishedOn": "2025-12-24",
+   "source": {
+    "page": "https://standardebooks.org/ebooks/charles-dickens/a-christmas-carol",
+    "url": "https://standardebooks.org/ebooks/charles-dickens/a-christmas-carol/downloads/charles-dickens_a-christmas-carol.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-19T09:18:00Z"
+  },
+  {
+   "id": "b-expectations",
+   "title": "Great Expectations",
+   "authors": [
+    "Charles Dickens"
+   ],
+   "language": "en",
+   "published": "1861",
+   "tags": [
+    "Classics",
+    "Fiction"
+   ],
+   "description": "Pip, a blacksmith's boy, is given a fortune by an unknown benefactor.",
+   "status": "unread",
+   "pageCount": 544,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/charles-dickens/great-expectations",
+    "url": "https://standardebooks.org/ebooks/charles-dickens/great-expectations/downloads/charles-dickens_great-expectations.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-20T09:19:00Z"
+  },
+  {
+   "id": "b-jane",
+   "title": "Jane Eyre",
+   "authors": [
+    "Charlotte Brontë"
+   ],
+   "language": "en",
+   "published": "1847",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Gothic"
+   ],
+   "description": "An orphan becomes a governess at Thornfield Hall and hears laughter from the attic.",
+   "status": "unread",
+   "pageCount": 532,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/charlotte-bronte/jane-eyre",
+    "url": "https://standardebooks.org/ebooks/charlotte-bronte/jane-eyre/downloads/charlotte-bronte_jane-eyre.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-21T09:20:00Z"
+  },
+  {
+   "id": "b-heights",
+   "title": "Wuthering Heights",
+   "authors": [
+    "Emily Brontë"
+   ],
+   "language": "en",
+   "published": "1847",
+   "tags": [
+    "Classics",
+    "Romance",
+    "Gothic"
+   ],
+   "description": "Heathcliff and Catherine on the Yorkshire moors, and what their love does to two families.",
+   "status": "unread",
+   "pageCount": 416,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/emily-bronte/wuthering-heights",
+    "url": "https://standardebooks.org/ebooks/emily-bronte/wuthering-heights/downloads/emily-bronte_wuthering-heights.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-22T09:21:00Z"
+  },
+  {
+   "id": "b-moby",
+   "title": "Moby-Dick",
+   "authors": [
+    "Herman Melville"
+   ],
+   "language": "en",
+   "published": "1851",
+   "tags": [
+    "Classics",
+    "Adventure"
+   ],
+   "description": "Ishmael ships on the Pequod, whose captain hunts one white whale.",
+   "status": "unread",
+   "pageCount": 720,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/herman-melville/moby-dick",
+    "url": "https://standardebooks.org/ebooks/herman-melville/moby-dick/downloads/herman-melville_moby-dick.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-23T09:22:00Z"
+  },
+  {
+   "id": "b-alice",
+   "title": "Alice's Adventures in Wonderland",
+   "authors": [
+    "Lewis Carroll"
+   ],
+   "language": "en",
+   "published": "1865",
+   "tags": [
+    "Classics",
+    "Fantasy",
+    "Children"
+   ],
+   "description": "A girl follows a white rabbit down a hole.",
+   "status": "unread",
+   "series": "Alice",
+   "seriesIndex": 1,
+   "pageCount": 96,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel",
+    "url": "https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel/downloads/lewis-carroll_alices-adventures-in-wonderland_john-tenniel.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-24T09:23:00Z"
+  },
+  {
+   "id": "b-glass",
+   "title": "Through the Looking-Glass",
+   "authors": [
+    "Lewis Carroll"
+   ],
+   "language": "en",
+   "published": "1871",
+   "tags": [
+    "Classics",
+    "Fantasy",
+    "Children"
+   ],
+   "description": "Alice steps through the mirror into a chessboard country.",
+   "status": "unread",
+   "series": "Alice",
+   "seriesIndex": 2,
+   "pageCount": 128,
+   "source": {
+    "page": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel",
+    "url": "https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel/downloads/lewis-carroll_through-the-looking-glass_john-tenniel.epub?source=download",
+    "licence": "CC0 1.0 (Standard Ebooks)"
+   },
+   "addedAt": "2026-10-25T09:24:00Z"
+  },
+  {
+   "id": "b-metamorphosis",
+   "title": "The Metamorphosis",
+   "authors": [
+    "Franz Kafka"
+   ],
+   "language": "en",
+   "published": "1915",
+   "tags": [
+    "Classics",
+    "Fiction",
+    "Short stories"
+   ],
+   "description": "Gregor Samsa wakes one morning as an enormous insect, and his family has to cope.",
+   "status": "unread",
+   "pageCount": 70,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/5200",
+    "url": "https://www.gutenberg.org/ebooks/5200.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "translators": [
+    "David Wyllie"
+   ],
+   "addedAt": "2026-10-26T09:25:00Z"
+  },
+  {
+   "id": "b-faust",
+   "title": "Faust",
+   "authors": [
+    "Johann Wolfgang von Goethe"
+   ],
+   "language": "de",
+   "published": "1808",
+   "tags": [
+    "Klassiker",
+    "Drama"
+   ],
+   "description": "Der Gelehrte Faust verschreibt sich dem Teufel für einen Augenblick, der ihn ganz erfüllt.",
+   "status": "unread",
+   "pageCount": 240,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/2229",
+    "url": "https://www.gutenberg.org/ebooks/2229.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "addedAt": "2026-10-27T09:26:00Z"
+  },
+  {
+   "id": "b-metamorphose",
+   "title": "Die Verwandlung",
+   "authors": [
+    "Franz Kafka"
+   ],
+   "language": "de",
+   "published": "1915",
+   "tags": [
+    "Klassiker",
+    "Erzählung"
+   ],
+   "description": "Gregor Samsa erwacht eines Morgens als ungeheures Ungeziefer.",
+   "status": "unread",
+   "pageCount": 80,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/22367",
+    "url": "https://www.gutenberg.org/ebooks/22367.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "addedAt": "2026-10-01T09:27:00Z"
+  },
+  {
+   "id": "b-werther",
+   "title": "Die Leiden des jungen Werther",
+   "authors": [
+    "Johann Wolfgang von Goethe"
+   ],
+   "language": "de",
+   "published": "1774",
+   "tags": [
+    "Klassiker",
+    "Briefroman"
+   ],
+   "description": "Ein Briefroman über eine unglückliche Liebe, der halb Europa in Tränen ausbrechen ließ.",
+   "status": "unread",
+   "pageCount": 160,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/2407",
+    "url": "https://www.gutenberg.org/ebooks/2407.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "addedAt": "2026-10-02T09:28:00Z"
+  },
+  {
+   "id": "b-effi",
+   "title": "Effi Briest",
+   "authors": [
+    "Theodor Fontane"
+   ],
+   "language": "de",
+   "published": "1895",
+   "tags": [
+    "Klassiker",
+    "Roman"
+   ],
+   "description": "Eine junge Frau wird früh mit einem älteren Landrat verheiratet und zahlt später den Preis für eine alte Geschichte.",
+   "status": "unread",
+   "pageCount": 320,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/5323",
+    "url": "https://www.gutenberg.org/ebooks/5323.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "addedAt": "2026-10-03T09:29:00Z"
+  },
+  {
+   "id": "b-kabale",
+   "title": "Kabale und Liebe",
+   "authors": [
+    "Friedrich Schiller"
+   ],
+   "language": "de",
+   "published": "1784",
+   "tags": [
+    "Klassiker",
+    "Drama"
+   ],
+   "description": "Ferdinand, Sohn eines Präsidenten, liebt die Musikertochter Luise, und die Intrigen des Hofes sind stärker.",
+   "status": "unread",
+   "pageCount": 128,
+   "source": {
+    "page": "https://www.gutenberg.org/ebooks/6498",
+    "url": "https://www.gutenberg.org/ebooks/6498.epub3.images",
+    "licence": "Public domain (Project Gutenberg)"
+   },
+   "addedAt": "2026-10-04T09:30:00Z"
+  },
+  {
+   "id": "b-wish1",
+   "title": "The Count of Monte Cristo",
+   "authors": [
+    "Alexandre Dumas"
+   ],
+   "language": "en",
+   "published": "1844",
+   "tags": [
+    "Adventure",
+    "Classics"
+   ],
+   "description": "Edmond Dantès, falsely imprisoned, escapes and returns as a count.",
+   "status": "wishlist",
+   "pageCount": 1276,
+   "wished": true,
+   "addedAt": "2026-10-05T09:31:00Z"
+  },
+  {
+   "id": "b-wish2",
+   "title": "Middlemarch",
+   "authors": [
+    "George Eliot"
+   ],
+   "language": "en",
+   "published": "1871",
+   "tags": [
+    "Classics",
+    "Fiction"
+   ],
+   "description": "A provincial town, several marriages and the cost of ideals.",
+   "status": "wishlist",
+   "pageCount": 880,
+   "wished": true,
+   "addedAt": "2026-10-06T09:32:00Z"
+  },
+  {
+   "id": "b-emma-2",
+   "title": "Emma",
+   "authors": [
+    "Jane Austen"
+   ],
+   "language": "en",
+   "published": "1815",
+   "tags": [
+    "Classics",
+    "Fiction"
+   ],
+   "description": "Another edition of the same novel, the kind of pair the duplicates page finds.",
+   "status": "unread",
+   "pageCount": 480,
+   "addedAt": "2026-10-30T09:00:00Z"
+  },
+  {
+   "id": "b-audio",
+   "title": "Two tones",
+   "authors": [
+    "GOtome"
+   ],
+   "narrators": [
+    "A sine wave"
+   ],
+   "language": "en",
+   "published": "2026",
+   "tags": [
+    "Audiobook"
+   ],
+   "description": "A stand-in for an audiobook: two sine tones in two parts, with two chapters, to try the player. `make sample-books` brings LibriVox recordings.",
+   "status": "unread",
+   "files": [
+    {
+     "name": "part1.mp3",
+     "format": "mp3",
+     "kind": "audio",
+     "durationMs": 6000,
+     "source": "e2e/fixtures/audio/part1.mp3"
+    },
+    {
+     "name": "part2.mp3",
+     "format": "mp3",
+     "kind": "audio",
+     "durationMs": 6000,
+     "source": "e2e/fixtures/audio/part2.mp3"
+    }
+   ],
+   "chapters": [
+    {
+     "title": "Arrival",
+     "startMs": 0,
+     "endMs": 3000,
+     "part": 0
+    },
+    {
+     "title": "The Keeper",
+     "startMs": 3000,
+     "endMs": 6000,
+     "part": 0
+    }
+   ],
+   "addedAt": "2026-10-08T09:34:00Z"
+  }
+ ],
+ "places": {
+  "b-emma": {
+   "fraction": 0.0,
+   "locator": ""
+  }
+ },
+ "similar": {
+  "b-emma": [
+   "b-persuasion",
+   "b-pride",
+   "b-sense",
+   "b-jane"
+  ],
+  "b-persuasion": [
+   "b-emma",
+   "b-pride",
+   "b-sense"
+  ],
+  "b-study": [
+   "b-sign",
+   "b-hound",
+   "b-adventures"
+  ],
+  "b-hound": [
+   "b-study",
+   "b-sign",
+   "b-adventures"
+  ],
+  "b-timemachine": [
+   "b-war",
+   "b-invisible",
+   "b-twenty"
+  ],
+  "b-frankenstein": [
+   "b-dracula",
+   "b-dorian",
+   "b-heights"
+  ],
+  "b-faust": [
+   "b-werther",
+   "b-kabale",
+   "b-effi"
+  ]
+ },
+ "collections": [
+  {
+   "id": "c-start",
+   "name": "Start here",
+   "description": "A first handful, one for each mood.",
+   "books": [
+    "b-pride",
+    "b-study",
+    "b-timemachine",
+    "b-frankenstein",
+    "b-faust"
+   ]
+  },
+  {
+   "id": "c-ghosts",
+   "name": "Gothic and ghosts",
+   "books": [
+    "b-frankenstein",
+    "b-dracula",
+    "b-dorian",
+    "b-heights",
+    "b-carol"
+   ]
+  }
+ ],
+ "smartShelves": [
+  {
+   "id": "s-finished",
+   "name": "Finished and loved",
+   "filter": {
+    "all": [
+     {
+      "field": "status",
+      "op": "in",
+      "values": [
+       "completed"
+      ]
+     },
+     {
+      "field": "rating",
+      "op": "between",
+      "values": [
+       "4",
+       "5"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "s-german",
+   "name": "German classics",
+   "filter": {
+    "all": [
+     {
+      "field": "language",
+      "op": "in",
+      "values": [
+       "de"
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "pairs": [
+  {
+   "id": "p-emma",
+   "a": "b-emma",
+   "b": "b-emma-2",
+   "evidence": [
+    {
+     "kind": "title_author",
+     "detail": "emma / jane austen",
+     "score": 0.75
+    }
+   ]
+  }
+ ],
+ "following": [
+  {
+   "kind": "author",
+   "name": "Jane Austen"
+  },
+  {
+   "kind": "series",
+   "name": "Sherlock Holmes"
+  }
+ ],
+ "releases": {
+  "upcoming": [
+   {
+    "id": "r1",
+    "title": "The Return of Sherlock Holmes",
+    "authors": [
+     "Arthur Conan Doyle"
+    ],
+    "series": "Sherlock Holmes",
+    "seriesIndex": 6,
+    "source": "hardcover",
+    "date": "2026-12-01",
+    "precision": "month",
+    "follower": "Sherlock Holmes"
+   }
+  ],
+  "recent": [
+   {
+    "id": "r2",
+    "title": "Lady Susan",
+    "authors": [
+     "Jane Austen"
+    ],
+    "source": "openlibrary",
+    "date": "2026-10-15",
+    "precision": "day",
+    "follower": "Jane Austen"
+   }
+  ]
+ },
+ "search": [
+  {
+   "words": [
+    "wealth",
+    "handsome"
+   ],
+   "book": "b-emma",
+   "chapter": "Chapter 1",
+   "snippet": "Emma Woodhouse, handsome, clever, and rich, with a comfortable home and happy disposition, seemed to unite some of the best blessings of existence."
+  }
+ ]
+}

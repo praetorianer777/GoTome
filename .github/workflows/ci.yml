@@ -13,8 +13,203 @@ concurrency:
 permissions:
   contents: read
 
+# The gate is ./run-tests.sh --full, cut into parts (run-tests.sh --only) that
+# run as jobs side by side (#403): the Go image the tests run in and the app
+# image are each built once, here, and handed on as artifacts; the browser
+# suite runs one job per Playwright project, each on a stack of its own from
+# the same image. Every job ends with a table of its stages' times in its
+# summary. The `tests` job at the end is the one check that has to be green.
+#
+# The images are tagged by the checkout's path (mk/stack.mk), which is the
+# same in every job of a run, so a loaded image is the one a job's make finds.
+env:
+  # Start the image that was loaded; build nothing (mk/stack.mk).
+  STACK_PREBUILT: "1"
+
 jobs:
-  tests:
+  shell:
+    name: shell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./run-tests.sh --full --only shell
+
+  web:
+    name: web app
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the npm download cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/npm
+          key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - run: ./run-tests.sh --full --only web
+
+  android:
+    name: Tolino app
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the Gradle caches of the Tolino app
+        uses: actions/cache@v4
+        with:
+          path: .cache/android/gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('mk/android.mk', 'deploy/android.Dockerfile', 'clients/android/**/*.gradle.kts') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: ./run-tests.sh --full --only android
+
+  # The image the Go tests and tools run in (mk/go.mk), with the FFmpeg that
+  # the app image's ffmpeg stage builds. The stage is built with buildx and
+  # the Actions cache, so it is compiled only when its Dockerfile lines or
+  # FFmpeg's pin change.
+  toolchain:
+    name: build the Go test image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # FFmpeg's source (make ffmpeg-fetch): ffmpeg.org often turns runners
+      # away. An older key's files serve unless the pin changed.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build FFmpeg's stage
+        run: |
+          make ffmpeg-source
+          docker buildx build --target ffmpeg --load \
+            --cache-from type=gha,scope=ffmpeg --cache-to type=gha,scope=ffmpeg,mode=max \
+            -t "$(make -s print-FFMPEG_IMAGE)" -f deploy/Dockerfile .
+
+      # buildx's own builder keeps what it builds to itself; make's plain
+      # docker build needs the default one.
+      - name: Build the test image
+        run: |
+          docker buildx use default
+          make go-toolchain
+          mkdir -p "$RUNNER_TEMP/out"
+          docker save "$(make -s print-GO_IMAGE)" | gzip -1 > "$RUNNER_TEMP/out/toolchain.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images-toolchain
+          path: ${{ runner.temp }}/out/toolchain.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  # The app image, built once for the stack of every job that needs one. Each
+  # stage is cached on its own, so a change to web/ does not rebuild the Go
+  # build, the engine or FFmpeg, and the other way round.
+  image:
+    name: build the app image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
+
+      # The full-text engine's crates (make engine-fetch), kept until
+      # Cargo.lock changes.
+      - name: Cache the engine's crates
+        uses: actions/cache@v4
+        with:
+          path: engine/vendor
+          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        run: |
+          make ffmpeg-source onnxruntime-source engine-vendor
+          docker buildx build --load \
+            --cache-from type=gha,scope=app --cache-from type=gha,scope=ffmpeg \
+            --cache-to type=gha,scope=app,mode=max \
+            -t "$(make -s print-GOTOME_IMAGE)" -f deploy/Dockerfile .
+          mkdir -p "$RUNNER_TEMP/out"
+          docker save "$(make -s print-GOTOME_IMAGE)" | gzip -1 > "$RUNNER_TEMP/out/app.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images-app
+          path: ${{ runner.temp }}/out/app.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  # The full-text engine's tests, and its library, which the Go tests of the
+  # jobs below load (GOTOME_TEST_FULLTEXT, mk/go.mk): handed on as an artifact.
+  engine:
+    name: full-text engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the engine's crates
+        uses: actions/cache@v4
+        with:
+          path: engine/vendor
+          key: engine-vendor-${{ hashFiles('engine/Cargo.lock') }}
+
+      - run: ./run-tests.sh --full --only engine
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine/libgotome_fulltext.so
+          retention-days: 1
+
+  # Formatting, vet, the race-checked tests and the generated files.
+  go:
+    name: backend
+    needs: [toolchain, engine]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the Go module and build caches
+        uses: actions/cache@v4
+        with:
+          path: .cache/go
+          key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine
+
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-toolchain
+
+      - run: ./run-tests.sh --full --only go
+
+  # The KOReader plugin's tests in LuaJIT, and the parsers' fuzz targets.
+  plugin-and-fuzz:
+    name: plugin tests and fuzzing
+    needs: toolchain
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,12 +222,33 @@ jobs:
           key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
           restore-keys: go-${{ runner.os }}-
 
-      - name: Cache the npm download cache
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-toolchain
+
+      - run: ./run-tests.sh --full --only koplugin,fuzz
+
+  # The integration suite against the stack's database, the stack's own checks
+  # and the app image's embedding model against the reference vectors.
+  integration:
+    name: integration tests
+    needs: [toolchain, image, engine]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine
+
+      - name: Cache the Go module and build caches
         uses: actions/cache@v4
         with:
-          path: .cache/npm
-          key: npm-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-          restore-keys: npm-${{ runner.os }}-
+          path: .cache/go
+          key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
 
       # The embedding model the full gate checks the image with (make
       # embed-check), 135 MB from Hugging Face, kept until its pins change.
@@ -42,21 +258,140 @@ jobs:
           path: .cache/embed/model
           key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
 
-      # A push runs the gate with the browser smoke tests; here every browser
-      # test runs in every browser.
-      - name: Run the test suite
-        run: ./run-tests.sh --full
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-*
+
+      - run: ./run-tests.sh --full --only integration
+
+      - name: Upload the stack's logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-logs-integration
+          path: .cache/stack-logs
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The main views at 50,000 books: minutes of seeding, so a job of its own.
+  scale:
+    name: views at 50,000 books
+    needs: [toolchain, image, engine]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-lib
+          path: .cache/engine
+
+      - name: Cache the Go module and build caches
+        uses: actions/cache@v4
+        with:
+          path: .cache/go
+          key: go-${{ runner.os }}-${{ hashFiles('mk/go.mk', 'backend/go.mod', 'backend/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-*
+
+      - run: ./run-tests.sh --full --only scale
+
+      - name: Upload the stack's logs and the plans
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-logs-scale
+          path: |
+            .cache/stack-logs
+            .cache/scale-plans
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Every browser test in one Playwright project, on a stack of its own from
+  # the shared image. The projects are independent: each does its own first-run
+  # setup, and has its own fixture folders in the app container.
+  e2e:
+    name: browser tests (${{ matrix.project }})
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, phone]
+    env:
+      E2E_PROJECT: ${{ matrix.project }}
+      GATE_LABEL: e2e-${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the npm download cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/npm
+          key: npm-e2e-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: npm-e2e-${{ runner.os }}-
+
+      # The npm cache is mounted into the Playwright container, which runs as
+      # this user: it must be this user's, whatever the restore made of it.
+      - name: Own the npm cache
+        run: |
+          mkdir -p .cache/npm
+          sudo chown -R "$(id -u):$(id -g)" .cache
+
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-app
+
+      - run: ./run-tests.sh --full --only e2e
 
       - name: Upload the browser suite's report and traces
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: |
             e2e/playwright-report
             e2e/test-results
+            .cache/stack-logs
           if-no-files-found: ignore
           retention-days: 14
+
+  # An installation of the previous release (before the first one, of the
+  # commit this change started from) is upgraded to this change's image, and
+  # its backup restored into a new one: docs/backup-and-upgrade.md.
+  upgrade:
+    name: backup, restore and upgrade
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The release tags and the commit the change started from.
+          fetch-depth: 0
+
+      # FFmpeg's source (make ffmpeg-fetch) and ONNX Runtime's archives (make
+      # onnxruntime-fetch, with retries): ffmpeg.org and GitHub's release
+      # downloads often turn runners away. An older key's files serve unless
+      # a pin changed; the build fetches what is missing.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
+
+      - uses: ./.github/actions/load-images
+        with:
+          pattern: images-app
+
+      - name: Upgrade an installation and restore its backup
+        run: make upgrade-test
 
   # Home servers are often arm64. Building the image and starting the stack on
   # an arm64 runner finds what only breaks there before a release does.
@@ -64,6 +399,9 @@ jobs:
     name: image builds and boots on arm64
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
+    env:
+      # The only job that builds its own image: an amd64 one would not run.
+      STACK_PREBUILT: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +412,17 @@ jobs:
         with:
           path: .cache/embed/model
           key: embed-model-${{ hashFiles('backend/internal/embed/embed.go') }}
+
+      # FFmpeg's source (make ffmpeg-fetch) and ONNX Runtime's archives (make
+      # onnxruntime-fetch, with retries): ffmpeg.org and GitHub's release
+      # downloads often turn runners away. An older key's files serve unless
+      # a pin changed; the build fetches what is missing.
+      - name: Cache FFmpeg's source and ONNX Runtime's archives
+        uses: actions/cache@v4
+        with:
+          path: deploy/vendor
+          key: ffmpeg-source-${{ hashFiles('deploy/Dockerfile') }}
+          restore-keys: ffmpeg-source-
 
       - name: Build the image and start the stack
         run: make stack-up
@@ -91,3 +440,18 @@ jobs:
       - name: Tear down
         if: always()
         run: make stack-down || true
+
+  # The one check a pull request needs: green when every job above is. Its
+  # name is the one the job had when the whole gate was a single job.
+  tests:
+    name: tests
+    if: always()
+    needs: [shell, web, android, toolchain, image, engine, go, plugin-and-fuzz, integration, scale, e2e, upgrade, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' >/dev/null

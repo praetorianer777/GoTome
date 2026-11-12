@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { ADMIN } from "../fixtures/stack";
 
 // The gate's stack is always fresh, so there this walks the setup page. On a
@@ -26,7 +27,7 @@ test("the first account is created through the setup page", {
 	await expect(
 		page.getByRole("heading", { name: "Welcome to GOtome" }),
 	).toBeVisible();
-	await expect(page.getByRole("img", { name: "GOtome" })).toBeVisible();
+	await expect(page.locator("main").getByRole("img", { name: "GOtome" })).toBeVisible();
 
 	await page.getByLabel("User name").fill(ADMIN.username);
 	await page.getByLabel("Password").fill(ADMIN.password);
@@ -37,7 +38,9 @@ test("the first account is created through the setup page", {
 	await expect(
 		page.getByRole("heading", { name: "No library yet" }),
 	).toBeVisible();
-	await expect(page.getByText(`Signed in as ${ADMIN.username}`)).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: `Account: ${ADMIN.username}` }),
+	).toBeVisible();
 
 	// And it is closed from then on.
 	await page.goto("/setup");

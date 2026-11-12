@@ -12,12 +12,43 @@
 	}
 }
 
+/* docs/design.md says where each colour comes from and which pairs are
+   checked for contrast. */
 @theme {
-	/* The logo's two colours: its night-blue ground and the gopher's blue. */
-	--color-ink: #020c16;
-	--color-brand: #2fa8d5;
-	/* The same blue, dark enough to read as text on white. */
+	/* The logo's night-blue ground and the gopher's cyan. */
+	--color-ink: #0b1630;
+	--color-brand: #45bde0;
+	/* The same cyan, dark enough to read as text on parchment and white. */
 	--color-brand-strong: #0b6f96;
+	/* Candlelight, for what is being read and for ratings. */
+	--color-candle: #e69a46;
+	--color-candle-strong: #8a4f0f;
+	/* The wordmark's "tome", and the leather of the books. */
+	--color-cream: #e8c88a;
+	/* The same gold, dark enough to read as text on parchment and white. */
+	--color-gold-strong: #7a5a14;
+	--color-leather: #52271b;
+
+	/* The neutrals run from parchment to ink navy, so every page that uses
+	   slate takes the theme. */
+	--color-slate-50: #faf6ec;
+	--color-slate-100: #f1e9d8;
+	--color-slate-200: #e3d8c2;
+	--color-slate-300: #c8bca6;
+	--color-slate-400: #9fb0c8;
+	--color-slate-500: #5b6a80;
+	--color-slate-600: #536480;
+	--color-slate-700: #2c3f5f;
+	--color-slate-800: #2a3a58;
+	--color-slate-900: #16243f;
+	--color-slate-950: #0f1b36;
+
+	/* Only what the system has: the policy allows no font from elsewhere. */
+	--font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, ui-serif, serif;
+
+	--shadow-glow: 0 0 0 1px color-mix(in srgb, var(--color-brand) 45%, transparent), 0 0 12px -2px color-mix(in srgb, var(--color-brand) 55%, transparent);
+	--shadow-candle: 0 0 0 2px color-mix(in srgb, var(--color-candle) 70%, transparent), 0 0 14px -2px color-mix(in srgb, var(--color-candle) 60%, transparent);
+	--shadow-book: 0 1px 2px rgb(2 12 22 / 0.25), 0 6px 14px -6px rgb(2 12 22 / 0.45);
 }
 
 :root {
@@ -39,7 +70,324 @@ body {
 	@apply bg-slate-50 text-slate-900 antialiased dark:bg-ink dark:text-slate-100;
 }
 
-/* One focus ring everywhere, visible on both grounds. */
+/* The backdrop is only ever seen between and around the panels, which carry
+   all text (docs/design.md); the night image keeps its lamps capped, so it stays far darker than them.
+   Only the bars blur what is behind them: a blur under the whole content
+   would be redrawn on every scroll. */
+body {
+	background-image: url("../assets/backdrop-light.webp");
+	background-size: cover;
+	background-position: center;
+	background-attachment: fixed;
+	@variant dark {
+		background-image:
+			radial-gradient(ellipse 60% 45% at 0% 100%, rgb(230 154 70 / 0.2), transparent),
+			radial-gradient(ellipse 55% 40% at 100% 100%, rgb(230 154 70 / 0.16), transparent),
+			linear-gradient(rgb(11 22 48 / 0.1), rgb(11 22 48 / 0.1)),
+			url("../assets/backdrop.webp");
+	}
+}
+
+/* The frame's surfaces: top bar, sidebar, content. Glass on a desktop: the
+   panel colour at 78 % (dark) or 82 % (light) over a blurred backdrop, the
+   least that keeps every text and control pair of docs/design.md above its
+   ratio on the worst spot of the backdrop. Without a blur to soften it, or
+   when the person asked for less transparency, and on a phone, where a blur
+   under a page that scrolls the whole screen is redrawn on every frame, the
+   panel is at least 92 % opaque. */
+@utility panel {
+	@apply border border-slate-200 bg-white/92 shadow-sm dark:border-slate-700 dark:bg-slate-900/92 dark:shadow-none;
+	@media (min-width: 64rem) {
+		@supports (backdrop-filter: blur(1px)) {
+			@media (prefers-reduced-transparency: no-preference) {
+				@apply bg-white/74 dark:bg-slate-900/78;
+				backdrop-filter: blur(14px) saturate(120%);
+			}
+		}
+	}
+}
+
+/* A panel that stays opaque: what is text-heavy or layered (the readers). */
+@utility panel-solid {
+	@apply border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none;
+}
+
+/* The boundary of a control (field, select, outline button) is at least 3:1
+   against the panel on the worst spot of the glass (docs/design.md), which
+   the neutral steps 300 and 600 used for it are not. Written once here, over
+   the utilities, rather than darkening every border in the app: cards and
+   panels keep their hairlines. A pressed toggle's own colour stays. */
+:root {
+	--control-border: #8a7a5e;
+}
+:root[data-theme="dark"] {
+	--control-border: #8394ad;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--control-border: #8394ad;
+	}
+}
+.border-slate-300:not([aria-pressed="true"]),
+.dark\:border-slate-600:not([aria-pressed="true"]) {
+	border-color: var(--control-border);
+}
+
+/* Bars, boxes and sliders the browser draws take the accent. */
+progress,
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+	@apply accent-brand-strong dark:accent-brand;
+}
+
+/* A choice with a long option is as wide as that option unless told it may
+   shrink, which pushed the page wider than a phone at 320 px (#378). */
+select {
+	min-width: 0;
+	max-width: 100%;
+}
+
+/* viewport-fit=cover (index.html) lets the page run under a notch and the
+   home indicator, so what sits at an edge keeps clear of them (#390): the
+   sides on every page, the top bar and the bars at the foot through these
+   utilities, which add the inset to the padding the bar already has. */
+@utility pt-safe {
+	padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pt-safe-4 {
+	padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+}
+@utility pb-safe-2 {
+	padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pb-safe-3 {
+	padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pb-safe-4 {
+	padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pl-safe-4 {
+	padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+}
+@utility bottom-safe-2 {
+	bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+@utility bottom-safe-4 {
+	bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+body {
+	padding-right: env(safe-area-inset-right, 0px);
+	padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* A thumb is not a pointer (#390, docs/design.md "Phone, tablet, desktop"):
+   on a touch screen every button, field and block link is 44 pixels high,
+   a choice's label as well, and fields are set at 16 pixels, below which iOS
+   zooms into one. It is not layered, so no utility of a page undoes it; a
+   link inside a sentence is inline, which a minimum height does not touch. */
+@media (pointer: coarse) {
+	button:not([role="switch"]),
+	summary,
+	select,
+	textarea,
+	a,
+	input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]),
+	label:has(> input[type="checkbox"], > input[type="radio"]) {
+		min-height: 2.75rem;
+	}
+	button:not([role="switch"]) {
+		min-width: 2.75rem;
+	}
+	input,
+	select,
+	textarea {
+		font-size: 1rem;
+	}
+}
+
+h1,
+h2 {
+	font-family: var(--font-serif);
+}
+/* The wordmark's gold, on the dark theme's page titles only. */
+h1 {
+	@variant dark {
+		color: var(--color-cream);
+	}
+}
+
+/* One focus ring everywhere, visible on both grounds: the light blue is too
+   faint on white to show where focus is, the dark one too dark on ink. */
 :focus-visible {
-	@apply outline-2 outline-offset-2 outline-brand;
+	@apply outline-2 outline-offset-2 outline-brand-strong dark:outline-brand;
+	@variant dark {
+		box-shadow: 0 0 14px 1px color-mix(in srgb, var(--color-brand) 45%, transparent);
+	}
+}
+
+/* Grey text for what is said in passing reads well enough on white, but not
+   on the dark grounds, where it is lightened a step. */
+.text-slate-500 {
+	@variant dark {
+		color: var(--color-slate-400);
+	}
+}
+
+/* The stars of the finished-book toast fly out and fade, and the toast
+   itself rises; with reduced motion they sit still and the toast just
+   appears. */
+.confetti {
+	opacity: 0.9;
+	transform: translate(calc(var(--x) * 0.4), calc(var(--y) * 0.4));
+}
+@media (prefers-reduced-motion: no-preference) {
+	.celebration {
+		animation: toast-in 300ms ease-out both, toast-out 400ms ease-in 3.5s both;
+	}
+	.confetti {
+		animation: confetti 1.6s ease-out both;
+	}
+}
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(1rem);
+	}
+}
+@keyframes toast-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes confetti {
+	from {
+		opacity: 0;
+		transform: translate(0, 0) scale(0.4) rotate(0deg);
+	}
+	30% {
+		opacity: 1;
+	}
+	to {
+		opacity: 0.9;
+		transform: translate(var(--x), var(--y)) scale(1) rotate(160deg);
+	}
+}
+
+/* The home art of the sign-in and setup pages: the library by day or at
+   night. As a background it is the theme's only download. */
+.hero-art {
+	background-image: url("../assets/hero-light.webp");
+	background-size: cover;
+	background-position: left center;
+	@variant dark {
+		background-image: url("../assets/hero.webp");
+	}
+}
+
+/* Reduced motion: whatever else moves (hover lifts, the switch's knob, the
+   chevrons, the skeletons, smooth scrolling) is cut to nothing here, so a
+   new transition needs no rule of its own (#452). The toast's animation is
+   gated above and stays off the same way. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* More contrast: the hairlines of cards and panels, which are 1.2:1 by
+   design, and the grey text become the strongest steps, and the glass
+   becomes solid. */
+:root {
+	--contrast-fg: #000;
+	--contrast-edge: #1a1306;
+	--contrast-ground: #fff;
+}
+:root[data-theme="dark"] {
+	--contrast-fg: #fff;
+	--contrast-edge: #d5deec;
+	--contrast-ground: #0b1630;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--contrast-fg: #fff;
+		--contrast-edge: #d5deec;
+		--contrast-ground: #0b1630;
+	}
+}
+@media (prefers-contrast: more) {
+	.panel,
+	.panel-solid {
+		background-color: var(--contrast-ground);
+		backdrop-filter: none;
+	}
+	.panel,
+	.panel-solid,
+	.border-slate-200,
+	.border-slate-300,
+	.border-slate-700,
+	.border-slate-800,
+	.dark\:border-slate-600,
+	.dark\:border-slate-700,
+	.dark\:border-slate-800 {
+		border-color: var(--contrast-edge);
+	}
+	.text-slate-500,
+	.text-slate-600,
+	[class*="dark:text-slate-3"],
+	[class*="dark:text-slate-4"],
+	[class*="dark:text-slate-5"] {
+		color: var(--contrast-fg);
+	}
+	:focus-visible {
+		outline-width: 3px;
+	}
+}
+
+/* Forced colours (Windows high contrast): the browser replaces colours and
+   drops shadows, so what colour alone showed is drawn with system colours:
+   the focus ring, a button's edge, a switch and its knob, and what is
+   pressed, selected or current. */
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 3px solid Highlight;
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+	:where(button:not([role="switch"]), summary, select, input:not([type="checkbox"], [type="radio"], [type="range"])) {
+		outline: 1px solid ButtonText;
+		outline-offset: -1px;
+	}
+	[aria-pressed="true"],
+	[aria-selected="true"],
+	[aria-current="true"],
+	[aria-current="page"],
+	[aria-current="location"] {
+		forced-color-adjust: none;
+		background-color: Highlight;
+		color: HighlightText;
+	}
+	[role="switch"] > span[aria-hidden="true"] {
+		forced-color-adjust: none;
+		background-color: Canvas;
+		border: 2px solid ButtonText;
+	}
+	[role="switch"] > span[aria-hidden="true"] > span {
+		background-color: ButtonText;
+	}
+	[role="switch"][aria-checked="true"] > span[aria-hidden="true"] {
+		background-color: Highlight;
+		border-color: Highlight;
+	}
+	[role="switch"][aria-checked="true"] > span[aria-hidden="true"] > span {
+		background-color: HighlightText;
+	}
+	svg {
+		forced-color-adjust: auto;
+	}
 }

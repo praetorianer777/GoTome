@@ -4,7 +4,7 @@
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
 ORDER BY b.id
 FOR UPDATE OF b;
 
@@ -102,6 +102,26 @@ INSERT INTO collection_items (collection_id, book_id, position, added_at)
 SELECT collection_id, sqlc.arg(into_book), position, added_at FROM moved
 ON CONFLICT DO NOTHING;
 
+-- name: MergeDeliveries :exec
+-- The book's deliveries to devices; where a device has both, the surviving
+-- book's.
+WITH moved AS (
+    DELETE FROM deliveries x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING device_id, queued_at, delivered_at)
+INSERT INTO deliveries (device_id, book_id, queued_at, delivered_at)
+SELECT device_id, sqlc.arg(into_book), queued_at, delivered_at FROM moved
+ON CONFLICT DO NOTHING;
+
+-- name: MergePlayQueue :exec
+-- The book's places in people's queues; where a queue has both, the
+-- surviving book's.
+WITH moved AS (
+    DELETE FROM play_queue x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING user_id, position)
+INSERT INTO play_queue (user_id, book_id, position)
+SELECT user_id, sqlc.arg(into_book), position FROM moved
+ON CONFLICT DO NOTHING;
+
 -- name: MergeRelations :exec
 -- The book's links to its other editions and translations; one to the
 -- surviving book itself goes.
@@ -115,6 +135,22 @@ ON CONFLICT DO NOTHING;
 
 -- name: MoveNotifications :exec
 UPDATE notifications SET book_id = sqlc.arg(into_book) WHERE book_id = sqlc.arg(from_book);
+
+-- name: MergeBookGenres :exec
+-- What a person decided about the merged book's genres, where the surviving
+-- book has no decision of its own; its suggestions go, and the surviving
+-- book is looked at again by the next pass.
+WITH moved AS (
+    DELETE FROM book_genres x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING genre, source, method, score, state, decided_by, created_at),
+checked AS (
+    DELETE FROM book_genre_checks c WHERE c.book_id = sqlc.arg(into_book))
+INSERT INTO book_genres AS g (book_id, genre, source, method, score, state, decided_by, created_at)
+SELECT sqlc.arg(into_book), genre, source, method, score, state, decided_by, created_at
+FROM moved WHERE state <> 'suggested'
+ON CONFLICT (book_id, genre) DO UPDATE
+SET state = EXCLUDED.state, decided_by = EXCLUDED.decided_by, updated_at = now()
+WHERE g.state = 'suggested';
 
 -- name: DropBookMatches :exec
 -- What looking the merged book up found, which was about its details.
@@ -179,3 +215,31 @@ WHERE book_a = least(sqlc.arg(into_book)::uuid, sqlc.arg(from_book)::uuid)
 INSERT INTO book_relations (book_a, book_b, kind)
 VALUES (least(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), greatest(sqlc.arg(one)::uuid, sqlc.arg(other)::uuid), sqlc.arg(kind))
 ON CONFLICT (book_a, book_b) DO UPDATE SET kind = EXCLUDED.kind;
+
+-- name: ListBookRecordings :many
+-- The book's other recordings the viewer sees, with their narrators.
+SELECT o.id, o.title,
+       coalesce((SELECT array_agg(au.name ORDER BY c.position, au.sort_name) FROM book_contributors c
+                 JOIN authors au ON au.id = c.author_id
+                 WHERE c.book_id = o.id AND c.role = 'narrator'), '{}')::text[] AS narrators
+FROM book_relations r
+JOIN books o ON o.id = CASE WHEN r.book_a = sqlc.arg(book_id) THEN r.book_b ELSE r.book_a END
+WHERE sqlc.arg(book_id) IN (r.book_a, r.book_b) AND r.kind = 'recording'
+  AND o.deleted_at IS NULL
+  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+ORDER BY o.title, o.id;
+
+-- name: AddMissingContributors :exec
+-- The credits of the other book that this one lacks, after its own.
+INSERT INTO book_contributors (book_id, author_id, role, position)
+SELECT sqlc.arg(into_book)::uuid, c.author_id, c.role,
+       ((SELECT coalesce(max(m.position), -1) FROM book_contributors m WHERE m.book_id = sqlc.arg(into_book)) + row_number() OVER (ORDER BY c.position))::int
+FROM book_contributors c
+WHERE c.book_id = sqlc.arg(from_book)
+  AND NOT EXISTS (SELECT 1 FROM book_contributors m WHERE m.book_id = sqlc.arg(into_book) AND m.author_id = c.author_id AND m.role = c.role)
+ON CONFLICT DO NOTHING;
+
+-- name: AddMissingTags :exec
+INSERT INTO book_tags (book_id, tag_id)
+SELECT sqlc.arg(into_book)::uuid, t.tag_id FROM book_tags t WHERE t.book_id = sqlc.arg(from_book)
+ON CONFLICT DO NOTHING;

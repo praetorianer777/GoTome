@@ -1,15 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
 import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
-import { t } from "@/i18n";
+import { button, control, Loading, PageHeader } from "@/components/ui";
+import { type MessageKey, t } from "@/i18n";
+import { formatDateTime, formatCount } from "@/lib/format";
 import {
 	type Library,
 	librariesQuery,
+	membersQuery,
+	useAddMember,
 	useCreateLibrary,
 	useDeleteLibrary,
+	useRemoveMember,
 	useUpdateLibrary,
 } from "@/libraries/api";
+import { searchStatusQuery } from "@/jobs/search-index";
 import { ScanStatus } from "@/libraries/scan";
+import { usersQuery } from "@/users/api";
+
+const ROLE_LABELS: Record<string, MessageKey> = {
+	admin: "role.admin",
+	editor: "role.editor",
+	reader: "role.reader",
+};
 
 const selectClass =
 	"rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
@@ -21,7 +35,14 @@ export function AdminLibraries() {
 
 	return (
 		<div className="flex flex-col gap-8">
-			<h1 className="text-2xl font-semibold">{t("libraries.title")}</h1>
+			<PageHeader
+				title={t("libraries.title")}
+				actions={
+					<Link to="/admin/calibre" className={button()}>
+						{t("calibre.link")}
+					</Link>
+				}
+			/>
 
 			<section
 				aria-labelledby="existing-libraries"
@@ -31,7 +52,7 @@ export function AdminLibraries() {
 					{t("libraries.existing")}
 				</h2>
 				{libraries.isPending && (
-					<p className="text-slate-500">{t("loading")}</p>
+					<Loading />
 				)}
 				<FormError error={libraries.error} />
 				{libraries.data?.length === 0 && (
@@ -48,6 +69,28 @@ export function AdminLibraries() {
 
 			<CreateLibrary />
 		</div>
+	);
+}
+
+function FulltextStatus({ library }: { library: Library }) {
+	const status = useQuery(searchStatusQuery(library.id));
+	if (!library.fulltext) {
+		return (
+			<p className="text-sm text-slate-600 dark:text-slate-400">
+				{t("libraries.fulltext.off")}
+			</p>
+		);
+	}
+	if (!status.data) {
+		return null;
+	}
+	return (
+		<p className="text-sm text-slate-600 dark:text-slate-400">
+			{t("libraries.fulltext.count", {
+				indexed: formatCount(status.data.indexed, 0),
+				files: formatCount(status.data.files, 0),
+			})}
+		</p>
 	);
 }
 
@@ -104,6 +147,20 @@ function LibraryRow({ library }: { library: Library }) {
 
 			<ScanStatus library={library} canScan />
 
+			{library.unwritableSince && (
+				<p
+					role="status"
+					className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
+				>
+					{t("libraries.unwritable", {
+						when: formatDateTime(library.unwritableSince),
+						reason: library.unwritableReason ?? "",
+					})}
+				</p>
+			)}
+
+			<FulltextStatus library={library} />
+
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
 				<label className="flex items-center gap-2">
 					<span>{t("libraries.visibility")}</span>
@@ -122,8 +179,50 @@ function LibraryRow({ library }: { library: Library }) {
 						<option value="private">{t("libraries.visibility.private")}</option>
 					</select>
 				</label>
+				<label className="flex min-h-6 items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.joinFormats}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { joinFormats: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.joinFormats")}</span>
+				</label>
+				<label className="flex min-h-6 items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.watch}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { watch: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.watch")}</span>
+				</label>
+				<label className="flex min-h-6 min-w-0 items-center gap-2">
+					<input
+						type="checkbox"
+						checked={library.fulltext}
+						disabled={update.isPending}
+						onChange={(e) =>
+							update.mutate({
+								id: library.id,
+								changes: { fulltext: e.target.checked },
+							})
+						}
+					/>
+					<span>{t("libraries.fulltext")}</span>
+				</label>
 				{external && (
-					<label className="flex items-center gap-2">
+					<label className="flex min-h-6 items-center gap-2">
 						<input
 							type="checkbox"
 							checked={library.writable}
@@ -169,10 +268,114 @@ function LibraryRow({ library }: { library: Library }) {
 					)}
 				</div>
 			</div>
+			{errors.writable && (
+				<p role="alert" className="text-sm text-red-700 dark:text-red-300">
+					{errors.writable}
+				</p>
+			)}
 			{Object.keys(errors).length === 0 && (
 				<FormError error={update.error ?? remove.error} />
 			)}
+			{library.visibility === "private" && <LibraryMembers library={library} />}
 		</li>
+	);
+}
+
+function LibraryMembers({ library }: { library: Library }) {
+	const members = useQuery(membersQuery(library.id));
+	const accounts = useQuery(usersQuery);
+	const add = useAddMember(library.id);
+	const remove = useRemoveMember(library.id);
+	const [chosen, setChosen] = useState("");
+	const heading = useId();
+	const hint = useId();
+
+	const memberIds = new Set(members.data?.map((m) => m.id));
+	// Administrators see every library, so making one a member would change nothing.
+	const candidates = (accounts.data ?? []).filter(
+		(a) => a.role !== "admin" && !memberIds.has(a.id),
+	);
+
+	function submit(event: FormEvent) {
+		event.preventDefault();
+		if (chosen) {
+			add.mutate(chosen, { onSuccess: () => setChosen("") });
+		}
+	}
+
+	return (
+		<section
+			aria-labelledby={heading}
+			aria-describedby={hint}
+			className="flex flex-col gap-2 border-t border-slate-200 pt-3 text-sm dark:border-slate-800"
+		>
+			<h3 id={heading} className="font-medium">
+				{t("libraries.members")}
+			</h3>
+			<p id={hint} className="text-slate-500 dark:text-slate-400">
+				{t("libraries.members.hint")}
+			</p>
+			{members.isPending && <Loading rows={1} />}
+			<FormError error={members.error ?? accounts.error} />
+			{members.data?.length === 0 && <p>{t("libraries.members.none")}</p>}
+			{members.data && members.data.length > 0 && (
+				<ul className="flex flex-col gap-1">
+					{members.data.map((member) => (
+						<li key={member.id} className="flex items-center gap-3">
+							<span className="font-medium">{member.username}</span>
+							<span className="text-slate-500 dark:text-slate-400">
+								{ROLE_LABELS[member.role]
+									? t(ROLE_LABELS[member.role] as MessageKey)
+									: member.role}
+							</span>
+							<button
+								type="button"
+								disabled={remove.isPending}
+								onClick={() => remove.mutate(member.id)}
+								aria-label={t("libraries.members.remove", {
+									name: member.username,
+								})}
+								className={`${button()} ml-auto`}
+							>
+								{t("libraries.delete")}
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+			{accounts.data && members.data && candidates.length === 0 && (
+				<p className="text-slate-500 dark:text-slate-400">
+					{t("libraries.members.everyone")}
+				</p>
+			)}
+			{candidates.length > 0 && members.data && (
+				<form onSubmit={submit} className="flex flex-wrap items-center gap-2">
+					<label className="flex min-w-0 max-w-full items-center gap-2">
+						<span>{t("libraries.members.person")}</span>
+						<select
+							value={chosen}
+							onChange={(e) => setChosen(e.target.value)}
+							className={`${control} min-w-0`}
+						>
+							<option value="">{t("libraries.members.choose")}</option>
+							{candidates.map((account) => (
+								<option key={account.id} value={account.id}>
+									{account.username}
+								</option>
+							))}
+						</select>
+					</label>
+					<button
+						type="submit"
+						disabled={!chosen || add.isPending}
+						className={button()}
+					>
+						{t("libraries.members.add")}
+					</button>
+				</form>
+			)}
+			<FormError error={add.error ?? remove.error} />
+		</section>
 	);
 }
 

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/textproc"
@@ -105,49 +107,127 @@ func chunkSections(format string, sections []Section) []textproc.Section {
 }
 
 // writeChunksTx replaces the book's chunks with those of the file's text,
-// adds their words to the vocabulary, and records the file as chunked.
+// hands their text to the full-text index and their words to the
+// vocabulary, and records the file as chunked. The text itself is kept
+// nowhere: what reads it later reads the file (#265). Chunks the text cuts
+// into as before keep their IDs, so the index finds them throughout; new
+// ones are found once the outbox is applied.
 func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, format, langHint string, sections []Section) error {
 	q := sqlc.New(tx)
-	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
+	if err := q.DeleteOtherChunks(ctx, sqlc.DeleteOtherChunksParams{BookID: bookID, FileID: fileID}); err != nil {
 		return err
 	}
 	chunks := textproc.Split(chunkSections(format, sections), textproc.Options{CharsPerPage: charsPerPage, LangHint: langHint})
-	rows := make([]sqlc.InsertBookChunksParams, len(chunks))
+	texts := make([]string, len(chunks))
 	for i, c := range chunks {
-		r := sqlc.InsertBookChunksParams{
-			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
-			Chapter: c.Chapter, CharOffset: int32(c.Offset), Lang: c.Lang,
-		}
-		if c.PageFrom > 0 {
-			from, to := int32(c.PageFrom), int32(c.PageTo)
-			r.PageFrom, r.PageTo = &from, &to
-		}
-		text := c.Text
-		switch c.Lang {
-		case "en":
-			r.BodyEn = &text
-		case "de":
-			r.BodyDe = &text
-		default:
-			r.BodyXx = &text
-		}
-		rows[i] = r
+		texts[i] = c.Text
 	}
-	if len(rows) > 0 {
-		if _, err := q.InsertBookChunks(ctx, rows); err != nil {
+	stored, err := q.ListFileChunks(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if len(chunks) > 0 && sameChunks(stored, chunks) {
+		if err := placeChunksTx(ctx, q, stored, chunks, sections); err != nil {
 			return err
 		}
-		if err := q.AddSearchWords(ctx, bookID); err != nil {
+	} else if err := insertChunksTx(ctx, q, bookID, libraryID, fileID, chunks, sections); err != nil {
+		return err
+	}
+	if len(chunks) > 0 {
+		if err := q.AddSearchWords(ctx, texts); err != nil {
 			return err
 		}
+	}
+	if err := s.indexChunksTx(ctx, q, tx, bookID, libraryID, fileID, chunks); err != nil {
+		return err
 	}
 	if err := q.SetFileChunked(ctx, fileID); err != nil {
 		return err
 	}
 	if s.OnChunked != nil {
-		return s.OnChunked(ctx, tx, bookID, fileID)
+		return s.OnChunked(ctx, tx, bookID, fileID, texts)
 	}
 	return nil
+}
+
+// insertChunksTx replaces the book's chunks and the file's with the ones
+// cut.
+func insertChunksTx(ctx context.Context, q *sqlc.Queries, bookID, libraryID, fileID uuid.UUID, chunks []textproc.Chunk, sections []Section) error {
+	if err := q.DeleteBookChunks(ctx, sqlc.DeleteBookChunksParams{BookID: bookID, FileID: fileID}); err != nil {
+		return err
+	}
+	rows := make([]sqlc.InsertBookChunksParams, len(chunks))
+	for i, c := range chunks {
+		r := sqlc.InsertBookChunksParams{
+			BookID: bookID, LibraryID: libraryID, FileID: fileID, Position: int32(c.Position),
+			Chapter: c.Chapter, CharOffset: int32(c.Offset), Lang: c.Lang,
+			Sources: chunkSources(sections, c), SourceFrom: int32(c.From), SourceTo: int32(c.To),
+		}
+		if c.PageFrom > 0 {
+			from, to := int32(c.PageFrom), int32(c.PageTo)
+			r.PageFrom, r.PageTo = &from, &to
+		}
+		rows[i] = r
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	_, err := q.InsertBookChunks(ctx, rows)
+	return err
+}
+
+// placeChunksTx records where in the file chunks stored before are, which
+// cut the same again.
+func placeChunksTx(ctx context.Context, q *sqlc.Queries, stored []sqlc.ListFileChunksRow, chunks []textproc.Chunk, sections []Section) error {
+	set := sqlc.SetChunkSourcesParams{}
+	for i, c := range chunks {
+		set.Ids = append(set.Ids, stored[i].ID)
+		set.Froms = append(set.Froms, int32(c.From))
+		set.Tos = append(set.Tos, int32(c.To))
+		set.Sources = append(set.Sources, strings.Join(chunkSources(sections, c), "\x1f"))
+	}
+	return q.SetChunkSources(ctx, set)
+}
+
+// chunkSources names the sections a chunk spans by their sources, or none
+// when the format's sections have none and the file is read whole.
+func chunkSources(sections []Section, c textproc.Chunk) []string {
+	var out []string
+	for _, s := range sections[c.SectionFrom : c.SectionTo+1] {
+		if s.Source == "" {
+			return []string{}
+		}
+		out = append(out, s.Source)
+	}
+	return out
+}
+
+// indexChunksTx hands the file's chunks, as stored, to the full-text index
+// through its outbox, and records that it has them; a library that is not
+// searched by text gets nothing (#266).
+func (s *Service) indexChunksTx(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, bookID, libraryID, fileID uuid.UUID, chunks []textproc.Chunk) error {
+	// Read under the library's hold, so a switch cannot happen between this
+	// and the commit; a library left out keeps indexed_at empty, which is
+	// how turning it on finds the files.
+	searched, err := q.GetLibraryFulltext(ctx, libraryID)
+	if err != nil || !searched {
+		return err
+	}
+	stored, err := q.ListFileChunks(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if len(stored) != len(chunks) {
+		return fmt.Errorf("file %s has %d chunks stored for %d cut", fileID, len(stored), len(chunks))
+	}
+	docs := make([]fulltext.Doc, len(chunks))
+	for i, c := range chunks {
+		docs[i] = fulltext.Doc{ID: stored[i].ID, BookID: bookID, LibraryID: libraryID, Lang: c.Lang, Text: c.Text}
+	}
+	if err := fulltext.AddTx(ctx, tx, s.Queue, docs); err != nil {
+		return err
+	}
+	return q.SetFileIndexed(ctx, fileID)
 }
 
 // chunkTimeout ends the reading of one file that does not end.
@@ -169,7 +249,7 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 	if !ok || file.PrimaryTextFileID == nil || *file.PrimaryTextFileID != fileID {
 		return nil
 	}
-	got, err := safely(ctx, extract, filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath)))
+	got, err := safely(ctx, file.Format, extract, filepath.Join(file.RootPath, filepath.FromSlash(file.RelPath)))
 	switch {
 	case errors.Is(err, fs.ErrNotExist), errors.Is(err, ErrUnreadable):
 		// Gone or broken since it was read; the scan and extraction say so.
@@ -183,8 +263,14 @@ func (s *Service) Chunk(ctx context.Context, fileID uuid.UUID) error {
 	}
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		if err := q.HoldLibrary(ctx, file.LibraryID); err != nil {
+			return err
+		}
 		primary, err := q.GetPrimaryTextFile(ctx, file.BookID)
 		if err != nil || primary == nil || *primary != fileID {
+			return err
+		}
+		if err := catalog.ApplyImprintTx(ctx, tx, fileID, file.Format, ImprintOf(got.Sections)); err != nil {
 			return err
 		}
 		return s.writeChunksTx(ctx, tx, file.BookID, file.LibraryID, fileID, file.Format, lang, got.Sections)
@@ -222,8 +308,9 @@ func (s *Service) queueChunking(ctx context.Context, ids []uuid.UUID) error {
 
 // ChunkVersion names how text is cut into chunks. Raising it when
 // textproc or the extractors' text changes makes the next start read the
-// text of every book again (CheckChunkVersion).
-const ChunkVersion = "1"
+// text of every book again (CheckChunkVersion). 2: the imprint is read
+// from the text with it (#488).
+const ChunkVersion = "2"
 
 // chunkVersionName is the row of index_versions that holds ChunkVersion.
 const chunkVersionName = "chunks"

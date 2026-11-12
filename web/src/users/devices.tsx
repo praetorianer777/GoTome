@@ -1,0 +1,242 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
+import { API_BASE } from "@/api/client";
+import { Field, FormError, fieldErrors, SubmitButton } from "@/components/form";
+import { t } from "@/i18n";
+import { formatDate } from "@/lib/format";
+import {
+	deviceRequestsQuery,
+	ownDevicesQuery,
+	useCreateDevice,
+	useDecideDeviceRequest,
+	useDeleteDevice,
+} from "@/users/api";
+
+/**
+ * E-readers such as KOReader browse the library as an OPDS catalogue,
+ * signed in with the person's user name and a token made here, which is
+ * shown once.
+ */
+export function Devices({ username }: { username: string }) {
+	const requests = useQuery(deviceRequestsQuery);
+	const decide = useDecideDeviceRequest();
+	// An accepted device is made when its app comes for the token, a few
+	// seconds later: the list is looked at until it has.
+	const [accepted, setAccepted] = useState(0);
+	const devices = useQuery({
+		...ownDevicesQuery,
+		refetchInterval: (query) =>
+			(query.state.data?.length ?? 0) < accepted ? 3000 : false,
+	});
+	const create = useCreateDevice();
+	const remove = useDeleteDevice();
+	const [name, setName] = useState("");
+	const [canUpload, setCanUpload] = useState(false);
+	const [uploading, setUploading] = useState<Set<string>>(new Set());
+	const created = create.data;
+	const errors = fieldErrors(create.error);
+
+	function submit(e: FormEvent) {
+		e.preventDefault();
+		create.mutate(
+			{ name, canUpload },
+			{
+				onSuccess: () => {
+					setName("");
+					setCanUpload(false);
+				},
+			},
+		);
+	}
+
+	return (
+		<section aria-labelledby="devices" className="flex flex-col gap-3">
+			<h2 id="devices" className="text-lg font-medium">
+				{t("devices.title")}
+			</h2>
+			<p className="text-slate-600 dark:text-slate-400">{t("devices.intro")}</p>
+			<p className="text-slate-600 dark:text-slate-400">
+				{t("devices.plugin")}{" "}
+				<a
+					href={`${API_BASE}/koreader/plugin.zip`}
+					download
+					className="text-brand-strong hover:underline dark:text-brand"
+				>
+					{t("devices.pluginDownload")}
+				</a>
+			</p>
+			<FormError error={devices.error ?? remove.error ?? decide.error} />
+			{requests.data && requests.data.length > 0 && (
+				<ul
+					aria-label={t("devices.requests")}
+					className="flex flex-col gap-3"
+				>
+					{requests.data.map((r) => (
+						<li
+							key={r.id}
+							aria-label={t("devices.request", { name: r.deviceName })}
+							className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950"
+						>
+							<p>
+								{t("devices.request", { name: r.deviceName })}{" "}
+								<span className="text-sm text-slate-600 dark:text-slate-400">
+									{t("devices.requestFrom", {
+										address: r.address,
+										date: formatDate(r.createdAt),
+									})}
+								</span>
+							</p>
+							<p className="flex items-baseline gap-3">
+								<span>{t("devices.requestCode")}</span>
+								<span className="font-mono text-2xl tracking-widest">
+									{r.code}
+								</span>
+							</p>
+							<p className="text-sm text-slate-600 dark:text-slate-400">
+								{t("devices.requestHint")}
+							</p>
+							<label className="flex items-center gap-2 text-sm">
+								<input
+									type="checkbox"
+									checked={uploading.has(r.id)}
+									onChange={(e) => {
+										const next = new Set(uploading);
+										if (e.target.checked) next.add(r.id);
+										else next.delete(r.id);
+										setUploading(next);
+									}}
+								/>
+								{t("devices.canUploadNamed", { name: r.deviceName })}
+							</label>
+							<div className="flex gap-3">
+								<button
+									type="button"
+									disabled={decide.isPending}
+									onClick={() =>
+										decide.mutate(
+											{
+												id: r.id,
+												accept: true,
+												canUpload: uploading.has(r.id),
+											},
+											{
+												onSuccess: () =>
+													setAccepted((devices.data?.length ?? 0) + 1),
+											},
+										)
+									}
+									className="rounded-md bg-brand-strong px-3 py-1 text-sm font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
+								>
+									{t("devices.accept")}
+								</button>
+								<button
+									type="button"
+									disabled={decide.isPending}
+									onClick={() => decide.mutate({ id: r.id, accept: false })}
+									className="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+								>
+									{t("devices.decline")}
+								</button>
+							</div>
+						</li>
+					))}
+				</ul>
+			)}
+			{devices.data && devices.data.length > 0 && (
+				<ul className="flex flex-col divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+					{devices.data.map((d) => (
+						<li
+							key={d.id}
+							className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
+						>
+							<Link
+								to="/devices/$deviceId"
+								params={{ deviceId: d.id }}
+								aria-label={t("devices.books", { name: d.name })}
+								className="font-medium text-brand-strong hover:underline dark:text-brand"
+							>
+								{d.name}
+							</Link>
+							{d.canUpload && (
+								<span className="text-sm text-slate-600 dark:text-slate-400">
+									{t("devices.mayUpload")}
+								</span>
+							)}
+							<span className="text-sm text-slate-600 dark:text-slate-400">
+								{d.lastUsedAt
+									? t("devices.lastUsed", { date: formatDate(d.lastUsedAt) })
+									: t("devices.neverUsed")}
+							</span>
+							<button
+								type="button"
+								disabled={remove.isPending}
+								onClick={() => remove.mutate(d.id)}
+								aria-label={t("devices.revokeNamed", { name: d.name })}
+								className="ml-auto rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800"
+							>
+								{t("devices.revoke")}
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+			{created && (
+				<div
+					role="status"
+					className="flex flex-col gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950"
+				>
+					<p className="font-medium">
+						{t("devices.created", { name: created.device.name })}
+					</p>
+					<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+						<dt>{t("devices.catalog")}</dt>
+						<dd className="break-all font-mono">
+							{window.location.origin + created.catalog}
+						</dd>
+						{created.addresses.length > 0 && (
+							<>
+								<dt>{t("devices.addresses")}</dt>
+								<dd className="break-all font-mono">
+									{created.addresses.join(", ")}
+								</dd>
+							</>
+						)}
+						<dt>{t("devices.username")}</dt>
+						<dd className="break-all font-mono">{username}</dd>
+						<dt>{t("devices.token")}</dt>
+						<dd className="break-all font-mono">{created.token}</dd>
+						<dt>{t("devices.kobo")}</dt>
+						<dd className="break-all font-mono">
+							api_endpoint={window.location.origin}{API_BASE}/kobo/{created.token}
+						</dd>
+					</dl>
+					<p className="text-sm text-slate-600 dark:text-slate-400">
+						{t("devices.once")}
+					</p>
+				</div>
+			)}
+			<form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+				<Field
+					label={t("devices.name")}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					error={errors.name}
+					required
+				/>
+				<label className="flex items-center gap-2 pb-2 text-sm">
+					<input
+						type="checkbox"
+						checked={canUpload}
+						onChange={(e) => setCanUpload(e.target.checked)}
+					/>
+					{t("devices.canUpload")}
+				</label>
+				<SubmitButton pending={create.isPending} kind="secondary">
+					{t("devices.add")}
+				</SubmitButton>
+			</form>
+			<FormError error={errors.name ? null : create.error} />
+		</section>
+	);
+}

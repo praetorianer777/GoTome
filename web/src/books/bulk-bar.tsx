@@ -19,8 +19,15 @@ import {
 	useSetReadingBulk,
 } from "@/books/reading";
 import { collectionsQuery, useAddToCollection } from "@/books/collections";
+import { useSendToDevice } from "@/books/deliveries";
+import { kindleQuery, skippedText, useSendToKindle } from "@/books/kindle";
+import { type Fix, fixesFor } from "@/books/ereader";
+import { EREADER_FINDINGS } from "@/books/rules";
+import { useQueue } from "@/player/queue";
 import { FormError } from "@/components/form";
 import { type MessageKey, t } from "@/i18n";
+import { librariesQuery } from "@/libraries/api";
+import { ownDevicesQuery } from "@/users/api";
 
 const quietButton =
 	"rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
@@ -36,6 +43,7 @@ export function BulkBar({
 	count,
 	canEdit,
 	all,
+	library,
 	selection,
 	onSelectAll,
 	onClear,
@@ -44,6 +52,8 @@ export function BulkBar({
 	/** Whether the person may change the books themselves, not only their own status. */
 	canEdit: boolean;
 	all: boolean;
+	/** The library the list is limited to, if any. */
+	library?: string;
 	selection: Pick<BulkRequest, "books" | "library" | "filter">;
 	onSelectAll: () => void;
 	onClear: () => void;
@@ -55,10 +65,19 @@ export function BulkBar({
 	const collections = useQuery(collectionsQuery());
 	const mine = collections.data?.filter((c) => c.mine) ?? [];
 	const collect = useAddToCollection();
+	const devices = useQuery(ownDevicesQuery);
+	const send = useSendToDevice();
+	const kindle = useQuery(kindleQuery);
+	const sendKindle = useSendToKindle();
+	const queue = useQueue();
+	const libraries = useQuery(librariesQuery);
+	const readOnly = (libraries.data ?? []).some(
+		(l) => !l.writable && (!library || l.id === library),
+	);
 	const none = !all && count === 0;
-	const run = (action: BulkAction, change?: BulkRequest["change"]) =>
+	const run = (action: BulkAction, change?: BulkRequest["change"], findings?: BulkRequest["findings"]) =>
 		start.mutate(
-			{ ...selection, action, change },
+			{ ...selection, action, change, findings },
 			{
 				onSuccess: (started) => {
 					if (started) {
@@ -130,6 +149,44 @@ export function BulkBar({
 						))}
 					</select>
 				)}
+				{!all && (
+					<button
+						type="button"
+						className={quietButton}
+						disabled={none}
+						onClick={() => queue.add(selection.books ?? [])}
+					>
+						{t("bulk.queue")}
+					</button>
+				)}
+				{(devices.data?.length ?? 0) > 0 && (
+					<select
+						aria-label={t("bulk.send")}
+						value=""
+						disabled={none || send.isPending}
+						onChange={(e) => send.mutate({ ...selection, device: e.target.value })}
+						className={control}
+					>
+						<option value="" disabled>
+							{t("bulk.send")}
+						</option>
+						{devices.data?.map((d) => (
+							<option key={d.id} value={d.id}>
+								{d.name}
+							</option>
+						))}
+					</select>
+				)}
+				{kindle.data?.available && kindle.data.address && (
+					<button
+						type="button"
+						className={quietButton}
+						disabled={none || sendKindle.isPending}
+						onClick={() => sendKindle.mutate(selection)}
+					>
+						{t("bulk.kindle")}
+					</button>
+				)}
 				{canEdit && (
 					<>
 				<button
@@ -157,6 +214,31 @@ export function BulkBar({
 				>
 					{t("bulk.writeBack")}
 				</button>
+				<select
+					aria-label={t("bulk.fix")}
+					value=""
+					disabled={none || start.isPending}
+					onChange={(e) =>
+						run(
+							"fix",
+							undefined,
+							e.target.value === "all"
+								? EREADER_FINDINGS.map((f) => (f === "large-fonts" ? "subset-fonts" : f))
+								: [e.target.value as Fix],
+						)
+					}
+					className={control}
+				>
+					<option value="" disabled>
+						{t("bulk.fix")}
+					</option>
+					<option value="all">{t("bulk.fix.all")}</option>
+					{EREADER_FINDINGS.flatMap(fixesFor).map((f) => (
+						<option key={f} value={f}>
+							{t(`fix.${f}`)}
+						</option>
+					))}
+				</select>
 					</>
 				)}
 			</div>
@@ -171,7 +253,28 @@ export function BulkBar({
 					})}
 				</p>
 			)}
+			{send.data && (
+				<p role="status">
+					{t("bulk.sendDone", {
+						count: send.data.queued,
+						name: devices.data?.find((d) => d.id === send.variables?.device)?.name ?? "",
+					})}
+				</p>
+			)}
+			{sendKindle.data && (
+				<p role="status">
+					{[
+						t("bulk.kindleDone", { count: sendKindle.data.queued }),
+						...skippedText(sendKindle.data.skipped, kindle.data?.maxBytes ?? 0),
+					].join(" ")}
+				</p>
+			)}
+			<FormError error={sendKindle.error} />
+			<FormError error={send.error} />
 			<FormError error={collect.error} />
+			{canEdit && readOnly && (
+				<p className="text-slate-700 dark:text-slate-300">{t("bulk.fix.readOnly")}</p>
+			)}
 			<FormError error={setStatus.error} />
 			{!editing && <FormError error={start.error} />}
 			{editing && (
@@ -290,7 +393,7 @@ function BulkEditForm({
 				<button
 					type="submit"
 					disabled={busy}
-					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 disabled:opacity-60"
+					className="rounded-md bg-brand-strong px-4 py-2 font-medium text-white hover:bg-sky-800 dark:bg-brand dark:text-ink dark:hover:bg-sky-300 disabled:opacity-60"
 				>
 					{t("bulk.form.start")}
 				</button>

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test";
 import { openSignedIn } from "../fixtures/app";
 
 // A PNG of one pixel.
@@ -21,7 +22,7 @@ test("an edited book keeps what was typed, and says where each field came from",
 			file: {
 				name: `Draft ${stamp}.pdf`,
 				mimeType: "application/pdf",
-				buffer: Buffer.from(`not a pdf ${stamp}`),
+				buffer: Buffer.from(`%PDF-1.4\n% not a pdf ${stamp}\n`),
 			},
 		},
 	});

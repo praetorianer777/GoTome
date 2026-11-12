@@ -17,7 +17,7 @@ import (
 func as(t *testing.T, role string, permission auth.Permission) int {
 	t.Helper()
 	reached := false
-	h := handle(require(permission, func(w http.ResponseWriter, _ *http.Request) error {
+	h := handle(require(permission, false, false, func(w http.ResponseWriter, _ *http.Request) error {
 		reached = true
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -50,6 +50,7 @@ func TestRequire(t *testing.T) {
 		{auth.UsersManage, signIn, refused, refused, ok},
 		{auth.SettingsManage, signIn, refused, refused, ok},
 		{auth.StorageManage, signIn, refused, refused, ok},
+		{auth.MetricsRead, signIn, refused, refused, ok},
 	}
 	covered := map[auth.Permission]bool{}
 	for _, c := range cases {
@@ -132,5 +133,84 @@ func TestSessionRoutesOverHTTP(t *testing.T) {
 	}
 	if rec := do(t, h, http.MethodGet, APIPrefix+"/version"); rec.Code != http.StatusOK {
 		t.Errorf("a public route without a session: %d", rec.Code)
+	}
+}
+
+func asKey(t *testing.T, role string, scopes []string, permission auth.Permission, keys bool) int {
+	t.Helper()
+	h := handle(require(permission, false, keys, func(w http.ResponseWriter, _ *http.Request) error {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}))
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := context.WithValue(r.Context(), userKey, &auth.User{Username: role, Role: role})
+	ctx = context.WithValue(ctx, apiKeyKey, &auth.APIKeyUse{Scopes: scopes})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r.WithContext(ctx))
+	return rec.Code
+}
+
+func TestAKeyReachesWhatItsScopesAndItsOwnersRoleBothHold(t *testing.T) {
+	const ok, refused = http.StatusNoContent, http.StatusForbidden
+	cases := []struct {
+		role   string
+		scopes []string
+		p      auth.Permission
+		keys   bool
+		want   int
+	}{
+		{auth.RoleReader, []string{"read"}, auth.LibraryRead, false, ok},
+		{auth.RoleReader, []string{"read"}, auth.PersonalManage, false, refused},
+		{auth.RoleReader, []string{"progress"}, auth.PersonalManage, false, ok},
+		{auth.RoleAdmin, []string{"read"}, auth.UsersManage, false, refused},
+		{auth.RoleAdmin, []string{"upload"}, auth.BooksUpload, false, ok},
+		{auth.RoleAdmin, []string{"edit"}, auth.MetadataEdit, false, ok},
+		{auth.RoleAdmin, []string{"edit"}, auth.IndexRebuild, false, ok},
+		{auth.RoleAdmin, []string{"edit"}, auth.SettingsManage, false, refused},
+		{auth.RoleAdmin, []string{"admin"}, auth.StorageManage, false, ok},
+		{auth.RoleAdmin, []string{"metrics"}, auth.MetricsRead, false, ok},
+		{auth.RoleAdmin, []string{"admin"}, auth.MetricsRead, false, refused},
+		{auth.RoleEditor, []string{"metrics"}, auth.MetricsRead, false, refused},
+		{auth.RoleAdmin, []string{"admin"}, auth.LibraryRead, false, refused},
+		// An owner who lost the role loses the key's reach with it.
+		{auth.RoleReader, []string{"admin"}, auth.UsersManage, false, refused},
+		{auth.RoleEditor, []string{"upload", "edit"}, auth.BooksUpload, false, ok},
+		{auth.RoleReader, []string{"upload"}, auth.BooksUpload, false, refused},
+		{auth.RoleAdmin, []string{"nonsense"}, auth.LibraryRead, false, refused},
+		{auth.RoleAdmin, nil, auth.LibraryRead, false, refused},
+		// The account's own routes stay closed unless they say keys.
+		{auth.RoleAdmin, []string{"admin", "read"}, auth.SignedIn, false, refused},
+		{auth.RoleAdmin, []string{"read"}, auth.SignedIn, true, ok},
+	}
+	for _, c := range cases {
+		if got := asKey(t, c.role, c.scopes, c.p, c.keys); got != c.want {
+			t.Errorf("a %s's key %v on %s (keys %v): status %d, want %d", c.role, c.scopes, c.p, c.keys, got, c.want)
+		}
+	}
+}
+
+func TestOnlyTheRoutesAboutTheAccountThatSaySoAreOpenToKeys(t *testing.T) {
+	for _, rt := range testServer().routes() {
+		if rt.Keys && rt.Permission != auth.SignedIn {
+			t.Errorf("%s %s says keys, but its permission already decides", rt.Method, rt.Path)
+		}
+		if rt.Keys && rt.Method != http.MethodGet {
+			t.Errorf("%s %s lets a key change the account", rt.Method, rt.Path)
+		}
+	}
+	doc := Spec()
+	if doc.Components.SecuritySchemes[keyScheme].Scheme != "bearer" {
+		t.Error("the document does not describe the API key")
+	}
+	for _, rt := range testServer().routes() {
+		op := doc.Paths[rt.Path][strings.ToLower(rt.Method)]
+		hasKey := false
+		for _, alt := range op.Security {
+			_, ok := alt[keyScheme]
+			hasKey = hasKey || ok
+		}
+		if hasKey != rt.keyReaches() {
+			t.Errorf("%s %s: the document says key %v, the router %v", rt.Method, rt.Path, hasKey, rt.keyReaches())
+		}
 	}
 }

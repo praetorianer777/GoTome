@@ -27,7 +27,7 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.missing_at, f.trashed_at,
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
-  AND f.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 `
 
 type GetFileToTrashParams struct {
@@ -91,9 +91,18 @@ func (q *Queries) GetTrashedFile(ctx context.Context, id uuid.UUID) (GetTrashedF
 }
 
 const listExpiredTrash = `-- name: ListExpiredTrash :many
-SELECT id FROM book_files WHERE trashed_at < $1::timestamptz ORDER BY trashed_at
+SELECT f.id FROM book_files f JOIN libraries l ON l.id = f.library_id
+WHERE f.trashed_at < $1::timestamptz AND l.unwritable_since IS NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM curation_actions a JOIN curation_runs r ON r.id = a.run_id
+      WHERE r.automatic AND f.id = ANY(a.trashed_files) AND a.state = 'done'
+        AND (r.state NOT IN ('confirmed', 'undone') OR r.confirmed_at >= $1::timestamptz))
+ORDER BY f.trashed_at
 `
 
+// Not of a library whose folder cannot be written now: each would fail.
+// Not what an automatic curation run trashed until a person confirmed the
+// run, and then not before the retention has passed since.
 func (q *Queries) ListExpiredTrash(ctx context.Context, before time.Time) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listExpiredTrash, before)
 	if err != nil {
@@ -123,7 +132,7 @@ JOIN books b ON b.id = f.book_id
 JOIN libraries l ON l.id = f.library_id
 LEFT JOIN users u ON u.id = f.trashed_by
 WHERE f.trashed_at IS NOT NULL
-  AND f.library_id IN (SELECT visible_library_ids($1::uuid, $2::boolean))
+  AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
   AND ($3::uuid IS NULL OR f.library_id = $3::uuid)
 ORDER BY f.trashed_at DESC, f.id DESC
 `

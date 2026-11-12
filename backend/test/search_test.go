@@ -6,12 +6,14 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/filter"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -51,11 +53,11 @@ func TestQuickSearch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	add(shared, "The Way of Kings", "Brandon Sanderson", "The Stormlight Archive")
-	add(shared, "Mistborn", "Brandon Sanderson", "")
+	add(shared, "The Path of Lanterns", "Bastian Landorf", "The Beacon Archive")
+	add(shared, "Moorwalker", "Bastian Landorf", "")
 	add(shared, "Der Schatten des Windes", "Carlos Ruiz Zafón", "")
 	add(shared, "Pride and Prejudice", "Jane Austen", "")
-	add(private, "Elantris", "Brandon Sanderson", "")
+	add(private, "Eldmoor", "Bastian Landorf", "")
 
 	cases := []struct {
 		words   string
@@ -63,14 +65,14 @@ func TestQuickSearch(t *testing.T) {
 		matches []string
 	}{
 		// One wrong letter in the author's name.
-		{"Sandersen", []string{"Mistborn", "The Way of Kings"}, []string{"author", "author"}},
+		{"Landorff", []string{"Moorwalker", "The Path of Lanterns"}, []string{"author", "author"}},
 		// Part of a title, and a misspelt part.
-		{"way of king", []string{"The Way of Kings"}, []string{"title"}},
+		{"path of lantern", []string{"The Path of Lanterns"}, []string{"title"}},
 		{"Pride and Prejudise", []string{"Pride and Prejudice"}, []string{"title"}},
 		// Accents and case do not matter.
 		{"zafon", []string{"Der Schatten des Windes"}, []string{"author"}},
 		{"SCHATTEN", []string{"Der Schatten des Windes"}, []string{"title"}},
-		{"stormlight", []string{"The Way of Kings"}, []string{"series"}},
+		{"beacon", []string{"The Path of Lanterns"}, []string{"series"}},
 		{"ab", nil, nil},
 		{"xyzzy plugh", nil, nil},
 	}
@@ -82,8 +84,37 @@ func TestQuickSearch(t *testing.T) {
 	}
 
 	// What the reader may not see is not found; the administrator sees all.
-	if titles, _ := a.search(admin, "sanderson"); len(titles) != 3 {
+	if titles, _ := a.search(admin, "landorf"); len(titles) != 3 {
 		t.Errorf("the administrator finds %v", titles)
+	}
+
+	// Every match is a filter of the library's list, in its order.
+	list := func(c *http.Client, words string) (int, []string) {
+		t.Helper()
+		tree := `{"field": "words", "op": "like", "values": [` + strconv.Quote(words) + `]}`
+		status, body, _ := a.call(c, http.MethodGet, "/books?"+url.Values{"filter": {tree}, "sort": {"title"}}.Encode(), nil)
+		var titles []string
+		if status == 200 {
+			for _, b := range body["books"].([]any) {
+				titles = append(titles, b.(map[string]any)["title"].(string))
+			}
+		}
+		return status, titles
+	}
+	// The cases' books of equal score are in the order of their titles.
+	for _, c := range cases[:len(cases)-2] {
+		if status, titles := list(reader, c.words); status != 200 || !equalStrings(titles, c.titles) {
+			t.Errorf("listing %q: %d %v, want %v", c.words, status, titles, c.titles)
+		}
+	}
+	if status, titles := list(reader, "xyzzy plugh"); status != 200 || len(titles) != 0 {
+		t.Errorf("listing nonsense: %d %v", status, titles)
+	}
+	if _, titles := list(admin, "landorf"); !equalStrings(titles, []string{"Eldmoor", "Moorwalker", "The Path of Lanterns"}) {
+		t.Errorf("the administrator lists %v", titles)
+	}
+	if status, _ := list(reader, "ab"); status != 422 {
+		t.Errorf("listing two letters: %d, want 422", status)
 	}
 }
 
@@ -155,6 +186,74 @@ func TestQuickSearchIsQuickOnALargeLibrary(t *testing.T) {
 		}
 		if best > 300*time.Millisecond {
 			t.Errorf("%q took %s, want an answer while the person types", words, best)
+		}
+
+		// Every match, as Enter lists them, in the library's order.
+		tree := filter.Node{Field: catalog.FieldWords, Op: catalog.OpLike, Values: []string{words}}
+		best = time.Hour
+		for range 3 {
+			started := time.Now()
+			page, err := books.List(ctx, scope, catalog.ListParams{Filter: tree, Order: catalog.OrderTitle, Limit: 50})
+			if err != nil {
+				t.Fatal(err)
+			}
+			found = len(page.Books)
+			best = min(best, time.Since(started))
+		}
+		t.Logf("listing %q: %d books in %s", words, found, best)
+		if found == 0 {
+			t.Errorf("listing %q found nothing among 50,000 books", words)
+		}
+		if best > 500*time.Millisecond {
+			t.Errorf("listing %q took %s", words, best)
+		}
+	}
+}
+
+func TestFacetsOfAQuickSearchCountTheBooksTheyMatch(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	shared := uuid.MustParse(a.library(admin, "Shared", "shared"))
+	private := uuid.MustParse(a.library(admin, "Private", "private"))
+	books := catalog.NewService(a.pool)
+	for _, b := range []struct {
+		lib                   uuid.UUID
+		title, author, tongue string
+	}{
+		{shared, "The Path of Lanterns", "Bastian Landorf", "en"},
+		{shared, "Moorwalker", "Bastian Landorf", "en"},
+		{shared, "Bastian's Ghost", "Jane Austen", "de"},
+		{shared, "Pride and Prejudice", "Jane Austen", "en"},
+		{private, "Eldmoor", "Bastian Landorf", "en"},
+	} {
+		if _, err := books.CreateBook(ctx, catalog.NewBook{
+			LibraryID: b.lib, Title: b.title, Language: b.tongue,
+			Contributors: []catalog.NewContributor{{Name: b.author, Role: catalog.RoleAuthor}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	words := `{"field": "words", "op": "like", "values": ["bastian"]}`
+	for name, c := range map[string]*http.Client{"administrator": admin, "reader": reader} {
+		status, body, _ := a.call(c, http.MethodGet, "/books/facets?"+url.Values{"filter": {words}}.Encode(), nil)
+		if status != 200 {
+			t.Fatalf("%s: facets %d %v", name, status, body)
+		}
+		counts, _ := facetCounts(t, body)
+		for _, field := range []string{"author", "language"} {
+			for value, want := range counts[field] {
+				tree := `{"all": [` + words + `, {"field": "` + field + `", "op": "in", "values": [` + strconv.Quote(value) + `]}]}`
+				_, listed, _ := a.call(c, http.MethodGet, "/books?"+url.Values{"filter": {tree}}.Encode(), nil)
+				if got := len(listed["books"].([]any)); got != want {
+					t.Errorf("%s: %s %s counts %d, the list has %d", name, field, value, want, got)
+				}
+			}
+			if len(counts[field]) == 0 {
+				t.Errorf("%s: no %s values among the matches", name, field)
+			}
 		}
 	}
 }

@@ -146,8 +146,17 @@ func (e *Edit) check() error {
 			problems[FieldPublished] = "Give the date as a year, year and month, or a whole date: 2010, 2010-08 or 2010-08-31."
 		}
 	}
-	if e.Series != nil && e.Series.Index != nil && *e.Series.Index < 0 {
-		problems[FieldSeries] = "The position in a series cannot be below zero."
+	if e.Series != nil && e.Series.Index != nil && SeriesIndexOf(e.Series.Index) == nil {
+		switch {
+		case e.Source != "":
+			// A provider's position out of range is left out rather than
+			// failing the rest of what it gives.
+			e.Series.Index = nil
+		case *e.Series.Index < 0:
+			problems[FieldSeries] = "The position in a series cannot be below zero."
+		default:
+			problems[FieldSeries] = fmt.Sprintf("The position in a series can be at most %d.", MaxSeriesIndex)
+		}
 	}
 	if e.PageCount != nil && *e.PageCount < 0 {
 		problems[FieldPageCount] = "The number of pages cannot be below zero."
@@ -171,8 +180,8 @@ func (e *Edit) check() error {
 		}
 		e.Identifiers = &normalized
 	}
-	if e.Source != "" && (!strings.HasPrefix(e.Source, "provider:") || len(e.Locks) > 0) {
-		problems["source"] = "Only a person's edit sets locks; a provider's names it as provider:<name>."
+	if e.Source != "" && (e.Source != SourceCalibre && !strings.HasPrefix(e.Source, "provider:") || len(e.Locks) > 0) {
+		problems["source"] = "Only a person's edit sets locks; a provider's names it as provider:<name>, or it is Calibre's."
 	}
 	for field := range e.Locks {
 		if !slices.Contains(LockableFields, field) {
@@ -354,6 +363,7 @@ const (
 	ProvenanceFilename = "filename"
 	ProvenanceManual   = "manual"
 	ProvenanceProvider = "provider"
+	ProvenanceCalibre  = SourceCalibre
 )
 
 // Provenance reads a stored source: what kind it is and, for a file, the

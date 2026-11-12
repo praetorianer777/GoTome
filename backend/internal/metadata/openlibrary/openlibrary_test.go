@@ -150,3 +150,45 @@ func TestLiveContract(t *testing.T) {
 		t.Errorf("cover: %v", err)
 	}
 }
+
+func TestTheWorksOfAnAuthor(t *testing.T) {
+	got, err := New().ByAuthor(context.Background(), web(), "Austen, Jane")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
+	}
+	for _, r := range got {
+		if !slices.ContainsFunc(r.Contributors, func(c catalog.NewContributor) bool { return metadata.SameName(c.Name, "Jane Austen") }) {
+			t.Errorf("%q does not credit the author: %+v", r.Title, r.Contributors)
+		}
+	}
+	novels := []string{"Emma", "Pride and Prejudice", "Persuasion", "Sense and Sensibility", "Mansfield Park", "Northanger Abbey"}
+	i := slices.IndexFunc(got, func(r metadata.Record) bool { return slices.Contains(novels, r.Title) })
+	if i < 0 {
+		t.Fatalf("none of her novels is among %d works", len(got))
+	}
+	// For a book printed for two hundred years Open Library's date is of an
+	// edition, often this year's: that it is read is what counts here.
+	if len(got[i].Published) != 4 {
+		t.Errorf("published %q, want a year", got[i].Published)
+	}
+	if got, err := New().BySeries(context.Background(), web(), "Sherlock Holmes"); err != nil || got != nil {
+		t.Errorf("OpenLibrary lists a series: %+v, %v", got, err)
+	}
+}
+
+func TestTheWorksOfNobody(t *testing.T) {
+	if got, err := New().ByAuthor(context.Background(), web(), "Qwzx Vrbnkt"); err != nil || len(got) != 0 {
+		t.Errorf("an unknown author: %+v, %v", got, err)
+	}
+}
+
+func TestTheEditionNamesTheWorkTheSearchFinds(t *testing.T) {
+	edition, err := New().Lookup(context.Background(), web(), emmaISBN)
+	if err != nil || len(edition) != 1 || edition[0].Work == "" {
+		t.Fatalf("Lookup: %+v, %v", edition, err)
+	}
+	found, err := New().Search(context.Background(), web(), metadata.Query{Title: "Emma", Authors: []string{"Jane Austen"}, Language: "en"})
+	if err != nil || len(found) == 0 || found[0].Work != edition[0].Work {
+		t.Errorf("the edition's work %q, the search's first %+v, %v", edition[0].Work, found, err)
+	}
+}

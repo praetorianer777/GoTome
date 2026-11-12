@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
+	"strings"
 	"testing"
 )
 
@@ -85,6 +87,107 @@ func TestClientAddress(t *testing.T) {
 		r.RemoteAddr = remote
 		if got := clientAddress(r); got != want {
 			t.Errorf("clientAddress(%q) = %q, want %q", remote, got, want)
+		}
+	}
+}
+
+// through runs a request through the forwarded middleware and returns the
+// client address and scheme the handlers then see.
+func through(t *testing.T, trusted string, remote string, headers map[string]string) (string, bool) {
+	t.Helper()
+	var prefixes []netip.Prefix
+	for _, p := range strings.Fields(trusted) {
+		prefixes = append(prefixes, netip.MustParsePrefix(p))
+	}
+	var address string
+	var https bool
+	h := forwarded(prefixes)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		address, https = clientAddress(r), overTLS(r)
+	}))
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = remote
+	for k, v := range headers {
+		r.Header.Set(k, v)
+	}
+	h.ServeHTTP(httptest.NewRecorder(), r)
+	return address, https
+}
+
+func TestForwardedHeadersOnlyFromATrustedProxy(t *testing.T) {
+	const proxy = "172.18.0.5:40000"
+	cases := []struct {
+		name, trusted, remote string
+		headers               map[string]string
+		address               string
+		https                 bool
+	}{
+		{"nothing trusted ignores the forwarded address", "", proxy,
+			map[string]string{"X-Forwarded-For": "198.51.100.1"}, "172.18.0.5", false},
+		{"nothing trusted still takes the scheme, as before", "", proxy,
+			map[string]string{"X-Forwarded-Proto": "https"}, "172.18.0.5", true},
+		{"a trusted proxy names the client", "172.18.0.0/16", proxy,
+			map[string]string{"X-Forwarded-For": "198.51.100.1", "X-Forwarded-Proto": "https"}, "198.51.100.1", true},
+		{"what the client wrote itself is passed over", "172.18.0.0/16", proxy,
+			map[string]string{"X-Forwarded-For": "10.9.9.9, 198.51.100.1"}, "198.51.100.1", false},
+		{"a chain of trusted proxies", "172.18.0.0/16 192.0.2.10/32", proxy,
+			map[string]string{"X-Forwarded-For": "6.6.6.6, 198.51.100.1, 192.0.2.10"}, "198.51.100.1", false},
+		{"a hop with a port", "172.18.0.0/16", proxy,
+			map[string]string{"X-Forwarded-For": "[2001:db8::7]:1234"}, "2001:db8::7", false},
+		{"a hop that is no address ends at the proxy", "172.18.0.0/16", proxy,
+			map[string]string{"X-Forwarded-For": "198.51.100.1, unknown"}, "172.18.0.5", false},
+		{"a trusted proxy without the header", "172.18.0.0/16", proxy, nil, "172.18.0.5", false},
+		{"an untrusted address names nobody", "10.0.0.0/8", "203.0.113.9:5555",
+			map[string]string{"X-Forwarded-For": "198.51.100.1", "X-Forwarded-Proto": "https"}, "203.0.113.9", false},
+		{"an IPv4 proxy over IPv6", "172.18.0.0/16", "[::ffff:172.18.0.5]:40000",
+			map[string]string{"X-Forwarded-For": "198.51.100.1"}, "198.51.100.1", false},
+	}
+	for _, c := range cases {
+		address, https := through(t, c.trusted, c.remote, c.headers)
+		if address != c.address || https != c.https {
+			t.Errorf("%s: address %q, https %v; want %q, %v", c.name, address, https, c.address, c.https)
+		}
+	}
+}
+
+func TestAppPathStaysInTheApp(t *testing.T) {
+	for in, want := range map[string]string{
+		"/books?sort=title":    "/books?sort=title",
+		"":                     "/",
+		"books":                "/",
+		"//evil.example":       "/",
+		"/\\evil.example":      "/",
+		"https://evil.example": "/",
+		"/api/v1/setup":        "/",
+		"/a\r\nSet-Cookie:":    "/",
+	} {
+		if got := appPath(in); got != want {
+			t.Errorf("appPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestTheCallbackIsWhereTheBrowserReachedTheServer(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/start", nil)
+	r.Host = "books.example:8080"
+	if got := callbackURL(r); got != "http://books.example:8080/api/v1/auth/oidc/callback" {
+		t.Errorf("plain: %s", got)
+	}
+	r.Header.Set("X-Forwarded-Proto", "https")
+	if got := callbackURL(r); got != "https://books.example:8080/api/v1/auth/oidc/callback" {
+		t.Errorf("behind a proxy over TLS: %s", got)
+	}
+
+	for trusted, want := range map[string]string{
+		"192.0.2.0/24": "https://books.example:8080/api/v1/auth/oidc/callback",
+		"10.0.0.0/8":   "http://books.example:8080/api/v1/auth/oidc/callback",
+	} {
+		var got string
+		h := forwarded([]netip.Prefix{netip.MustParsePrefix(trusted)})(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			got = callbackURL(r)
+		}))
+		h.ServeHTTP(httptest.NewRecorder(), r)
+		if got != want {
+			t.Errorf("trusting %s, from %s: %s, want %s", trusted, r.RemoteAddr, got, want)
 		}
 	}
 }

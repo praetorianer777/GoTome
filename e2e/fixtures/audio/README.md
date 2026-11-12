@@ -2,7 +2,7 @@
 
 Two six-second tones, the parts of an audiobook for the player's browser
 tests: `part1.mp3` marks two chapters, `part2.mp3` none. They were made with
-the ffmpeg of the test toolchain image:
+Debian's full ffmpeg (GOtome's own build cannot encode):
 
     ffmpeg -f lavfi -i "sine=frequency=440:duration=6" -i meta.txt \
       -map_metadata 1 -map_chapters 1 -ac 1 -ar 22050 -b:a 32k -id3v2_version 3 part1.mp3

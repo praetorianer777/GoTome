@@ -71,6 +71,18 @@ func TestCandidatesAreFoundAndChosenFieldsTaken(t *testing.T) {
 		t.Errorf("candidate %v", c)
 	}
 	token := c["coverToken"].(string)
+	// The person's title stays unticked, what the book lacks is ticked.
+	fields, _ := c["fields"].(map[string]any)
+	for name, want := range map[string]map[string]any{
+		"title":       {"suggested": false, "reason": "locked"},
+		"description": {"suggested": true, "reason": "empty"},
+		"cover":       {"suggested": true, "reason": "empty"},
+	} {
+		got, _ := fields[name].(map[string]any)
+		if got["suggested"] != want["suggested"] || got["reason"] != want["reason"] {
+			t.Errorf("the suggestion for %s: %v, want %v", name, got, want)
+		}
+	}
 
 	resp, err := editor.Get(a.url + httpapi.APIPrefix + "/metadata/covers/" + token)
 	if err != nil {
@@ -81,7 +93,16 @@ func TestCandidatesAreFoundAndChosenFieldsTaken(t *testing.T) {
 	if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "image/png" || len(image) == 0 {
 		t.Errorf("the cover: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
-	if status, _, _ := a.call(editor, http.MethodGet, "/metadata/covers/"+token[:len(token)-2]+"xx", nil); status != 404 {
+	// One character of the signature changed to another: a fixed
+	// replacement is the token itself once in a few thousand runs, and the
+	// last character holds padding bits a decoder may ignore.
+	at := len(token) - 5
+	swap := byte('A')
+	if token[at] == swap {
+		swap = 'B'
+	}
+	forged := token[:at] + string(swap) + token[at+1:]
+	if status, _, _ := a.call(editor, http.MethodGet, "/metadata/covers/"+forged, nil); status != 404 {
 		t.Errorf("a forged token: %d", status)
 	}
 

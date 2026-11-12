@@ -1,6 +1,12 @@
 import type { FacetField } from "@/books/filters";
+import { GENRES } from "@/books/genres";
 import { STATUS_LABELS, STATUSES } from "@/books/reading";
 import {
+	EREADER_FINDINGS,
+	FILE_STATES,
+	FORMATS,
+	picksValues,
+	RATINGS,
 	RULE_FIELDS,
 	RULE_OPS,
 	type RuleGroup,
@@ -22,6 +28,34 @@ const OP_LABELS: Record<RuleOp, MessageKey> = {
 	between: "rules.op.between",
 	empty: "rules.op.empty",
 };
+
+/** The values a rule on a field that picks offers, as people read them. */
+function choices(field: FacetField): { value: string; label: string }[] {
+	switch (field) {
+		case "files":
+			return FILE_STATES.map((value) => ({ value, label: t(`filter.files.${value}`) }));
+		case "ereader":
+			return EREADER_FINDINGS.map((value) => ({
+				value,
+				label: t(`filter.ereader.${value}`),
+			}));
+		case "genre":
+			return GENRES.map((value) => ({ value, label: t(`genre.${value}`) }));
+		case "format":
+			return FORMATS.map((value) => ({ value, label: value.toUpperCase() }));
+		case "rating":
+			return stars();
+		default:
+			return STATUSES.map((value) => ({ value, label: t(STATUS_LABELS[value]) }));
+	}
+}
+
+function stars() {
+	return RATINGS.map((value) => ({
+		value,
+		label: t("reading.stars", { count: Number(value) }),
+	}));
+}
 
 /**
  * Edits a rule tree: groups that need every rule or any, nested as deep as
@@ -195,41 +229,68 @@ function Rule({
 					</option>
 				))}
 			</select>
-			{rule.op === "in" && rule.field === "status" && (
+			{rule.op === "in" && picksValues(rule.field) && (
 				<span className="flex flex-wrap gap-x-3">
-					{STATUSES.map((s) => (
-						<label key={s} className="flex items-center gap-1">
+					{choices(rule.field).map(({ value, label }) => (
+						<label key={value} className="flex items-center gap-1">
 							<input
 								type="checkbox"
-								checked={rule.picked.includes(s)}
+								checked={rule.picked.includes(value)}
 								onChange={(e) =>
 									onChange({
 										...rule,
 										picked: e.target.checked
-											? [...rule.picked, s]
-											: rule.picked.filter((p) => p !== s),
+											? [...rule.picked, value]
+											: rule.picked.filter((p) => p !== value),
 									})
 								}
 							/>
-							{t(STATUS_LABELS[s])}
+							{label}
 						</label>
 					))}
 				</span>
 			)}
-			{rule.op === "in" && rule.field !== "status" && (
+			{rule.op === "in" && !picksValues(rule.field) && (
 				<input
 					aria-label={t("rules.values")}
-					placeholder={t(
-						rule.field === "rating"
-							? "rules.values.stars"
-							: "rules.values.hint",
-					)}
+					placeholder={t("rules.values.hint")}
 					value={rule.text}
 					onChange={(e) => onChange({ ...rule, text: e.target.value })}
 					className={`${control} min-w-48 flex-1`}
 				/>
 			)}
-			{rule.op === "between" && (
+			{rule.op === "between" && rule.field === "rating" && (
+				<>
+					<select
+						aria-label={t("rules.from")}
+						value={rule.from}
+						onChange={(e) => onChange({ ...rule, from: e.target.value })}
+						className={control}
+					>
+						<option value="">{t("rules.values.anyStars")}</option>
+						{stars().map(({ value, label }) => (
+							<option key={value} value={value}>
+								{label}
+							</option>
+						))}
+					</select>
+					<span>{t("rules.and")}</span>
+					<select
+						aria-label={t("rules.to")}
+						value={rule.to}
+						onChange={(e) => onChange({ ...rule, to: e.target.value })}
+						className={control}
+					>
+						<option value="">{t("rules.values.anyStars")}</option>
+						{stars().map(({ value, label }) => (
+							<option key={value} value={value}>
+								{label}
+							</option>
+						))}
+					</select>
+				</>
+			)}
+			{rule.op === "between" && rule.field !== "rating" && (
 				<>
 					<input
 						aria-label={t("rules.from")}

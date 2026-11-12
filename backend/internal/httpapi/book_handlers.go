@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,7 +17,9 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/filter"
+	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
@@ -34,6 +37,12 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return ErrNotFound(gone)
 	}
+	return s.serveCover(w, r, id, size)
+}
+
+// serveCover sends the book's cover in the size, if the caller sees the book.
+func (s *Server) serveCover(w http.ResponseWriter, r *http.Request, id uuid.UUID, size covers.Size) error {
+	const gone = "There is no such cover."
 	key, err := s.Books.CoverKey(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	if errors.Is(err, catalog.ErrNotFound) {
 		return ErrNotFound(gone)
@@ -69,8 +78,8 @@ func (s *Server) getBookCover(w http.ResponseWriter, r *http.Request) error {
 
 type listBooksQuery struct {
 	Library      string `query:"library" doc:"A library's ID; left out, every library the caller may see."`
-	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, series and tag take op in with names; language takes in with codes such as en; format takes in with formats such as epub; published takes between with a first and a last year, either empty for no limit. Every field but format and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
-	Sort         string `query:"sort" enum:"title,author,added" doc:"What the books are ordered by; title when left out."`
+	Filter       string `query:"filter" doc:"A rule tree as JSON that the books must match. A rule has a field, an op and values: author, narrator, series and tag take op in with names; person takes in with names, an author under every spelling of their name; language takes in with codes such as en; format takes in with formats such as epub; files takes in with missing or none-on-disk; ereader takes in with large-document, large-fonts, large-image, missing-resources, malformed-document or broken-toc, what makes a file slow or troublesome on an e-reader; genre takes in with keys of the genre list such as crime, a genre of the book's tags or one a person accepted; published takes between with a first and a last year, either empty for no limit; words takes like with words of at least three letters, a book whose title, an author or the series looks like them as GET /books/search finds them. Every field but person, format, files, ereader, words and status also takes op empty without values. Status takes in with unread, reading, completed, abandoned or wishlist; rating takes in with stars from 1 to 5, or between with a lowest and a highest. Both are the caller's own. Rules combine under all, any and not."`
+	Sort         string `query:"sort" enum:"title,author,added,series" doc:"What the books are ordered by; title when left out. series is each series in its order, then the books of no series, for a list narrowed to an author or a series."`
 	Order        string `query:"order" enum:"asc,desc" doc:"The direction; asc when left out."`
 	Cursor       string `query:"cursor" doc:"The nextCursor of the page before."`
 	Limit        int    `query:"limit" doc:"How many books a page holds, at most 200; 50 when left out."`
@@ -79,14 +88,18 @@ type listBooksQuery struct {
 
 // bookSummary is a book as a list shows it.
 type bookSummary struct {
-	ID            uuid.UUID `json:"id"`
-	LibraryID     uuid.UUID `json:"libraryId"`
-	Title         string    `json:"title"`
-	Subtitle      string    `json:"subtitle,omitempty"`
-	Authors       []string  `json:"authors"`
-	Series        string    `json:"series,omitempty"`
-	SeriesIndex   *float64  `json:"seriesIndex,omitempty"`
-	PublishedYear *int32    `json:"publishedYear,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	LibraryID uuid.UUID `json:"libraryId"`
+	Title     string    `json:"title"`
+	Subtitle  string    `json:"subtitle,omitempty"`
+	Authors   []string  `json:"authors"`
+	// AuthorKeys are what GET /authors/{authorKey} takes for each of authors.
+	AuthorKeys []string `json:"authorKeys"`
+	Series     string   `json:"series,omitempty"`
+	// SeriesKey is what GET /series/{seriesKey} takes for series.
+	SeriesKey     string   `json:"seriesKey,omitempty"`
+	SeriesIndex   *float64 `json:"seriesIndex,omitempty"`
+	PublishedYear *int32   `json:"publishedYear,omitempty"`
 	// CoverKey is what a cover's address carries as v, so that it can be
 	// kept for good. Left out when the book has no cover.
 	CoverKey string    `json:"coverKey,omitempty"`
@@ -98,6 +111,12 @@ type bookSummary struct {
 	Rating *int16 `json:"rating,omitempty"`
 	// Placeholder is a book wished for that the library does not hold yet.
 	Placeholder bool `json:"placeholder"`
+	// FilesMissing is a book all of whose files a scan no longer found in
+	// the library's folder: it cannot be opened, downloaded or sent.
+	FilesMissing bool `json:"filesMissing"`
+	// EReaderFindings are what may make the book's EPUBs slow or
+	// troublesome on an e-reader, each once.
+	EReaderFindings []string `json:"ereaderFindings"`
 }
 
 type bookList struct {
@@ -108,6 +127,9 @@ type bookList struct {
 
 type contributor struct {
 	Name string `json:"name"`
+	// Key is what GET /authors/{authorKey} takes for an author; only a
+	// book's answers carry it.
+	Key string `json:"key,omitempty"`
 	// Role is author, narrator, translator, editor or illustrator.
 	Role string `json:"role"`
 }
@@ -149,6 +171,33 @@ type bookFile struct {
 	// ExtractError is why it could not be read, for those who may have it
 	// read again; it may name places on the server.
 	ExtractError string `json:"extractError,omitempty"`
+	// EReader is what may make an EPUB slow or troublesome on an e-reader,
+	// once it is measured.
+	EReader *ereaderCheck `json:"ereader,omitempty"`
+}
+
+// ereaderCheck is an EPUB's measures and what is found past the limits.
+type ereaderCheck struct {
+	// Findings name what is past the limits; empty for a file that is
+	// fine or could not be measured.
+	Findings []string `json:"findings"`
+	// LargestDocument is the size of the largest content document in
+	// bytes; the others likewise.
+	LargestDocument int64 `json:"largestDocument"`
+	Fonts           int   `json:"fonts"`
+	FontBytes       int64 `json:"fontBytes"`
+	LargestImage    int64 `json:"largestImage"`
+	// ImageWidth and ImageHeight are those of the image of the most pixels.
+	ImageWidth  int `json:"imageWidth"`
+	ImageHeight int `json:"imageHeight"`
+	// MissingResources are files the package lists and the archive lacks.
+	MissingResources []string `json:"missingResources"`
+	// MalformedDocuments are the content documents that are not
+	// well-formed XML.
+	MalformedDocuments []string `json:"malformedDocuments"`
+	// BrokenTocEntries are where entries of the table of contents lead
+	// that lead nowhere.
+	BrokenTocEntries []string `json:"brokenTocEntries"`
 }
 
 type bookDetail struct {
@@ -160,9 +209,11 @@ type bookDetail struct {
 	Language    string    `json:"language,omitempty"`
 	// Published is as much of the date as is known: "2010", "2010-08" or
 	// "2010-08-31".
-	Published    string           `json:"published,omitempty"`
-	Publisher    string           `json:"publisher,omitempty"`
-	Series       string           `json:"series,omitempty"`
+	Published string `json:"published,omitempty"`
+	Publisher string `json:"publisher,omitempty"`
+	Series    string `json:"series,omitempty"`
+	// SeriesKey is what GET /series/{seriesKey} takes for series.
+	SeriesKey    string           `json:"seriesKey,omitempty"`
 	SeriesIndex  *float64         `json:"seriesIndex,omitempty"`
 	PageCount    *int32           `json:"pageCount,omitempty"`
 	Contributors []contributor    `json:"contributors"`
@@ -181,13 +232,43 @@ type bookDetail struct {
 	// Placeholder is a book wished for that the library does not hold yet;
 	// the first file imported that is this book fulfils it.
 	Placeholder bool `json:"placeholder"`
+	// Recordings are other recordings of this audiobook the caller sees,
+	// read by other narrators.
+	Recordings []bookRecording `json:"recordings"`
+	// Forms are this book in another form, linked by a person: an ebook and
+	// its audiobook that are in different libraries and so not one book.
+	Forms []bookForm `json:"forms"`
+	// Joins are books the library made one with this by itself, an ebook
+	// and its audiobook; POST /joins/{id}/undo splits one off again.
+	Joins []bookJoin `json:"joins"`
+}
+
+type bookForm struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+	// Kinds are the kinds of file the book holds: ebook, audio.
+	Kinds []string `json:"kinds"`
+}
+
+type bookJoin struct {
+	ID uuid.UUID `json:"id"`
+	// Title is the title of the book that was made one with this.
+	Title    string    `json:"title"`
+	JoinedAt time.Time `json:"joinedAt"`
+}
+
+// bookRecording is another recording of a book.
+type bookRecording struct {
+	ID        uuid.UUID `json:"id"`
+	Title     string    `json:"title"`
+	Narrators []string  `json:"narrators"`
 }
 
 // fieldState is where a field's value came from and whether automatic
 // updates leave it alone.
 type fieldState struct {
 	// Source is file, filename (a title guessed from the file's name),
-	// provider or manual; left out when nobody knows.
+	// provider, calibre or manual; left out when nobody knows.
 	Source string `json:"source,omitempty"`
 	// Detail is the format of the file or the name of the provider.
 	Detail string `json:"detail,omitempty"`
@@ -228,12 +309,26 @@ func (s *Server) listBooks(w http.ResponseWriter, r *http.Request) error {
 }
 
 func summaryOf(b catalog.Summary) bookSummary {
-	return bookSummary{
-		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors,
-		Series: b.Series, SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
-		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
-		Placeholder: b.Placeholder,
+	authorKeys := make([]string, len(b.Authors))
+	for i, name := range b.Authors {
+		authorKeys[i] = catalog.PersonKey(name)
 	}
+	return bookSummary{
+		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Authors: b.Authors, AuthorKeys: authorKeys,
+		Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex, PublishedYear: b.PublishedYear,
+		CoverKey: b.CoverKey, Formats: b.Formats, AddedAt: b.AddedAt, Status: b.Status, Rating: b.Rating,
+		Placeholder: b.Placeholder, FilesMissing: b.FilesMissing, EReaderFindings: orderedFindings(b.EReaderFindings),
+	}
+}
+
+func orderedFindings(found []string) []string {
+	out := []string{}
+	for _, kind := range epub.Findings {
+		if slices.Contains(found, kind) {
+			out = append(out, kind)
+		}
+	}
+	return out
 }
 
 type searchQuery struct {
@@ -241,9 +336,22 @@ type searchQuery struct {
 	Limit int    `query:"limit" doc:"How many books to return, at most 50; 10 when left out."`
 }
 
-// searchResult is the books a quick search found, the best first.
+// searchResult is the books, authors and series a quick search found, the
+// best first.
 type searchResult struct {
 	Books []searchHit `json:"books"`
+	Names []nameHit   `json:"names"`
+}
+
+// nameHit is an author or a series whose name looks like the search.
+type nameHit struct {
+	// Kind says which it is: author or series.
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	// Key is what GET /authors/{authorKey} or GET /series/{seriesKey} takes.
+	Key string `json:"key"`
+	// Books counts the books of it the caller sees.
+	Books int `json:"books"`
 }
 
 type searchHit struct {
@@ -257,18 +365,29 @@ type searchHit struct {
 // not say.
 const defaultHits = 10
 
+// nameHits is how many authors and series a quick search returns.
+const nameHits = 3
+
 func (s *Server) searchBooks(w http.ResponseWriter, r *http.Request) error {
 	var q searchQuery
 	if err := decodeQuery(r, &q); err != nil {
 		return err
 	}
-	hits, err := s.Books.Search(r.Context(), library.ScopeOf(*UserFrom(r.Context())), q.Q, cmp.Or(q.Limit, defaultHits))
+	scope := library.ScopeOf(*UserFrom(r.Context()))
+	hits, err := s.Books.Search(r.Context(), scope, q.Q, cmp.Or(q.Limit, defaultHits))
 	if err != nil {
 		return err
 	}
-	out := searchResult{Books: make([]searchHit, len(hits))}
+	names, err := s.Books.SearchNames(r.Context(), scope, q.Q, nameHits)
+	if err != nil {
+		return err
+	}
+	out := searchResult{Books: make([]searchHit, len(hits)), Names: make([]nameHit, len(names))}
 	for i, h := range hits {
 		out.Books[i] = searchHit{bookSummary: summaryOf(h.Summary), Match: h.Match}
+	}
+	for i, n := range names {
+		out.Names[i] = nameHit{Kind: n.Match, Name: n.Name, Key: n.Key, Books: n.Books}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
@@ -370,15 +489,25 @@ func (s *Server) getBook(w http.ResponseWriter, r *http.Request) error {
 func detailOf(b catalog.Book, user *auth.User) bookDetail {
 	out := bookDetail{
 		ID: b.ID, LibraryID: b.LibraryID, Title: b.Title, Subtitle: b.Subtitle, Description: b.Description,
-		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesIndex: b.SeriesIndex,
+		Language: b.Language, Published: b.Published(), Publisher: b.Publisher, Series: b.Series, SeriesKey: catalog.Key(b.Series), SeriesIndex: b.SeriesIndex,
 		PageCount: b.PageCount, CoverKey: b.CoverKey, AddedAt: b.AddedAt,
 		Contributors: []contributor{}, Tags: []string{}, Identifiers: []bookIdentifier{}, Files: []bookFile{},
 		Fields: map[string]fieldState{}, Reading: readingOf(b.Reading), Placeholder: b.Placeholder,
+		Recordings: []bookRecording{}, Forms: []bookForm{}, Joins: []bookJoin{},
 	}
 	for _, c := range b.Contributors {
-		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Role: c.Role})
+		out.Contributors = append(out.Contributors, contributor{Name: c.Name, Key: catalog.PersonKey(c.Name), Role: c.Role})
 	}
 	out.Tags = append(out.Tags, b.Tags...)
+	for _, f := range b.Forms {
+		out.Forms = append(out.Forms, bookForm{ID: f.ID, Title: f.Title, Kinds: append([]string{}, f.Kinds...)})
+	}
+	for _, j := range b.Joins {
+		out.Joins = append(out.Joins, bookJoin{ID: j.ID, Title: j.Title, JoinedAt: j.CreatedAt})
+	}
+	for _, r := range b.Recordings {
+		out.Recordings = append(out.Recordings, bookRecording{ID: r.ID, Title: r.Title, Narrators: append([]string{}, r.Narrators...)})
+	}
 	// The same ISBN in two files is one identifier to whoever reads it.
 	seen := map[identifier]int{}
 	for _, ident := range b.Identifiers {
@@ -416,6 +545,16 @@ func detailOf(b catalog.Book, user *auth.User) bookDetail {
 		if rereads {
 			file.ExtractError = f.ExtractError
 		}
+		if f.EReaderFindings != nil {
+			file.EReader = &ereaderCheck{Findings: f.EReaderFindings, MissingResources: []string{}, MalformedDocuments: []string{}, BrokenTocEntries: []string{}}
+			if m := f.Measures; m != nil {
+				file.EReader.LargestDocument, file.EReader.Fonts, file.EReader.FontBytes = m.LargestDocument, m.Fonts, m.FontBytes
+				file.EReader.LargestImage, file.EReader.ImageWidth, file.EReader.ImageHeight = m.LargestImage, m.ImageWidth, m.ImageHeight
+				file.EReader.MissingResources = append(file.EReader.MissingResources, m.MissingResources...)
+				file.EReader.MalformedDocuments = append(file.EReader.MalformedDocuments, m.MalformedDocuments...)
+				file.EReader.BrokenTocEntries = append(file.EReader.BrokenTocEntries, m.BrokenTocEntries...)
+			}
+		}
 		if f.DurationMS != nil {
 			total := derefInt64(out.DurationMS) + *f.DurationMS
 			out.DurationMS = &total
@@ -446,33 +585,73 @@ var mediaTypes = map[string]string{
 // seek. A file is not a request: it may take hours, and the server's write
 // deadline is lifted for it.
 func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) error {
-	id, err := pathID(r, "fileId", "file")
+	book, fixed, err := s.serveFile(w, r, false)
 	if err != nil {
 		return err
+	}
+	if device := DeviceFrom(r.Context()); device != uuid.Nil && wholeFileSent(w, r) {
+		s.recordSend(r, device, book, fixed)
+	}
+	return nil
+}
+
+// serveFile sends the file the path names, if the caller may see it, and
+// returns the book it belongs to. To a device it sends the fixed copy of an
+// EPUB when one is ready, and says so; to a Kobo reader that asked for the
+// KEPUB, the KEPUB, made now if it is not (the copy then is not a fixed one).
+func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, kepub bool) (uuid.UUID, bool, error) {
+	id, err := pathID(r, "fileId", "file")
+	if err != nil {
+		return uuid.Nil, false, err
 	}
 	file, f, err := s.Books.OpenFile(r.Context(), library.ScopeOf(*UserFrom(r.Context())), id)
 	switch {
 	case errors.Is(err, catalog.ErrNotFound):
-		return ErrNotFound("There is no such file.")
+		return uuid.Nil, false, ErrNotFound("There is no such file.")
 	case errors.Is(err, catalog.ErrFileGone):
-		return ErrNotFound("The file is no longer in the library's folder.")
+		return uuid.Nil, false, ErrNotFound("The file is no longer in the library's folder.")
 	case err != nil:
-		return err
+		return uuid.Nil, false, err
 	}
 	defer f.Close()
-	info, err := f.Stat()
+	served := f
+	sum := file.SHA256
+	fixed := false
+	name := file.Name
+	if device := DeviceFrom(r.Context()); device != uuid.Nil && file.Format == "epub" && s.Copies != nil {
+		var ready *devicecopy.Copy
+		var err error
+		if kepub {
+			ready, err = s.Copies.Kepub(r.Context(), file.ID)
+		} else {
+			ready, err = s.Copies.Ready(r.Context(), file.SHA256)
+		}
+		if err != nil {
+			return uuid.Nil, false, err
+		}
+		if ready != nil {
+			if cf, err := os.Open(ready.Path); err == nil {
+				defer cf.Close()
+				served, sum, fixed = cf, ready.SHA256, !kepub
+				if kepub {
+					name = epub.KepubName(name)
+				}
+			}
+		}
+	}
+	info, err := served.Stat()
 	if err != nil {
-		return err
+		return uuid.Nil, false, err
 	}
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
 	h := w.Header()
 	h.Set("Content-Type", cmp.Or(mediaTypes[file.Format], "application/octet-stream"))
-	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": file.Name}))
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
 	h.Set("Cache-Control", "private, no-cache")
-	if len(file.SHA256) > 0 {
-		h.Set("ETag", `"`+hex.EncodeToString(file.SHA256)+`"`)
+	if len(sum) > 0 {
+		h.Set("ETag", `"`+hex.EncodeToString(sum)+`"`)
 	}
-	http.ServeContent(w, r, "", info.ModTime(), f)
-	return nil
+	http.ServeContent(w, r, "", info.ModTime(), served)
+	return file.BookID, fixed, nil
 }

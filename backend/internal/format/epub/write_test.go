@@ -149,10 +149,10 @@ var newCover = &Cover{MediaType: "image/jpeg", Data: []byte("\xff\xd8\xffnew-cov
 
 var described = Metadata{
 	Title:    "Words of Radiance",
-	Subtitle: "Book Two <of> the Stormlight Archive",
+	Subtitle: "Book Two <of> the Beacon Archive",
 	Contributors: []Contributor{
-		{Name: "Brandon Sanderson", FileAs: "Sanderson, Brandon", Role: "aut"},
-		{Name: "Kate Reading", Role: "nrt"},
+		{Name: "Bastian Landorf", FileAs: "Landorf, Bastian", Role: "aut"},
+		{Name: "Karin Ridder", Role: "nrt"},
 	},
 	Language:    "en-GB",
 	Identifiers: []Identifier{{"isbn", "9780765326362"}, {"asin", "B00DA6YEKS"}, {"isbn", "978-3-16-148410-0"}},
@@ -160,7 +160,7 @@ var described = Metadata{
 	Published:   "2014-03",
 	Description: "Szeth & Kaladin.\n\nA second paragraph.",
 	Subjects:    []string{"Fantasy", "Épique"},
-	Series:      "Stormlight",
+	Series:      "Beacon",
 	SeriesIndex: index(2.5),
 }
 
@@ -183,7 +183,7 @@ func TestRewriteEPUB3(t *testing.T) {
 	if !slices.Equal(md.Identifiers, wantIDs) {
 		t.Errorf("identifiers = %+v", md.Identifiers)
 	}
-	if !slices.Equal(md.Subjects, described.Subjects) || md.Series != "Stormlight" || md.SeriesIndex == nil || *md.SeriesIndex != 2.5 {
+	if !slices.Equal(md.Subjects, described.Subjects) || md.Series != "Beacon" || md.SeriesIndex == nil || *md.SeriesIndex != 2.5 {
 		t.Errorf("subjects %v, series %q %v", md.Subjects, md.Series, md.SeriesIndex)
 	}
 	if after.Cover == nil || !bytes.Equal(after.Cover.Data, newCover.Data) {
@@ -283,6 +283,65 @@ func TestRewriteRemovesTheCover(t *testing.T) {
 	// marked cover would be.
 	if book := parse(t, written); book.Cover == nil {
 		t.Error("the image called cover is gone")
+	}
+}
+
+// withDirectories adds directory entries to an EPUB, deflated as some tools
+// write them, so that each holds the two bytes of an empty deflate stream.
+// Go's writer keeps a directory empty, so each is written under a name
+// ending in '#' and renamed in the bytes.
+func withDirectories(t *testing.T, data []byte, dirs ...string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, f := range mustZip(t, data).File {
+		if err := zw.Copy(f); err != nil {
+			t.Fatal(err)
+		}
+		if f.Name != "mimetype" {
+			continue
+		}
+		for _, dir := range dirs {
+			w, err := zw.CreateRaw(&zip.FileHeader{Name: strings.TrimSuffix(dir, "/") + "#", Method: zip.Deflate, CompressedSize64: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := w.Write([]byte{0x03, 0x00}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.Bytes()
+	for _, dir := range dirs {
+		out = bytes.ReplaceAll(out, []byte(strings.TrimSuffix(dir, "/")+"#"), []byte(dir))
+	}
+	return out
+}
+
+func TestRewriteLeavesOutDirectoryEntries(t *testing.T) {
+	original := withDirectories(t, epub3(t), "META-INF/", "OEBPS/", "OEBPS/text/")
+	var dirs int
+	for _, f := range mustZip(t, original).File {
+		if strings.HasSuffix(f.Name, "/") {
+			dirs++
+		}
+	}
+	if dirs != 3 {
+		t.Fatalf("the test EPUB has %d directory entries", dirs)
+	}
+	before := parse(t, original)
+	written := rewrite(t, original, Update{Metadata: described})
+	after := parse(t, written)
+	if !bytes.Equal(after.ContentHash, before.ContentHash) || after.Metadata.Title != described.Title {
+		t.Errorf("content the same: %v, title %q", bytes.Equal(after.ContentHash, before.ContentHash), after.Metadata.Title)
+	}
+	for _, f := range mustZip(t, written).File {
+		if strings.HasSuffix(f.Name, "/") {
+			t.Errorf("directory entry %q was copied", f.Name)
+		}
 	}
 }
 

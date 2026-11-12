@@ -5,3 +5,4 @@ backend/bin/
 web/node_modules/
 web/dist/
 backend/internal/webui/dist/
+engine/target/

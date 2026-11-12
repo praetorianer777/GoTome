@@ -1,17 +1,34 @@
 package catalog
 
 import (
+	"math"
+	"os"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
 
+// The rule builder offers the formats to pick from: every one GOtome knows.
+func TestTheRuleBuilderOffersEveryFormat(t *testing.T) {
+	b, err := os.ReadFile("../../../web/src/books/rules.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range Formats() {
+		if !strings.Contains(string(b), `"`+f+`"`) {
+			t.Errorf("books/rules.ts lacks %q", f)
+		}
+	}
+}
+
 func TestKey(t *testing.T) {
 	same := [][]string{
 		{"Brontë, Charlotte", "bronte charlotte", "BRONTE  CHARLOTTE", "Bronte; Charlotte."},
-		{"J.R.R. Tolkien", "J. R. R. Tolkien", "j r r tolkien"},
+		{"H.K.L. Brandt", "H. K. L. Brandt", "h k l brandt"},
 		{"Straße", "Strasse", "STRASSE"},
 		{"Æsop’s Fables", "Aesop's Fables", "aesop s fables"},
-		{"The Hitchhiker's Guide—to the Galaxy", "the hitchhiker s guide to the galaxy"},
+		{"The Wanderer's Guide—to the Harbour", "the wanderer s guide to the harbour"},
 		// A decomposed e with a combining accent, and the single character.
 		{"Cafe" + string(rune(0x0301)), "Café", "cafe"},
 		{"Война и мир", "война и мир"},
@@ -27,7 +44,7 @@ func TestKey(t *testing.T) {
 			}
 		}
 	}
-	if Key("Dune") == Key("Dune Messiah") {
+	if Key("Dusk") == Key("Dusk Reckoning") {
 		t.Error("different titles share a key")
 	}
 	for _, empty := range []string{"", "   ", "—", "!?"} {
@@ -39,8 +56,8 @@ func TestKey(t *testing.T) {
 
 func TestSortTitle(t *testing.T) {
 	cases := []struct{ title, language, want string }{
-		{"The Hobbit", "en", "Hobbit, The"},
-		{"A Game of Thrones", "en-US", "Game of Thrones, A"},
+		{"The Lantern", "en", "Lantern, The"},
+		{"A Tale of Embers", "en-US", "Tale of Embers, A"},
 		{"An Unexpected Journey", "EN", "Unexpected Journey, An"},
 		{"Der Prozess", "de", "Prozess, Der"},
 		{"Die Verwandlung", "de-AT", "Verwandlung, Die"},
@@ -48,13 +65,13 @@ func TestSortTitle(t *testing.T) {
 		{"L'Étranger", "fr", "Étranger, L'"},
 		{"  The   Two  Towers ", "en", "Two Towers, The"},
 		// The language decides: this is not a German article.
-		{"Die Hard", "en", "Die Hard"},
-		{"The Hobbit", "", "The Hobbit"},
-		{"The Hobbit", "de", "The Hobbit"},
+		{"Die Slowly", "en", "Die Slowly"},
+		{"The Lantern", "", "The Lantern"},
+		{"The Lantern", "de", "The Lantern"},
 		// An article alone, or as the start of a longer word, is the title.
 		{"The", "en", "The"},
 		{"Theology", "en", "Theology"},
-		{"Dune", "en", "Dune"},
+		{"Dusk", "en", "Dusk"},
 	}
 	for _, c := range cases {
 		if got := SortTitle(c.title, c.language); got != c.want {
@@ -66,18 +83,18 @@ func TestSortTitle(t *testing.T) {
 func TestSortName(t *testing.T) {
 	cases := []struct{ name, want string }{
 		{"Jane Austen", "Austen, Jane"},
-		{"J. R. R. Tolkien", "Tolkien, J. R. R."},
+		{"H. K. L. Brandt", "Brandt, H. K. L."},
 		{"Ursula K. Le Guin", "Le Guin, Ursula K."},
 		{"Ludwig van Beethoven", "van Beethoven, Ludwig"},
 		{"Johann Wolfgang von Goethe", "von Goethe, Johann Wolfgang"},
-		{"Martin Luther King Jr.", "King, Martin Luther Jr."},
+		{"Karl Anton Reuss Jr.", "Reuss, Karl Anton Jr."},
 		{"  Jane   Austen ", "Austen, Jane"},
 		// Already filed, a single name, or nothing: left alone.
 		{"Austen, Jane", "Austen, Jane"},
 		{"Voltaire", "Voltaire"},
 		{"", ""},
 		// A particle is not a surname on its own.
-		{"Van Morrison", "Morrison, Van"},
+		{"Vera Morland", "Morland, Vera"},
 	}
 	for _, c := range cases {
 		if got := SortName(c.name); got != c.want {
@@ -173,5 +190,40 @@ func TestKindOf(t *testing.T) {
 	}
 	if _, ok := KindOf("docx"); ok {
 		t.Error("docx is a known format")
+	}
+}
+
+func TestGapsAreTheWholePlacesNoBookTakes(t *testing.T) {
+	for _, c := range []struct {
+		indexes []float64
+		want    []Gap
+	}{
+		{nil, []Gap{}},
+		{[]float64{1, 2, 3}, []Gap{}},
+		{[]float64{1, 3}, []Gap{{2, 2}}},
+		{[]float64{2, 6, 7}, []Gap{{1, 1}, {3, 5}}},
+		{[]float64{0, 1, 2.5, 4}, []Gap{{2, 3}}},
+		{[]float64{1, 2.5}, []Gap{{2, 2}}},
+		{[]float64{3, 1, 3, 1}, []Gap{{2, 2}}},
+		{[]float64{1, MaxSeriesIndex}, []Gap{{2, MaxSeriesIndex - 1}}},
+		{[]float64{1, 3, 1e12, math.Inf(1), math.NaN(), -1}, []Gap{{2, 2}}},
+	} {
+		if got := Gaps(c.indexes); !slices.Equal(got, c.want) {
+			t.Errorf("Gaps(%v) = %v, want %v", c.indexes, got, c.want)
+		}
+	}
+}
+
+func TestASeriesIndexIsAFiniteNumberInRange(t *testing.T) {
+	for index, want := range map[float64]bool{
+		0: true, 2.5: true, MaxSeriesIndex: true, MaxSeriesIndex + 0.5: false,
+		1e12: false, -1: false, math.Inf(1): false, math.NaN(): false,
+	} {
+		if got := SeriesIndexOf(&index) != nil; got != want {
+			t.Errorf("SeriesIndexOf(%v) kept: %v, want %v", index, got, want)
+		}
+	}
+	if SeriesIndexOf(nil) != nil {
+		t.Error("nil is a position")
 	}
 }

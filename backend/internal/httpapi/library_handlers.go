@@ -15,10 +15,17 @@ import (
 
 // libraryResponse is a library as the API shows it.
 type libraryResponse struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	Mode       string    `json:"mode"`
-	Writable   bool      `json:"writable"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Mode     string    `json:"mode"`
+	Writable bool      `json:"writable"`
+	// JoinFormats: books of an ebook and its audiobook with the same title
+	// and author are made one by themselves, as a person's merge would.
+	JoinFormats bool `json:"joinFormats"`
+	// Watch: the folder is watched, and scanned soon after files in it change.
+	Watch bool `json:"watch"`
+	// Fulltext: the library's books are searched by their text.
+	Fulltext   bool      `json:"fulltext"`
 	Visibility string    `json:"visibility"`
 	CreatedAt  time.Time `json:"createdAt"`
 	// RootPath and OwnerID are for those who manage storage. Where the files
@@ -33,6 +40,11 @@ type libraryResponse struct {
 	FilesPending int32 `json:"filesPending"`
 	// FilesFailed is how many of its files could not be read.
 	FilesFailed int32 `json:"filesFailed"`
+	// UnwritableSince is when GOtome found that it cannot write to the
+	// folder of this writable library, for UnwritableReason. Left out while
+	// it can; cleared by a scan that finds it writable again.
+	UnwritableSince  *time.Time `json:"unwritableSince,omitempty"`
+	UnwritableReason string     `json:"unwritableReason,omitempty"`
 }
 
 // scanState is what the library responses add from the scans: the newest
@@ -84,13 +96,21 @@ type updateLibraryRequest struct {
 	Name       *string `json:"name,omitempty"`
 	Visibility *string `json:"visibility,omitempty"`
 	Writable   *bool   `json:"writable,omitempty"`
+	// JoinFormats, on, makes one book of an ebook and its audiobook of the
+	// same title and author in this library, by itself.
+	JoinFormats *bool `json:"joinFormats,omitempty"`
+	// Watch, on, scans the folder soon after files in it change.
+	Watch *bool `json:"watch,omitempty"`
+	// Fulltext, off, leaves the library out of full-text search and takes
+	// its books out of the index; on, reads its texts again for it.
+	Fulltext *bool `json:"fulltext,omitempty"`
 }
 
 func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID],
+		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, Fulltext: l.Fulltext, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
@@ -222,11 +242,28 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable})
+	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch, Fulltext: req.Fulltext})
 	if err != nil {
 		return libraryError(err)
 	}
+	// Update has just seen the folder written to.
+	if req.Writable != nil && *req.Writable {
+		if err := s.Scans.WritableAgain(r.Context(), id); err != nil {
+			return err
+		}
+	}
+	if req.Fulltext != nil && *req.Fulltext {
+		if err := s.Scans.EnqueueIndexing(r.Context()); err != nil {
+			return err
+		}
+	}
 	user := UserFrom(r.Context())
+	// Pairs found before the option was turned on are joined by the checks.
+	if req.JoinFormats != nil && *req.JoinFormats {
+		if _, err := s.Duplicates.Request(r.Context(), library.ScopeOf(*user), &id); err != nil {
+			return err
+		}
+	}
 	scans, err := s.scanState(r, library.ScopeOf(*user))
 	if err != nil {
 		return err

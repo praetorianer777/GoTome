@@ -1,0 +1,112 @@
+# The Tolino companion app (clients/android). Gradle and the Android SDK run in
+# a container like every other toolchain. Gradle's caches and the debug signing
+# key live under .cache/android, so a build installs over the one before it:
+# left to itself, the Android plugin makes a new key in the container's home
+# on every run.
+ANDROID_BASE ?= ghcr.io/cirruslabs/android-sdk:35@sha256:c724009e305b4607157287624033ab97f319af44c244bfc9f73b6293f3bb01b9
+ANDROID_TOOLCHAIN_FILE := $(ROOT)/deploy/android.Dockerfile
+ANDROID_IMAGE ?= gotome-android:$(shell printf '%s' '$(ANDROID_BASE)' | cat - '$(ANDROID_TOOLCHAIN_FILE)' | cksum | cut -d' ' -f1)
+ANDROID_CACHE := $(ROOT)/.cache/android
+ANDROID_APK := $(ROOT)/clients/android/app/build/outputs/apk/debug/app-debug.apk
+ANDROID_PACKAGE := io.github.praetorianer777.gotome.tolino
+ANDROID_KEYSTORE := $(ANDROID_CACHE)/debug.keystore
+
+DOCKER_GRADLE = docker run --rm \
+	-u $(UID_GID) \
+	-v $(ROOT):/work \
+	-v $(ANDROID_CACHE):/cache \
+	-e HOME=/cache/home \
+	-e GRADLE_USER_HOME=/cache/gradle \
+	-e GOTOME_DEBUG_KEYSTORE=/cache/debug.keystore \
+	-w /work/clients/android $(ANDROID_IMAGE) \
+	gradle --no-daemon --console=plain --warning-mode=fail
+
+$(ANDROID_CACHE):
+	@mkdir -p $@/home $@/gradle
+
+# The key Android's own debug builds use, with its well-known passwords.
+$(ANDROID_KEYSTORE): | android-toolchain $(ANDROID_CACHE)
+	docker run --rm -u $(UID_GID) -v $(ANDROID_CACHE):/cache $(ANDROID_IMAGE) \
+		keytool -genkeypair -keystore /cache/debug.keystore -storepass android \
+		-alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+		-dname "CN=Android Debug,O=Android,C=US"
+
+.PHONY: android-toolchain
+android-toolchain:
+	@docker image inspect $(ANDROID_IMAGE) >/dev/null 2>&1 || \
+		docker build --quiet --build-arg ANDROID_BASE=$(ANDROID_BASE) -t $(ANDROID_IMAGE) - < $(ANDROID_TOOLCHAIN_FILE)
+
+.PHONY: check-android
+check-android: android-toolchain $(ANDROID_KEYSTORE) | $(ANDROID_CACHE) ## The companion app's gate: unit tests and a debug build
+	$(DOCKER_GRADLE) testDebugUnitTest assembleDebug
+
+.PHONY: android-apk
+android-apk: android-toolchain $(ANDROID_KEYSTORE) | $(ANDROID_CACHE) ## Build the companion app's APK
+	$(DOCKER_GRADLE) assembleDebug
+	@echo "$(ANDROID_APK)"
+
+# A release build, signed with the owner's release key: ANDROID_RELEASE_KEYSTORE
+# is its file, GOTOME_RELEASE_KEYSTORE_PASSWORD (in the environment, never on a
+# command line) its password. release.yml attaches the APK to the release.
+ANDROID_RELEASE_APK := $(ROOT)/clients/android/app/build/outputs/apk/release/gotome-tolino-$(VERSION).apk
+
+.PHONY: android-release
+android-release: android-toolchain | $(ANDROID_CACHE) ## Build the companion app's signed release APK
+	@test -n "$(ANDROID_RELEASE_KEYSTORE)" -a -f "$(ANDROID_RELEASE_KEYSTORE)" || { echo "ANDROID_RELEASE_KEYSTORE must name the release keystore" >&2; exit 1; }
+	@test -n "$$GOTOME_RELEASE_KEYSTORE_PASSWORD" || { echo "GOTOME_RELEASE_KEYSTORE_PASSWORD must be set" >&2; exit 1; }
+	docker run --rm -u $(UID_GID) -v $(ROOT):/work -v $(ANDROID_CACHE):/cache \
+		-v $(abspath $(ANDROID_RELEASE_KEYSTORE)):/release.keystore:ro \
+		-e HOME=/cache/home -e GRADLE_USER_HOME=/cache/gradle \
+		-e GOTOME_RELEASE_KEYSTORE=/release.keystore -e GOTOME_RELEASE_KEYSTORE_PASSWORD \
+		-w /work/clients/android $(ANDROID_IMAGE) \
+		gradle --no-daemon --console=plain --warning-mode=fail assembleRelease
+	cp $(dir $(ANDROID_RELEASE_APK))app-release.apk $(ANDROID_RELEASE_APK)
+	@echo "$(ANDROID_RELEASE_APK)"
+
+# Where android-install takes the APK from: build, the debug build of this
+# checkout, or release, the signed APK of the latest GitHub release, or of
+# TAG when named. Installed releases update themselves from the releases;
+# a debug build cannot take them, being signed with another key.
+FROM ?= build
+TAG ?=
+ANDROID_RELEASE_REPO ?= praetorianer777/GoTome
+ANDROID_DOWNLOAD := $(ANDROID_CACHE)/release
+ifneq ($(filter-out build release,$(FROM)),)
+$(error FROM is build or release, not '$(FROM)')
+endif
+
+# gh runs on the host, signed in as the owner already is.
+.PHONY: android-download
+android-download: | $(ANDROID_CACHE) ## Download the companion app's APK from the latest release (or TAG)
+	rm -rf $(ANDROID_DOWNLOAD) && mkdir -p $(ANDROID_DOWNLOAD)
+	gh release download $(TAG) --repo $(ANDROID_RELEASE_REPO) --pattern 'gotome-tolino-*.apk' --dir $(ANDROID_DOWNLOAD)
+
+# adb runs on the host, where the Tolino is plugged in. READ_LOGS lets the app
+# see the reader's page turns; it can only be granted over adb. Storage is
+# granted too, so the setup asks for nothing: reading as well as writing, as
+# without both Android 8.1 starts the app with a view of storage it cannot
+# write to. The jump to a page read elsewhere is an accessibility service,
+# added to those already on, not in their place. Installing its own updates
+# needs "unknown sources" for the app, which appops grants.
+.PHONY: android-install
+android-install: $(if $(filter release,$(FROM)),android-download,android-apk) ## Install the companion app on the Tolino over adb (FROM=release for the latest release) and grant it the log
+	@apk=$(if $(filter release,$(FROM)),$(ANDROID_DOWNLOAD)/gotome-tolino-*.apk,$(ANDROID_APK)); \
+	echo "adb install -r $$apk"; out=$$(adb install -r $$apk 2>&1); status=$$?; echo "$$out"; \
+	case "$$out" in *INSTALL_FAILED_UPDATE_INCOMPATIBLE*) \
+		echo "The app on the Tolino is signed with another key (a debug build or a release): make android-uninstall first." >&2 ;; esac; \
+	exit $$status
+	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_LOGS
+	adb shell pm grant $(ANDROID_PACKAGE) android.permission.READ_EXTERNAL_STORAGE
+	adb shell pm grant $(ANDROID_PACKAGE) android.permission.WRITE_EXTERNAL_STORAGE
+	adb shell appops set $(ANDROID_PACKAGE) REQUEST_INSTALL_PACKAGES allow
+	adb shell am force-stop $(ANDROID_PACKAGE)
+	adb shell 'on=$$(settings get secure enabled_accessibility_services); \
+		case "$$on" in *$(ANDROID_PACKAGE)/*) ;; null|"") on=$(ANDROID_PACKAGE)/.JumpService ;; *) on="$$on:$(ANDROID_PACKAGE)/.JumpService" ;; esac; \
+		settings put secure enabled_accessibility_services "$$on"; settings put secure accessibility_enabled 1'
+	adb shell am start -n $(ANDROID_PACKAGE)/.StoreActivity
+
+# Settings and the app's record of what it put on the Tolino go with it; the
+# books in Books/ stay until deleted in the Tolino library.
+.PHONY: android-uninstall
+android-uninstall: ## Remove the companion app from the Tolino over adb
+	adb uninstall $(ANDROID_PACKAGE)

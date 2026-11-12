@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type ApiKey struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Name       string
+	KeyHash    []byte
+	KeyPrefix  string
+	Scopes     []string
+	CreatedAt  time.Time
+	LastUsedAt *time.Time
+	ExpiresAt  *time.Time
+}
+
 type AudioChapter struct {
 	FileID   uuid.UUID
 	Position int32
@@ -24,6 +36,7 @@ type Author struct {
 	SortName  string
 	NameKey   string
 	CreatedAt time.Time
+	PersonKey *string
 }
 
 type Book struct {
@@ -52,6 +65,8 @@ type Book struct {
 	PrimaryTextFileID  *uuid.UUID
 	AuthorSort         string
 	Placeholder        bool
+	TitleAddition      bool
+	TitleSeries        *string
 }
 
 type BookChunk struct {
@@ -65,9 +80,9 @@ type BookChunk struct {
 	PageTo     *int32
 	CharOffset int32
 	Lang       string
-	BodyEn     *string
-	BodyDe     *string
-	BodyXx     *string
+	Sources    []string
+	SourceFrom int32
+	SourceTo   int32
 }
 
 type BookContributor struct {
@@ -78,34 +93,59 @@ type BookContributor struct {
 }
 
 type BookFile struct {
-	ID             uuid.UUID
-	BookID         uuid.UUID
-	LibraryID      uuid.UUID
-	Kind           string
-	Format         string
-	RelPath        string
-	SizeBytes      int64
-	ModifiedAt     time.Time
-	Sha256         []byte
-	OriginalSha256 []byte
-	ContentSha256  []byte
-	PartIndex      *int32
-	DurationMs     *int64
-	PageCount      *int32
-	PagesEstimated bool
-	HasText        *bool
-	Drm            bool
-	ExtractState   string
-	ExtractError   *string
-	UploadedBy     *uuid.UUID
-	MissingAt      *time.Time
-	TrashedAt      *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	TrackNumber    *int32
-	DiscNumber     *int32
-	ChunkedAt      *time.Time
-	TrashedBy      *uuid.UUID
+	ID               uuid.UUID
+	BookID           uuid.UUID
+	LibraryID        uuid.UUID
+	Kind             string
+	Format           string
+	RelPath          string
+	SizeBytes        int64
+	ModifiedAt       time.Time
+	Sha256           []byte
+	OriginalSha256   []byte
+	ContentSha256    []byte
+	PartIndex        *int32
+	DurationMs       *int64
+	PageCount        *int32
+	PagesEstimated   bool
+	HasText          *bool
+	Drm              bool
+	ExtractState     string
+	ExtractError     *string
+	UploadedBy       *uuid.UUID
+	MissingAt        *time.Time
+	TrashedAt        *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	TrackNumber      *int32
+	DiscNumber       *int32
+	ChunkedAt        *time.Time
+	TrashedBy        *uuid.UUID
+	KoreaderMd5      *string
+	EpubMeasures     []byte
+	EreaderFindings  []string
+	IndexedAt        *time.Time
+	MeasuresVersion  *int16
+	WriteBackPending bool
+	TextPrintIsbn    *string
+}
+
+type BookGenre struct {
+	BookID    uuid.UUID
+	Genre     string
+	Source    string
+	Method    *string
+	Score     *float32
+	State     string
+	DecidedBy *uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type BookGenreCheck struct {
+	BookID    uuid.UUID
+	Recipe    string
+	CheckedAt time.Time
 }
 
 type BookIdentifier struct {
@@ -114,6 +154,22 @@ type BookIdentifier struct {
 	FileID *uuid.UUID
 	Type   string
 	Value  string
+}
+
+type BookJoin struct {
+	ID        uuid.UUID
+	IntoBook  uuid.UUID
+	FromBook  uuid.UUID
+	FileIds   []uuid.UUID
+	CreatedAt time.Time
+	UndoneAt  *time.Time
+}
+
+type BookNote struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	Body      string
+	UpdatedAt time.Time
 }
 
 type BookRelation struct {
@@ -154,6 +210,39 @@ type BulkChangeBook struct {
 	Outcome      *string
 	Message      *string
 	Skipped      []string
+	Change       []byte
+}
+
+type CalibreImport struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	LibraryID  uuid.UUID
+	SeesAll    bool
+	Ratings    bool
+	Columns    []byte
+	Summary    []byte
+	CreatedAt  time.Time
+	StartedAt  *time.Time
+	FinishedAt *time.Time
+}
+
+type CalibreImportBook struct {
+	ImportID  uuid.UUID
+	CalibreID int64
+	Title     string
+	Found     int32
+	Missing   int32
+	Outcome   *string
+	Message   string
+	BookID    *uuid.UUID
+}
+
+type CleanupDismissal struct {
+	Kind        string
+	Subject     string
+	Value       string
+	DismissedBy *uuid.UUID
+	DismissedAt time.Time
 }
 
 type Collection struct {
@@ -173,6 +262,101 @@ type CollectionItem struct {
 	AddedAt      time.Time
 }
 
+type CurationAction struct {
+	ID           uuid.UUID
+	RunID        uuid.UUID
+	LibraryID    uuid.UUID
+	Kind         string
+	Rule         *string
+	Reason       string
+	Books        []uuid.UUID
+	TrashedFiles []uuid.UUID
+	Before       []byte
+	After        []byte
+	State        string
+	Note         string
+	CreatedAt    time.Time
+	UndoneAt     *time.Time
+	UndoneBy     *uuid.UUID
+}
+
+type CurationRun struct {
+	ID              uuid.UUID
+	Kind            string
+	Rule            *string
+	StartedBy       *uuid.UUID
+	DryRun          bool
+	Automatic       bool
+	State           string
+	BulkChangeID    *uuid.UUID
+	CreatedAt       time.Time
+	FinishedAt      *time.Time
+	ConfirmedAt     *time.Time
+	UndoneAt        *time.Time
+	Classes         []string
+	ResumeAfter     *uuid.UUID
+	Skipped         int32
+	ScopeViewer     *uuid.UUID
+	ScopeSeesAll    bool
+	UndoRequestedAt *time.Time
+	UndoViewer      *uuid.UUID
+	UndoSeesAll     bool
+	UndoCursorAt    *time.Time
+	UndoCursorID    *uuid.UUID
+}
+
+type Delivery struct {
+	ID          uuid.UUID
+	DeviceID    uuid.UUID
+	BookID      uuid.UUID
+	QueuedAt    time.Time
+	DeliveredAt *time.Time
+}
+
+type Device struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Name        string
+	TokenHash   []byte
+	SyncKeyHash []byte
+	CreatedAt   time.Time
+	LastUsedAt  *time.Time
+	CanUpload   bool
+	Kepub       bool
+}
+
+type DeviceCopy struct {
+	SourceSha256 []byte
+	FixVersion   int16
+	State        string
+	Sha256       []byte
+	SizeBytes    *int64
+	KoreaderMd5  *string
+	MadeAt       time.Time
+	LastUsedAt   time.Time
+	Kind         string
+}
+
+type DeviceRequest struct {
+	ID         uuid.UUID
+	UserID     *uuid.UUID
+	DeviceName string
+	Code       string
+	SecretHash []byte
+	Address    string
+	State      string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
+	CanUpload  bool
+}
+
+type DeviceSend struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Fixed    bool
+	SentAt   time.Time
+}
+
 type DuplicateEvidence struct {
 	PairID uuid.UUID
 	Kind   string
@@ -187,6 +371,37 @@ type DuplicatePair struct {
 	FoundAt   time.Time
 	UpdatedAt time.Time
 	Score     float32
+	Contained bool
+}
+
+type FeedItem struct {
+	TrackerID   uuid.UUID
+	ItemKey     string
+	Title       string
+	Link        *string
+	Authors     []string
+	PublishedAt *time.Time
+	Matched     bool
+	Backlog     bool
+	FirstSeenAt time.Time
+	LastSeenAt  time.Time
+	MatchText   *string
+}
+
+type FeedTracker struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	Url          string
+	Title        *string
+	Keywords     []string
+	Authors      []string
+	Etag         *string
+	LastModified *string
+	CheckedAt    *time.Time
+	Failures     int32
+	LastError    *string
+	NextFetchAt  *time.Time
+	CreatedAt    time.Time
 }
 
 type FileLsh struct {
@@ -203,22 +418,55 @@ type FileSignature struct {
 	SignedAt  time.Time
 }
 
+type FulltextOutbox struct {
+	ID              int64
+	Deletes         []int64
+	Docs            []byte
+	CreatedAt       time.Time
+	DeleteLibraries []uuid.UUID
+}
+
 type IndexVersion struct {
 	Name      string
 	Version   string
 	UpdatedAt time.Time
 }
 
-type Library struct {
+type KindleSend struct {
 	ID         uuid.UUID
-	Name       string
-	RootPath   string
-	Mode       string
-	Writable   bool
-	Visibility string
-	OwnerID    *uuid.UUID
+	UserID     uuid.UUID
+	BookID     uuid.UUID
+	FileID     uuid.UUID
+	Title      string
+	Address    string
+	State      string
+	Message    string
 	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	FinishedAt *time.Time
+}
+
+type KoboBook struct {
+	DeviceID   uuid.UUID
+	BookID     uuid.UUID
+	SyncedAt   time.Time
+	ProgressAt *time.Time
+}
+
+type Library struct {
+	ID               uuid.UUID
+	Name             string
+	RootPath         string
+	Mode             string
+	Writable         bool
+	Visibility       string
+	OwnerID          *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	UnwritableSince  *time.Time
+	UnwritableReason *string
+	JoinFormats      bool
+	Watch            bool
+	Fulltext         bool
 }
 
 type LibraryMember struct {
@@ -245,6 +493,26 @@ type LibraryScan struct {
 	FilesSkipped  int32
 	BooksAdded    int32
 	Error         *string
+}
+
+type MatchRun struct {
+	Kind            string
+	State           string
+	Done            int32
+	Total           int32
+	EstimateSeconds int32
+	Requested       int32
+	StartedAt       time.Time
+	FinishedAt      *time.Time
+	Error           string
+	Report          []byte
+}
+
+type MatchScoreModel struct {
+	Slot      string
+	Model     []byte
+	Books     int32
+	TrainedAt time.Time
 }
 
 type MetadataMatch struct {
@@ -289,6 +557,30 @@ type NotificationSubscription struct {
 	Enabled bool
 }
 
+type OidcLogin struct {
+	StateHash  []byte
+	Nonce      string
+	Verifier   string
+	ReturnTo   string
+	LinkUserID *uuid.UUID
+	ExpiresAt  time.Time
+}
+
+type PassageFile struct {
+	FileID       uuid.UUID
+	Model        string
+	ModelVersion string
+	ChunkedAt    time.Time
+	Passages     int32
+	EmbeddedAt   time.Time
+}
+
+type PlayQueue struct {
+	UserID   uuid.UUID
+	BookID   uuid.UUID
+	Position int32
+}
+
 type ProviderRecord struct {
 	Provider   string
 	RequestKey []byte
@@ -311,6 +603,38 @@ type ReadingFinish struct {
 	BookID     uuid.UUID
 	Medium     string
 	FinishedAt time.Time
+}
+
+type ReadingImport struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Source     string
+	LibraryID  uuid.UUID
+	SeesAll    bool
+	Overwrite  bool
+	CreatedAt  time.Time
+	StartedAt  *time.Time
+	FinishedAt *time.Time
+}
+
+type ReadingImportRow struct {
+	ImportID   uuid.UUID
+	RowNo      int32
+	Title      string
+	Authors    []string
+	Isbns      []string
+	Status     *string
+	Rating     *int16
+	Rounded    bool
+	ReadOn     *time.Time
+	Shelves    []string
+	Review     string
+	Match      string
+	BookID     *uuid.UUID
+	Candidates []uuid.UUID
+	Skip       bool
+	Outcome    *string
+	Message    string
 }
 
 type ReadingProgress struct {
@@ -337,6 +661,55 @@ type ReadingSession struct {
 	EndedAt      time.Time
 	FromFraction float64
 	ToFraction   float64
+}
+
+type RecommendationDismissal struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	CreatedAt time.Time
+}
+
+type Release struct {
+	ID          uuid.UUID
+	SubjectID   uuid.UUID
+	DedupeKey   string
+	Title       string
+	Authors     []string
+	AuthorKeys  []string
+	Series      *string
+	SeriesIndex *float64
+	ReleaseDate *time.Time
+	Precision   *string
+	Isbns       []string
+	Provider    string
+	ProviderID  string
+	CoverUrl    *string
+	Backlog     bool
+	FirstSeenAt time.Time
+	SeriesKey   *string
+}
+
+type ReleaseNotice struct {
+	UserID    uuid.UUID
+	ReleaseID uuid.UUID
+	Stage     string
+	CreatedAt time.Time
+}
+
+type ReleasePoll struct {
+	SubjectID uuid.UUID
+	Provider  string
+	FirstAt   time.Time
+	LastAt    time.Time
+}
+
+type ReleaseSubject struct {
+	ID        uuid.UUID
+	Kind      string
+	Name      string
+	NameKey   string
+	PolledAt  *time.Time
+	CreatedAt time.Time
 }
 
 type SearchWord struct {
@@ -389,16 +762,48 @@ type Tag struct {
 	NameKey string
 }
 
+type TextIsbnLookup struct {
+	BookID   uuid.UUID
+	Isbn     string
+	QueuedAt time.Time
+}
+
+type Tracker struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	SubjectID uuid.UUID
+	CreatedAt time.Time
+}
+
+type UnusedEmbeddingModel struct {
+	Name  string
+	Since time.Time
+}
+
+type UpdateCheck struct {
+	ID              bool
+	LatestVersion   *string
+	Url             *string
+	PublishedAt     *time.Time
+	Security        bool
+	CheckedAt       *time.Time
+	AttemptedAt     *time.Time
+	Error           *string
+	NotifiedVersion *string
+}
+
 type User struct {
-	ID           uuid.UUID
-	Username     string
-	Email        *string
-	PasswordHash *string
-	Role         string
-	QuotaBytes   *int64
-	DisabledAt   *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID               uuid.UUID
+	Username         string
+	Email            *string
+	PasswordHash     *string
+	Role             string
+	QuotaBytes       *int64
+	DisabledAt       *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	HistoryLibraryID *uuid.UUID
+	KindleAddress    *string
 }
 
 type UserBook struct {
@@ -409,4 +814,41 @@ type UserBook struct {
 	StartedOn  *time.Time
 	FinishedOn *time.Time
 	UpdatedAt  time.Time
+}
+
+type UserIdentity struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Issuer     string
+	Subject    string
+	Email      *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+}
+
+type Webhook struct {
+	ID           uuid.UUID
+	Name         string
+	Url          string
+	Kinds        []string
+	SecretSealed []byte
+	Trusted      bool
+	Enabled      bool
+	CreatedBy    *uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type WebhookDelivery struct {
+	ID           uuid.UUID
+	HookID       uuid.UUID
+	Kind         string
+	Payload      []byte
+	Status       string
+	Attempts     int32
+	LastError    *string
+	ResponseCode *int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeliveredAt  *time.Time
 }

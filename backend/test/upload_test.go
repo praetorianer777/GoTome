@@ -59,6 +59,18 @@ func (a *app) sendUpload(c *http.Client, libraryID, contentType string, body io.
 
 // libraryFiles lists the files below a library's folder, staged ones
 // included, as paths relative to it.
+// fakePDF is n bytes that start as a PDF does, and are none.
+func fakePDF(n int, fill byte) []byte {
+	return append([]byte("%PDF-"), bytes.Repeat([]byte{fill}, n-5)...)
+}
+
+// withMagic is the content behind the first bytes of its name's format,
+// which is all an upload looks at.
+func withMagic(name, content string) []byte {
+	magic := map[string]string{".epub": "PK\x03\x04", ".pdf": "%PDF-1.4\n", ".mp3": "ID3"}[strings.ToLower(filepath.Ext(name))]
+	return []byte(magic + content)
+}
+
 func libraryFiles(t *testing.T, root string) []string {
 	t.Helper()
 	var files []string
@@ -193,7 +205,7 @@ func TestUploadsJoinTheirBooks(t *testing.T) {
 
 	send := func(name, content string) map[string]any {
 		t.Helper()
-		status, body := a.upload(admin, lib, name, []byte(content))
+		status, body := a.upload(admin, lib, name, withMagic(name, content))
 		if status != 200 || body["outcome"] != "added" {
 			t.Fatalf("upload %s: %d %v", name, status, body)
 		}
@@ -203,15 +215,15 @@ func TestUploadsJoinTheirBooks(t *testing.T) {
 	pdf := send("Emma.pdf", "a pdf")
 	// Another file under a name that is taken is another book.
 	again := send("Emma.epub", "another epub")
-	part2 := send("Dune - Part 02.mp3", "second part")
-	part1 := send("Dune - Part 01.mp3", "first part")
+	part2 := send("Dusk - Part 02.mp3", "second part")
+	part1 := send("Dusk - Part 01.mp3", "first part")
 	odd := send(`../..\evil/..:name?.EPUB`, "a strange name")
 
 	if epub["bookId"] != pdf["bookId"] || again["bookId"] == epub["bookId"] || part1["bookId"] != part2["bookId"] {
 		t.Errorf("books: epub %v, pdf %v, again %v, parts %v and %v",
 			epub["bookId"], pdf["bookId"], again["bookId"], part1["bookId"], part2["bookId"])
 	}
-	want := []string{"Dune/Dune - Part 01.mp3", "Dune/Dune - Part 02.mp3", "Emma/Emma (2).epub", "Emma/Emma.epub", "Emma/Emma.pdf", "name/name.epub"}
+	want := []string{"Dusk/Dusk - Part 01.mp3", "Dusk/Dusk - Part 02.mp3", "Emma/Emma (2).epub", "Emma/Emma.epub", "Emma/Emma.pdf", "name/name.epub"}
 	if files := libraryFiles(t, root); !slices.Equal(files, want) {
 		t.Errorf("the library holds %v, want %v", files, want)
 	}
@@ -231,7 +243,7 @@ func TestUploadsJoinTheirBooks(t *testing.T) {
 		parts = append(parts, p)
 	}
 	if !slices.Equal(parts, []int32{0, 1}) {
-		t.Errorf("parts of Dune are at %v, want 0 and 1 in the order of their names", parts)
+		t.Errorf("parts of Dusk are at %v, want 0 and 1 in the order of their names", parts)
 	}
 }
 
@@ -263,6 +275,13 @@ func TestRefusedUploadsLeaveNothing(t *testing.T) {
 		t.Errorf("a text file: %d %v", status, body)
 	}
 	nothingLeft("a text file")
+
+	// A web page saved under a book's name.
+	status, body = a.upload(admin, lib, "Emma.epub", []byte("<html><body>Not found</body></html>"))
+	if status != 422 || errorCode(body) != "wrong_content" || !strings.Contains(fieldError(body, "file"), "not an EPUB") {
+		t.Errorf("a file that is not its format: %d %v", status, body)
+	}
+	nothingLeft("a file that is not its format")
 
 	status, body = a.upload(admin, lib, "Huge.m4b", make([]byte, uploadLimit+1))
 	if status != 413 || errorCode(body) != "too_large" {

@@ -11,6 +11,43 @@ import (
 	"github.com/google/uuid"
 )
 
+const addMissingContributors = `-- name: AddMissingContributors :exec
+INSERT INTO book_contributors (book_id, author_id, role, position)
+SELECT $1::uuid, c.author_id, c.role,
+       ((SELECT coalesce(max(m.position), -1) FROM book_contributors m WHERE m.book_id = $1) + row_number() OVER (ORDER BY c.position))::int
+FROM book_contributors c
+WHERE c.book_id = $2
+  AND NOT EXISTS (SELECT 1 FROM book_contributors m WHERE m.book_id = $1 AND m.author_id = c.author_id AND m.role = c.role)
+ON CONFLICT DO NOTHING
+`
+
+type AddMissingContributorsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The credits of the other book that this one lacks, after its own.
+func (q *Queries) AddMissingContributors(ctx context.Context, arg AddMissingContributorsParams) error {
+	_, err := q.db.Exec(ctx, addMissingContributors, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const addMissingTags = `-- name: AddMissingTags :exec
+INSERT INTO book_tags (book_id, tag_id)
+SELECT $1::uuid, t.tag_id FROM book_tags t WHERE t.book_id = $2
+ON CONFLICT DO NOTHING
+`
+
+type AddMissingTagsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+func (q *Queries) AddMissingTags(ctx context.Context, arg AddMissingTagsParams) error {
+	_, err := q.db.Exec(ctx, addMissingTags, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const copyBookFields = `-- name: CopyBookFields :exec
 UPDATE books s SET
     title               = CASE WHEN 'title' = ANY($1::text[]) THEN l.title ELSE s.title END,
@@ -150,6 +187,52 @@ func (q *Queries) ForwardMergedBooks(ctx context.Context, arg ForwardMergedBooks
 	return err
 }
 
+const listBookRecordings = `-- name: ListBookRecordings :many
+SELECT o.id, o.title,
+       coalesce((SELECT array_agg(au.name ORDER BY c.position, au.sort_name) FROM book_contributors c
+                 JOIN authors au ON au.id = c.author_id
+                 WHERE c.book_id = o.id AND c.role = 'narrator'), '{}')::text[] AS narrators
+FROM book_relations r
+JOIN books o ON o.id = CASE WHEN r.book_a = $1 THEN r.book_b ELSE r.book_a END
+WHERE $1 IN (r.book_a, r.book_b) AND r.kind = 'recording'
+  AND o.deleted_at IS NULL
+  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+ORDER BY o.title, o.id
+`
+
+type ListBookRecordingsParams struct {
+	BookID  uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type ListBookRecordingsRow struct {
+	ID        uuid.UUID
+	Title     string
+	Narrators []string
+}
+
+// The book's other recordings the viewer sees, with their narrators.
+func (q *Queries) ListBookRecordings(ctx context.Context, arg ListBookRecordingsParams) ([]ListBookRecordingsRow, error) {
+	rows, err := q.db.Query(ctx, listBookRecordings, arg.BookID, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookRecordingsRow{}
+	for rows.Next() {
+		var i ListBookRecordingsRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Narrators); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLiveBookFiles = `-- name: ListLiveBookFiles :many
 SELECT id FROM book_files
 WHERE book_id = $1 AND missing_at IS NULL AND trashed_at IS NULL
@@ -181,7 +264,7 @@ const lockBooksForMerge = `-- name: LockBooksForMerge :many
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
 WHERE b.id = ANY($1::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
 ORDER BY b.id
 FOR UPDATE OF b
 `
@@ -218,6 +301,33 @@ func (q *Queries) LockBooksForMerge(ctx context.Context, arg LockBooksForMergePa
 		return nil, err
 	}
 	return items, nil
+}
+
+const mergeBookGenres = `-- name: MergeBookGenres :exec
+WITH moved AS (
+    DELETE FROM book_genres x WHERE x.book_id = $2
+    RETURNING genre, source, method, score, state, decided_by, created_at),
+checked AS (
+    DELETE FROM book_genre_checks c WHERE c.book_id = $1)
+INSERT INTO book_genres AS g (book_id, genre, source, method, score, state, decided_by, created_at)
+SELECT $1, genre, source, method, score, state, decided_by, created_at
+FROM moved WHERE state <> 'suggested'
+ON CONFLICT (book_id, genre) DO UPDATE
+SET state = EXCLUDED.state, decided_by = EXCLUDED.decided_by, updated_at = now()
+WHERE g.state = 'suggested'
+`
+
+type MergeBookGenresParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// What a person decided about the merged book's genres, where the surviving
+// book has no decision of its own; its suggestions go, and the surviving
+// book is looked at again by the next pass.
+func (q *Queries) MergeBookGenres(ctx context.Context, arg MergeBookGenresParams) error {
+	_, err := q.db.Exec(ctx, mergeBookGenres, arg.IntoBook, arg.FromBook)
+	return err
 }
 
 const mergeBookIdentifiers = `-- name: MergeBookIdentifiers :exec
@@ -257,6 +367,48 @@ type MergeCollectionItemsParams struct {
 // The shelves the book is on; where both are, the surviving book's place.
 func (q *Queries) MergeCollectionItems(ctx context.Context, arg MergeCollectionItemsParams) error {
 	_, err := q.db.Exec(ctx, mergeCollectionItems, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const mergeDeliveries = `-- name: MergeDeliveries :exec
+WITH moved AS (
+    DELETE FROM deliveries x WHERE x.book_id = $2
+    RETURNING device_id, queued_at, delivered_at)
+INSERT INTO deliveries (device_id, book_id, queued_at, delivered_at)
+SELECT device_id, $1, queued_at, delivered_at FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type MergeDeliveriesParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's deliveries to devices; where a device has both, the surviving
+// book's.
+func (q *Queries) MergeDeliveries(ctx context.Context, arg MergeDeliveriesParams) error {
+	_, err := q.db.Exec(ctx, mergeDeliveries, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const mergePlayQueue = `-- name: MergePlayQueue :exec
+WITH moved AS (
+    DELETE FROM play_queue x WHERE x.book_id = $2
+    RETURNING user_id, position)
+INSERT INTO play_queue (user_id, book_id, position)
+SELECT user_id, $1, position FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type MergePlayQueueParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's places in people's queues; where a queue has both, the
+// surviving book's.
+func (q *Queries) MergePlayQueue(ctx context.Context, arg MergePlayQueueParams) error {
+	_, err := q.db.Exec(ctx, mergePlayQueue, arg.IntoBook, arg.FromBook)
 	return err
 }
 

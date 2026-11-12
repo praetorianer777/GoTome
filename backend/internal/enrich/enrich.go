@@ -43,9 +43,8 @@ const (
 	// busyWait is how long a match waits for providers that asked to be
 	// left alone.
 	busyWait = 15 * time.Minute
-	// keepAtLeast is the score below which a match is not even worth a
-	// person's look; pendingPerBook how many of the rest are kept.
-	keepAtLeast    = 0.5
+	// pendingPerBook is how many matches below the threshold, those worth a
+	// person's look (metadata.Service.ReviewFloor), are kept.
 	pendingPerBook = 3
 	matchAttempts  = 5
 )
@@ -53,6 +52,7 @@ const (
 // Settings is where the switches are: settings.Store.
 type Settings interface {
 	Text(ctx context.Context, key string) (string, error)
+	TextTx(ctx context.Context, db sqlc.DBTX, key string) (string, error)
 }
 
 // Editor changes a book as a person's edit does, with the write-back into
@@ -90,7 +90,7 @@ func NewService(pool *pgxpool.Pool, meta *metadata.Service, editor Editor, store
 // gave a reason to: a file of it was read. Asking again while the lookup
 // waits is the same lookup.
 func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error {
-	on, err := s.settings.Text(ctx, settings.AutoMatch)
+	on, err := s.settings.TextTx(ctx, tx, settings.AutoMatch)
 	if err != nil || on != "on" {
 		return err
 	}
@@ -172,12 +172,13 @@ func (s *Service) Fetch(ctx context.Context, bookID uuid.UUID) (string, error) {
 		_, err = s.record(ctx, sqlc.New(s.pool), bookID, best, StateApplied)
 		return outcome, err
 	}
+	floor := s.meta.ReviewFloor(ctx)
 	outcome := OutcomeNotFound
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		fresh := false
 		for i, c := range found {
-			if i == pendingPerBook || c.Score < keepAtLeast {
+			if i == pendingPerBook || c.Score < floor {
 				break
 			}
 			inserted, err := s.record(ctx, q, bookID, c, StatePending)
@@ -260,6 +261,10 @@ func (s *Service) gaps(ctx context.Context, book catalog.Book, r metadata.Record
 	}
 	added := false
 	for _, id := range r.Identifiers {
+		// A print edition's ISBN was only asked about; the book is not it.
+		if id.Type == catalog.IDISBN && slices.Contains(book.PrintISBNs, id.Value) {
+			continue
+		}
 		if !slices.Contains(all, id) {
 			own, all, added = append(own, id), append(all, id), true
 		}

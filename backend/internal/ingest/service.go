@@ -8,10 +8,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
 	"github.com/praetorianer777/gotome/backend/internal/covers"
+	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
@@ -115,12 +117,20 @@ type Service struct {
 	// Events, when set, hears of scans and of files that cannot be read.
 	Events *notify.Events
 	// OnChunked, when set, runs in the transaction that wrote a book's
-	// chunks from the file: its signature for overlap is made there.
-	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID) error
+	// chunks from the file, with their texts, which are not kept: its
+	// signature for overlap is made there.
+	OnChunked func(ctx context.Context, tx pgx.Tx, bookID, fileID uuid.UUID, texts []string) error
 	// OnFilesChanged, when set, runs in the transaction that trashed,
 	// restored or purged one of a book's files: its duplicates are looked
 	// for again.
 	OnFilesChanged func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// OnDescribed, when set, runs in the transaction of an edit that changed
+	// how a book is described: a new title or author may make it the
+	// duplicate of another.
+	OnDescribed func(ctx context.Context, tx pgx.Tx, bookID uuid.UUID) error
+	// Curation, when set, records merges and replaces as actions of runs,
+	// each with the state of the books before, so that it can be undone.
+	Curation *curation.Service
 }
 
 // NewService returns a Service. Its Queue must be set before Request is called.
@@ -142,6 +152,9 @@ func (s *Service) Request(ctx context.Context, libraryID uuid.UUID, by *uuid.UUI
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := q.QueueScan(ctx, sqlc.QueueScanParams{LibraryID: libraryID, RequestedBy: by})
+		if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return library.ErrNotFound
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			row, err = q.LockActiveScan(ctx, libraryID)
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -273,6 +286,13 @@ func (s *Service) Run(ctx context.Context, libraryID uuid.UUID, jobID int64) (co
 	// taken in so far get their titles and covers while it goes on.
 	if ctx.Err() == nil {
 		if err := s.EnqueuePending(ctx, libraryID); err != nil {
+			return false, err
+		}
+	}
+	// The scan only reads, but what writes into the folder later would fail
+	// file by file: that it cannot is found here, once.
+	if scanErr == nil && lib.Writable {
+		if err := s.checkFolder(record, libraryID, lib.RootPath); err != nil {
 			return false, err
 		}
 	}

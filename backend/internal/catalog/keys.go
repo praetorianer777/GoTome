@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 
@@ -9,8 +10,8 @@ import (
 
 // Key is a name or title as it is compared: lower case, accents removed,
 // punctuation dropped, whitespace collapsed. "Brontë, Charlotte" and
-// "bronte charlotte" have the same key; so do "Tolkien, J.R.R." and
-// "Tolkien J R R".
+// "bronte charlotte" have the same key; so do "Brandt, H.K.L." and
+// "Brandt H K L".
 func Key(s string) string {
 	var b strings.Builder
 	space := false
@@ -54,7 +55,7 @@ func foldRune(r rune) string {
 }
 
 // articles are the leading words a title is not sorted by, per language. A
-// title is only rearranged when its language is known: "Die Hard" is English.
+// title is only rearranged when its language is known: "Die Slowly" is English.
 var articles = map[string][]string{
 	"en": {"the", "a", "an"},
 	"de": {"der", "die", "das", "ein", "eine", "einer", "eines", "einem", "einen"},
@@ -65,7 +66,7 @@ var articles = map[string][]string{
 }
 
 // SortTitle is the title as lists order it: a leading article moves to the
-// end, so "The Hobbit" sorts under H as "Hobbit, The".
+// end, so "The Lantern" sorts under H as "Lantern, The".
 func SortTitle(title, language string) string {
 	title = strings.Join(strings.Fields(title), " ")
 	lang, _, _ := strings.Cut(strings.ToLower(language), "-")
@@ -92,7 +93,7 @@ func SortTitle(title, language string) string {
 }
 
 // particles belong to the surname they stand before: "Ursula K. Le Guin" is
-// filed under "Le Guin", "Ludwig van Beethoven" under "van Beethoven".
+// filed under "Lund", "Ludwig van Beethoven" under "van Beethoven".
 var particles = map[string]bool{
 	"van": true, "von": true, "de": true, "der": true, "den": true, "del": true,
 	"della": true, "di": true, "da": true, "du": true, "la": true, "le": true,
@@ -126,4 +127,13 @@ func SortName(name string) string {
 		start--
 	}
 	return strings.Join(words[start:], " ") + ", " + strings.Join(words[:start], " ") + suffix
+}
+
+// PersonKey is the key of a name with its words in sorted order:
+// "Weidner, Ulrike" and "Ulrike Weidner" are one person to it. It is
+// the SQL function person_key, which authors.person_key holds.
+func PersonKey(name string) string {
+	words := strings.Fields(Key(name))
+	slices.Sort(words)
+	return strings.Join(words, " ")
 }

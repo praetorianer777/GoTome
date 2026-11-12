@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { API_BASE, api } from "@/api/client";
+import { isDemo } from "@/demo/mode";
 import type { components } from "@/api/schema";
 import {
 	BULK_OUTCOME_LABELS,
@@ -12,6 +13,8 @@ import {
 	type BulkOutcome,
 } from "@/books/bulk";
 import { type MessageKey, t } from "@/i18n";
+import { formatReleaseDate } from "@/lib/format";
+import { checkName } from "@/system/checks";
 
 export type Notification = components["schemas"]["Notification"];
 
@@ -45,7 +48,7 @@ export function useMarkRead() {
 export function useNotificationStream() {
 	const queryClient = useQueryClient();
 	useEffect(() => {
-		if (typeof EventSource === "undefined") return;
+		if (typeof EventSource === "undefined" || isDemo) return;
 		const stream = new EventSource(`${API_BASE}/notifications/stream`);
 		stream.addEventListener("unread", (e) => {
 			const { unread } = JSON.parse((e as MessageEvent<string>).data) as {
@@ -64,6 +67,7 @@ const BULK_ACTIONS: Record<string, MessageKey> = {
 	edit: "notification.bulk.edit",
 	fetch: "notification.bulk.fetch",
 	writeBack: "notification.bulk.writeBack",
+	fix: "notification.bulk.fix",
 };
 
 export type NotificationSetting =
@@ -95,13 +99,28 @@ export function useSetNotificationSetting() {
 export const EVENT_LABELS: Record<NotificationSetting["kind"], MessageKey> = {
 	"books.added": "notifications.kind.booksAdded",
 	"wish.fulfilled": "notifications.kind.wishFulfilled",
+	"release.announced": "notifications.kind.releaseAnnounced",
+	"release.out": "notifications.kind.releaseOut",
+	"feed.item": "notifications.kind.feedItem",
 	"review.needed": "notifications.kind.reviewNeeded",
 	"duplicates.found": "notifications.kind.duplicatesFound",
 	"files.unreadable": "notifications.kind.filesUnreadable",
 	"scan.failed": "notifications.kind.scanFailed",
+	"library.unwritable": "notifications.kind.libraryUnwritable",
+	"system.degraded": "notifications.kind.systemDegraded",
+	"update.available": "notifications.kind.updateAvailable",
 };
 
 const text = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** A release's date in a notification's data, as exactly as it is known. */
+function releaseDate(d: Record<string, unknown>): string {
+	const precision = d.precision;
+	if (typeof d.date !== "string" || (precision !== "day" && precision !== "month" && precision !== "year")) {
+		return "";
+	}
+	return formatReleaseDate(d.date, precision);
+}
 const count = (v: unknown) => (typeof v === "number" ? v : 1);
 
 /** What a notification says, as a heading and a line. */
@@ -127,6 +146,31 @@ export function notificationText(n: Notification): {
 				detail: d.error
 					? text(d.error)
 					: t("notification.scanFailed.many", { count: count(d.count) }),
+			};
+		case "library.unwritable":
+			return {
+				title: t("notification.libraryUnwritable", { library: text(d.library) }),
+				detail: d.error
+					? t("notification.libraryUnwritable.reason", { reason: text(d.error) })
+					: t("notification.libraryUnwritable.many", { count: count(d.count) }),
+			};
+		case "system.degraded":
+			return {
+				title: t("notification.systemDegraded", { component: checkName(text(d.component)) }),
+				detail: t("notification.systemDegraded.detail", { message: text(d.message) }),
+			};
+		case "update.available":
+			return {
+				title: t("notification.updateAvailable", { version: text(d.version) }),
+				detail:
+					d.count !== undefined
+						? t("notification.updateAvailable.many", { count: count(d.count) })
+						: t(
+								d.security === true
+									? "notification.updateAvailable.security"
+									: "notification.updateAvailable.detail",
+								{ current: text(d.current) },
+							),
 			};
 		case "files.unreadable":
 			return one
@@ -154,12 +198,61 @@ export function notificationText(n: Notification): {
 					? t("notification.reviewNeeded.one", { title: text(d.title) })
 					: t("notification.reviewNeeded.many", { count: count(d.count) }),
 			};
+		case "device.requested":
+			return {
+				title: t("notification.deviceRequested"),
+				detail: t("notification.deviceRequested.detail", {
+					device: text(d.device),
+					code: text(d.code),
+				}),
+			};
 		case "wish.fulfilled":
 			return {
 				title: t("notification.wishFulfilled"),
 				detail: one
 					? t("notification.wishFulfilled.one", { title: text(d.title) })
 					: t("notification.wishFulfilled.many", { count: count(d.count) }),
+			};
+		case "release.announced":
+		case "release.out": {
+			const out = n.kind === "release.out";
+			if (!one) {
+				return {
+					title: t(out ? "notification.releaseOut" : "notification.releaseAnnounced"),
+					detail: t(out ? "notification.releaseOut.many" : "notification.releaseAnnounced.many", {
+						count: count(d.count),
+					}),
+				};
+			}
+			const values = { title: text(d.title), authors: text(d.authors), date: releaseDate(d) };
+			return {
+				title: t(out ? "notification.releaseOut" : "notification.releaseAnnounced"),
+				detail: out
+					? t("notification.releaseOut.one", values)
+					: values.date
+						? t("notification.releaseAnnounced.one", values)
+						: t("notification.releaseAnnounced.undated", values),
+			};
+		}
+		case "feed.item":
+			return {
+				title: t("notification.feedItem"),
+				detail: one
+					? t("notification.feedItem.one", { title: text(d.title), feed: text(d.feed) })
+					: t("notification.feedItem.many", { count: count(d.count) }),
+			};
+		case "kindle.sent":
+			return {
+				title: t("notification.kindleSent"),
+				detail: t("notification.kindleSent.detail", { title: text(d.title) }),
+			};
+		case "kindle.failed":
+			return {
+				title: t("notification.kindleFailed"),
+				detail: t("notification.kindleFailed.detail", {
+					title: text(d.title),
+					message: text(d.message),
+				}),
 			};
 		case "bulk.finished": {
 			const action = typeof n.data.action === "string" ? n.data.action : "";
