@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Reopening an e-book no longer saves a coarser place (the start of the
+  section, in Safari) over the exact one it opened at.
+
 ### Changed
 
 - Similar books and the search by description compare books by a cleaner
