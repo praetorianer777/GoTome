@@ -99,6 +99,14 @@ type Works interface {
 	BySeries(ctx context.Context, web Web, name string) ([]Record, error)
 }
 
+// Subjects is a provider that also lists the books of a subject, a genre
+// in the words of the source, "science_fiction" for Open Library, for
+// finding books beyond a person's library (#393). A subject the provider
+// does not know is ErrNotFound.
+type Subjects interface {
+	BySubject(ctx context.Context, web Web, subject string) ([]Record, error)
+}
+
 // What WorksOf lists the books of.
 const (
 	WorksAuthor = "author"
@@ -143,6 +151,48 @@ func (s *Service) WorksOf(ctx context.Context, kind, name string) ([]Answer, err
 		} else {
 			records, err = w.ByAuthor(ctx, web, name)
 		}
+		switch {
+		case errors.Is(err, ErrNotFound):
+			records, err = nil, nil
+		case err != nil && ctx.Err() != nil:
+			return nil, ctx.Err()
+		case err != nil:
+			errs = append(errs, &ProviderError{Provider: p.Name(), Err: err})
+			continue
+		}
+		records = slices.DeleteFunc(records, func(r Record) bool {
+			return r.Language != "" && !slices.Contains(wanted, baseLanguage(r.Language))
+		})
+		for i := range records {
+			records[i].Provider = p.Name()
+		}
+		out = append(out, Answer{Provider: p.Name(), Records: records})
+	}
+	return out, errors.Join(errs...)
+}
+
+// SubjectsOf asks every enabled provider that lists by subject for the
+// books of one, in the metadata language or English as WorksOf keeps them.
+// Failures are reported as WorksOf reports them.
+func (s *Service) SubjectsOf(ctx context.Context, subject string) ([]Answer, error) {
+	var enabled []string
+	if s.enabled != nil {
+		enabled = s.enabled(ctx)
+	}
+	wanted := []string{"en"}
+	if s.language != nil {
+		if l := baseLanguage(s.language(ctx)); l != "" {
+			wanted = append(wanted, l)
+		}
+	}
+	var out []Answer
+	var errs []error
+	for _, p := range s.providers {
+		l, ok := p.(Subjects)
+		if !ok || (s.enabled != nil && !slices.Contains(enabled, p.Name())) {
+			continue
+		}
+		records, err := l.BySubject(ctx, s.webs[p.Name()], subject)
 		switch {
 		case errors.Is(err, ErrNotFound):
 			records, err = nil, nil

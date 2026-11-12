@@ -39,6 +39,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
+	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
@@ -101,6 +102,7 @@ const (
 	genreInterval        = time.Hour
 	// A subject is asked about once a day; the hourly run picks up those due.
 	releasePollInterval = time.Hour
+	discoverInterval    = time.Hour
 	updateCheckInterval = time.Hour
 	// feedFetchInterval is how often feeds are looked at for those due.
 	feedFetchInterval = 10 * time.Minute
@@ -374,6 +376,12 @@ func serve() error {
 	autoCurate := autocurate.NewService(pool, curations, fixes, scans, settingStore, log)
 	follows.Events = events
 	follows.Offline = cfg.Offline
+	discoveries := discover.NewService(pool, meta, vectors, log)
+	discoveries.Offline = cfg.Offline
+	discoveries.Enabled = func(ctx context.Context) bool {
+		v, _ := settingStore.Text(ctx, settings.RecommendationsDiscover)
+		return v == "on"
+	}
 	updateChecks := updates.NewService(pool, settingStore, events, log)
 	updateChecks.Offline = cfg.Offline
 	readingService := reading.NewService(pool)
@@ -408,7 +416,7 @@ func serve() error {
 		accounts: accounts, matches: matches, meta: meta, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
-		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories, calibre: calibreImports,
+		events: events, follows: follows, discoveries: discoveries, sync: progressSync, updates: updateChecks, imports: histories, calibre: calibreImports,
 		trashRetention: settingStore.TrashRetention, automatic: autoCurate, hooks: hooks,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
@@ -434,6 +442,7 @@ func serve() error {
 	events.Queue = runner
 	hooks.Queue = runner
 	follows.Queue = runner
+	discoveries.Queue = runner
 	autoCurate.Queue = runner
 	if err := runner.Start(ctx); err != nil {
 		return err
@@ -559,6 +568,7 @@ func serve() error {
 		Kobo:           kobo.NewService(pool),
 		Sync:           progressSync,
 		Releases:       follows,
+		Discover:       discoveries,
 		Cleanup:        fixes,
 		Auto:           autoCurate,
 		Curation:       curations,

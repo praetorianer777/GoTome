@@ -309,6 +309,64 @@ func (p *Provider) BySeries(context.Context, metadata.Web, string) ([]metadata.R
 	return nil, nil
 }
 
+// subjectLimit is how many works of a subject are asked for: the ones
+// Open Library lists first are those most editions have been made of.
+const subjectLimit = 40
+
+type subjectAnswer struct {
+	Works []struct {
+		Key              string   `json:"key"`
+		Title            string   `json:"title"`
+		CoverID          int64    `json:"cover_id"`
+		FirstPublishYear int      `json:"first_publish_year"`
+		Subject          []string `json:"subject"`
+		Authors          []struct {
+			Name string `json:"name"`
+		} `json:"authors"`
+	} `json:"works"`
+}
+
+// BySubject lists the works Open Library files under a subject, such as
+// "science_fiction": the ones with most editions first. A work stands for
+// all its editions and says no language.
+func (p *Provider) BySubject(ctx context.Context, web metadata.Web, subject string) ([]metadata.Record, error) {
+	subject = strings.Trim(strings.ReplaceAll(strings.ToLower(strings.TrimSpace(subject)), " ", "_"), "/")
+	if subject == "" || strings.ContainsAny(subject, "/?#") {
+		return nil, nil
+	}
+	var answer subjectAnswer
+	if err := getJSON(ctx, web, site+"/subjects/"+url.PathEscape(subject)+".json?limit="+strconv.Itoa(subjectLimit), &answer); err != nil {
+		return nil, err
+	}
+	var out []metadata.Record
+	for _, w := range answer.Works {
+		if strings.TrimSpace(w.Title) == "" {
+			continue
+		}
+		id := strings.TrimPrefix(w.Key, "/works/")
+		r := metadata.Record{ID: id, Work: id, Title: w.Title, Tags: firstTags(w.Subject)}
+		for i, a := range w.Authors {
+			if i == maxAuthors {
+				break
+			}
+			if a.Name != "" {
+				r.Contributors = append(r.Contributors, catalog.NewContributor{Name: a.Name, Role: catalog.RoleAuthor})
+			}
+		}
+		if w.FirstPublishYear > 0 {
+			r.Published = strconv.Itoa(w.FirstPublishYear)
+		}
+		if w.CoverID > 0 {
+			r.CoverURL = coverURL([]int64{w.CoverID})
+		}
+		if id != "" {
+			r.Identifiers = []catalog.Identifier{{Type: catalog.IDOpenLibrary, Value: id}}
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
 func getJSON(ctx context.Context, web metadata.Web, u string, into any) error {
 	return fetchJSON(ctx, web, metadata.Request{URL: u}, into)
 }

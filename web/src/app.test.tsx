@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { leave } from "@/auth/sso";
 import type { BookDetail } from "@/books/api";
+import type { DiscoverItem, DiscoverList } from "@/discover/api";
 import { setLocale } from "@/i18n";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -4903,6 +4904,93 @@ describe("recommendations", () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels").withBook("Emma");
 		renderApp("/recommendations");
 		expect(await screen.findByText(/Finish or rate at least three books/)).toBeInTheDocument();
+	});
+});
+
+describe("discover", () => {
+	const wish = (title: string) => ({ title, provider: "openlibrary" });
+	const item = (id: string, title: string, reason: DiscoverItem["reason"]): DiscoverItem => ({
+		id,
+		title,
+		authors: ["Ada Moss"],
+		year: 2021,
+		provider: "openlibrary",
+		reason,
+		wish: wish(title),
+	});
+	function discovered(state: DiscoverList["state"] = "ready") {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.discover = {
+			state,
+			finishedAt: "2026-11-10T08:00:00Z",
+			items: [
+				item("c-1", "The Lantern Four", { kind: "series_next", name: "Lantern Cycle", stars: 0, because: ["Emma"] }),
+				item("c-2", "Moss Again", { kind: "author", name: "Ada Moss", stars: 5, because: [] }),
+				item("c-3", "Fen Tale", { kind: "genre", name: "fantasy", stars: 0, because: ["Emma", "Persuasion"] }),
+			],
+		};
+	}
+
+	it("lists books by reason, each saying why", async () => {
+		discovered();
+		renderApp("/discover");
+		expect(await screen.findByRole("heading", { name: "Discover", level: 1 })).toBeInTheDocument();
+		const next = within(await screen.findByRole("region", { name: "Next in your series" }));
+		expect(next.getByText("The Lantern Four")).toBeInTheDocument();
+		expect(next.getByText("Next in Lantern Cycle")).toBeInTheDocument();
+		expect(next.getByText("Like Emma")).toBeInTheDocument();
+		const authors = within(screen.getByRole("region", { name: "By authors you rated" }));
+		expect(authors.getByText("By Ada Moss, whom you rated 5 stars")).toBeInTheDocument();
+		const genre = within(screen.getByRole("region", { name: "In genres you read" }));
+		expect(genre.getByText("In Fantasy, which you read a lot")).toBeInTheDocument();
+		expect(screen.getByText(/Last looked on/)).toBeInTheDocument();
+	});
+
+	it("wishes for a book with what the server sent, and the book leaves the page", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Add The Lantern Four to wishlist" }));
+		await waitFor(() => expect(screen.queryByText("The Lantern Four")).not.toBeInTheDocument());
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toEqual(wish("The Lantern Four"));
+		expect(screen.getByText("Moss Again")).toBeInTheDocument();
+	});
+
+	it("leaves a book out when the person is not interested", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Not interested in Moss Again" }));
+		await waitFor(() => expect(screen.queryByText("Moss Again")).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.path === "/me/discover/c-2/dismiss")).toBe(true);
+		expect(screen.getByText("Fen Tale")).toBeInTheDocument();
+	});
+
+	it("asks for a run the first time, and says it is under way", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Find books for me" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Looking for books");
+		expect(server.requests.some((r) => r.method === "POST" && r.path === "/me/discover/run")).toBe(true);
+	});
+
+	it("says why there is nothing when it is off or the server is offline", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.discover = { state: "off", items: [] };
+		const { unmount } = renderApp("/discover");
+		expect(await screen.findByText(/An administrator has not switched Discover on/)).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Find books for me" })).not.toBeInTheDocument();
+		unmount();
+		server.discover = { state: "offline", items: [] };
+		renderApp("/discover");
+		expect(await screen.findByText(/This server runs offline and asks no metadata source/)).toBeInTheDocument();
+	});
+
+	it("is in the sidebar for people who keep a wishlist", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		renderApp("/");
+		expect(await screen.findByRole("link", { name: "Discover" })).toBeInTheDocument();
 	});
 });
 

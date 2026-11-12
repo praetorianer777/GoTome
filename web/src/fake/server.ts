@@ -24,6 +24,7 @@ import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
 import type { RecommendationList } from "@/books/recommendations";
+import type { DiscoverList } from "@/discover/api";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange, ReadingStatus } from "@/books/reading";
@@ -426,6 +427,8 @@ export class FakeServer {
 	importPreview?: ReadingImport;
 	/** What the person is recommended; none, with no profile, unless a test says. */
 	recommendations?: RecommendationList;
+	/** What Discover offers; never looked for, unless a test says. */
+	discover?: DiscoverList;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
@@ -884,6 +887,21 @@ export class FakeServer {
 			this.recommendations = {
 				...this.recommendations,
 				books: this.recommendations.books.filter((r) => r.book.id !== dismissed[1]),
+			};
+			return new Response(null, { status: 204 });
+		}
+		if (path === "/me/discover") {
+			return Response.json(this.discover ?? { state: "never", items: [] });
+		}
+		if (path === "/me/discover/run") {
+			this.discover = { state: "running", items: this.discover?.items ?? [] };
+			return new Response(null, { status: 202 });
+		}
+		const discarded = /^\/me\/discover\/([^/]+)\/dismiss$/.exec(path);
+		if (discarded && this.discover) {
+			this.discover = {
+				...this.discover,
+				items: this.discover.items.filter((i) => i.id !== discarded[1]),
 			};
 			return new Response(null, { status: 204 });
 		}
@@ -1700,6 +1718,12 @@ export class FakeServer {
 			});
 			for (const listed of this.listed) {
 				listed.wished ||= listed.title === wish.title;
+			}
+			if (this.discover) {
+				this.discover = {
+					...this.discover,
+					items: this.discover.items.filter((i) => i.title !== wish.title),
+				};
 			}
 			return Response.json(this.books.at(-1), { status: 201 });
 		}

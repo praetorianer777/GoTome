@@ -8606,6 +8606,122 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/me/discover": {
+      "get": {
+        "operationId": "listDiscover",
+        "summary": "Books beyond the libraries that the caller's taste points to: other works of authors they rated, next volumes of series they read, books of their genres; each with why",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/run": {
+      "post": {
+        "operationId": "requestDiscover",
+        "summary": "Ask for the caller's discovery to be worked out now",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/{candidateId}/dismiss": {
+      "post": {
+        "operationId": "dismissDiscovered",
+        "summary": "Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "candidateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/me/kindle": {
       "get": {
         "operationId": "getKindle",
@@ -15846,6 +15962,104 @@
           "createdAt",
           "canUpload",
           "kepub"
+        ]
+      },
+      "DiscoverItem": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DiscoverReason"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "wish": {
+            "$ref": "#/components/schemas/WishRequest"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "authors",
+          "provider",
+          "reason",
+          "wish"
+        ]
+      },
+      "DiscoverList": {
+        "type": "object",
+        "properties": {
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverItem"
+            }
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "items"
+        ]
+      },
+      "DiscoverReason": {
+        "type": "object",
+        "properties": {
+          "because": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "stars",
+          "because"
         ]
       },
       "Disk": {

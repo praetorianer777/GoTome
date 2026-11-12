@@ -2524,6 +2524,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books beyond the libraries that the caller's taste points to: other works of authors they rated, next volumes of series they read, books of their genres; each with why */
+        get: operations["listDiscover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask for the caller's discovery to be worked out now */
+        post: operations["requestDiscover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/{candidateId}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on */
+        post: operations["dismissDiscovered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/kindle": {
         parameters: {
             query?: never;
@@ -4566,6 +4617,32 @@ export interface components {
             /** Format: date-time */
             lastUsedAt?: string;
             name: string;
+        };
+        DiscoverItem: {
+            authors: string[];
+            coverToken?: string;
+            description?: string;
+            /** Format: uuid */
+            id: string;
+            provider: string;
+            reason: components["schemas"]["DiscoverReason"];
+            series?: string;
+            seriesIndex?: number;
+            title: string;
+            wish: components["schemas"]["WishRequest"];
+            year?: number;
+        };
+        DiscoverList: {
+            /** Format: date-time */
+            finishedAt?: string;
+            items: components["schemas"]["DiscoverItem"][];
+            state: string;
+        };
+        DiscoverReason: {
+            because: string[];
+            kind: string;
+            name: string;
+            stars: number;
         };
         Disk: {
             databaseBytes: number;
@@ -11268,6 +11345,91 @@ export interface operations {
             header?: never;
             path: {
                 matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDiscover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requestDiscover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissDiscovered: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: string;
             };
             cookie?: never;
         };

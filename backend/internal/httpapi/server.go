@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
+	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -144,6 +145,8 @@ type Server struct {
 	Webhooks *webhooks.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
+	// Discover offers books beyond the libraries from a person's taste.
+	Discover *discover.Service
 	// Cleanup suggests fixes for how books are described.
 	Cleanup *cleanup.Service
 	// Auto makes the automatic runs of clean-up and of matches.

@@ -100,6 +100,10 @@ const (
 	// the genres their tags mean; "vector", "neighbours" and "combined"
 	// suggest more from the books' vectors, for a person to review.
 	GenreSuggestions = "genres.suggest"
+	// RecommendationsDiscover is "on" or "off": whether books beyond the
+	// libraries are found from people's taste (#393). Off by default: it
+	// asks the providers about authors, series and genres people read.
+	RecommendationsDiscover = "recommendations.discover"
 	// EmbeddingPassages is "on" or "off": whether every passage of a book's
 	// text gets a vector of its own, for searching by description (#174).
 	// Off by default: on a library of 50,000 books it is about 1.5 GB on
@@ -238,6 +242,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
 	{Key: EmbeddingRemoveUnusedDays, Kind: KindText, Default: "1", Check: days},
 	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode, Choices: GenreModes},
+	{Key: RecommendationsDiscover, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingContentSamples, Kind: KindText, Default: "16", Check: contentSamples},
 	{Key: Passwords, Kind: KindText, Default: "on", Check: onOff, Choices: OnOff},
