@@ -36,6 +36,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
+	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
@@ -102,7 +103,8 @@ const (
 	// New and changed ebook files get the MD5 KOReader names them by.
 	koreaderHashInterval = 10 * time.Minute
 	// EPUBs read before measuring was, or changed since, are measured.
-	measureInterval = 10 * time.Minute
+	measureInterval  = 10 * time.Minute
+	copyTrimInterval = 6 * time.Hour
 	// Deletes reach the full-text index's outbox through a trigger, which
 	// queues no job; they are applied this often.
 	outboxInterval = time.Minute
@@ -384,10 +386,12 @@ func serve() error {
 	}
 	defer textIndex.Close()
 	ready.Set(httpapi.CheckSearchIndex, textIndex.Check)
+	copies := devicecopy.NewService(pool, cfg.DataDir, log)
+	copies.Enabled = settingStore.DeviceFixOnSend
 	mailing := kindle.NewService(pool, settingStore, books, log)
 	mailing.Offline = cfg.Offline
 	workers := background{
-		kindle:   mailing,
+		kindle: mailing, copies: copies,
 		accounts: accounts, matches: matches, meta: meta, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
@@ -399,6 +403,7 @@ func serve() error {
 		return err
 	}
 	scans.Queue = runner
+	copies.Queue = runner
 	mailing.Queue = runner
 	matches.Queue = runner
 	meta.Queue = runner
@@ -496,6 +501,12 @@ func serve() error {
 		},
 	}
 	go watcher.Run(ctx)
+	sentDeliveries := deliveries.NewService(pool)
+	sentDeliveries.OnQueued = func(ctx context.Context, ids []uuid.UUID) {
+		if err := copies.Request(ctx, ids); err != nil {
+			log.Warn("queueing fixed copies", "error", err)
+		}
+	}
 	server := &httpapi.Server{
 		Log:            log,
 		DB:             pool,
@@ -522,7 +533,8 @@ func serve() error {
 		Resources:      health,
 		Updates:        updateChecks,
 		Checks:         checks,
-		Deliveries:     deliveries.NewService(pool),
+		Deliveries:     sentDeliveries,
+		Copies:         copies,
 		Kindle:         mailing,
 		Pairing:        pairing.NewService(pool),
 		Kobo:           kobo.NewService(pool),

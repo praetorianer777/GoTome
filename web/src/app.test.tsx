@@ -7875,6 +7875,7 @@ describe("sending to an e-reader", () => {
 				deviceName: "Kobo",
 				queuedAt: "2026-01-05T08:00:00Z",
 				deliveredAt: "2026-01-06T08:00:00Z",
+				sentFixed: true,
 			},
 			{
 				id: "dl-2",
@@ -7908,7 +7909,9 @@ describe("sending to an e-reader", () => {
 		const persuasion = within(
 			list.getByRole("listitem", { name: "Persuasion" }),
 		);
-		expect(persuasion.getByText(/^On the e-reader since/)).toBeInTheDocument();
+		expect(
+			persuasion.getByText(/^On the e-reader since .*, sent fixed$/),
+		).toBeInTheDocument();
 		expect(persuasion.queryByRole("button")).not.toBeInTheDocument();
 		expect(
 			within(list.getByRole("listitem", { name: "Emma" })).getByText(

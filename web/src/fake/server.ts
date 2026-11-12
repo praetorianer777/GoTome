@@ -147,6 +147,7 @@ export class FakeServer {
 		deliveredAt?: string;
 		/** When a Kobo reader's sync told it of the book. */
 		syncedAt?: string;
+		sentFixed?: boolean;
 	}[] = [];
 	/** Sending to a Kindle: the mail server's state, and what was sent. */
 	kindle = {
@@ -1004,7 +1005,7 @@ export class FakeServer {
 					return [{
 						book: summaryOf(book), deliveryId: d.id, state, queuedAt: d.queuedAt,
 						deliveredAt: d.deliveredAt, syncedAt: d.syncedAt,
-						removable: !d.deliveredAt || !!d.syncedAt,
+						removable: !d.deliveredAt || !!d.syncedAt, sentFixed: !!d.sentFixed,
 					}];
 				});
 			return Response.json({ device, books });

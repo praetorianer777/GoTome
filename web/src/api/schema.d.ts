@@ -3892,6 +3892,7 @@ export interface components {
             /** Format: date-time */
             queuedAt: string;
             removable: boolean;
+            sentFixed: boolean;
             /** @enum {string} */
             state: "waiting" | "synced" | "delivered";
             /** Format: date-time */

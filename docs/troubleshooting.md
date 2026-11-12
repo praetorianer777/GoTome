@@ -209,6 +209,9 @@ one until the trash is emptied. A device that had the book gets the fixed
 one at its next sync. Several books are fixed at once from the library's
 selection.
 
+Where the library is read-only for GOtome, a book sent to an e-reader is
+still sent fixed: [devices.md](devices.md#sent-fixed).
+
 ## Search does not find a book
 
 - The book's text may not be in the index yet: the Overview's **Texts in

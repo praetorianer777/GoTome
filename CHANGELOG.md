@@ -21,6 +21,13 @@ What changes for someone who runs or uses GOtome. The format follows
   and the KOReader plugin download carries them; each tries them in order with
   a short timeout, the one that worked last first. The profile shows them when
   a device is added.
+- A book with e-reader findings is sent to a device (OPDS, Kobo sync, the Tolino
+  app) as a fixed copy, made in the background when the book is queued, so it
+  also works for libraries GOtome cannot write to. The library's file is never
+  changed; a download that finds no copy ready yet gets the file as it is. The
+  device's book list says "sent fixed", and KOReader's progress sync finds the
+  book by the copy's hash too. The setting `devices.fixOnSend` turns it off;
+  the copies are not part of a backup.
 - The overview splits the books with e-reader findings by kind, each linking to
   its own list. A list filtered by e-reader findings says so above the books,
   with a button to remove it, and marks each book that has findings, naming

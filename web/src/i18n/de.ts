@@ -1295,6 +1295,7 @@ export const de: Record<MessageKey, string> = {
 	"deviceBooks.waiting": "Wartet seit {date}",
 	"deviceBooks.synced": "Dem Reader am {date} angekündigt, noch nicht heruntergeladen",
 	"deviceBooks.delivered": "Auf dem E-Reader seit {date}",
+	"deviceBooks.deliveredFixed": "Auf dem E-Reader seit {date}, behoben gesendet",
 	"deviceBooks.takeOff": "Von diesem Gerät nehmen",
 	"deviceBooks.takeOffNamed": "{title} von diesem Gerät nehmen",
 	"deviceBooks.more": "Mehr anzeigen",
@@ -1312,6 +1313,9 @@ export const de: Record<MessageKey, string> = {
 	"settings.hardcoverToken": "Hardcover-API-Token",
 	"settings.hardcoverToken.hint":
 		"Aus den Kontoeinstellungen bei Hardcover. Nötig, um Bücher bei Hardcover nachzuschlagen.",
+	"settings.devicesFixOnSend": "E-Reader-Befunde in an Geräte gesendeten Büchern beheben",
+	"settings.devicesFixOnSend.hint":
+		"Ein Buch mit Befunden (zu großes Kapitel, große Bilder oder Schriften, kaputtes Inhaltsverzeichnis) geht als behobene Kopie an das Gerät, die GOtome neben seinen Daten aufbewahrt. Die Datei in der Bibliothek bleibt unverändert, daher klappt das auch bei schreibgeschützten Ordnern.",
 	"settings.updatesCheck": "Nach neuen Releases suchen",
 	"settings.updatesCheck.hint":
 		"Einmal am Tag fragt GOtome GitHub nach dem neuesten Release und sagt den Administratoren Bescheid, wenn es ein neueres gibt. GitHub erfährt, dass unter dieser Adresse eine Instanz läuft, sonst nichts. Es wird nichts heruntergeladen oder installiert.",

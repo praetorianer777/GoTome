@@ -37,6 +37,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.hardcoverToken",
 		hint: "settings.hardcoverToken.hint",
 	},
+	"devices.fixOnSend": {
+		label: "settings.devicesFixOnSend",
+		hint: "settings.devicesFixOnSend.hint",
+	},
 	"updates.check": {
 		label: "settings.updatesCheck",
 		hint: "settings.updatesCheck.hint",
