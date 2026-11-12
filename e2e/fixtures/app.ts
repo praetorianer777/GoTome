@@ -18,6 +18,8 @@ export async function signIn(page: Page, credentials: { username: string; passwo
  */
 export async function gotoSignedIn(page: Page, path: string): Promise<void> {
 	await page.goto(path);
+	// The app routes after the first render: wait for a page before asking which.
+	await page.getByRole("heading", { level: 1 }).first().waitFor();
 	if (await page.getByRole("heading", { name: "Sign in", level: 1 }).isVisible()) {
 		await signIn(page);
 		await expect(page.getByRole("heading", { name: "Sign in", level: 1 })).toBeHidden();
