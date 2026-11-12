@@ -18,6 +18,7 @@ import type {
 	CleanupSuggestion,
 } from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
+import type { Continuation } from "@/books/continue-offer";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
@@ -368,6 +369,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** What each book offers to go on with in the other medium; none by default. */
+	continuations: Record<string, Continuation> = {};
 	/**
 	 * The passages of the books' text the full-text search finds: one is
 	 * found when its text holds the words, its book with the library's
@@ -1529,6 +1532,10 @@ export class FakeServer {
 					complete: true,
 				},
 			);
+		}
+		const continuation = /^\/books\/([^/]+)\/continuation$/.exec(path);
+		if (continuation) {
+			return Response.json(this.continuations[continuation[1] ?? ""] ?? {});
 		}
 		const progress = /^\/books\/([^/]+)\/progress$/.exec(path);
 		if (progress) {

@@ -6,13 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- A browser holding a dead session cookie could be signed out again right after
-  signing in, when the answer to an older request arrived late. The server no
-  longer clears a cookie because its session is unknown; only signing out does.
-- Reopening an e-book no longer saves a coarser place (the start of the
-  section, in Safari) over the exact one it opened at.
+- A book with a text and an audiobook offers to go on in the other medium:
+  "Continue in the audiobook at 2:14:05" or "Continue reading at Chapter 12"
+  on its page, in the reader and in the player, when the other is further
+  along. Chapters both name alike place it exactly; otherwise it is the same
+  share of the whole. Nothing moves until you choose
+  ([getting started](docs/getting-started.md)).
 
 ### Changed
 
@@ -23,6 +24,14 @@ What changes for someone who runs or uses GOtome. The format follows
   vectors stay.
 - New setting `embedding.contentSamples` (16 unless set): how many passages
   of a book's text its content vector is made from.
+
+### Fixed
+
+- A browser holding a dead session cookie could be signed out again right after
+  signing in, when the answer to an older request arrived late. The server no
+  longer clears a cookie because its session is unknown; only signing out does.
+- Reopening an e-book no longer saves a coarser place (the start of the
+  section, in Safari) over the exact one it opened at.
 
 ## [0.23.0] - 2026-11-12
 

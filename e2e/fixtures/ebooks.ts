@@ -69,7 +69,8 @@ function paragraphs(chapter: number, count: number, from = 1): string {
  * entry. With hostile, the first chapter carries a script, an event
  * handler and an image from another host, none of which may do anything.
  * A chapter numbered in passages has that text as a paragraph halfway
- * through.
+ * through. The table of contents names the chapters titles gives, else
+ * "Chapter n".
  */
 export function makeEpub(
 	title: string,
@@ -77,6 +78,7 @@ export function makeEpub(
 	tag: string,
 	hostile = false,
 	passages: Record<number, string> = {},
+	titles: string[] = [],
 ): Buffer {
 	const ids = Array.from({ length: chapters }, (_, i) => i + 1);
 	const attack = hostile
@@ -99,7 +101,7 @@ ${paragraphs(n, 20, 21)}
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 <head><title>Contents</title></head>
 <body><nav epub:type="toc"><ol>
-${ids.map((n) => `<li><a href="c${n}.xhtml">Chapter ${n}</a></li>`).join("\n")}
+${ids.map((n) => `<li><a href="c${n}.xhtml">${titles[n - 1] ?? `Chapter ${n}`}</a></li>`).join("\n")}
 </ol></nav></body>
 </html>`;
 	const opf = `<?xml version="1.0" encoding="UTF-8"?>

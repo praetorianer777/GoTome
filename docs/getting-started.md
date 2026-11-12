@@ -85,6 +85,22 @@ series" on a series' page. The next book starts when one ends, from the
 place it was left at; the queue is listed under the player, where books
 are moved or taken out.
 
+A book with both a text and an audiobook keeps two places, one for reading
+and one for listening, and moves neither by itself. When the other medium is
+further along, the book's page, the reader and the player offer to go on
+there: "Continue in the audiobook at 2:14:05" or "Continue reading at
+Chapter 12". The places are compared as a share of the whole book, whichever
+was saved last, so reading ahead after listening turns the offer round; a
+difference under one percent, or a book read to its end, offers nothing, and
+the audiobook is offered only when all its parts have been read. Where an
+EPUB's table of contents and the audiobook's chapters name the same chapters
+alike (case, accents and punctuation do not matter, each title once in both,
+at least two), a place is carried to the same chapter at the same share
+inside it; otherwise only the share of the whole is used, and the offer says
+a percentage and not a chapter. Mapping words to sound (reading along while
+it plays) is not done. The browser opens the other medium there and saves
+nothing until it is used. For developers: `GET /books/{id}/continuation`.
+
 The sleep timer stops after 15 to 60 minutes or at the end of the chapter,
 fading the volume down over its last 15 seconds. "Keep listening for 15
 more minutes" extends it, also in the half minute after it stopped; on a

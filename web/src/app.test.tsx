@@ -3707,6 +3707,81 @@ describe("reading progress", () => {
 	});
 });
 
+describe("continuing in the other medium", () => {
+	const epub = (id: string) => ({
+		id,
+		kind: "ebook",
+		format: "epub",
+		name: "Emma.epub",
+		size: 1_000_000,
+		missing: false,
+		drm: false,
+		extractState: "done",
+	});
+	const mp3 = {
+		id: "file-a",
+		kind: "audio",
+		format: "mp3",
+		name: "Emma 1.mp3",
+		size: 1_000_000,
+		missing: false,
+		drm: false,
+		extractState: "done",
+	};
+
+	function withBothMedia() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { files: [epub("file-e"), mp3] });
+	}
+
+	it("offers the audiobook where the text is further, and opens the player there", async () => {
+		const person = userEvent.setup();
+		withBothMedia();
+		server.continuations["book-1"] = {
+			audio: { fraction: 0.5, positionMs: 8_045_000, chapter: "Chapter 12", refined: true },
+		};
+		const { router } = renderApp("/books/book-1");
+		const link = await screen.findByRole("link", {
+			name: "Continue in the audiobook at 2:14:05",
+		});
+		await person.click(link);
+		expect(router.state.location.pathname).toBe("/books/book-1/listen");
+	});
+
+	it("offers the text where the audiobook is further, at its chapter, and opens the reader there", async () => {
+		const person = userEvent.setup();
+		withBothMedia();
+		server.continuations["book-1"] = {
+			ebook: { fraction: 0.4, fileId: "file-e", chapter: "Chapter 12", refined: true },
+		};
+		const { router } = renderApp("/books/book-1");
+		await person.click(
+			await screen.findByRole("link", { name: "Continue reading at Chapter 12" }),
+		);
+		expect(router.state.location.pathname).toBe("/books/book-1/read/file-e");
+		expect(router.state.location.search).toMatchObject({ fraction: 0.4 });
+	});
+
+	it("says a share of the book where no chapters were matched, and offers nothing when neither is behind", async () => {
+		withBothMedia();
+		server.continuations["book-1"] = {
+			ebook: { fraction: 0.426, fileId: "file-e", refined: false },
+		};
+		const { unmount } = renderApp("/books/book-1");
+		expect(
+			await screen.findByRole("link", { name: "Continue reading at 43%" }),
+		).toBeInTheDocument();
+		unmount();
+		server.continuations["book-1"] = {};
+		renderApp("/books/book-1");
+		await screen.findByRole("heading", { name: "Emma" });
+		expect(screen.queryByRole("link", { name: /^Continue / })).not.toBeInTheDocument();
+	});
+});
+
 describe("the PDF reader", () => {
 	function withPdf() {
 		server

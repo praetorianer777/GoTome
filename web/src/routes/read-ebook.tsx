@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { downloadUrl } from "@/books/api";
+import { ContinueOffers } from "@/books/continue-offer";
 import {
 	knowProgress,
 	type Progress,
@@ -111,6 +112,7 @@ export function EbookReader({
 	fileName,
 	title,
 	find,
+	at,
 	preview = false,
 }: {
 	bookId: string;
@@ -119,6 +121,8 @@ export function EbookReader({
 	title: string;
 	/** A passage to open at instead of the saved place: a word of it to look for, and its text. */
 	find?: { word: string; passage: string };
+	/** How far into the book to open instead of the saved place, 0 to 1: the place a person chose to go on at from the audiobook. */
+	at?: number;
 	/** Opens at the start and saves nothing: no place, no session, no status. */
 	preview?: boolean;
 }) {
@@ -150,6 +154,7 @@ export function EbookReader({
 	const finding = useRef(Boolean(find));
 	const latest = useRef<Place | undefined>(undefined);
 	const findNow = useRef(find);
+	const atNow = useRef(at);
 
 	const show = (which: Panel | undefined) => {
 		// Closing gives focus back to the button that opened the panel.
@@ -217,7 +222,11 @@ export function EbookReader({
 	// not open it again.
 	const start = useRef<string | undefined>(undefined);
 	start.current =
-		ready && !findNow.current ? startIn(progress.data?.ebook, fileId) : undefined;
+		ready && !findNow.current
+			? atNow.current !== undefined
+				? `fraction:${atNow.current}`
+				: startIn(progress.data?.ebook, fileId)
+			: undefined;
 	useEffect(() => {
 		if (!ready || !pages.current) return;
 		const into = pages.current;
@@ -446,6 +455,7 @@ export function EbookReader({
 				</button>
 			</div>
 			{help && <KeyHelp bindings={bindings} onClose={() => setHelp(false)} />}
+			{!preview && <ContinueOffers bookId={bookId} except="ebook" bar />}
 			{further && (
 				<div
 					role="status"

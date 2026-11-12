@@ -4,6 +4,7 @@ import { downloadUrl } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { KeyHelp } from "@/components/dialog";
 import { t } from "@/i18n";
+import { ContinueOffers } from "@/books/continue-offer";
 import { formatTime } from "@/lib/format";
 import { type KeyBinding, useKeys } from "@/lib/keys";
 import { BOOSTS } from "@/player/prefs";
@@ -198,6 +199,7 @@ export function Listen({ bookId }: { bookId: string }) {
 						{timeline && !timeline.complete && (
 							<p className="text-slate-600 dark:text-slate-400">{t("player.incomplete")}</p>
 						)}
+						<ContinueOffers bookId={bookId} except="audio" bar />
 						{state.further && (
 							<div
 								role="status"

@@ -10,6 +10,7 @@ import {
 } from "@/books/api";
 import { Cover } from "@/books/cover";
 import { CollectionPicker } from "@/books/collection-picker";
+import { ContinueOffers } from "@/books/continue-offer";
 import { EReaderFindings } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
@@ -209,6 +210,7 @@ function BookPage({ book }: { book: BookDetail }) {
 								</Link>
 							)}
 							{listenable && <ListenButton bookId={book.id} />}
+							{personal && (readableFile || listenable) && <ContinueOffers bookId={book.id} />}
 							{listenable && personal && (
 								<QueueButtons bookId={book.id} className={button("secondary", "md")} />
 							)}

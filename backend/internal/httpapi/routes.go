@@ -941,6 +941,11 @@ func (s *Server) routes() []Route {
 			Response: progressState{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.getProgress,
 		},
 		{
+			Method: http.MethodGet, Path: "/books/{bookId}/continuation", ID: "getContinuation",
+			Summary: "Where the caller could go on in the other medium, a text or its audiobook, when that is further along", Tag: "books",
+			Response: continuation{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.getContinuation,
+		},
+		{
 			Method: http.MethodPut, Path: "/books/{bookId}/progress/{medium}", ID: "putProgress",
 			Summary: "Record where the caller is in a book; medium is ebook or audio", Tag: "books",
 			Request: progressUpdate{}, Response: progressSaved{}, Permission: auth.PersonalManage, Devices: true, Stable: "audio/1", Handler: s.putProgress,
