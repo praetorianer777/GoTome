@@ -191,7 +191,7 @@ function Deliveries({ id }: { id: string }) {
 						{d.lastError && (
 							<p className="break-words text-red-700 dark:text-red-300">{d.lastError}</p>
 						)}
-						<pre className="mt-1 max-w-full overflow-x-auto text-xs">
+						<pre className="mt-1 max-w-full text-xs break-all whitespace-pre-wrap">
 							{JSON.stringify(d.payload)}
 						</pre>
 					</li>
