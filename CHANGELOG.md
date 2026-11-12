@@ -6,6 +6,15 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Reading on a Kobo reader, or a Tolino in Kobo mode, counts in the reading
+  statistics: the minutes the reader reports for a book become reading
+  sessions, each once however often they are sent, and the pages follow
+  from the places. The reader's store addresses for featured lists, what to
+  read next and the affiliate answer with nothing instead of an error
+  ([Tolino in Kobo mode](docs/tolino-kobo-mode.md)).
+
 ### Fixed
 
 - A Kobo reader that drops the port from its requests (firmware 6.0 does) no

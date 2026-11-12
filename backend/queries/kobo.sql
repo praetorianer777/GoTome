@@ -33,3 +33,13 @@ DELETE FROM kobo_books WHERE device_id = $1;
 -- name: SetKoboProgressSeen :exec
 -- The reader's own place is one it need not be told of.
 UPDATE kobo_books SET progress_at = $3 WHERE device_id = $1 AND book_id = $2;
+
+-- name: SeedKoboReadingTime :exec
+INSERT INTO kobo_reading_time (device_id, book_id, minutes) VALUES ($1, $2, 0)
+ON CONFLICT (device_id, book_id) DO NOTHING;
+
+-- name: LockKoboReadingTime :one
+SELECT minutes FROM kobo_reading_time WHERE device_id = $1 AND book_id = $2 FOR UPDATE;
+
+-- name: SetKoboReadingTime :exec
+UPDATE kobo_reading_time SET minutes = $3 WHERE device_id = $1 AND book_id = $2;

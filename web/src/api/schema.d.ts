@@ -1753,6 +1753,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kobo/{token}/v1/affiliate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The affiliate a Kobo reader asks the store for: none */
+        get: operations["koboAffiliate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/v1/analytics/event": {
         parameters: {
             query?: never;
@@ -1934,6 +1951,74 @@ export interface paths {
         get: operations["koboReadingState"];
         /** Where a Kobo reader says the person is in a book */
         put: operations["koboPutReadingState"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's featured lists: none */
+        get: operations["koboFeatured"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The same, as the reader writes the address */
+        get: operations["koboFeaturedSlash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured/{listId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of the store's featured lists: empty */
+        get: operations["koboFeaturedList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/{productId}/nextread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the store suggests reading next: nothing */
+        get: operations["koboNextRead"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -4578,6 +4663,11 @@ export interface components {
                 ProgressPercent: number | null;
             } | null;
             EntitlementId: string;
+            Statistics: {
+                LastModified: string;
+                RemainingTimeMinutes: number | null;
+                SpentReadingMinutes: number | null;
+            } | null;
             StatusInfo: {
                 Status: string;
             } | null;
@@ -9324,6 +9414,35 @@ export interface operations {
             };
         };
     };
+    koboAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     koboAnalyticsEvent: {
         parameters: {
             query?: never;
@@ -9674,6 +9793,124 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["KoboStateResult"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeatured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeaturedSlash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeaturedList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                listId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboNextRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
