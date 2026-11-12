@@ -111,6 +111,9 @@ const (
 	// SourceText is a value read from the printed imprint of a book's text,
 	// worth less than anything a file's metadata says.
 	SourceText = "text"
+	// SourceCalibre is a value taken from a Calibre library's metadata.db:
+	// worth more than a file's own, less than a person's or a provider's.
+	SourceCalibre = "calibre"
 )
 
 // NewFile is a file found on disk or uploaded.

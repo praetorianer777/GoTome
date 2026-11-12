@@ -180,8 +180,8 @@ func (e *Edit) check() error {
 		}
 		e.Identifiers = &normalized
 	}
-	if e.Source != "" && (!strings.HasPrefix(e.Source, "provider:") || len(e.Locks) > 0) {
-		problems["source"] = "Only a person's edit sets locks; a provider's names it as provider:<name>."
+	if e.Source != "" && (e.Source != SourceCalibre && !strings.HasPrefix(e.Source, "provider:") || len(e.Locks) > 0) {
+		problems["source"] = "Only a person's edit sets locks; a provider's names it as provider:<name>, or it is Calibre's."
 	}
 	for field := range e.Locks {
 		if !slices.Contains(LockableFields, field) {
@@ -363,6 +363,7 @@ const (
 	ProvenanceFilename = "filename"
 	ProvenanceManual   = "manual"
 	ProvenanceProvider = "provider"
+	ProvenanceCalibre  = SourceCalibre
 )
 
 // Provenance reads a stored source: what kind it is and, for a file, the

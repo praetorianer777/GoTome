@@ -35,6 +35,27 @@ func TestGroupUnit(t *testing.T) {
 			},
 		},
 		{
+			name: "a Calibre folder is one book, whatever its formats are called",
+			unit: "Halden/Dusk (12)",
+			paths: []string{
+				"Halden/Dusk (12)/Dusk - Halden.epub", "Halden/Dusk (12)/Dusk.mobi", "Halden/Dusk (12)/Dusk - Halden.pdf",
+			},
+			want: []want{
+				{title: "Dusk", files: []string{"Halden/Dusk (12)/Dusk - Halden.epub", "Halden/Dusk (12)/Dusk - Halden.pdf", "Halden/Dusk (12)/Dusk.mobi"}},
+			},
+		},
+		{
+			name: "a numbered folder deeper down is not a Calibre folder",
+			unit: "Halden/Dusk (2)/Extras",
+			paths: []string{
+				"Halden/Dusk (2)/Extras/Map.epub", "Halden/Dusk (2)/Extras/Notes.epub",
+			},
+			want: []want{
+				{title: "Map", files: []string{"Halden/Dusk (2)/Extras/Map.epub"}},
+				{title: "Notes", files: []string{"Halden/Dusk (2)/Extras/Notes.epub"}},
+			},
+		},
+		{
 			name: "files named after their position are the book the folder is named after",
 			unit: "Halden/Dusk",
 			paths: []string{
