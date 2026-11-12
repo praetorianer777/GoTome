@@ -30,7 +30,7 @@ const EDITOR_PAGES = [
 	"/trash",
 	"/jobs",
 ];
-const ADMIN_PAGES = ["/admin/libraries", "/admin/users", "/admin/settings"];
+const ADMIN_PAGES = ["/admin/libraries", "/admin/users", "/admin/webhooks", "/admin/settings"];
 
 async function navEntries(page: Page, shown: string[], hidden: string[]) {
 	const nav = await mainNav(page);

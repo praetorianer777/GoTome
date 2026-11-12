@@ -63,6 +63,7 @@ export interface NavItem {
 		| "/trash"
 		| "/admin/libraries"
 		| "/admin/users"
+		| "/admin/webhooks"
 		| "/admin/settings";
 	label: MessageKey;
 	/** The library's filter the entry opens it with: all of one medium. */
@@ -230,6 +231,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "users:manage",
 		group: "admin",
 		icon: "people",
+	},
+	{
+		to: "/admin/webhooks",
+		label: "nav.webhooks",
+		permission: "settings:manage",
+		group: "admin",
+		icon: "webhook",
 	},
 	{
 		to: "/admin/settings",
@@ -653,6 +661,7 @@ export type IconName =
 	| "folder"
 	| "people"
 	| "sliders"
+	| "webhook"
 	| "menu"
 	| "chevron"
 	| "device"
@@ -703,6 +712,10 @@ const ICONS: Record<IconName, string[]> = {
 		"M18 14.5c1.5.8 2.5 2.6 3 5",
 	],
 	sliders: ["M4 7h10", "M18 7h2", "M16 5v4", "M4 17h4", "M12 17h8", "M10 15v4"],
+	webhook: [
+		"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1",
+		"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+	],
 	menu: ["M4 7h16", "M4 12h16", "M4 17h16"],
 	chevron: ["M6 9l6 6 6-6"],
 	device: ["M7 3h10v18H7z", "M11 18h2"],

@@ -2431,6 +2431,76 @@ describe("users", () => {
 	});
 });
 
+describe("webhooks", () => {
+	it("adds a webhook, sends a test, edits it without showing its secret, and deletes it", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Steve", "a long password").signedInAs("Steve");
+		renderApp("/admin/webhooks");
+		expect(
+			await screen.findByRole("heading", { name: "Webhooks", level: 1 }),
+		).toBeInTheDocument();
+		expect(await screen.findByText("No webhooks yet.")).toBeInTheDocument();
+
+		const form = within(screen.getByRole("region", { name: "Add a webhook" }));
+		await person.type(form.getByLabelText("Name"), "Chat bridge");
+		await person.type(form.getByLabelText("Address"), "not an address");
+		await person.type(form.getByLabelText("Secret"), "short");
+		await person.click(form.getByRole("button", { name: "Add webhook" }));
+		expect(await form.findByText(/http or https address/)).toBeInTheDocument();
+		expect(form.getByText(/secret of 16 to 200/)).toBeInTheDocument();
+
+		await person.clear(form.getByLabelText("Address"));
+		await person.type(form.getByLabelText("Address"), "https://chat.example.org/hook");
+		await person.clear(form.getByLabelText("Secret"));
+		await person.type(form.getByLabelText("Secret"), "0123456789abcdef-secret");
+		await person.click(form.getByLabelText("scan.failed"));
+		await person.click(form.getByRole("button", { name: "Add webhook" }));
+
+		const hook = within(await screen.findByRole("listitem", { name: "Chat bridge" }));
+		expect(hook.getByText("scan.failed")).toBeInTheDocument();
+		expect(hook.getByText("Nothing sent yet")).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("0123456789abcdef-secret");
+
+		await person.click(hook.getByRole("button", { name: "Send test" }));
+		expect(await hook.findByText(/A test event is on its way/)).toBeInTheDocument();
+		await person.click(hook.getByRole("button", { name: "Deliveries" }));
+		expect(await hook.findByText("webhook.test")).toBeInTheDocument();
+		expect(hook.getByText("waiting")).toBeInTheDocument();
+
+		await person.click(hook.getByRole("button", { name: "Edit" }));
+		const edit = within(
+			hook.getByRole("button", { name: "Save webhook" }).closest("form") as HTMLElement,
+		);
+		expect(edit.getByLabelText("Secret")).toHaveValue("");
+		await person.click(edit.getByLabelText("Trusted address", { exact: false }));
+		await person.click(edit.getByRole("button", { name: "Save webhook" }));
+		await waitFor(() => expect(server.webhooks[0]?.trusted).toBe(true));
+		expect(server.webhookSecrets.get(server.webhooks[0]?.id ?? "")).toBe(
+			"0123456789abcdef-secret",
+		);
+		expect(await hook.findByText("trusted")).toBeInTheDocument();
+
+		await person.click(hook.getByRole("button", { name: "Delete" }));
+		await person.click(hook.getByRole("button", { name: "Yes, delete" }));
+		expect(await screen.findByText("No webhooks yet.")).toBeInTheDocument();
+	});
+
+	it("keeps editors out and offers the entry to administrators only", async () => {
+		server
+			.withAccount("Edith", "a long password", "editor")
+			.signedInAs("Edith")
+			.withLibrary("Novels");
+		const { router } = renderApp("/admin/webhooks");
+		expect(
+			await screen.findByRole("heading", { name: "Novels" }),
+		).toBeInTheDocument();
+		expect(router.state.location.pathname).toBe("/");
+		expect(
+			screen.queryByRole("link", { name: "Webhooks" }),
+		).not.toBeInTheDocument();
+	});
+});
+
 describe("profile", () => {
 	it("switches the app to German and back, for this browser", async () => {
 		const person = userEvent.setup();
