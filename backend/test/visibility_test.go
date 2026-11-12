@@ -113,6 +113,11 @@ func readCases() map[string][]readCase {
 			{path: "/books/{book}/similar", control: "insider"},
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
+		"listBookReviews": {{path: "/books/{book}/reviews", control: "insider"}},
+		"listPersonReviews": {
+			{path: "/people/insider/reviews", control: "insider"},
+			{path: "/people/former/reviews", control: "former"},
+		},
 		"getProgress":         {{path: "/books/{book}/progress", control: "insider"}},
 		"getContinuation":     {{path: "/books/{book}/continuation", control: "insider"}},
 		"getBookCover":        {{path: "/books/{book}/covers/small", control: "insider"}},
@@ -370,6 +375,8 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		if status, out, _ := a.call(c, http.MethodPut, "/books/"+book+"/reading", map[string]any{"rating": 5}); status != 200 {
 			t.Fatalf("rating: %d %v", status, out)
 		}
+		a.share(c, true)
+		a.review(c, book, "Review by "+name, false)
 		visibility := map[string]string{"insider": "shared", "former": "private"}[name]
 		_, col, _ := a.call(c, http.MethodPost, "/collections", map[string]any{"name": "Shelf of " + name, "visibility": visibility})
 		a.call(c, http.MethodPost, "/collections/"+col["id"].(string)+"/books", map[string]any{"books": []string{book}})

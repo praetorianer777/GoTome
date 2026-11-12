@@ -6887,6 +6887,71 @@ describe("similar books", () => {
 	});
 });
 
+describe("reviews shared with others on the server", () => {
+	beforeEach(() => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] });
+		server.sharedReviews = [
+			{ bookId: "book-1", author: "Anna", stars: 4, body: "A sharp comedy of manners." },
+			{ bookId: "book-1", author: "Bert", stars: 2, body: "Too much tea." },
+		];
+	});
+
+	it("shows what others share with the mean of their stars, and a link to a person", async () => {
+		const person = userEvent.setup();
+		renderApp("/books/book-1");
+
+		const section = within(await screen.findByRole("region", { name: "Reviews" }));
+		expect(await section.findByText("3.0 of 5 stars, rated by 2 on this server")).toBeInTheDocument();
+		expect(section.getByText("A sharp comedy of manners.")).toBeInTheDocument();
+		await person.click(section.getByRole("link", { name: "Anna" }));
+		expect(
+			await screen.findByRole("heading", { name: "Reviews by Anna", level: 1 }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Emma" })).toBeInTheDocument();
+	});
+
+	it("saves the person's review, which can be kept private", async () => {
+		const person = userEvent.setup();
+		renderApp("/books/book-1");
+
+		await person.type(await screen.findByLabelText("Your review"), "Mine alone.");
+		expect(
+			screen.getByText(/Only you see this review while you share nothing/),
+		).toBeInTheDocument();
+		await person.click(screen.getByRole("checkbox", { name: "Keep this review private" }));
+		await person.click(screen.getByRole("button", { name: "Save review" }));
+		await waitFor(() =>
+			expect(server.ownReviews["book-1"]).toEqual({ body: "Mine alone.", private: true }),
+		);
+		expect(await screen.findByDisplayValue("Mine alone.")).toBeInTheDocument();
+	});
+
+	it("is switched on from the profile, off until then", async () => {
+		const person = userEvent.setup();
+		renderApp("/profile");
+
+		const toggle = await screen.findByRole("switch", {
+			name: "Share my ratings and reviews with others on this server",
+		});
+		expect(toggle).toHaveAttribute("aria-checked", "false");
+		await person.click(toggle);
+		await waitFor(() => expect(server.sharing).toBe(true));
+		expect(toggle).toHaveAttribute("aria-checked", "true");
+	});
+
+	it("says a person who shares nothing is not there", async () => {
+		renderApp("/people/Nobody");
+
+		expect(
+			await screen.findByText("This person shares no reviews with you."),
+		).toBeInTheDocument();
+	});
+});
+
 describe("notifications of what happens in the libraries", () => {
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);

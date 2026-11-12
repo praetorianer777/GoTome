@@ -65,6 +65,7 @@ var Tables = []Table{
 	byBook("user_books", "user_id", "book_id"),
 	byBook("reading_progress", "user_id", "book_id", "medium"),
 	byBook("book_notes", "user_id", "book_id"),
+	byBook("book_reviews", "user_id", "book_id"),
 	byBook("recommendation_dismissals", "user_id", "book_id"),
 	func() Table { t := byBook("reading_sessions", "id"); t.Keep = true; return t }(),
 	func() Table { t := byBook("reading_finishes", "id"); t.Keep = true; return t }(),

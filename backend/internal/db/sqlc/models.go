@@ -178,6 +178,15 @@ type BookRelation struct {
 	Kind  string
 }
 
+type BookReview struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	Body      string
+	Private   bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type BookTag struct {
 	BookID uuid.UUID
 	TagID  uuid.UUID
@@ -810,6 +819,7 @@ type User struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	ShareReviews     bool
 }
 
 type UserBook struct {

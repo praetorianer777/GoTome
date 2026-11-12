@@ -31,6 +31,7 @@ import {
 } from "@/users/api";
 import { ApiKeys } from "@/users/api-keys";
 import { Devices } from "@/users/devices";
+import { SharingChoice } from "@/reviews/reviews";
 import { KindleAddress } from "@/users/kindle";
 import { ReadingImport } from "@/users/reading-import";
 import { StorageUse } from "@/users/storage";
@@ -96,6 +97,7 @@ export function Profile({ user, sso }: { user: CurrentUser; sso?: string }) {
 			<Sessions />
 			<ReadingImport />
 			<Devices username={user.username} />
+			<SharingChoice />
 			<KindleAddress />
 			<ApiKeys />
 		</div>

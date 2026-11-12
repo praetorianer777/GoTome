@@ -909,6 +909,31 @@ func (s *Server) routes() []Route {
 			Request: noteRequest{}, Permission: auth.PersonalManage, Handler: s.setNote,
 		},
 		{
+			Method: http.MethodGet, Path: "/me/sharing", ID: "getSharing",
+			Summary: "Whether the caller shares their ratings and reviews with others on the server", Tag: "books",
+			Response: sharing{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.getSharing,
+		},
+		{
+			Method: http.MethodPut, Path: "/me/sharing", ID: "putSharing",
+			Summary: "Share the caller's ratings and reviews with others on the server, or stop at once", Tag: "books",
+			Request: sharing{}, Response: sharing{}, Permission: auth.PersonalManage, Handler: s.putSharing,
+		},
+		{
+			Method: http.MethodGet, Path: "/books/{bookId}/reviews", ID: "listBookReviews",
+			Summary: "The reviews others share on a book, the mean of the stars they share and the caller's own review", Tag: "books",
+			Response: bookReviews{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listBookReviews,
+		},
+		{
+			Method: http.MethodPut, Path: "/books/{bookId}/review", ID: "setReview",
+			Summary: "Write the caller's review of a book, shared with others if they share and it is not private; empty removes it", Tag: "books",
+			Request: reviewRequest{}, Permission: auth.PersonalManage, Handler: s.setReview,
+		},
+		{
+			Method: http.MethodGet, Path: "/people/{username}/reviews", ID: "listPersonReviews",
+			Summary: "The reviews a person shares on books the caller may see; 404 for a person who shares none, or who does not exist", Tag: "books",
+			Response: personReviews{}, Reads: ReadsLibraries, Permission: auth.LibraryRead, Handler: s.listPersonReviews,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/recommendations", ID: "listRecommendations",
 			Summary: "Unread books of the libraries the caller sees that are near what they liked, with why", Tag: "books",
 			Query: recommendationsQuery{}, Response: recommendationList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listRecommendations,

@@ -63,6 +63,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
+	"github.com/praetorianer777/gotome/backend/internal/reviews"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -551,6 +552,7 @@ func serve() error {
 		Deliveries:     sentDeliveries,
 		Copies:         copies,
 		Kindle:         mailing,
+		Reviews:        reviews.NewService(pool),
 		Pairing:        pairing.NewService(pool),
 		Kobo:           kobo.NewService(pool),
 		Sync:           progressSync,

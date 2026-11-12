@@ -14,6 +14,13 @@ What changes for someone who runs or uses GOtome. The format follows
   from the places. The reader's store addresses for featured lists, what to
   read next and the affiliate answer with nothing instead of an error
   ([Tolino in Kobo mode](docs/tolino-kobo-mode.md)).
+- Share your ratings and reviews with others on the server: switch on
+  "Share my ratings and reviews with others on this server" on your profile
+  (off until you do), write a review on a book's page and keep any of them
+  private. A book's page then shows the shared reviews and the mean of the
+  shared stars, and a person's reviews have a page of their own. Others see
+  only reviews of books they can see; turning sharing off hides them at
+  once ([people, roles and libraries](docs/users-and-libraries.md#sharing-ratings-and-reviews)).
 
 ### Fixed
 

@@ -243,3 +243,18 @@ ON CONFLICT DO NOTHING;
 INSERT INTO book_tags (book_id, tag_id)
 SELECT sqlc.arg(into_book)::uuid, t.tag_id FROM book_tags t WHERE t.book_id = sqlc.arg(from_book)
 ON CONFLICT DO NOTHING;
+
+-- name: MergeBookReviews :exec
+-- Everyone's reviews of the book; where a person wrote one on both, the
+-- surviving book's review keeps and the other's follows it, private if
+-- either was.
+WITH moved AS (
+    DELETE FROM book_reviews x WHERE x.book_id = sqlc.arg(from_book)
+    RETURNING user_id, body, private, created_at, updated_at)
+INSERT INTO book_reviews AS n (user_id, book_id, body, private, created_at, updated_at)
+SELECT user_id, sqlc.arg(into_book), body, private, created_at, updated_at FROM moved
+ON CONFLICT (user_id, book_id) DO UPDATE SET
+    body       = n.body || E'\n\n' || EXCLUDED.body,
+    private    = n.private OR EXCLUDED.private,
+    created_at = least(n.created_at, EXCLUDED.created_at),
+    updated_at = greatest(n.updated_at, EXCLUDED.updated_at);
