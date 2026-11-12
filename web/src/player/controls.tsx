@@ -162,6 +162,21 @@ export function Listen({ bookId }: { bookId: string }) {
 					</div>
 					<div className="flex flex-col gap-4">
 						<h1 className="text-2xl font-semibold">{state.book.title}</h1>
+						{timeline && (
+							<p aria-live="polite" className="sr-only">
+								{at >= 0 && timeline.chapters[at]
+									? t("player.chapterNow", { title: timeline.chapters[at].title })
+									: ""}{" "}
+								{state.sleep.kind === "off"
+									? ""
+									: t("player.sleep.set", {
+											when:
+												state.sleep.kind === "chapter"
+													? t("player.sleep.chapter")
+													: t("player.sleep.at", { at: formatTime(state.sleep.at) }),
+										})}
+							</p>
+						)}
 						{state.unsupported.length > 0 && (
 							<div role="alert" className="rounded-md border border-red-300 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-950">
 								<p>

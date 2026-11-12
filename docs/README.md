@@ -34,6 +34,10 @@ For people who run GOtome or use it. Start with **Getting started**.
   key, its scopes, and the OpenAPI document.
 - [The audio API for players](api-audio.md): the stable routes a
   third-party audiobook player streams and saves its position with.
+- [Webhooks](webhooks.md): telling other services of events, signed,
+  with a log of what was sent.
+- [Metrics](metrics.md): a Prometheus endpoint with a scrape example and
+  a note on Grafana.
 - [E-readers](devices.md): which way for which device, adding one, and
   sending books.
   - [KOReader and OPDS](koreader.md)
@@ -50,6 +54,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   them with `gotome duplicate-check`.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
+- [Accessibility](accessibility.md): WCAG 2.2 AA, what is checked, what is
+  not met, and how to report a barrier.
 - [Search index](search-index.md): what is rebuilt when, and by hand.
 - [Embedding on a GPU](embedding-server.md): `bge-m3` on an Ollama server.
 - [How good similar books are](similarity.md): `gotome similar-check`.

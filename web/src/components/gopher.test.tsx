@@ -7,11 +7,12 @@ afterEach(() => vi.useRealTimers());
 it("shows the finished-book toast and takes it away by itself", () => {
 	vi.useFakeTimers();
 	render(<Celebration />);
-	expect(screen.queryByRole("status")).toBeNull();
+	expect(screen.queryByText("Finished!")).toBeNull();
 	act(() => celebrate());
-	expect(screen.getByRole("status")).toHaveTextContent("Finished!");
+	expect(screen.getByText("Finished!")).toBeVisible();
+	expect(screen.getByText("Finished!").closest("[aria-live=polite]")).not.toBeNull();
 	act(() => {
 		vi.advanceTimersByTime(4100);
 	});
-	expect(screen.queryByRole("status")).toBeNull();
+	expect(screen.queryByText("Finished!")).toBeNull();
 });

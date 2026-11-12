@@ -30,6 +30,7 @@ uploading. A key made for a role that does not hold a scope is refused.
 | `upload`   | upload books | Editor |
 | `edit`     | edit metadata, start scans and re-indexing | Editor |
 | `admin`    | manage accounts, settings and libraries on disk | Administrator |
+| `metrics`  | read the Prometheus metrics ([Metrics](metrics.md)) and nothing else | Administrator |
 
 A key cannot use the routes about your account itself: it cannot make or
 list keys, change a password, end sessions or add devices. The one

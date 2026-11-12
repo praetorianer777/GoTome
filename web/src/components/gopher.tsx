@@ -67,11 +67,18 @@ export function Celebration() {
 		const timer = setTimeout(() => setShown(0), SHOW_MS);
 		return () => clearTimeout(timer);
 	}, [shown]);
-	if (!shown) return null;
+	// The live region stays in the page and the toast comes into it: a region
+	// that appears with its text is announced by some screen readers only.
+	return (
+		<div aria-live="polite" aria-atomic="true">
+			{shown > 0 && <Toast key={shown} />}
+		</div>
+	);
+}
+
+function Toast() {
 	return (
 		<div
-			key={shown}
-			role="status"
 			className="celebration panel-solid pointer-events-none fixed right-4 bottom-safe-4 z-50 flex items-center gap-3 rounded-2xl py-3 pr-5 pl-3 max-sm:right-2 max-sm:bottom-safe-2"
 		>
 			<div className="relative size-24 shrink-0">

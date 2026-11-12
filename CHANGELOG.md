@@ -6,6 +6,37 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Webhooks: an administrator registers addresses that GOtome tells of events
+  (books added, scan failed, duplicates found, a release out, an update
+  available and the others people are notified of). Each delivery is a small
+  signed JSON of IDs and counts, never a title, retried with a growing wait,
+  with a log per webhook and a "send test" button. Only public addresses are
+  reached unless the webhook is marked trusted ([webhooks](docs/webhooks.md)).
+- Prometheus metrics at `GET /api/v1/metrics`, off until the setting
+  `metrics.enabled` is on, for an API key of the new `metrics` scope: counts
+  of books, files and users, job queues and failures, requests and their
+  latency by route, the database pool and the search index's backlog
+  ([metrics](docs/metrics.md)).
+
+### Changed
+
+- With Windows high contrast (forced colours) on, focus rings, buttons,
+  switches and what is selected or current are drawn in system colours;
+  with "more contrast" on, borders and grey text become stronger and the
+  glass panels solid; with reduced motion on, no transition or animation
+  runs anywhere.
+- The audiobook player announces the chapter it has come to and the sleep
+  timer when set, and the ebook reader announces the chapter as it changes.
+- New page: accessibility (`docs/accessibility.md`), with what is checked and
+  how to report a barrier.
+
+### Fixed
+
+- The "finished" toast is announced by screen readers that ignored it, as it
+  now appears inside a live region that was already on the page.
+
 ## [0.22.0] - 2026-11-12
 
 ### Added

@@ -42,6 +42,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/kobo"
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/passages"
@@ -57,6 +58,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/sso"
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 )
 
 // Cheap hashing: these tests sign in dozens of times.
@@ -125,6 +127,8 @@ type app struct {
 	copies *devicecopy.Service
 	// passages embeds and finds the books' passages, while they are on.
 	passages *passages.Service
+	// hooks sends events to webhooks.
+	hooks *webhooks.Service
 	// ready is what /readyz answers from; every component holds until a
 	// test says otherwise.
 	ready *httpapi.Readiness
@@ -261,6 +265,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Releases = releases.NewService(a.pool, a.works, quiet)
 	a.server.Releases.Queue = queue
 	a.server.Notifications = notify.NewService(a.pool)
+	a.hooks = &webhooks.Service{Pool: a.pool, Box: a.box, Queue: queue, Log: quiet, PublicURL: "https://books.example.org"}
+	a.server.Webhooks = a.hooks
+	a.server.Metrics = &metrics.Service{Pool: a.pool, Version: "test"}
 	a.server.NotifyHub = notify.NewHub(a.pool, quiet)
 	hubCtx, stopHub := context.WithCancel(context.Background())
 	t.Cleanup(stopHub)

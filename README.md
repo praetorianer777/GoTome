@@ -112,7 +112,8 @@ The [documentation](docs/README.md) takes it from there:
 [getting started](docs/getting-started.md) (libraries, a reverse proxy),
 the [configuration reference](docs/configuration.md),
 [backing up and upgrading](docs/backup-and-upgrade.md),
-[e-readers](docs/devices.md) and [troubleshooting](docs/troubleshooting.md).
+[e-readers](docs/devices.md), [troubleshooting](docs/troubleshooting.md) and
+[accessibility](docs/accessibility.md), where it stands and how to report a barrier.
 
 ## Development
 

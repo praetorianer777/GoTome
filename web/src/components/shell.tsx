@@ -63,6 +63,7 @@ export interface NavItem {
 		| "/trash"
 		| "/admin/libraries"
 		| "/admin/users"
+		| "/admin/webhooks"
 		| "/admin/settings";
 	label: MessageKey;
 	/** The library's filter the entry opens it with: all of one medium. */
@@ -230,6 +231,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "users:manage",
 		group: "admin",
 		icon: "people",
+	},
+	{
+		to: "/admin/webhooks",
+		label: "nav.webhooks",
+		permission: "settings:manage",
+		group: "admin",
+		icon: "webhook",
 	},
 	{
 		to: "/admin/settings",
@@ -565,12 +573,14 @@ function AccountMenu({ user }: { user: CurrentUser }) {
 				onClick={() => setOpen(!open)}
 				className="flex items-center gap-2 rounded-full py-0.5 pr-0.5 pl-0.5 hover:bg-slate-200 sm:pr-3 dark:hover:bg-slate-800"
 			>
+				{/* The initials are drawn from the attribute, not written as text: the
+				    button's name must contain what it shows (WCAG 2.5.3), and the
+				    initials are no word anyone would say. */}
 				<span
 					aria-hidden="true"
-					className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-strong text-xs font-bold text-white dark:bg-brand dark:text-ink"
-				>
-					{initials(user.username)}
-				</span>
+					data-initials={initials(user.username)}
+					className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-strong text-xs font-bold text-white before:content-[attr(data-initials)] dark:bg-brand dark:text-ink"
+				/>
 				<span
 					aria-hidden="true"
 					className="hidden max-w-32 truncate text-sm sm:inline"
@@ -653,6 +663,7 @@ export type IconName =
 	| "folder"
 	| "people"
 	| "sliders"
+	| "webhook"
 	| "menu"
 	| "chevron"
 	| "device"
@@ -660,7 +671,10 @@ export type IconName =
 
 const ICONS: Record<IconName, string[]> = {
 	tag: ["M4 4h7l9 9-7 7-9-9z", "M8 8h.01"],
-	book: ["M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z", "M12 6v14"],
+	book: [
+		"M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z",
+		"M12 6v14",
+	],
 	headphones: [
 		"M4 15v-3a8 8 0 0 1 16 0v3",
 		"M4 15h3v5H5a1 1 0 0 1-1-1z",
@@ -703,6 +717,10 @@ const ICONS: Record<IconName, string[]> = {
 		"M18 14.5c1.5.8 2.5 2.6 3 5",
 	],
 	sliders: ["M4 7h10", "M18 7h2", "M16 5v4", "M4 17h4", "M12 17h8", "M10 15v4"],
+	webhook: [
+		"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1",
+		"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1",
+	],
 	menu: ["M4 7h16", "M4 12h16", "M4 17h16"],
 	chevron: ["M6 9l6 6 6-6"],
 	device: ["M7 3h10v18H7z", "M11 18h2"],

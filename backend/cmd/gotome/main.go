@@ -72,6 +72,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/updates"
 	"github.com/praetorianer777/gotome/backend/internal/version"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 	"github.com/praetorianer777/gotome/backend/internal/webui"
 )
 
@@ -105,6 +106,8 @@ const (
 	// EPUBs read before measuring was, or changed since, are measured.
 	measureInterval  = 10 * time.Minute
 	copyTrimInterval = 6 * time.Hour
+
+	webhookTrimInterval = 6 * time.Hour
 	// Deletes reach the full-text index's outbox through a trigger, which
 	// queues no job; they are applied this often.
 	outboxInterval = time.Minute
@@ -390,13 +393,18 @@ func serve() error {
 	copies.Enabled = settingStore.DeviceFixOnSend
 	mailing := kindle.NewService(pool, settingStore, books, log)
 	mailing.Offline = cfg.Offline
+	hooks := &webhooks.Service{Pool: pool, Box: box, Log: log}
+	if len(cfg.PublicURLs) > 0 {
+		hooks.PublicURL = cfg.PublicURLs[0]
+	}
+	events.Hooks = hooks
 	workers := background{
 		kindle: mailing, copies: copies,
 		accounts: accounts, matches: matches, meta: meta, changes: changes, scans: scans,
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
 		events: events, follows: follows, sync: progressSync, updates: updateChecks, imports: histories,
-		trashRetention: settingStore.TrashRetention, automatic: autoCurate,
+		trashRetention: settingStore.TrashRetention, automatic: autoCurate, hooks: hooks,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
 	if err != nil {
@@ -418,6 +426,7 @@ func serve() error {
 	genreService.Queue = runner
 	passageVectors.Queue = runner
 	events.Queue = runner
+	hooks.Queue = runner
 	follows.Queue = runner
 	autoCurate.Queue = runner
 	if err := runner.Start(ctx); err != nil {
@@ -508,6 +517,7 @@ func serve() error {
 		}
 	}
 	server := &httpapi.Server{
+		Webhooks:       hooks,
 		Log:            log,
 		DB:             pool,
 		Ready:          ready,

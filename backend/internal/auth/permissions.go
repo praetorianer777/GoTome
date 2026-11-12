@@ -31,12 +31,15 @@ const (
 	SettingsManage Permission = "settings:manage"
 	// StorageManage is libraries on disk and the limits on what users may fill.
 	StorageManage Permission = "storage:manage"
+	// MetricsRead is the Prometheus endpoint, reached by an API key of the
+	// metrics scope.
+	MetricsRead Permission = "metrics:read"
 )
 
 var (
 	readerPermissions = []Permission{LibraryRead, PersonalManage}
 	editorPermissions = append(slices.Clone(readerPermissions), BooksUpload, MetadataEdit, IndexRebuild)
-	adminPermissions  = append(slices.Clone(editorPermissions), UsersManage, SettingsManage, StorageManage)
+	adminPermissions  = append(slices.Clone(editorPermissions), UsersManage, SettingsManage, StorageManage, MetricsRead)
 )
 
 // Permissions lists what a role may do. An unknown role may do nothing.

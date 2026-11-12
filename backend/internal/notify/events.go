@@ -147,11 +147,19 @@ type Queue interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, opts jobs.InsertOpts) (jobs.Inserted, error)
 }
 
+// Hooks is where an event goes besides the people: the webhooks of #418.
+// It is given each event once, in the transaction of what happened.
+type Hooks interface {
+	SendTx(ctx context.Context, tx pgx.Tx, ev Event) error
+}
+
 // Events queues events and folds them into notifications. A nil Events
 // queues nothing.
 type Events struct {
 	Pool  *pgxpool.Pool
 	Queue Queue
+	// Hooks, when set, is told of every event, whether or not anyone is.
+	Hooks Hooks
 }
 
 // QueueTx queues the event, in the transaction of what happened, for each
@@ -163,6 +171,11 @@ func (e *Events) QueueTx(ctx context.Context, tx pgx.Tx, ev Event) error {
 	k, ok := eventKind(ev.Kind)
 	if !ok {
 		return fmt.Errorf("no event kind %q", ev.Kind)
+	}
+	if e.Hooks != nil {
+		if err := e.Hooks.SendTx(ctx, tx, ev); err != nil {
+			return err
+		}
 	}
 	data, err := json.Marshal(ev.Data)
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/kosync"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 	"github.com/praetorianer777/gotome/backend/internal/pairing"
 	"github.com/praetorianer777/gotome/backend/internal/readimport"
@@ -44,6 +45,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/stats"
 	"github.com/praetorianer777/gotome/backend/internal/syscheck"
 	"github.com/praetorianer777/gotome/backend/internal/updates"
+	"github.com/praetorianer777/gotome/backend/internal/webhooks"
 )
 
 // HealthPath answers as soon as the process serves HTTP: the process is alive.
@@ -126,6 +128,11 @@ type Server struct {
 	Updates *updates.Service
 	// Checks gathers how each part of GOtome is doing, for administrators.
 	Checks *syscheck.Collector
+	// Metrics writes the Prometheus numbers; nil serves none and counts
+	// no requests.
+	Metrics *metrics.Service
+	// Webhooks tells other services of events.
+	Webhooks *webhooks.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
 	// Cleanup suggests fixes for how books are described.
@@ -154,7 +161,7 @@ type Server struct {
 // Routes is the handler for every path the server answers.
 func (s *Server) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(requestID, forwarded(s.TrustedProxies), securityHeaders, logging(s.Log), recovery)
+	r.Use(requestID, forwarded(s.TrustedProxies), securityHeaders, logging(s.Log), measure(s.Metrics), recovery)
 	r.NotFound(s.notFound)
 	r.MethodNotAllowed(methodNotAllowed)
 

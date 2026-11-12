@@ -39,6 +39,7 @@ func TestAnAPIKeyReachesOnlyItsScopesAndNeverMoreThanItsOwner(t *testing.T) {
 		"progress": {http.MethodGet, "/me/stats"},
 		"upload":   {http.MethodPost, "/libraries/00000000-0000-0000-0000-000000000000/uploads"},
 		"admin":    {http.MethodGet, "/users"},
+		"metrics":  {http.MethodGet, "/metrics"},
 	}
 	for scope := range routes {
 		_, token := a.makeKey(admin, "only "+scope, scope)

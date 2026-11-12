@@ -22,9 +22,11 @@ const MINIMUM = 24;
 const PHONE = 44;
 
 test.describe("layout rules", () => {
-	test.describe.configure({ timeout: 240_000 });
-
 	test("every main view keeps to them", async ({ page }, testInfo) => {
+		// Each view is opened four times; WebKit on a CI runner takes about ten
+		// seconds a view, so a fixed limit fails as soon as views are added.
+		// The seeded views are a few more than VIEWS.
+		test.setTimeout(60_000 + (VIEWS.length + 5) * 20_000);
 		const stamp = `${testInfo.project.name} ${Date.now()}`;
 		const minimum = testInfo.project.name === "phone" ? PHONE : MINIMUM;
 		await openSignedIn(page);

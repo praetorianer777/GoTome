@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/praetorianer777/gotome/backend/internal/metrics"
 )
 
 // RequestIDHeader carries the ID back to the client on every response.
@@ -145,4 +149,28 @@ func recovery(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+// measure counts each request and its time by the route pattern the table
+// matched, so that a path with an ID in it is one series, never one per ID.
+func measure(m *metrics.Service) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if m == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			started := time.Now()
+			rec := &statusRecorder{ResponseWriter: w}
+			next.ServeHTTP(rec, r)
+			pattern := ""
+			if rc := chi.RouteContext(r.Context()); rc != nil {
+				pattern = rc.RoutePattern()
+			}
+			status := rec.status
+			if status == 0 {
+				status = http.StatusOK
+			}
+			m.Observe(pattern, r.Method, status, time.Since(started))
+		})
+	}
 }

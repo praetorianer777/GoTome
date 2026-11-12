@@ -161,6 +161,12 @@ See [metadata.md](metadata.md#doing-it-automatically). Both are off until you tu
 |---|---|---|---|
 | `updates.check` | Check for new releases | `on` | Once a day GOtome asks GitHub for the latest release and tells administrators of a newer one (footer, overview, a notification). GitHub learns that an instance exists at this address and nothing else; nothing is downloaded or installed. `GOTOME_OFFLINE=true` asks nothing whatever this says. |
 
+### Operations
+
+| Key | On the page | Default | What it does |
+|---|---|---|---|
+| `metrics.enabled` | Prometheus metrics | `off` | `on` makes `GET /api/v1/metrics` answer with the metrics in Prometheus's text format, to an API key of the `metrics` scope; off, it answers 404 to everyone ([metrics.md](metrics.md)). |
+
 ### Devices
 
 | Key | On the page | Default | What it does |

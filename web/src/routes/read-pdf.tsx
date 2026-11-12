@@ -524,7 +524,7 @@ function Page({
 				data-page={drawn}
 				className="relative mx-auto w-fit bg-white shadow"
 			>
-				<canvas ref={canvas} />
+				<canvas ref={canvas} aria-hidden="true" />
 				<div ref={text} className="textLayer" />
 			</figure>
 		</div>
