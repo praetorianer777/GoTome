@@ -775,6 +775,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/books/{bookId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write the caller's review of a book, shared with others if they share and it is not private; empty removes it */
+        put: operations["setReview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The reviews others share on a book, the mean of the stars they share and the caller's own review */
+        get: operations["listBookReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/similar": {
         parameters: {
             query?: never;
@@ -2475,6 +2509,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the caller shares their ratings and reviews with others on the server */
+        get: operations["getSharing"];
+        /** Share the caller's ratings and reviews with others on the server, or stop at once */
+        put: operations["putSharing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/stats": {
         parameters: {
             query?: never;
@@ -2859,6 +2911,23 @@ export interface paths {
         };
         /** The books a smart shelf holds */
         get: operations["listOpdsSmartShelf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{username}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The reviews a person shares on books the caller may see; 404 for a person who shares none, or who does not exist */
+        get: operations["listPersonReviews"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3637,6 +3706,12 @@ export interface components {
             id: string;
             narrators: string[];
             title: string;
+        };
+        BookReviews: {
+            average: number;
+            mine?: components["schemas"]["OwnReview"];
+            reviews: components["schemas"]["SharedReview"][];
+            stars: number;
         };
         BookSummary: {
             /** Format: date-time */
@@ -4813,6 +4888,12 @@ export interface components {
             all?: boolean;
             ids?: string[];
         };
+        OwnReview: {
+            body: string;
+            private: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         PairFormats: {
             /** Format: uuid */
             ebookId: string;
@@ -4828,6 +4909,20 @@ export interface components {
             bytes: number;
             withPassages: number;
             withText: number;
+        };
+        PersonReview: {
+            authorSort: string;
+            body: string;
+            /** Format: uuid */
+            bookId: string;
+            stars: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PersonReviews: {
+            reviews: components["schemas"]["PersonReview"][];
+            username: string;
         };
         PlaceholderJoin: {
             /** Format: uuid */
@@ -5047,6 +5142,10 @@ export interface components {
             books: components["schemas"]["ReviewBook"][];
             total: number;
         };
+        ReviewRequest: {
+            body: string;
+            private: boolean;
+        };
         RunStatus: {
             done: number;
             error?: string;
@@ -5198,6 +5297,16 @@ export interface components {
         };
         SetupStatus: {
             needed: boolean;
+        };
+        SharedReview: {
+            author: string;
+            body: string;
+            stars: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Sharing: {
+            shareReviews: boolean;
         };
         SignInMethods: {
             password: boolean;
@@ -7188,6 +7297,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadingState"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listBookReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookReviews"];
                 };
             };
             /** @description The request failed. */
@@ -10882,6 +11055,68 @@ export interface operations {
             };
         };
     };
+    getSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sharing"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Sharing"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sharing"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getStats: {
         parameters: {
             query?: {
@@ -11622,6 +11857,37 @@ export interface operations {
                 };
                 content: {
                     "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPersonReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonReviews"];
                 };
             };
             /** @description The request failed. */

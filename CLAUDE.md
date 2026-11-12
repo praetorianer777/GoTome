@@ -1021,6 +1021,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `catalog.Book.Reading` and the summaries' `Status` and `Rating` are the
   viewer's.
 
+## Shared reviews
+
+- `internal/reviews` (#427) is the one way anything of `user_books` or a
+  person's words reaches another person, and only by their choice:
+  `users.share_reviews` (off by default, `PUT /me/sharing`) and a
+  `book_reviews` row (`PUT /books/{id}/review`, apart from the private
+  `book_notes`) that is not `private`. Nothing is copied: every read
+  (`GET /books/{id}/reviews`, `GET /people/{username}/reviews`) joins the
+  sharers and `visible_library_ids` of the viewer each time, so turning
+  sharing off, disabling an account or losing a library takes effect at
+  once, and an account's deletion cascades. The mean counts the stars of
+  sharers (active accounts) who did not mark their review of the book
+  private. A person's page is 404 for one who shares nothing with the
+  viewer, as for a name nobody has. `book_reviews` is in `curation.Tables`
+  and `MergeBookReviews`.
+
 ## Reading progress
 
 - `internal/reading` keeps where each person is in a book, once per medium

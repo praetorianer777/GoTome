@@ -52,6 +52,21 @@ export async function seeded(page: Page, stamp: string) {
 		{ data: { status: "completed", rating: 5 } },
 	);
 	expect(reading.status()).toBe(200);
+	// A review too long for the column, shared, so that the book's page and a
+	// person's page list it.
+	const me = (await (await page.request.get("/api/v1/auth/me")).json()) as {
+		username: string;
+	};
+	expect(
+		(await page.request.put("/api/v1/me/sharing", { data: { shareReviews: true } })).ok(),
+	).toBe(true);
+	expect(
+		(
+			await page.request.put(`/api/v1/books/${books[`Layout Three ${stamp}`]}/review`, {
+				data: { body: `${long} ${long}\n\nA second paragraph of the review.`, private: false },
+			})
+		).status(),
+	).toBe(204);
 	const epubLibrary = await newLibrary(page, `Layout reader ${stamp}`);
 	const epub = await uploadEpub(
 		page,
@@ -76,9 +91,15 @@ export async function seeded(page: Page, stamp: string) {
 			heading: `Layout Reader ${stamp}`,
 		},
 	];
+	views.push({
+		label: "a person's reviews",
+		path: `/people/${me.username}`,
+		heading: `Reviews by ${me.username}`,
+	});
 	return {
 		views,
 		cleanup: async () => {
+			await page.request.put("/api/v1/me/sharing", { data: { shareReviews: false } });
 			for (const library of [id, epubLibrary]) {
 				await page.request.delete(`/api/v1/libraries/${library}`, { timeout: 30_000 });
 			}

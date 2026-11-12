@@ -38,6 +38,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
+	"github.com/praetorianer777/gotome/backend/internal/reviews"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -118,6 +119,8 @@ type Server struct {
 	Deliveries *deliveries.Service
 	// Copies are the fixed copies of EPUBs that devices are sent (#501).
 	Copies *devicecopy.Service
+	// Reviews keeps what people share of the books they rated and reviewed.
+	Reviews *reviews.Service
 	// Kindle sends books to people's Kindles by e-mail.
 	Kindle *kindle.Service
 	// Sync is the server KOReader's progress sync talks to.

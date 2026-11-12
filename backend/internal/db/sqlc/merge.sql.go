@@ -350,6 +350,32 @@ func (q *Queries) MergeBookIdentifiers(ctx context.Context, arg MergeBookIdentif
 	return err
 }
 
+const mergeBookReviews = `-- name: MergeBookReviews :exec
+WITH moved AS (
+    DELETE FROM book_reviews x WHERE x.book_id = $2
+    RETURNING user_id, body, private, created_at, updated_at)
+INSERT INTO book_reviews AS n (user_id, book_id, body, private, created_at, updated_at)
+SELECT user_id, $1, body, private, created_at, updated_at FROM moved
+ON CONFLICT (user_id, book_id) DO UPDATE SET
+    body       = n.body || E'\n\n' || EXCLUDED.body,
+    private    = n.private OR EXCLUDED.private,
+    created_at = least(n.created_at, EXCLUDED.created_at),
+    updated_at = greatest(n.updated_at, EXCLUDED.updated_at)
+`
+
+type MergeBookReviewsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// Everyone's reviews of the book; where a person wrote one on both, the
+// surviving book's review keeps and the other's follows it, private if
+// either was.
+func (q *Queries) MergeBookReviews(ctx context.Context, arg MergeBookReviewsParams) error {
+	_, err := q.db.Exec(ctx, mergeBookReviews, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const mergeCollectionItems = `-- name: MergeCollectionItems :exec
 WITH moved AS (
     DELETE FROM collection_items x WHERE x.book_id = $2

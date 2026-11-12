@@ -2607,6 +2607,109 @@
         "x-permission": "personal:manage"
       }
     },
+    "/books/{bookId}/review": {
+      "put": {
+        "operationId": "setReview",
+        "summary": "Write the caller's review of a book, shared with others if they share and it is not private; empty removes it",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/books/{bookId}/reviews": {
+      "get": {
+        "operationId": "listBookReviews",
+        "summary": "The reviews others share on a book, the mean of the stars they share and the caller's own review",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookReviews"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/books/{bookId}/similar": {
       "get": {
         "operationId": "listSimilarBooks",
@@ -8516,6 +8619,94 @@
         "x-permission": "personal:manage"
       }
     },
+    "/me/sharing": {
+      "get": {
+        "operationId": "getSharing",
+        "summary": "Whether the caller shares their ratings and reviews with others on the server",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sharing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "put": {
+        "operationId": "putSharing",
+        "summary": "Share the caller's ratings and reviews with others on the server, or stop at once",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Sharing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sharing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/me/stats": {
       "get": {
         "operationId": "getStats",
@@ -9652,6 +9843,56 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/people/{username}/reviews": {
+      "get": {
+        "operationId": "listPersonReviews",
+        "summary": "The reviews a person shares on books the caller may see; 404 for a person who shares none, or who does not exist",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonReviews"
                 }
               }
             }
@@ -12481,6 +12722,31 @@
           "id",
           "title",
           "narrators"
+        ]
+      },
+      "BookReviews": {
+        "type": "object",
+        "properties": {
+          "average": {
+            "type": "number"
+          },
+          "mine": {
+            "$ref": "#/components/schemas/OwnReview"
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedReview"
+            }
+          },
+          "stars": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stars",
+          "average",
+          "reviews"
         ]
       },
       "BookSummary": {
@@ -16933,6 +17199,26 @@
           }
         }
       },
+      "OwnReview": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "body",
+          "private",
+          "updatedAt"
+        ]
+      },
       "PairFormats": {
         "type": "object",
         "properties": {
@@ -16991,6 +17277,57 @@
           "withText",
           "withPassages",
           "bytes"
+        ]
+      },
+      "PersonReview": {
+        "type": "object",
+        "properties": {
+          "authorSort": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "authorSort",
+          "stars",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "PersonReviews": {
+        "type": "object",
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonReview"
+            }
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "reviews"
         ]
       },
       "PlaceholderJoin": {
@@ -17799,6 +18136,21 @@
           "total"
         ]
       },
+      "ReviewRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "private": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "body",
+          "private"
+        ]
+      },
       "RunStatus": {
         "type": "object",
         "properties": {
@@ -18351,6 +18703,41 @@
         },
         "required": [
           "needed"
+        ]
+      },
+      "SharedReview": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "author",
+          "stars",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "Sharing": {
+        "type": "object",
+        "properties": {
+          "shareReviews": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "shareReviews"
         ]
       },
       "SignInMethods": {

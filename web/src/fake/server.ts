@@ -427,6 +427,12 @@ export class FakeServer {
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
 	similar: Record<string, string[]> = {};
+	/** Whether the signed-in person shares their ratings and reviews. */
+	sharing = false;
+	/** What others on the server share: their reviews and stars of books. */
+	sharedReviews: { bookId: string; author: string; stars: number; body: string }[] = [];
+	/** The signed-in person's own reviews, by book. */
+	ownReviews: Record<string, { body: string; private: boolean }> = {};
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
 	/** The collections the signed-in person sees, with their books in order. */
@@ -1069,6 +1075,58 @@ export class FakeServer {
 		}
 		if (path.startsWith("/series/")) {
 			return this.seriesOf(decodeURIComponent(path.slice("/series/".length)));
+		}
+		if (path === "/me/sharing") {
+			if (request.method === "PUT") {
+				this.sharing = (body as { shareReviews: boolean }).shareReviews;
+			}
+			return Response.json({ shareReviews: this.sharing });
+		}
+		const reviewed = /^\/books\/([^/]+)\/reviews?$/.exec(path);
+		if (reviewed) {
+			const id = reviewed[1] ?? "";
+			if (request.method === "PUT") {
+				const { body: text, private: hidden } = body as { body: string; private: boolean };
+				if (text.trim()) this.ownReviews[id] = { body: text.trim(), private: hidden };
+				else delete this.ownReviews[id];
+				return new Response(null, { status: 204 });
+			}
+			const others = this.sharedReviews.filter((r) => r.bookId === id);
+			const rated = others.filter((r) => r.stars > 0);
+			const mine = this.ownReviews[id];
+			return Response.json({
+				stars: rated.length,
+				average: rated.length ? rated.reduce((n, r) => n + r.stars, 0) / rated.length : 0,
+				reviews: others.map((r) => ({
+					author: r.author,
+					stars: r.stars,
+					body: r.body,
+					updatedAt: "2026-05-01T10:00:00Z",
+				})),
+				mine: mine && { ...mine, updatedAt: "2026-05-02T10:00:00Z" },
+			});
+		}
+		const person = /^\/people\/([^/]+)\/reviews$/.exec(path);
+		if (person) {
+			const name = decodeURIComponent(person[1] ?? "");
+			const list = this.sharedReviews.filter((r) => r.author === name);
+			if (list.length === 0) {
+				return Response.json(
+					{ error: { code: "not_found", message: "There is no such person." } },
+					{ status: 404 },
+				);
+			}
+			return Response.json({
+				username: name,
+				reviews: list.map((r) => ({
+					bookId: r.bookId,
+					title: this.books.find((b) => b.id === r.bookId)?.title ?? "",
+					authorSort: "",
+					stars: r.stars,
+					body: r.body,
+					updatedAt: "2026-05-01T10:00:00Z",
+				})),
+			});
 		}
 		if (path === "/books" || path.startsWith("/books/")) {
 			return this.answerBooks(request.method, path, url.searchParams, body);

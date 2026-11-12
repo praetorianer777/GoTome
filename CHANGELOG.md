@@ -6,6 +6,16 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Share your ratings and reviews with others on the server: switch on
+  "Share my ratings and reviews with others on this server" on your profile
+  (off until you do), write a review on a book's page and keep any of them
+  private. A book's page then shows the shared reviews and the mean of the
+  shared stars, and a person's reviews have a page of their own. Others see
+  only reviews of books they can see; turning sharing off hides them at
+  once ([people, roles and libraries](docs/users-and-libraries.md#sharing-ratings-and-reviews)).
+
 ## [0.24.0] - 2026-11-12
 
 ### Added

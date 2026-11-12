@@ -27,6 +27,7 @@ import { ReaderRoute, readerSearch } from "@/routes/read";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
+import { PersonPage } from "@/routes/person";
 import { RouteError } from "@/routes/route-error";
 import type { TextSearch } from "@/routes/search";
 import type { DuplicatesSearch } from "@/routes/duplicates";
@@ -516,6 +517,14 @@ const collectionsRoute = createRoute({
 	component: Collections,
 });
 
+const personRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/people/$username",
+	component: function PersonRoute() {
+		return <PersonPage username={personRoute.useParams().username} />;
+	},
+});
+
 const collectionRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/collections/$collectionId",
@@ -648,7 +657,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, personRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */
