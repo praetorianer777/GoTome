@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A Kobo reader that drops the port from its requests (firmware 6.0 does) no
+  longer gets download and cover addresses on port 80 from a server reached at
+  another port: when `GOTOME_PUBLIC_URLS` names an address with a port for the
+  host the reader used, that port is kept.
+
 ## [0.24.0] - 2026-11-12
 
 ### Added
