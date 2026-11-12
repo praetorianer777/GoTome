@@ -23,7 +23,9 @@ test("a Calibre library is previewed, then imported, and its metadata arrives", 
 				name: `Calibre ${testInfo.project.name} ${Date.now()}`,
 				mode: "external",
 				rootPath: folder,
-				visibility: "shared",
+				// Private: its books (one by "Unknown") would otherwise turn up
+				// in what other tests' editors see, such as the clean-up's.
+				visibility: "private",
 			},
 		});
 		expect(created.status()).toBe(201);
