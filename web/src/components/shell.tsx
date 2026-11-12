@@ -57,6 +57,7 @@ export interface NavItem {
 		| "/wishlist"
 		| "/releases"
 		| "/stats"
+		| "/discover"
 		| "/overview"
 		| "/profile"
 		| "/jobs"
@@ -102,6 +103,13 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "personal:manage",
 		group: "sections",
 		icon: "spark",
+	},
+	{
+		to: "/discover",
+		label: "nav.discover",
+		permission: "personal:manage",
+		group: "sections",
+		icon: "wand",
 	},
 	{
 		to: "/stats",
