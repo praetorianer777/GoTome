@@ -101,6 +101,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.embeddingRemoveUnused",
 		hint: "settings.embeddingRemoveUnused.hint",
 	},
+	"embedding.contentSamples": {
+		label: "settings.embeddingContentSamples",
+		hint: "settings.embeddingContentSamples.hint",
+	},
 	"embedding.server": {
 		label: "settings.embeddingServer",
 		hint: "settings.embeddingServer.hint",

@@ -42,12 +42,20 @@ const (
 )
 
 // Samples is how many passages of a book's text its content vector is made
-// from, spread evenly over it.
+// from, spread evenly over it, unless the setting embedding.contentSamples
+// says another number.
 const Samples = 16
 
 // recipe is how a content vector is made, part of its source's hash: a
 // change to it has every book's made again.
-var recipe = "samples=" + strconv.Itoa(Samples)
+func recipe(samples int) string { return "samples=" + strconv.Itoa(samples) }
+
+func (s *Service) samples(ctx context.Context) (int, error) {
+	if s.ContentSamples == nil {
+		return Samples, nil
+	}
+	return s.ContentSamples(ctx)
+}
 
 // batch is how many passages go to the model at once, as in #15.
 const batch = 8
@@ -154,6 +162,9 @@ type Service struct {
 	// ModelDir is where the models' files are (GOTOME_MODEL_DIR); empty,
 	// Models counts none and removing a model removes no file.
 	ModelDir string
+	// ContentSamples is how many passages a content vector is made from
+	// (embedding.contentSamples); nil, Samples.
+	ContentSamples func(ctx context.Context) (int, error)
 	// RemoveAfter is how long a model is not chosen before RemoveUnused
 	// removes it; nil, it removes none.
 	RemoveAfter func(ctx context.Context) (time.Duration, error)
@@ -188,6 +199,10 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 		return false, err
 	}
 	model, version := spec.Model.Name, Version(spec.Model)
+	samples, err := s.samples(ctx)
+	if err != nil {
+		return false, err
+	}
 	var e embed.Embedder
 	defer func() {
 		if e != nil {
@@ -202,7 +217,7 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 		g, gctx := errgroup.WithContext(ctx)
 		for _, r := range group {
 			g.Go(func() error {
-				if err := s.embedBook(gctx, e, spec, r); err != nil {
+				if err := s.embedBook(gctx, e, spec, samples, r); err != nil {
 					return fmt.Errorf("embed book %s: %w", r.BookID, err)
 				}
 				return nil
@@ -218,7 +233,7 @@ func (s *Service) Embed(ctx context.Context, deadline time.Time, max int) (compl
 	}
 	for {
 		rows, err := q.ListBooksToEmbed(ctx, sqlc.ListBooksToEmbedParams{
-			Model: model, ModelVersion: version, Recipe: recipe, After: after, Page: page,
+			Model: model, ModelVersion: version, Recipe: recipe(samples), After: after, Page: page,
 		})
 		if err != nil {
 			return false, err
@@ -274,7 +289,7 @@ func parallel(e embed.Embedder) int {
 }
 
 // embedBook makes the book's stale vectors and stores them together.
-func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Spec, r sqlc.ListBooksToEmbedRow) error {
+func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Spec, samples int, r sqlc.ListBooksToEmbedRow) error {
 	q := sqlc.New(s.pool)
 	type made struct {
 		kind string
@@ -297,7 +312,7 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Sp
 		out = append(out, made{KindMetadata, sum[:], vecs[0]})
 	}
 	if r.ContentStale && r.TextFileID != nil {
-		vec, err := s.contentVector(ctx, e, spec.Prefix, *r.TextFileID)
+		vec, err := s.contentVector(ctx, e, spec.Prefix, samples, *r.TextFileID)
 		if err != nil {
 			return err
 		}
@@ -326,10 +341,10 @@ func (s *Service) embedBook(ctx context.Context, e embed.Embedder, spec embed.Sp
 	})
 }
 
-// contentVector embeds Samples passages spread evenly over the file's
+// contentVector embeds samples passages spread evenly over the file's
 // chunks and takes their mean, each weighted by how much of it the model
 // read; nil for a file without chunks.
-func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix string, fileID uuid.UUID) ([]float32, error) {
+func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix string, samples int, fileID uuid.UUID) ([]float32, error) {
 	q := sqlc.New(s.pool)
 	positions, err := q.ListChunkPositions(ctx, fileID)
 	if err != nil || len(positions) == 0 {
@@ -338,7 +353,7 @@ func (s *Service) contentVector(ctx context.Context, e embed.Embedder, prefix st
 	if s.Passages == nil {
 		return nil, errors.New("embedding a book's text needs its passages read")
 	}
-	bodies, err := s.Passages(ctx, fileID, spread(positions, Samples))
+	bodies, err := s.Passages(ctx, fileID, spread(positions, samples))
 	if err != nil || len(bodies) == 0 {
 		return nil, err
 	}
