@@ -22,12 +22,10 @@ import { Gopher } from "@/components/gopher";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { Book } from "@/routes/book";
-import { Listen } from "@/player/controls";
 import { ReaderRoute, readerSearch } from "@/routes/read";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
 import { NotFound } from "@/routes/not-found";
-import { PersonPage } from "@/routes/person";
 import { RouteError } from "@/routes/route-error";
 import type { TextSearch } from "@/routes/search";
 import type { DuplicatesSearch } from "@/routes/duplicates";
@@ -66,6 +64,8 @@ const Setup = lazyRouteComponent(() => import("@/routes/setup"), "Setup");
 const Trash = lazyRouteComponent(() => import("@/routes/trash"), "Trash");
 const Highlights = lazyRouteComponent(() => import("@/routes/highlights"), "Highlights");
 const Discover = lazyRouteComponent(() => import("@/routes/discover"), "Discover");
+const PersonPage = lazyRouteComponent(() => import("@/routes/person"), "PersonPage");
+const Listen = lazyRouteComponent(() => import("@/player/listen"), "Listen");
 const Releases = lazyRouteComponent(() => import("@/routes/releases"), "Releases");
 const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
 
@@ -453,9 +453,9 @@ const readPdfRoute = createRoute({
 const listenRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId/listen",
-	component: function ListenRoute() {
+	component: loads(Listen, function ListenRoute() {
 		return <Listen bookId={listenRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const wishlistRoute = createRoute({
@@ -555,9 +555,9 @@ const collectionsRoute = createRoute({
 const personRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/people/$username",
-	component: function PersonRoute() {
+	component: loads(PersonPage, function PersonRoute() {
 		return <PersonPage username={personRoute.useParams().username} />;
-	},
+	}),
 });
 
 const collectionRoute = createRoute({

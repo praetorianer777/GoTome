@@ -14,12 +14,10 @@ import { ContinueOffers } from "@/books/continue-offer";
 import { EReaderFindings, useConvertFile } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
-import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
 import { FollowButtons } from "@/releases/follow";
-import { KeepAudioButton, KeepFileButton } from "@/offline/keep-button";
 import { readable } from "@/routes/read";
 import { usePlayer } from "@/player/player";
 import { QueueButtons } from "@/player/up-next";
@@ -39,6 +37,18 @@ import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
 // which keeps them out of the first load (scripts/budget.mjs).
 const BookReviews = lazy(() =>
 	import("@/reviews/reviews").then((m) => ({ default: m.BookReviews })),
+);
+const KeepFileButton = lazy(() =>
+	import("@/offline/keep-button").then((m) => ({ default: m.KeepFileButton })),
+);
+const KeepAudioButton = lazy(() =>
+	import("@/offline/keep-button").then((m) => ({ default: m.KeepAudioButton })),
+);
+const JoinToLibraryBook = lazy(() =>
+	import("@/books/join-placeholder").then((m) => ({ default: m.JoinToLibraryBook })),
+);
+const JoinedNotice = lazy(() =>
+	import("@/books/join-placeholder").then((m) => ({ default: m.JoinedNotice })),
 );
 const HighlightsSection = lazy(() =>
 	import("@/books/highlights-section").then((m) => ({ default: m.HighlightsSection })),
@@ -252,8 +262,10 @@ function BookPage({ book }: { book: BookDetail }) {
 						</p>
 					)}
 
-					{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
-					{personal && <JoinedNotice book={book.id} />}
+					<Suspense fallback={null}>
+						{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
+						{personal && <JoinedNotice book={book.id} />}
+					</Suspense>
 
 					{personal && <ReadingControls book={book} />}
 
@@ -538,7 +550,9 @@ function Files({ book }: { book: BookDetail }) {
 								{t("book.file.trash")}
 							</button>
 						)}
-						<KeepFileButton book={book} file={file} />
+						<Suspense fallback={null}>
+							<KeepFileButton book={book} file={file} />
+						</Suspense>
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}
@@ -553,7 +567,9 @@ function Files({ book }: { book: BookDetail }) {
 				))}
 			</ul>
 			<div className="flex">
-				<KeepAudioButton book={book} />
+				<Suspense fallback={null}>
+					<KeepAudioButton book={book} />
+				</Suspense>
 			</div>
 			<FormError error={reread.error ?? trash.error ?? convert.error} />
 			{canReread && files.some((f) => f.hasText) && (
