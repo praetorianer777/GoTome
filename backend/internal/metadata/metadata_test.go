@@ -418,3 +418,115 @@ func TestTwoProvidersAgreeOnOneISBNOrOneWork(t *testing.T) {
 		}
 	}
 }
+
+// subjectLister is a provider that lists by subject, as its source answers.
+type subjectLister struct {
+	listing
+	name    string
+	records []Record
+	err     error
+	asked   []string
+}
+
+func (p *subjectLister) Name() string { return p.name }
+func (p *subjectLister) BySubject(_ context.Context, _ Web, subject string) ([]Record, error) {
+	p.asked = append(p.asked, subject)
+	return slices.Clone(p.records), p.err
+}
+
+func TestSubjectsAreAskedOnlyOfEnabledProvidersThatListThem(t *testing.T) {
+	good := &subjectLister{name: "good", records: []Record{
+		{Title: "Salt Moons", Language: "en"},
+		{Title: "Lunas de Sal", Language: "es"},
+		{Title: "Salzmonde"},
+	}}
+	absent := &subjectLister{name: "absent", err: ErrNotFound}
+	broken := &subjectLister{name: "broken", err: errors.New("down")}
+	off := &subjectLister{name: "off", records: []Record{{Title: "Never Asked"}}}
+	enabled := []string{"good", "absent", "broken", "listing"}
+	s := NewService(nil, []Provider{good, absent, broken, off, &listing{}}, Options{
+		Enabled: func(context.Context) []string { return enabled },
+	})
+
+	answers, err := s.SubjectsOf(context.Background(), "sea stories")
+	var pe *ProviderError
+	if !errors.As(err, &pe) || pe.Provider != "broken" {
+		t.Errorf("err = %v, want the failing provider named", err)
+	}
+	if len(answers) != 2 || answers[0].Provider != "good" || answers[1].Provider != "absent" {
+		t.Fatalf("answers = %+v", answers)
+	}
+	var titles []string
+	for _, r := range answers[0].Records {
+		titles = append(titles, r.Title)
+		if r.Provider != "good" {
+			t.Errorf("%q has provider %q", r.Title, r.Provider)
+		}
+	}
+	if !slices.Equal(titles, []string{"Salt Moons", "Salzmonde"}) {
+		t.Errorf("kept %v, want English and unknown languages", titles)
+	}
+	if len(answers[1].Records) != 0 {
+		t.Errorf("a subject the provider does not know has records: %+v", answers[1].Records)
+	}
+	if len(off.asked) != 0 || !slices.Equal(good.asked, []string{"sea stories"}) {
+		t.Errorf("asked: good %v, disabled %v", good.asked, off.asked)
+	}
+}
+
+func TestSubjectsOfAStoppedContextAreNotAnswered(t *testing.T) {
+	s := NewService(nil, []Provider{&subjectLister{name: "good", err: errors.New("cut off")}}, Options{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if answers, err := s.SubjectsOf(ctx, "x"); !errors.Is(err, context.Canceled) || answers != nil {
+		t.Errorf("%+v, %v", answers, err)
+	}
+}
+
+func TestBackoffsAndStatesTellWhichProviderAskedToBeLeftAlone(t *testing.T) {
+	srv := newProviderServer(t)
+	busy := &fakeProvider{name: "busy", base: srv.URL}
+	calm := &fakeProvider{name: "calm", base: srv.URL}
+	disabled := &fakeProvider{name: "disabled", base: srv.URL}
+	s := NewService(nil, []Provider{busy, calm, disabled}, Options{
+		AllowPrivate: true,
+		Enabled:      func(context.Context) []string { return []string{"busy", "calm"} },
+	})
+	ctx := context.Background()
+	if got := s.Backoffs(); len(got) != 0 {
+		t.Errorf("before any request: %+v", got)
+	}
+	for _, st := range s.ProviderStates(ctx) {
+		if st.Last != nil {
+			t.Errorf("%s has an outcome before a request: %+v", st.Name, st.Last)
+		}
+	}
+
+	if _, err := s.webs["busy"].Get(ctx, Request{URL: srv.URL + "/busy"}); !errors.Is(err, ErrBusy) {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := s.webs["calm"].Get(ctx, Request{URL: srv.URL + "/isbn/9780141439587"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := s.Backoffs()
+	if len(got) != 1 || got[0].Provider != "busy" || time.Until(got[0].Until) < 110*time.Second {
+		t.Fatalf("Backoffs = %+v", got)
+	}
+	states := s.ProviderStates(ctx)
+	if len(states) != 3 {
+		t.Fatalf("states = %+v", states)
+	}
+	want := []struct {
+		name    string
+		enabled bool
+		last    bool
+		failed  bool
+	}{{"busy", true, true, true}, {"calm", true, true, false}, {"disabled", false, false, false}}
+	for i, w := range want {
+		st := states[i]
+		if st.Name != w.name || st.Enabled != w.enabled || (st.Last != nil) != w.last || (st.Last != nil && (st.Last.Err != "") != w.failed) {
+			t.Errorf("state %d = %+v (last %+v), want %+v", i, st, st.Last, w)
+		}
+	}
+}
