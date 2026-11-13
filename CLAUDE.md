@@ -42,6 +42,9 @@ ever in the compose file or an environment variable. init only adds what is miss
   Gutenberg has and adapted per library (`docs/decisions/genre-detection.md`);
   its harness is `spikes/genres`. No genre feature work starts from it before
   the follow-ups it lists are filed.
+  #527 found no freely licensed modern corpus; Standard Ebooks may add old
+  horror, fantasy, adventure and humour to the shipped training, the rest stays
+  with tags and adaptation (`docs/decisions/modern-genre-corpus.md`).
 
 ## Layout and toolchain
 
