@@ -206,3 +206,73 @@ func (s *Server) dismissDiscovered(w http.ResponseWriter, r *http.Request) error
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
+
+type readElsewhereRequest struct {
+	// Stars is the caller's own rating of the book, 1 to 5; absent for none.
+	Stars *int16 `json:"stars,omitempty"`
+}
+
+type discoverReadBook struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Authors     []string  `json:"authors"`
+	Series      string    `json:"series,omitempty"`
+	SeriesIndex *float64  `json:"seriesIndex,omitempty"`
+	Stars       *int16    `json:"stars,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
+type discoverReadList struct {
+	Items []discoverReadBook `json:"items"`
+}
+
+func (s *Server) readDiscoveredElsewhere(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "candidateId", "candidate")
+	if err != nil {
+		return err
+	}
+	var req readElsewhereRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	err = s.Discover.MarkRead(r.Context(), UserFrom(r.Context()).ID, id, req.Stars)
+	switch {
+	case errors.Is(err, discover.ErrNotFound):
+		return ErrNotFound("There is no such book to discover.")
+	case errors.Is(err, discover.ErrBadStars):
+		return ErrValidation(map[string]string{"stars": "Must be 1 to 5."})
+	case err != nil:
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) listDiscoverRead(w http.ResponseWriter, r *http.Request) error {
+	books, err := s.Discover.ReadElsewhere(r.Context(), UserFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	out := discoverReadList{Items: []discoverReadBook{}}
+	for _, b := range books {
+		out.Items = append(out.Items, discoverReadBook{ID: b.ID, Title: b.Title, Authors: b.Authors, Series: b.Series, SeriesIndex: b.SeriesIndex, Stars: b.Stars, CreatedAt: b.CreatedAt})
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func (s *Server) unreadDiscovered(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "readId", "book")
+	if err != nil {
+		return err
+	}
+	err = s.Discover.Unread(r.Context(), UserFrom(r.Context()).ID, id)
+	if errors.Is(err, discover.ErrNotFound) {
+		return ErrNotFound("There is no such book.")
+	}
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}

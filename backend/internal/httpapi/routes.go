@@ -976,6 +976,21 @@ func (s *Server) routes() []Route {
 			Permission: auth.PersonalManage, Handler: s.dismissDiscovered,
 		},
 		{
+			Method: http.MethodPost, Path: "/me/discover/{candidateId}/read", ID: "readDiscoveredElsewhere",
+			Summary: "Say the caller read a discovered book elsewhere, with optional stars: it and its other editions leave Discover, and it counts for their taste; nothing is added to a library or the wishlist", Tag: "books",
+			Request: readElsewhereRequest{}, Permission: auth.PersonalManage, Handler: s.readDiscoveredElsewhere,
+		},
+		{
+			Method: http.MethodGet, Path: "/me/discover/read", ID: "listDiscoverRead",
+			Summary: "The books the caller said they read elsewhere", Tag: "books",
+			Response: discoverReadList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listDiscoverRead,
+		},
+		{
+			Method: http.MethodDelete, Path: "/me/discover/read/{readId}", ID: "unreadDiscovered",
+			Summary: "Take a book back off the caller's list of those read elsewhere; Discover may offer it again", Tag: "books",
+			Status: http.StatusNoContent, Permission: auth.PersonalManage, Handler: s.unreadDiscovered,
+		},
+		{
 			Method: http.MethodGet, Path: "/me/reading", ID: "listReading",
 			Summary: "The caller's reading history: what they read, are reading or gave up, owned or not", Tag: "books",
 			Query: historyQuery{}, Response: historyList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listReading,

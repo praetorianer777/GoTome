@@ -236,3 +236,63 @@ test("Discover opens a book's details at the side or, on a phone, from the botto
 	await page.mouse.click(5, 5);
 	await expect(panel).toHaveCount(0);
 });
+
+test("Discover: Already read, with stars, from the list and from the details, and a way back", async ({ page }, testInfo) => {
+	const stamp = `${testInfo.project.name} ${Date.now()}`;
+	const long = `Wolfeschlegelsteinhausenbergerdorff-${stamp.replaceAll(" ", "")}`;
+	await openSignedIn(page);
+	const item = (id: string, title: string) => ({
+		id,
+		title,
+		authors: [long],
+		year: 2021,
+		provider: "openlibrary",
+		identifiers: [],
+		tags: [],
+		people: [],
+		reason: { kind: "author", name: long, stars: 5, because: [] },
+		wish: { title, provider: "openlibrary" },
+	});
+	const first = `Read A ${stamp}`;
+	const second = `Read B ${stamp}`;
+	let items = [item("00000000-0000-0000-0000-0000000000e1", first), item("00000000-0000-0000-0000-0000000000e2", second)];
+	let read: { id: string; title: string; authors: string[]; stars?: number; createdAt: string }[] = [];
+	const sent: { id: string; stars?: number }[] = [];
+	await page.route("**/api/v1/me/discover", (route) =>
+		route.fulfill({ json: { state: "ready", finishedAt: "2026-11-10T08:00:00Z", items } }),
+	);
+	await page.route("**/api/v1/me/discover/read", (route) => route.fulfill({ json: { items: read } }));
+	await page.route("**/api/v1/me/discover/read/*", (route) => {
+		read = [];
+		return route.fulfill({ status: 204 });
+	});
+	await page.route("**/api/v1/me/discover/*/read", (route) => {
+		const id = route.request().url().split("/").at(-2) ?? "";
+		const body = route.request().postDataJSON() as { stars?: number };
+		sent.push({ id, stars: body.stars });
+		const was = items.find((i) => i.id === id);
+		items = items.filter((i) => i.id !== id);
+		if (was) read = [{ id: `r-${id}`, title: was.title, authors: was.authors, stars: body.stars, createdAt: "2026-11-13T08:00:00Z" }, ...read];
+		return route.fulfill({ status: 204 });
+	});
+
+	await page.goto("/discover");
+	await page.getByRole("button", { name: `I already read ${first}` }).click();
+	await page.getByRole("button", { name: "4 of 5 stars" }).click();
+	await expect(page.getByRole("button", { name: first, exact: true })).toHaveCount(0);
+	expect(sent).toEqual([{ id: "00000000-0000-0000-0000-0000000000e1", stars: 4 }]);
+
+	await page.getByRole("button", { name: second, exact: true }).click();
+	const panel = page.getByRole("dialog", { name: second });
+	await panel.getByRole("button", { name: `I already read ${second}` }).click();
+	await panel.getByRole("button", { name: "No rating" }).click();
+	await expect(panel).toHaveCount(0);
+	expect(sent.at(-1)).toEqual({ id: "00000000-0000-0000-0000-0000000000e2", stars: undefined });
+
+	await page.getByText("Read elsewhere (2)").click();
+	await expect(page.getByText(first, { exact: false }).first()).toBeVisible();
+	const widest = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+	expect(widest).toBeLessThanOrEqual(0);
+	await page.getByRole("button", { name: `Offer ${first} again` }).click();
+	await expect(page.getByText("Read elsewhere (2)")).toHaveCount(0);
+});

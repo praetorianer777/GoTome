@@ -5160,6 +5160,34 @@ describe("discover", () => {
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
+	it("says a book was read elsewhere, with stars, and takes it back from the list", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "I already read Moss Again" }));
+		await person.click(screen.getByRole("button", { name: "4 of 5 stars" }));
+		await waitFor(() => expect(screen.queryByRole("button", { name: "Moss Again" })).not.toBeInTheDocument());
+		const sent = server.requests.find((r) => r.path === "/me/discover/c-2/read");
+		expect(sent?.body).toEqual({ stars: 4 });
+		expect(server.requests.some((r) => r.path === "/books/wishes")).toBe(false);
+		const summary = await screen.findByText("Read elsewhere (1)");
+		await person.click(summary);
+		expect(screen.getByText(/Moss Again · Ada Moss · 4 of 5 stars/)).toBeInTheDocument();
+		await person.click(screen.getByRole("button", { name: "Offer Moss Again again" }));
+		await waitFor(() => expect(screen.queryByText("Read elsewhere (1)")).not.toBeInTheDocument());
+	});
+
+	it("says a book was read elsewhere without stars from the details panel", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover?book=c-3");
+		const panel = await screen.findByRole("dialog", { name: "Fen Tale" });
+		await person.click(within(panel).getByRole("button", { name: "I already read Fen Tale" }));
+		await person.click(within(panel).getByRole("button", { name: "No rating" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(server.requests.find((r) => r.path === "/me/discover/c-3/read")?.body).toEqual({});
+	});
+
 	it("asks for a run the first time, and says it is under way", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");

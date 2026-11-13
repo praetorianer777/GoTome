@@ -118,6 +118,18 @@ WITH title AS (
     WHERE cardinality(d.author_keys) = 0
        OR NOT EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx)
        OR EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx AND a.key = ANY(d.author_keys))
+    UNION ALL
+    -- A book read elsewhere is left out as a dismissed one is, and by its ISBNs too.
+    SELECT t.idx, 3, 'read'
+    FROM title t
+    JOIN discover_read d ON d.user_id = sqlc.arg(viewer)::uuid AND t.key = ANY(d.title_keys)
+    WHERE cardinality(d.author_keys) = 0
+       OR NOT EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx)
+       OR EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx AND a.key = ANY(d.author_keys))
+    UNION ALL
+    SELECT i.idx, 3, 'read'
+    FROM isbn i
+    JOIN discover_read d ON d.user_id = sqlc.arg(viewer)::uuid AND i.value = ANY(d.isbns)
 )
 SELECT DISTINCT ON (r.idx) r.idx, r.reason
 FROM reasons r
@@ -215,7 +227,7 @@ DELETE FROM discover_candidates WHERE user_id = sqlc.arg(user_id) AND id = ANY(s
 DELETE FROM discover_candidates WHERE user_id = $1 AND found_at < $2;
 
 -- name: GetDiscoverCandidate :one
-SELECT id, title, title_keys, author_keys FROM discover_candidates WHERE id = $1 AND user_id = $2;
+SELECT id, title, title_keys, author_keys, isbns, record FROM discover_candidates WHERE id = $1 AND user_id = $2;
 
 -- name: PutDiscoverDismissal :exec
 INSERT INTO discover_dismissals (user_id, title_keys, author_keys) VALUES ($1, $2, $3);
@@ -232,3 +244,17 @@ JOIN book_contributors c ON c.author_id = a.id
 JOIN books b ON b.id = c.book_id
 WHERE a.person_key = ANY(sqlc.arg(person_keys)::text[]) AND b.deleted_at IS NULL AND NOT b.placeholder
   AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
+
+-- name: PutDiscoverRead :one
+INSERT INTO discover_read (user_id, title, authors, series, series_key, series_index, genres, stars, title_keys, author_keys, isbns)
+VALUES (sqlc.arg(user_id), sqlc.arg(title), sqlc.arg(authors), sqlc.arg(series), sqlc.arg(series_key), sqlc.arg(series_index),
+        sqlc.arg(genres), sqlc.arg(stars), sqlc.arg(title_keys), sqlc.arg(author_keys), sqlc.arg(isbns))
+RETURNING id;
+
+-- name: ListDiscoverRead :many
+-- The books the caller said they read elsewhere, the latest first.
+SELECT id, title, authors, series, series_index, stars, created_at, genres, series_key, author_keys
+FROM discover_read WHERE user_id = $1 ORDER BY created_at DESC, id;
+
+-- name: DeleteDiscoverRead :execrows
+DELETE FROM discover_read WHERE id = $1 AND user_id = $2;

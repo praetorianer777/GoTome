@@ -61,6 +61,23 @@ func (q *Queries) DeleteDiscoverCandidates(ctx context.Context, arg DeleteDiscov
 	return err
 }
 
+const deleteDiscoverRead = `-- name: DeleteDiscoverRead :execrows
+DELETE FROM discover_read WHERE id = $1 AND user_id = $2
+`
+
+type DeleteDiscoverReadParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) DeleteDiscoverRead(ctx context.Context, arg DeleteDiscoverReadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDiscoverRead, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteStaleDiscoverCandidates = `-- name: DeleteStaleDiscoverCandidates :exec
 DELETE FROM discover_candidates WHERE user_id = $1 AND found_at < $2
 `
@@ -86,7 +103,7 @@ func (q *Queries) FinishDiscoverRun(ctx context.Context, userID uuid.UUID) error
 }
 
 const getDiscoverCandidate = `-- name: GetDiscoverCandidate :one
-SELECT id, title, title_keys, author_keys FROM discover_candidates WHERE id = $1 AND user_id = $2
+SELECT id, title, title_keys, author_keys, isbns, record FROM discover_candidates WHERE id = $1 AND user_id = $2
 `
 
 type GetDiscoverCandidateParams struct {
@@ -99,6 +116,8 @@ type GetDiscoverCandidateRow struct {
 	Title      string
 	TitleKeys  []string
 	AuthorKeys []string
+	Isbns      []string
+	Record     []byte
 }
 
 func (q *Queries) GetDiscoverCandidate(ctx context.Context, arg GetDiscoverCandidateParams) (GetDiscoverCandidateRow, error) {
@@ -109,6 +128,8 @@ func (q *Queries) GetDiscoverCandidate(ctx context.Context, arg GetDiscoverCandi
 		&i.Title,
 		&i.TitleKeys,
 		&i.AuthorKeys,
+		&i.Isbns,
+		&i.Record,
 	)
 	return i, err
 }
@@ -377,6 +398,18 @@ WITH title AS (
     WHERE cardinality(d.author_keys) = 0
        OR NOT EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx)
        OR EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx AND a.key = ANY(d.author_keys))
+    UNION ALL
+    -- A book read elsewhere is left out as a dismissed one is, and by its ISBNs too.
+    SELECT t.idx, 3, 'read'
+    FROM title t
+    JOIN discover_read d ON d.user_id = $4::uuid AND t.key = ANY(d.title_keys)
+    WHERE cardinality(d.author_keys) = 0
+       OR NOT EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx)
+       OR EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx AND a.key = ANY(d.author_keys))
+    UNION ALL
+    SELECT i.idx, 3, 'read'
+    FROM isbn i
+    JOIN discover_read d ON d.user_id = $4::uuid AND i.value = ANY(d.isbns)
 )
 SELECT DISTINCT ON (r.idx) r.idx, r.reason
 FROM reasons r
@@ -420,6 +453,56 @@ func (q *Queries) ListDiscoverHeld(ctx context.Context, arg ListDiscoverHeldPara
 	for rows.Next() {
 		var i ListDiscoverHeldRow
 		if err := rows.Scan(&i.Idx, &i.Reason); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDiscoverRead = `-- name: ListDiscoverRead :many
+SELECT id, title, authors, series, series_index, stars, created_at, genres, series_key, author_keys
+FROM discover_read WHERE user_id = $1 ORDER BY created_at DESC, id
+`
+
+type ListDiscoverReadRow struct {
+	ID          uuid.UUID
+	Title       string
+	Authors     []string
+	Series      string
+	SeriesIndex *float64
+	Stars       *int16
+	CreatedAt   time.Time
+	Genres      []string
+	SeriesKey   string
+	AuthorKeys  []string
+}
+
+// The books the caller said they read elsewhere, the latest first.
+func (q *Queries) ListDiscoverRead(ctx context.Context, userID uuid.UUID) ([]ListDiscoverReadRow, error) {
+	rows, err := q.db.Query(ctx, listDiscoverRead, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDiscoverReadRow{}
+	for rows.Next() {
+		var i ListDiscoverReadRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Authors,
+			&i.Series,
+			&i.SeriesIndex,
+			&i.Stars,
+			&i.CreatedAt,
+			&i.Genres,
+			&i.SeriesKey,
+			&i.AuthorKeys,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -750,6 +833,46 @@ type PutDiscoverDismissalParams struct {
 func (q *Queries) PutDiscoverDismissal(ctx context.Context, arg PutDiscoverDismissalParams) error {
 	_, err := q.db.Exec(ctx, putDiscoverDismissal, arg.UserID, arg.TitleKeys, arg.AuthorKeys)
 	return err
+}
+
+const putDiscoverRead = `-- name: PutDiscoverRead :one
+INSERT INTO discover_read (user_id, title, authors, series, series_key, series_index, genres, stars, title_keys, author_keys, isbns)
+VALUES ($1, $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11)
+RETURNING id
+`
+
+type PutDiscoverReadParams struct {
+	UserID      uuid.UUID
+	Title       string
+	Authors     []string
+	Series      string
+	SeriesKey   string
+	SeriesIndex *float64
+	Genres      []string
+	Stars       *int16
+	TitleKeys   []string
+	AuthorKeys  []string
+	Isbns       []string
+}
+
+func (q *Queries) PutDiscoverRead(ctx context.Context, arg PutDiscoverReadParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, putDiscoverRead,
+		arg.UserID,
+		arg.Title,
+		arg.Authors,
+		arg.Series,
+		arg.SeriesKey,
+		arg.SeriesIndex,
+		arg.Genres,
+		arg.Stars,
+		arg.TitleKeys,
+		arg.AuthorKeys,
+		arg.Isbns,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const releaseDiscoverRun = `-- name: ReleaseDiscoverRun :exec

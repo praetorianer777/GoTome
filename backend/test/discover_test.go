@@ -622,3 +622,121 @@ func TestDiscoveredAuthorsAreLinkedOnlyWhereTheCallerSeesTheirBooks(t *testing.T
 		t.Errorf("linked %v, want only the author whose books the caller sees", people)
 	}
 }
+
+func idOf(t *testing.T, items []map[string]any, title string) string {
+	t.Helper()
+	for _, it := range items {
+		if it["title"] == title {
+			return it["id"].(string)
+		}
+	}
+	t.Fatalf("%q is not offered: %v", title, titlesOf(items))
+	return ""
+}
+
+func TestAnAlreadyReadBookLeavesDiscoverWithItsOtherEditionsAndComesBackWhenTakenBack(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	other, _ := d.signedIn("second", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+	d.liked(other, open, "Harbour Lamp Two", "Ada Moss", 5)
+	here := offered("r1", "Salt and Lantern", "Ada Moss")
+	elsewhere := offered("r2", "Salt and Lantern: A Novel", "Moss, Ada")
+	elsewhere.Provider = "other"
+	d.providers.works["author:Ada Moss"] = []metadata.Record{here, elsewhere, offered("r3", "Fog Signals", "Ada Moss")}
+
+	d.run(reader)
+	_, items := d.discovered(reader)
+	id := idOf(t, items, "Salt and Lantern")
+	if status, out, _ := d.call(reader, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 6}); status != 422 {
+		t.Errorf("six stars: %d %v", status, out)
+	}
+	if status, _, _ := d.call(other, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 4}); status != 404 {
+		t.Errorf("another person's candidate: %d", status)
+	}
+	if status, out, _ := d.call(reader, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 4}); status != 204 {
+		t.Fatalf("read: %d %v", status, out)
+	}
+	if _, items := d.discovered(reader); !slices.Equal(titlesOf(items), []string{"Fog Signals"}) {
+		t.Errorf("offered %v after it was read", titlesOf(items))
+	}
+	d.run(reader)
+	if _, items := d.discovered(reader); !slices.Equal(titlesOf(items), []string{"Fog Signals"}) {
+		t.Errorf("offered %v after another run: its other edition came back", titlesOf(items))
+	}
+	var shelves int
+	if err := d.pool.QueryRow(context.Background(), `SELECT count(*) FROM books b WHERE b.title_key LIKE 'salt and lantern%'`).Scan(&shelves); err != nil || shelves != 0 {
+		t.Errorf("%d books were made of it, %v", shelves, err)
+	}
+
+	status, out, _ := d.call(reader, http.MethodGet, "/me/discover/read", nil)
+	list, _ := out["items"].([]any)
+	if status != 200 || len(list) != 1 || list[0].(map[string]any)["title"] != "Salt and Lantern" || list[0].(map[string]any)["stars"] != float64(4) {
+		t.Fatalf("read elsewhere: %d %v", status, out)
+	}
+	if _, out, _ := d.call(other, http.MethodGet, "/me/discover/read", nil); len(out["items"].([]any)) != 0 {
+		t.Errorf("someone else sees %v", out)
+	}
+	if _, others := d.discovered(other); !slices.Contains(titlesOf(others), "Salt and Lantern") {
+		d.run(other)
+		if _, others = d.discovered(other); !slices.Contains(titlesOf(others), "Salt and Lantern") {
+			t.Errorf("the other person is not offered the book: %v", titlesOf(others))
+		}
+	}
+	readID := list[0].(map[string]any)["id"].(string)
+	if status, _, _ := d.call(other, http.MethodDelete, "/me/discover/read/"+readID, nil); status != 404 {
+		t.Errorf("another person took it back: %d", status)
+	}
+	if status, _, _ := d.call(reader, http.MethodDelete, "/me/discover/read/"+readID, nil); status != 204 {
+		t.Fatalf("take back: %d", status)
+	}
+	d.run(reader)
+	if _, items := d.discovered(reader); !slices.Contains(titlesOf(items), "Salt and Lantern") {
+		t.Errorf("offered %v after it was taken back", titlesOf(items))
+	}
+}
+
+func TestAnAlreadyReadBookCountsForTheAuthorAndTheSeriesPlace(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+	three := offered("l3", "Lantern Three", "Ada Moss", "Pia Quill")
+	three.Series, three.SeriesIndex = "Lantern Cycle", new(float64)
+	*three.SeriesIndex = 3
+	d.providers.works["author:Ada Moss"] = []metadata.Record{three}
+	volume := func(id, title string, index float64) metadata.Record {
+		r := offered(id, title, "Ada Moss")
+		r.Series, r.SeriesIndex = "Lantern Cycle", &index
+		return r
+	}
+	d.providers.works["series:Lantern Cycle"] = []metadata.Record{volume("l3", "Lantern Three", 3), volume("l4", "Lantern Four", 4), volume("l5", "Lantern Five", 5)}
+	d.providers.works["author:Pia Quill"] = []metadata.Record{offered("q1", "Quill Next", "Pia Quill")}
+
+	d.run(reader)
+	_, items := d.discovered(reader)
+	if slices.Contains(d.providers.askedAbout(), "author:Pia Quill") || slices.Contains(d.providers.askedAbout(), "series:Lantern Cycle") {
+		t.Fatalf("asked %v before anything was read", d.providers.askedAbout())
+	}
+	if status, _, _ := d.call(reader, http.MethodPost, "/me/discover/"+idOf(t, items, "Lantern Three")+"/read", map[string]any{"stars": 5}); status != 204 {
+		t.Fatalf("read: %d", status)
+	}
+	d.run(reader)
+	_, items = d.discovered(reader)
+	asked := d.providers.askedAbout()
+	if !slices.Contains(asked, "author:Pia Quill") || !slices.Contains(asked, "series:Lantern Cycle") {
+		t.Fatalf("asked %v: the author and the series of a book read elsewhere are not asked about", asked)
+	}
+	if got := titlesOf(items); slices.Contains(got, "Lantern Three") || !slices.Contains(got, "Lantern Four") || !slices.Contains(got, "Quill Next") {
+		t.Fatalf("offered %v", got)
+	}
+	if r := reasonOf(items, "Lantern Four"); r["kind"] != "series_next" {
+		t.Errorf("the volume after the one read is %v", r)
+	}
+	if r := reasonOf(items, "Quill Next"); r["kind"] != "author" || r["stars"] != float64(5) {
+		t.Errorf("the author's book is offered for %v, want the 5 stars it was given", r)
+	}
+}

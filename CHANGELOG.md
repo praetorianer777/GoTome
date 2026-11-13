@@ -21,6 +21,12 @@ What changes for someone who runs or uses GOtome. The format follows
   source and why it is offered, with Add to wishlist and Not interested. The
   address keeps the open book, so back closes it ([Discover](docs/discover.md)).
 
+- On Discover, "Already read" (with optional stars) says you read a book
+  elsewhere: it and its other editions leave Discover for good, its author,
+  series place and genres count for your taste as a finished book, and
+  nothing is added to a library or your wishlist. "Read elsewhere" under
+  the books lists them and offers one again ([Discover](docs/discover.md)).
+
 ### Changed
 
 - Discover shows how far its search is while it runs: how many authors,

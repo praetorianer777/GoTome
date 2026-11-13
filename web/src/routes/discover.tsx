@@ -3,7 +3,17 @@ import { type ReactNode, useEffect, useState } from "react";
 import { AuthorLink } from "@/books/name-links";
 import { Dialog } from "@/components/dialog";
 import { candidateCoverUrl } from "@/books/edit";
-import { type DiscoverItem, type DiscoverProgress, discoverQuery, useDiscoverRun, useDismissDiscovered, useWishDiscovered } from "@/discover/api";
+import {
+	type DiscoverItem,
+	type DiscoverProgress,
+	discoverQuery,
+	discoverReadQuery,
+	useDiscoverRun,
+	useDismissDiscovered,
+	useReadDiscovered,
+	useUnreadDiscovered,
+	useWishDiscovered,
+} from "@/discover/api";
 import { FormError } from "@/components/form";
 import { button, EmptyState, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
@@ -110,6 +120,7 @@ export function Discover({
 					</section>
 				);
 			})}
+			{state !== "off" && state !== "offline" && <ReadElsewhere />}
 			{opened && (
 				<DiscoverPanel
 					item={opened}
@@ -229,7 +240,8 @@ function Cover({ token, className }: { token: string | undefined; className: str
 function DiscoverCard({ item, onOpen }: { item: DiscoverItem; onOpen: () => void }) {
 	const wish = useWishDiscovered();
 	const dismiss = useDismissDiscovered();
-	const busy = wish.isPending || dismiss.isPending;
+	const read = useReadDiscovered();
+	const busy = wish.isPending || dismiss.isPending || read.isPending;
 	return (
 		<div className="flex min-w-0 gap-3">
 			<Cover token={item.coverToken} className="h-28 w-20" />
@@ -279,8 +291,9 @@ function DiscoverCard({ item, onOpen }: { item: DiscoverItem; onOpen: () => void
 					>
 						{t("discover.notInterested")}
 					</button>
+					<AlreadyRead item={item} read={read} busy={busy} />
 				</div>
-				<FormError error={wish.error ?? dismiss.error} />
+				<FormError error={wish.error ?? dismiss.error ?? read.error} />
 			</div>
 		</div>
 	);
@@ -295,7 +308,8 @@ function sourceName(provider: string): string {
 function DiscoverPanel({ item, onClose }: { item: DiscoverItem; onClose: () => void }) {
 	const wish = useWishDiscovered();
 	const dismiss = useDismissDiscovered();
-	const busy = wish.isPending || dismiss.isPending;
+	const read = useReadDiscovered();
+	const busy = wish.isPending || dismiss.isPending || read.isPending;
 	const isbns = item.identifiers.filter((i) => i.type === "isbn").map((i) => i.value);
 	const rows: [string, ReactNode][] = [];
 	if (item.series) {
@@ -368,9 +382,97 @@ function DiscoverPanel({ item, onClose }: { item: DiscoverItem; onClose: () => v
 					>
 						{t("discover.notInterested")}
 					</button>
+					<AlreadyRead item={item} read={read} busy={busy} onDone={onClose} />
 				</div>
-				<FormError error={wish.error ?? dismiss.error} />
+				<FormError error={wish.error ?? dismiss.error ?? read.error} />
 			</div>
 		</Dialog>
+	);
+}
+
+/** "Already read", then the stars the person gives it, or none: one choice each, so one more click ends it. */
+function AlreadyRead({
+	item,
+	read,
+	busy,
+	onDone,
+}: {
+	item: DiscoverItem;
+	read: ReturnType<typeof useReadDiscovered>;
+	busy: boolean;
+	onDone?: () => void;
+}) {
+	const [choosing, setChoosing] = useState(false);
+	const choose = (stars?: number) => read.mutate({ id: item.id, stars }, { onSuccess: onDone });
+	if (!choosing) {
+		return (
+			<button
+				type="button"
+				className="min-h-6 text-slate-600 underline underline-offset-4 hover:text-slate-900 disabled:opacity-60 dark:text-slate-400 dark:hover:text-white"
+				disabled={busy}
+				aria-label={t("discover.alreadyReadNamed", { title: item.title })}
+				onClick={() => setChoosing(true)}
+			>
+				{t("discover.alreadyRead")}
+			</button>
+		);
+	}
+	return (
+		<fieldset className="flex min-w-0 flex-wrap items-center gap-1 text-sm">
+			<legend className="sr-only">{t("discover.readStars", { title: item.title })}</legend>
+			<span className="mr-1 text-slate-600 dark:text-slate-400">{t("discover.readRating")}</span>
+			{[1, 2, 3, 4, 5].map((n) => (
+				<button
+					key={n}
+					type="button"
+					className={button("secondary")}
+					disabled={busy}
+					aria-label={t("discover.readStarsN", { count: n })}
+					onClick={() => choose(n)}
+				>
+					{n}
+				</button>
+			))}
+			<button type="button" className={button("secondary")} disabled={busy} onClick={() => choose()}>
+				{t("discover.readNoRating")}
+			</button>
+		</fieldset>
+	);
+}
+
+/** The books read elsewhere, each with a way to take it back. */
+function ReadElsewhere() {
+	const read = useQuery(discoverReadQuery);
+	const unread = useUnreadDiscovered();
+	const items = read.data ?? [];
+	if (items.length === 0) return null;
+	return (
+		<details className="min-w-0 text-sm">
+			<summary className="cursor-pointer text-slate-600 dark:text-slate-400">
+				{t("discover.readElsewhere", { count: items.length })}
+			</summary>
+			<p className="mt-2 text-slate-600 dark:text-slate-400">{t("discover.readElsewhere.hint")}</p>
+			<ul className="mt-2 flex flex-col gap-2">
+				{items.map((b) => (
+					<li key={b.id} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+						<span className="min-w-0 break-words">
+							{b.title}
+							{b.authors.length > 0 && ` · ${b.authors.join(", ")}`}
+							{b.stars ? ` · ${t("discover.readStarsN", { count: b.stars })}` : ""}
+						</span>
+						<button
+							type="button"
+							className="min-h-6 text-slate-600 underline underline-offset-4 hover:text-slate-900 disabled:opacity-60 dark:text-slate-400 dark:hover:text-white"
+							disabled={unread.isPending}
+							aria-label={t("discover.unreadNamed", { title: b.title })}
+							onClick={() => unread.mutate(b.id)}
+						>
+							{t("discover.unread")}
+						</button>
+					</li>
+				))}
+			</ul>
+			<FormError error={unread.error} />
+		</details>
 	);
 }

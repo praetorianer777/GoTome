@@ -50,6 +50,24 @@ interested**. Escape, the close button or a click outside closes it and puts
 focus back on the title; the address (`/discover?book=...`) keeps the open
 book, so the back button closes it.
 
+## Books you read elsewhere
+
+**Already read** (on each book and in its details; the stars are optional)
+tells Discover you read a book in another edition or elsewhere. Unlike
+**Not interested** it says you liked it, or at least read it:
+
+- The book leaves Discover for good, and so do the other editions and
+  other sources' records of it (by title and author, or by ISBN).
+- It counts for your taste as a finished book: its author counts as read
+  with the stars you gave (an author rated highly brings their other
+  works), a volume of a series counts as read, so the next volume is the
+  one after it and its place is no gap, and its genres count.
+- It is yours alone and adds nothing: no book in a library, no wish.
+
+Under the books, **Read elsewhere** lists them; **Offer again** takes one
+back, and Discover may offer it again from the next run. A book that later
+comes into a library you see is left out as any book you hold is.
+
 ## Turning it on
 
 Under **Settings**, **Discover books beyond the libraries**
