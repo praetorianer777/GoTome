@@ -147,14 +147,7 @@ func (w *IndexFilesWorker) Timeout(*river.Job[IndexFilesArgs]) time.Duration {
 }
 
 func (w *IndexFilesWorker) Work(ctx context.Context, _ *river.Job[IndexFilesArgs]) error {
-	more, err := w.Service.IndexFiles(ctx, time.Now().Add(passBudget))
-	if err != nil {
-		return err
-	}
-	if more {
-		return river.JobSnooze(time.Second)
-	}
-	return nil
+	return jobs.Resume(w.Service.IndexFiles(ctx, time.Now().Add(passBudget)))
 }
 
 // PassageRef is a chunk to read again from its file.
