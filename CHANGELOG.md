@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-13
+
 ### Added
 
 - GOtome counts the words of every book's text as it reads it, as groundwork
