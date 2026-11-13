@@ -4,6 +4,7 @@ import type { components } from "@/api/schema";
 
 export type DiscoverItem = components["schemas"]["DiscoverItem"];
 export type DiscoverList = components["schemas"]["DiscoverList"];
+export type DiscoverProgress = NonNullable<DiscoverList["progress"]>;
 export type DiscoverReason = DiscoverItem["reason"];
 
 /** What the person is offered beyond their libraries, and how far the search is. */

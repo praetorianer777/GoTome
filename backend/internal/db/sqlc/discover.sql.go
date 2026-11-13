@@ -12,6 +12,41 @@ import (
 	"github.com/google/uuid"
 )
 
+const countDiscoverAsked = `-- name: CountDiscoverAsked :many
+SELECT kind, count(*)::int AS asked FROM discover_asks
+WHERE user_id = $1 AND asked_at >= $2 GROUP BY kind
+`
+
+type CountDiscoverAskedParams struct {
+	UserID  uuid.UUID
+	AskedAt time.Time
+}
+
+type CountDiscoverAskedRow struct {
+	Kind  string
+	Asked int32
+}
+
+func (q *Queries) CountDiscoverAsked(ctx context.Context, arg CountDiscoverAskedParams) ([]CountDiscoverAskedRow, error) {
+	rows, err := q.db.Query(ctx, countDiscoverAsked, arg.UserID, arg.AskedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountDiscoverAskedRow{}
+	for rows.Next() {
+		var i CountDiscoverAskedRow
+		if err := rows.Scan(&i.Kind, &i.Asked); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteDiscoverCandidates = `-- name: DeleteDiscoverCandidates :exec
 DELETE FROM discover_candidates WHERE user_id = $1 AND id = ANY($2::uuid[])
 `
@@ -79,7 +114,8 @@ func (q *Queries) GetDiscoverCandidate(ctx context.Context, arg GetDiscoverCandi
 }
 
 const getDiscoverRun = `-- name: GetDiscoverRun :one
-SELECT user_id, started_at, finished_at, requested FROM discover_runs WHERE user_id = $1
+SELECT user_id, started_at, finished_at, requested, planned, planned_authors, planned_series, planned_genres, pass_until
+FROM discover_runs WHERE user_id = $1
 `
 
 func (q *Queries) GetDiscoverRun(ctx context.Context, userID uuid.UUID) (DiscoverRun, error) {
@@ -90,8 +126,40 @@ func (q *Queries) GetDiscoverRun(ctx context.Context, userID uuid.UUID) (Discove
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.Requested,
+		&i.Planned,
+		&i.PlannedAuthors,
+		&i.PlannedSeries,
+		&i.PlannedGenres,
+		&i.PassUntil,
 	)
 	return i, err
+}
+
+const holdDiscoverRun = `-- name: HoldDiscoverRun :exec
+UPDATE discover_runs
+SET pass_until = $1, planned = true, planned_authors = $2,
+    planned_series = $3, planned_genres = $4
+WHERE user_id = $5
+`
+
+type HoldDiscoverRunParams struct {
+	Until   *time.Time
+	Authors int32
+	Series  int32
+	Genres  int32
+	UserID  uuid.UUID
+}
+
+// A pass takes the run until its deadline and says what the plan holds.
+func (q *Queries) HoldDiscoverRun(ctx context.Context, arg HoldDiscoverRunParams) error {
+	_, err := q.db.Exec(ctx, holdDiscoverRun,
+		arg.Until,
+		arg.Authors,
+		arg.Series,
+		arg.Genres,
+		arg.UserID,
+	)
+	return err
 }
 
 const listDiscoverAsked = `-- name: ListDiscoverAsked :many
@@ -647,6 +715,15 @@ func (q *Queries) PutDiscoverDismissal(ctx context.Context, arg PutDiscoverDismi
 	return err
 }
 
+const releaseDiscoverRun = `-- name: ReleaseDiscoverRun :exec
+UPDATE discover_runs SET pass_until = NULL WHERE user_id = $1
+`
+
+func (q *Queries) ReleaseDiscoverRun(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, releaseDiscoverRun, userID)
+	return err
+}
+
 const requestDiscoverRun = `-- name: RequestDiscoverRun :exec
 INSERT INTO discover_runs (user_id, started_at, finished_at, requested)
 VALUES ($1, now(), now() - interval '10 years', true)
@@ -664,7 +741,8 @@ const startDiscoverRun = `-- name: StartDiscoverRun :exec
 INSERT INTO discover_runs (user_id, started_at, finished_at, requested)
 VALUES ($1, now(), NULL, false)
 ON CONFLICT (user_id) DO UPDATE
-SET started_at = now(), finished_at = NULL, requested = false
+SET started_at = now(), finished_at = NULL, requested = false,
+    planned = false, planned_authors = 0, planned_series = 0, planned_genres = 0, pass_until = NULL
 `
 
 // A run begins afresh; the candidates of the last one stay until this one

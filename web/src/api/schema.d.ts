@@ -4673,6 +4673,15 @@ export interface components {
             lastUsedAt?: string;
             name: string;
         };
+        DiscoverBackoff: {
+            provider: string;
+            /** Format: date-time */
+            until: string;
+        };
+        DiscoverCount: {
+            asked: number;
+            planned: number;
+        };
         DiscoverItem: {
             authors: string[];
             coverToken?: string;
@@ -4691,7 +4700,20 @@ export interface components {
             /** Format: date-time */
             finishedAt?: string;
             items: components["schemas"]["DiscoverItem"][];
+            progress?: components["schemas"]["DiscoverProgress"];
             state: string;
+        };
+        DiscoverProgress: {
+            activity: string;
+            authors: components["schemas"]["DiscoverCount"];
+            backingOff: components["schemas"]["DiscoverBackoff"][];
+            genres: components["schemas"]["DiscoverCount"];
+            /** Format: date-time */
+            nextPassAt?: string;
+            planned: boolean;
+            series: components["schemas"]["DiscoverCount"];
+            /** Format: date-time */
+            startedAt?: string;
         };
         DiscoverReason: {
             because: string[];

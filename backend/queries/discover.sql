@@ -124,7 +124,8 @@ FROM reasons r
 ORDER BY r.idx, r.rank;
 
 -- name: GetDiscoverRun :one
-SELECT user_id, started_at, finished_at, requested FROM discover_runs WHERE user_id = $1;
+SELECT user_id, started_at, finished_at, requested, planned, planned_authors, planned_series, planned_genres, pass_until
+FROM discover_runs WHERE user_id = $1;
 
 -- name: StartDiscoverRun :exec
 -- A run begins afresh; the candidates of the last one stay until this one
@@ -132,7 +133,23 @@ SELECT user_id, started_at, finished_at, requested FROM discover_runs WHERE user
 INSERT INTO discover_runs (user_id, started_at, finished_at, requested)
 VALUES ($1, now(), NULL, false)
 ON CONFLICT (user_id) DO UPDATE
-SET started_at = now(), finished_at = NULL, requested = false;
+SET started_at = now(), finished_at = NULL, requested = false,
+    planned = false, planned_authors = 0, planned_series = 0, planned_genres = 0, pass_until = NULL;
+
+-- name: HoldDiscoverRun :exec
+-- A pass takes the run until its deadline and says what the plan holds.
+UPDATE discover_runs
+SET pass_until = sqlc.arg(until), planned = true, planned_authors = sqlc.arg(authors),
+    planned_series = sqlc.arg(series), planned_genres = sqlc.arg(genres)
+WHERE user_id = sqlc.arg(user_id);
+
+-- name: ReleaseDiscoverRun :exec
+UPDATE discover_runs SET pass_until = NULL WHERE user_id = $1;
+
+-- name: CountDiscoverAsked :many
+SELECT kind, count(*)::int AS asked FROM discover_asks
+WHERE user_id = $1 AND asked_at >= $2 GROUP BY kind;
+
 
 -- name: FinishDiscoverRun :exec
 UPDATE discover_runs SET finished_at = now() WHERE user_id = $1;

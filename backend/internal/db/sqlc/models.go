@@ -426,10 +426,15 @@ type DiscoverDismissal struct {
 }
 
 type DiscoverRun struct {
-	UserID     uuid.UUID
-	StartedAt  time.Time
-	FinishedAt *time.Time
-	Requested  bool
+	UserID         uuid.UUID
+	StartedAt      time.Time
+	FinishedAt     *time.Time
+	Requested      bool
+	Planned        bool
+	PlannedAuthors int32
+	PlannedSeries  int32
+	PlannedGenres  int32
+	PassUntil      *time.Time
 }
 
 type DuplicateEvidence struct {
