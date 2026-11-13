@@ -43,7 +43,7 @@ test("a library's files are previewed, moved by the pattern, and moved back by u
 	await page
 		.getByRole("listitem", { name: /^Files organised/ })
 		.first()
-		.getByRole("button", { name: /^Undo the run of/ })
+		.getByRole("button", { name: /^Undo run of/ })
 		.click();
 	await expect.poll(pathOf, { timeout: 60_000 }).toBe(first);
 });

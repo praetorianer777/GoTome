@@ -2056,7 +2056,7 @@ export const en = {
 	"curation.show": "Show changes",
 	"curation.hide": "Hide changes",
 	"curation.undoRun": "Undo run",
-	"curation.undoRunNamed": "Undo the run of {when}",
+	"curation.undoRunNamed": "Undo run of {when}",
 	"curation.confirm": "Confirm",
 	"curation.confirmNamed": "Confirm the run of {when}",
 	"curation.confirmHint": "Confirming keeps the changes: the files it moved to the trash are deleted after their time there.",

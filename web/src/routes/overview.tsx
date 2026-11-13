@@ -287,7 +287,7 @@ function Figures({ library }: { library: string }) {
 							<Link
 								to="/"
 								search={{ library: library || undefined, files: ["missing"] }}
-								className="underline"
+								className="inline-flex min-h-6 items-center underline"
 							>
 								{t("overview.withMissingFiles", {
 									count: formatCount(f.withMissingFiles),
@@ -301,7 +301,7 @@ function Figures({ library }: { library: string }) {
 								<Link
 									to="/"
 									search={{ library: library || undefined, ereader: [...EREADER_FINDINGS] }}
-									className="underline"
+									className="inline-flex min-h-6 items-center underline"
 								>
 									{t("overview.withEreaderFindings", {
 										count: formatCount(f.withEreaderFindings),
@@ -317,7 +317,7 @@ function Figures({ library }: { library: string }) {
 										<Link
 											to="/"
 											search={{ library: library || undefined, ereader: [kind.name] }}
-											className="underline"
+											className="inline-flex min-h-6 items-center underline"
 										>
 											{t("overview.ereaderKind", {
 												kind: ereaderLabel(kind.name),

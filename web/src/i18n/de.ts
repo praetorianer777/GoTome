@@ -2075,7 +2075,7 @@ export const de: Record<MessageKey, string> = {
 	"curation.show": "Änderungen zeigen",
 	"curation.hide": "Änderungen verbergen",
 	"curation.undoRun": "Lauf rückgängig machen",
-	"curation.undoRunNamed": "Den Lauf vom {when} rückgängig machen",
+	"curation.undoRunNamed": "Lauf rückgängig machen, {when}",
 	"curation.confirm": "Bestätigen",
 	"curation.confirmNamed": "Den Lauf vom {when} bestätigen",
 	"curation.confirmHint": "Mit der Bestätigung bleiben die Änderungen: Dateien, die er in den Papierkorb gelegt hat, werden nach ihrer Zeit dort gelöscht.",
