@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -352,5 +353,40 @@ func TestTheShelvesFeedsListWhatTheShelvesHold(t *testing.T) {
 	}
 	if got := strings.Join(titles(httpapi.APIPrefix+"/opds/smart-shelves/"+favourites), " "); got != "Alpha Beta" {
 		t.Errorf("the smart shelf after a rating: %q", got)
+	}
+}
+
+func TestASeriesFeedListsItsBooksInTheOrderOfTheSeries(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Shared", "shared")
+	for _, b := range []struct {
+		title string
+		index any
+	}{{"Third Tide", 3}, {"Unnumbered Tide", nil}, {"First Tide", 1}, {"Between Tides", 1.5}} {
+		status, up := a.upload(admin, lib, b.title+".pdf", []byte("%PDF-1.4 "+b.title))
+		if status != 200 {
+			t.Fatalf("upload: %d %v", status, up)
+		}
+		series := map[string]any{"name": "Tides"}
+		if b.index != nil {
+			series["index"] = b.index
+		}
+		if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+up["bookId"].(string), map[string]any{"title": b.title, "series": series}); status != 200 {
+			t.Fatalf("edit: %d %v", status, out)
+		}
+	}
+	_, made, _ := a.call(admin, http.MethodPost, "/auth/devices", map[string]any{"name": "Kobo"})
+	device := deviceClient("admin", made["token"].(string))
+
+	f := a.feed(device, httpapi.APIPrefix+"/opds/books?series=tides")
+	var got []string
+	for _, e := range f.Entries {
+		got = append(got, e.Title)
+	}
+	want := []string{"First Tide", "Between Tides", "Third Tide", "Unnumbered Tide"}
+	if !slices.Equal(got, want) {
+		t.Errorf("the series feed lists %v, want %v", got, want)
 	}
 }
