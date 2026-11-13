@@ -426,10 +426,15 @@ type DiscoverDismissal struct {
 }
 
 type DiscoverRun struct {
-	UserID     uuid.UUID
-	StartedAt  time.Time
-	FinishedAt *time.Time
-	Requested  bool
+	UserID         uuid.UUID
+	StartedAt      time.Time
+	FinishedAt     *time.Time
+	Requested      bool
+	Planned        bool
+	PlannedAuthors int32
+	PlannedSeries  int32
+	PlannedGenres  int32
+	PassUntil      *time.Time
 }
 
 type DuplicateEvidence struct {
@@ -491,6 +496,14 @@ type FileSignature struct {
 	Shingles  int32
 	Signature []byte
 	SignedAt  time.Time
+}
+
+type FileWord struct {
+	FileID    uuid.UUID
+	Version   int32
+	ChunkedAt time.Time
+	Words     int32
+	Counts    []byte
 }
 
 type FulltextOutbox struct {

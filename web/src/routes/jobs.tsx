@@ -56,6 +56,8 @@ function describe(job: Job): string {
 			return t("jobs.kind.applyIndex");
 		case "ingest.index_files":
 			return t("jobs.kind.indexFiles");
+		case "ingest.count_words":
+			return t("jobs.kind.countWords");
 		case "similar.embed_books":
 			return t("jobs.kind.embed");
 		case "passages.embed":

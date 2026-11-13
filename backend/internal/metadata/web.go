@@ -389,3 +389,18 @@ func (s *Service) ProviderStates(ctx context.Context) []ProviderState {
 	}
 	return out
 }
+
+// Backoffs lists the providers that asked to be left alone and are still
+// being, by name. It asks nobody.
+func (s *Service) Backoffs() []BusyError {
+	var out []BusyError
+	for _, p := range s.providers {
+		if w, ok := s.webs[p.Name()].(*web); ok {
+			var busy *BusyError
+			if errors.As(w.blocked(), &busy) {
+				out = append(out, *busy)
+			}
+		}
+	}
+	return out
+}

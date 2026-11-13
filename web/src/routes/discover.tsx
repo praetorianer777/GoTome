@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { candidateCoverUrl } from "@/books/edit";
-import { type DiscoverItem, discoverQuery, useDiscoverRun, useDismissDiscovered, useWishDiscovered } from "@/discover/api";
+import { type DiscoverItem, type DiscoverProgress, discoverQuery, useDiscoverRun, useDismissDiscovered, useWishDiscovered } from "@/discover/api";
 import { FormError } from "@/components/form";
 import { button, EmptyState, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatTime } from "@/lib/format";
 
 /** The reasons in the order the page lists them: what the data says plainly first. */
 const KINDS = ["series_next", "series_gap", "series_more", "author", "genre"] as const;
@@ -69,11 +69,7 @@ export function Discover() {
 					{t("discover.never")}
 				</EmptyState>
 			)}
-			{state === "running" && (
-				<p role="status" className="text-slate-600 dark:text-slate-400">
-					{t("discover.running")}
-				</p>
-			)}
+			{state === "running" && <Progress progress={list?.progress} />}
 			{state === "ready" && list?.finishedAt && (
 				<p className="text-sm text-slate-600 dark:text-slate-400">
 					{t("discover.finished", { when: formatDateTime(list.finishedAt) })}
@@ -102,6 +98,71 @@ export function Discover() {
 			})}
 		</div>
 	);
+}
+
+/** How far the person's own run is: asked of planned, and whether it works or waits. */
+function Progress({ progress }: { progress: DiscoverProgress | undefined }) {
+	if (!progress) {
+		return (
+			<p role="status" className="text-slate-600 dark:text-slate-400">
+				{t("discover.running")}
+			</p>
+		);
+	}
+	const { authors, series, genres } = progress;
+	const planned = authors.planned + series.planned + genres.planned;
+	const asked = authors.asked + series.asked + genres.asked;
+	const label = planned > 0 ? t("discover.progress.asked", { asked, planned }) : t("discover.progress.preparing");
+	return (
+		<div role="status" className="flex flex-col gap-2 text-slate-600 dark:text-slate-400">
+			<p className="font-medium text-slate-900 dark:text-slate-100">{label}</p>
+			<div
+				role="progressbar"
+				aria-label={t("discover.progress.label")}
+				aria-valuemin={0}
+				aria-valuemax={planned > 0 ? planned : undefined}
+				aria-valuenow={planned > 0 ? asked : undefined}
+				aria-valuetext={label}
+				className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+			>
+				<div
+					className={`h-full rounded-full bg-slate-700 dark:bg-slate-300 ${planned > 0 ? "" : "w-1/4 animate-pulse"}`}
+					style={planned > 0 ? { width: `${Math.round((asked / planned) * 100)}%` } : undefined}
+				/>
+			</div>
+			{planned > 0 && (
+				<p className="text-sm">
+					{t("discover.progress.parts", {
+						authors: authors.asked,
+						authorsPlanned: authors.planned,
+						series: series.asked,
+						seriesPlanned: series.planned,
+						genres: genres.asked,
+						genresPlanned: genres.planned,
+					})}
+				</p>
+			)}
+			<p className="text-sm">
+				{progress.activity === "working" ? t("discover.progress.working") : waitingText(progress.nextPassAt)}
+				{progress.startedAt && ` ${t("discover.progress.started", { when: formatDateTime(progress.startedAt) })}`}
+			</p>
+			{progress.backingOff.length > 0 && (
+				<p className="text-sm">
+					{t("discover.progress.backingOff", {
+						providers: progress.backingOff.map((b) => b.provider).join(", "),
+						when: formatTime(progress.backingOff.reduce((a, b) => (a.until > b.until ? a : b)).until),
+					})}
+				</p>
+			)}
+		</div>
+	);
+}
+
+function waitingText(next: string | undefined): string {
+	if (!next) return t("discover.progress.waiting");
+	const minutes = Math.ceil((new Date(next).getTime() - Date.now()) / 60_000);
+	if (minutes < 1) return t("discover.progress.waitingSoon");
+	return t("discover.progress.waitingAbout", { minutes });
 }
 
 function reasonText(item: DiscoverItem): string {

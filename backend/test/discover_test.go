@@ -401,6 +401,60 @@ func TestDiscoverWorksInPassesAndAsksEachSubjectOnce(t *testing.T) {
 	}
 }
 
+func TestDiscoverTellsHowFarTheCallersRunIs(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	other, _ := d.signedIn("other", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	for _, author := range []string{"Ada Moss", "Nora Vale", "Tomas Reed", "Ida Brandt"} {
+		d.liked(reader, open, "Book by "+author, author, 5)
+	}
+	progress := func(c *http.Client) map[string]any {
+		d.t.Helper()
+		_, out, _ := d.call(c, http.MethodGet, "/me/discover", nil)
+		p, _ := out["progress"].(map[string]any)
+		return p
+	}
+	if status, _, _ := d.call(reader, http.MethodPost, "/me/discover/run", nil); status != 202 {
+		t.Fatalf("run: %d", status)
+	}
+	if p := progress(reader); p == nil || p["planned"] != false || p["activity"] != "waiting" {
+		t.Errorf("before a pass: %v", p)
+	}
+	d.service.AsksPerPass = 3
+	if complete, err := d.service.Run(context.Background(), time.Now().Add(time.Minute)); err != nil || complete {
+		t.Fatalf("pass: complete %v, %v", complete, err)
+	}
+	p := progress(reader)
+	authors, _ := p["authors"].(map[string]any)
+	if p["planned"] != true || authors["asked"] != float64(3) || authors["planned"] != float64(4) || p["activity"] != "waiting" || p["startedAt"] == nil {
+		t.Errorf("between passes: %v", p)
+	}
+	if backing, _ := p["backingOff"].([]any); len(backing) != 0 {
+		t.Errorf("backing off: %v", backing)
+	}
+	if _, err := d.pool.Exec(context.Background(), `UPDATE discover_runs SET pass_until = now() + interval '1 minute'`); err != nil {
+		t.Fatal(err)
+	}
+	if p := progress(reader); p["activity"] != "working" {
+		t.Errorf("under a pass: %v", p)
+	}
+	if p := progress(other); p != nil {
+		t.Errorf("someone else's run is described: %v", p)
+	}
+	d.service.AsksPerPass = 0
+	if complete, err := d.service.Run(context.Background(), time.Now().Add(time.Minute)); err != nil || !complete {
+		t.Fatalf("pass: complete %v, %v", complete, err)
+	}
+	if state, _ := d.discovered(reader); state != "ready" {
+		t.Errorf("after the run: %q", state)
+	}
+	if p := progress(reader); p != nil {
+		t.Errorf("a finished run has progress: %v", p)
+	}
+}
+
 func TestDiscoverTakesWhatFollowingKnowsWithoutAsking(t *testing.T) {
 	t.Parallel()
 	d := newDiscovering(t, nil)

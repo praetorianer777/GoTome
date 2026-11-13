@@ -16157,6 +16157,37 @@
           "kepub"
         ]
       },
+      "DiscoverBackoff": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "provider",
+          "until"
+        ]
+      },
+      "DiscoverCount": {
+        "type": "object",
+        "properties": {
+          "asked": {
+            "type": "integer"
+          },
+          "planned": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asked",
+          "planned"
+        ]
+      },
       "DiscoverItem": {
         "type": "object",
         "properties": {
@@ -16220,6 +16251,9 @@
               "$ref": "#/components/schemas/DiscoverItem"
             }
           },
+          "progress": {
+            "$ref": "#/components/schemas/DiscoverProgress"
+          },
           "state": {
             "type": "string"
           }
@@ -16227,6 +16261,48 @@
         "required": [
           "state",
           "items"
+        ]
+      },
+      "DiscoverProgress": {
+        "type": "object",
+        "properties": {
+          "activity": {
+            "type": "string"
+          },
+          "authors": {
+            "$ref": "#/components/schemas/DiscoverCount"
+          },
+          "backingOff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverBackoff"
+            }
+          },
+          "genres": {
+            "$ref": "#/components/schemas/DiscoverCount"
+          },
+          "nextPassAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planned": {
+            "type": "boolean"
+          },
+          "series": {
+            "$ref": "#/components/schemas/DiscoverCount"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "planned",
+          "authors",
+          "series",
+          "genres",
+          "activity",
+          "backingOff"
         ]
       },
       "DiscoverReason": {

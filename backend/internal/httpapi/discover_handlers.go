@@ -40,11 +40,39 @@ type discoverItem struct {
 	Wish wishRequest `json:"wish"`
 }
 
+type discoverCount struct {
+	Asked   int `json:"asked"`
+	Planned int `json:"planned"`
+}
+
+type discoverBackoff struct {
+	Provider string    `json:"provider"`
+	Until    time.Time `json:"until"`
+}
+
+// discoverProgress is how far the caller's own run is.
+type discoverProgress struct {
+	// StartedAt is when the run began; absent while it is asked for and no pass has begun it.
+	StartedAt *time.Time `json:"startedAt,omitempty"`
+	// Planned is false until a pass has worked out what to ask; the counts are then zero.
+	Planned  bool          `json:"planned"`
+	Authors  discoverCount `json:"authors"`
+	Series   discoverCount `json:"series"`
+	Genres   discoverCount `json:"genres"`
+	Activity string        `json:"activity" enum:"working,waiting" doc:"working: a pass is asking the providers now; waiting: the run goes on at the next pass."`
+	// NextPassAt is about when a waiting run is worked again; absent when that is at once or not known.
+	NextPassAt *time.Time `json:"nextPassAt,omitempty"`
+	// BackingOff are providers that asked to be left alone for now; the run goes on without them.
+	BackingOff []discoverBackoff `json:"backingOff"`
+}
+
 type discoverList struct {
 	State string `json:"state" enum:"off,offline,never,running,ready" doc:"off: an administrator has not switched Discover on; offline: this server asks no provider; never: the caller has not asked for a run; running: one is waiting or under way; ready: the last one has ended."`
 	// FinishedAt is when the last run ended.
 	FinishedAt *time.Time     `json:"finishedAt,omitempty"`
 	Items      []discoverItem `json:"items"`
+	// Progress is there while state is running.
+	Progress *discoverProgress `json:"progress,omitempty"`
 }
 
 // listDiscover offers the caller books beyond the libraries they see, from
@@ -58,6 +86,16 @@ func (s *Server) listDiscover(w http.ResponseWriter, r *http.Request) error {
 	out := discoverList{State: view.State, FinishedAt: view.FinishedAt, Items: []discoverItem{}}
 	for _, it := range view.Items {
 		out.Items = append(out.Items, s.discoverItemOf(it))
+	}
+	if p := view.Progress; p != nil {
+		out.Progress = &discoverProgress{
+			StartedAt: p.StartedAt, Planned: p.Planned, Activity: p.Activity, NextPassAt: p.NextPassAt,
+			Authors: discoverCount(p.Authors), Series: discoverCount(p.Series), Genres: discoverCount(p.Genres),
+			BackingOff: []discoverBackoff{},
+		}
+		for _, b := range p.BackingOff {
+			out.Progress.BackingOff = append(out.Progress.BackingOff, discoverBackoff{Provider: b.Provider, Until: b.Until})
+		}
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil

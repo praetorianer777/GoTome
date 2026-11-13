@@ -6,6 +6,21 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- GOtome counts the words of every book's text as it reads it, as groundwork
+  for suggesting genres from the whole text. Books read before are counted by
+  a background job, "Count the words of the books' text", which shows on the
+  jobs page after the upgrade; the counts take about 11 KB a book and are not
+  part of backups ([Genres](docs/genres.md)).
+
+### Changed
+
+- Discover shows how far its search is while it runs: how many authors,
+  series and genres are asked about of how many, in a progress bar, whether
+  it is asking the sources now or waits for the next pass and about when,
+  and which source has asked to be left alone for a while.
+
 ## [0.25.0] - 2026-11-13
 
 ### Added
