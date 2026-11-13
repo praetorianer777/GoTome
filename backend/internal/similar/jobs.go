@@ -3,6 +3,7 @@ package similar
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -67,9 +68,17 @@ func (w *EmbedWorker) Work(ctx context.Context, _ *river.Job[EmbedArgs]) error {
 		// swallowed, and would wait for the hourly one.
 		complete, err = w.Service.Embed(ctx, time.Now().Add(passBudget), 1)
 	}
+	return PassResult(w.Service.log, "books are not embedded", complete, err)
+}
+
+// PassResult is what the worker of a pass over books that can be left
+// unfinished returns: a model that cannot run is logged and ends the job
+// (the next pass tries again), another error is retried, and an incomplete
+// pass snoozes.
+func PassResult(log *slog.Logger, unavailable string, complete bool, err error) error {
 	switch {
 	case errors.Is(err, ErrUnavailable):
-		w.Service.log.Warn("books are not embedded", "error", err)
+		log.Warn(unavailable, "error", err)
 		return nil
 	case err != nil:
 		return err

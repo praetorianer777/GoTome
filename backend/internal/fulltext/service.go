@@ -203,12 +203,5 @@ type ApplyWorker struct {
 func (w *ApplyWorker) Timeout(*river.Job[ApplyArgs]) time.Duration { return applyBudget + time.Minute }
 
 func (w *ApplyWorker) Work(ctx context.Context, _ *river.Job[ApplyArgs]) error {
-	more, err := w.Service.Drain(ctx, time.Now().Add(applyBudget))
-	if err != nil {
-		return err
-	}
-	if more {
-		return river.JobSnooze(time.Second)
-	}
-	return nil
+	return jobs.Resume(w.Service.Drain(ctx, time.Now().Add(applyBudget)))
 }

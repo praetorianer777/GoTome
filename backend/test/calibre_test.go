@@ -334,3 +334,43 @@ func TestImportingACalibreLibraryNeverWritesMetadataDb(t *testing.T) {
 		t.Errorf("the book's folder: %v %v, want its two files and cover.jpg", got, err)
 	}
 }
+
+func TestAnImportWhoseMetadataDbIsGoneFailsEveryBookAndFinishes(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	dir := calibreLibrary(t, calibretest.Books())
+	library := a.scannedCalibre(admin, dir)
+	_, preview := a.calibrePreview(admin, library)
+	id := preview["id"].(string)
+	_, lantern := bookByTitle(t, a, admin, "The Lantern at Dusk (as the file says)")
+
+	if status, got, _ := a.call(admin, http.MethodPost, "/calibre/imports/"+id+"/start", map[string]any{"ratings": true}); status != 202 {
+		t.Fatalf("start: %d %v", status, got)
+	}
+	if err := os.Remove(filepath.Join(dir, calibre.Database)); err != nil {
+		t.Fatal(err)
+	}
+	done, err := a.server.Calibre.Run(context.Background(), uuid.MustParse(id))
+	if err != nil || !done {
+		t.Fatalf("run: done %v, %v", done, err)
+	}
+
+	_, got, _ := a.call(admin, http.MethodGet, "/calibre/imports/"+id, nil)
+	outcomes, _ := got["outcomes"].(map[string]any)
+	if got["state"] != "done" || outcomes["failed"] != 4.0 || outcomes["changed"] != nil || outcomes["unchanged"] != nil {
+		t.Errorf("import: %v", got)
+	}
+	var unfinished int
+	a.pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM calibre_import_books WHERE outcome IS DISTINCT FROM 'failed' OR message <> 'metadata.db could not be opened.'`).Scan(&unfinished)
+	if unfinished != 0 {
+		t.Errorf("%d books not failed with the one message", unfinished)
+	}
+	if _, after := bookByTitle(t, a, admin, "The Lantern at Dusk (as the file says)"); after["description"] != lantern["description"] {
+		t.Error("a book was described although metadata.db could not be read")
+	}
+	if again, err := a.server.Calibre.Run(context.Background(), uuid.MustParse(id)); err != nil || !again {
+		t.Errorf("a finished import run again: %v %v", again, err)
+	}
+}

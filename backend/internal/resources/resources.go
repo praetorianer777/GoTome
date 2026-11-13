@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -252,6 +253,8 @@ type Service struct {
 	// memory reads the machine's memory and the container's limit; tests
 	// replace it.
 	memory func() (machine, limit int64)
+	// every replaces CheckEvery in Watch; tests shorten it.
+	every time.Duration
 }
 
 // NewService returns a Service on the pool.

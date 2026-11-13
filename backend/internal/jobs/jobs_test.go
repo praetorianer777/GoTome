@@ -2,11 +2,13 @@ package jobs
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 )
 
@@ -50,5 +52,36 @@ func TestInsertOpts(t *testing.T) {
 func TestSchemaVersionIsKnownWithoutADatabase(t *testing.T) {
 	if got := SchemaVersion(); got < 1 {
 		t.Errorf("SchemaVersion() = %d", got)
+	}
+}
+
+func TestResumeReturnsTheErrorElseSnoozesWhileWorkIsLeft(t *testing.T) {
+	failed := errors.New("disk gone")
+	cases := []struct {
+		name   string
+		more   bool
+		err    error
+		snooze bool
+		want   error
+	}{
+		{"done", false, nil, false, nil},
+		{"more to do", true, nil, true, nil},
+		{"an error", false, failed, false, failed},
+		{"an error beats more", true, failed, false, failed},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := Resume(c.more, c.err)
+			var snooze *river.JobSnoozeError
+			if errors.As(got, &snooze) != c.snooze {
+				t.Fatalf("%v, want a snooze: %v", got, c.snooze)
+			}
+			if c.snooze && snooze.Duration != time.Second {
+				t.Errorf("snoozed %s", snooze.Duration)
+			}
+			if !c.snooze && !errors.Is(got, c.want) {
+				t.Errorf("%v, want %v", got, c.want)
+			}
+		})
 	}
 }

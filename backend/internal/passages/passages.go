@@ -428,14 +428,5 @@ func (w *EmbedWorker) Timeout(*river.Job[EmbedArgs]) time.Duration { return pass
 
 func (w *EmbedWorker) Work(ctx context.Context, _ *river.Job[EmbedArgs]) error {
 	complete, err := w.Service.Embed(ctx, time.Now().Add(passBudget))
-	switch {
-	case errors.Is(err, similar.ErrUnavailable):
-		w.Service.log.Warn("passages are not embedded", "error", err)
-		return nil
-	case err != nil:
-		return err
-	case !complete:
-		return river.JobSnooze(time.Second)
-	}
-	return nil
+	return similar.PassResult(w.Service.log, "passages are not embedded", complete, err)
 }

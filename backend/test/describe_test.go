@@ -108,3 +108,51 @@ func TestADescriptionFindsTheNearestBooksTheViewerSees(t *testing.T) {
 		t.Errorf("no model: %v", err)
 	}
 }
+
+func TestDescribeTitlesNamesTheNearestBooksWithTheirFirstAuthorAcrossLibraries(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	open := a.library(admin, "Open", "shared")
+	vault := a.library(admin, "Vault", "private")
+
+	const wanted = "a ghost story in an old house"
+	vecs, err := (&embed.Fake{}).Embed(context.Background(), []string{embed.E5Small.Prefix + wanted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	exact := vecs[0]
+	far := make([]float32, len(exact))
+	far[0] = 1
+	books := catalog.NewService(a.pool)
+	for _, b := range []struct {
+		lib, title string
+		authors    []string
+		content    []float32
+	}{
+		{open, "The Turn of the Screw", []string{"Henry James", "A Second Hand"}, exact},
+		{vault, "A Tale With No Author", nil, embed.Mean([][]float32{exact, far}, []float64{3, 1})},
+		{open, "A Treatise on Drainage", []string{"Edwin Chadwick"}, far},
+	} {
+		var contributors []catalog.NewContributor
+		for _, name := range b.authors {
+			contributors = append(contributors, catalog.NewContributor{Name: name})
+		}
+		id, err := books.CreateBook(context.Background(), catalog.NewBook{LibraryID: uuid.MustParse(b.lib), Title: b.title, Contributors: contributors})
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.putVector(id, similar.KindContent, b.content)
+	}
+
+	got, err := a.server.Similar.DescribeTitles(context.Background(), wanted, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"The Turn of the Screw – Henry James", "A Tale With No Author"}; !slices.Equal(got, want) {
+		t.Errorf("%q, want %q", got, want)
+	}
+	if got, err := a.server.Similar.DescribeTitles(context.Background(), wanted, 1); err != nil || len(got) != 1 {
+		t.Errorf("one title: %q %v", got, err)
+	}
+}
