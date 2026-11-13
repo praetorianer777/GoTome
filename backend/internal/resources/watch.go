@@ -44,6 +44,10 @@ func (l *logState) due(key string, now time.Time) bool {
 // logState decides.
 func (s *Service) Watch(ctx context.Context, log *slog.Logger) {
 	var state logState
+	every := CheckEvery
+	if s.every > 0 {
+		every = s.every
+	}
 	for {
 		h, err := s.Check(ctx)
 		switch {
@@ -59,7 +63,7 @@ func (s *Service) Watch(ctx context.Context, log *slog.Logger) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(CheckEvery):
+		case <-time.After(every):
 		}
 	}
 }
