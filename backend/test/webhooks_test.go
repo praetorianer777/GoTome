@@ -13,6 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 
 	"github.com/praetorianer777/gotome/backend/internal/db"
 	"github.com/praetorianer777/gotome/backend/internal/notify"
@@ -256,5 +258,83 @@ func TestAWebhookSecretIsNeverSentBackAndOnlyAdministratorsHandleHooks(t *testin
 	}
 	if status, _, _ := a.call(admin, http.MethodGet, "/webhooks/"+hook+"/deliveries", nil); status != 404 {
 		t.Errorf("deliveries of a deleted hook: %d", status)
+	}
+}
+
+func TestTheDeliverWorkerRetriesUntilTheLastAttemptThenGivesUp(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	srv, got := receiver(t, 500, 500)
+	hook := a.makeHook(admin, srv.URL, true)
+	a.tellHooks(notify.Event{Kind: notify.KindScanFailed})
+	id := uuid.MustParse(a.deliveriesOf(admin, hook)[0]["id"].(string))
+	worker := &webhooks.DeliverWorker{Service: a.hooks}
+	work := func(attempt int) error {
+		return worker.Work(context.Background(), &river.Job[webhooks.DeliverArgs]{
+			JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: webhooks.MaxAttempts},
+			Args:   webhooks.DeliverArgs{DeliveryID: id},
+		})
+	}
+
+	if err := work(1); err == nil {
+		t.Fatal("a refused delivery returned no error for the queue to retry")
+	}
+	if d := a.deliveriesOf(admin, hook)[0]; d["status"] != "pending" {
+		t.Errorf("after a failure with attempts left: %v", d)
+	}
+	if err := work(webhooks.MaxAttempts); err == nil {
+		t.Fatal("the last attempt returned no error")
+	}
+	if d := a.deliveriesOf(admin, hook)[0]; d["status"] != "failed" || d["attempts"] != float64(2) {
+		t.Errorf("after the last attempt: %v", d)
+	}
+	if err := work(3); err != nil {
+		t.Fatalf("an answered delivery: %v", err)
+	}
+	if d := a.deliveriesOf(admin, hook)[0]; d["status"] != "delivered" {
+		t.Errorf("after a 200: %v", d)
+	}
+	if n := len(got()); n != 3 {
+		t.Errorf("%d requests, want 3", n)
+	}
+}
+
+func TestTrimRemovesDeliveriesPastTheirDaysAndPastTheKeptCount(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	srv, _ := receiver(t)
+	hook := uuid.MustParse(a.makeHook(admin, srv.URL, true))
+	ctx := context.Background()
+	add := func(status string, age string, n int) {
+		_, err := a.pool.Exec(ctx, `INSERT INTO webhook_deliveries (hook_id, kind, payload, status, created_at)
+			SELECT $1, 'scan.failed', '{}', $2, now() - $3::interval - (g || ' seconds')::interval FROM generate_series(1, $4) g`,
+			hook, status, age, n)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	add("delivered", "40 days", 3)
+	add("delivered", "1 day", webhooks.KeepPerHook+5)
+	add("pending", "2 days", 2)
+	count := func(where string) (n int) {
+		if err := a.pool.QueryRow(ctx, `SELECT count(*) FROM webhook_deliveries WHERE hook_id = $1 AND `+where, hook).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if err := a.hooks.Trim(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := count("created_at < now() - interval '30 days'"); n != 0 {
+		t.Errorf("%d deliveries older than the keep days remain", n)
+	}
+	if n := count("status = 'delivered'"); n != webhooks.KeepPerHook {
+		t.Errorf("%d finished deliveries remain, want %d", n, webhooks.KeepPerHook)
+	}
+	if n := count("status = 'pending'"); n != 2 {
+		t.Errorf("%d pending deliveries remain, want both", n)
 	}
 }
