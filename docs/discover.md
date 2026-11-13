@@ -30,6 +30,44 @@ you are not interested in, and the other editions of a book that is offered
 already. A library you cannot see does not count: its books are offered to
 you as to anyone, and the page never says that one holds them.
 
+## Covers and details
+
+A book shows the cover its source gives it. Where that source lists the
+book without one (Open Library's newest works of an author are mostly
+reprints with no cover), the cover of another source's record of the same
+book is used, or, for a book with an ISBN, the one Open Library keeps under
+it (`covers.openlibrary.org/b/isbn/...?default=false`, which answers "not
+found" rather than a blank picture). A book with none keeps an empty frame of
+the same size. The browser asks only GOtome for covers; the server fetches
+the address a signed token names, from the source it names.
+
+Click a book's title, or press Enter on it, to open its details at the side
+(from the bottom on a phone): the cover large, the authors (a link to the
+author's page where your libraries hold a book of theirs), series, year,
+publisher, pages, language, ISBNs, categories, the whole description, the
+source and why the book is offered, with **Add to wishlist** and **Not
+interested**. Escape, the close button or a click outside closes it and puts
+focus back on the title; the address (`/discover?book=...`) keeps the open
+book, so the back button closes it.
+
+## Books you read elsewhere
+
+**Already read** (on each book and in its details; the stars are optional)
+tells Discover you read a book in another edition or elsewhere. Unlike
+**Not interested** it says you liked it, or at least read it:
+
+- The book leaves Discover for good, and so do the other editions and
+  other sources' records of it (by title and author, or by ISBN).
+- It counts for your taste as a finished book: its author counts as read
+  with the stars you gave (an author rated highly brings their other
+  works), a volume of a series counts as read, so the next volume is the
+  one after it and its place is no gap, and its genres count.
+- It is yours alone and adds nothing: no book in a library, no wish.
+
+Under the books, **Read elsewhere** lists them; **Offer again** takes one
+back, and Discover may offer it again from the next run. A book that later
+comes into a library you see is left out as any book you hold is.
+
 ## Turning it on
 
 Under **Settings**, **Discover books beyond the libraries**

@@ -264,3 +264,39 @@ func TestASubjectIsReadIntoRecords(t *testing.T) {
 		t.Errorf("an unknown subject: %v", err)
 	}
 }
+
+func TestACoverIsDerivedFromAnEditionOrAnISBNAndNotFromAWork(t *testing.T) {
+	p := New()
+	isbn := metadata.Record{Identifiers: []catalog.Identifier{{Type: catalog.IDISBN, Value: "9780306406157"}}}
+	if got := p.DeriveCover(isbn); got != "https://covers.openlibrary.org/b/isbn/9780306406157-L.jpg?default=false" {
+		t.Errorf("by ISBN %q", got)
+	}
+	edition := metadata.Record{Identifiers: []catalog.Identifier{{Type: catalog.IDISBN, Value: "9780306406157"}, {Type: catalog.IDOpenLibrary, Value: "OL7353617M"}}}
+	if got := p.DeriveCover(edition); got != "https://covers.openlibrary.org/b/olid/OL7353617M-L.jpg?default=false" {
+		t.Errorf("by edition %q", got)
+	}
+	work := metadata.Record{Identifiers: []catalog.Identifier{{Type: catalog.IDOpenLibrary, Value: "OL66513W"}}}
+	if got := p.DeriveCover(work); got != "" {
+		t.Errorf("a work's cover is guessed: %q", got)
+	}
+}
+
+// TestMostOfAnAuthorsNewestWorksHaveNoCover holds what the recorded answer
+// shows: sorted newest first, Open Library's list is mostly reprints and
+// box sets that carry no cover_i, so Discover cannot rely on this listing
+// for a cover.
+func TestMostOfAnAuthorsNewestWorksHaveNoCover(t *testing.T) {
+	got, err := New().ByAuthor(context.Background(), web(), "Austen, Jane")
+	if err != nil || len(got) == 0 {
+		t.Fatalf("ByAuthor: %d records, %v", len(got), err)
+	}
+	bare := 0
+	for _, r := range got {
+		if r.CoverURL == "" {
+			bare++
+		}
+	}
+	if bare*2 < len(got) {
+		t.Errorf("%d of %d works have no cover; the recorded answer showed most without", bare, len(got))
+	}
+}

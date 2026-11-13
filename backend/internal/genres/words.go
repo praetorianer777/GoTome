@@ -105,14 +105,19 @@ type sparse struct {
 // frequency of the words in the vocabulary, scaled to length 1.
 func (t *WordTable) vectorize(c wordcount.Counts) sparse {
 	var s sparse
-	norm := 0.0
 	for w, n := range c {
 		if j, ok := t.index[w]; ok && n > 0 {
-			v := float32((1 + math.Log(float64(n))) * float64(t.idf[j]))
 			s.idx = append(s.idx, j)
-			s.val = append(s.val, v)
-			norm += float64(v) * float64(v)
 		}
+	}
+	// In the vocabulary's order, not the map's: sums of floats depend on
+	// their order, and a book must score the same every time.
+	slices.Sort(s.idx)
+	norm := 0.0
+	for _, j := range s.idx {
+		v := float32((1 + math.Log(float64(c[t.Words[j]]))) * float64(t.idf[j]))
+		s.val = append(s.val, v)
+		norm += float64(v) * float64(v)
 	}
 	if norm > 0 {
 		inv := float32(1 / math.Sqrt(norm))

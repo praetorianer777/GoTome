@@ -3,10 +3,13 @@
 package test
 
 import (
+	"cmp"
 	"context"
+	"encoding/base64"
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +20,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
+	"github.com/praetorianer777/gotome/backend/internal/metadata/openlibrary"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
 )
 
@@ -32,10 +36,20 @@ func (p *providers) answer(key string, from map[string][]metadata.Record) []meta
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.asked = append(p.asked, key)
-	if records, ok := from[key]; ok {
-		return []metadata.Answer{{Provider: "fake", Records: slices.Clone(records)}}
+	records, ok := from[key]
+	if !ok {
+		return nil
 	}
-	return nil
+	var out []metadata.Answer
+	for _, r := range records {
+		name := cmp.Or(r.Provider, "fake")
+		if i := slices.IndexFunc(out, func(a metadata.Answer) bool { return a.Provider == name }); i >= 0 {
+			out[i].Records = append(out[i].Records, r)
+		} else {
+			out = append(out, metadata.Answer{Provider: name, Records: []metadata.Record{r}})
+		}
+	}
+	return out
 }
 
 func (p *providers) WorksOf(_ context.Context, kind, name string) ([]metadata.Answer, error) {
@@ -531,5 +545,198 @@ func TestDiscoverUsesTheTasteProfileOfTheLibrary(t *testing.T) {
 		if s := title.(string); len(s) < 9 || s[:5] != "Crime" {
 			t.Errorf("because of %q", s)
 		}
+	}
+}
+
+// coverOf is what a cover token names: the provider and the address.
+func coverOf(t *testing.T, token any) (string, string) {
+	t.Helper()
+	text, _ := token.(string)
+	payload, _, _ := strings.Cut(text, ".")
+	raw, err := base64.RawURLEncoding.DecodeString(payload)
+	if err != nil {
+		t.Fatalf("token %v: %v", token, err)
+	}
+	provider, url, _ := strings.Cut(string(raw), "\x00")
+	return provider, url
+}
+
+func TestDiscoveredBooksKeepACoverFromWhereOneIsToBeHad(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	d.server.Metadata = metadata.NewService(d.pool, []metadata.Provider{openlibrary.New()}, metadata.Options{})
+	reader, _ := d.signedIn("reader", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+
+	// A listing that gives a work no cover, and another provider's record of it that does.
+	bare := offered("c1", "Salt and Lantern", "Ada Moss")
+	covered := offered("c2", "Salt and Lantern", "Moss, Ada")
+	covered.Provider, covered.CoverURL = "other", "https://covers.example/salt.jpg"
+	// A record with an ISBN and no cover of its own gets the one Open Library documents.
+	byIsbn := offered("c3", "Tide Tables", "Ada Moss")
+	byIsbn.Identifiers = []catalog.Identifier{{Type: catalog.IDISBN, Value: "9780306406157"}}
+	// A record with nothing to derive a cover from has none.
+	nothing := offered("c4", "Fog Signals", "Ada Moss")
+	d.providers.works["author:Ada Moss"] = []metadata.Record{bare, covered, byIsbn, nothing}
+
+	d.run(reader)
+	_, items := d.discovered(reader)
+	got := map[string]map[string]any{}
+	for _, it := range items {
+		got[it["title"].(string)] = it
+	}
+	if len(got) != 3 {
+		t.Fatalf("offered %v", titlesOf(items))
+	}
+	if provider, url := coverOf(t, got["Salt and Lantern"]["coverToken"]); provider != "other" || url != "https://covers.example/salt.jpg" {
+		t.Errorf("a book without a cover has %q %q, not the other record's", provider, url)
+	}
+	if provider, url := coverOf(t, got["Tide Tables"]["coverToken"]); provider != "openlibrary" || url != "https://covers.openlibrary.org/b/isbn/9780306406157-L.jpg?default=false" {
+		t.Errorf("an ISBN's cover is %q %q", provider, url)
+	}
+	if token, ok := got["Fog Signals"]["coverToken"]; ok {
+		t.Errorf("a book nothing is known of has the cover %v", token)
+	}
+	if people := got["Fog Signals"]["people"].([]any); len(people) != 1 || people[0].(map[string]any)["key"] == "" {
+		t.Errorf("an author with books in the library is not linked: %v", people)
+	}
+}
+
+func TestDiscoveredAuthorsAreLinkedOnlyWhereTheCallerSeesTheirBooks(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	vault := d.library(d.admin, "Vault", "private")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+	d.bookBy(vault, "Hidden Shelf", "Pia Quill")
+	d.providers.works["author:Ada Moss"] = []metadata.Record{offered("p1", "Joint Work", "Ada Moss", "Pia Quill", "Tom Reed")}
+	d.run(reader)
+	_, items := d.discovered(reader)
+	if len(items) != 1 {
+		t.Fatalf("offered %v", titlesOf(items))
+	}
+	people := items[0]["people"].([]any)
+	if len(people) != 1 || people[0].(map[string]any)["name"] != "Ada Moss" {
+		t.Errorf("linked %v, want only the author whose books the caller sees", people)
+	}
+}
+
+func idOf(t *testing.T, items []map[string]any, title string) string {
+	t.Helper()
+	for _, it := range items {
+		if it["title"] == title {
+			return it["id"].(string)
+		}
+	}
+	t.Fatalf("%q is not offered: %v", title, titlesOf(items))
+	return ""
+}
+
+func TestAnAlreadyReadBookLeavesDiscoverWithItsOtherEditionsAndComesBackWhenTakenBack(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	other, _ := d.signedIn("second", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+	d.liked(other, open, "Harbour Lamp Two", "Ada Moss", 5)
+	here := offered("r1", "Salt and Lantern", "Ada Moss")
+	elsewhere := offered("r2", "Salt and Lantern: A Novel", "Moss, Ada")
+	elsewhere.Provider = "other"
+	d.providers.works["author:Ada Moss"] = []metadata.Record{here, elsewhere, offered("r3", "Fog Signals", "Ada Moss")}
+
+	d.run(reader)
+	_, items := d.discovered(reader)
+	id := idOf(t, items, "Salt and Lantern")
+	if status, out, _ := d.call(reader, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 6}); status != 422 {
+		t.Errorf("six stars: %d %v", status, out)
+	}
+	if status, _, _ := d.call(other, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 4}); status != 404 {
+		t.Errorf("another person's candidate: %d", status)
+	}
+	if status, out, _ := d.call(reader, http.MethodPost, "/me/discover/"+id+"/read", map[string]any{"stars": 4}); status != 204 {
+		t.Fatalf("read: %d %v", status, out)
+	}
+	if _, items := d.discovered(reader); !slices.Equal(titlesOf(items), []string{"Fog Signals"}) {
+		t.Errorf("offered %v after it was read", titlesOf(items))
+	}
+	d.run(reader)
+	if _, items := d.discovered(reader); !slices.Equal(titlesOf(items), []string{"Fog Signals"}) {
+		t.Errorf("offered %v after another run: its other edition came back", titlesOf(items))
+	}
+	var shelves int
+	if err := d.pool.QueryRow(context.Background(), `SELECT count(*) FROM books b WHERE b.title_key LIKE 'salt and lantern%'`).Scan(&shelves); err != nil || shelves != 0 {
+		t.Errorf("%d books were made of it, %v", shelves, err)
+	}
+
+	status, out, _ := d.call(reader, http.MethodGet, "/me/discover/read", nil)
+	list, _ := out["items"].([]any)
+	if status != 200 || len(list) != 1 || list[0].(map[string]any)["title"] != "Salt and Lantern" || list[0].(map[string]any)["stars"] != float64(4) {
+		t.Fatalf("read elsewhere: %d %v", status, out)
+	}
+	if _, out, _ := d.call(other, http.MethodGet, "/me/discover/read", nil); len(out["items"].([]any)) != 0 {
+		t.Errorf("someone else sees %v", out)
+	}
+	if _, others := d.discovered(other); !slices.Contains(titlesOf(others), "Salt and Lantern") {
+		d.run(other)
+		if _, others = d.discovered(other); !slices.Contains(titlesOf(others), "Salt and Lantern") {
+			t.Errorf("the other person is not offered the book: %v", titlesOf(others))
+		}
+	}
+	readID := list[0].(map[string]any)["id"].(string)
+	if status, _, _ := d.call(other, http.MethodDelete, "/me/discover/read/"+readID, nil); status != 404 {
+		t.Errorf("another person took it back: %d", status)
+	}
+	if status, _, _ := d.call(reader, http.MethodDelete, "/me/discover/read/"+readID, nil); status != 204 {
+		t.Fatalf("take back: %d", status)
+	}
+	d.run(reader)
+	if _, items := d.discovered(reader); !slices.Contains(titlesOf(items), "Salt and Lantern") {
+		t.Errorf("offered %v after it was taken back", titlesOf(items))
+	}
+}
+
+func TestAnAlreadyReadBookCountsForTheAuthorAndTheSeriesPlace(t *testing.T) {
+	t.Parallel()
+	d := newDiscovering(t, nil)
+	reader, _ := d.signedIn("reader", "reader")
+	open := d.library(d.admin, "Open", "shared")
+	d.liked(reader, open, "Harbour Lamp", "Ada Moss", 5)
+	three := offered("l3", "Lantern Three", "Ada Moss", "Pia Quill")
+	three.Series, three.SeriesIndex = "Lantern Cycle", new(float64)
+	*three.SeriesIndex = 3
+	d.providers.works["author:Ada Moss"] = []metadata.Record{three}
+	volume := func(id, title string, index float64) metadata.Record {
+		r := offered(id, title, "Ada Moss")
+		r.Series, r.SeriesIndex = "Lantern Cycle", &index
+		return r
+	}
+	d.providers.works["series:Lantern Cycle"] = []metadata.Record{volume("l3", "Lantern Three", 3), volume("l4", "Lantern Four", 4), volume("l5", "Lantern Five", 5)}
+	d.providers.works["author:Pia Quill"] = []metadata.Record{offered("q1", "Quill Next", "Pia Quill")}
+
+	d.run(reader)
+	_, items := d.discovered(reader)
+	if slices.Contains(d.providers.askedAbout(), "author:Pia Quill") || slices.Contains(d.providers.askedAbout(), "series:Lantern Cycle") {
+		t.Fatalf("asked %v before anything was read", d.providers.askedAbout())
+	}
+	if status, _, _ := d.call(reader, http.MethodPost, "/me/discover/"+idOf(t, items, "Lantern Three")+"/read", map[string]any{"stars": 5}); status != 204 {
+		t.Fatalf("read: %d", status)
+	}
+	d.run(reader)
+	_, items = d.discovered(reader)
+	asked := d.providers.askedAbout()
+	if !slices.Contains(asked, "author:Pia Quill") || !slices.Contains(asked, "series:Lantern Cycle") {
+		t.Fatalf("asked %v: the author and the series of a book read elsewhere are not asked about", asked)
+	}
+	if got := titlesOf(items); slices.Contains(got, "Lantern Three") || !slices.Contains(got, "Lantern Four") || !slices.Contains(got, "Quill Next") {
+		t.Fatalf("offered %v", got)
+	}
+	if r := reasonOf(items, "Lantern Four"); r["kind"] != "series_next" {
+		t.Errorf("the volume after the one read is %v", r)
+	}
+	if r := reasonOf(items, "Quill Next"); r["kind"] != "author" || r["stars"] != float64(5) {
+		t.Errorf("the author's book is offered for %v, want the 5 stars it was given", r)
 	}
 }

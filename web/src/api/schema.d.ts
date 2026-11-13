@@ -2575,6 +2575,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/discover/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The books the caller said they read elsewhere */
+        get: operations["listDiscoverRead"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/read/{readId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a book back off the caller's list of those read elsewhere; Discover may offer it again */
+        delete: operations["unreadDiscovered"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/discover/run": {
         parameters: {
             query?: never;
@@ -2603,6 +2637,23 @@ export interface paths {
         put?: never;
         /** Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on */
         post: operations["dismissDiscovered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/{candidateId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say the caller read a discovered book elsewhere, with optional stars: it and its other editions leave Discover, and it counts for their taste; nothing is added to a library or the wishlist */
+        post: operations["readDiscoveredElsewhere"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4688,10 +4739,18 @@ export interface components {
             description?: string;
             /** Format: uuid */
             id: string;
+            identifiers: components["schemas"]["Identifier"][];
+            language?: string;
+            pageCount?: number;
+            people: components["schemas"]["DiscoverPerson"][];
             provider: string;
+            published?: string;
+            publisher?: string;
             reason: components["schemas"]["DiscoverReason"];
             series?: string;
             seriesIndex?: number;
+            subtitle?: string;
+            tags: string[];
             title: string;
             wish: components["schemas"]["WishRequest"];
             year?: number;
@@ -4702,6 +4761,10 @@ export interface components {
             items: components["schemas"]["DiscoverItem"][];
             progress?: components["schemas"]["DiscoverProgress"];
             state: string;
+        };
+        DiscoverPerson: {
+            key: string;
+            name: string;
         };
         DiscoverProgress: {
             activity: string;
@@ -4714,6 +4777,20 @@ export interface components {
             series: components["schemas"]["DiscoverCount"];
             /** Format: date-time */
             startedAt?: string;
+        };
+        DiscoverReadBook: {
+            authors: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            series?: string;
+            seriesIndex?: number;
+            stars?: number;
+            title: string;
+        };
+        DiscoverReadList: {
+            items: components["schemas"]["DiscoverReadBook"][];
         };
         DiscoverReason: {
             because: string[];
@@ -5468,6 +5545,9 @@ export interface components {
             lastHour: number;
             minutesLeft?: number;
             waiting: number;
+        };
+        ReadElsewhereRequest: {
+            stars?: number;
         };
         Readiness: {
             onServer: boolean;
@@ -11589,6 +11669,64 @@ export interface operations {
             };
         };
     };
+    listDiscoverRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverReadList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    unreadDiscovered: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                readId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     requestDiscover: {
         parameters: {
             query?: never;
@@ -11626,6 +11764,39 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    readDiscoveredElsewhere: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadElsewhereRequest"];
+            };
+        };
         responses: {
             /** @description No Content */
             204: {

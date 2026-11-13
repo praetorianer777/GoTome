@@ -63,3 +63,47 @@ export function useWishDiscovered() {
 		},
 	});
 }
+
+export type DiscoverReadBook = components["schemas"]["DiscoverReadBook"];
+
+/** The books the person said they read elsewhere. */
+export const discoverReadQuery = queryOptions({
+	queryKey: ["discover", "read"],
+	queryFn: async (): Promise<DiscoverReadBook[]> =>
+		(await api.GET("/me/discover/read")).data?.items ?? [],
+});
+
+/** "Already read": the book leaves Discover for good and counts for the person's taste; nothing is added to a library. */
+export function useReadDiscovered() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({ id, stars }: { id: string; stars?: number }) => {
+			const { error } = await api.POST("/me/discover/{candidateId}/read", {
+				params: { path: { candidateId: id } },
+				body: stars ? { stars } : {},
+			});
+			if (error) throw error;
+			return id;
+		},
+		onSuccess: (id) => {
+			leave(queryClient, id);
+			queryClient.invalidateQueries({ queryKey: ["discover", "read"] });
+		},
+	});
+}
+
+/** Takes a book off the list of those read elsewhere; Discover may offer it again. */
+export function useUnreadDiscovered() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { error } = await api.DELETE("/me/discover/read/{readId}", {
+				params: { path: { readId: id } },
+			});
+			if (error) throw error;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["discover"] });
+		},
+	});
+}

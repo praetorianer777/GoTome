@@ -14,6 +14,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,7 +24,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
+	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
 	"github.com/praetorianer777/gotome/backend/internal/metadata"
@@ -120,6 +124,9 @@ type Item struct {
 	Record metadata.Record
 	Score  float64
 	Reason Reason
+	// People maps the name of each author the viewer has a book of in a
+	// library they see to the key of their page.
+	People map[string]string
 }
 
 // Reason says why a book is offered.
@@ -230,7 +237,39 @@ func (s *Service) List(ctx context.Context, scope library.Scope) (View, error) {
 			Reason: Reason{Kind: r.ReasonKind, Name: r.ReasonName, Stars: int(r.ReasonStars), Because: r.Because},
 		})
 	}
-	return view, nil
+	return view, s.markPeople(ctx, scope, view.Items)
+}
+
+// markPeople finds the authors of the items that the viewer has books of.
+func (s *Service) markPeople(ctx context.Context, scope library.Scope, items []Item) error {
+	byKey := map[string]bool{}
+	for _, it := range items {
+		for _, c := range it.Record.Contributors {
+			if k := personKey(c.Name); k != "" && (c.Role == "" || c.Role == catalog.RoleAuthor) {
+				byKey[k] = true
+			}
+		}
+	}
+	if len(byKey) == 0 {
+		return nil
+	}
+	have, err := sqlc.New(s.pool).ListLibraryPeople(ctx, sqlc.ListLibraryPeopleParams{
+		PersonKeys: slices.Collect(maps.Keys(byKey)), Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return err
+	}
+	for i, it := range items {
+		for _, c := range it.Record.Contributors {
+			if k := personKey(c.Name); slices.Contains(have, k) && (c.Role == "" || c.Role == catalog.RoleAuthor) {
+				if items[i].People == nil {
+					items[i].People = map[string]string{}
+				}
+				items[i].People[c.Name] = k
+			}
+		}
+	}
+	return nil
 }
 
 // withoutHeld splits the candidates into those the person has a use for
@@ -290,6 +329,86 @@ func (s *Service) Dismiss(ctx context.Context, user, id uuid.UUID) error {
 		return err
 	}
 	return q.DeleteDiscoverCandidates(ctx, sqlc.DeleteDiscoverCandidatesParams{UserID: user, Ids: []uuid.UUID{id}})
+}
+
+// ErrBadStars is a rating outside 1 to 5.
+var ErrBadStars = errors.New("stars are 1 to 5")
+
+// ReadBook is a book the person said they read elsewhere.
+type ReadBook struct {
+	ID          uuid.UUID
+	Title       string
+	Authors     []string
+	Series      string
+	SeriesIndex *float64
+	Stars       *int16
+	CreatedAt   time.Time
+}
+
+// MarkRead records that the person read a discovered book elsewhere, with
+// optional stars. It adds nothing to a library or the wishlist; the book
+// and its other editions leave Discover for good, and the book counts for
+// the person's taste as a book they finished.
+func (s *Service) MarkRead(ctx context.Context, user, id uuid.UUID, stars *int16) error {
+	if stars != nil && (*stars < 1 || *stars > 5) {
+		return ErrBadStars
+	}
+	q := sqlc.New(s.pool)
+	c, err := q.GetDiscoverCandidate(ctx, sqlc.GetDiscoverCandidateParams{ID: id, UserID: user})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	var rec metadata.Record
+	if err := json.Unmarshal(c.Record, &rec); err != nil {
+		return err
+	}
+	var authors []string
+	for _, a := range rec.Contributors {
+		if a.Role == "" || a.Role == catalog.RoleAuthor {
+			authors = append(authors, a.Name)
+		}
+	}
+	row := sqlc.PutDiscoverReadParams{
+		UserID: user, Title: rec.Title, Authors: nonNil(authors), Series: rec.Series, SeriesIndex: rec.SeriesIndex,
+		Genres: nonNil(genres.FromTags(rec.Tags)), Stars: stars,
+		TitleKeys: nonNil(c.TitleKeys), AuthorKeys: nonNil(c.AuthorKeys), Isbns: nonNil(c.Isbns),
+	}
+	if rec.Series != "" {
+		row.SeriesKey = catalog.Key(rec.Series)
+	}
+	if _, err := q.PutDiscoverRead(ctx, row); err != nil {
+		return err
+	}
+	return q.DeleteDiscoverCandidates(ctx, sqlc.DeleteDiscoverCandidatesParams{UserID: user, Ids: []uuid.UUID{id}})
+}
+
+// ReadElsewhere lists what the person said they read elsewhere.
+func (s *Service) ReadElsewhere(ctx context.Context, user uuid.UUID) ([]ReadBook, error) {
+	rows, err := sqlc.New(s.pool).ListDiscoverRead(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReadBook, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, ReadBook{ID: r.ID, Title: r.Title, Authors: r.Authors, Series: r.Series, SeriesIndex: r.SeriesIndex, Stars: r.Stars, CreatedAt: r.CreatedAt})
+	}
+	return out, nil
+}
+
+// Unread takes a book back off the list of those read elsewhere: it may be
+// offered again.
+func (s *Service) Unread(ctx context.Context, user, id uuid.UUID) error {
+	n, err := sqlc.New(s.pool).DeleteDiscoverRead(ctx, sqlc.DeleteDiscoverReadParams{ID: id, UserID: user})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // keyed is what a candidate is compared by.
