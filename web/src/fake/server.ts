@@ -19,10 +19,12 @@ import type {
 } from "@/books/cleanup";
 import type { GenreSuggestion } from "@/books/genres";
 import type { Continuation } from "@/books/continue-offer";
+import type { Annotation, AnnotationCreate } from "@/books/annotations";
 import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
 import type { RecommendationList } from "@/books/recommendations";
+import type { DiscoverList } from "@/discover/api";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange, ReadingStatus } from "@/books/reading";
@@ -402,6 +404,8 @@ export class FakeServer {
 	bulks: BulkStatus[] = [];
 	/** Where the signed-in person is in each book. */
 	progress: Record<string, ProgressState> = {};
+	/** The signed-in person's highlights, newest first. */
+	annotations: Annotation[] = [];
 	/** What each book offers to go on with in the other medium; none by default. */
 	continuations: Record<string, Continuation> = {};
 	/**
@@ -455,10 +459,18 @@ export class FakeServer {
 	importPreview?: ReadingImport;
 	/** What the person is recommended; none, with no profile, unless a test says. */
 	recommendations?: RecommendationList;
+	/** What Discover offers; never looked for, unless a test says. */
+	discover?: DiscoverList;
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
 	similar: Record<string, string[]> = {};
+	/** Whether the signed-in person shares their ratings and reviews. */
+	sharing = false;
+	/** What others on the server share: their reviews and stars of books. */
+	sharedReviews: { bookId: string; author: string; stars: number; body: string }[] = [];
+	/** The signed-in person's own reviews, by book. */
+	ownReviews: Record<string, { body: string; private: boolean }> = {};
 	/** A further position another device wrote, which the next save meets. */
 	furtherProgress?: Progress;
 	/** The collections the signed-in person sees, with their books in order. */
@@ -912,6 +924,21 @@ export class FakeServer {
 			};
 			return new Response(null, { status: 204 });
 		}
+		if (path === "/me/discover") {
+			return Response.json(this.discover ?? { state: "never", items: [] });
+		}
+		if (path === "/me/discover/run") {
+			this.discover = { state: "running", items: this.discover?.items ?? [] };
+			return new Response(null, { status: 202 });
+		}
+		const discarded = /^\/me\/discover\/([^/]+)\/dismiss$/.exec(path);
+		if (discarded && this.discover) {
+			this.discover = {
+				...this.discover,
+				items: this.discover.items.filter((i) => i.id !== discarded[1]),
+			};
+			return new Response(null, { status: 204 });
+		}
 		if (path === "/me/reading") {
 			return this.answerHistory(url.searchParams);
 		}
@@ -1104,7 +1131,59 @@ export class FakeServer {
 		if (path.startsWith("/series/")) {
 			return this.seriesOf(decodeURIComponent(path.slice("/series/".length)));
 		}
-		if (path === "/books" || path.startsWith("/books/")) {
+		if (path === "/me/sharing") {
+			if (request.method === "PUT") {
+				this.sharing = (body as { shareReviews: boolean }).shareReviews;
+			}
+			return Response.json({ shareReviews: this.sharing });
+		}
+		const reviewed = /^\/books\/([^/]+)\/reviews?$/.exec(path);
+		if (reviewed) {
+			const id = reviewed[1] ?? "";
+			if (request.method === "PUT") {
+				const { body: text, private: hidden } = body as { body: string; private: boolean };
+				if (text.trim()) this.ownReviews[id] = { body: text.trim(), private: hidden };
+				else delete this.ownReviews[id];
+				return new Response(null, { status: 204 });
+			}
+			const others = this.sharedReviews.filter((r) => r.bookId === id);
+			const rated = others.filter((r) => r.stars > 0);
+			const mine = this.ownReviews[id];
+			return Response.json({
+				stars: rated.length,
+				average: rated.length ? rated.reduce((n, r) => n + r.stars, 0) / rated.length : 0,
+				reviews: others.map((r) => ({
+					author: r.author,
+					stars: r.stars,
+					body: r.body,
+					updatedAt: "2026-05-01T10:00:00Z",
+				})),
+				mine: mine && { ...mine, updatedAt: "2026-05-02T10:00:00Z" },
+			});
+		}
+		const person = /^\/people\/([^/]+)\/reviews$/.exec(path);
+		if (person) {
+			const name = decodeURIComponent(person[1] ?? "");
+			const list = this.sharedReviews.filter((r) => r.author === name);
+			if (list.length === 0) {
+				return Response.json(
+					{ error: { code: "not_found", message: "There is no such person." } },
+					{ status: 404 },
+				);
+			}
+			return Response.json({
+				username: name,
+				reviews: list.map((r) => ({
+					bookId: r.bookId,
+					title: this.books.find((b) => b.id === r.bookId)?.title ?? "",
+					authorSort: "",
+					stars: r.stars,
+					body: r.body,
+					updatedAt: "2026-05-01T10:00:00Z",
+				})),
+			});
+		}
+		if (path === "/books" || path.startsWith("/books/") || path.startsWith("/annotations")) {
 			return this.answerBooks(request.method, path, url.searchParams, body);
 		}
 		return this.answer(
@@ -1594,6 +1673,62 @@ export class FakeServer {
 		if (progress) {
 			return Response.json(this.progress[progress[1] ?? ""] ?? { finishes: 0 });
 		}
+		if (path === "/annotations" && method === "GET") {
+			const words = (query.get("q") ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+			const matching = this.annotations.filter(
+				(a) =>
+					(!query.get("book") || a.bookId === query.get("book")) &&
+					words.every((w) =>
+						`${a.passage} ${a.note ?? ""} ${a.bookTitle ?? ""}`.toLowerCase().includes(w),
+					),
+			);
+			const from = Number(query.get("after") ?? 0);
+			const size = Number(query.get("limit") ?? 50);
+			const next = from + size < matching.length ? String(from + size) : undefined;
+			return Response.json({ annotations: matching.slice(from, from + size), next });
+		}
+		const highlight = /^\/books\/([^/]+)\/annotations$/.exec(path);
+		if (highlight && method === "POST") {
+			const book = this.books.find((b) => b.id === highlight[1]);
+			const made = body as AnnotationCreate;
+			const created: Annotation = {
+				id: `annotation-${this.annotations.length + 1}`,
+				bookId: highlight[1] ?? "",
+				bookTitle: book?.title,
+				bookAuthors: book?.contributors.filter((c) => c.role === "author").map((c) => c.name),
+				fileId: made.fileId,
+				kind: made.kind,
+				locator: made.locator,
+				page: made.page,
+				rects: made.rects,
+				passage: made.passage,
+				note: made.note,
+				color: made.color ?? "yellow",
+				chapter: made.chapter,
+				fraction: made.fraction,
+				clientId: "web",
+				createdAt: "2026-01-04T10:00:00Z",
+				updatedAt: "2026-01-04T10:00:00Z",
+			};
+			this.annotations.unshift(created);
+			return Response.json(created, { status: 201 });
+		}
+		const one = /^\/annotations\/([^/]+)$/.exec(path);
+		if (one) {
+			const at = this.annotations.findIndex((a) => a.id === one[1]);
+			const found = this.annotations[at];
+			if (!found) {
+				return Response.json({ error: { code: "not_found", message: "There is no such annotation." } }, { status: 404 });
+			}
+			if (method === "DELETE") {
+				this.annotations.splice(at, 1);
+				return new Response(null, { status: 204 });
+			}
+			const change = body as { note?: string; color?: string };
+			if (change.note !== undefined) found.note = change.note || undefined;
+			if (change.color !== undefined) found.color = change.color;
+			return Response.json(found);
+		}
 		const noted = /^\/books\/([^/]+)\/note$/.exec(path);
 		if (noted) {
 			const book = this.books.find((b) => b.id === noted[1]);
@@ -1617,6 +1752,12 @@ export class FakeServer {
 			});
 			for (const listed of this.listed) {
 				listed.wished ||= listed.title === wish.title;
+			}
+			if (this.discover) {
+				this.discover = {
+					...this.discover,
+					items: this.discover.items.filter((i) => i.title !== wish.title),
+				};
 			}
 			return Response.json(this.books.at(-1), { status: 201 });
 		}

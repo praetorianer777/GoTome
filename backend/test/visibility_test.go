@@ -114,14 +114,27 @@ func readCases() map[string][]readCase {
 			{path: "/books/{book}/similar", control: "insider"},
 			{path: "/books/{neighbour}/similar", control: "insider"},
 		},
-		"getProgress":         {{path: "/books/{book}/progress", control: "insider"}},
-		"getContinuation":     {{path: "/books/{book}/continuation", control: "insider"}},
-		"getBookCover":        {{path: "/books/{book}/covers/small", control: "insider"}},
-		"downloadFile":        {{path: "/files/{file}/download", control: "insider"}},
-		"getStats":            {{path: "/me/stats", control: "insider"}},
-		"listReading":         {{path: "/me/reading", control: "insider"}},
-		"listRecommendations": {{path: "/me/recommendations", why: "the book is the insider's own, which is never recommended; TestRecommendationsStayWithinTheLibrariesThePersonSees proves it"}},
-		"getCalibreImport":    {{path: "/calibre/imports/{calibreImport}", why: "for storage managers alone, who see every library, and the import is the caller's own; TestACalibreLibraryIsPreviewedImportedAndImportedAgain proves it"}},
+		"listBookReviews": {{path: "/books/{book}/reviews", control: "insider"}},
+		"listPersonReviews": {
+			{path: "/people/insider/reviews", control: "insider"},
+			{path: "/people/former/reviews", control: "former"},
+		},
+		"getProgress": {{path: "/books/{book}/progress", control: "insider"}},
+		"listAnnotations": {
+			{path: "/annotations", control: "insider"},
+			{path: "/annotations", query: q("book", "{book}"), control: "insider"},
+			{path: "/annotations", query: q("q", "highlighted"), control: "insider"},
+		},
+		"exportAnnotationsMarkdown": {{path: "/annotations/export.md", control: "insider"}},
+		"exportAnnotationsCsv":      {{path: "/annotations/export.csv", control: "insider"}},
+		"getContinuation":           {{path: "/books/{book}/continuation", control: "insider"}},
+		"getBookCover":              {{path: "/books/{book}/covers/small", control: "insider"}},
+		"downloadFile":              {{path: "/files/{file}/download", control: "insider"}},
+		"getStats":                  {{path: "/me/stats", control: "insider"}},
+		"listReading":               {{path: "/me/reading", control: "insider"}},
+		"listRecommendations":       {{path: "/me/recommendations", why: "the book is the insider's own, which is never recommended; TestRecommendationsStayWithinTheLibrariesThePersonSees proves it"}},
+		"listDiscover":              {{path: "/me/discover", why: "the caller's own taste and wishes; TestDiscoverLeavesOutWhatIsHeldWishedReadOrDismissed proves that a library they cannot see neither counts as owning a book nor shows in the answer"}},
+		"getCalibreImport":          {{path: "/calibre/imports/{calibreImport}", why: "for storage managers alone, who see every library, and the import is the caller's own; TestACalibreLibraryIsPreviewedImportedAndImportedAgain proves it"}},
 		"getReadingImport": {
 			{path: "/me/reading-imports/{insiderImport}", control: "insider"},
 			{path: "/me/reading-imports/{formerImport}", control: "former"},
@@ -423,6 +436,8 @@ func everyReadRouteKeeps(t *testing.T, byRating bool) {
 		if status, out, _ := a.call(c, http.MethodPut, "/books/"+book+"/reading", map[string]any{"rating": 5}); status != 200 {
 			t.Fatalf("rating: %d %v", status, out)
 		}
+		a.share(c, true)
+		a.review(c, book, "Review by "+name, false)
 		visibility := map[string]string{"insider": "shared", "former": "private"}[name]
 		_, col, _ := a.call(c, http.MethodPost, "/collections", map[string]any{"name": "Shelf of " + name, "visibility": visibility})
 		a.call(c, http.MethodPost, "/collections/"+col["id"].(string)+"/books", map[string]any{"books": []string{book}})
@@ -447,6 +462,11 @@ func everyReadRouteKeeps(t *testing.T, byRating bool) {
 			t.Fatal(err)
 		}
 		owned[name+"Import"] = imp
+		if status, out, _ := a.call(c, http.MethodPost, "/books/"+book+"/annotations", map[string]any{
+			"kind": "cfi", "locator": "epubcfi(/6/4!/4/2/1:0)", "passage": "A highlighted passage of " + name, "note": "Mine",
+		}); status != 201 {
+			t.Fatalf("highlighting: %d %v", status, out)
+		}
 	}
 
 	if err := db.InTx(ctx, a.pool, func(tx pgx.Tx) error {

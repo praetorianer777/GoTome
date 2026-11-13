@@ -4,6 +4,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/praetorianer777/gotome/backend/internal/httpapi"
 )
@@ -453,6 +455,12 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 	exactly("koboDeals", http.MethodGet, "/v1/deals", nil, "{}")
 	exactly("koboAnalyticsTests", http.MethodPost, "/v1/analytics/gettests", map[string]any{}, "{}")
 	exactly("koboAnalyticsEvent", http.MethodPost, "/v1/analytics/event", map[string]any{"Events": []any{map[string]any{"EventType": "OpenContent"}}}, "{}")
+	const none = `{"Items":[],"TotalPageCount":0,"PageIndex":0,"PageSize":0}`
+	exactly("koboFeatured", http.MethodGet, "/v1/products/featured", nil, none)
+	exactly("koboFeaturedSlash", http.MethodGet, "/v1/products/featured/", nil, none)
+	exactly("koboFeaturedList", http.MethodGet, "/v1/products/featured/some-list", nil, none)
+	exactly("koboNextRead", http.MethodGet, "/v1/products/"+emma+"/nextread", nil, none)
+	exactly("koboAffiliate", http.MethodGet, "/v1/affiliate", nil, "{}")
 	for id, path := range map[string]string{"koboAuthDevice": "/v1/auth/device", "koboAuthRefresh": "/v1/auth/refresh"} {
 		var tokens struct{ AccessToken, RefreshToken, TokenType, TrackingID, UserKey string }
 		if err := json.Unmarshal(call(id, http.MethodPost, path, map[string]any{"UserKey": "kobo-user-key"}, 200), &tokens); err != nil ||
@@ -489,5 +497,122 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 		if strings.HasPrefix(rt.Path, "/kobo/") && !called[rt.ID] {
 			t.Errorf("%s %s is not called here", rt.Method, rt.Path)
 		}
+	}
+}
+
+// A state as a Kobo reader sends it, with the fields the firmware adds
+// (values invented).
+func koboStateBody(book string, percent float64, spent int, modified string) map[string]any {
+	return map[string]any{"ReadingStates": []map[string]any{{
+		"EntitlementId": book, "Created": modified, "LastModified": modified, "PriorityTimestamp": modified,
+		"StatusInfo": map[string]any{"LastModified": modified, "Status": "Reading", "TimesStartedReading": 1},
+		"Statistics": map[string]any{"LastModified": modified, "SpentReadingMinutes": spent, "RemainingTimeMinutes": 300},
+		"CurrentBookmark": map[string]any{
+			"LastModified": modified, "ProgressPercent": percent, "ContentSourceProgressPercent": percent / 2,
+			"Location": map[string]any{"Value": "kobo.3.1", "Type": "KoboSpan", "Source": "OEBPS/chapter3.xhtml"},
+		},
+	}}}
+}
+
+func TestAKoboReadersReadingTimeIsCountedOnceInTheStatistics(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, readerID := a.signedIn("reader", "reader")
+	lib := a.library(admin, "Shelf", "shared")
+	path := filepath.Join(t.TempDir(), "Emma.epub")
+	writeEPUB(t, path, emmaMetadata, nil, "Chapter one of Emma.")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, up := a.upload(admin, lib, "Emma.epub", content)
+	if status != 200 {
+		t.Fatalf("upload: %d %v", status, up)
+	}
+	emma := up["bookId"].(string)
+	if _, err := a.pool.Exec(context.Background(), `UPDATE books SET page_count = 400 WHERE id = $1`, emma); err != nil {
+		t.Fatal(err)
+	}
+	_, made, _ := a.call(reader, http.MethodPost, "/auth/devices", map[string]any{"name": "Kobo"})
+	device := made["device"].(map[string]any)["id"].(string)
+	token := made["token"].(string)
+	if status, out, _ := a.call(reader, http.MethodPost, "/devices/"+device+"/books", map[string]any{"books": []string{emma}}); status != 200 {
+		t.Fatalf("send: %d %v", status, out)
+	}
+	if status, raw, _ := a.kobo(token, http.MethodGet, "/v1/library/sync", "", nil); status != 200 {
+		t.Fatalf("sync: %d %s", status, raw)
+	}
+	put := func(percent float64, spent int, at time.Time) {
+		t.Helper()
+		status, raw, _ := a.kobo(token, http.MethodPut, "/v1/library/"+emma+"/state", "", koboStateBody(emma, percent, spent, at.UTC().Format("2006-01-02T15:04:05Z")))
+		if status != 200 {
+			t.Fatalf("put state: %d %s", status, raw)
+		}
+	}
+	type sessionRow struct {
+		Seconds    float64
+		From, To   float64
+		EndedHours float64
+	}
+	sessions := func() []sessionRow {
+		t.Helper()
+		rows, err := a.pool.Query(context.Background(), `SELECT extract(epoch FROM ended_at - started_at)::float8, from_fraction, to_fraction,
+			extract(epoch FROM now() - ended_at)::float8 / 3600 FROM reading_sessions WHERE user_id = $1 AND client_id LIKE 'kobo:%' ORDER BY started_at`, readerID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out []sessionRow
+		for rows.Next() {
+			var r sessionRow
+			if err := rows.Scan(&r.Seconds, &r.From, &r.To, &r.EndedHours); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, r)
+		}
+		return out
+	}
+
+	now := time.Now()
+	put(10, 25, now.Add(-2*time.Hour))
+	put(10, 25, now.Add(-2*time.Hour)) // sent again: the same minutes
+	got := sessions()
+	if len(got) != 1 || got[0].Seconds != 25*60 || got[0].From != 0 || got[0].To != 0.1 || got[0].EndedHours < 1.9 || got[0].EndedHours > 2.1 {
+		t.Fatalf("after the first report: %+v", got)
+	}
+	put(30, 40, now.Add(-time.Hour))
+	got = sessions()
+	if len(got) != 2 || got[1].Seconds != 15*60 || got[1].From != 0.1 || got[1].To != 0.3 {
+		t.Fatalf("after the second: %+v", got)
+	}
+	put(30, 40, now.Add(-time.Hour))
+	if got = sessions(); len(got) != 2 {
+		t.Fatalf("a repeated report made a session: %+v", got)
+	}
+	put(35, 5, now) // the reader was reset: its count starts over, no time to add
+	put(35, 8, now)
+	if got = sessions(); len(got) != 4 || got[2].Seconds != 3*60 || got[3].Seconds > 5 {
+		t.Fatalf("after a reset: %+v", got)
+	}
+
+	status, stats, _ := a.call(reader, http.MethodGet, "/me/stats?days=7&tz=UTC", nil)
+	if status != 200 {
+		t.Fatalf("stats: %d %v", status, stats)
+	}
+	if stats["totalReadingMinutes"].(float64) != 43 {
+		t.Errorf("reading minutes %v, want 43", stats["totalReadingMinutes"])
+	}
+	if pages := stats["totalPages"].(float64); pages < 139 || pages > 141 {
+		t.Errorf("pages %v, want 140 (35%% of 400)", pages)
+	}
+
+	// An analytics event is taken and counts for nothing.
+	if status, _, _ := a.kobo(token, http.MethodPost, "/v1/analytics/event", "", map[string]any{
+		"Events": []any{map[string]any{"EventType": "LeaveContent", "Metrics": map[string]any{"SecondsRead": 600}}}}); status != 200 {
+		t.Errorf("analytics event: %d", status)
+	}
+	if got = sessions(); len(got) != 4 {
+		t.Errorf("an analytics event made a session: %+v", got)
 	}
 }

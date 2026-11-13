@@ -1077,6 +1077,22 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `catalog.Book.Reading` and the summaries' `Status` and `Rating` are the
   viewer's.
 
+## Shared reviews
+
+- `internal/reviews` (#427) is the one way anything of `user_books` or a
+  person's words reaches another person, and only by their choice:
+  `users.share_reviews` (off by default, `PUT /me/sharing`) and a
+  `book_reviews` row (`PUT /books/{id}/review`, apart from the private
+  `book_notes`) that is not `private`. Nothing is copied: every read
+  (`GET /books/{id}/reviews`, `GET /people/{username}/reviews`) joins the
+  sharers and `visible_library_ids` of the viewer each time, so turning
+  sharing off, disabling an account or losing a library takes effect at
+  once, and an account's deletion cascades. The mean counts the stars of
+  sharers (active accounts) who did not mark their review of the book
+  private. A person's page is 404 for one who shares nothing with the
+  viewer, as for a name nobody has. `book_reviews` is in `curation.Tables`
+  and `MergeBookReviews`.
+
 ## Reading progress
 
 - `internal/reading` keeps where each person is in a book, once per medium
@@ -1322,6 +1338,37 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - `GET /releases` (`when=upcoming|recent`) lists the books of what the
   caller follows, each once, with `inLibrary` for the libraries they see;
   `TestAReleaseIsInTheLibraryOnlyWhereItIsSeen` is its visibility proof.
+
+## Discover
+
+- `internal/discover` (#393) offers a person books beyond the libraries, from
+  their taste, off unless the setting `recommendations.discover` is `on`
+  and never offline (`GET /me/discover` says `off` or `offline`, with a sentence
+  on the page). `plan` reads the person's best 300 books (`similar.DefaultTaste`
+  weights): the series they read (`ListDiscoverSeries`: where they stand, the
+  places the libraries hold, `catalog.Gaps`), the authors whose best book
+  weighs 0.4 or more and the three most read genres (`subjectOf` words them for
+  the providers). Providers are asked only through `metadata.Service`
+  (`WorksOf`, and `SubjectsOf` over the optional `metadata.Subjects`, which
+  Open Library implements with `/subjects/{name}.json`) and see no more than
+  those names; what following (`releases`) learned in the last two days is
+  used without asking.
+- A run per person (`discover_runs`, `discover_asks` so that a pass cut off
+  goes on and an ask is made once) is worked by the job
+  `recommendations.discover` (queue `metadata`, hourly: it starts the run of
+  whoever asked on the page or has none younger than a day; `Run` is bounded by
+  the deadline and `AsksPerPass`, then snoozes). Results are
+  `discover_candidates`, derived and in `derived` of `deploy/backup.sh`;
+  `discover_dismissals` are the person's. Every candidate is filtered by
+  `ListDiscoverHeld`, at a run and again at each list: held by a library the
+  person sees (ISBN, or title key with an author in either order and as a
+  person), wished, read, dismissed here or among the recommendations. A library
+  they cannot see counts for nothing and shows in nothing.
+- Score is the reason's signal (next volume 0.6, gap 0.35, later volume 0.2,
+  author 0.5 times the weight of their best book, genre 0.15 to 0.3) plus 0.4
+  times the cosine to the taste profile (`similar.Service.Profile` and
+  `Resemble`: the nearest centre, and the two books it is "like").
+  "Add to wishlist" posts the item's `wish` to `POST /books/wishes`.
 
 ## Embeddings
 

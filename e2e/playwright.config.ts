@@ -38,6 +38,10 @@ export default defineConfig({
 				},
 			],
 		},
+		// The app's service worker (offline copies) answers navigations and
+		// assets itself, which page.route and a navigation's abort then fight
+		// with; only offline.spec.ts asks for it.
+		serviceWorkers: "block",
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 		actionTimeout: 5_000,

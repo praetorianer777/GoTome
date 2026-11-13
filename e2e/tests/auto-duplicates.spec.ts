@@ -87,7 +87,7 @@ test("the duplicates page offers a dry run per class, and the dry run shows unde
 	await expect(run).toContainText("Dry run");
 	await expect(run).toContainText("Planned, not done", { timeout: 60_000 });
 	await expect(
-		run.getByRole("button", { name: /^Undo the run of/ }),
+		run.getByRole("button", { name: /^Undo run of/ }),
 	).toHaveCount(0);
 	const actions = run
 		.getByRole("list", { name: "Changes of the run" })

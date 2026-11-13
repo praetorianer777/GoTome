@@ -74,6 +74,17 @@ type Update struct {
 	BasedOn *time.Time
 	// Force writes even over a further position another client wrote.
 	Force bool
+	// Span is a stretch of reading the client counted itself. It is
+	// recorded as the session, in place of one made from the writes.
+	Span *Span
+	// Quiet records no session for a position that has not moved: the
+	// client's own count says nothing was read.
+	Quiet bool
+}
+
+// Span is when a client says the person read, up to this position.
+type Span struct {
+	Start, End time.Time
 }
 
 func (u Update) check() error {
@@ -188,6 +199,23 @@ func (s *Service) Save(ctx context.Context, scope library.Scope, bookID uuid.UUI
 		}
 		out, saved = progressOf(row), true
 
+		if u.Quiet && found && before.Fraction == u.Fraction {
+			return s.follow(ctx, tx, scope, bookID, u, found && before.Fraction >= End)
+		}
+		if u.Span != nil {
+			from := 0.0
+			if found {
+				from = min(before.Fraction, u.Fraction)
+			}
+			err := q.InsertSessionAt(ctx, sqlc.InsertSessionAtParams{
+				UserID: scope.Viewer, BookID: bookID, Medium: u.Medium, ClientID: u.ClientID,
+				StartedAt: u.Span.Start, EndedAt: u.Span.End, FromFraction: from, ToFraction: u.Fraction,
+			})
+			if err != nil {
+				return err
+			}
+			return s.follow(ctx, tx, scope, bookID, u, found && before.Fraction >= End)
+		}
 		extended, err := q.ExtendSession(ctx, sqlc.ExtendSessionParams{
 			Fraction: u.Fraction, UserID: scope.Viewer, BookID: bookID, Medium: u.Medium,
 			ClientID: u.ClientID, GapSeconds: sessionGap.Seconds(),

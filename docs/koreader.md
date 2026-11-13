@@ -77,6 +77,26 @@ and leaves the queue once downloaded; one whose download broke off is
 tried again the next time. KOReader's file browser shows the new books at
 once.
 
+### Highlights and notes
+
+The plugin also sends the highlights and notes of the book being read, so
+that they are in your library as well as on the device
+([highlights.md](highlights.md)). **Send this book's highlights now**
+(in the same menu, with a book open) does it at once; **Send highlights
+when a book is closed** (on by default) does it whenever a book is closed
+while Wi-Fi is on, and again when Wi-Fi comes up with a book open. It
+reads KOReader's own record of them: the `annotations` list of the book's
+sidecar (`metadata.epub.lua` in the book's `.sdr` folder) and, for the
+older versions of KOReader, its `highlight` and `bookmarks` tables.
+
+Every send is the book's whole set, which is how GOtome learns of a
+highlight deleted on the device: the same highlight sent again changes
+nothing, a changed note follows, and one no longer there is removed. A
+book is named by the same checksum as the progress sync, so a book GOtome
+does not know, or of a library you do not see, is left out. Highlights
+made in GOtome, or by another device, are not touched by a send. A note
+or colour you change in GOtome stays when the device sends again.
+
 The token is kept in KOReader's settings on the device
 (`settings/gotome.lua`), as KOReader keeps its other accounts.
 

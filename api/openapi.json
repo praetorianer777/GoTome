@@ -12,6 +12,9 @@
   ],
   "tags": [
     {
+      "name": "annotations"
+    },
+    {
       "name": "auth"
     },
     {
@@ -58,6 +61,299 @@
     }
   ],
   "paths": {
+    "/annotations": {
+      "get": {
+        "operationId": "listAnnotations",
+        "summary": "The caller's highlights and notes in books they see, newest first, searchable",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "The next cursor of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "How many to return, at most 200; 50 when left out.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/export.csv": {
+      "get": {
+        "operationId": "exportAnnotationsCsv",
+        "summary": "The caller's highlights and notes as a CSV file",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/export.md": {
+      "get": {
+        "operationId": "exportAnnotationsMarkdown",
+        "summary": "The caller's highlights and notes as a Markdown document, grouped by book",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Words that must each occur in the passage, the note, the title or an author.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "book",
+            "in": "query",
+            "description": "Only the annotations of this book.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/annotations/{annotationId}": {
+      "delete": {
+        "operationId": "deleteAnnotation",
+        "summary": "Delete one of the caller's highlights",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "annotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "patch": {
+        "operationId": "changeAnnotation",
+        "summary": "Change the note or the colour of one of the caller's highlights",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "annotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/auth/api-keys": {
       "get": {
         "operationId": "listOwnAPIKeys",
@@ -1714,6 +2010,66 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/books/{bookId}/annotations": {
+      "post": {
+        "operationId": "createAnnotation",
+        "summary": "Keep a highlight made in a reader, with an optional note",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/books/{bookId}/audio": {
       "get": {
         "operationId": "getAudio",
@@ -2605,6 +2961,109 @@
           }
         ],
         "x-permission": "personal:manage"
+      }
+    },
+    "/books/{bookId}/review": {
+      "put": {
+        "operationId": "setReview",
+        "summary": "Write the caller's review of a book, shared with others if they share and it is not private; empty removes it",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/books/{bookId}/reviews": {
+      "get": {
+        "operationId": "listBookReviews",
+        "summary": "The reviews others share on a book, the mean of the stars they share and the caller's own review",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "bookId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookReviews"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
       }
     },
     "/books/{bookId}/similar": {
@@ -4199,6 +4658,66 @@
           }
         ],
         "x-permission": "signed-in"
+      }
+    },
+    "/device/annotations/{document}": {
+      "put": {
+        "operationId": "putDeviceAnnotations",
+        "summary": "A device sends all its highlights and notes of a book, named by its KOReader MD5; those it no longer sends are removed",
+        "tags": [
+          "annotations"
+        ],
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAnnotations"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAnnotationsSaved"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
       }
     },
     "/device/books": {
@@ -6048,6 +6567,49 @@
         "x-permission": "library:read"
       }
     },
+    "/kobo/{token}/v1/affiliate": {
+      "get": {
+        "operationId": "koboAffiliate",
+        "summary": "The affiliate a Kobo reader asks the store for: none",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
     "/kobo/{token}/v1/analytics/event": {
       "post": {
         "operationId": "koboAnalyticsEvent",
@@ -6623,6 +7185,194 @@
           }
         ],
         "x-permission": "personal:manage"
+      }
+    },
+    "/kobo/{token}/v1/products/featured": {
+      "get": {
+        "operationId": "koboFeatured",
+        "summary": "The store's featured lists: none",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/featured/": {
+      "get": {
+        "operationId": "koboFeaturedSlash",
+        "summary": "The same, as the reader writes the address",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/featured/{listId}": {
+      "get": {
+        "operationId": "koboFeaturedList",
+        "summary": "One of the store's featured lists: empty",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "listId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/kobo/{token}/v1/products/{productId}/nextread": {
+      "get": {
+        "operationId": "koboNextRead",
+        "summary": "What the store suggests reading next: nothing",
+        "tags": [
+          "kobo"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
       }
     },
     "/kobo/{token}/v1/user/loyalty/benefits": {
@@ -7977,6 +8727,122 @@
         "x-permission": "metadata:edit"
       }
     },
+    "/me/discover": {
+      "get": {
+        "operationId": "listDiscover",
+        "summary": "Books beyond the libraries that the caller's taste points to: other works of authors they rated, next volumes of series they read, books of their genres; each with why",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/run": {
+      "post": {
+        "operationId": "requestDiscover",
+        "summary": "Ask for the caller's discovery to be worked out now",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/{candidateId}/dismiss": {
+      "post": {
+        "operationId": "dismissDiscovered",
+        "summary": "Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "candidateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/me/kindle": {
       "get": {
         "operationId": "getKindle",
@@ -8614,6 +9480,94 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/sharing": {
+      "get": {
+        "operationId": "getSharing",
+        "summary": "Whether the caller shares their ratings and reviews with others on the server",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sharing"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "put": {
+        "operationId": "putSharing",
+        "summary": "Share the caller's ratings and reviews with others on the server, or stop at once",
+        "tags": [
+          "books"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Sharing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sharing"
+                }
+              }
+            }
           },
           "default": {
             "description": "The request failed.",
@@ -9773,6 +10727,56 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "library:read"
+      }
+    },
+    "/people/{username}/reviews": {
+      "get": {
+        "operationId": "listPersonReviews",
+        "summary": "The reviews a person shares on books the caller may see; 404 for a person who shares none, or who does not exist",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonReviews"
                 }
               }
             }
@@ -12013,6 +13017,185 @@
           "wrong"
         ]
       },
+      "AnnotationChange": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "AnnotationCreate": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "locator",
+          "passage"
+        ]
+      },
+      "AnnotationList": {
+        "type": "object",
+        "properties": {
+          "annotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationView"
+            }
+          },
+          "next": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "annotations"
+        ]
+      },
+      "AnnotationRect": {
+        "type": "object",
+        "properties": {
+          "h": {
+            "type": "number"
+          },
+          "w": {
+            "type": "number"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ]
+      },
+      "AnnotationView": {
+        "type": "object",
+        "properties": {
+          "bookAuthors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookTitle": {
+            "type": "string"
+          },
+          "chapter": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "bookId",
+          "kind",
+          "locator",
+          "passage",
+          "color",
+          "clientId",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "ApiKeyList": {
         "type": "object",
         "properties": {
@@ -12674,6 +13857,31 @@
           "id",
           "title",
           "narrators"
+        ]
+      },
+      "BookReviews": {
+        "type": "object",
+        "properties": {
+          "average": {
+            "type": "number"
+          },
+          "mine": {
+            "$ref": "#/components/schemas/OwnReview"
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedReview"
+            }
+          },
+          "stars": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stars",
+          "average",
+          "reviews"
         ]
       },
       "BookSummary": {
@@ -14561,6 +15769,92 @@
           "books"
         ]
       },
+      "DeviceAnnotation": {
+        "type": "object",
+        "properties": {
+          "chapter": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "fraction": {
+            "type": "number"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "locator": {
+            "type": "string"
+          },
+          "locatorEnd": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "passage": {
+            "type": "string"
+          },
+          "rects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnotationRect"
+            }
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "locator",
+          "passage"
+        ]
+      },
+      "DeviceAnnotations": {
+        "type": "object",
+        "properties": {
+          "annotations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceAnnotation"
+            }
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "annotations"
+        ]
+      },
+      "DeviceAnnotationsSaved": {
+        "type": "object",
+        "properties": {
+          "kept": {
+            "type": "integer"
+          },
+          "removed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kept",
+          "removed"
+        ]
+      },
       "DeviceAnswer": {
         "type": "object",
         "properties": {
@@ -14861,6 +16155,104 @@
           "createdAt",
           "canUpload",
           "kepub"
+        ]
+      },
+      "DiscoverItem": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/DiscoverReason"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "wish": {
+            "$ref": "#/components/schemas/WishRequest"
+          },
+          "year": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "authors",
+          "provider",
+          "reason",
+          "wish"
+        ]
+      },
+      "DiscoverList": {
+        "type": "object",
+        "properties": {
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverItem"
+            }
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "items"
+        ]
+      },
+      "DiscoverReason": {
+        "type": "object",
+        "properties": {
+          "because": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "stars",
+          "because"
         ]
       },
       "Disk": {
@@ -16249,6 +17641,34 @@
           "EntitlementId": {
             "type": "string"
           },
+          "Statistics": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "LastModified": {
+                "type": "string"
+              },
+              "RemainingTimeMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "SpentReadingMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "LastModified",
+              "SpentReadingMinutes",
+              "RemainingTimeMinutes"
+            ]
+          },
           "StatusInfo": {
             "type": [
               "object",
@@ -16267,7 +17687,8 @@
         "required": [
           "EntitlementId",
           "CurrentBookmark",
-          "StatusInfo"
+          "StatusInfo",
+          "Statistics"
         ]
       },
       "KoboStateResult": {
@@ -17269,6 +18690,26 @@
           "runId"
         ]
       },
+      "OwnReview": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "body",
+          "private",
+          "updatedAt"
+        ]
+      },
       "PairFormats": {
         "type": "object",
         "properties": {
@@ -17327,6 +18768,57 @@
           "withText",
           "withPassages",
           "bytes"
+        ]
+      },
+      "PersonReview": {
+        "type": "object",
+        "properties": {
+          "authorSort": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "authorSort",
+          "stars",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "PersonReviews": {
+        "type": "object",
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonReview"
+            }
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "reviews"
         ]
       },
       "PlaceholderJoin": {
@@ -18135,6 +19627,21 @@
           "total"
         ]
       },
+      "ReviewRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "private": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "body",
+          "private"
+        ]
+      },
       "RunStatus": {
         "type": "object",
         "properties": {
@@ -18701,6 +20208,41 @@
         },
         "required": [
           "needed"
+        ]
+      },
+      "SharedReview": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "author",
+          "stars",
+          "body",
+          "updatedAt"
+        ]
+      },
+      "Sharing": {
+        "type": "object",
+        "properties": {
+          "shareReviews": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "shareReviews"
         ]
       },
       "SignInMethods": {

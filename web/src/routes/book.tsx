@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import {
@@ -14,7 +14,6 @@ import { ContinueOffers } from "@/books/continue-offer";
 import { EReaderFindings, useConvertFile } from "@/books/ereader";
 import { SendToDevice } from "@/books/deliveries";
 import { SendToKindle } from "@/books/kindle";
-import { JoinedNotice, JoinToLibraryBook } from "@/books/join-placeholder";
 import { ReadingControls } from "@/books/reading-controls";
 import { SimilarBooks } from "@/books/similar";
 import { Around, MARK, PeopleLinks, SeriesLink } from "@/books/name-links";
@@ -33,6 +32,27 @@ import { librariesQuery } from "@/libraries/api";
 import { useTrashFile } from "@/trash/api";
 import { type MessageKey, t } from "@/i18n";
 import { formatDuration, formatLanguage, formatSize } from "@/lib/format";
+
+// Below the fold, and not wanted on every visit: they load after the page,
+// which keeps them out of the first load (scripts/budget.mjs).
+const BookReviews = lazy(() =>
+	import("@/reviews/reviews").then((m) => ({ default: m.BookReviews })),
+);
+const KeepFileButton = lazy(() =>
+	import("@/offline/keep-button").then((m) => ({ default: m.KeepFileButton })),
+);
+const KeepAudioButton = lazy(() =>
+	import("@/offline/keep-button").then((m) => ({ default: m.KeepAudioButton })),
+);
+const JoinToLibraryBook = lazy(() =>
+	import("@/books/join-placeholder").then((m) => ({ default: m.JoinToLibraryBook })),
+);
+const JoinedNotice = lazy(() =>
+	import("@/books/join-placeholder").then((m) => ({ default: m.JoinedNotice })),
+);
+const HighlightsSection = lazy(() =>
+	import("@/books/highlights-section").then((m) => ({ default: m.HighlightsSection })),
+);
 
 const ROLES: Record<string, MessageKey> = {
 	translator: "credit.translator",
@@ -242,8 +262,10 @@ function BookPage({ book }: { book: BookDetail }) {
 						</p>
 					)}
 
-					{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
-					{personal && <JoinedNotice book={book.id} />}
+					<Suspense fallback={null}>
+						{personal && book.placeholder && <JoinToLibraryBook placeholder={book.id} />}
+						{personal && <JoinedNotice book={book.id} />}
+					</Suspense>
 
 					{personal && <ReadingControls book={book} />}
 
@@ -280,7 +302,7 @@ function BookPage({ book }: { book: BookDetail }) {
 
 			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
 				<div className="flex min-w-0 flex-col gap-6">
-					<Files bookId={book.id} libraryId={book.libraryId} files={book.files} />
+					<Files book={book} />
 					{personal && <CollectionPicker bookId={book.id} />}
 					{personal &&
 						book.files.some((f) => f.kind === "ebook" && !f.missing) && (
@@ -379,6 +401,11 @@ function BookPage({ book }: { book: BookDetail }) {
 				<Joins joins={book.joins} canSplit={can(user, "metadata:edit")} />
 			)}
 
+			<Suspense fallback={null}>
+				<BookReviews bookId={book.id} personal={personal} />
+				{personal && <HighlightsSection bookId={book.id} />}
+			</Suspense>
+
 			<SimilarBooks bookId={book.id} />
 		</article>
 	);
@@ -429,15 +456,8 @@ function fileNotes(file: BookFile): string[] {
 /** The formats GOtome writes an EPUB from. */
 const KINDLE_FORMATS = ["mobi", "azw", "azw3"];
 
-function Files({
-	bookId,
-	libraryId,
-	files,
-}: {
-	bookId: string;
-	libraryId: string;
-	files: BookFile[];
-}) {
+function Files({ book }: { book: BookDetail }) {
+	const { id: bookId, libraryId, files } = book;
 	const { user } = useRouteContext({ from: "/app" });
 	const reread = useRereadFile();
 	const canReread = can(user, "index:rebuild");
@@ -530,6 +550,9 @@ function Files({
 								{t("book.file.trash")}
 							</button>
 						)}
+						<Suspense fallback={null}>
+							<KeepFileButton book={book} file={file} />
+						</Suspense>
 						{!file.missing && (
 							<a
 								href={downloadUrl(file)}
@@ -543,6 +566,11 @@ function Files({
 					</li>
 				))}
 			</ul>
+			<div className="flex">
+				<Suspense fallback={null}>
+					<KeepAudioButton book={book} />
+				</Suspense>
+			</div>
 			<FormError error={reread.error ?? trash.error ?? convert.error} />
 			{canReread && files.some((f) => f.hasText) && (
 				<RereadText target={{ book: bookId }} label={t("searchIndex.rereadBook")} />

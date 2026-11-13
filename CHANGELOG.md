@@ -8,6 +8,39 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Added
 
+- Reading on a Kobo reader, or a Tolino in Kobo mode, counts in the reading
+  statistics: the minutes the reader reports for a book become reading
+  sessions, each once however often they are sent, and the pages follow
+  from the places. The reader's store addresses for featured lists, what to
+  read next and the affiliate answer with nothing instead of an error
+  ([Tolino in Kobo mode](docs/tolino-kobo-mode.md)).
+- Share your ratings and reviews with others on the server: switch on
+  "Share my ratings and reviews with others on this server" on your profile
+  (off until you do), write a review on a book's page and keep any of them
+  private. A book's page then shows the shared reviews and the mean of the
+  shared stars, and a person's reviews have a page of their own. Others see
+  only reviews of books they can see; turning sharing off hides them at
+  once ([people, roles and libraries](docs/users-and-libraries.md#sharing-ratings-and-reviews)).
+- GOtome installs as an app on Android, iPhone and desktop browsers and opens
+  without a connection. "Keep offline" on a book stores its ebook, PDF or
+  audio files in the browser; the readers and the player open them with no
+  network, the profile lists what is kept and its size and removes it, and
+  places read offline are sent when the connection is back. Signing out
+  clears all of it. See `docs/offline.md`.
+- Highlights and notes. Select text in the EPUB, MOBI or PDF reader to
+  highlight it in a colour and add a note; the reader draws and lists them.
+  A new page, Highlights, lists all of yours across the books you see,
+  searchable, and a book's page lists its own; both export as Markdown and
+  CSV. They are yours alone. The KOReader plugin sends a book's highlights
+  and notes from the device, again when they change, and a deleted one is
+  removed ([highlights](docs/highlights.md), [KOReader](docs/koreader.md)).
+- Discover: books beyond your libraries from your taste, with a reason each
+  and "Add to wishlist" or "Not interested" in one tap: other works of the
+  authors you rated highly, the next volumes and gaps of the series you read,
+  and books of the genres you read most. Off until an administrator turns it
+  on (**Discover books beyond the libraries**); the metadata sources are then
+  asked for those authors, series and genres, never for you or your library,
+  and not at all in offline mode ([Discover](docs/discover.md)).
 - Rename and sort a library's files by their books' details: under Libraries,
   a library's "Organise files" section holds a pattern (by default
   `{author}/[{series}/][{series_index} - ]{title}.{ext}`), a preview of what
@@ -31,6 +64,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Fixed
 
+- A Kobo reader that drops the port from its requests (firmware 6.0 does) no
+  longer gets download and cover addresses on port 80 from a server reached at
+  another port: when `GOTOME_PUBLIC_URLS` names an address with a port for the
+  host the reader used, that port is kept.
 - The section links of the settings page and "Skip to the content" stay on
   the page instead of opening the library.
 

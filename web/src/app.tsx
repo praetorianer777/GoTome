@@ -8,13 +8,18 @@ import { makeRouter } from "@/router";
 export function makeQueryClient() {
 	return new QueryClient({
 		defaultOptions: {
+			// Offline, a query still asks: the answer may be a copy kept for a
+			// book kept offline (offline/fetch.ts).
 			queries: {
+				networkMode: "offlineFirst",
 				// A refusal will be the same refusal a moment later; only failures
 				// that may pass, such as a server restarting, are worth another try.
 				retry: (failures, error) =>
 					failures < 2 && !(error instanceof ApiError && error.status < 500),
 				staleTime: 30_000,
 			},
+			// A position written offline is queued by the mutation itself.
+			mutations: { networkMode: "always" },
 		},
 	});
 }

@@ -43,6 +43,30 @@ Each person's profile has their password, their sessions (to end one on a
 lost device), their e-readers, their notifications and, with single
 sign-on, the account at the identity provider linked to theirs.
 
+## Sharing ratings and reviews
+
+Your stars, status and private note are yours alone. A book page also has a
+**Your review**, which is a different thing: it can be shared. On your
+profile, **Share my ratings and reviews with others on this server** is off
+until you turn it on. Once it is on, others on the server see, on a book
+they can see too:
+
+- the reviews you wrote, with the stars you gave the book;
+- the mean of everyone's shared stars and how many gave them.
+
+Tick **Keep this review private** on a review to keep it, and its stars,
+from others even while you share; the average then leaves them out too.
+Your reviews are listed on a page of their own (**Reviews by** your name,
+reached from a review), which says "This person shares no reviews with you"
+for anyone who shares none, whether or not that account exists.
+
+A review follows the libraries each reader sees, not yours: someone who
+cannot see a book in a private library never sees a review of it, nor
+counts it in an average, and your own page lists only the books the visitor
+may see. Turning sharing off hides everything at once; a disabled account
+shares nothing; and deleting an account deletes its reviews. When two books
+are merged, so are their reviews (and a review stays private if either was).
+
 ## Age ratings
 
 For families and shared servers, some accounts may see only suitable books.

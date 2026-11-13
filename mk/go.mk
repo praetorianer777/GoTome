@@ -96,4 +96,4 @@ contract-test: | $(GO_CACHE) go-toolchain ## Ask the live metadata providers whe
 
 .PHONY: test-koplugin
 test-koplugin: | $(GO_CACHE) go-toolchain ## Run the KOReader plugin's tests in LuaJIT, as KOReader runs it
-	$(DOCKER_GO) sh -c 'cd internal/koplugin && luajit testdata/feed_test.lua'
+	$(DOCKER_GO) sh -c 'cd internal/koplugin && luajit testdata/feed_test.lua && luajit testdata/annotations_test.lua'

@@ -1,4 +1,5 @@
-import { expect, type Page } from "@playwright/test";
+import { type Browser, expect, type Page, test } from "@playwright/test";
+import { makeAccount, signedIn } from "./accounts";
 import { libraryOfBooks } from "./app";
 import { makeEpub } from "./ebooks";
 import { editBook, newLibrary, uploadEpub } from "./library";
@@ -13,8 +14,10 @@ export const VIEWS: { path: string; heading: string }[] = [
 	{ path: "/collections", heading: "Collections" },
 	{ path: "/wishlist", heading: "Wishlist" },
 	{ path: "/recommendations", heading: "For you" },
+	{ path: "/discover", heading: "Discover" },
 	{ path: "/releases", heading: "New books" },
 	{ path: "/stats", heading: "Your reading" },
+	{ path: "/highlights", heading: "Highlights" },
 	{ path: "/overview", heading: "Overview" },
 	{ path: "/jobs", heading: "Background jobs" },
 	{ path: "/trash", heading: "Trash" },
@@ -52,6 +55,42 @@ export async function seeded(page: Page, stamp: string) {
 		{ data: { status: "completed", rating: 5 } },
 	);
 	expect(reading.status()).toBe(200);
+	// A review too long for the column, shared, so that the book's page and a
+	// person's page list it. Its writer is an account of its own: the views
+	// run in parallel on one stack, and the administrator's choice to share
+	// would be switched off by whichever of them finished first.
+	const writer = await makeAccount(page.request, "reader", `layout-${stamp}`);
+	const writing = await signedIn(
+		page.context().browser() as Browser,
+		test.info(),
+		writer,
+	);
+	expect(
+		(await writing.page.request.put("/api/v1/me/sharing", { data: { shareReviews: true } })).ok(),
+	).toBe(true);
+	expect(
+		(
+			await writing.page.request.put(`/api/v1/books/${books[`Layout Three ${stamp}`]}/review`, {
+				data: { body: `${long} ${long}\n\nA second paragraph of the review.`, private: false },
+			})
+		).status(),
+	).toBe(204);
+	// A highlight whose passage and note are one long word each, on the book
+	// page and in the list of every highlight.
+	const unbroken = `Floccinaucinihilipilification${stamp.replaceAll(" ", "")}`.repeat(4);
+	const highlighted = await page.request.post(
+		`/api/v1/books/${books[`Layout One ${stamp}`]}/annotations`,
+		{
+			data: {
+				kind: "cfi",
+				locator: "epubcfi(/6/4!/4/2/1:0)",
+				passage: unbroken,
+				note: unbroken,
+				chapter: unbroken,
+			},
+		},
+	);
+	expect(highlighted.status()).toBe(201);
 	const epubLibrary = await newLibrary(page, `Layout reader ${stamp}`);
 	const epub = await uploadEpub(
 		page,
@@ -76,9 +115,15 @@ export async function seeded(page: Page, stamp: string) {
 			heading: `Layout Reader ${stamp}`,
 		},
 	];
+	views.push({
+		label: "a person's reviews",
+		path: `/people/${writer.username}`,
+		heading: `Reviews by ${writer.username}`,
+	});
 	return {
 		views,
 		cleanup: async () => {
+			await writing.context.close();
 			for (const library of [id, epubLibrary]) {
 				await page.request.delete(`/api/v1/libraries/${library}`, { timeout: 30_000 });
 			}

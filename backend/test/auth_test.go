@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
@@ -51,6 +52,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
+	"github.com/praetorianer777/gotome/backend/internal/reviews"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/secret"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
@@ -260,7 +262,9 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Kindle = kindle.NewService(a.pool, a.settings, a.server.Books, quiet)
 	a.server.Kindle.Queue = queue
 	a.server.Pairing = pairing.NewService(a.pool)
+	a.server.Reviews = reviews.NewService(a.pool)
 	a.server.Kobo = kobo.NewService(a.pool)
+	a.server.Annotations = annotations.NewService(a.pool)
 	a.server.Sync = kosync.NewService(a.pool, a.server.Reading, quiet)
 	a.server.Index = search.NewIndex(a.pool, quiet, textEngine)
 	a.server.Index.Queue = queue

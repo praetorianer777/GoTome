@@ -33,6 +33,7 @@ const isBookHolder = `-- name: IsBookHolder :one
 SELECT EXISTS (SELECT 1 FROM user_books x WHERE x.book_id = $1 AND x.user_id = $2)
     OR EXISTS (SELECT 1 FROM reading_progress x WHERE x.book_id = $1 AND x.user_id = $2)
     OR EXISTS (SELECT 1 FROM book_notes x WHERE x.book_id = $1 AND x.user_id = $2)
+    OR EXISTS (SELECT 1 FROM book_reviews x WHERE x.book_id = $1 AND x.user_id = $2)
     OR EXISTS (SELECT 1 FROM collection_items i JOIN collections c ON c.id = i.collection_id
                WHERE i.book_id = $1 AND c.owner_id = $2)
 `
@@ -76,6 +77,7 @@ WHERE u.id IN (
     SELECT x.user_id FROM user_books x WHERE x.book_id = $1
     UNION SELECT x.user_id FROM reading_progress x WHERE x.book_id = $1
     UNION SELECT x.user_id FROM book_notes x WHERE x.book_id = $1
+    UNION SELECT x.user_id FROM book_reviews x WHERE x.book_id = $1
     UNION SELECT c.owner_id FROM collection_items i JOIN collections c ON c.id = i.collection_id WHERE i.book_id = $1)
 ORDER BY u.id
 `

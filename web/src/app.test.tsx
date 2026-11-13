@@ -1,8 +1,9 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { leave } from "@/auth/sso";
 import type { BookDetail } from "@/books/api";
+import type { DiscoverItem, DiscoverList } from "@/discover/api";
 import { setLocale } from "@/i18n";
 import type { Job } from "@/jobs/api";
 import { FakeServer, renderApp } from "@/test/fake-server";
@@ -37,6 +38,14 @@ const ebook = vi.hoisted(() => ({
 	looks: [] as unknown[],
 	finds: [] as { word: string; passage: string }[],
 	marked: [] as (string | null)[],
+	drawn: [] as { cfi: string; color: string }[],
+	cleared: 0,
+	/** Whether the open reader has asked to hear of selections. */
+	listening: false,
+	/** Selects text in the open book, as the person would. */
+	select: (_selection: { cfi: string; text: string; fraction?: number; chapter?: string } | undefined) => {},
+	/** Taps a highlight in the open book. */
+	tap: (_cfi: string) => {},
 }));
 
 // The browser's voices: speaking a sentence ends it at once, and what was
@@ -163,6 +172,21 @@ vi.mock("@/reader/ebook", () => ({
 			goRight: () => turn(1),
 			prev: () => turn(-1),
 			next: () => turn(1),
+			onSelection: (listener: (s: unknown) => void) => {
+				ebook.select = listener;
+				ebook.listening = true;
+				return () => {};
+			},
+			clearSelection: () => {
+				ebook.cleared++;
+			},
+			setHighlights: (list: { cfi: string; color: string }[]) => {
+				ebook.drawn = list;
+			},
+			onHighlight: (listener: (cfi: string) => void) => {
+				ebook.tap = listener;
+				return () => {};
+			},
 			setLook: (look: unknown) => ebook.looks.push(look),
 			close: () => {},
 		};
@@ -179,6 +203,10 @@ beforeEach(() => {
 	ebook.looks.length = 0;
 	ebook.finds.length = 0;
 	ebook.marked.length = 0;
+	ebook.drawn = [];
+	ebook.cleared = 0;
+	ebook.listening = false;
+	ebook.select = () => {};
 	spoken.said.length = 0;
 	spoken.cancelled = 0;
 	vi.unstubAllGlobals();
@@ -5005,6 +5033,93 @@ describe("recommendations", () => {
 	});
 });
 
+describe("discover", () => {
+	const wish = (title: string) => ({ title, provider: "openlibrary" });
+	const item = (id: string, title: string, reason: DiscoverItem["reason"]): DiscoverItem => ({
+		id,
+		title,
+		authors: ["Ada Moss"],
+		year: 2021,
+		provider: "openlibrary",
+		reason,
+		wish: wish(title),
+	});
+	function discovered(state: DiscoverList["state"] = "ready") {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.discover = {
+			state,
+			finishedAt: "2026-11-10T08:00:00Z",
+			items: [
+				item("c-1", "The Lantern Four", { kind: "series_next", name: "Lantern Cycle", stars: 0, because: ["Emma"] }),
+				item("c-2", "Moss Again", { kind: "author", name: "Ada Moss", stars: 5, because: [] }),
+				item("c-3", "Fen Tale", { kind: "genre", name: "fantasy", stars: 0, because: ["Emma", "Persuasion"] }),
+			],
+		};
+	}
+
+	it("lists books by reason, each saying why", async () => {
+		discovered();
+		renderApp("/discover");
+		expect(await screen.findByRole("heading", { name: "Discover", level: 1 })).toBeInTheDocument();
+		const next = within(await screen.findByRole("region", { name: "Next in your series" }));
+		expect(next.getByText("The Lantern Four")).toBeInTheDocument();
+		expect(next.getByText("Next in Lantern Cycle")).toBeInTheDocument();
+		expect(next.getByText("Like Emma")).toBeInTheDocument();
+		const authors = within(screen.getByRole("region", { name: "By authors you rated" }));
+		expect(authors.getByText("By Ada Moss, whom you rated 5 stars")).toBeInTheDocument();
+		const genre = within(screen.getByRole("region", { name: "In genres you read" }));
+		expect(genre.getByText("In Fantasy, which you read a lot")).toBeInTheDocument();
+		expect(screen.getByText(/Last looked on/)).toBeInTheDocument();
+	});
+
+	it("wishes for a book with what the server sent, and the book leaves the page", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Add The Lantern Four to wishlist" }));
+		await waitFor(() => expect(screen.queryByText("The Lantern Four")).not.toBeInTheDocument());
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toEqual(wish("The Lantern Four"));
+		expect(screen.getByText("Moss Again")).toBeInTheDocument();
+	});
+
+	it("leaves a book out when the person is not interested", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Not interested in Moss Again" }));
+		await waitFor(() => expect(screen.queryByText("Moss Again")).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.path === "/me/discover/c-2/dismiss")).toBe(true);
+		expect(screen.getByText("Fen Tale")).toBeInTheDocument();
+	});
+
+	it("asks for a run the first time, and says it is under way", async () => {
+		const person = userEvent.setup();
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		renderApp("/discover");
+		await person.click(await screen.findByRole("button", { name: "Find books for me" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Looking for books");
+		expect(server.requests.some((r) => r.method === "POST" && r.path === "/me/discover/run")).toBe(true);
+	});
+
+	it("says why there is nothing when it is off or the server is offline", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		server.discover = { state: "off", items: [] };
+		const { unmount } = renderApp("/discover");
+		expect(await screen.findByText(/An administrator has not switched Discover on/)).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Find books for me" })).not.toBeInTheDocument();
+		unmount();
+		server.discover = { state: "offline", items: [] };
+		renderApp("/discover");
+		expect(await screen.findByText(/This server runs offline and asks no metadata source/)).toBeInTheDocument();
+	});
+
+	it("is in the sidebar for people who keep a wishlist", async () => {
+		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
+		renderApp("/");
+		expect(await screen.findByRole("link", { name: "Discover" })).toBeInTheDocument();
+	});
+});
+
 describe("collections", () => {
 	function withShelf() {
 		server
@@ -7008,6 +7123,71 @@ describe("similar books", () => {
 	});
 });
 
+describe("reviews shared with others on the server", () => {
+	beforeEach(() => {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Emma", { contributors: [{ name: "Jane Austen", role: "author" }] });
+		server.sharedReviews = [
+			{ bookId: "book-1", author: "Anna", stars: 4, body: "A sharp comedy of manners." },
+			{ bookId: "book-1", author: "Bert", stars: 2, body: "Too much tea." },
+		];
+	});
+
+	it("shows what others share with the mean of their stars, and a link to a person", async () => {
+		const person = userEvent.setup();
+		renderApp("/books/book-1");
+
+		const section = within(await screen.findByRole("region", { name: "Reviews" }));
+		expect(await section.findByText("3.0 of 5 stars, rated by 2 on this server")).toBeInTheDocument();
+		expect(section.getByText("A sharp comedy of manners.")).toBeInTheDocument();
+		await person.click(section.getByRole("link", { name: "Anna" }));
+		expect(
+			await screen.findByRole("heading", { name: "Reviews by Anna", level: 1 }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Emma" })).toBeInTheDocument();
+	});
+
+	it("saves the person's review, which can be kept private", async () => {
+		const person = userEvent.setup();
+		renderApp("/books/book-1");
+
+		await person.type(await screen.findByLabelText("Your review"), "Mine alone.");
+		expect(
+			screen.getByText(/Only you see this review while you share nothing/),
+		).toBeInTheDocument();
+		await person.click(screen.getByRole("checkbox", { name: "Keep this review private" }));
+		await person.click(screen.getByRole("button", { name: "Save review" }));
+		await waitFor(() =>
+			expect(server.ownReviews["book-1"]).toEqual({ body: "Mine alone.", private: true }),
+		);
+		expect(await screen.findByDisplayValue("Mine alone.")).toBeInTheDocument();
+	});
+
+	it("is switched on from the profile, off until then", async () => {
+		const person = userEvent.setup();
+		renderApp("/profile");
+
+		const toggle = await screen.findByRole("switch", {
+			name: "Share my ratings and reviews with others on this server",
+		});
+		expect(toggle).toHaveAttribute("aria-checked", "false");
+		await person.click(toggle);
+		await waitFor(() => expect(server.sharing).toBe(true));
+		expect(toggle).toHaveAttribute("aria-checked", "true");
+	});
+
+	it("says a person who shares nothing is not there", async () => {
+		renderApp("/people/Nobody");
+
+		expect(
+			await screen.findByText("This person shares no reviews with you."),
+		).toBeInTheDocument();
+	});
+});
+
 describe("notifications of what happens in the libraries", () => {
 	beforeEach(() => {
 		vi.stubGlobal("EventSource", undefined);
@@ -8956,5 +9136,226 @@ describe("joining a book read but not owned to the library's book", () => {
 		await waitFor(() =>
 			expect(server.requests.some((r) => r.path === "/placeholder-joins/join-book-2/undo")).toBe(true),
 		);
+	});
+});
+
+describe("highlights and notes", () => {
+	function withEpub() {
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withLibrary("Novels")
+			.withBook("Persuasion", {
+				contributors: [{ name: "Jane Austen", role: "author" }],
+				files: [
+					{
+						id: "file-1",
+						kind: "ebook",
+						format: "epub",
+						name: "Persuasion.epub",
+						size: 200_000,
+						missing: false,
+						drm: false,
+						extractState: "done",
+					},
+				],
+			});
+	}
+	const made = (over: Partial<(typeof server.annotations)[number]> = {}) => ({
+		id: "a-1",
+		bookId: "book-1",
+		bookTitle: "Persuasion",
+		bookAuthors: ["Jane Austen"],
+		fileId: "file-1",
+		kind: "cfi",
+		locator: "epubcfi(/6/4!/4/2/1:0)",
+		passage: "There is nothing so interesting as a vanity",
+		color: "green",
+		chapter: "Two",
+		clientId: "web",
+		createdAt: "2026-03-01T10:00:00Z",
+		updatedAt: "2026-03-01T10:00:00Z",
+		...over,
+	});
+
+	it("keeps text selected in the EPUB reader as a highlight with a note, and draws it", async () => {
+		const person = userEvent.setup();
+		withEpub();
+		const { router } = renderApp("/books/book-1");
+		await person.click(
+			await screen.findByRole("link", { name: "Read Persuasion.epub" }),
+		);
+		expect(router.state.location.pathname).toBe("/books/book-1/read/file-1");
+		await screen.findByText("0%");
+		expect(screen.queryByRole("form", { name: "Highlight the selected text" })).toBeNull();
+		// The reader listens once it knows who reads, which may come after the page.
+		await waitFor(() => expect(ebook.listening).toBe(true));
+
+		act(() =>
+			ebook.select({
+				cfi: "epubcfi(/6/4!/4/2/1:5)",
+				text: "a truth universally acknowledged",
+				fraction: 0.3,
+				chapter: "Two",
+			}),
+		);
+		const bar = await screen.findByRole("form", { name: "Highlight the selected text" });
+		expect(within(bar).getByText("a truth universally acknowledged")).toBeInTheDocument();
+		await person.click(within(bar).getByRole("radio", { name: "Blue" }));
+		await person.type(within(bar).getByRole("textbox", { name: "Note" }), "Compare chapter one");
+		await person.click(within(bar).getByRole("button", { name: "Highlight" }));
+
+		await waitFor(() =>
+			expect(server.annotations).toMatchObject([
+				{
+					kind: "cfi",
+					fileId: "file-1",
+					locator: "epubcfi(/6/4!/4/2/1:5)",
+					passage: "a truth universally acknowledged",
+					note: "Compare chapter one",
+					color: "blue",
+					chapter: "Two",
+					fraction: 0.3,
+				},
+			]),
+		);
+		await waitFor(() =>
+			expect(ebook.drawn).toEqual([{ cfi: "epubcfi(/6/4!/4/2/1:5)", color: "#60a5fa" }]),
+		);
+		expect(ebook.cleared).toBe(1);
+		expect(screen.queryByRole("form", { name: "Highlight the selected text" })).toBeNull();
+
+		await person.click(screen.getByRole("button", { name: "Highlights" }));
+		const panel = await screen.findByRole("list", { name: "Highlights" });
+		expect(within(panel).getByText("a truth universally acknowledged")).toBeInTheDocument();
+		expect(within(panel).getByText(/Compare chapter one/)).toBeInTheDocument();
+	});
+
+	it("keeps the bar when the selection goes as it is pressed, and drops it when it goes alone", async () => {
+		const person = userEvent.setup();
+		withEpub();
+		renderApp("/books/book-1/read/file-1");
+		await screen.findByText("0%");
+		await waitFor(() => expect(ebook.listening).toBe(true));
+		act(() => ebook.select({ cfi: "epubcfi(/6/2)", text: "first words" }));
+		const bar = await screen.findByRole("form", { name: "Highlight the selected text" });
+		act(() => ebook.select(undefined));
+		await waitFor(() =>
+			expect(screen.queryByRole("form", { name: "Highlight the selected text" })).toBeNull(),
+		);
+		act(() => ebook.select({ cfi: "epubcfi(/6/2)", text: "second words" }));
+		const again = await screen.findByRole("form", { name: "Highlight the selected text" });
+		fireEvent.pointerDown(again);
+		act(() => ebook.select(undefined));
+		expect(screen.getByRole("form", { name: "Highlight the selected text" })).toBe(again);
+		await person.click(within(again).getByRole("button", { name: "Cancel" }));
+		expect(screen.queryByRole("form", { name: "Highlight the selected text" })).toBeNull();
+		expect(bar).not.toBe(again);
+	});
+
+	it("draws the highlights of the file and lists them, a tap on one opens the list", async () => {
+		const person = userEvent.setup();
+		withEpub();
+		server.annotations = [
+			made(),
+			made({ id: "a-2", kind: "xpointer", locator: "/body/DocFragment[3]/p", passage: "From KOReader", fileId: "file-1", clientId: "koreader:T1" }),
+			made({ id: "a-3", fileId: "file-9", locator: "epubcfi(/6/8)", passage: "In another file" }),
+		];
+		renderApp("/books/book-1/read/file-1");
+		await screen.findByText("0%");
+		await waitFor(() =>
+			expect(ebook.drawn).toEqual([{ cfi: "epubcfi(/6/4!/4/2/1:0)", color: "#4ade80" }]),
+		);
+		act(() => ebook.tap("epubcfi(/6/4!/4/2/1:0)"));
+		const panel = await screen.findByRole("list", { name: "Highlights" });
+		expect(within(panel).getAllByRole("listitem")).toHaveLength(3);
+		await person.click(within(panel).getAllByRole("button", { name: "Show in the book" })[0] as HTMLElement);
+		await waitFor(() => expect(screen.getByRole("region", { name: "Pages of Persuasion" })).toBeInTheDocument());
+	});
+
+	it("draws a highlight over a page of a PDF where it has rectangles", async () => {
+		withEpub();
+		server.annotations = [
+			made({
+				id: "p-1",
+				kind: "pdf",
+				locator: "page:1",
+				page: 1,
+				fileId: "file-1",
+				rects: [{ x: 0.1, y: 0.2, w: 0.5, h: 0.02 }],
+			}),
+		];
+		const book = server.books[0];
+		if (book) book.files[0] = { ...book.files[0], format: "pdf", name: "Persuasion.pdf" } as (typeof book.files)[number];
+		renderApp("/books/book-1/read/file-1?page=1");
+		const layer = await screen.findByTestId("highlight-layer");
+		await waitFor(() => expect(layer.querySelectorAll("[data-highlight=p-1]")).toHaveLength(1));
+		expect(layer.querySelector("[data-highlight=p-1]")).toHaveStyle({ left: "10%", top: "20%" });
+	});
+
+	it("lists every highlight, searches them, changes a note and deletes one", async () => {
+		const person = userEvent.setup();
+		withEpub();
+		server.annotations = [
+			made(),
+			made({ id: "a-2", bookTitle: "Emma", passage: "Vanity working on a weak head", note: "Mr Knightley", color: "yellow" }),
+		];
+		const { router } = renderApp("/highlights");
+		const list = await screen.findByRole("list", { name: "Highlights" });
+		expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+		expect(screen.getByRole("link", { name: "Export as Markdown" })).toHaveAttribute(
+			"href",
+			"/api/v1/annotations/export.md",
+		);
+		expect(screen.getByRole("link", { name: "Export as CSV" })).toHaveAttribute(
+			"href",
+			"/api/v1/annotations/export.csv",
+		);
+
+		await person.type(screen.getByRole("searchbox", { name: "Search your highlights and notes" }), "weak head");
+		await person.click(screen.getByRole("button", { name: "Search" }));
+		await waitFor(() => expect(router.state.location.search).toEqual({ q: "weak head" }));
+		await waitFor(() =>
+			expect(within(screen.getByRole("list", { name: "Highlights" })).getAllByRole("listitem")).toHaveLength(1),
+		);
+		expect(screen.getByRole("link", { name: "Export as CSV" })).toHaveAttribute(
+			"href",
+			"/api/v1/annotations/export.csv?q=weak+head",
+		);
+
+		await person.click(screen.getByRole("button", { name: "Edit note" }));
+		const note = screen.getByRole("textbox", { name: "Note" });
+		await person.clear(note);
+		await person.type(note, "Emma Woodhouse");
+		await person.click(screen.getByRole("button", { name: "Save note" }));
+		await waitFor(() => expect(server.annotations[1]?.note).toBe("Emma Woodhouse"));
+
+		await person.click(await screen.findByRole("button", { name: "Delete" }));
+		await person.click(screen.getByRole("button", { name: "Delete highlight" }));
+		await waitFor(() => expect(server.annotations).toHaveLength(1));
+		expect(await screen.findByText("No highlight matches.")).toBeInTheDocument();
+	});
+
+	it("shows a book's highlights on its page, and says so when there are none", async () => {
+		withEpub();
+		const { unmount } = renderApp("/books/book-1");
+		await screen.findByRole("heading", { name: "Persuasion" });
+		expect(screen.queryByRole("heading", { name: "Highlights" })).toBeNull();
+		unmount();
+		server.annotations = [made()];
+		renderApp("/books/book-1");
+		const section = await screen.findByRole("heading", { name: "Highlights" });
+		const region = section.closest("section") as HTMLElement;
+		expect(within(region).getByText("There is nothing so interesting as a vanity")).toBeInTheDocument();
+		expect(within(region).getByRole("link", { name: "Export as CSV" })).toHaveAttribute(
+			"href",
+			"/api/v1/annotations/export.csv?book=book-1",
+		);
+	});
+
+	it("offers the page in the navigation to anyone who may keep personal things", async () => {
+		withEpub();
+		renderApp("/");
+		expect(await screen.findByRole("link", { name: "Highlights" })).toHaveAttribute("href", "/highlights");
 	});
 });

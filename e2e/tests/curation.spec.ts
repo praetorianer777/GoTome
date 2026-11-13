@@ -61,7 +61,7 @@ test("a merge shows under Changes with its before and after, and undoing the run
 	await expect(title).toContainText(`Merged ${stamp}`);
 	await expect(action.getByRole("row", { name: "Files Before: 1 After: 2" })).toBeVisible();
 
-	await run.getByRole("button", { name: /^Undo the run of/ }).click();
+	await run.getByRole("button", { name: /^Undo run of/ }).click();
 	// A job undoes the run; the page follows it.
 	await expect(run).toContainText("Undone", { timeout: 30_000 });
 

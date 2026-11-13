@@ -304,6 +304,32 @@ func (q *Queries) LockBooksForMerge(ctx context.Context, arg LockBooksForMergePa
 	return items, nil
 }
 
+const mergeAnnotations = `-- name: MergeAnnotations :exec
+WITH clash AS (
+    DELETE FROM annotations x
+    WHERE x.book_id = $2
+      AND EXISTS (SELECT 1 FROM annotations y
+                  WHERE y.book_id = $1 AND y.user_id = x.user_id
+                    AND y.client_id = x.client_id AND y.client_key = x.client_key))
+UPDATE annotations x SET book_id = $1
+WHERE x.book_id = $2
+  AND NOT EXISTS (SELECT 1 FROM annotations y
+                  WHERE y.book_id = $1 AND y.user_id = x.user_id
+                    AND y.client_id = x.client_id AND y.client_key = x.client_key)
+`
+
+type MergeAnnotationsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The book's annotations, as they are; one a person has under the same
+// client and key in the surviving book stays and the other goes.
+func (q *Queries) MergeAnnotations(ctx context.Context, arg MergeAnnotationsParams) error {
+	_, err := q.db.Exec(ctx, mergeAnnotations, arg.IntoBook, arg.FromBook)
+	return err
+}
+
 const mergeBookGenres = `-- name: MergeBookGenres :exec
 WITH moved AS (
     DELETE FROM book_genres x WHERE x.book_id = $2
@@ -348,6 +374,32 @@ type MergeBookIdentifiersParams struct {
 // The book's own identifiers, those of no file, joined to the other's.
 func (q *Queries) MergeBookIdentifiers(ctx context.Context, arg MergeBookIdentifiersParams) error {
 	_, err := q.db.Exec(ctx, mergeBookIdentifiers, arg.IntoBook, arg.FromBook)
+	return err
+}
+
+const mergeBookReviews = `-- name: MergeBookReviews :exec
+WITH moved AS (
+    DELETE FROM book_reviews x WHERE x.book_id = $2
+    RETURNING user_id, body, private, created_at, updated_at)
+INSERT INTO book_reviews AS n (user_id, book_id, body, private, created_at, updated_at)
+SELECT user_id, $1, body, private, created_at, updated_at FROM moved
+ON CONFLICT (user_id, book_id) DO UPDATE SET
+    body       = n.body || E'\n\n' || EXCLUDED.body,
+    private    = n.private OR EXCLUDED.private,
+    created_at = least(n.created_at, EXCLUDED.created_at),
+    updated_at = greatest(n.updated_at, EXCLUDED.updated_at)
+`
+
+type MergeBookReviewsParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// Everyone's reviews of the book; where a person wrote one on both, the
+// surviving book's review keeps and the other's follows it, private if
+// either was.
+func (q *Queries) MergeBookReviews(ctx context.Context, arg MergeBookReviewsParams) error {
+	_, err := q.db.Exec(ctx, mergeBookReviews, arg.IntoBook, arg.FromBook)
 	return err
 }
 

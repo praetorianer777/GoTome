@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { flushQueue, hasQueued, queueProgress } from "@/offline/queue";
 
 export type ProgressState = components["schemas"]["ProgressState"];
 export type Progress = components["schemas"]["ProgressView"];
@@ -62,14 +63,33 @@ export async function saveProgress(
 	update: Omit<ProgressUpdate, "clientId" | "basedOn">,
 	keepalive = false,
 ): Promise<ProgressSaved | undefined> {
+	// Positions written offline go first: this one is based on theirs.
+	if (await hasQueued(bookId, medium)) {
+		await flushQueue(queryClient);
+	}
 	const known = queryClient.getQueryData<ProgressState>(["progress", bookId]);
-	const answer = (
-		await api.PUT("/books/{bookId}/progress/{medium}", {
-			params: { path: { bookId, medium } },
-			body: { ...update, clientId: clientId(), basedOn: known?.[medium]?.updatedAt },
-			keepalive,
-		})
-	).data;
+	const basedOn = known?.[medium]?.updatedAt;
+	let answer: ProgressSaved | undefined;
+	try {
+		if (navigator.onLine === false) {
+			throw new TypeError("offline");
+		}
+		answer = (
+			await api.PUT("/books/{bookId}/progress/{medium}", {
+				params: { path: { bookId, medium } },
+				body: { ...update, clientId: clientId(), basedOn },
+				keepalive,
+			})
+		).data;
+	} catch (error) {
+		// A TypeError is fetch's way to say no server answered; an ApiError
+		// is the server refusing, which is not for the queue.
+		if (!(error instanceof TypeError)) {
+			throw error;
+		}
+		await queueProgress({ bookId, medium, update, clientId: clientId(), basedOn });
+		return undefined;
+	}
 	if (answer?.saved && answer.progress) {
 		knowProgress(queryClient, bookId, medium, answer.progress);
 		// A place may change the book's status: the first makes it reading,

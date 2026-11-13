@@ -327,4 +327,6 @@ it to your router not to forward it.
 - [configuration.md](configuration.md): every variable and setting.
 - [backup-and-upgrade.md](backup-and-upgrade.md): set up backups now.
 - [devices.md](devices.md): KOReader, Kobo, Tolino.
+- [offline.md](offline.md): installing the web app on a phone, and keeping
+  books for offline reading and listening.
 - [troubleshooting.md](troubleshooting.md): when something does not work.

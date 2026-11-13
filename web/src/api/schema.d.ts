@@ -4,6 +4,75 @@
  */
 
 export interface paths {
+    "/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes in books they see, newest first, searchable */
+        get: operations["listAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes as a CSV file */
+        get: operations["exportAnnotationsCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/export.md": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's highlights and notes as a Markdown document, grouped by book */
+        get: operations["exportAnnotationsMarkdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/annotations/{annotationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete one of the caller's highlights */
+        delete: operations["deleteAnnotation"];
+        options?: never;
+        head?: never;
+        /** Change the note or the colour of one of the caller's highlights */
+        patch: operations["changeAnnotation"];
+        trace?: never;
+    };
     "/auth/api-keys": {
         parameters: {
             query?: never;
@@ -519,6 +588,23 @@ export interface paths {
         patch: operations["editBook"];
         trace?: never;
     };
+    "/books/{bookId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep a highlight made in a reader, with an optional note */
+        post: operations["createAnnotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books/{bookId}/audio": {
         parameters: {
             query?: never;
@@ -768,6 +854,40 @@ export interface paths {
         get?: never;
         /** Change where the caller stands with a book: status, rating, dates */
         put: operations["setReading"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write the caller's review of a book, shared with others if they share and it is not private; empty removes it */
+        put: operations["setReview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/books/{bookId}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The reviews others share on a book, the mean of the stars they share and the caller's own review */
+        get: operations["listBookReviews"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1182,6 +1302,23 @@ export interface paths {
         /** The device that asks, and whom its token signs in; only for a device's token */
         get: operations["getThisDevice"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/device/annotations/{document}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** A device sends all its highlights and notes of a book, named by its KOReader MD5; those it no longer sends are removed */
+        put: operations["putDeviceAnnotations"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1753,6 +1890,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kobo/{token}/v1/affiliate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The affiliate a Kobo reader asks the store for: none */
+        get: operations["koboAffiliate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/v1/analytics/event": {
         parameters: {
             query?: never;
@@ -1934,6 +2088,74 @@ export interface paths {
         get: operations["koboReadingState"];
         /** Where a Kobo reader says the person is in a book */
         put: operations["koboPutReadingState"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The store's featured lists: none */
+        get: operations["koboFeatured"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The same, as the reader writes the address */
+        get: operations["koboFeaturedSlash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/featured/{listId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of the store's featured lists: empty */
+        get: operations["koboFeaturedList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/{productId}/nextread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the store suggests reading next: nothing */
+        get: operations["koboNextRead"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2336,6 +2558,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Books beyond the libraries that the caller's taste points to: other works of authors they rated, next volumes of series they read, books of their genres; each with why */
+        get: operations["listDiscover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask for the caller's discovery to be worked out now */
+        post: operations["requestDiscover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/discover/{candidateId}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say the caller is not interested in a discovered book: it, and any other of the same title and author, is left out from now on */
+        post: operations["dismissDiscovered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/kindle": {
         parameters: {
             query?: never;
@@ -2503,6 +2776,24 @@ export interface paths {
         put?: never;
         /** Say the caller is not interested in a book: it is left out of their recommendations */
         post: operations["dismissRecommendation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the caller shares their ratings and reviews with others on the server */
+        get: operations["getSharing"];
+        /** Share the caller's ratings and reviews with others on the server, or stop at once */
+        put: operations["putSharing"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2893,6 +3184,23 @@ export interface paths {
         };
         /** The books a smart shelf holds */
         get: operations["listOpdsSmartShelf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/people/{username}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The reviews a person shares on books the caller may see; 404 for a person who shares none, or who does not exist */
+        get: operations["listPersonReviews"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3515,6 +3823,59 @@ export interface components {
             sameWork: number;
             wrong: number;
         };
+        AnnotationChange: {
+            color?: string;
+            note?: string;
+        };
+        AnnotationCreate: {
+            chapter?: string;
+            color?: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction?: number;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+        };
+        AnnotationList: {
+            annotations: components["schemas"]["AnnotationView"][];
+            next?: string;
+        };
+        AnnotationRect: {
+            h: number;
+            w: number;
+            x: number;
+            y: number;
+        };
+        AnnotationView: {
+            bookAuthors?: string[];
+            /** Format: uuid */
+            bookId: string;
+            bookTitle?: string;
+            chapter?: string;
+            clientId: string;
+            color: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            fileId?: string;
+            fraction?: number;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+            /** Format: date-time */
+            updatedAt: string;
+        };
         ApiKeyList: {
             keys: components["schemas"]["ApiKeyView"][];
         };
@@ -3692,6 +4053,12 @@ export interface components {
             id: string;
             narrators: string[];
             title: string;
+        };
+        BookReviews: {
+            average: number;
+            mine?: components["schemas"]["OwnReview"];
+            reviews: components["schemas"]["SharedReview"][];
+            stars: number;
         };
         BookSummary: {
             /** Format: date-time */
@@ -4196,6 +4563,29 @@ export interface components {
             books: components["schemas"]["BookSummary"][];
             nextOffset?: number;
         };
+        DeviceAnnotation: {
+            chapter?: string;
+            color?: string;
+            createdAt?: string;
+            fraction?: number;
+            key: string;
+            kind: string;
+            locator: string;
+            locatorEnd?: string;
+            note?: string;
+            page?: number;
+            passage: string;
+            rects?: components["schemas"]["AnnotationRect"][];
+            updatedAt?: string;
+        };
+        DeviceAnnotations: {
+            annotations: components["schemas"]["DeviceAnnotation"][];
+            clientId: string;
+        };
+        DeviceAnnotationsSaved: {
+            kept: number;
+            removed: number;
+        };
         DeviceAnswer: {
             /** @enum {string} */
             state: "pending" | "accepted" | "declined" | "expired";
@@ -4282,6 +4672,32 @@ export interface components {
             /** Format: date-time */
             lastUsedAt?: string;
             name: string;
+        };
+        DiscoverItem: {
+            authors: string[];
+            coverToken?: string;
+            description?: string;
+            /** Format: uuid */
+            id: string;
+            provider: string;
+            reason: components["schemas"]["DiscoverReason"];
+            series?: string;
+            seriesIndex?: number;
+            title: string;
+            wish: components["schemas"]["WishRequest"];
+            year?: number;
+        };
+        DiscoverList: {
+            /** Format: date-time */
+            finishedAt?: string;
+            items: components["schemas"]["DiscoverItem"][];
+            state: string;
+        };
+        DiscoverReason: {
+            because: string[];
+            kind: string;
+            name: string;
+            stars: number;
         };
         Disk: {
             databaseBytes: number;
@@ -4634,6 +5050,11 @@ export interface components {
                 ProgressPercent: number | null;
             } | null;
             EntitlementId: string;
+            Statistics: {
+                LastModified: string;
+                RemainingTimeMinutes: number | null;
+                SpentReadingMinutes: number | null;
+            } | null;
             StatusInfo: {
                 Status: string;
             } | null;
@@ -4907,6 +5328,12 @@ export interface components {
             /** Format: uuid */
             runId: string;
         };
+        OwnReview: {
+            body: string;
+            private: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         PairFormats: {
             /** Format: uuid */
             ebookId: string;
@@ -4922,6 +5349,20 @@ export interface components {
             bytes: number;
             withPassages: number;
             withText: number;
+        };
+        PersonReview: {
+            authorSort: string;
+            body: string;
+            /** Format: uuid */
+            bookId: string;
+            stars: number;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PersonReviews: {
+            reviews: components["schemas"]["PersonReview"][];
+            username: string;
         };
         PlaceholderJoin: {
             /** Format: uuid */
@@ -5141,6 +5582,10 @@ export interface components {
             books: components["schemas"]["ReviewBook"][];
             total: number;
         };
+        ReviewRequest: {
+            body: string;
+            private: boolean;
+        };
         RunStatus: {
             done: number;
             error?: string;
@@ -5295,6 +5740,16 @@ export interface components {
         };
         SetupStatus: {
             needed: boolean;
+        };
+        SharedReview: {
+            author: string;
+            body: string;
+            stars: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Sharing: {
+            shareReviews: boolean;
         };
         SignInMethods: {
             password: boolean;
@@ -5662,6 +6117,176 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listAnnotations: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+                /** @description The next cursor of the previous page. */
+                after?: string;
+                /** @description How many to return, at most 200; 50 when left out. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportAnnotationsCsv: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exportAnnotationsMarkdown: {
+        parameters: {
+            query?: {
+                /** @description Words that must each occur in the passage, the note, the title or an author. */
+                q?: string;
+                /** @description Only the annotations of this book. */
+                book?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    changeAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listOwnAPIKeys: {
         parameters: {
             query?: never;
@@ -6774,6 +7399,41 @@ export interface operations {
             };
         };
     };
+    createAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationView"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getAudio: {
         parameters: {
             query?: never;
@@ -7288,6 +7948,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadingState"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listBookReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookReviews"];
                 };
             };
             /** @description The request failed. */
@@ -8263,6 +8987,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThisDevice"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putDeviceAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceAnnotations"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceAnnotationsSaved"];
                 };
             };
             /** @description The request failed. */
@@ -9424,6 +10183,35 @@ export interface operations {
             };
         };
     };
+    koboAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     koboAnalyticsEvent: {
         parameters: {
             query?: never;
@@ -9774,6 +10562,124 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["KoboStateResult"];
                 };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeatured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeaturedSlash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboFeaturedList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                listId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboNextRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request failed. */
             default: {
@@ -10632,6 +11538,91 @@ export interface operations {
             };
         };
     };
+    listDiscover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    requestDiscover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismissDiscovered: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getKindle: {
         parameters: {
             query?: never;
@@ -11040,6 +12031,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sharing"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Sharing"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sharing"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -11792,6 +12845,37 @@ export interface operations {
                 };
                 content: {
                     "application/atom+xml;profile=opds-catalog;kind=acquisition": string;
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPersonReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonReviews"];
                 };
             };
             /** @description The request failed. */

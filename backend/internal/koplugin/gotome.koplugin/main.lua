@@ -3,7 +3,9 @@ GOtome for KOReader: fetches the books sent to this device from GOtome's
 web app, when Wi-Fi comes up and from its menu, into a folder of the
 person's choosing. It reads the device's own OPDS feed, signed in with the
 person's user name and a device token from their GOtome profile;
-downloading a book there marks it delivered, so each arrives once.
+downloading a book there marks it delivered, so each arrives once. It also
+sends the highlights and notes of the book being read, from KOReader's own
+record of them, so that they are in the person's GOtome library too.
 ]]
 
 local DataStorage = require("datastorage")
@@ -22,6 +24,7 @@ local socketutil = require("socketutil")
 local T = require("ffi/util").template
 local _ = require("gettext")
 
+local annotations = require("gotome_annotations")
 local feed = require("gotome_feed")
 
 -- The addresses of the server, the one the plugin was downloaded from
@@ -62,22 +65,28 @@ function GOtome:ready()
         and (self:setting("token") or "") ~= ""
 end
 
--- One GET of the server, its body into sink: the HTTP status, or nil and
--- why not.
-function GOtome:get(url, sink, probe)
+-- One request to the server, its body into sink: the HTTP status, or nil
+-- and why not. body, if given, is sent as JSON.
+function GOtome:request(method, url, sink, probe, body)
     local http = url:match("^https:") and require("ssl.https") or require("socket.http")
     if probe then
         socketutil:set_timeout(PROBE_BLOCK_TIMEOUT, PROBE_TOTAL_TIMEOUT)
     else
         socketutil:set_timeout(socketutil.LARGE_BLOCK_TIMEOUT, socketutil.LARGE_TOTAL_TIMEOUT)
     end
+    local headers = {
+        ["Authorization"] = "Basic " .. mime.b64(self:setting("user") .. ":" .. self:setting("token")),
+        ["Accept"] = body and "application/json" or "application/atom+xml, */*",
+    }
+    if body then
+        headers["Content-Type"] = "application/json"
+        headers["Content-Length"] = tostring(#body)
+    end
     local ok, result, code = pcall(http.request, {
         url = url,
-        method = "GET",
-        headers = {
-            ["Authorization"] = "Basic " .. mime.b64(self:setting("user") .. ":" .. self:setting("token")),
-            ["Accept"] = "application/atom+xml, */*",
-        },
+        method = method,
+        headers = headers,
+        source = body and ltn12.source.string(body) or nil,
         sink = sink,
     })
     socketutil:reset_timeout()
@@ -88,6 +97,10 @@ function GOtome:get(url, sink, probe)
         return nil, tostring(code)
     end
     return code
+end
+
+function GOtome:get(url, sink, probe)
+    return self:request("GET", url, sink, probe)
 end
 
 --- The address of the server that answers now: the one that worked last
@@ -172,6 +185,88 @@ function GOtome:onNetworkConnected()
     if self:setting("on_wifi") ~= false and self:ready() then
         UIManager:scheduleIn(2, function() self:fetch(true) end)
     end
+    if self:setting("send_highlights") ~= false and self:ready() and self.ui.document then
+        UIManager:scheduleIn(4, function() self:sendHighlights(true) end)
+    end
+end
+
+--- A name for this KOReader that stays the same, so that GOtome knows which
+--- highlights are this device's to replace.
+function GOtome:client()
+    local id = self.settings:readSetting("client_id")
+    if not id then
+        math.randomseed(os.time() + math.floor(os.clock() * 1000000))
+        id = ("%08x%04x"):format(math.random(0, 0x7fffffff), math.random(0, 0xffff))
+        self:save("client_id", id)
+    end
+    return "koreader:" .. id
+end
+
+--- KOReader's record of the open book's highlights and notes in the shape of
+--- its sidecar. What is in memory comes first, as the file is written only
+--- now and then; the older versions' tables are the fallback.
+function GOtome:sidecar()
+    local ui = self.ui
+    local settings = ui.doc_settings
+    local record = {
+        annotations = ui.annotation and ui.annotation.annotations or settings:readSetting("annotations"),
+        highlight = settings:readSetting("highlight"),
+        bookmarks = settings:readSetting("bookmarks") or (ui.bookmark and ui.bookmark.bookmarks),
+        highlight_color = settings:readSetting("highlight_color"),
+        doc_pages = settings:readSetting("doc_pages") or ui.document:getPageCount(),
+        partial_md5_checksum = settings:readSetting("partial_md5_checksum"),
+    }
+    if not record.partial_md5_checksum then
+        local ok, md5 = pcall(function() return ui.document:fastDigest(settings) end)
+        record.partial_md5_checksum = ok and md5 or nil
+    end
+    return record
+end
+
+--- Sends the highlights and notes of the open book. Quiet, it says nothing
+--- unless something is wrong with the sign-in. GOtome learns of those the
+--- book no longer has from the full set, so a book is sent as it stands.
+function GOtome:sendHighlights(quiet)
+    if not self.ui.document or not self.ui.doc_settings or not self:ready() then
+        return
+    end
+    local record = self:sidecar()
+    local md5 = annotations.document(record)
+    if not md5 then
+        return
+    end
+    local page_size
+    if self.ui.paging then
+        page_size = function(page)
+            local ok, size = pcall(function() return self.ui.document:getPageDimensions(page, 1, 0) end)
+            return ok and size and { w = size.w, h = size.h } or nil
+        end
+    end
+    local body = annotations.body(record, self:client(), page_size)
+    local server = self:setting("last_good") or self:setting("server")
+    local url = feed.api_url(server, "/device/annotations/" .. md5)
+    local response = {}
+    local code, err = self:request("PUT", url, ltn12.sink.table(response), false, body)
+    if code == 200 then
+        if not quiet then
+            UIManager:show(InfoMessage:new{ text = _("Highlights sent to GOtome."), timeout = 3 })
+        end
+    elseif code == 404 then
+        if not quiet then
+            UIManager:show(InfoMessage:new{ text = _("GOtome has no book with this file."), timeout = 4 })
+        end
+    else
+        logger.warn("GOtome: sending highlights", code, err)
+        if not quiet then
+            UIManager:show(InfoMessage:new{ text = T(_("GOtome did not take the highlights: %1"), err or code) })
+        end
+    end
+end
+
+function GOtome:onCloseDocument()
+    if self:setting("send_highlights") ~= false and self:ready() and NetworkMgr:isConnected() then
+        self:sendHighlights(true)
+    end
 end
 
 function GOtome:ask(title, key, hidden)
@@ -207,6 +302,19 @@ function GOtome:addToMainMenu(menu_items)
                 text = _("Fetch when Wi-Fi comes up"),
                 checked_func = function() return self:setting("on_wifi") ~= false end,
                 callback = function() self:save("on_wifi", self:setting("on_wifi") == false) end,
+                separator = true,
+            },
+            {
+                text = _("Send this book's highlights now"),
+                enabled_func = function() return self.ui.document ~= nil and self:ready() end,
+                callback = function()
+                    NetworkMgr:runWhenOnline(function() self:sendHighlights(false) end)
+                end,
+            },
+            {
+                text = _("Send highlights when a book is closed"),
+                checked_func = function() return self:setting("send_highlights") ~= false end,
+                callback = function() self:save("send_highlights", self:setting("send_highlights") == false) end,
                 separator = true,
             },
             {

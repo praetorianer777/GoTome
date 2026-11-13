@@ -64,6 +64,11 @@ declare module "foliate-js/view.js" {
 			| { label: string; subitems: FoliateSearchResult[] }
 		>;
 		goToFraction(fraction: number): Promise<void>;
+		/** The CFI of a range in the section at the index. */
+		getCFI(index: number, range?: Range): string;
+		/** Draws the annotation at its CFI, once "draw-annotation" is answered. */
+		addAnnotation(annotation: { value: string }, remove?: boolean): Promise<unknown>;
+		deleteAnnotation(annotation: { value: string }): Promise<unknown>;
 		clearSearch(): void;
 		goLeft(): Promise<void>;
 		goRight(): Promise<void>;

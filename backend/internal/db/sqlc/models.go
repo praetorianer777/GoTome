@@ -10,6 +10,28 @@ import (
 	"github.com/google/uuid"
 )
 
+type Annotation struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	BookID      uuid.UUID
+	FileID      *uuid.UUID
+	LocatorKind string
+	Locator     string
+	LocatorEnd  *string
+	Page        *int32
+	Rects       []byte
+	Passage     string
+	Note        *string
+	Color       string
+	Chapter     *string
+	Fraction    *float64
+	ClientID    string
+	ClientKey   string
+	EditedHere  bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type ApiKey struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID
@@ -177,6 +199,15 @@ type BookRelation struct {
 	BookA uuid.UUID
 	BookB uuid.UUID
 	Kind  string
+}
+
+type BookReview struct {
+	UserID    uuid.UUID
+	BookID    uuid.UUID
+	Body      string
+	Private   bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type BookTag struct {
@@ -360,6 +391,47 @@ type DeviceSend struct {
 	SentAt   time.Time
 }
 
+type DiscoverAsk struct {
+	UserID  uuid.UUID
+	Kind    string
+	NameKey string
+	AskedAt time.Time
+}
+
+type DiscoverCandidate struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Provider    string
+	ProviderID  string
+	Work        string
+	Title       string
+	TitleKeys   []string
+	AuthorKeys  []string
+	Isbns       []string
+	Record      []byte
+	Score       float64
+	ReasonKind  string
+	ReasonName  string
+	ReasonStars int16
+	Because     []string
+	FoundAt     time.Time
+}
+
+type DiscoverDismissal struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TitleKeys  []string
+	AuthorKeys []string
+	CreatedAt  time.Time
+}
+
+type DiscoverRun struct {
+	UserID     uuid.UUID
+	StartedAt  time.Time
+	FinishedAt *time.Time
+	Requested  bool
+}
+
 type DuplicateEvidence struct {
 	PairID uuid.UUID
 	Kind   string
@@ -453,6 +525,12 @@ type KoboBook struct {
 	BookID     uuid.UUID
 	SyncedAt   time.Time
 	ProgressAt *time.Time
+}
+
+type KoboReadingTime struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Minutes  int32
 }
 
 type Library struct {
@@ -810,6 +888,7 @@ type User struct {
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
 	MaxAgeRating     *int16
+	ShareReviews     bool
 }
 
 type UserBook struct {

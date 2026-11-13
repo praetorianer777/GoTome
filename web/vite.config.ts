@@ -3,6 +3,7 @@
 import { type Plugin, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, URL } from "node:url";
@@ -38,6 +39,37 @@ function serverBase(): Plugin {
 				{ tag: "base", attrs: { href: "/" }, injectTo: "head-prepend" },
 				{ tag: "meta", attrs: { name: "gotome-base", content: "/" }, injectTo: "head-prepend" },
 			];
+		},
+	};
+}
+
+// The service worker (src/offline/sw.js) is written beside index.html as
+// sw.js, with the names of this build's files filled in: the ones the page
+// loads at once, which it keeps when it installs, and all of them, which it
+// keeps when a book is kept offline. It is not part of the app's bundle, so
+// the first load does not grow. The build's name is that of its files, so a
+// new build is a new worker.
+function serviceWorker(): Plugin {
+	return {
+		name: "service-worker",
+		apply: "build",
+		writeBundle(options, bundle) {
+			const dir = options.dir ?? "dist";
+			const html = readFileSync(join(dir, "index.html"), "utf8");
+			const core = [
+				...html.matchAll(/<script[^>]*\ssrc="\.?\/?(assets\/[^"]+)"/g),
+				...html.matchAll(/<link[^>]*rel="modulepreload"[^>]*\shref="\.?\/?(assets\/[^"]+)"/g),
+				...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*\shref="\.?\/?(assets\/[^"]+)"/g),
+			].map((m) => m[1]);
+			const all = Object.keys(bundle)
+				.filter((name) => name.startsWith("assets/") && !name.endsWith(".map"))
+				.sort();
+			const build = createHash("sha256").update(all.join("\n")).digest("hex").slice(0, 12);
+			const source = readFileSync(join(webRoot, "src/offline/sw.js"), "utf8")
+				.replace('"__BUILD__"', JSON.stringify(build))
+				.replace("__CORE__", JSON.stringify([...new Set(core)]))
+				.replace("__ALL__", JSON.stringify(all));
+			writeFileSync(join(dir, "sw.js"), source);
 		},
 	};
 }
@@ -105,7 +137,7 @@ export default defineConfig(({ mode }) => ({
 		react(),
 		tailwindcss(),
 		foliateWithoutPdf(),
-		...(mode === "demo" ? [] : [serverBase()]),
+		...(mode === "demo" ? [] : [serverBase(), serviceWorker()]),
 		...(mode === "demo" ? [demoAssets("dist-demo")] : []),
 	],
 	resolve: {

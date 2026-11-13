@@ -49,6 +49,10 @@ const TEXTS: Record<string, { label: MessageKey; hint: MessageKey }> = {
 		label: "settings.updatesCheck",
 		hint: "settings.updatesCheck.hint",
 	},
+	"recommendations.discover": {
+		label: "settings.discover",
+		hint: "settings.discover.hint",
+	},
 	"metadata.autoMatch": {
 		label: "settings.autoMatch",
 		hint: "settings.autoMatch.hint",

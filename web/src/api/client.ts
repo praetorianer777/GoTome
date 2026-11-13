@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import { serverPath } from "@/base";
+import { offlineFetch } from "@/offline/fetch";
 import type { components, paths } from "./schema";
 
 /**
@@ -77,6 +78,6 @@ export const api = createClient<paths>({
 	// The session cookie belongs to this origin; nothing is sent elsewhere.
 	credentials: "same-origin",
 	// Resolved per call rather than captured here, so a test can replace it.
-	fetch: (request) => globalThis.fetch(request),
+	fetch: (request) => offlineFetch(request),
 });
 api.use(throwOnError);

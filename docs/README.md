@@ -44,6 +44,10 @@ For people who run GOtome or use it. Start with **Getting started**.
   - [Kobo, and Tolinos on the Kobo-based firmware](tolino-kobo-mode.md)
   - [GOtome for Tolino](../clients/android/README.md), for Tolinos on
     Android firmware
+- [On a phone and offline](offline.md): installing the app, keeping books
+  in the browser, and what is stored.
+- [Highlights and notes](highlights.md): making them in the readers,
+  bringing them from KOReader, exporting them.
 - [Send to Kindle](kindle.md): e-mailing EPUBs to a Kindle, the mail server
   and the sender Amazon has to approve.
 - [Your reading history and importing it](importing-reading-history.md):
@@ -56,6 +60,8 @@ For people who run GOtome or use it. Start with **Getting started**.
 - [Resolving duplicates by themselves](duplicates.md): the classes of
   duplicate pairs the rules merge or link, dry runs, undo, and measuring
   them with `gotome duplicate-check`.
+- [Discover](discover.md): books beyond your libraries from your taste,
+  what the metadata sources are asked, and how to switch it on.
 - [Genres](genres.md): where books' genres come from, and measuring
   suggestions before turning them on.
 - [Accessibility](accessibility.md): WCAG 2.2 AA, what is checked, what is

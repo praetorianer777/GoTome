@@ -32,7 +32,7 @@ func files(t *testing.T, server string, addresses []string) map[string]string {
 
 func TestTheZipHoldsThePluginAndWhereItCameFrom(t *testing.T) {
 	got := files(t, "https://books.example.org:8443", nil)
-	for _, name := range []string{"_meta.lua", "main.lua", "gotome_feed.lua"} {
+	for _, name := range []string{"_meta.lua", "main.lua", "gotome_feed.lua", "gotome_annotations.lua"} {
 		if got["gotome.koplugin/"+name] == "" {
 			t.Errorf("no %s in %v", name, got)
 		}

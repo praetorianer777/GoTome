@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -68,4 +69,27 @@ func publicBase(r *http.Request) string {
 		scheme = "https"
 	}
 	return (&url.URL{Scheme: scheme, Host: r.Host}).String() + basePrefix(r)
+}
+
+// publicBaseFor is publicBase for a client that may drop the port from Host
+// (a Kobo reader does): when Host has none and one of the configured public
+// addresses names the same host name, that address's host and port are used.
+// Without a match Host stands as it came. The listener's own port is no
+// substitute, as a container's published port is not the one it listens on.
+func publicBaseFor(r *http.Request, public []string) string {
+	host := r.Host
+	if _, _, err := net.SplitHostPort(host); err != nil {
+		for _, p := range public {
+			u, err := url.Parse(p)
+			if err == nil && u.Port() != "" && strings.EqualFold(u.Hostname(), strings.Trim(host, "[]")) {
+				host = u.Host
+				break
+			}
+		}
+	}
+	scheme := "http"
+	if overTLS(r) {
+		scheme = "https"
+	}
+	return (&url.URL{Scheme: scheme, Host: host}).String() + basePrefix(r)
 }

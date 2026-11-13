@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autocurate"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
@@ -23,6 +24,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
+	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/ingest"
@@ -38,6 +40,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/reading"
 	"github.com/praetorianer777/gotome/backend/internal/releases"
 	"github.com/praetorianer777/gotome/backend/internal/resources"
+	"github.com/praetorianer777/gotome/backend/internal/reviews"
 	"github.com/praetorianer777/gotome/backend/internal/search"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/shelves"
@@ -118,8 +121,12 @@ type Server struct {
 	Deliveries *deliveries.Service
 	// Copies are the fixed copies of EPUBs that devices are sent (#501).
 	Copies *devicecopy.Service
+	// Reviews keeps what people share of the books they rated and reviewed.
+	Reviews *reviews.Service
 	// Kindle sends books to people's Kindles by e-mail.
 	Kindle *kindle.Service
+	// Annotations keeps the highlights and notes people make in books.
+	Annotations *annotations.Service
 	// Sync is the server KOReader's progress sync talks to.
 	Sync *kosync.Service
 	// Stats counts what the libraries hold and how far the work on them is.
@@ -138,6 +145,8 @@ type Server struct {
 	Webhooks *webhooks.Service
 	// Releases follows authors and series for their new books.
 	Releases *releases.Service
+	// Discover offers books beyond the libraries from a person's taste.
+	Discover *discover.Service
 	// Cleanup suggests fixes for how books are described.
 	Cleanup *cleanup.Service
 	// Auto makes the automatic runs of clean-up and of matches.

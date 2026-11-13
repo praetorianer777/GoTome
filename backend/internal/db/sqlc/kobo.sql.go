@@ -121,6 +121,22 @@ func (q *Queries) ListKoboLibrary(ctx context.Context, arg ListKoboLibraryParams
 	return items, nil
 }
 
+const lockKoboReadingTime = `-- name: LockKoboReadingTime :one
+SELECT minutes FROM kobo_reading_time WHERE device_id = $1 AND book_id = $2 FOR UPDATE
+`
+
+type LockKoboReadingTimeParams struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+}
+
+func (q *Queries) LockKoboReadingTime(ctx context.Context, arg LockKoboReadingTimeParams) (int32, error) {
+	row := q.db.QueryRow(ctx, lockKoboReadingTime, arg.DeviceID, arg.BookID)
+	var minutes int32
+	err := row.Scan(&minutes)
+	return minutes, err
+}
+
 const putKoboBook = `-- name: PutKoboBook :exec
 INSERT INTO kobo_books (device_id, book_id, synced_at, progress_at)
 VALUES ($1, $2, $3, $4)
@@ -145,6 +161,21 @@ func (q *Queries) PutKoboBook(ctx context.Context, arg PutKoboBookParams) error 
 	return err
 }
 
+const seedKoboReadingTime = `-- name: SeedKoboReadingTime :exec
+INSERT INTO kobo_reading_time (device_id, book_id, minutes) VALUES ($1, $2, 0)
+ON CONFLICT (device_id, book_id) DO NOTHING
+`
+
+type SeedKoboReadingTimeParams struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+}
+
+func (q *Queries) SeedKoboReadingTime(ctx context.Context, arg SeedKoboReadingTimeParams) error {
+	_, err := q.db.Exec(ctx, seedKoboReadingTime, arg.DeviceID, arg.BookID)
+	return err
+}
+
 const setKoboProgressSeen = `-- name: SetKoboProgressSeen :exec
 UPDATE kobo_books SET progress_at = $3 WHERE device_id = $1 AND book_id = $2
 `
@@ -158,5 +189,20 @@ type SetKoboProgressSeenParams struct {
 // The reader's own place is one it need not be told of.
 func (q *Queries) SetKoboProgressSeen(ctx context.Context, arg SetKoboProgressSeenParams) error {
 	_, err := q.db.Exec(ctx, setKoboProgressSeen, arg.DeviceID, arg.BookID, arg.ProgressAt)
+	return err
+}
+
+const setKoboReadingTime = `-- name: SetKoboReadingTime :exec
+UPDATE kobo_reading_time SET minutes = $3 WHERE device_id = $1 AND book_id = $2
+`
+
+type SetKoboReadingTimeParams struct {
+	DeviceID uuid.UUID
+	BookID   uuid.UUID
+	Minutes  int32
+}
+
+func (q *Queries) SetKoboReadingTime(ctx context.Context, arg SetKoboReadingTimeParams) error {
+	_, err := q.db.Exec(ctx, setKoboReadingTime, arg.DeviceID, arg.BookID, arg.Minutes)
 	return err
 }

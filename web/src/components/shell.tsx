@@ -27,6 +27,7 @@ import { useServerVersion, VersionFooter } from "@/components/version-footer";
 import { useUpdate } from "@/system/update";
 import { Bell } from "@/notifications/bell";
 import { type MessageKey, t } from "@/i18n";
+import { useOfflineSync } from "@/offline/sync";
 import { MiniPlayer } from "@/player/controls";
 import { PlayerProvider } from "@/player/player";
 
@@ -57,6 +58,8 @@ export interface NavItem {
 		| "/wishlist"
 		| "/releases"
 		| "/stats"
+		| "/highlights"
+		| "/discover"
 		| "/overview"
 		| "/profile"
 		| "/jobs"
@@ -102,6 +105,20 @@ export const NAV_ITEMS: NavItem[] = [
 		permission: "personal:manage",
 		group: "sections",
 		icon: "spark",
+	},
+	{
+		to: "/discover",
+		label: "nav.discover",
+		permission: "personal:manage",
+		group: "sections",
+		icon: "wand",
+	},
+	{
+		to: "/highlights",
+		label: "nav.highlights",
+		permission: "personal:manage",
+		group: "sections",
+		icon: "highlight",
 	},
 	{
 		to: "/stats",
@@ -285,6 +302,7 @@ const ROLE_LABELS: Record<string, MessageKey> = {
 export function Shell({ user }: { user: CurrentUser }) {
 	const version = useServerVersion();
 	const update = useUpdate(user);
+	useOfflineSync();
 	const matchRoute = useMatchRoute();
 	// The readers and the player take the whole screen.
 	const fullScreen =
@@ -659,6 +677,7 @@ export type IconName =
 	| "wand"
 	| "undo"
 	| "tag"
+	| "highlight"
 	| "trash"
 	| "jobs"
 	| "folder"
@@ -672,6 +691,7 @@ export type IconName =
 
 const ICONS: Record<IconName, string[]> = {
 	tag: ["M4 4h7l9 9-7 7-9-9z", "M8 8h.01"],
+	highlight: ["M14 4l6 6-8 8-6-6z", "M6 12l-2 6 6-2", "M4 21h8"],
 	book: [
 		"M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z",
 		"M12 6v14",

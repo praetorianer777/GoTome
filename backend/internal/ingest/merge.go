@@ -200,6 +200,9 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 		},
 		func() error { return q.MergeBookNotes(ctx, sqlc.MergeBookNotesParams{IntoBook: into, FromBook: from}) },
 		func() error {
+			return q.MergeBookReviews(ctx, sqlc.MergeBookReviewsParams{IntoBook: into, FromBook: from})
+		},
+		func() error {
 			return q.MergeRecommendationDismissals(ctx, sqlc.MergeRecommendationDismissalsParams{IntoBook: into, FromBook: from})
 		},
 		func() error {
@@ -210,6 +213,9 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 		},
 		func() error {
 			return q.MergeDeliveries(ctx, sqlc.MergeDeliveriesParams{IntoBook: into, FromBook: from})
+		},
+		func() error {
+			return q.MergeAnnotations(ctx, sqlc.MergeAnnotationsParams{IntoBook: into, FromBook: from})
 		},
 		func() error {
 			return q.MergePlayQueue(ctx, sqlc.MergePlayQueueParams{IntoBook: into, FromBook: from})

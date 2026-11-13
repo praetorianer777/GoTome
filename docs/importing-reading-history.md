@@ -23,7 +23,9 @@ remembers it. When a file of the book arrives, it is added to the
 placeholder, and your status, stars and dates stay.
 
 Every book page has a **Private note** for a review or anything else you
-want to remember. Nobody else sees it.
+want to remember. Nobody else sees it. To write a review that others on the
+server may see, use **Your review**
+([sharing ratings and reviews](users-and-libraries.md#sharing-ratings-and-reviews)).
 
 ## Your reading
 

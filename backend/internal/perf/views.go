@@ -124,6 +124,8 @@ func Views(p Params) []View {
 		{Name: "collections", Path: "/collections"},
 		{Name: "reading statistics", Path: "/me/stats?days=30"},
 		{Name: "reading history", Path: "/me/reading"},
+		{Name: "highlights", Path: "/annotations?limit=50"},
+		View{Name: "highlights matching words", Path: "/annotations?limit=50&q=" + url.QueryEscape(p.Quick)}.need(p.Quick),
 		{Name: "recommendations", Path: "/me/recommendations"},
 		{Name: "new books", Path: "/releases"},
 		{Name: "items of followed feeds", Path: "/feeds/items"},

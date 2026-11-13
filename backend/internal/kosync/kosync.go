@@ -81,6 +81,22 @@ func (s *Service) document(ctx context.Context, scope library.Scope, md5 string)
 	return document{file: row.ID, book: row.BookID, format: row.Format, pages: row.PageCount, viaCopy: row.ViaCopy}, nil
 }
 
+// Resolved is the file and the book a document names.
+type Resolved struct {
+	File, Book uuid.UUID
+	Format     string
+}
+
+// Resolve finds the file KOReader names by its MD5, of a book the scope
+// sees, or ErrUnknown.
+func (s *Service) Resolve(ctx context.Context, scope library.Scope, md5 string) (Resolved, error) {
+	doc, err := s.document(ctx, scope, md5)
+	if err != nil {
+		return Resolved{}, err
+	}
+	return Resolved{File: doc.file, Book: doc.book, Format: doc.format}, nil
+}
+
 // Push keeps the place KOReader reports, under #44's rule: a place behind
 // one another client wrote is not written, and the person is offered the
 // further one when KOReader next asks.

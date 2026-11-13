@@ -22,7 +22,6 @@ import { Gopher } from "@/components/gopher";
 import { Shell } from "@/components/shell";
 import { t } from "@/i18n";
 import { Book } from "@/routes/book";
-import { Listen } from "@/player/controls";
 import { ReaderRoute, readerSearch } from "@/routes/read";
 import { Library, type LibrarySearch } from "@/routes/library";
 import { Login } from "@/routes/login";
@@ -63,6 +62,10 @@ const SeriesPage = lazyRouteComponent(() => import("@/routes/series"), "SeriesPa
 const Duplicates = lazyRouteComponent(() => import("@/routes/duplicates"), "Duplicates");
 const Setup = lazyRouteComponent(() => import("@/routes/setup"), "Setup");
 const Trash = lazyRouteComponent(() => import("@/routes/trash"), "Trash");
+const Highlights = lazyRouteComponent(() => import("@/routes/highlights"), "Highlights");
+const Discover = lazyRouteComponent(() => import("@/routes/discover"), "Discover");
+const PersonPage = lazyRouteComponent(() => import("@/routes/person"), "PersonPage");
+const Listen = lazyRouteComponent(() => import("@/player/listen"), "Listen");
 const Releases = lazyRouteComponent(() => import("@/routes/releases"), "Releases");
 const Upload = lazyRouteComponent(() => import("@/routes/upload"), "Upload");
 
@@ -450,9 +453,9 @@ const readPdfRoute = createRoute({
 const listenRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/books/$bookId/listen",
-	component: function ListenRoute() {
+	component: loads(Listen, function ListenRoute() {
 		return <Listen bookId={listenRoute.useParams().bookId} />;
-	},
+	}),
 });
 
 const wishlistRoute = createRoute({
@@ -477,6 +480,17 @@ const recommendationsRoute = createRoute({
 	component: Recommendations,
 });
 
+const discoverRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/discover",
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: Discover,
+});
+
 const releasesRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/releases",
@@ -486,6 +500,28 @@ const releasesRoute = createRoute({
 		}
 	},
 	component: Releases,
+});
+
+const highlightsRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/highlights",
+	validateSearch: (search): { q?: string } => ({
+		q: typeof search.q === "string" && search.q ? search.q : undefined,
+	}),
+	beforeLoad: ({ context }) => {
+		if (!can(context.user, "personal:manage")) {
+			throw redirect({ to: "/" });
+		}
+	},
+	component: loads(Highlights, function HighlightsPage() {
+		const navigate = highlightsRoute.useNavigate();
+		return (
+			<Highlights
+				q={highlightsRoute.useSearch().q}
+				onSearch={(q) => navigate({ search: { q } })}
+			/>
+		);
+	}),
 });
 
 const overviewRoute = createRoute({
@@ -514,6 +550,14 @@ const collectionsRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/collections",
 	component: Collections,
+});
+
+const personRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: "/people/$username",
+	component: loads(PersonPage, function PersonRoute() {
+		return <PersonPage username={personRoute.useParams().username} />;
+	}),
 });
 
 const collectionRoute = createRoute({
@@ -648,7 +692,7 @@ const profileRoute = createRoute({
 const routeTree = rootRoute.addChildren([
 	setupRoute,
 	loginRoute,
-	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
+	appRoute.addChildren([libraryRoute, authorsRoute, allSeriesRoute, authorRoute, seriesRoute, searchRoute, duplicatesRoute, bookRoute, bookEditRoute, bookFindRoute, uploadRoute, reviewRoute, cleanupRoute, curationRoute, genresRoute, readPdfRoute, listenRoute, wishlistRoute, recommendationsRoute, releasesRoute, highlightsRoute, discoverRoute, overviewRoute, statsRoute, collectionsRoute, collectionRoute, personRoute, newSmartShelfRoute, smartShelfRoute, bulkRoute, jobsRoute, trashRoute, adminLibrariesRoute, adminCalibreRoute, adminUsersRoute, adminWebhooksRoute, adminSettingsRoute, profileRoute, deviceRoute]),
 ]);
 
 /** history is for tests, which navigate in memory rather than in a browser. */

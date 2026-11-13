@@ -16,7 +16,9 @@ export const currentUserQuery = queryOptions({
 	queryKey: ["auth", "me"],
 	queryFn: async (): Promise<CurrentUser | null> => {
 		try {
-			return (await api.GET("/auth/me")).data ?? null;
+			const me = (await api.GET("/auth/me")).data ?? null;
+			if (me) void import("@/offline/kept").then((m) => m.claimOffline(me.id));
+			return me;
 		} catch (error) {
 			// Not being signed in is an answer, not a failure.
 			if (error instanceof ApiError && error.status === 401) {
@@ -80,7 +82,11 @@ export function useLogout() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async () => {
+			// Places read offline are sent while there is a session to send them in.
+			await (await import("@/offline/queue")).flushQueue(queryClient);
 			await api.POST("/auth/logout");
+			// Books kept offline were fetched as the user who leaves.
+			await (await import("@/offline/kept")).clearOffline();
 		},
 		onSuccess: () => {
 			// Everything cached was fetched as the user who just left.

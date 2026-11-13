@@ -37,6 +37,7 @@ WHERE u.id IN (
     SELECT x.user_id FROM user_books x WHERE x.book_id = sqlc.arg(book_id)
     UNION SELECT x.user_id FROM reading_progress x WHERE x.book_id = sqlc.arg(book_id)
     UNION SELECT x.user_id FROM book_notes x WHERE x.book_id = sqlc.arg(book_id)
+    UNION SELECT x.user_id FROM book_reviews x WHERE x.book_id = sqlc.arg(book_id)
     UNION SELECT c.owner_id FROM collection_items i JOIN collections c ON c.id = i.collection_id WHERE i.book_id = sqlc.arg(book_id))
 ORDER BY u.id;
 
@@ -60,6 +61,7 @@ LIMIT 5;
 SELECT EXISTS (SELECT 1 FROM user_books x WHERE x.book_id = sqlc.arg(book_id) AND x.user_id = sqlc.arg(user_id))
     OR EXISTS (SELECT 1 FROM reading_progress x WHERE x.book_id = sqlc.arg(book_id) AND x.user_id = sqlc.arg(user_id))
     OR EXISTS (SELECT 1 FROM book_notes x WHERE x.book_id = sqlc.arg(book_id) AND x.user_id = sqlc.arg(user_id))
+    OR EXISTS (SELECT 1 FROM book_reviews x WHERE x.book_id = sqlc.arg(book_id) AND x.user_id = sqlc.arg(user_id))
     OR EXISTS (SELECT 1 FROM collection_items i JOIN collections c ON c.id = i.collection_id
                WHERE i.book_id = sqlc.arg(book_id) AND c.owner_id = sqlc.arg(user_id));
 

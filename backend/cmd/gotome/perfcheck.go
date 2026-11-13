@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/praetorianer777/gotome/backend/internal/annotations"
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 	"github.com/praetorianer777/gotome/backend/internal/autodupe"
 	"github.com/praetorianer777/gotome/backend/internal/bulk"
@@ -141,6 +142,7 @@ func perfCheck(args []string) error {
 		Matches:        matches,
 		Bulk:           changes,
 		Reading:        reading.NewService(pool),
+		Annotations:    annotations.NewService(pool),
 		Imports:        readimport.NewService(pool, books, quiet),
 		Shelves:        shelves.NewService(pool, books),
 		Search:         search.NewTantivySearch(pool, books, index),

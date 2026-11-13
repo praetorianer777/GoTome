@@ -14,6 +14,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
+	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
 	"github.com/praetorianer777/gotome/backend/internal/fulltext"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
@@ -49,6 +50,7 @@ type background struct {
 	passages    *passages.Service
 	events      *notify.Events
 	follows     *releases.Service
+	discoveries *discover.Service
 	sync        *kosync.Service
 	updates     *updates.Service
 	imports     *readimport.Service
@@ -109,6 +111,7 @@ func (b background) registrations() []registration {
 		worker(&notify.FlushWorker{Events: b.events}),
 		worker(&releases.PollWorker{Service: b.follows}),
 		worker(&releases.FetchFeedsWorker{Service: b.follows}),
+		worker(&discover.RunWorker{Service: b.discoveries}),
 		worker(&updates.CheckWorker{Service: b.updates}),
 		worker(&kosync.HashWorker{Service: b.sync}),
 		worker(&kindle.Worker{Service: b.kindle}),
@@ -145,6 +148,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		releases.FeedsPeriodic(feedFetchInterval),
+		discover.Periodic(discoverInterval),
 		updates.Periodic(updateCheckInterval),
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),

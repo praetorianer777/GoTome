@@ -267,6 +267,37 @@ func (q *Queries) FinishesByYear(ctx context.Context, arg FinishesByYearParams) 
 	return items, nil
 }
 
+const insertSessionAt = `-- name: InsertSessionAt :exec
+INSERT INTO reading_sessions (user_id, book_id, medium, client_id, started_at, ended_at, from_fraction, to_fraction)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertSessionAtParams struct {
+	UserID       uuid.UUID
+	BookID       uuid.UUID
+	Medium       string
+	ClientID     string
+	StartedAt    time.Time
+	EndedAt      time.Time
+	FromFraction float64
+	ToFraction   float64
+}
+
+// A session whose times a client reports, for a stretch it counted itself.
+func (q *Queries) InsertSessionAt(ctx context.Context, arg InsertSessionAtParams) error {
+	_, err := q.db.Exec(ctx, insertSessionAt,
+		arg.UserID,
+		arg.BookID,
+		arg.Medium,
+		arg.ClientID,
+		arg.StartedAt,
+		arg.EndedAt,
+		arg.FromFraction,
+		arg.ToFraction,
+	)
+	return err
+}
+
 const listProgress = `-- name: ListProgress :many
 SELECT user_id, book_id, medium, file_id, locator, fraction, chapter, page, position_ms, client_id, updated_at FROM reading_progress WHERE user_id = $1 AND book_id = $2 ORDER BY medium
 `

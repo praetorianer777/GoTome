@@ -131,3 +131,30 @@ func (s *Service) SawProgress(ctx context.Context, deviceID, bookID uuid.UUID, a
 func (s *Service) Forget(ctx context.Context, deviceID, bookID uuid.UUID) error {
 	return sqlc.New(s.pool).DropKoboBook(ctx, sqlc.DropKoboBookParams{DeviceID: deviceID, BookID: bookID})
 }
+
+// ReadingMinutes takes what a reader reports as the minutes it has counted
+// reading the book in all, and returns the part beyond what was reported
+// before: each minute once, however often the same figure is sent. A figure
+// below the last, as after the reader was reset, is the new count to go on
+// from.
+func (s *Service) ReadingMinutes(ctx context.Context, deviceID, bookID uuid.UUID, total int) (int, error) {
+	delta := 0
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if err := q.SeedKoboReadingTime(ctx, sqlc.SeedKoboReadingTimeParams{DeviceID: deviceID, BookID: bookID}); err != nil {
+			return err
+		}
+		seen, err := q.LockKoboReadingTime(ctx, sqlc.LockKoboReadingTimeParams{DeviceID: deviceID, BookID: bookID})
+		if err != nil {
+			return err
+		}
+		if int(seen) == total {
+			return nil
+		}
+		if int(seen) < total {
+			delta = total - int(seen)
+		}
+		return q.SetKoboReadingTime(ctx, sqlc.SetKoboReadingTimeParams{DeviceID: deviceID, BookID: bookID, Minutes: int32(total)})
+	})
+	return delta, err
+}

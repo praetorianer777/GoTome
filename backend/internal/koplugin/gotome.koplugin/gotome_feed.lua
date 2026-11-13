@@ -104,6 +104,13 @@ function M.feed_url(server)
     return base .. "/api/v1/opds/device"
 end
 
+--- The address of a path of GOtome's API ("/device/annotations/...") on the
+--- server the person entered, written as feed_url takes it.
+function M.api_url(server, path)
+    local base = server:gsub("/+$", ""):gsub("/api/v1/opds$", ""):gsub("/api/v1$", "")
+    return base .. "/api/v1" .. path
+end
+
 --- The addresses to try, in order: the person's own entry, then the ones
 --- GOtome named, none twice, with the one that worked last put first. Each
 --- may be a string or a list of strings.

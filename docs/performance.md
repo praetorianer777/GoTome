@@ -66,6 +66,8 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | smart shelf | 12 ms | 21 ms |  |
 | collections | 8 ms | 14 ms |  |
 | reading statistics | 20 ms | 41 ms |  |
+| highlights | 3 ms | 2 ms |  |
+| highlights matching words | 27 ms | 27 ms |  |
 | new books | 7 ms | 6 ms |  |
 | items of followed feeds | 13 ms | 10 ms |  |
 | genre review | 39 ms | 36 ms | counts every waiting suggestion |
@@ -275,11 +277,12 @@ both languages. Since #445 only English is bundled; German is a chunk
 the profile asks for it, so the first load fell from 225 to 202 KiB gzip and
 from 191 to 174 KiB brotli (the main chunk, 166 to 165 KiB, barely moved: the
 German texts had been in a chunk the entry preloads), and the budgets with it,
-by the same headroom.
+by the same headroom. The main chunk's budget went from 183 to 186 KiB for
+the Highlights page and the readers' selection bar (#408).
 
 | What | Where | Today | Budget |
 | --- | --- | --- | --- |
-| Main chunk (`index`, raw) | `make check-web` (`web/scripts/budget.mjs`) | 165 KiB | 183 KiB |
+| Main chunk (`index`, raw) | `make check-web` (`web/scripts/budget.mjs`) | 184 KiB | 186 KiB |
 | First load, gzip (the entry, what it preloads, the stylesheet) | `make check-web` | 202 KiB | 221 KiB |
 | First load, brotli | `make check-web` | 174 KiB | 193 KiB |
 | Largest contentful paint | `e2e/tests/vitals.spec.ts` | 0.2 to 0.9 s | 2.5 s |
