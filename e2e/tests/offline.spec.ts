@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 // The worker, its caches and the offline mode of the browser are Chromium's
 // to test; the other engines run the same code, which the app tests hold.
 test.skip(({ browserName }) => browserName !== "chromium", "offline mode is driven through Chromium");
-test.use({ actionTimeout: 15_000 });
+test.use({ actionTimeout: 15_000, serviceWorkers: "allow" });
 
 async function uploadBook(page: Page, stamp: string) {
 	const library = (

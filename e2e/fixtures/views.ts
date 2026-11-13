@@ -1,4 +1,5 @@
-import { expect, type Page } from "@playwright/test";
+import { type Browser, expect, type Page, test } from "@playwright/test";
+import { makeAccount, signedIn } from "./accounts";
 import { libraryOfBooks } from "./app";
 import { makeEpub } from "./ebooks";
 import { editBook, newLibrary, uploadEpub } from "./library";
@@ -55,16 +56,21 @@ export async function seeded(page: Page, stamp: string) {
 	);
 	expect(reading.status()).toBe(200);
 	// A review too long for the column, shared, so that the book's page and a
-	// person's page list it.
-	const me = (await (await page.request.get("/api/v1/auth/me")).json()) as {
-		username: string;
-	};
+	// person's page list it. Its writer is an account of its own: the views
+	// run in parallel on one stack, and the administrator's choice to share
+	// would be switched off by whichever of them finished first.
+	const writer = await makeAccount(page.request, "reader", `layout-${stamp}`);
+	const writing = await signedIn(
+		page.context().browser() as Browser,
+		test.info(),
+		writer,
+	);
 	expect(
-		(await page.request.put("/api/v1/me/sharing", { data: { shareReviews: true } })).ok(),
+		(await writing.page.request.put("/api/v1/me/sharing", { data: { shareReviews: true } })).ok(),
 	).toBe(true);
 	expect(
 		(
-			await page.request.put(`/api/v1/books/${books[`Layout Three ${stamp}`]}/review`, {
+			await writing.page.request.put(`/api/v1/books/${books[`Layout Three ${stamp}`]}/review`, {
 				data: { body: `${long} ${long}\n\nA second paragraph of the review.`, private: false },
 			})
 		).status(),
@@ -111,13 +117,13 @@ export async function seeded(page: Page, stamp: string) {
 	];
 	views.push({
 		label: "a person's reviews",
-		path: `/people/${me.username}`,
-		heading: `Reviews by ${me.username}`,
+		path: `/people/${writer.username}`,
+		heading: `Reviews by ${writer.username}`,
 	});
 	return {
 		views,
 		cleanup: async () => {
-			await page.request.put("/api/v1/me/sharing", { data: { shareReviews: false } });
+			await writing.context.close();
 			for (const library of [id, epubLibrary]) {
 				await page.request.delete(`/api/v1/libraries/${library}`, { timeout: 30_000 });
 			}

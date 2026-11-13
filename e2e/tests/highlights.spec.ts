@@ -48,7 +48,9 @@ test("text selected in the reader becomes a highlight with a note, kept over a r
 	const bar = page.getByRole("form", { name: "Highlight the selected text" });
 	await expect(bar).toBeVisible();
 	await expect(bar).toContainText("Chapter 1, paragraph 1.");
-	await bar.getByRole("radio", { name: "Green", exact: true }).check({ force: true });
+	// The radio is visually hidden; a person clicks the swatch of its label.
+	await bar.locator("label").filter({ hasText: "Green" }).click();
+	await expect(bar.getByRole("radio", { name: "Green", exact: true })).toBeChecked();
 	await bar.getByRole("textbox", { name: "Note" }).fill("My note on it");
 	const kept = page.waitForResponse(
 		(r) => r.url().includes(`/books/${bookId}/annotations`) && r.request().method() === "POST",
