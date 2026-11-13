@@ -418,3 +418,15 @@ func (q quiet) Enabled(ctx context.Context, level slog.Level) bool {
 func (q quiet) WithAttrs(attrs []slog.Attr) slog.Handler { return quiet{q.Handler.WithAttrs(attrs)} }
 
 func (q quiet) WithGroup(name string) slog.Handler { return quiet{q.Handler.WithGroup(name)} }
+
+// Resume is what the worker of a pass bounded by a deadline returns: the
+// pass's error, else a snooze while it left work for the next run.
+func Resume(more bool, err error) error {
+	switch {
+	case err != nil:
+		return err
+	case more:
+		return river.JobSnooze(time.Second)
+	}
+	return nil
+}

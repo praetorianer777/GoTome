@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -86,6 +88,39 @@ func TestPlanSkipsMissingFilesAndCountsPartsInOrder(t *testing.T) {
 		want := []string{"Jane Austen/Odyssey/01 - Odyssey.mp3", "Jane Austen/Odyssey/02 - Odyssey.mp3", "Jane Austen/Odyssey/03 - Odyssey.mp3"}
 		if m.To != want[i] {
 			t.Errorf("part %d goes to %s", i+1, m.To)
+		}
+	}
+}
+
+func TestSameFileIsTrueForOneFileUnderTwoNamesOnly(t *testing.T) {
+	dir := t.TempDir()
+	one, two, link := filepath.Join(dir, "one.epub"), filepath.Join(dir, "two.epub"), filepath.Join(dir, "hard.epub")
+	for _, p := range []string{one, two} {
+		if err := os.WriteFile(p, []byte("same bytes"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Link(one, link); err != nil {
+		t.Fatal(err)
+	}
+	soft := filepath.Join(dir, "soft.epub")
+	if err := os.Symlink(one, soft); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name string
+		a, b string
+		want bool
+	}{
+		{"a file and itself", one, one, true},
+		{"a hard link", one, link, true},
+		{"another file of the same bytes", one, two, false},
+		{"a symlink is its own entry", one, soft, false},
+		{"the first is missing", filepath.Join(dir, "gone"), one, false},
+		{"the second is missing", one, filepath.Join(dir, "gone"), false},
+	} {
+		if got := sameFile(c.a, c.b); got != c.want {
+			t.Errorf("%s: %v", c.name, got)
 		}
 	}
 }

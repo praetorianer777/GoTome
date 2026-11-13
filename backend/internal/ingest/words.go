@@ -122,12 +122,5 @@ func (w *CountFilesWorker) Timeout(*river.Job[CountFilesArgs]) time.Duration {
 }
 
 func (w *CountFilesWorker) Work(ctx context.Context, _ *river.Job[CountFilesArgs]) error {
-	more, err := w.Service.CountFiles(ctx, time.Now().Add(passBudget))
-	if err != nil {
-		return err
-	}
-	if more {
-		return river.JobSnooze(time.Second)
-	}
-	return nil
+	return jobs.Resume(w.Service.CountFiles(ctx, time.Now().Add(passBudget)))
 }

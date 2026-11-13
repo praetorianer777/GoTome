@@ -2,11 +2,15 @@ package webhooks
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 
 	"github.com/praetorianer777/gotome/backend/internal/notify"
 )
@@ -93,5 +97,27 @@ func TestInputIsChecked(t *testing.T) {
 	}
 	if _, err := clean(Input{Name: "n", URL: ok.URL}, false); err != nil {
 		t.Errorf("a change without a secret: %v", err)
+	}
+}
+
+func TestNextRetryWaitsTheBackoffOfTheAttemptThatFailed(t *testing.T) {
+	w := &DeliverWorker{}
+	for attempt, wait := range map[int]time.Duration{1: 30 * time.Second, 3: 8 * time.Minute} {
+		job := &river.Job[DeliverArgs]{JobRow: &rivertype.JobRow{Attempt: attempt}}
+		before := time.Now()
+		got := w.NextRetry(job)
+		if got.Before(before.Add(wait)) || got.After(time.Now().Add(wait)) {
+			t.Errorf("attempt %d retried at +%v, want +%v", attempt, got.Sub(before), wait)
+		}
+	}
+}
+
+func TestTheLogFallsBackToTheDefaultLogger(t *testing.T) {
+	if (&Service{}).log() != slog.Default() {
+		t.Error("a service without a logger must use the default one")
+	}
+	own := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if (&Service{Log: own}).log() != own {
+		t.Error("a service's own logger must be used")
 	}
 }

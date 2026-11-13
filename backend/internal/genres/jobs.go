@@ -2,7 +2,6 @@ package genres
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/riverqueue/river"
@@ -53,14 +52,5 @@ func (w *SuggestWorker) Timeout(*river.Job[SuggestArgs]) time.Duration {
 
 func (w *SuggestWorker) Work(ctx context.Context, _ *river.Job[SuggestArgs]) error {
 	complete, err := w.Service.Suggest(ctx, time.Now().Add(passBudget))
-	switch {
-	case errors.Is(err, similar.ErrUnavailable):
-		w.Service.log.Warn("genres are not suggested", "error", err)
-		return nil
-	case err != nil:
-		return err
-	case !complete:
-		return river.JobSnooze(time.Second)
-	}
-	return nil
+	return similar.PassResult(w.Service.log, "genres are not suggested", complete, err)
 }
