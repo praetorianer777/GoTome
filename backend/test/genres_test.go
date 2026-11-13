@@ -7,8 +7,10 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -396,5 +398,58 @@ func TestAnInstallationSetToARetiredWaySuggestsWithTheEnsemble(t *testing.T) {
 	}
 	if mode != genres.MethodEnsemble {
 		t.Errorf("combined became %q", mode)
+	}
+}
+
+// westernText is English prose of a western, enough for the shipped word
+// table to tell.
+var westernText = strings.Repeat("The sheriff rode across the prairie to the ranch, where the cowboys drove the cattle. "+
+	"He drew his revolver; the outlaws fled from the saloon to their horses and the canyon. "+
+	"The rustlers had stolen the herd, and the posse followed the trail over the mesa. ", 20)
+
+func TestTheShippedEnsembleReadsABooksWordsOnceTheyAreCounted(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	folder := t.TempDir()
+	writeEPUB(t, filepath.Join(folder, "Trail.epub"), `
+    <dc:identifier id="uid">urn:uuid:5280</dc:identifier>
+    <dc:title>The Trail</dc:title>
+    <dc:language>en</dc:language>`, nil, westernText)
+	a.scanNow(a.externalLibrary(admin, "Shelf", "shared", folder))
+	file := a.shelfFiles()["Trail.epub"]
+	a.extract(file.ID)
+	ctx := context.Background()
+
+	// Its words are not counted yet: it has no input, so nothing is suggested.
+	if _, err := a.pool.Exec(ctx, "DELETE FROM file_words WHERE file_id = $1", file.ID); err != nil {
+		t.Fatal(err)
+	}
+	a.suggestGenres()
+	if got := a.genresOf(file.BookID); len(got) != 0 {
+		t.Fatalf("a book with no input was given %v", got)
+	}
+
+	// Counted later, it is looked at again and its words tell.
+	if err := a.scans.Chunk(ctx, file.ID); err != nil {
+		t.Fatal(err)
+	}
+	a.suggestGenres()
+	if got := a.genresOf(file.BookID); !slices.Contains(got, "automatic:suggested:western") {
+		t.Fatalf("from its words the book was given %v", got)
+	}
+	_, out, _ := a.call(editor, http.MethodGet, "/genres/suggestions?genre=western", nil)
+	s := out["suggestions"].([]any)[0].(map[string]any)
+	reasons := s["reasons"].(map[string]any)
+	words, _ := reasons["words"].([]any)
+	inputs := reasons["inputs"].([]any)
+	if len(words) == 0 || len(inputs) != 1 || inputs[0].(map[string]any)["input"] != "words" {
+		t.Errorf("reasons %v", reasons)
+	}
+	for _, w := range words {
+		if !strings.Contains(strings.ToLower(westernText), w.(string)) {
+			t.Errorf("a reason is %q, which the book does not hold", w)
+		}
 	}
 }
