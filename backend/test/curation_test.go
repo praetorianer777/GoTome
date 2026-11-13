@@ -5,8 +5,10 @@ package test
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -569,5 +571,98 @@ func TestRunsAreListedToThoseWhoSeeTheirLibraries(t *testing.T) {
 	var n int
 	if err := a.pool.QueryRow(ctx, `SELECT count(*) FROM curation_actions WHERE state = 'undone'`).Scan(&n); err != nil || n != 0 {
 		t.Errorf("undone actions: %d %v", n, err)
+	}
+}
+
+func TestRunsAndTheActionsOfARunPageWithoutRepeatingOrSkipping(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	lib := a.library(admin, "Shelf", "shared")
+	books := catalog.NewService(a.pool)
+	var ids []string
+	for _, b := range []struct{ title, author string }{
+		{"Das stille Archiv", "Weidner, Ulrike"},
+		{"Der verschollene Abt", "Weidner, Ulrike"},
+		{"Die Gräfin", "Ulrike Weidner"},
+	} {
+		id, err := books.CreateBook(context.Background(), catalog.NewBook{
+			LibraryID: uuid.MustParse(lib), Title: b.title, Contributors: []catalog.NewContributor{{Name: b.author}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id.String())
+	}
+	a.applyCleanup(admin, map[string]any{
+		"kind": "authors", "picks": []map[string]string{{"subject": "ulrike weidner", "to": "Ulrike  Weidner"}},
+	})
+	var up []string
+	for _, name := range []string{"One.pdf", "Two.pdf"} {
+		status, out := a.upload(admin, lib, name, []byte("%PDF-1.4 "+name))
+		if status != 200 {
+			t.Fatalf("upload: %d %v", status, out)
+		}
+		up = append(up, out["bookId"].(string))
+	}
+	if status, out, _ := a.call(admin, http.MethodPost, "/books/"+up[0]+"/merge", map[string]any{"from": up[1]}); status != 200 {
+		t.Fatalf("merge: %d %v", status, out)
+	}
+	whole := a.runs(admin)
+	if len(whole) != 2 || whole[0]["kind"] != "duplicates" || whole[1]["kind"] != "cleanup" {
+		t.Fatalf("runs, newest first: %v", whole)
+	}
+
+	var runs []string
+	cursor := ""
+	for page := 0; page < 4; page++ {
+		path := "/curation/runs?limit=1&cursor=" + url.QueryEscape(cursor)
+		status, out, _ := a.call(admin, http.MethodGet, path, nil)
+		if status != 200 {
+			t.Fatalf("runs page %d: %d %v", page, status, out)
+		}
+		list := out["runs"].([]any)
+		if len(list) != 1 {
+			t.Fatalf("runs page %d holds %d", page, len(list))
+		}
+		runs = append(runs, list[0].(map[string]any)["id"].(string))
+		if cursor, _ = out["nextCursor"].(string); cursor == "" {
+			break
+		}
+	}
+	if !slices.Equal(runs, []string{whole[0]["id"].(string), whole[1]["id"].(string)}) {
+		t.Errorf("paged runs %v, whole %v", runs, whole)
+	}
+
+	cleanup := whole[1]["id"].(string)
+	all := a.runActions(admin, cleanup)
+	if len(all) != 2 {
+		t.Fatalf("the clean-up's actions: %v", all)
+	}
+	var paged []string
+	cursor = ""
+	for page := 0; page < 4; page++ {
+		path := "/curation/runs/" + cleanup + "?limit=1&cursor=" + url.QueryEscape(cursor)
+		status, out, _ := a.call(admin, http.MethodGet, path, nil)
+		if status != 200 {
+			t.Fatalf("actions page %d: %d %v", page, status, out)
+		}
+		list := out["actions"].([]any)
+		if len(list) != 1 {
+			t.Fatalf("actions page %d holds %d", page, len(list))
+		}
+		paged = append(paged, list[0].(map[string]any)["id"].(string))
+		if cursor, _ = out["nextCursor"].(string); cursor == "" {
+			break
+		}
+	}
+	if !slices.Equal(paged, []string{all[0]["id"].(string), all[1]["id"].(string)}) {
+		t.Errorf("paged actions %v, whole %v", paged, all)
+	}
+
+	for _, path := range []string{"/curation/runs?cursor=nonsense", "/curation/runs/" + cleanup + "?cursor=nonsense_" + uuid.NewString()} {
+		if status, out, _ := a.call(admin, http.MethodGet, path, nil); status != 422 {
+			t.Errorf("%s: %d %v", path, status, out)
+		}
 	}
 }

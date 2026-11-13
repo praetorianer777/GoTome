@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -450,6 +451,81 @@ func TestTheShippedEnsembleReadsABooksWordsOnceTheyAreCounted(t *testing.T) {
 	for _, w := range words {
 		if !strings.Contains(strings.ToLower(westernText), w.(string)) {
 			t.Errorf("a reason is %q, which the book does not hold", w)
+		}
+	}
+}
+
+func TestTheGenreReviewPagesWithoutRepeatingOrSkipping(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
+	books := catalog.NewService(a.pool)
+	want := map[string]bool{}
+	for i, key := range []string{"fantasy", "fantasy", "fantasy", "crime", "horror"} {
+		id, err := books.CreateBook(context.Background(), catalog.NewBook{LibraryID: lib, Title: "Band " + strconv.Itoa(i)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.putVector(id, similar.KindContent, a.genreVector(key))
+		want[id.String()] = true
+	}
+	a.useEnsemble("crime", "fantasy", "horror")
+	a.suggestGenres()
+
+	var seen []string
+	cursor := ""
+	for page := 0; ; page++ {
+		if page > len(want)+1 {
+			t.Fatalf("the pages do not end: %v", seen)
+		}
+		path := "/genres/suggestions?limit=1"
+		if cursor != "" {
+			path += "&cursor=" + url.QueryEscape(cursor)
+		}
+		status, out, _ := a.call(editor, http.MethodGet, path, nil)
+		if status != 200 {
+			t.Fatalf("page %d: %d %v", page, status, out)
+		}
+		list := out["suggestions"].([]any)
+		if len(list) > 1 {
+			t.Fatalf("page %d holds %d suggestions", page, len(list))
+		}
+		for _, s := range list {
+			b := s.(map[string]any)["book"].(map[string]any)["id"].(string)
+			seen = append(seen, b+":"+s.(map[string]any)["genre"].(string))
+		}
+		cursor, _ = out["nextCursor"].(string)
+		if cursor == "" {
+			break
+		}
+		if page == 0 && len(list) != 1 {
+			t.Fatalf("the first page is empty but has a cursor")
+		}
+	}
+	if len(seen) != len(want) {
+		t.Fatalf("paging gave %d suggestions, want %d: %v", len(seen), len(want), seen)
+	}
+	ids := map[string]bool{}
+	for _, s := range seen {
+		ids[strings.SplitN(s, ":", 2)[0]] = true
+	}
+	if !maps.Equal(ids, want) {
+		t.Errorf("books paged %v, want %v", ids, want)
+	}
+	_, whole, _ := a.call(editor, http.MethodGet, "/genres/suggestions?limit=50", nil)
+	var all []string
+	for _, s := range whole["suggestions"].([]any) {
+		all = append(all, s.(map[string]any)["book"].(map[string]any)["id"].(string)+":"+s.(map[string]any)["genre"].(string))
+	}
+	if !slices.Equal(all, seen) {
+		t.Errorf("paged %v, whole %v", seen, all)
+	}
+
+	for _, bad := range []string{"nonsense", "0.5_nonsense_fantasy", "high_" + uuid.NewString() + "_fantasy", "0.5_" + uuid.NewString()} {
+		if status, out, _ := a.call(editor, http.MethodGet, "/genres/suggestions?cursor="+url.QueryEscape(bad), nil); status != 422 {
+			t.Errorf("cursor %q: %d %v", bad, status, out)
 		}
 	}
 }

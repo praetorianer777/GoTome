@@ -65,3 +65,24 @@ func TestEveryChoiceHasItsText(t *testing.T) {
 		}
 	}
 }
+
+func TestAThresholdIsANumberFromHalfToOne(t *testing.T) {
+	for _, c := range []struct {
+		value, want string
+		refused     bool
+	}{
+		{value: "0.95", want: "0.95"},
+		{value: " 0.5 ", want: "0.5"},
+		{value: "1", want: "1"},
+		{value: "0.90", want: "0.9"},
+		{value: "0.49", refused: true},
+		{value: "1.01", refused: true},
+		{value: "high", refused: true},
+		{value: "", refused: true},
+	} {
+		got, err := threshold(c.value)
+		if c.refused != (err != nil) || got != c.want {
+			t.Errorf("%q: %q %v", c.value, got, err)
+		}
+	}
+}
