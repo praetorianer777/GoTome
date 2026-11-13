@@ -24,6 +24,11 @@ type discoverReason struct {
 	Because []string `json:"because"`
 }
 
+type discoverPerson struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
+}
+
 type discoverItem struct {
 	ID          uuid.UUID `json:"id"`
 	Title       string    `json:"title"`
@@ -31,11 +36,20 @@ type discoverItem struct {
 	Series      string    `json:"series,omitempty"`
 	SeriesIndex *float64  `json:"seriesIndex,omitempty"`
 	// Year is the year the book came out, where the provider says.
-	Year        int            `json:"year,omitempty"`
-	Description string         `json:"description,omitempty"`
-	Provider    string         `json:"provider"`
-	CoverToken  string         `json:"coverToken,omitempty"`
-	Reason      discoverReason `json:"reason"`
+	Year        int          `json:"year,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Provider    string       `json:"provider"`
+	CoverToken  string       `json:"coverToken,omitempty"`
+	Subtitle    string       `json:"subtitle,omitempty"`
+	Publisher   string       `json:"publisher,omitempty"`
+	PageCount   *int32       `json:"pageCount,omitempty"`
+	Language    string       `json:"language,omitempty"`
+	Published   string       `json:"published,omitempty"`
+	Identifiers []identifier `json:"identifiers"`
+	Tags        []string     `json:"tags"`
+	// People are the authors the caller has books of in a library they see, with the key of their page.
+	People []discoverPerson `json:"people"`
+	Reason discoverReason   `json:"reason"`
 	// Wish is what POST /books/wishes takes to put the book on the caller's wishlist.
 	Wish wishRequest `json:"wish"`
 }
@@ -127,8 +141,15 @@ func (s *Server) discoverItemOf(it discover.Item) discoverItem {
 	for _, id := range rec.Identifiers {
 		identifiers = append(identifiers, identifier{Type: id.Type, Value: id.Value})
 	}
-	if rec.CoverURL != "" {
-		item.CoverToken = s.Metadata.CoverToken(rec.Provider, rec.CoverURL)
+	if provider, url := s.Metadata.CoverFor(rec); url != "" {
+		item.CoverToken = s.Metadata.CoverToken(provider, url)
+	}
+	item.Subtitle, item.Publisher, item.PageCount, item.Language, item.Published = rec.Subtitle, rec.Publisher, rec.PageCount, rec.Language, rec.Published
+	item.Identifiers, item.Tags, item.People = identifiers, append([]string{}, rec.Tags...), []discoverPerson{}
+	for _, a := range item.Authors {
+		if key, ok := it.People[a]; ok {
+			item.People = append(item.People, discoverPerson{Name: a, Key: key})
+		}
 	}
 	wish := wishRequest{Provider: rec.Provider, CoverToken: item.CoverToken}
 	wish.Title = &rec.Title

@@ -624,6 +624,43 @@ func (q *Queries) ListKnownReleases(ctx context.Context, arg ListKnownReleasesPa
 	return items, nil
 }
 
+const listLibraryPeople = `-- name: ListLibraryPeople :many
+SELECT DISTINCT a.person_key::text AS person_key
+FROM authors a
+JOIN book_contributors c ON c.author_id = a.id
+JOIN books b ON b.id = c.book_id
+WHERE a.person_key = ANY($1::text[]) AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
+`
+
+type ListLibraryPeopleParams struct {
+	PersonKeys []string
+	Viewer     uuid.UUID
+	SeesAll    bool
+}
+
+// Which of the people (person keys) have a book in a library the viewer sees:
+// Discover links their names to the author's page.
+func (q *Queries) ListLibraryPeople(ctx context.Context, arg ListLibraryPeopleParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listLibraryPeople, arg.PersonKeys, arg.Viewer, arg.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var person_key string
+		if err := rows.Scan(&person_key); err != nil {
+			return nil, err
+		}
+		items = append(items, person_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const putDiscoverAsk = `-- name: PutDiscoverAsk :exec
 INSERT INTO discover_asks (user_id, kind, name_key) VALUES ($1, $2, $3)
 ON CONFLICT (user_id, kind, name_key) DO UPDATE SET asked_at = now()
@@ -749,5 +786,20 @@ SET started_at = now(), finished_at = NULL, requested = false,
 // is finished.
 func (q *Queries) StartDiscoverRun(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, startDiscoverRun, userID)
+	return err
+}
+
+const updateDiscoverCandidateRecord = `-- name: UpdateDiscoverCandidateRecord :exec
+UPDATE discover_candidates SET record = $1 WHERE user_id = $2 AND id = $3
+`
+
+type UpdateDiscoverCandidateRecordParams struct {
+	Record []byte
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) UpdateDiscoverCandidateRecord(ctx context.Context, arg UpdateDiscoverCandidateRecordParams) error {
+	_, err := q.db.Exec(ctx, updateDiscoverCandidateRecord, arg.Record, arg.UserID, arg.ID)
 	return err
 }

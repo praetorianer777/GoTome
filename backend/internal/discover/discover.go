@@ -14,6 +14,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/praetorianer777/gotome/backend/internal/catalog"
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/library"
@@ -120,6 +123,9 @@ type Item struct {
 	Record metadata.Record
 	Score  float64
 	Reason Reason
+	// People maps the name of each author the viewer has a book of in a
+	// library they see to the key of their page.
+	People map[string]string
 }
 
 // Reason says why a book is offered.
@@ -230,7 +236,39 @@ func (s *Service) List(ctx context.Context, scope library.Scope) (View, error) {
 			Reason: Reason{Kind: r.ReasonKind, Name: r.ReasonName, Stars: int(r.ReasonStars), Because: r.Because},
 		})
 	}
-	return view, nil
+	return view, s.markPeople(ctx, scope, view.Items)
+}
+
+// markPeople finds the authors of the items that the viewer has books of.
+func (s *Service) markPeople(ctx context.Context, scope library.Scope, items []Item) error {
+	byKey := map[string]bool{}
+	for _, it := range items {
+		for _, c := range it.Record.Contributors {
+			if k := personKey(c.Name); k != "" && (c.Role == "" || c.Role == catalog.RoleAuthor) {
+				byKey[k] = true
+			}
+		}
+	}
+	if len(byKey) == 0 {
+		return nil
+	}
+	have, err := sqlc.New(s.pool).ListLibraryPeople(ctx, sqlc.ListLibraryPeopleParams{
+		PersonKeys: slices.Collect(maps.Keys(byKey)), Viewer: scope.Viewer, SeesAll: scope.SeesAll,
+	})
+	if err != nil {
+		return err
+	}
+	for i, it := range items {
+		for _, c := range it.Record.Contributors {
+			if k := personKey(c.Name); slices.Contains(have, k) && (c.Role == "" || c.Role == catalog.RoleAuthor) {
+				if items[i].People == nil {
+					items[i].People = map[string]string{}
+				}
+				items[i].People[c.Name] = k
+			}
+		}
+	}
+	return nil
 }
 
 // withoutHeld splits the candidates into those the person has a use for

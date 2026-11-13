@@ -123,17 +123,32 @@ func (s *Service) finish(ctx context.Context, user uuid.UUID, started time.Time)
 		return err
 	}
 	var kept []metadata.Record
+	var keptIDs []uuid.UUID
 	var gone []uuid.UUID
+	borrowed := map[int]bool{}
 	for _, r := range rows {
 		var rec metadata.Record
 		if err := json.Unmarshal(r.Record, &rec); err != nil {
 			return err
 		}
-		if slices.ContainsFunc(kept, func(k metadata.Record) bool { return sameBook(k, rec) }) {
+		if i := slices.IndexFunc(kept, func(k metadata.Record) bool { return sameBook(k, rec) }); i >= 0 {
 			gone = append(gone, r.ID)
+			if kept[i].BorrowCover(rec) {
+				borrowed[i] = true
+			}
 			continue
 		}
 		kept = append(kept, rec)
+		keptIDs = append(keptIDs, r.ID)
+	}
+	for i := range borrowed {
+		data, err := json.Marshal(kept[i])
+		if err != nil {
+			return err
+		}
+		if err := q.UpdateDiscoverCandidateRecord(ctx, sqlc.UpdateDiscoverCandidateRecordParams{UserID: user, ID: keptIDs[i], Record: data}); err != nil {
+			return err
+		}
 	}
 	if len(gone) > 0 {
 		if err := q.DeleteDiscoverCandidates(ctx, sqlc.DeleteDiscoverCandidatesParams{UserID: user, Ids: gone}); err != nil {
@@ -256,13 +271,16 @@ func (s *Service) put(ctx context.Context, user uuid.UUID, started time.Time, a 
 	})
 }
 
-// withoutDuplicates leaves one record of each book, the first.
+// withoutDuplicates leaves one record of each book, the first, with the
+// cover of another record of it where the first has none.
 func withoutDuplicates(in []found) []found {
 	var out []found
 	for _, c := range in {
-		if !slices.ContainsFunc(out, func(o found) bool { return sameBook(o.rec, c.rec) }) {
-			out = append(out, c)
+		if i := slices.IndexFunc(out, func(o found) bool { return sameBook(o.rec, c.rec) }); i >= 0 {
+			out[i].rec.BorrowCover(c.rec)
+			continue
 		}
+		out = append(out, c)
 	}
 	return out
 }

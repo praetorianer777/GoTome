@@ -279,6 +279,12 @@ export const de: Record<MessageKey, string> = {
 	"discover.wishNamed": "{title} auf die Wunschliste",
 	"discover.notInterested": "Kein Interesse",
 	"discover.notInterestedNamed": "Kein Interesse an {title}",
+	"discover.panel.series": "Reihe",
+	"discover.panel.isbn": "ISBN",
+	"discover.panel.categories": "Kategorien",
+	"discover.panel.source": "Quelle",
+	"discover.panel.why": "Warum dieses Buch",
+	"discover.panel.noDescription": "Die Quelle liefert keine Beschreibung.",
 	"settings.discover": "Bücher jenseits der Bibliotheken entdecken",
 	"settings.discover.hint":
 		"Sucht aus dem Geschmack jeder Person Bücher, die keine Bibliothek hat, einmal am Tag für alle, die darum gebeten haben. Die Metadatenquellen werden nach den Werken hoch bewerteter Autoren, den Bänden gelesener Reihen und Büchern der meistgelesenen Genres gefragt; sie sehen diese Namen, nie die Person oder die Bibliothek.",

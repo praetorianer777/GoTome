@@ -14,12 +14,27 @@ What changes for someone who runs or uses GOtome. The format follows
   jobs page after the upgrade; the counts take about 11 KB a book and are not
   part of backups ([Genres](docs/genres.md)).
 
+- On Discover, clicking a book (or pressing Enter on its title) opens its
+  details at the side, or from the bottom on a phone: a large cover, the
+  authors (linked where your libraries hold a book of theirs), series, year,
+  publisher, pages, language, ISBNs, categories, the whole description, the
+  source and why it is offered, with Add to wishlist and Not interested. The
+  address keeps the open book, so back closes it ([Discover](docs/discover.md)).
+
 ### Changed
 
 - Discover shows how far its search is while it runs: how many authors,
   series and genres are asked about of how many, in a progress bar, whether
   it is asking the sources now or waits for the next pass and about when,
   and which source has asked to be left alone for a while.
+
+### Fixed
+
+- Discover showed few covers: the lists of some sources (Open Library's
+  newest works of an author above all) carry no cover for most books. A
+  book now takes the cover of another source's record of it, or the one
+  Open Library keeps under its ISBN, and a book with no cover shows an empty
+  frame of the same size.
 
 ## [0.25.0] - 2026-11-13
 

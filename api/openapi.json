@@ -16207,7 +16207,31 @@
             "type": "string",
             "format": "uuid"
           },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverPerson"
+            }
+          },
           "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
             "type": "string"
           },
           "reason": {
@@ -16218,6 +16242,15 @@
           },
           "seriesIndex": {
             "type": "number"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "title": {
             "type": "string"
@@ -16234,6 +16267,9 @@
           "title",
           "authors",
           "provider",
+          "identifiers",
+          "tags",
+          "people",
           "reason",
           "wish"
         ]
@@ -16261,6 +16297,21 @@
         "required": [
           "state",
           "items"
+        ]
+      },
+      "DiscoverPerson": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "key"
         ]
       },
       "DiscoverProgress": {

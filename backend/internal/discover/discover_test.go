@@ -133,3 +133,24 @@ func TestADescriptionIsBoundedAndHoldsWhatMakesABook(t *testing.T) {
 		t.Errorf("%d characters", len([]rune(text)))
 	}
 }
+
+func TestAnEditionWithoutACoverTakesTheCoverOfAnotherRecordOfTheBook(t *testing.T) {
+	bare := record("Salt and Lantern", "Ada Moss")
+	bare.Provider = "openlibrary"
+	covered := record("Salt and Lantern", "Moss, Ada")
+	covered.Provider, covered.CoverURL = "hardcover", "https://images.example/salt.jpg"
+	got := withoutDuplicates([]found{{rec: bare}, {rec: covered}})
+	if len(got) != 1 {
+		t.Fatalf("%d books remain", len(got))
+	}
+	if got[0].rec.Provider != "openlibrary" || got[0].rec.CoverURL != covered.CoverURL || got[0].rec.CoverProvider != "hardcover" {
+		t.Errorf("record %+v lacks the other's cover and its provider", got[0].rec)
+	}
+	own := record("Own Cover", "Ada Moss")
+	own.CoverURL = "https://images.example/own.jpg"
+	other := record("Own Cover", "Ada Moss")
+	other.Provider, other.CoverURL = "hardcover", "https://images.example/other.jpg"
+	if got := withoutDuplicates([]found{{rec: own}, {rec: other}}); got[0].rec.CoverURL != own.CoverURL || got[0].rec.CoverProvider != "" {
+		t.Errorf("a book's own cover was replaced: %+v", got[0].rec)
+	}
+}

@@ -7,7 +7,8 @@ import { FOCUSABLE, type KeyBinding, useModal } from "@/lib/keys";
  * A modal dialog: focus moves into it and stays there, Escape or the close
  * button closes it, and focus goes back to where it was. An alert dialog
  * asks a question its own buttons answer, and has no close button. A drawer
- * is the same, along the left edge at full height, for the phone's menu.
+ * is the same, along the left edge at full height, for the phone's menu. A
+ * side panel is along the right edge, or the bottom on a phone.
  */
 export function Dialog({
 	title,
@@ -17,6 +18,7 @@ export function Dialog({
 	describedBy,
 	drawer = false,
 	wide = false,
+	side = false,
 }: {
 	title: string;
 	onClose: () => void;
@@ -26,6 +28,8 @@ export function Dialog({
 	drawer?: boolean;
 	/** Takes the window's width up to a large reading width, for a book or a form. */
 	wide?: boolean;
+	/** A panel along the right edge at full height; on a phone, a sheet from the bottom. Outside it a click closes it. */
+	side?: boolean;
 }) {
 	useModal();
 	const id = useId();
@@ -71,9 +75,9 @@ export function Dialog({
 
 	return createPortal(
 		<div
-			className={`fixed inset-0 z-50 flex bg-slate-950/50 ${drawer ? "" : "items-center justify-center p-4"}`}
+			className={`fixed inset-0 z-50 flex bg-slate-950/50 ${side ? "items-end justify-end sm:items-stretch" : drawer ? "" : "items-center justify-center p-4"}`}
 			onPointerDown={(e) => {
-				if (drawer && e.target === e.currentTarget) close.current();
+				if ((drawer || side) && e.target === e.currentTarget) close.current();
 			}}
 		>
 			<div
@@ -83,7 +87,7 @@ export function Dialog({
 				aria-labelledby={id}
 				aria-describedby={describedBy}
 				tabIndex={-1}
-				className={`flex max-h-full w-full flex-col gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${drawer ? "h-full max-w-72 border-r pt-safe-4 pb-safe-4 pl-safe-4 dark:bg-slate-950" : `${wide ? "max-w-5xl" : "max-w-lg"} rounded-2xl border`}`}
+				className={`flex w-full flex-col ${side ? "" : "max-h-full"} gap-3 overflow-y-auto border-slate-200 bg-white p-4 text-slate-900 shadow-xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${side ? "max-h-[85dvh] rounded-t-2xl border-t pb-safe-4 sm:h-full sm:max-h-full sm:max-w-md sm:rounded-none sm:border-l sm:border-t-0" : drawer ? "h-full max-w-72 border-r pt-safe-4 pb-safe-4 pl-safe-4 dark:bg-slate-950" : `${wide ? "max-w-5xl" : "max-w-lg"} rounded-2xl border`}`}
 			>
 				<div className="flex items-center gap-2">
 					<h2 id={id} className="mr-auto text-lg font-medium">

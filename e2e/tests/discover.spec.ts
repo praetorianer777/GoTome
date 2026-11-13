@@ -47,6 +47,9 @@ test("Discover lists books by reason; Add to wishlist and Not interested take a 
 		authors: [long],
 		year: 2021,
 		provider: "openlibrary",
+		identifiers: [],
+		tags: [],
+		people: [],
 		reason,
 		wish: { title, provider: "openlibrary" },
 	});
@@ -155,4 +158,81 @@ test("Discover shows how far a run is, then that it waits, then the books", asyn
 	await page.reload();
 	await expect(page.getByText(/Last looked on/)).toBeVisible();
 	await expect(page.getByRole("progressbar")).toHaveCount(0);
+});
+
+test("Discover opens a book's details at the side or, on a phone, from the bottom, and the address keeps the book", async ({
+	page,
+}, testInfo) => {
+	const stamp = `${testInfo.project.name} ${Date.now()}`;
+	const long = `Wolfeschlegelsteinhausenbergerdorff-${stamp.replaceAll(" ", "")}`;
+	const title = `Details ${stamp}`;
+	await openSignedIn(page);
+	const id = "00000000-0000-0000-0000-0000000000d1";
+	const items = [
+		{
+			id,
+			title,
+			subtitle: `A subtitle that goes on and on ${long}`,
+			authors: [long, "Pia Quill"],
+			people: [{ name: "Pia Quill", key: "pia-quill" }],
+			year: 2021,
+			published: "2021-05-04",
+			publisher: `Quay Press ${long}`,
+			pageCount: 312,
+			language: "en",
+			description: `${"A very long description. ".repeat(60)}${long}`,
+			identifiers: [{ type: "isbn", value: "9780306406157" }],
+			tags: [`Sea stories ${long}`, "Adventure"],
+			provider: "openlibrary",
+			reason: { kind: "author", name: long, stars: 5, because: [`Liked ${long}`] },
+			wish: { title, provider: "openlibrary" },
+		},
+	];
+	await page.route("**/api/v1/me/discover", (route) =>
+		route.fulfill({ json: { state: "ready", finishedAt: "2026-11-10T08:00:00Z", items } }),
+	);
+	await page.goto("/discover");
+	const opener = page.getByRole("button", { name: title, exact: true });
+	await opener.click();
+	const panel = page.getByRole("dialog", { name: title });
+	await expect(panel).toBeVisible();
+	await expect(page).toHaveURL(new RegExp(`book=${id}`));
+	await expect(panel.getByRole("link", { name: "Pia Quill" })).toHaveAttribute("href", "/authors/pia-quill");
+	await expect(panel.getByText("9780306406157")).toBeVisible();
+	await expect(panel.getByRole("button", { name: "Add to wishlist" })).toBeVisible();
+	await expect(panel.getByRole("button", { name: "Not interested" })).toBeVisible();
+
+	const view = page.viewportSize();
+	const box = await panel.boundingBox();
+	expect(box).not.toBeNull();
+	if (view && box) {
+		expect(box.x).toBeGreaterThanOrEqual(0);
+		expect(box.x + box.width).toBeLessThanOrEqual(view.width + 1);
+		expect(box.y + box.height).toBeLessThanOrEqual(view.height + 1);
+		// The panel sits against the right edge, the sheet against the bottom.
+		if (view.width >= 640) expect(box.x + box.width).toBeGreaterThanOrEqual(view.width - 20);
+		else expect(box.y + box.height).toBeGreaterThanOrEqual(view.height - 1);
+	}
+	const sideways = await panel.evaluate((el) => el.scrollWidth - el.clientWidth);
+	expect(sideways).toBeLessThanOrEqual(0);
+
+	await page.keyboard.press("Escape");
+	await expect(panel).toHaveCount(0);
+	await expect(page).not.toHaveURL(/book=/);
+	await expect(opener).toBeFocused();
+
+	await opener.press("Enter");
+	await expect(panel).toBeVisible();
+	await page.goBack();
+	await expect(panel).toHaveCount(0);
+
+	await page.goto(`/discover?book=${id}`);
+	await expect(panel).toBeVisible();
+	await panel.getByRole("button", { name: "Close" }).click();
+	await expect(panel).toHaveCount(0);
+
+	await opener.click();
+	await expect(panel).toBeVisible();
+	await page.mouse.click(5, 5);
+	await expect(panel).toHaveCount(0);
 });

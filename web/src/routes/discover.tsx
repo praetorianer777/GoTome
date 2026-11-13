@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { type ReactNode, useEffect, useState } from "react";
+import { AuthorLink } from "@/books/name-links";
+import { Dialog } from "@/components/dialog";
 import { candidateCoverUrl } from "@/books/edit";
 import { type DiscoverItem, type DiscoverProgress, discoverQuery, useDiscoverRun, useDismissDiscovered, useWishDiscovered } from "@/discover/api";
 import { FormError } from "@/components/form";
 import { button, EmptyState, Loading, PageHeader } from "@/components/ui";
 import { type MessageKey, t } from "@/i18n";
-import { formatDateTime, formatTime } from "@/lib/format";
+import { formatDateTime, formatLanguage, formatTime } from "@/lib/format";
 
 /** The reasons in the order the page lists them: what the data says plainly first. */
 const KINDS = ["series_next", "series_gap", "series_more", "author", "genre"] as const;
@@ -21,11 +24,22 @@ const HEADINGS: Record<(typeof KINDS)[number], MessageKey> = {
  * Books beyond the libraries that the person's taste points to, each with
  * why, and a way to wish for it or to say it is not for them. Only theirs.
  */
-export function Discover() {
+export function Discover({
+	open,
+	onOpen,
+}: {
+	/** The candidate whose details are open, kept in the address. */
+	open?: string;
+	onOpen: (id: string | undefined) => void;
+}) {
 	const discovered = useQuery(discoverQuery);
 	const run = useDiscoverRun();
 	const list = discovered.data;
 	const state = list?.state;
+	const opened = open ? list?.items.find((i) => i.id === open) : undefined;
+	useEffect(() => {
+		if (open && list && !opened) onOpen(undefined);
+	}, [open, list, opened, onOpen]);
 	return (
 		<div className="flex flex-col gap-6">
 			<PageHeader
@@ -89,13 +103,25 @@ export function Discover() {
 						<ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{items.map((item) => (
 								<li key={item.id} className="min-w-0">
-									<DiscoverCard item={item} />
+									<DiscoverCard item={item} onOpen={() => onOpen(item.id)} />
 								</li>
 							))}
 						</ul>
 					</section>
 				);
 			})}
+			{opened && (
+				<DiscoverPanel
+					item={opened}
+					onClose={() => {
+						onOpen(undefined);
+						// Safari does not focus a button it was clicked, so the dialog cannot return there.
+						requestAnimationFrame(() =>
+							document.querySelector<HTMLElement>(`[data-discover-open="${opened.id}"]`)?.focus(),
+						);
+					}}
+				/>
+			)}
 		</div>
 	);
 }
@@ -182,24 +208,41 @@ function reasonText(item: DiscoverItem): string {
 		: t("discover.reason.author", { name });
 }
 
-function DiscoverCard({ item }: { item: DiscoverItem }) {
+/** A cover, or a placeholder of the same size where there is none or the source has none to give. */
+function Cover({ token, className }: { token: string | undefined; className: string }) {
+	const [failed, setFailed] = useState(false);
+	return (
+		<div className={`shrink-0 overflow-hidden rounded bg-slate-200 dark:bg-slate-800 ${className}`}>
+			{token && !failed && (
+				<img
+					src={candidateCoverUrl(token)}
+					alt=""
+					loading="lazy"
+					className="h-full w-full object-cover"
+					onError={() => setFailed(true)}
+				/>
+			)}
+		</div>
+	);
+}
+
+function DiscoverCard({ item, onOpen }: { item: DiscoverItem; onOpen: () => void }) {
 	const wish = useWishDiscovered();
 	const dismiss = useDismissDiscovered();
 	const busy = wish.isPending || dismiss.isPending;
 	return (
 		<div className="flex min-w-0 gap-3">
-			<div className="h-28 w-20 shrink-0 overflow-hidden rounded bg-slate-200 dark:bg-slate-800">
-				{item.coverToken && (
-					<img
-						src={candidateCoverUrl(item.coverToken)}
-						alt=""
-						loading="lazy"
-						className="h-full w-full object-cover"
-					/>
-				)}
-			</div>
+			<Cover token={item.coverToken} className="h-28 w-20" />
 			<div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
-				<span className="line-clamp-2 break-words font-medium">{item.title}</span>
+				<button
+					type="button"
+					data-discover-open={item.id}
+					aria-haspopup="dialog"
+					onClick={onOpen}
+					className="line-clamp-2 break-words text-left font-medium hover:underline"
+				>
+					{item.title}
+				</button>
 				{item.authors.length > 0 && (
 					<span className="line-clamp-1 break-words text-slate-600 dark:text-slate-400">
 						{item.authors.join(", ")}
@@ -240,5 +283,94 @@ function DiscoverCard({ item }: { item: DiscoverItem }) {
 				<FormError error={wish.error ?? dismiss.error} />
 			</div>
 		</div>
+	);
+}
+
+function sourceName(provider: string): string {
+	const key = `settingChoice.metadata.providers.${provider}`;
+	return ["openlibrary", "crossref", "hardcover", "dnb", "google"].includes(provider) ? t(key as MessageKey) : provider;
+}
+
+/** What the source said of a book, at the side (a sheet from the bottom on a phone), with the two choices the card has. */
+function DiscoverPanel({ item, onClose }: { item: DiscoverItem; onClose: () => void }) {
+	const wish = useWishDiscovered();
+	const dismiss = useDismissDiscovered();
+	const busy = wish.isPending || dismiss.isPending;
+	const isbns = item.identifiers.filter((i) => i.type === "isbn").map((i) => i.value);
+	const rows: [string, ReactNode][] = [];
+	if (item.series) {
+		rows.push([t("discover.panel.series"), item.seriesIndex != null ? `${item.series} ${t("series.number", { index: item.seriesIndex })}` : item.series]);
+	}
+	if (item.published || item.year) rows.push([t("book.published"), item.published || String(item.year)]);
+	if (item.publisher) rows.push([t("book.publisher"), item.publisher]);
+	if (item.pageCount) rows.push([t("book.pages"), String(item.pageCount)]);
+	if (item.language) rows.push([t("book.language"), formatLanguage(item.language)]);
+	if (isbns.length > 0) rows.push([t("discover.panel.isbn"), isbns.join(", ")]);
+	if (item.tags.length > 0) rows.push([t("discover.panel.categories"), item.tags.join(", ")]);
+	rows.push([t("discover.panel.source"), sourceName(item.provider)]);
+	return (
+		<Dialog title={item.title} onClose={onClose} side>
+			<div className="flex min-w-0 flex-col gap-4">
+				<Cover token={item.coverToken} className="h-64 w-44 self-center" />
+				{item.subtitle && <p className="break-words text-slate-600 dark:text-slate-400">{item.subtitle}</p>}
+				{item.authors.length > 0 && (
+					<p className="break-words">
+						{item.authors.map((name, i) => {
+							const key = item.people.find((p) => p.name === name)?.key;
+							return (
+								<span key={name}>
+									{i > 0 && ", "}
+									{key ? <AuthorLink name={name} authorKey={key} /> : name}
+								</span>
+							);
+						})}
+					</p>
+				)}
+				<dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+					{rows.map(([label, value]) => (
+						<div key={label} className="contents">
+							<dt className="text-slate-600 dark:text-slate-400">{label}</dt>
+							<dd className="min-w-0 break-words">{value}</dd>
+						</div>
+					))}
+				</dl>
+				<div className="flex min-w-0 flex-col gap-1 text-sm">
+					<h3 className="font-medium">{t("discover.panel.why")}</h3>
+					<p className="break-words">{reasonText(item)}</p>
+					{item.reason.because.length > 0 && (
+						<p className="break-words text-slate-600 dark:text-slate-400">
+							{t("discover.because", { books: item.reason.because.join(", ") })}
+						</p>
+					)}
+				</div>
+				<div className="flex min-w-0 flex-col gap-1 text-sm">
+					<h3 className="font-medium">{t("book.description")}</h3>
+					{item.description ? (
+						<p className="whitespace-pre-line break-words">{item.description}</p>
+					) : (
+						<p className="text-slate-600 dark:text-slate-400">{t("discover.panel.noDescription")}</p>
+					)}
+				</div>
+				<div className="flex flex-wrap gap-2">
+					<button
+						type="button"
+						className={button("primary")}
+						disabled={busy}
+						onClick={() => wish.mutate(item, { onSuccess: onClose })}
+					>
+						{t("discover.wish")}
+					</button>
+					<button
+						type="button"
+						className={button("secondary")}
+						disabled={busy}
+						onClick={() => dismiss.mutate(item.id, { onSuccess: onClose })}
+					>
+						{t("discover.notInterested")}
+					</button>
+				</div>
+				<FormError error={wish.error ?? dismiss.error} />
+			</div>
+		</Dialog>
 	);
 }

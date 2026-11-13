@@ -4688,10 +4688,18 @@ export interface components {
             description?: string;
             /** Format: uuid */
             id: string;
+            identifiers: components["schemas"]["Identifier"][];
+            language?: string;
+            pageCount?: number;
+            people: components["schemas"]["DiscoverPerson"][];
             provider: string;
+            published?: string;
+            publisher?: string;
             reason: components["schemas"]["DiscoverReason"];
             series?: string;
             seriesIndex?: number;
+            subtitle?: string;
+            tags: string[];
             title: string;
             wish: components["schemas"]["WishRequest"];
             year?: number;
@@ -4702,6 +4710,10 @@ export interface components {
             items: components["schemas"]["DiscoverItem"][];
             progress?: components["schemas"]["DiscoverProgress"];
             state: string;
+        };
+        DiscoverPerson: {
+            key: string;
+            name: string;
         };
         DiscoverProgress: {
             activity: string;

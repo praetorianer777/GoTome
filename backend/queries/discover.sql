@@ -204,6 +204,9 @@ FROM discover_candidates
 WHERE user_id = $1
 ORDER BY score DESC, id;
 
+-- name: UpdateDiscoverCandidateRecord :exec
+UPDATE discover_candidates SET record = sqlc.arg(record) WHERE user_id = sqlc.arg(user_id) AND id = sqlc.arg(id);
+
 -- name: DeleteDiscoverCandidates :exec
 DELETE FROM discover_candidates WHERE user_id = sqlc.arg(user_id) AND id = ANY(sqlc.arg(ids)::uuid[]);
 
@@ -219,3 +222,13 @@ INSERT INTO discover_dismissals (user_id, title_keys, author_keys) VALUES ($1, $
 
 -- name: ListDiscoverDismissals :many
 SELECT title_keys, author_keys FROM discover_dismissals WHERE user_id = $1;
+
+-- name: ListLibraryPeople :many
+-- Which of the people (person keys) have a book in a library the viewer sees:
+-- Discover links their names to the author's page.
+SELECT DISTINCT a.person_key::text AS person_key
+FROM authors a
+JOIN book_contributors c ON c.author_id = a.id
+JOIN books b ON b.id = c.book_id
+WHERE a.person_key = ANY(sqlc.arg(person_keys)::text[]) AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));

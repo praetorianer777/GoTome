@@ -269,6 +269,12 @@ export const en = {
 	"discover.wishNamed": "Add {title} to wishlist",
 	"discover.notInterested": "Not interested",
 	"discover.notInterestedNamed": "Not interested in {title}",
+	"discover.panel.series": "Series",
+	"discover.panel.isbn": "ISBN",
+	"discover.panel.categories": "Categories",
+	"discover.panel.source": "Source",
+	"discover.panel.why": "Why this book",
+	"discover.panel.noDescription": "The source gives no description.",
 	"settings.discover": "Discover books beyond the libraries",
 	"settings.discover.hint":
 		"Looks for books no library holds from each person's taste, once a day for those who asked. The metadata sources are asked for the works of authors people rated highly, the volumes of series they read and books of the genres they read most; they see those names, never the person or the library.",

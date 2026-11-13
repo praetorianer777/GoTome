@@ -5041,6 +5041,9 @@ describe("discover", () => {
 		authors: ["Ada Moss"],
 		year: 2021,
 		provider: "openlibrary",
+		identifiers: [],
+		tags: [],
+		people: [],
 		reason,
 		wish: wish(title),
 	});
@@ -5090,6 +5093,71 @@ describe("discover", () => {
 		await waitFor(() => expect(screen.queryByText("Moss Again")).not.toBeInTheDocument());
 		expect(server.requests.some((r) => r.path === "/me/discover/c-2/dismiss")).toBe(true);
 		expect(screen.getByText("Fen Tale")).toBeInTheDocument();
+	});
+
+	it("opens a book's details at the side, with its address, and closes them again", async () => {
+		const person = userEvent.setup();
+		discovered();
+		server.discover = {
+			...server.discover!,
+			items: server.discover!.items.map((i) =>
+				i.id === "c-2"
+					? {
+							...i,
+							subtitle: "A Second Tale",
+							publisher: "Quay Press",
+							pageCount: 312,
+							language: "en",
+							published: "2021-05-04",
+							description: "A long description of the whole book.",
+							identifiers: [{ type: "isbn", value: "9780306406157" }],
+							tags: ["Sea stories", "Adventure"],
+							people: [{ name: "Ada Moss", key: "ada-moss" }],
+						}
+					: i,
+			),
+		};
+		const { router } = renderApp("/discover");
+		const opener = await screen.findByRole("button", { name: "Moss Again" });
+		await person.click(opener);
+		const panel = await screen.findByRole("dialog", { name: "Moss Again" });
+		expect(router.state.location.search).toEqual({ book: "c-2" });
+		const inside = within(panel);
+		expect(inside.getByRole("link", { name: "Ada Moss" })).toHaveAttribute("href", "/authors/ada-moss");
+		for (const text of ["A Second Tale", "Quay Press", "312", "9780306406157", "Sea stories, Adventure", "Open Library", "A long description of the whole book.", "By Ada Moss, whom you rated 5 stars"]) {
+			expect(inside.getByText(text)).toBeInTheDocument();
+		}
+		await person.keyboard("{Escape}");
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(router.state.location.search).toEqual({});
+		expect(opener).toHaveFocus();
+	});
+
+	it("opens the details from the address, and wishes or dismisses from the panel", async () => {
+		const person = userEvent.setup();
+		discovered();
+		renderApp("/discover?book=c-1");
+		const panel = await screen.findByRole("dialog", { name: "The Lantern Four" });
+		await person.click(within(panel).getByRole("button", { name: "Add to wishlist" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(server.requests.find((r) => r.path === "/books/wishes")?.body).toEqual(wish("The Lantern Four"));
+		await person.click(await screen.findByRole("button", { name: "Moss Again" }));
+		await person.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Not interested" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(server.requests.some((r) => r.path === "/me/discover/c-2/dismiss")).toBe(true);
+	});
+
+	it("closes the details on a click outside and drops an address that names no book", async () => {
+		const person = userEvent.setup();
+		discovered();
+		const { unmount } = renderApp("/discover?book=c-3");
+		const panel = await screen.findByRole("dialog", { name: "Fen Tale" });
+		await person.pointer({ target: panel.parentElement as HTMLElement, keys: "[MouseLeft]" });
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		unmount();
+		renderApp("/discover?book=gone");
+		await screen.findByText("Moss Again");
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});
 
 	it("asks for a run the first time, and says it is under way", async () => {

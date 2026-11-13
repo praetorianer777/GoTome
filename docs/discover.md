@@ -30,6 +30,26 @@ you are not interested in, and the other editions of a book that is offered
 already. A library you cannot see does not count: its books are offered to
 you as to anyone, and the page never says that one holds them.
 
+## Covers and details
+
+A book shows the cover its source gives it. Where that source lists the
+book without one (Open Library's newest works of an author are mostly
+reprints with no cover), the cover of another source's record of the same
+book is used, or, for a book with an ISBN, the one Open Library keeps under
+it (`covers.openlibrary.org/b/isbn/...?default=false`, which answers "not
+found" rather than a blank picture). A book with none keeps an empty frame of
+the same size. The browser asks only GOtome for covers; the server fetches
+the address a signed token names, from the source it names.
+
+Click a book's title, or press Enter on it, to open its details at the side
+(from the bottom on a phone): the cover large, the authors (a link to the
+author's page where your libraries hold a book of theirs), series, year,
+publisher, pages, language, ISBNs, categories, the whole description, the
+source and why the book is offered, with **Add to wishlist** and **Not
+interested**. Escape, the close button or a click outside closes it and puts
+focus back on the title; the address (`/discover?book=...`) keeps the open
+book, so the back button closes it.
+
 ## Turning it on
 
 Under **Settings**, **Discover books beyond the libraries**
