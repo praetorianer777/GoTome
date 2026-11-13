@@ -16,12 +16,18 @@ import (
 
 // Version names what is counted and how it is stored. Raise it with a change
 // to either: files counted with another version are counted again.
-const Version = 1
+const Version = 2
 
 const (
 	minLetters = 3
 	maxLetters = 25
 	maxCount   = 65535
+	// MinCount is how often a word must occur in a book to be kept. Words
+	// that occur once are 60% of a book's distinct words and cost half of
+	// the stored size; leaving them out lowers the word weights' F1 on
+	// the public corpus from 0.660 to 0.652 (spikes/genres port -min), and
+	// leaving out those under 3 to 0.644.
+	MinCount = 2
 )
 
 // Counts is how often each lower-cased word occurs. Words are surface
@@ -36,7 +42,7 @@ const (
 )
 
 // Count counts the words of a text given in pieces, in order. Words are
-// runs of letters of 3 to 25 letters. Project Gutenberg's header and
+// runs of letters of 3 to 25 letters that occur at least MinCount times. Project Gutenberg's header and
 // licence, which say nothing of a book's genre, are left out where their
 // markers are found; names are not, as they cannot be told from other words
 // without a list for each language, and the learning's minimum document
@@ -57,6 +63,11 @@ func Count(texts []string) Counts {
 			t = t[:to.offset]
 		}
 		add(m, t)
+	}
+	for w, n := range m {
+		if n < MinCount {
+			delete(m, w)
+		}
 	}
 	return m
 }

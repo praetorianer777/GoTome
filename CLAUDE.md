@@ -1528,8 +1528,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   (`routes/genres.tsx`) is the review; `PUT /books/{id}/genres/{genre}`
   accepts or rejects. A merge keeps what a person decided.
 - Word weights (#526, `docs/decisions/genre-detection.md`): `wordcount.Count`
-  counts a text's words (lower case, 3 to 25 letters, no stemming, Gutenberg's
-  header and licence left out) and `wordcount.Encode` stores them; `writeChunksTx`
+  counts a text's words (lower case, 3 to 25 letters, no stemming, only
+  those occurring twice or more, `wordcount.MinCount`; Gutenberg's header and
+  licence left out; about 11 KB a book) and `wordcount.Encode` stores them; `writeChunksTx`
   does it with the chunk texts in memory into `file_words` (valid while its
   `chunked_at` is the file's, deleted with the file's chunks, derived and in
   backup.sh's list), and the snoozing job `ingest.count_words` (queue `extract`,

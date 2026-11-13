@@ -19,18 +19,28 @@ func runPort(args []string) error {
 	fs := flag.NewFlagSet("port", flag.ExitOnError)
 	chunks := fs.String("chunks", ".cache/corpus/chunks.jsonl.gz", "the chunk file")
 	workers := fs.Int("workers", 3, "")
+	minCount := fs.Int("min", 1, "drop words occurring fewer times than this in a book")
+	skipOld := fs.Bool("skip-spike", false, "do not train the spike's own trainer")
 	_ = fs.Parse(args)
 
 	var recs []Rec
 	var counted []wordcount.Counts
 	var countNS int64
+	var encBytes int
 	err := readBooks(*chunks, func(b Book) error {
 		r := Rec{ID: fmt.Sprint(b.ID), Group: fmt.Sprint(b.ID), Lang: b.Lang, Labels: LabelsOf(b.Subjects), Terms: map[string]uint16{}}
 		for _, c := range b.Chunks {
 			countTerms(r.Terms, c)
 		}
 		t := time.Now()
-		counted = append(counted, wordcount.Count(b.Chunks))
+		c := wordcount.Count(b.Chunks)
+		for w, n := range c {
+			if int(n) < *minCount {
+				delete(c, w)
+			}
+		}
+		encBytes += len(wordcount.Encode(c))
+		counted = append(counted, c)
 		countNS += time.Since(t).Nanoseconds()
 		recs = append(recs, r)
 		return nil
@@ -59,7 +69,7 @@ func runPort(args []string) error {
 			cs = append(cs, counted[i])
 		}
 	}
-	fmt.Printf("%d books with one of %d genres; port counts %.1f ms a book\n", len(docs), len(genreList), float64(countNS)/float64(len(recs))/1e6)
+	fmt.Printf("%d books with one of %d genres; port counts %.1f ms a book, %.1f KB stored a book (min %d)\n", len(docs), len(genreList), float64(countNS)/float64(len(recs))/1e6, float64(encBytes)/float64(len(recs))/1024, *minCount)
 
 	const folds = 5
 	old := newScores(len(docs), len(genreList))
@@ -77,10 +87,12 @@ func runPort(args []string) error {
 			train = append(train, d)
 			trainBooks = append(trainBooks, genres.WordBook{ID: d.ID, Counts: cs[i], Labels: d.Labels})
 		}
-		m := trainTFIDF(train, genreList, *workers)
-		sc := m.Predict(test)["tfidf"]
-		for j, i := range testIdx {
-			copy(old[i], sc[j])
+		if !*skipOld {
+			m := trainTFIDF(train, genreList, *workers)
+			sc := m.Predict(test)["tfidf"]
+			for j, i := range testIdx {
+				copy(old[i], sc[j])
+			}
 		}
 		for lang, group := range byLang(train, trainBooks) {
 			tab := genres.TrainWords(lang, group, genreList, genres.WordOptions{Workers: *workers})
@@ -99,6 +111,9 @@ func runPort(args []string) error {
 		name string
 		s    Scores
 	}{{"spike", old}, {"port", port}} {
+		if *skipOld && row.name == "spike" {
+			continue
+		}
 		bestF, bestT, bp, br := 0.0, 0.0, 0.0, 0.0
 		for t := 0.05; t < 0.96; t += 0.05 {
 			dec := decide(row.s, uniformThreshold(len(genreList), t))

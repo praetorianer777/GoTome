@@ -7,7 +7,7 @@ import (
 )
 
 func TestCountLowercasesAndLimitsLength(t *testing.T) {
-	got := Count([]string{"The Cat, the cat! An ox. Überall überall " + strings.Repeat("x", 30)})
+	got := Count([]string{"The Cat, the cat! An ox. Überall überall once " + strings.Repeat("x", 30)})
 	want := Counts{"the": 2, "cat": 2, "überall": 2}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v want %v", got, want)
@@ -20,15 +20,22 @@ func TestCountLeavesGutenbergBoilerplateOut(t *testing.T) {
 		"harriet talked\n*** END OF THE PROJECT GUTENBERG EBOOK EMMA ***\nlicence terms",
 	}
 	got := Count(texts)
-	want := Counts{"harriet": 2, "walked": 1, "talked": 1}
+	want := Counts{"harriet": 2}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v want %v", got, want)
 	}
 }
 
+func TestCountLeavesWordsOutThatOccurOnce(t *testing.T) {
+	got := Count([]string{"rare common common"})
+	if len(got) != 1 || got["common"] != 2 {
+		t.Fatalf("got %v", got)
+	}
+}
+
 func TestCountWithoutMarkersCountsAll(t *testing.T) {
-	got := Count([]string{"one two", "three"})
-	if len(got) != 3 {
+	got := Count([]string{"one two", "three one two"})
+	if len(got) != 2 || got["one"] != 2 || got["two"] != 2 {
 		t.Fatalf("got %v", got)
 	}
 }

@@ -134,10 +134,15 @@ again and counts it again.
 
 What it costs, measured on the public corpus (books of about 380,000
 characters): counting takes about 5 ms a book while the text is in memory, and
-storing the counts about 3 ms and 31 KB a book (words compressed, 8,400
-different words a book), so 1.5 GB for 48,560 books. Books chunked before
-counting existed are counted by the job "Count the words of the books' text",
-which reads each file again (about 45 ms a book, about 40 minutes for 48,560
-books on one CPU) and goes on where it stopped. Project Gutenberg's header and
-licence are left out; words are counted as written, not stemmed, so a stem can
-be chosen later without reading anything again.
+storing the counts about 3 ms and 11 KB a book, so about 0.5 GB for 48,560
+books. A word is kept when it occurs at least twice in the book
+(`wordcount.MinCount`): words that occur once are 60% of a book's distinct
+words and half of the size, and leaving them out costs 0.008 of the word
+weights' F1 on the corpus (0.652 against 0.660; keeping only words that occur
+three times or more gives 0.644 at 8 KB). Books chunked before counting
+existed are counted by the job "Count the words of the books' text", which
+reads each file again (about 45 ms a book, about 40 minutes for 48,560 books on
+one CPU) and goes on where it stopped. Project Gutenberg's header and licence
+are left out; words are counted as written, not stemmed, so a stem can be
+chosen later without reading anything again. Changing the rule means raising
+`wordcount.Version`, which counts every file again.
