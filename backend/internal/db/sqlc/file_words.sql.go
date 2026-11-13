@@ -59,7 +59,7 @@ FROM book_files f
 WHERE f.id = $4::uuid AND f.chunked_at IS NOT NULL
 ON CONFLICT (file_id) DO UPDATE
 SET version = excluded.version, chunked_at = excluded.chunked_at,
-    words = excluded.words, counts = excluded.counts
+    words = excluded.words, counts = excluded.counts, counted_at = now()
 `
 
 type UpsertFileWordsParams struct {

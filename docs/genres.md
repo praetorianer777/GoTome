@@ -22,19 +22,57 @@ are kept beside them.
   none, leaving out those that rightly give none (`generic` in the same
   file: "Roman", "Belletristik", "Sachbuch", "eBook", a shop's and a
   reader's own marks, publishers, countries, and centuries).
-- **Suggestions.** From a book's vectors (#66): which genres at least
-  40% of its nearest books in the library have (`neighbours`), how much
-  nearer they are to a genre's descriptions than to the genres on average
-  (`vector`), or the neighbours and, for a book too few of whose
-  neighbours have genres, the vectors (`combined`). At most three genres
-  a book. A suggestion waits under
+- **Suggestions.** By the ensemble (`ensemble`, #528, below), from a
+  book's words, its vectors and the genres of its nearest books
+  together; or from the neighbours alone, the genres at least 40% of its
+  nearest books in the library have (`neighbours`, #66). At most three
+  genres a book, none its tags already give. A suggestion waits under
   Genres in the app until a person accepts or rejects it; a rejected one
   is not suggested for that book again.
 
-Nothing is written until an administrator sets **Genres for books**
-(`genres.suggest`) in the settings: `off` (the default), `tags`, `vector`,
-`neighbours` or `combined`. Use `neighbours` (below). The library's filter finds the genres of tags
-and those accepted, never a suggestion that waits.
+**Genres for books** (`genres.suggest`) in the settings is `off`, `tags`,
+`neighbours` or `ensemble`, the default. The library's filter finds the
+genres of tags and those accepted, never a suggestion that waits. Before
+0.26 the default was `off`, and the setting also took `vector` and
+`combined`; an installation set to either was moved to `ensemble`, and
+`genre-check` still measures them.
+
+## The ensemble
+
+The ensemble (`backend/internal/genres/ensemble.go`,
+`docs/decisions/genre-detection.md`) asks four inputs how likely each genre
+is, each where the book has it:
+
+- **words**: the word weights of the book's whole text
+  (`file_words`, below), for a language GOtome has a table of;
+- **content**: a head on the book's content vector;
+- **metadata**: a head on the vector of its title, authors and
+  description;
+- **neighbours**: the share of its nearest books in the library that have
+  the genre, as `neighbours` counts it.
+
+A stacker for the set of inputs the book has turns them into one
+probability per genre. A genre is suggested from the probability at which
+the training books, scored by models that had not seen them, were right
+four times in five (`TargetPrecision`); a genre that never got there is
+not suggested at all. The review shows the probability, each input's, and
+the book's words that weighed most.
+
+What ships (`backend/internal/genres/shipped`, numbers only) is trained on
+1,171 books of Project Gutenberg whose subject headings give one of 25
+genres: adventure, arts, biography, children, crime, drama, fantasy,
+historical, history, humour, myths, nature, philosophy, poetry,
+psychology, religion, romance, science, science fiction, self-help, short
+stories, society, travel, war and western. Other genres come from tags
+only. The heads are for multilingual-e5-small, and the word table is for
+English: a library embedded with bge-m3, or of German books, is served by
+the inputs that remain (for bge-m3 the neighbours and, in English, the
+words). On a fifth of the corpus held out, the ensemble gave P 0.78, R
+0.56, F1 0.65 and a genre to 72% of books; the content vector alone P
+0.73, R 0.42. On a modern German library it was 0.6 to 0.7 precise
+(the decision record): suggestions only wait for review, so that costs
+review time and changes nothing by itself. `spikes/genres/run.sh ship`
+trains it again, the same numbers every time.
 
 ## Measuring before switching suggestions on
 
@@ -79,10 +117,11 @@ genre):
 | neighbours, share 0.5 | P 0.79, R 0.35, F1 0.49, 50% given | |
 | neighbours, share 0.4 | P 0.74, R 0.43, F1 0.54, 62% given | (now `NeighbourShare`) |
 
-`neighbours` is the method to use. `combined` takes the neighbours'
-answer wherever at least `MinNeighbours` of the nearest books have
-genres, so on a library with tags it gives what `neighbours` gives, and
-asks the vectors only for a book among untagged books.
+`neighbours` was the method to use before the ensemble. `combined`
+took the neighbours' answer wherever at least `MinNeighbours` of the
+nearest books have genres, so on a library with tags it gave what
+`neighbours` gives, and asked the vectors only for a book among untagged
+books.
 
 ### Why the vectors are no better than guessing
 
@@ -128,8 +167,9 @@ After an upgrade, run `genre-check -n 300` and compare with the table.
 For word weights from a book's whole text (`docs/decisions/genre-detection.md`),
 GOtome counts the words of every book's text while it chunks it, and keeps the
 counts in the table `file_words` (a book's primary text file, its words
-lower-cased, of 3 to 25 letters, and how often each occurs). Nothing is
-suggested from them yet. They are not backed up: a restore reads every text
+lower-cased, of 3 to 25 letters, and how often each occurs), which the
+ensemble's word weights read. A book counted after its genres were
+looked at is looked at again. They are not backed up: a restore reads every text
 again and counts it again.
 
 What it costs, measured on the public corpus (books of about 380,000

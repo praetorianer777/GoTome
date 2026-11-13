@@ -6,6 +6,8 @@
 #   spikes/genres/run.sh gutenberg   records of the public corpus
 #   spikes/genres/run.sh eval        the measurements on it (results/)
 #   spikes/genres/run.sh shipped     the size and top words of a default model
+#   spikes/genres/run.sh ship [-eval]  the ensemble the app ships, written
+#                                    into backend/internal/genres/shipped
 #   spikes/genres/run.sh library DIR N   records of N books of a library, read
 #                                        only, folder by folder; then
 #                                        eval with LIBRARY=<file>
@@ -44,6 +46,11 @@ eval)
 	;;
 shipped)
 	"$genres" shipped -gutenberg "$work/gutenberg.gob" -out "$root/spikes/genres/results/shipped.json" -workers "$threads"
+	;;
+ship)
+	# The ensemble the app ships (#528); -eval measures instead of writing.
+	"$genres" ship -gutenberg "$work/gutenberg.gob" -vectors "$embedcache/vectors-direct-fp32-16-query.gob" \
+		-out "$root/backend/internal/genres/shipped" -workers "$threads" "${@:2}"
 	;;
 stats)
 	"$genres" stats -in "${2:?records file}"

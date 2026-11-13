@@ -12,7 +12,7 @@ import {
 import { FormError } from "@/components/form";
 import { Loading, PageHeader } from "@/components/ui";
 import { t } from "@/i18n";
-import { formatCount } from "@/lib/format";
+import { formatCount, formatPercent } from "@/lib/format";
 
 const button =
 	"rounded-md bg-brand-strong px-3 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-60 dark:bg-brand dark:text-ink dark:hover:bg-sky-300";
@@ -26,7 +26,7 @@ export function genreName(genre: string): string {
 	return isGenre(genre) ? t(`genre.${genre}`) : genre;
 }
 
-/** Genres suggested from the books' vectors, for a person to accept or reject. */
+/** Genres suggested for books, for a person to accept or reject. */
 export function Genres({
 	genre,
 	onGenre,
@@ -162,6 +162,27 @@ function Suggestion({
 	);
 }
 
+/** What made the ensemble suggest a genre: each input's say, and the words. */
+function Reasons({
+	reasons,
+}: {
+	reasons: NonNullable<GenreSuggestion["reasons"]>;
+}) {
+	const inputs = reasons.inputs
+		.map((i) =>
+			t(`genres.input.${i.input}`, { score: formatPercent(i.score) }),
+		)
+		.join(" · ");
+	return (
+		<div className="text-xs text-slate-500 dark:text-slate-400">
+			{inputs && <p>{t("genres.why.inputs", { inputs })}</p>}
+			{reasons.words.length > 0 && (
+				<p>{t("genres.why.words", { words: reasons.words.join(", ") })}</p>
+			)}
+		</div>
+	);
+}
+
 /** The suggested genre, why it is suggested, and the buttons that decide it. */
 function Decision({ suggestion: s }: { suggestion: GenreSuggestion }) {
 	const decide = useDecideGenre();
@@ -171,13 +192,16 @@ function Decision({ suggestion: s }: { suggestion: GenreSuggestion }) {
 			<p>
 				<span className="font-medium">{name}</span>{" "}
 				<span className="text-sm text-slate-500">
-					{t(
-						s.method === "neighbours"
-							? "genres.byNeighbours"
-							: "genres.byVector",
-					)}
+					{s.method === "ensemble"
+						? t("genres.byEnsemble", { score: formatPercent(s.score) })
+						: t(
+								s.method === "neighbours"
+									? "genres.byNeighbours"
+									: "genres.byVector",
+							)}
 				</span>
 			</p>
+			{s.reasons && <Reasons reasons={s.reasons} />}
 			<FormError error={decide.error} />
 			<div className="flex flex-wrap gap-2">
 				<button

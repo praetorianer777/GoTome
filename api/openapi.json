@@ -17434,6 +17434,48 @@
           "state"
         ]
       },
+      "GenreInput": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string",
+            "enum": [
+              "words",
+              "content",
+              "metadata",
+              "neighbours"
+            ]
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "input",
+          "score"
+        ]
+      },
+      "GenreReasons": {
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenreInput"
+            }
+          },
+          "words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "words",
+          "inputs"
+        ]
+      },
       "GenreSuggestion": {
         "type": "object",
         "properties": {
@@ -17446,9 +17488,13 @@
           "method": {
             "type": "string",
             "enum": [
-              "vector",
-              "neighbours"
+              "ensemble",
+              "neighbours",
+              "vector"
             ]
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/GenreReasons"
           },
           "score": {
             "type": "number"

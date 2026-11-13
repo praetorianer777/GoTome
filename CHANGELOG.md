@@ -29,6 +29,22 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ### Changed
 
+- Genres are suggested by default now, by a new way, `ensemble`: a book's
+  words, its vectors and the genres of the books most like it together, each
+  genre suggested only from where it was right about four times in five on
+  the books it was trained on. It ships trained on Project Gutenberg for 25
+  genres, so a library without a single tag gets suggestions too. The review
+  under Genres shows how sure it is, what each part said and the book's
+  words that weighed most. Nothing is accepted by itself and tags are never
+  changed. An installation that had "Genres for books" at its old default,
+  off, now suggests: set it to `off` or `tags` to keep it as it was. `vector`
+  and `combined` are gone from the setting; one set to either uses
+  `ensemble`. The heads ship for multilingual-e5-small and the word weights
+  for English: with bge-m3, or in German, the ensemble goes by what remains.
+  The first pass after the upgrade looks at every book and its nearest books
+  in the background, on the queue that makes vectors; on a large library that
+  takes hours ([Genres](docs/genres.md)).
+
 - Discover shows how far its search is while it runs: how many authors,
   series and genres are asked about of how many, in a progress bar, whether
   it is asking the sources now or waits for the next pass and about when,

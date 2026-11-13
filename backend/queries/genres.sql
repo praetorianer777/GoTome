@@ -1,15 +1,29 @@
 -- name: ListBooksForGenres :many
 -- Books after the given ID that a pass of the recipe has not looked at, or
--- that changed or were embedded again since it did, in ID order.
+-- that changed, were embedded again or had their words counted since it
+-- did, in ID order.
 SELECT b.id
 FROM books b
 LEFT JOIN book_genre_checks c ON c.book_id = b.id
 WHERE b.id > sqlc.arg(after)::uuid AND b.deleted_at IS NULL AND NOT b.placeholder
   AND (c.book_id IS NULL OR c.recipe <> sqlc.arg(recipe)::text OR c.checked_at < b.updated_at
        OR EXISTS (SELECT 1 FROM book_vectors v
-                  WHERE v.book_id = b.id AND v.model = sqlc.arg(model)::text AND v.embedded_at > c.checked_at))
+                  WHERE v.book_id = b.id AND v.model = sqlc.arg(model)::text AND v.embedded_at > c.checked_at)
+       OR EXISTS (SELECT 1 FROM file_words w
+                  WHERE w.file_id = b.primary_text_file_id AND w.counted_at > c.checked_at))
 ORDER BY b.id
 LIMIT sqlc.arg(page)::int;
+
+-- name: GetGenreWords :one
+-- The word counts of the book's primary text file, counted for its text as
+-- it is now, and the language most of the book's chunks are in.
+SELECT w.counts,
+       coalesce((SELECT c.lang FROM book_chunks c WHERE c.book_id = b.id
+                 GROUP BY c.lang ORDER BY count(*) DESC, c.lang LIMIT 1), '')::text AS lang
+FROM books b
+JOIN book_files f ON f.id = b.primary_text_file_id
+JOIN file_words w ON w.file_id = f.id AND w.chunked_at = f.chunked_at AND w.version = sqlc.arg(version)::int
+WHERE b.id = sqlc.arg(book_id)::uuid;
 
 -- name: ListGenreEvidence :many
 -- What tells the genres of the books: their tags, and the genres a person
@@ -74,16 +88,17 @@ WHERE book_id = sqlc.arg(book_id)::uuid AND state = 'suggested' AND NOT (genre =
 INSERT INTO book_genres (book_id, genre, source)
 VALUES (sqlc.arg(book_id)::uuid, sqlc.arg(genre)::text, 'tags')
 ON CONFLICT (book_id, genre) DO UPDATE
-SET source = 'tags', method = NULL, score = NULL, updated_at = now()
+SET source = 'tags', method = NULL, score = NULL, reasons = NULL, updated_at = now()
 WHERE book_genres.state = 'suggested' AND book_genres.source <> 'tags';
 
 -- name: PutAutomaticGenre :exec
--- A genre suggested by the book's vectors, unless a person decided it or
+-- A genre suggested for the book, with why, unless a person decided it or
 -- the tags give it.
-INSERT INTO book_genres (book_id, genre, source, method, score)
-VALUES (sqlc.arg(book_id)::uuid, sqlc.arg(genre)::text, 'automatic', sqlc.arg(method)::text, sqlc.arg(score)::real)
+INSERT INTO book_genres (book_id, genre, source, method, score, reasons)
+VALUES (sqlc.arg(book_id)::uuid, sqlc.arg(genre)::text, 'automatic', sqlc.arg(method)::text, sqlc.arg(score)::real,
+        sqlc.narg(reasons)::jsonb)
 ON CONFLICT (book_id, genre) DO UPDATE
-SET method = EXCLUDED.method, score = EXCLUDED.score, updated_at = now()
+SET method = EXCLUDED.method, score = EXCLUDED.score, reasons = EXCLUDED.reasons, updated_at = now()
 WHERE book_genres.state = 'suggested' AND book_genres.source = 'automatic';
 
 -- name: MarkGenresChecked :exec
@@ -94,7 +109,7 @@ ON CONFLICT (book_id) DO UPDATE SET recipe = EXCLUDED.recipe, checked_at = EXCLU
 -- name: ListGenreSuggestions :many
 -- Automatic suggestions nobody has decided, of books the viewer sees, of
 -- one genre and one library when named: the best first, after the cursor.
-SELECT g.book_id, g.genre, g.method, g.score::float8 AS score
+SELECT g.book_id, g.genre, g.method, g.score::float8 AS score, g.reasons
 FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'

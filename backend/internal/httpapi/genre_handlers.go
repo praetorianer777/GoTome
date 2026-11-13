@@ -20,8 +20,8 @@ type genreSuggestionsQuery struct {
 	Limit   int    `query:"limit" doc:"How many suggestions a page holds, at most 100; 50 when left out."`
 }
 
-// genreSuggestions are genres suggested for books from their vectors that
-// wait for a person to accept or reject them.
+// genreSuggestions are genres suggested for books that wait for a person
+// to accept or reject them.
 type genreSuggestions struct {
 	Suggestions []genreSuggestion `json:"suggestions"`
 	// Waiting is how many wait per genre, of the library when one is named.
@@ -32,12 +32,49 @@ type genreSuggestions struct {
 type genreSuggestion struct {
 	Book  bookSummary `json:"book"`
 	Genre string      `json:"genre"`
-	// Method is how it was found: vector (the book's vectors near the
-	// genre's description) or neighbours (the genre of the nearest books).
+	// Method is how it was found: ensemble (the book's words, vectors and
+	// nearest books together), neighbours (the genre of the nearest books),
+	// or vector (the book's vectors near the genre's description), which
+	// earlier versions suggested with.
 	Method string `json:"method"`
-	// Score is how sure the method is: a margin for vector, a share for
-	// neighbours.
+	// Score is how sure the method is: a probability for ensemble, a share
+	// for neighbours, a margin for vector.
 	Score float64 `json:"score"`
+	// Reasons say why the ensemble suggested it; absent for other methods.
+	Reasons *genreReasons `json:"reasons,omitempty"`
+}
+
+// genreReasons are what made the ensemble suggest a genre.
+type genreReasons struct {
+	// Words are the book's words that weighed most for the genre, most
+	// first; empty where its words were not read.
+	Words []string `json:"words"`
+	// Inputs are each input's probability for the genre: words (the
+	// whole text's words), content (the text's vector), metadata (the
+	// vector of title, authors and description) and neighbours (the share
+	// of the nearest books of its library that have the genre).
+	Inputs []genreInput `json:"inputs"`
+}
+
+type genreInput struct {
+	Input string  `json:"input"`
+	Score float64 `json:"score"`
+}
+
+func reasonsOf(w *genres.Why) *genreReasons {
+	if w == nil {
+		return nil
+	}
+	out := &genreReasons{Words: w.Words, Inputs: []genreInput{}}
+	if out.Words == nil {
+		out.Words = []string{}
+	}
+	for _, name := range genres.InputNames {
+		if v, ok := w.Inputs[name]; ok {
+			out.Inputs = append(out.Inputs, genreInput{Input: name, Score: v})
+		}
+	}
+	return out
 }
 
 type genreWaiting struct {
@@ -111,7 +148,8 @@ func (s *Server) listGenreSuggestions(w http.ResponseWriter, r *http.Request) er
 		if !ok {
 			continue
 		}
-		out.Suggestions = append(out.Suggestions, genreSuggestion{Book: b, Genre: sg.Genre, Method: sg.Method, Score: sg.Score})
+		out.Suggestions = append(out.Suggestions, genreSuggestion{Book: b, Genre: sg.Genre, Method: sg.Method, Score: sg.Score,
+			Reasons: reasonsOf(sg.Why)})
 	}
 	if next != nil {
 		out.NextCursor = strconv.FormatFloat(next.Score, 'g', -1, 64) + "_" + next.BookID.String() + "_" + next.Genre

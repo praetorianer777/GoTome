@@ -34,6 +34,11 @@ export function formatCount(value: number, fractionDigits = 1): string {
 	return numberFormat({ maximumFractionDigits: fractionDigits }).format(value);
 }
 
+/** A share of 0 to 1 as a whole percentage: 87 % or 87 %. */
+export function formatPercent(share: number): string {
+	return numberFormat({ style: "percent", maximumFractionDigits: 0 }).format(share);
+}
+
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
 /** A file size as people read it: 1.4 MB. */

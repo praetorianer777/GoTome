@@ -7,7 +7,7 @@ FROM book_files f
 WHERE f.id = sqlc.arg(file_id)::uuid AND f.chunked_at IS NOT NULL
 ON CONFLICT (file_id) DO UPDATE
 SET version = excluded.version, chunked_at = excluded.chunked_at,
-    words = excluded.words, counts = excluded.counts;
+    words = excluded.words, counts = excluded.counts, counted_at = now();
 
 -- name: ListFilesToCount :many
 -- The primary text files that are chunked and whose words are not counted

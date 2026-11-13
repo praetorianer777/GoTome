@@ -333,11 +333,11 @@ func (q *Queries) MergeAnnotations(ctx context.Context, arg MergeAnnotationsPara
 const mergeBookGenres = `-- name: MergeBookGenres :exec
 WITH moved AS (
     DELETE FROM book_genres x WHERE x.book_id = $2
-    RETURNING genre, source, method, score, state, decided_by, created_at),
+    RETURNING genre, source, method, score, reasons, state, decided_by, created_at),
 checked AS (
     DELETE FROM book_genre_checks c WHERE c.book_id = $1)
-INSERT INTO book_genres AS g (book_id, genre, source, method, score, state, decided_by, created_at)
-SELECT $1, genre, source, method, score, state, decided_by, created_at
+INSERT INTO book_genres AS g (book_id, genre, source, method, score, reasons, state, decided_by, created_at)
+SELECT $1, genre, source, method, score, reasons, state, decided_by, created_at
 FROM moved WHERE state <> 'suggested'
 ON CONFLICT (book_id, genre) DO UPDATE
 SET state = EXCLUDED.state, decided_by = EXCLUDED.decided_by, updated_at = now()

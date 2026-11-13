@@ -4,19 +4,26 @@ package test
 
 import (
 	"context"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 
 	"github.com/praetorianer777/gotome/backend/internal/catalog"
+	"github.com/praetorianer777/gotome/backend/internal/db"
+	"github.com/praetorianer777/gotome/backend/internal/db/dbtest"
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
 	"github.com/praetorianer777/gotome/backend/internal/settings"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/migrations"
 )
 
 // genreVector is the vector the fake model gives a genre's descriptions.
@@ -27,6 +34,27 @@ func (a *app) genreVector(key string) []float32 {
 		a.t.Fatal(err)
 	}
 	return vecs[slices.Index(genres.Keys(), key)]
+}
+
+// useEnsemble has suggestions made by an ensemble trained here on noisy
+// copies of the fake model's vectors of the genres' descriptions: content
+// vectors alone, as a library without tags or counted words meets the
+// shipped one.
+func (a *app) useEnsemble(keys ...string) *genres.Ensemble {
+	a.t.Helper()
+	rng := rand.New(rand.NewPCG(528, 1))
+	var books []genres.TrainBook
+	for i := range 300 {
+		key := keys[i%len(keys)]
+		v := slices.Clone(a.genreVector(key))
+		for j := range v {
+			v[j] += float32(rng.NormFloat64() * 0.02)
+		}
+		books = append(books, genres.TrainBook{ID: strconv.Itoa(i), Content: v, Labels: []string{key}})
+	}
+	e := genres.TrainEnsemble(books, keys, genres.EnsembleOptions{Version: "test", Model: embed.E5Small.Model.Name, Workers: 2})
+	a.server.Genres.Ensemble = func() (*genres.Ensemble, error) { return e, nil }
+	return e
 }
 
 func (a *app) setGenreMode(admin *http.Client, mode string) {
@@ -89,6 +117,8 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	a.useEnsemble("crime", "fantasy", "horror")
+	a.setGenreMode(admin, genres.Off)
 	a.suggestGenres()
 	if got := append(a.genresOf(tagged), a.genresOf(about)...); len(got) != 0 {
 		t.Fatalf("with the setting off, genres were written: %v", got)
@@ -103,7 +133,7 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		t.Errorf("the tags alone suggested %v for an untagged book", got)
 	}
 
-	a.setGenreMode(admin, genres.MethodVector)
+	a.setGenreMode(admin, genres.MethodEnsemble)
 	a.suggestGenres()
 	status, out, _ := a.call(editor, http.MethodGet, "/genres/suggestions?genre=crime", nil)
 	list, _ := out["suggestions"].([]any)
@@ -111,7 +141,7 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 		t.Fatalf("suggestions: %d %v", status, out)
 	}
 	first := list[0].(map[string]any)
-	if first["book"].(map[string]any)["title"] != "Alba Alta" || first["method"] != genres.MethodVector {
+	if first["book"].(map[string]any)["title"] != "Alba Alta" || first["method"] != genres.MethodEnsemble {
 		t.Errorf("suggestion %v", first)
 	}
 	_, all, _ := a.call(editor, http.MethodGet, "/genres/suggestions", nil)
@@ -143,7 +173,9 @@ func TestGenresAreWrittenOnlyOnceTheSettingAsksAndNeverTouchTags(t *testing.T) {
 	if status, body, _ := a.call(editor, http.MethodPut, "/books/"+tagged.String()+"/genres/crime", map[string]any{"state": "rejected"}); status != 204 {
 		t.Fatalf("reject: %d %v", status, body)
 	}
-	a.setGenreMode(admin, genres.MethodCombined)
+	a.setGenreMode(admin, genres.MethodTags)
+	a.suggestGenres()
+	a.setGenreMode(admin, genres.MethodEnsemble)
 	a.suggestGenres()
 	if got := a.genresOf(tagged); !slices.Contains(got, "tags:rejected:crime") {
 		t.Errorf("a rejected genre came back: %v", got)
@@ -204,15 +236,55 @@ func TestGenresComeFromTheNearestBooksThatHaveThem(t *testing.T) {
 		t.Errorf("a book without neighbours was given %v", got)
 	}
 
-	// Combined keeps the neighbours' answer and asks the vectors only for a
-	// book none of whose neighbours have genres.
-	a.setGenreMode(admin, genres.MethodCombined)
+	// The ensemble takes the neighbours as one of its inputs, and goes by
+	// the vectors alone for a book none of whose neighbours have genres.
+	a.useEnsemble("crime", "fantasy", "horror")
+	a.setGenreMode(admin, genres.MethodEnsemble)
 	a.suggestGenres()
-	if got := a.genresOf(asked); !slices.Equal(got, []string{"automatic:suggested:crime"}) {
-		t.Errorf("combined gave %v where the neighbours tell", got)
+	if got := a.genresOf(asked); !slices.Contains(got, "automatic:suggested:crime") {
+		t.Errorf("the ensemble gave %v where the neighbours tell", got)
 	}
-	if got := a.genresOf(lonely); !slices.Contains(got, "automatic:suggested:horror") {
-		t.Errorf("combined gave %v where only the vectors tell", got)
+	if got := a.genresOf(lonely); !slices.Equal(got, []string{"automatic:suggested:horror"}) {
+		t.Errorf("the ensemble gave %v where only the vectors tell", got)
+	}
+}
+
+func TestTheEnsembleIsTheDefaultAndSaysWhy(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	lib := uuid.MustParse(a.library(admin, "Shelf", "shared"))
+	books := catalog.NewService(a.pool)
+	ctx := context.Background()
+	id, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: "Ohne Schlagwort"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.putVector(id, similar.KindContent, a.genreVector("fantasy"))
+	a.useEnsemble("crime", "fantasy", "horror")
+
+	// Nothing is set: a library without a single tag gets suggestions.
+	a.suggestGenres()
+	if got := a.genresOf(id); !slices.Equal(got, []string{"automatic:suggested:fantasy"}) {
+		t.Fatalf("by default the book was given %v", got)
+	}
+	_, out, _ := a.call(editor, http.MethodGet, "/genres/suggestions", nil)
+	s := out["suggestions"].([]any)[0].(map[string]any)
+	reasons, _ := s["reasons"].(map[string]any)
+	inputs, _ := reasons["inputs"].([]any)
+	if s["method"] != genres.MethodEnsemble || len(inputs) != 1 || inputs[0].(map[string]any)["input"] != "content" {
+		t.Errorf("suggestion %v", s)
+	}
+	if score := s["score"].(float64); score <= 0 || score > 1 {
+		t.Errorf("the ensemble's score %v is no probability", score)
+	}
+
+	// The old values are refused; an installation that had them moves.
+	if status, _, _ := a.call(admin, http.MethodPatch, "/settings", map[string]any{
+		"values": map[string]any{settings.GenreSuggestions: genres.MethodCombined},
+	}); status != 422 {
+		t.Errorf("combined was taken: %d", status)
 	}
 }
 
@@ -297,5 +369,32 @@ func TestAMergeKeepsWhatAPersonDecidedAboutGenres(t *testing.T) {
 	}
 	if got := a.genresOf(into); !slices.Equal(got, []string{"automatic:accepted:crime", "automatic:rejected:horror"}) {
 		t.Errorf("genres after the merge %v", got)
+	}
+}
+
+func TestAnInstallationSetToARetiredWaySuggestsWithTheEnsemble(t *testing.T) {
+	ctx := context.Background()
+	pool := dbtest.NewEmpty(t)
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	defer sqlDB.Close()
+	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, migrations.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 102); err != nil {
+		t.Fatalf("migrate to before the ensemble: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO settings (key, value) VALUES ($1, 'combined')`, settings.GenreSuggestions); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	var mode string
+	if err := pool.QueryRow(ctx, `SELECT value FROM settings WHERE key = $1`, settings.GenreSuggestions).Scan(&mode); err != nil {
+		t.Fatal(err)
+	}
+	if mode != genres.MethodEnsemble {
+		t.Errorf("combined became %q", mode)
 	}
 }
