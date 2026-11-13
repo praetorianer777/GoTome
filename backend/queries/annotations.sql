@@ -10,7 +10,7 @@ FROM annotations a
 JOIN books b ON b.id = a.book_id
 WHERE a.user_id = sqlc.arg(viewer)::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(book_id)::uuid IS NULL OR a.book_id = sqlc.narg(book_id)::uuid)
   AND (sqlc.narg(words)::text IS NULL OR NOT EXISTS (
         SELECT 1 FROM unnest(string_to_array(sqlc.narg(words)::text, ' ')) AS w
@@ -29,7 +29,7 @@ FROM annotations a
 JOIN books b ON b.id = a.book_id
 WHERE a.id = sqlc.arg(id) AND a.user_id = sqlc.arg(viewer)::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 FOR UPDATE OF a;
 
 -- name: CountBookAnnotations :one

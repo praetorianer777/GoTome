@@ -74,7 +74,7 @@ LEFT JOIN user_books ub ON ub.user_id = r.user_id AND ub.book_id = r.book_id
 WHERE u.username = $1::citext
   AND NOT r.private AND u.share_reviews AND u.disabled_at IS NULL
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY r.updated_at DESC, r.book_id
 LIMIT 200
 `
@@ -135,7 +135,7 @@ WHERE r.book_id = $1 AND r.user_id <> $2::uuid
   AND r.book_id IN (
       SELECT b.id FROM books b
       WHERE b.deleted_at IS NULL
-        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)))
+        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean))))
 ORDER BY r.updated_at DESC, r.user_id
 LIMIT 100
 `
@@ -207,7 +207,7 @@ const reviewableBook = `-- name: ReviewableBook :one
 SELECT EXISTS (
     SELECT 1 FROM books b
     WHERE b.id = $1 AND b.deleted_at IS NULL
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)))
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean))))
 `
 
 type ReviewableBookParams struct {
@@ -248,7 +248,7 @@ WHERE ub.book_id = $1 AND ub.rating IS NOT NULL
   AND ub.book_id IN (
       SELECT b.id FROM books b
       WHERE b.deleted_at IS NULL
-        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)))
+        AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean))))
 `
 
 type SharedStarsParams struct {

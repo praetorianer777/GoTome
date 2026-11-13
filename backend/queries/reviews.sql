@@ -9,7 +9,7 @@ UPDATE users SET share_reviews = $2, updated_at = now() WHERE id = $1;
 SELECT EXISTS (
     SELECT 1 FROM books b
     WHERE b.id = sqlc.arg(book_id) AND b.deleted_at IS NULL
-      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
+      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))));
 
 -- name: GetBookReview :one
 SELECT body, private, created_at, updated_at FROM book_reviews WHERE user_id = $1 AND book_id = $2;
@@ -34,7 +34,7 @@ WHERE ub.book_id = sqlc.arg(book_id) AND ub.rating IS NOT NULL
   AND ub.book_id IN (
       SELECT b.id FROM books b
       WHERE b.deleted_at IS NULL
-        AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
+        AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))));
 
 -- name: ListSharedReviews :many
 -- The reviews others share on a book the viewer may see, the latest first.
@@ -47,7 +47,7 @@ WHERE r.book_id = sqlc.arg(book_id) AND r.user_id <> sqlc.arg(viewer)::uuid
   AND r.book_id IN (
       SELECT b.id FROM books b
       WHERE b.deleted_at IS NULL
-        AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+        AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))))
 ORDER BY r.updated_at DESC, r.user_id
 LIMIT 100;
 
@@ -62,6 +62,6 @@ LEFT JOIN user_books ub ON ub.user_id = r.user_id AND ub.book_id = r.book_id
 WHERE u.username = sqlc.arg(username)::citext
   AND NOT r.private AND u.share_reviews AND u.disabled_at IS NULL
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY r.updated_at DESC, r.book_id
 LIMIT 200;

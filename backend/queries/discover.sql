@@ -19,7 +19,7 @@ FROM (
     LIMIT sqlc.arg(max)::int
 ) ub
 JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL
-WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY coalesce(ub.rating, 3) DESC, ub.finished_on DESC NULLS LAST, b.id;
 
 -- name: ListDiscoverSeries :many
@@ -32,14 +32,14 @@ SELECT s.name, s.name_key,
        max(ub.updated_at)::timestamptz AS touched
 FROM series s
 JOIN books b ON b.series_id = s.id AND b.deleted_at IS NULL
-    AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+    AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 LEFT JOIN user_books ub ON ub.book_id = b.id AND ub.user_id = sqlc.arg(viewer)::uuid
 WHERE s.id IN (
     SELECT r.series_id FROM books r
     JOIN user_books ru ON ru.book_id = r.id AND ru.user_id = sqlc.arg(viewer)::uuid
     WHERE r.series_id IS NOT NULL AND r.deleted_at IS NULL
       AND ru.status IN ('completed', 'reading', 'abandoned')
-      AND r.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+      AND r.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (r.age_rating IS NULL OR r.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))))
 GROUP BY s.id
 ORDER BY max(ub.updated_at) DESC NULLS LAST, s.id
 LIMIT sqlc.arg(max)::int;
@@ -76,7 +76,7 @@ WITH title AS (
 ), same AS (
     -- Books of the same title as a candidate, with an author in common
     -- or, where the candidate names none, without one.
-    SELECT t.idx, b.id AS book_id, b.library_id, b.placeholder
+    SELECT t.idx, b.id AS book_id, b.library_id, b.placeholder, b.age_rating
     FROM title t
     JOIN books b ON b.title_key = t.key AND b.deleted_at IS NULL
     WHERE NOT EXISTS (SELECT 1 FROM author a WHERE a.idx = t.idx)
@@ -89,13 +89,13 @@ WITH title AS (
     SELECT s.idx, 1 AS rank, 'owned'::text AS reason
     FROM same s
     WHERE NOT s.placeholder
-      AND s.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND s.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (s.age_rating IS NULL OR s.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     UNION ALL
     SELECT i.idx, 1, 'owned'
     FROM isbn i
     JOIN book_identifiers bi ON bi.type = 'isbn' AND bi.value = i.value
     JOIN books b ON b.id = bi.book_id AND b.deleted_at IS NULL AND NOT b.placeholder
-    WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+    WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     UNION ALL
     SELECT s.idx, 2, CASE WHEN ub.status = 'wishlist' THEN 'wished' ELSE 'read' END
     FROM same s

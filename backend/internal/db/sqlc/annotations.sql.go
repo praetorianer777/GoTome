@@ -178,7 +178,7 @@ FROM annotations a
 JOIN books b ON b.id = a.book_id
 WHERE a.id = $1 AND a.user_id = $2::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 FOR UPDATE OF a
 `
 
@@ -224,7 +224,7 @@ FROM annotations a
 JOIN books b ON b.id = a.book_id
 WHERE a.user_id = $1::uuid
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR a.book_id = $3::uuid)
   AND ($4::text IS NULL OR NOT EXISTS (
         SELECT 1 FROM unnest(string_to_array($4::text, ' ')) AS w
