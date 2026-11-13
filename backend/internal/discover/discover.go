@@ -139,7 +139,39 @@ type View struct {
 	// FinishedAt is when the last run ended.
 	FinishedAt *time.Time
 	Items      []Item
+	// Progress is set while the state is running.
+	Progress *Progress
 }
+
+// Activity says what a running run is doing.
+const (
+	// ActivityWorking: a pass is asking the providers now.
+	ActivityWorking = "working"
+	// ActivityWaiting: the run goes on at the next pass.
+	ActivityWaiting = "waiting"
+)
+
+// Count is how many subjects of a kind were asked, of how many planned.
+type Count struct{ Asked, Planned int }
+
+// Progress is how far the caller's own run is. Planned is false until a
+// pass has worked out what to ask.
+type Progress struct {
+	// StartedAt is nil while the run is asked for and no pass has begun it.
+	StartedAt *time.Time
+	Planned   bool
+	Authors   Count
+	Series    Count
+	Genres    Count
+	Activity  string
+	// NextPassAt is about when a waiting run is worked again; nil when it
+	// is due at once or not known.
+	NextPassAt *time.Time
+	BackingOff []metadata.BusyError
+}
+
+// backoffs is what a Source may tell besides its answers.
+type backoffs interface{ Backoffs() []metadata.BusyError }
 
 // List is what the scope's person is offered, the best first. Books they
 // have since wished for, read, got a library to hold or dismissed are
@@ -169,6 +201,11 @@ func (s *Service) List(ctx context.Context, scope library.Scope) (View, error) {
 	}
 	if run.FinishedAt != nil && !run.Requested {
 		view.FinishedAt = run.FinishedAt
+	}
+	if view.State == StateRunning {
+		if view.Progress, err = s.progress(ctx, run); err != nil {
+			return view, err
+		}
 	}
 	rows, err := q.ListDiscoverCandidates(ctx, scope.Viewer)
 	if err != nil || len(rows) == 0 {
@@ -335,4 +372,64 @@ func keysOf(r metadata.Record) keyed {
 		}
 	}
 	return k
+}
+
+// progress works out how far a run is from what its passes stored, with
+// two small queries and no plan; nobody is asked.
+func (s *Service) progress(ctx context.Context, run sqlc.DiscoverRun) (*Progress, error) {
+	p := &Progress{Activity: ActivityWaiting}
+	if run.FinishedAt == nil {
+		p.StartedAt = &run.StartedAt
+		p.Planned = run.Planned
+		asked, err := sqlc.New(s.pool).CountDiscoverAsked(ctx, sqlc.CountDiscoverAskedParams{UserID: run.UserID, AskedAt: run.StartedAt})
+		if err != nil {
+			return nil, err
+		}
+		got := map[string]int{}
+		for _, a := range asked {
+			got[a.Kind] = int(a.Asked)
+		}
+		p.Authors = Count{min(got[kindAuthor], int(run.PlannedAuthors)), int(run.PlannedAuthors)}
+		p.Series = Count{min(got[kindSeries], int(run.PlannedSeries)), int(run.PlannedSeries)}
+		p.Genres = Count{min(got[kindGenre], int(run.PlannedGenres)), int(run.PlannedGenres)}
+	}
+	if run.PassUntil != nil && run.PassUntil.After(s.now()) {
+		p.Activity = ActivityWorking
+	} else {
+		next, err := s.nextPass(ctx)
+		if err != nil {
+			return nil, err
+		}
+		p.NextPassAt = next
+	}
+	if b, ok := s.source.(backoffs); ok {
+		p.BackingOff = b.Backoffs()
+	}
+	return p, nil
+}
+
+// nextPass is about when the job that works the runs is next due: now, or
+// not known, as nil. A pass working for someone else ends within passBudget.
+func (s *Service) nextPass(ctx context.Context) (*time.Time, error) {
+	var state string
+	var scheduled time.Time
+	var attempted *time.Time
+	err := s.pool.QueryRow(ctx, `
+SELECT state::text, scheduled_at, attempted_at FROM river_job
+WHERE kind = $1 AND state IN ('available', 'scheduled', 'retryable', 'running')
+ORDER BY CASE state WHEN 'running' THEN 0 ELSE 1 END, scheduled_at LIMIT 1`, runKind).Scan(&state, &scheduled, &attempted)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	at := scheduled
+	if state == "running" && attempted != nil {
+		at = attempted.Add(passBudget)
+	}
+	if !at.After(s.now()) {
+		return nil, nil
+	}
+	return &at, nil
 }

@@ -69,6 +69,16 @@ func (s *Service) runUser(ctx context.Context, user uuid.UUID, seesAll bool, dea
 	if err != nil {
 		return false, err
 	}
+	counts := map[string]int32{}
+	for _, a := range plan {
+		counts[a.kind]++
+	}
+	if err := q.HoldDiscoverRun(ctx, sqlc.HoldDiscoverRunParams{
+		UserID: user, Until: &deadline, Authors: counts[kindAuthor], Series: counts[kindSeries], Genres: counts[kindGenre],
+	}); err != nil {
+		return false, err
+	}
+	defer func() { _ = q.ReleaseDiscoverRun(context.WithoutCancel(ctx), user) }()
 	doneBefore, err := q.ListDiscoverAsked(ctx, sqlc.ListDiscoverAskedParams{UserID: user, AskedAt: run.StartedAt})
 	if err != nil {
 		return false, err

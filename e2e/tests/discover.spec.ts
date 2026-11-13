@@ -108,3 +108,51 @@ test("Discover lists books by reason; Add to wishlist and Not interested take a 
 	const widest = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 	expect(widest).toBeLessThanOrEqual(0);
 });
+
+test("Discover shows how far a run is, then that it waits, then the books", async ({ page }) => {
+	await openSignedIn(page);
+	const long = "Wolfeschlegelsteinhausenbergerdorff";
+	const counts = (asked: number, planned: number) => ({ asked, planned });
+	let body: Record<string, unknown> = {
+		state: "running",
+		items: [],
+		progress: {
+			startedAt: "2026-11-13T08:00:00Z",
+			planned: true,
+			authors: counts(5, 10),
+			series: counts(4, 8),
+			genres: counts(3, 3),
+			activity: "working",
+			backingOff: [],
+		},
+	};
+	await page.route("**/api/v1/me/discover", (route) => route.fulfill({ json: body }));
+
+	await page.goto("/discover");
+	const bar = page.getByRole("progressbar", { name: "How far the search for books is" });
+	await expect(bar).toHaveAttribute("aria-valuenow", "12");
+	await expect(bar).toHaveAttribute("aria-valuemax", "21");
+	await expect(page.getByText("Asked about 12 of 21 authors, series and genres")).toBeVisible();
+	await expect(page.getByText(/Asking the sources now/)).toBeVisible();
+
+	body = {
+		state: "running",
+		items: [],
+		progress: {
+			...(body.progress as object),
+			activity: "waiting",
+			nextPassAt: new Date(Date.now() + 120_000).toISOString(),
+			backingOff: [{ provider: long, until: "2026-11-13T09:00:00Z" }],
+		},
+	};
+	await page.reload();
+	await expect(page.getByText(/Waiting for the next pass, in about \d+ min/)).toBeVisible();
+	await expect(page.getByText(/asked to be left alone until/)).toBeVisible();
+	const widest = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+	expect(widest).toBeLessThanOrEqual(0);
+
+	body = { state: "ready", finishedAt: "2026-11-13T09:00:00Z", items: [] };
+	await page.reload();
+	await expect(page.getByText(/Last looked on/)).toBeVisible();
+	await expect(page.getByRole("progressbar")).toHaveCount(0);
+});

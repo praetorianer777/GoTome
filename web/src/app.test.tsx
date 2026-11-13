@@ -5101,6 +5101,61 @@ describe("discover", () => {
 		expect(server.requests.some((r) => r.method === "POST" && r.path === "/me/discover/run")).toBe(true);
 	});
 
+	const progress = (over: Partial<NonNullable<DiscoverList["progress"]>> = {}): NonNullable<DiscoverList["progress"]> => ({
+		startedAt: "2026-11-13T08:00:00Z",
+		planned: true,
+		authors: { asked: 5, planned: 10 },
+		series: { asked: 4, planned: 8 },
+		genres: { asked: 3, planned: 3 },
+		activity: "working",
+		backingOff: [],
+		...over,
+	});
+
+	it("shows how far a run is while it works, and the books found so far", async () => {
+		discovered("running");
+		server.discover = { ...server.discover!, progress: progress() };
+		renderApp("/discover");
+		const bar = await screen.findByRole("progressbar", { name: "How far the search for books is" });
+		expect(bar).toHaveAttribute("aria-valuenow", "12");
+		expect(bar).toHaveAttribute("aria-valuemax", "21");
+		expect(screen.getByText("Asked about 12 of 21 authors, series and genres")).toBeInTheDocument();
+		expect(screen.getByText(/5 of 10 authors, 4 of 8 series, 3 of 3 genres/)).toBeInTheDocument();
+		expect(screen.getByText(/Asking the sources now/)).toBeInTheDocument();
+		expect(screen.getByText("The Lantern Four")).toBeInTheDocument();
+	});
+
+	it("says when a run waits for the next pass and when a source asked to be left alone", async () => {
+		discovered("running");
+		server.discover = {
+			...server.discover!,
+			progress: progress({
+				activity: "waiting",
+				nextPassAt: new Date(Date.now() + 3 * 60_000 - 5_000).toISOString(),
+				backingOff: [{ provider: "hardcover", until: "2026-11-13T08:30:00Z" }],
+			}),
+		};
+		renderApp("/discover");
+		expect(await screen.findByText(/Waiting for the next pass, in about 3 min/)).toBeInTheDocument();
+		expect(screen.getByText(/hardcover asked to be left alone until .*the search goes on without it/)).toBeInTheDocument();
+	});
+
+	it("says it is getting ready before a pass has worked out what to ask, and shows no bar once ready", async () => {
+		discovered("running");
+		server.discover = {
+			...server.discover!,
+			progress: progress({ planned: false, authors: { asked: 0, planned: 0 }, series: { asked: 0, planned: 0 }, genres: { asked: 0, planned: 0 } }),
+		};
+		const { unmount } = renderApp("/discover");
+		expect(await screen.findByText("Getting ready to look for books.")).toBeInTheDocument();
+		expect(screen.getByRole("progressbar")).not.toHaveAttribute("aria-valuenow");
+		unmount();
+		discovered("ready");
+		renderApp("/discover");
+		expect(await screen.findByText(/Last looked on/)).toBeInTheDocument();
+		expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+	});
+
 	it("says why there is nothing when it is off or the server is offline", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita").withLibrary("Novels");
 		server.discover = { state: "off", items: [] };
