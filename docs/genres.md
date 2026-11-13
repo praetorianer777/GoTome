@@ -122,3 +122,22 @@ nearest books more often still. That is what `neighbours` uses, so the zero-shot
 stay for measuring and are not recommended.
 
 After an upgrade, run `genre-check -n 300` and compare with the table.
+
+## Word counts
+
+For word weights from a book's whole text (`docs/decisions/genre-detection.md`),
+GOtome counts the words of every book's text while it chunks it, and keeps the
+counts in the table `file_words` (a book's primary text file, its words
+lower-cased, of 3 to 25 letters, and how often each occurs). Nothing is
+suggested from them yet. They are not backed up: a restore reads every text
+again and counts it again.
+
+What it costs, measured on the public corpus (books of about 380,000
+characters): counting takes about 5 ms a book while the text is in memory, and
+storing the counts about 3 ms and 31 KB a book (words compressed, 8,400
+different words a book), so 1.5 GB for 48,560 books. Books chunked before
+counting existed are counted by the job "Count the words of the books' text",
+which reads each file again (about 45 ms a book, about 40 minutes for 48,560
+books on one CPU) and goes on where it stopped. Project Gutenberg's header and
+licence are left out; words are counted as written, not stemmed, so a stem can
+be chosen later without reading anything again.

@@ -13,15 +13,23 @@ UPDATE books SET primary_text_file_id = $2 WHERE id = $1;
 -- name: DeleteBookChunks :exec
 -- A book's chunks, and the file's wherever they are: a file that moved to
 -- another book takes its text along.
-DELETE FROM book_chunks WHERE book_id = $1 OR file_id = sqlc.arg(file_id);
+WITH gone AS (
+    DELETE FROM book_chunks c WHERE c.book_id = $1 OR c.file_id = sqlc.arg(file_id) RETURNING c.file_id
+)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g);
 
 -- name: DeleteOtherChunks :exec
 -- The book's chunks of its other files, and the file's of another book.
-DELETE FROM book_chunks
-WHERE (book_id = $1 AND file_id <> sqlc.arg(file_id)) OR (file_id = sqlc.arg(file_id) AND book_id <> $1);
+WITH gone AS (
+    DELETE FROM book_chunks c
+    WHERE (c.book_id = $1 AND c.file_id <> sqlc.arg(file_id)) OR (c.file_id = sqlc.arg(file_id) AND c.book_id <> $1)
+    RETURNING c.file_id
+)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g);
 
 -- name: DeleteFileChunks :exec
-DELETE FROM book_chunks WHERE file_id = $1;
+WITH gone AS (DELETE FROM book_chunks c WHERE c.file_id = $1 RETURNING c.file_id)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g) OR w.file_id = $1;
 
 -- name: InsertBookChunks :copyfrom
 INSERT INTO book_chunks (

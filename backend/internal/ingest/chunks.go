@@ -144,6 +144,9 @@ func (s *Service) writeChunksTx(ctx context.Context, tx pgx.Tx, bookID, libraryI
 	if err := q.SetFileChunked(ctx, fileID); err != nil {
 		return err
 	}
+	if err := saveWordsTx(ctx, q, fileID, texts); err != nil {
+		return err
+	}
 	if s.OnChunked != nil {
 		return s.OnChunked(ctx, tx, bookID, fileID, texts)
 	}

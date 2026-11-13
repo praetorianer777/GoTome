@@ -1239,6 +1239,7 @@ export const en = {
 	"jobs.kind.rebuildIndex": "Build the search index again",
 	"jobs.kind.applyIndex": "Bring the search index up to date",
 	"jobs.kind.indexFiles": "Read the books' text into the search index",
+	"jobs.kind.countWords": "Count the words of the books' text",
 	"jobs.kind.duplicates": "Look for duplicates of {book}",
 	"jobs.kind.sign": "Compare the text of {file} with other books",
 	"embedding.title": "Working out what books are about",

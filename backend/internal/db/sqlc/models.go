@@ -493,6 +493,14 @@ type FileSignature struct {
 	SignedAt  time.Time
 }
 
+type FileWord struct {
+	FileID    uuid.UUID
+	Version   int32
+	ChunkedAt time.Time
+	Words     int32
+	Counts    []byte
+}
+
 type FulltextOutbox struct {
 	ID              int64
 	Deletes         []int64

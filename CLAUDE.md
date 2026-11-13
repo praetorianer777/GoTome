@@ -1527,6 +1527,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   accepted, never a waiting suggestion. `GET /genres/suggestions`
   (`routes/genres.tsx`) is the review; `PUT /books/{id}/genres/{genre}`
   accepts or rejects. A merge keeps what a person decided.
+- Word weights (#526, `docs/decisions/genre-detection.md`): `wordcount.Count`
+  counts a text's words (lower case, 3 to 25 letters, no stemming, Gutenberg's
+  header and licence left out) and `wordcount.Encode` stores them; `writeChunksTx`
+  does it with the chunk texts in memory into `file_words` (valid while its
+  `chunked_at` is the file's, deleted with the file's chunks, derived and in
+  backup.sh's list), and the snoozing job `ingest.count_words` (queue `extract`,
+  queued at start) reads older files again. Raise `wordcount.Version` with a
+  change to what is counted. `genres.TrainWords` (TF-IDF, one logistic
+  regression per genre, C = 10, at most `MaxTrainBooks` books a language) makes a
+  `WordTable` (30,000 words, 16-bit weights, document frequencies and positives
+  kept, no books), which `Encode`/`DecodeWordTable` store, `Score` applies and
+  `Explain` reasons from. Nothing suggests from it yet (`spikes/genres port`
+  checks it against the spike).
 - `gotome genre-check` (`Service.Check`, `make genre-check`) measures
   precision and recall per method and genre on a sample of tagged books,
   their metadata embedded again without tags, thresholds swept. Its
