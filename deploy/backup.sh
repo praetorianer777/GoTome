@@ -36,7 +36,7 @@ umask 077
 # for each person (what they dismissed stays). The log of webhook deliveries
 # is left out too (the webhooks themselves stay). Their tables stay in the
 # dump, empty; restore.sh has the text read again, which fills them.
-derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups device_copies webhook_deliveries discover_candidates discover_runs discover_asks)
+derived=(book_chunks search_words fulltext_outbox file_signatures file_lsh book_vectors passage_files provider_records book_genre_checks match_runs text_isbn_lookups device_copies webhook_deliveries discover_candidates discover_runs discover_asks file_words)
 exclude=()
 for table in "${derived[@]}"; do
   exclude+=("--exclude-table-data=$table")

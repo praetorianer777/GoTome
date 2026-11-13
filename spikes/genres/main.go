@@ -20,6 +20,8 @@ func main() {
 		err = runShipped(os.Args[2:])
 	case "stats":
 		err = runStats(os.Args[2:])
+	case "port":
+		err = runPort(os.Args[2:])
 	case "eval":
 		err = runEval(os.Args[2:])
 	default:

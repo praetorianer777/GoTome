@@ -1257,6 +1257,7 @@ export const de: Record<MessageKey, string> = {
 	"jobs.kind.rebuildIndex": "Suchindex neu aufbauen",
 	"jobs.kind.applyIndex": "Suchindex auf den neuesten Stand bringen",
 	"jobs.kind.indexFiles": "Text der Bücher in den Suchindex lesen",
+	"jobs.kind.countWords": "Wörter im Text der Bücher zählen",
 	"jobs.kind.duplicates": "Nach Duplikaten von {book} suchen",
 	"jobs.kind.sign": "Text von {file} mit anderen Büchern vergleichen",
 	"embedding.title": "Erfassen, worum es in Büchern geht",

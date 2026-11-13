@@ -467,6 +467,10 @@ func serve() error {
 	if err := scans.EnqueueUnchunked(ctx); err != nil {
 		log.Warn("could not queue chunking", "error", err)
 	}
+	// Texts chunked before their words were counted (#526).
+	if err := scans.EnqueueCounting(ctx); err != nil {
+		log.Warn("could not queue word counting", "error", err)
+	}
 	// Texts chunked before overlap was looked for, or signed another way.
 	if err := duplicates.EnqueueUnsigned(ctx); err != nil {
 		log.Warn("could not queue signing", "error", err)

@@ -31,7 +31,10 @@ func (q *Queries) AddSearchWords(ctx context.Context, texts []string) error {
 }
 
 const deleteBookChunks = `-- name: DeleteBookChunks :exec
-DELETE FROM book_chunks WHERE book_id = $1 OR file_id = $2
+WITH gone AS (
+    DELETE FROM book_chunks c WHERE c.book_id = $1 OR c.file_id = $2 RETURNING c.file_id
+)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g)
 `
 
 type DeleteBookChunksParams struct {
@@ -47,7 +50,8 @@ func (q *Queries) DeleteBookChunks(ctx context.Context, arg DeleteBookChunksPara
 }
 
 const deleteFileChunks = `-- name: DeleteFileChunks :exec
-DELETE FROM book_chunks WHERE file_id = $1
+WITH gone AS (DELETE FROM book_chunks c WHERE c.file_id = $1 RETURNING c.file_id)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g) OR w.file_id = $1
 `
 
 func (q *Queries) DeleteFileChunks(ctx context.Context, fileID uuid.UUID) error {
@@ -56,8 +60,12 @@ func (q *Queries) DeleteFileChunks(ctx context.Context, fileID uuid.UUID) error 
 }
 
 const deleteOtherChunks = `-- name: DeleteOtherChunks :exec
-DELETE FROM book_chunks
-WHERE (book_id = $1 AND file_id <> $2) OR (file_id = $2 AND book_id <> $1)
+WITH gone AS (
+    DELETE FROM book_chunks c
+    WHERE (c.book_id = $1 AND c.file_id <> $2) OR (c.file_id = $2 AND c.book_id <> $1)
+    RETURNING c.file_id
+)
+DELETE FROM file_words w WHERE w.file_id IN (SELECT g.file_id FROM gone g)
 `
 
 type DeleteOtherChunksParams struct {
