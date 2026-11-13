@@ -531,9 +531,9 @@ export class FakeServer {
 		{
 			key: "genres.suggest",
 			kind: "text",
-			value: "off",
+			value: "ensemble",
 			isSet: false,
-			choices: ["off", "tags", "vector", "neighbours", "combined"],
+			choices: ["off", "tags", "neighbours", "ensemble"],
 		},
 		{
 			key: "auth.passwords",

@@ -96,9 +96,9 @@ const (
 	// chosen one before its files and vectors are removed (#357).
 	EmbeddingRemoveUnusedDays = "embedding.removeUnusedAfterDays"
 	// GenreSuggestions is how books are given genres of the fixed list
-	// (internal/genres): "off", the default, writes nothing; "tags" gives
-	// the genres their tags mean; "vector", "neighbours" and "combined"
-	// suggest more from the books' vectors, for a person to review.
+	// (internal/genres): "off" writes nothing; "tags" gives the genres
+	// their tags mean; "neighbours" and "ensemble", the default (#528),
+	// suggest more for a person to review.
 	GenreSuggestions = "genres.suggest"
 	// RecommendationsDiscover is "on" or "off": whether books beyond the
 	// libraries are found from people's taste (#393). Off by default: it
@@ -241,7 +241,7 @@ var Definitions = []Definition{
 	{Key: EmbeddingModel, Kind: KindText, Default: embed.DefaultSpec, Check: embeddingModel, Choices: slices.Sorted(maps.Keys(embed.Specs))},
 	{Key: EmbeddingServer, Kind: KindText, Check: serverURL},
 	{Key: EmbeddingRemoveUnusedDays, Kind: KindText, Default: "1", Check: days},
-	{Key: GenreSuggestions, Kind: KindText, Default: "off", Check: genreMode, Choices: GenreModes},
+	{Key: GenreSuggestions, Kind: KindText, Default: "ensemble", Check: genreMode, Choices: GenreModes},
 	{Key: RecommendationsDiscover, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingPassages, Kind: KindText, Default: "off", Check: onOff, Choices: OnOff},
 	{Key: EmbeddingContentSamples, Kind: KindText, Default: "16", Check: contentSamples},
@@ -332,14 +332,14 @@ func onOff(v string) (string, error) {
 
 // GenreModes are the values of GenreSuggestions, as genres.Modes names
 // them.
-var GenreModes = []string{"off", "tags", "vector", "neighbours", "combined"}
+var GenreModes = []string{"off", "tags", "neighbours", "ensemble"}
 
 func genreMode(v string) (string, error) {
 	v = strings.ToLower(strings.TrimSpace(v))
 	if slices.Contains(GenreModes, v) {
 		return v, nil
 	}
-	return "", errors.New("Say off, tags, vector, neighbours or combined.")
+	return "", errors.New("Say off, tags, neighbours or ensemble.")
 }
 
 // ScoreWeightChoices are the values of ScoreWeights.

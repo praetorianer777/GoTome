@@ -145,6 +145,35 @@ func (q *Queries) GetGenreVectors(ctx context.Context, arg GetGenreVectorsParams
 	return items, nil
 }
 
+const getGenreWords = `-- name: GetGenreWords :one
+SELECT w.counts,
+       coalesce((SELECT c.lang FROM book_chunks c WHERE c.book_id = b.id
+                 GROUP BY c.lang ORDER BY count(*) DESC, c.lang LIMIT 1), '')::text AS lang
+FROM books b
+JOIN book_files f ON f.id = b.primary_text_file_id
+JOIN file_words w ON w.file_id = f.id AND w.chunked_at = f.chunked_at AND w.version = $1::int
+WHERE b.id = $2::uuid
+`
+
+type GetGenreWordsParams struct {
+	Version int32
+	BookID  uuid.UUID
+}
+
+type GetGenreWordsRow struct {
+	Counts []byte
+	Lang   string
+}
+
+// The word counts of the book's primary text file, counted for its text as
+// it is now, and the language most of the book's chunks are in.
+func (q *Queries) GetGenreWords(ctx context.Context, arg GetGenreWordsParams) (GetGenreWordsRow, error) {
+	row := q.db.QueryRow(ctx, getGenreWords, arg.Version, arg.BookID)
+	var i GetGenreWordsRow
+	err := row.Scan(&i.Counts, &i.Lang)
+	return i, err
+}
+
 const getUntaggedMetadataText = `-- name: GetUntaggedMetadataText :one
 SELECT coalesce(book_metadata_text($1::uuid, false), '')::text
 `
@@ -198,7 +227,9 @@ LEFT JOIN book_genre_checks c ON c.book_id = b.id
 WHERE b.id > $1::uuid AND b.deleted_at IS NULL AND NOT b.placeholder
   AND (c.book_id IS NULL OR c.recipe <> $2::text OR c.checked_at < b.updated_at
        OR EXISTS (SELECT 1 FROM book_vectors v
-                  WHERE v.book_id = b.id AND v.model = $3::text AND v.embedded_at > c.checked_at))
+                  WHERE v.book_id = b.id AND v.model = $3::text AND v.embedded_at > c.checked_at)
+       OR EXISTS (SELECT 1 FROM file_words w
+                  WHERE w.file_id = b.primary_text_file_id AND w.counted_at > c.checked_at))
 ORDER BY b.id
 LIMIT $4::int
 `
@@ -211,7 +242,8 @@ type ListBooksForGenresParams struct {
 }
 
 // Books after the given ID that a pass of the recipe has not looked at, or
-// that changed or were embedded again since it did, in ID order.
+// that changed, were embedded again or had their words counted since it
+// did, in ID order.
 func (q *Queries) ListBooksForGenres(ctx context.Context, arg ListBooksForGenresParams) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listBooksForGenres,
 		arg.After,
@@ -408,7 +440,7 @@ func (q *Queries) ListGenreNeighbours(ctx context.Context, arg ListGenreNeighbou
 }
 
 const listGenreSuggestions = `-- name: ListGenreSuggestions :many
-SELECT g.book_id, g.genre, g.method, g.score::float8 AS score
+SELECT g.book_id, g.genre, g.method, g.score::float8 AS score, g.reasons
 FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'
@@ -434,10 +466,11 @@ type ListGenreSuggestionsParams struct {
 }
 
 type ListGenreSuggestionsRow struct {
-	BookID uuid.UUID
-	Genre  string
-	Method *string
-	Score  float64
+	BookID  uuid.UUID
+	Genre   string
+	Method  *string
+	Score   float64
+	Reasons []byte
 }
 
 // Automatic suggestions nobody has decided, of books the viewer sees, of
@@ -465,6 +498,7 @@ func (q *Queries) ListGenreSuggestions(ctx context.Context, arg ListGenreSuggest
 			&i.Genre,
 			&i.Method,
 			&i.Score,
+			&i.Reasons,
 		); err != nil {
 			return nil, err
 		}
@@ -493,21 +527,23 @@ func (q *Queries) MarkGenresChecked(ctx context.Context, arg MarkGenresCheckedPa
 }
 
 const putAutomaticGenre = `-- name: PutAutomaticGenre :exec
-INSERT INTO book_genres (book_id, genre, source, method, score)
-VALUES ($1::uuid, $2::text, 'automatic', $3::text, $4::real)
+INSERT INTO book_genres (book_id, genre, source, method, score, reasons)
+VALUES ($1::uuid, $2::text, 'automatic', $3::text, $4::real,
+        $5::jsonb)
 ON CONFLICT (book_id, genre) DO UPDATE
-SET method = EXCLUDED.method, score = EXCLUDED.score, updated_at = now()
+SET method = EXCLUDED.method, score = EXCLUDED.score, reasons = EXCLUDED.reasons, updated_at = now()
 WHERE book_genres.state = 'suggested' AND book_genres.source = 'automatic'
 `
 
 type PutAutomaticGenreParams struct {
-	BookID uuid.UUID
-	Genre  string
-	Method string
-	Score  float32
+	BookID  uuid.UUID
+	Genre   string
+	Method  string
+	Score   float32
+	Reasons []byte
 }
 
-// A genre suggested by the book's vectors, unless a person decided it or
+// A genre suggested for the book, with why, unless a person decided it or
 // the tags give it.
 func (q *Queries) PutAutomaticGenre(ctx context.Context, arg PutAutomaticGenreParams) error {
 	_, err := q.db.Exec(ctx, putAutomaticGenre,
@@ -515,6 +551,7 @@ func (q *Queries) PutAutomaticGenre(ctx context.Context, arg PutAutomaticGenrePa
 		arg.Genre,
 		arg.Method,
 		arg.Score,
+		arg.Reasons,
 	)
 	return err
 }
@@ -523,7 +560,7 @@ const putTagGenre = `-- name: PutTagGenre :exec
 INSERT INTO book_genres (book_id, genre, source)
 VALUES ($1::uuid, $2::text, 'tags')
 ON CONFLICT (book_id, genre) DO UPDATE
-SET source = 'tags', method = NULL, score = NULL, updated_at = now()
+SET source = 'tags', method = NULL, score = NULL, reasons = NULL, updated_at = now()
 WHERE book_genres.state = 'suggested' AND book_genres.source <> 'tags'
 `
 

@@ -2,6 +2,7 @@ package genres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,14 +21,16 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/jobs"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/wordcount"
 )
 
 // Off is the setting genres.suggest while nothing is written.
 const Off = "off"
 
 // Modes are the values of the setting genres.suggest: Off, the tags alone,
-// or the tags and one way of suggesting.
-var Modes = []string{Off, MethodTags, MethodVector, MethodNeighbours, MethodCombined}
+// or the tags and one way of suggesting. MethodVector and MethodCombined
+// left it (#528) and are measured by genre-check alone.
+var Modes = []string{Off, MethodTags, MethodNeighbours, MethodEnsemble}
 
 // page is how many books one look at the catalogue takes.
 const page = 500
@@ -44,6 +47,9 @@ type Service struct {
 	vectors *similar.Service
 	mode    func(ctx context.Context) (string, error)
 	Queue   Queue
+	// Ensemble gives the ensemble suggestions are made with: the shipped
+	// one, unless a test sets another.
+	Ensemble func() (*Ensemble, error)
 
 	mu     sync.Mutex
 	model  embed.Model
@@ -53,7 +59,7 @@ type Service struct {
 // NewService returns the Service; mode reads the setting genres.suggest.
 // Queue is set once the runner exists.
 func NewService(pool *pgxpool.Pool, vectors *similar.Service, mode func(ctx context.Context) (string, error), log *slog.Logger) *Service {
-	return &Service{pool: pool, vectors: vectors, mode: mode, log: log}
+	return &Service{pool: pool, vectors: vectors, mode: mode, log: log, Ensemble: Shipped}
 }
 
 // genreVectors are the genres' vectors in List's order, each the mean of
@@ -98,17 +104,17 @@ func GenreVectors(ctx context.Context, spec embed.Spec, vectors *similar.Service
 
 // pass is what one pass needs to know.
 type pass struct {
-	mode   string
-	recipe string
-	spec   embed.Spec
-	genres [][]float32
+	mode     string
+	recipe   string
+	spec     embed.Spec
+	ensemble *Ensemble
 }
 
 // Suggest works through the books a pass of the setting's way has not
 // looked at, or that changed since, in ID order, until none is left or the
 // deadline has passed, and reports whether it got through them. Off does
-// nothing. A model that cannot run gives the tags' genres alone, and the
-// next pass that can run it looks at every book again.
+// nothing. A binary without the shipped ensemble suggests from the
+// neighbours instead.
 func (s *Service) Suggest(ctx context.Context, deadline time.Time) (complete bool, err error) {
 	mode, err := s.mode(ctx)
 	if err != nil || mode == Off {
@@ -119,16 +125,19 @@ func (s *Service) Suggest(ctx context.Context, deadline time.Time) (complete boo
 		return false, err
 	}
 	p := pass{mode: mode, spec: spec}
-	if mode != MethodTags {
-		p.genres, err = s.genreVectors(ctx, spec)
-		if errors.Is(err, similar.ErrUnavailable) {
-			s.log.Warn("genres are suggested from tags alone", "error", err)
-			p.mode = MethodTags
-		} else if err != nil {
+	if mode == MethodVector || mode == MethodCombined {
+		p.mode = MethodEnsemble
+	}
+	if p.mode == MethodEnsemble {
+		if p.ensemble, err = s.Ensemble(); err != nil {
 			return false, err
 		}
+		if p.ensemble == nil {
+			s.log.Warn("genres are suggested from the neighbours: this build has no ensemble")
+			p.mode = MethodNeighbours
+		}
 	}
-	p.recipe = recipe(p.mode, spec)
+	p.recipe = recipe(p.mode, spec, p.ensemble)
 	q := sqlc.New(s.pool)
 	after := uuid.Nil
 	for {
@@ -155,11 +164,14 @@ func (s *Service) Suggest(ctx context.Context, deadline time.Time) (complete boo
 
 // recipe says how a book's genres were found: a change has every book
 // looked at again.
-func recipe(mode string, spec embed.Spec) string {
+func recipe(mode string, spec embed.Spec, e *Ensemble) string {
 	r := mode + "/" + Version()
 	if mode != MethodTags {
 		r += "/" + spec.Model.Name + "/" + similar.Version(spec.Model) +
 			"/n" + strconv.Itoa(Neighbours) + "-" + strconv.FormatFloat(NeighbourShare, 'g', -1, 64)
+	}
+	if e != nil {
+		r += "/" + e.Version + "/w" + strconv.Itoa(wordcount.Version)
 	}
 	return r
 }
@@ -178,29 +190,31 @@ func (s *Service) suggestBook(ctx context.Context, p pass, id uuid.UUID) error {
 	have := unique(append(slices.Clone(fromTags), e.Accepted...))
 	skip := append(slices.Clone(have), e.Rejected...)
 	var found []Scored
-	var method string
+	var whys []Why
+	method := p.mode
 	if p.mode != MethodTags && len(have) < MaxGenres {
 		book, library, err := s.bookVectors(ctx, p.spec, id)
 		if err != nil {
 			return err
 		}
 		var shares map[string]float64
-		if (p.mode == MethodNeighbours || p.mode == MethodCombined) && library != uuid.Nil {
+		if library != uuid.Nil {
 			near, err := s.neighbours(ctx, p.spec, id, library, book)
 			if err != nil {
 				return err
 			}
 			shares = Shares(near)
-			found = pickShares(shares, NeighbourShare, skip, MaxGenres-len(have))
-			method = MethodNeighbours
 		}
-		// Combined asks the vectors only where the neighbours cannot tell:
-		// against the descriptions they separate genres no better than
-		// guessing the commonest (docs/genres.md), so where both answer
-		// they could only take the neighbours' place with worse.
-		if p.mode == MethodVector || (p.mode == MethodCombined && shares == nil) {
-			found = pickMargins(Margins(book, p.genres), Genre.threshold, skip, MaxGenres-len(have))
-			method = MethodVector
+		if p.mode == MethodNeighbours {
+			found = pickShares(shares, NeighbourShare, skip, MaxGenres-len(have))
+		} else {
+			in := Input{Model: p.spec.Model.Name, Content: book.Content, Metadata: book.Metadata, Shares: shares}
+			if len(p.ensemble.Words) > 0 {
+				if in.Lang, in.Counts, err = s.words(ctx, id); err != nil {
+					return err
+				}
+			}
+			found, whys = p.ensemble.Decide(p.ensemble.Judge(in), skip, MaxGenres-len(have))
 		}
 	}
 	keep := slices.Clone(fromTags)
@@ -220,15 +234,38 @@ func (s *Service) suggestBook(ctx context.Context, p pass, id uuid.UUID) error {
 				return err
 			}
 		}
-		for _, f := range found {
-			if err := q.PutAutomaticGenre(ctx, sqlc.PutAutomaticGenreParams{
-				BookID: id, Genre: f.Genre, Method: method, Score: float32(f.Score),
-			}); err != nil {
+		for i, f := range found {
+			params := sqlc.PutAutomaticGenreParams{BookID: id, Genre: f.Genre, Method: method, Score: float32(f.Score)}
+			if whys != nil {
+				b, err := json.Marshal(whys[i])
+				if err != nil {
+					return err
+				}
+				params.Reasons = b
+			}
+			if err := q.PutAutomaticGenre(ctx, params); err != nil {
 				return err
 			}
 		}
 		return q.MarkGenresChecked(ctx, sqlc.MarkGenresCheckedParams{BookID: id, Recipe: p.recipe})
 	})
+}
+
+// words are the counts of a book's words and its language; none when its
+// text is not counted as it is now.
+func (s *Service) words(ctx context.Context, id uuid.UUID) (string, wordcount.Counts, error) {
+	row, err := sqlc.New(s.pool).GetGenreWords(ctx, sqlc.GetGenreWordsParams{BookID: id, Version: wordcount.Version})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil, nil
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	c, err := wordcount.Decode(row.Counts)
+	if err != nil {
+		return "", nil, err
+	}
+	return row.Lang, c, nil
 }
 
 // bookVectors reads a book's vectors of the spec's model, and its library.

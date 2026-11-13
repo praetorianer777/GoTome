@@ -12,7 +12,8 @@ func TestASettingOfChoicesTakesOnlyThem(t *testing.T) {
 		key, value, want string
 		refused          bool
 	}{
-		{key: GenreSuggestions, value: " Vector ", want: "vector"},
+		{key: GenreSuggestions, value: " Ensemble ", want: "ensemble"},
+		{key: GenreSuggestions, value: "combined", refused: true},
 		{key: GenreSuggestions, value: "everything", refused: true},
 		{key: AutoMatch, value: "OFF", want: "off"},
 		{key: AutoMatch, value: "yes", refused: true},

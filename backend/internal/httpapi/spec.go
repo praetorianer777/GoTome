@@ -55,7 +55,8 @@ func Spec() *openapi.Document {
 		catalog.FieldAuthor, catalog.FieldNarrator, catalog.FieldSeries, catalog.FieldTag,
 		catalog.FieldLanguage, catalog.FieldPublished, catalog.FieldStatus, catalog.FieldRating, catalog.FieldFormat, catalog.FieldFiles, catalog.FieldEReader, catalog.FieldGenre,
 	}}
-	b.FieldOverrides["GenreSuggestion.method"] = &openapi.Schema{Type: "string", Enum: []string{genres.MethodVector, genres.MethodNeighbours}}
+	b.FieldOverrides["GenreSuggestion.method"] = &openapi.Schema{Type: "string", Enum: []string{genres.MethodEnsemble, genres.MethodNeighbours, genres.MethodVector}}
+	b.FieldOverrides["GenreInput.input"] = &openapi.Schema{Type: "string", Enum: genres.InputNames[:]}
 	b.FieldOverrides["GenreDecision.state"] = &openapi.Schema{Type: "string", Enum: []string{genres.Accepted, genres.Rejected}}
 	statuses := &openapi.Schema{Type: "string", Enum: catalog.Statuses}
 	for _, field := range []string{"ReadingState.status", "ReadingChange.status", "ReadingBulkRequest.status", "BookSummary.status", "SearchHit.status"} {

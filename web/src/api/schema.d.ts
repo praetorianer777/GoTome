@@ -5006,11 +5006,21 @@ export interface components {
             /** @enum {string} */
             state: "accepted" | "rejected";
         };
+        GenreInput: {
+            /** @enum {string} */
+            input: "words" | "content" | "metadata" | "neighbours";
+            score: number;
+        };
+        GenreReasons: {
+            inputs: components["schemas"]["GenreInput"][];
+            words: string[];
+        };
         GenreSuggestion: {
             book: components["schemas"]["BookSummary"];
             genre: string;
             /** @enum {string} */
-            method: "vector" | "neighbours";
+            method: "ensemble" | "neighbours" | "vector";
+            reasons?: components["schemas"]["GenreReasons"];
             score: number;
         };
         GenreSuggestions: {

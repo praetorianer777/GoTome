@@ -163,6 +163,7 @@ type BookGenre struct {
 	DecidedBy *uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	Reasons   []byte
 }
 
 type BookGenreCheck struct {
@@ -520,6 +521,7 @@ type FileWord struct {
 	ChunkedAt time.Time
 	Words     int32
 	Counts    []byte
+	CountedAt time.Time
 }
 
 type FulltextOutbox struct {

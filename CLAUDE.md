@@ -1520,12 +1520,27 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
 - A genre is a row of `book_genres` (source `tags` or `automatic`, state
   `suggested`, `accepted`, `rejected`); a book's tags and locked fields
   are never written. A pass (`genres.suggest_books`, queue `embed`,
-  hourly) writes only while the setting `genres.suggest` is not `off`
-  (the default): `tags`, `vector` (zero-shot: the book's vectors against
-  each genre's descriptions embedded as queries, `Margins` over the
-  per-genre threshold), `neighbours` (the genres of the nearest books of
-  its library, `Shares`) or `combined`. It changes only undecided rows;
-  `book_genre_checks` records the recipe each book was looked at with.
+  hourly) writes while the setting `genres.suggest` is not `off`:
+  `tags`, `neighbours` (the genres of the nearest books of its library,
+  `Shares`) or `ensemble`, the default (#528). `vector` (zero-shot,
+  `Margins`) and `combined` are left to `genre-check`; migration 00103
+  moved them to `ensemble`. It changes only undecided rows;
+  `book_genre_checks` records the recipe each book was looked at with,
+  and a book whose words are counted later (`file_words.counted_at`) is
+  looked at again.
+- The ensemble (`ensemble.go`) is four inputs, each a probability per
+  genre: the word table of the book's language (`WordTable`, from
+  `file_words`), `Head`s on the content and metadata vectors keyed by the
+  embedding model's name, and the neighbours' `Shares`; a `Stacker` per
+  set of inputs (the largest one trained that the book has), and per
+  genre a threshold calibrated out of fold to `TargetPrecision`, else it
+  abstains. `TrainEnsemble` (`ensemble_train.go`) is the spike's
+  procedure. `Shipped` reads `shipped/` from the binary: numbers only,
+  trained on Gutenberg by `spikes/genres/run.sh ship` (heads for
+  e5-small, words for English). `Service.Ensemble` is what a pass uses;
+  tests set their own. A suggestion keeps its reasons
+  (`book_genres.reasons`: each input's probability and the book's
+  words that weighed most), which `GET /genres/suggestions` sends.
 - The filter field `genre` finds the genres of tags and those a person
   accepted, never a waiting suggestion. `GET /genres/suggestions`
   (`routes/genres.tsx`) is the review; `PUT /books/{id}/genres/{genre}`

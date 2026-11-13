@@ -2136,7 +2136,7 @@ describe("settings", () => {
 		const genres = within(
 			screen.getByRole("region", { name: "Genres" }),
 		).getByRole("combobox", { name: "Genres for books" });
-		expect(genres).toHaveValue("off");
+		expect(genres).toHaveValue("ensemble");
 		expect(
 			within(genres)
 				.getAllByRole("option")
@@ -2144,9 +2144,8 @@ describe("settings", () => {
 		).toEqual([
 			"Off: write nothing",
 			"Tags only (tags)",
-			"Tags and what books are about (vector)",
 			"Tags and the books most like them (neighbours)",
-			"Tags, the books most like them, else what they are about (combined)",
+			"Tags, and the books' words, text and nearest books together (ensemble)",
 		]);
 		await person.selectOptions(genres, "Tags only (tags)");
 
@@ -7929,8 +7928,15 @@ describe("reviewing suggested genres", () => {
 			{
 				book: book("book-1", "Death at La Stella"),
 				genre: "crime",
-				method: "vector",
-				score: 0.12,
+				method: "ensemble",
+				score: 0.87,
+				reasons: {
+					words: ["kommissar", "mord"],
+					inputs: [
+						{ input: "words", score: 0.9 },
+						{ input: "neighbours", score: 0.6 },
+					],
+				},
 			},
 			{
 				book: book("book-2", "Marea Alta"),
@@ -7966,6 +7972,11 @@ describe("reviewing suggested genres", () => {
 			screen.getByRole("button", { name: "Death at La Stella" }),
 		).toBeInTheDocument();
 		expect(screen.getByText("from the books most like it")).toBeInTheDocument();
+		expect(screen.getByText("87% sure")).toBeInTheDocument();
+		expect(
+			screen.getByText("From its words 90% · the books most like it 60%"),
+		).toBeInTheDocument();
+		expect(screen.getByText("Its words: kommissar, mord")).toBeInTheDocument();
 
 		await person.click(
 			screen.getAllByRole("button", {

@@ -2,6 +2,7 @@ package genres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/google/uuid"
@@ -26,6 +27,8 @@ type Suggestion struct {
 	Genre  string
 	Method string
 	Score  float64
+	// Why is the ensemble's reasons, nil for another method.
+	Why *Why
 }
 
 // Cursor is where a page of suggestions ended.
@@ -63,6 +66,13 @@ func (s *Service) Suggestions(ctx context.Context, scope library.Scope, libraryI
 		out[i] = Suggestion{BookID: r.BookID, Genre: r.Genre, Score: r.Score}
 		if r.Method != nil {
 			out[i].Method = *r.Method
+		}
+		if r.Reasons != nil {
+			var w Why
+			if err := json.Unmarshal(r.Reasons, &w); err != nil {
+				return nil, nil, err
+			}
+			out[i].Why = &w
 		}
 	}
 	return out, next, nil
