@@ -80,11 +80,11 @@ func TestWarmOpensTheModelOnlyWhereItRunsHereAndOnlyOnce(t *testing.T) {
 	spec := embed.E5Small
 	config := func(context.Context) (embed.Spec, bool, error) { return spec, true, nil }
 	type setup struct {
-		name    string
-		config  Config
-		open    bool
-		probe   Probe
-		opens   int
+		name   string
+		config Config
+		open   bool
+		probe  Probe
+		opens  int
 	}
 	ready := func(state string) Probe {
 		return func(context.Context, embed.Spec) Readiness { return Readiness{State: state} }
