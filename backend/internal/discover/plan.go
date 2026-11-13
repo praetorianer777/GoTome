@@ -82,6 +82,32 @@ func (s *Service) plan(ctx context.Context, scope library.Scope) ([]ask, error) 
 			genreWeight[g] += w
 		}
 	}
+	read, err := q.ListDiscoverRead(ctx, scope.Viewer)
+	if err != nil {
+		return nil, err
+	}
+	for _, b := range read {
+		w := similar.DefaultTaste.Weight("completed", b.Stars)
+		for _, name := range b.Authors {
+			key := personKey(name)
+			if key == "" {
+				continue
+			}
+			a, ok := authors[key]
+			if !ok {
+				a = &ask{kind: kindAuthor, name: metadata.NaturalName(name), key: key}
+				authors[key] = a
+				order = append(order, key)
+			}
+			a.weight = max(a.weight, w)
+			if b.Stars != nil {
+				a.stars = max(a.stars, *b.Stars)
+			}
+		}
+		for _, g := range b.Genres {
+			genreWeight[g] += w
+		}
+	}
 	var out []ask
 	series, err := q.ListDiscoverSeries(ctx, sqlc.ListDiscoverSeriesParams{Viewer: scope.Viewer, SeesAll: scope.SeesAll, Max: maxSeries})
 	if err != nil {
@@ -89,6 +115,22 @@ func (s *Service) plan(ctx context.Context, scope library.Scope) ([]ask, error) 
 	}
 	for _, r := range series {
 		out = append(out, ask{kind: kindSeries, name: r.Name, key: r.NameKey, lastRead: r.LastRead, held: r.Held})
+	}
+	// A volume read elsewhere is a place the person has passed, and not a gap.
+	for _, b := range read {
+		if b.SeriesKey == "" || b.SeriesIndex == nil {
+			continue
+		}
+		i := slices.IndexFunc(out, func(a ask) bool { return a.kind == kindSeries && a.key == b.SeriesKey })
+		if i < 0 {
+			if len(out) >= maxSeries {
+				continue
+			}
+			out = append(out, ask{kind: kindSeries, name: b.Series, key: b.SeriesKey})
+			i = len(out) - 1
+		}
+		out[i].lastRead = max(out[i].lastRead, *b.SeriesIndex)
+		out[i].held = append(out[i].held, *b.SeriesIndex)
 	}
 	var best []*ask
 	for _, key := range order {

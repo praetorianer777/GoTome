@@ -425,6 +425,22 @@ type DiscoverDismissal struct {
 	CreatedAt  time.Time
 }
 
+type DiscoverRead struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Title       string
+	Authors     []string
+	Series      string
+	SeriesKey   string
+	SeriesIndex *float64
+	Genres      []string
+	Stars       *int16
+	TitleKeys   []string
+	AuthorKeys  []string
+	Isbns       []string
+	CreatedAt   time.Time
+}
+
 type DiscoverRun struct {
 	UserID         uuid.UUID
 	StartedAt      time.Time

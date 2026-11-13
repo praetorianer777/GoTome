@@ -483,12 +483,23 @@ const recommendationsRoute = createRoute({
 const discoverRoute = createRoute({
 	getParentRoute: () => appRoute,
 	path: "/discover",
+	validateSearch: (search): { book?: string } => ({
+		book: typeof search.book === "string" && search.book ? search.book : undefined,
+	}),
 	beforeLoad: ({ context }) => {
 		if (!can(context.user, "personal:manage")) {
 			throw redirect({ to: "/" });
 		}
 	},
-	component: Discover,
+	component: loads(Discover, function DiscoverRoute() {
+		const navigate = discoverRoute.useNavigate();
+		return (
+			<Discover
+				open={discoverRoute.useSearch().book}
+				onOpen={(book) => navigate({ search: book ? { book } : {} })}
+			/>
+		);
+	}),
 });
 
 const releasesRoute = createRoute({

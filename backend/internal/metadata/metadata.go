@@ -59,6 +59,9 @@ type Record struct {
 	Identifiers []catalog.Identifier
 	// CoverURL is where the provider keeps a cover, fetched with Cover.
 	CoverURL string
+	// CoverProvider is the provider CoverURL belongs to when that is not
+	// Provider: a cover borrowed from another provider's record of the book.
+	CoverProvider string
 	// Rating is what the provider's readers think, from 0 to 5.
 	Rating *float64
 }
@@ -388,6 +391,43 @@ func (s *Service) Cached(ctx context.Context, book catalog.Book) []Record {
 func (s *Service) Has(provider string) bool {
 	_, ok := s.webs[provider]
 	return ok
+}
+
+// BorrowCover takes the cover of another record of the same book where this
+// one has none.
+func (r *Record) BorrowCover(from Record) bool {
+	if r.CoverURL != "" || from.CoverURL == "" {
+		return false
+	}
+	r.CoverURL, r.CoverProvider = from.CoverURL, cmp.Or(from.CoverProvider, from.Provider)
+	return true
+}
+
+// CoverDeriver is a provider that documents a cover address a record can be
+// given from its identifiers, for the records its listings give none.
+type CoverDeriver interface {
+	// DeriveCover is the address or "" where the record has nothing to derive from.
+	// An address of a book the provider has no cover for answers not found.
+	DeriveCover(r Record) string
+}
+
+// CoverFor is the provider and address of the record's cover: its own, else
+// one derived from its identifiers by a provider that is asked. The provider
+// is the one whose host the address is on, as a cover token names it.
+func (s *Service) CoverFor(r Record) (provider, url string) {
+	if r.CoverURL != "" {
+		return cmp.Or(r.CoverProvider, r.Provider), r.CoverURL
+	}
+	for _, p := range s.providers {
+		d, ok := p.(CoverDeriver)
+		if !ok || !s.Has(p.Name()) {
+			continue
+		}
+		if u := d.DeriveCover(r); u != "" {
+			return p.Name(), u
+		}
+	}
+	return "", ""
 }
 
 // ErrBadToken is a cover token this process did not hand out.

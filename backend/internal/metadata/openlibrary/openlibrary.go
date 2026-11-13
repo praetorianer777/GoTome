@@ -394,6 +394,23 @@ func coverURL(ids []int64) string {
 	return ""
 }
 
+// DeriveCover is the cover Open Library documents for a book's ISBN or
+// edition ID (covers.openlibrary.org/b/isbn and /b/olid), 404 where it has
+// none. A work's ID has no documented cover address.
+func (p *Provider) DeriveCover(r metadata.Record) string {
+	for _, id := range r.Identifiers {
+		if id.Type == catalog.IDOpenLibrary && strings.HasPrefix(id.Value, "OL") && strings.HasSuffix(id.Value, "M") {
+			return coversSite + "/b/olid/" + url.PathEscape(id.Value) + "-L.jpg?default=false"
+		}
+	}
+	for _, id := range r.Identifiers {
+		if id.Type == catalog.IDISBN {
+			return coversSite + "/b/isbn/" + url.PathEscape(id.Value) + "-L.jpg?default=false"
+		}
+	}
+	return ""
+}
+
 // bibliographic are the MARC language codes that differ from ISO 639-3,
 // which OpenLibrary uses: "ger" where ISO says "deu".
 var bibliographic = map[string]string{

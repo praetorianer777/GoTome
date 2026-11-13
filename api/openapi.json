@@ -8767,6 +8767,89 @@
         "x-permission": "personal:manage"
       }
     },
+    "/me/discover/read": {
+      "get": {
+        "operationId": "listDiscoverRead",
+        "summary": "The books the caller said they read elsewhere",
+        "tags": [
+          "books"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverReadList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/read/{readId}": {
+      "delete": {
+        "operationId": "unreadDiscovered",
+        "summary": "Take a book back off the caller's list of those read elsewhere; Discover may offer it again",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "readId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/me/discover/run": {
       "post": {
         "operationId": "requestDiscover",
@@ -8817,6 +8900,59 @@
             }
           }
         ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
+    "/me/discover/{candidateId}/read": {
+      "post": {
+        "operationId": "readDiscoveredElsewhere",
+        "summary": "Say the caller read a discovered book elsewhere, with optional stars: it and its other editions leave Discover, and it counts for their taste; nothing is added to a library or the wishlist",
+        "tags": [
+          "books"
+        ],
+        "parameters": [
+          {
+            "name": "candidateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadElsewhereRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "No Content"
@@ -16207,7 +16343,31 @@
             "type": "string",
             "format": "uuid"
           },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            }
+          },
+          "language": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverPerson"
+            }
+          },
           "provider": {
+            "type": "string"
+          },
+          "published": {
+            "type": "string"
+          },
+          "publisher": {
             "type": "string"
           },
           "reason": {
@@ -16218,6 +16378,15 @@
           },
           "seriesIndex": {
             "type": "number"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "title": {
             "type": "string"
@@ -16234,6 +16403,9 @@
           "title",
           "authors",
           "provider",
+          "identifiers",
+          "tags",
+          "people",
           "reason",
           "wish"
         ]
@@ -16261,6 +16433,21 @@
         "required": [
           "state",
           "items"
+        ]
+      },
+      "DiscoverPerson": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "key"
         ]
       },
       "DiscoverProgress": {
@@ -16303,6 +16490,57 @@
           "genres",
           "activity",
           "backingOff"
+        ]
+      },
+      "DiscoverReadBook": {
+        "type": "object",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "series": {
+            "type": "string"
+          },
+          "seriesIndex": {
+            "type": "number"
+          },
+          "stars": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "authors",
+          "createdAt"
+        ]
+      },
+      "DiscoverReadList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoverReadBook"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "DiscoverReason": {
@@ -19179,6 +19417,14 @@
           "waiting",
           "lastHour"
         ]
+      },
+      "ReadElsewhereRequest": {
+        "type": "object",
+        "properties": {
+          "stars": {
+            "type": "integer"
+          }
+        }
       },
       "Readiness": {
         "type": "object",

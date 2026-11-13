@@ -24,7 +24,7 @@ import type { Progress, ProgressState, ProgressUpdate } from "@/books/progress";
 import type { ReadingStats } from "@/books/stats";
 import type { ReadingImport } from "@/books/history";
 import type { RecommendationList } from "@/books/recommendations";
-import type { DiscoverList } from "@/discover/api";
+import type { DiscoverList, DiscoverReadBook } from "@/discover/api";
 import type { WishRequest } from "@/books/wishes";
 import type { Timeline } from "@/player/timeline";
 import type { ReadingBulk, ReadingChange, ReadingStatus } from "@/books/reading";
@@ -461,6 +461,7 @@ export class FakeServer {
 	recommendations?: RecommendationList;
 	/** What Discover offers; never looked for, unless a test says. */
 	discover?: DiscoverList;
+	discoverRead: DiscoverReadBook[] = [];
 	/** The audio of each book, as the player asks for it. */
 	audio: Record<string, Timeline> = {};
 	/** The IDs of the books like each book, the nearest first. */
@@ -937,6 +938,25 @@ export class FakeServer {
 				...this.discover,
 				items: this.discover.items.filter((i) => i.id !== discarded[1]),
 			};
+			return new Response(null, { status: 204 });
+		}
+		if (path === "/me/discover/read") {
+			return Response.json({ items: this.discoverRead });
+		}
+		const taken = /^\/me\/discover\/read\/([^/]+)$/.exec(path);
+		if (taken && request.method === "DELETE") {
+			this.discoverRead = this.discoverRead.filter((b) => b.id !== taken[1]);
+			return new Response(null, { status: 204 });
+		}
+		const read = /^\/me\/discover\/([^/]+)\/read$/.exec(path);
+		const was = read && this.discover?.items.find((i) => i.id === read[1]);
+		if (read && this.discover && was) {
+			const stars = (body as { stars?: number } | undefined)?.stars;
+			this.discoverRead = [
+				{ id: `read-${read[1]}`, title: was.title, authors: was.authors, stars, createdAt: new Date().toISOString() },
+				...this.discoverRead,
+			];
+			this.discover = { ...this.discover, items: this.discover.items.filter((i) => i.id !== read[1]) };
 			return new Response(null, { status: 204 });
 		}
 		if (path === "/me/reading") {
