@@ -218,3 +218,141 @@ func TestCmapOfOldFormatsIsRead(t *testing.T) {
 		t.Errorf("format 6: %v %v", chars, err)
 	}
 }
+
+func cidFont(t *testing.T, fdsel []byte) []byte {
+	t.Helper()
+	private := func(subrs ...[]byte) cffPrivate {
+		return cffPrivate{present: true, hasSubrs: true, subrs: subrs, entries: []dictEntry{
+			{op: 20, operands: [][]byte{cffNum(0)}},
+			{op: opSubrs, operands: [][]byte{putInt5(0)}},
+		}}
+	}
+	fontDict := []dictEntry{{op: opPrivate, operands: [][]byte{putInt5(0), putInt5(0)}}}
+	codes := [][]byte{
+		{csEndChar},
+		cffBox(40, 520, 700),
+		cffCode(0, 0, csRMoveTo, -106, csCallSubr, csEndChar),
+		cffBox(10, 100, 100),
+		cffCode(10, 0, csRMoveTo, -107, csCallSubr, csEndChar),
+		cffCode(0, 0, csRMoveTo, -106, csCallSubr, csEndChar),
+	}
+	f := &cffFont{
+		header: []byte{1, 0, 4, 4},
+		names:  writeIndex([][]byte{[]byte("SyntheticCID")}, 0),
+		top: []dictEntry{
+			{op: opROS, operands: [][]byte{putInt5(391), putInt5(392), putInt5(0)}},
+			{op: opCharset, operands: [][]byte{putInt5(0)}},
+			{op: opCharStrings, operands: [][]byte{putInt5(0)}},
+			{op: opFDArray, operands: [][]byte{putInt5(0)}},
+			{op: opFDSelect, operands: [][]byte{putInt5(0)}},
+		},
+		strs:        [][]byte{[]byte("Adobe"), []byte("Identity")},
+		charstrings: codes,
+		charsetRaw:  []byte{0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5},
+		cid:         true,
+		fdselRaw:    fdsel,
+		fontDicts:   [][]dictEntry{fontDict, cloneEntries(fontDict)},
+		privates: []cffPrivate{
+			private(cffCode(100, csHLineTo, csReturn), cffCode(7, csHLineTo, csReturn)),
+			private(cffCode(200, csHLineTo, csReturn), cffCode(9, csHLineTo, csReturn)),
+		},
+	}
+	chars := map[rune]uint16{'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+	return makeOTTO(f.assemble(), len(codes), chars)
+}
+
+var (
+	fdselFormat0 = []byte{0, 0, 0, 0, 1, 1, 1}
+	fdselFormat3 = []byte{3, 0, 2, 0, 0, 0, 0, 3, 1, 0, 6}
+)
+
+func TestCIDKeyedFontsAreSubsetPerFontDict(t *testing.T) {
+	for name, fdsel := range map[string][]byte{"format 0": fdselFormat0, "format 3": fdselFormat3} {
+		t.Run(name, func(t *testing.T) {
+			font := cidFont(t, fdsel)
+			orig := cffOf(t, font)
+			if !orig.cid || !bytes.Equal(orig.fdOf, []uint8{0, 0, 0, 1, 1, 1}) {
+				t.Fatalf("cid %v, font dicts %v", orig.cid, orig.fdOf)
+			}
+			keep := []rune{'C', 'D'}
+			out, err := Subset(font, keep)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := Verify(font, out, keep); err != nil {
+				t.Error(err)
+			}
+			f := cffOf(t, out)
+			if len(f.fontDicts) != 2 || len(f.privates) != 2 {
+				t.Fatalf("%d font dicts, %d privates", len(f.fontDicts), len(f.privates))
+			}
+			if want := []uint8{0, 0, 0, 1, 1}; !bytes.Equal(f.fdOf, want) {
+				t.Errorf("FDSelect %v, want %v", f.fdOf, want)
+			}
+			if len(f.charstrings) != 5 {
+				t.Errorf("%d glyphs kept up to the last one wanted", len(f.charstrings))
+			}
+			for g, cs := range f.charstrings {
+				if empty := bytes.Equal(cs, []byte{14}); empty != (g != 3 && g != 4) {
+					t.Errorf("glyph %d empty: %v", g, empty)
+				}
+			}
+			if !bytes.Equal(f.privates[0].subrs[0], []byte{11}) || !bytes.Equal(f.privates[0].subrs[1], []byte{11}) {
+				t.Errorf("font dict 0 keeps subroutines no kept glyph calls: %x", f.privates[0].subrs)
+			}
+			if bytes.Equal(f.privates[1].subrs[0], []byte{11}) || !bytes.Equal(f.privates[1].subrs[1], []byte{11}) {
+				t.Errorf("font dict 1 subroutines: %x", f.privates[1].subrs)
+			}
+		})
+	}
+}
+
+func TestParseFDSelect(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      []byte
+		n       int
+		want    []uint8
+		length  int
+		wantErr error
+	}{
+		{"format 0", fdselFormat0, 6, []uint8{0, 0, 0, 1, 1, 1}, 7, nil},
+		{"format 3", fdselFormat3, 6, []uint8{0, 0, 0, 1, 1, 1}, 11, nil},
+		{"format 3 with a range per glyph", []byte{3, 0, 3, 0, 0, 2, 0, 1, 0, 0, 2, 1, 0, 3}, 3, []uint8{2, 0, 1}, 14, nil},
+		{"unknown format", []byte{1, 0, 0}, 2, nil, 0, ErrUnsupported},
+		{"format 0 cut short", []byte{0, 0, 1}, 4, nil, 0, ErrCorrupt},
+		{"format 3 cut short", []byte{3, 0, 2, 0, 0, 0}, 6, nil, 0, ErrCorrupt},
+		{"format 3 ranges run backwards", []byte{3, 0, 2, 0, 3, 0, 0, 1, 0, 0, 6}, 6, nil, 0, ErrCorrupt},
+		{"format 3 past the glyphs", []byte{3, 0, 1, 0, 0, 0, 0, 9, 0}, 6, nil, 0, ErrCorrupt},
+		{"nothing there", nil, 1, nil, 0, ErrCorrupt},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, length, err := parseFDSelect(c.in, 0, c.n)
+			if !errors.Is(err, c.wantErr) {
+				t.Fatalf("error %v, want %v", err, c.wantErr)
+			}
+			if err == nil && (!bytes.Equal(got, c.want) || length != c.length) {
+				t.Errorf("%v, %d bytes; want %v, %d", got, length, c.want, c.length)
+			}
+		})
+	}
+}
+
+func TestDictBytesWritesEachDictOnItsOwn(t *testing.T) {
+	a := []dictEntry{{op: opPrivate, operands: [][]byte{cffNum(5), cffNum(9)}}}
+	b := []dictEntry{{op: 20, operands: [][]byte{cffNum(3)}}}
+	got := dictBytes([][]dictEntry{a, nil, b})
+	if len(got) != 3 || len(got[1]) != 0 {
+		t.Fatalf("%x", got)
+	}
+	for i, in := range [][]dictEntry{a, nil, b} {
+		if !bytes.Equal(got[i], writeDict(in)) {
+			t.Errorf("dict %d: %x", i, got[i])
+		}
+	}
+	back, err := parseDict(got[0])
+	if err != nil || len(back) != 1 || back[0].op != opPrivate {
+		t.Errorf("%v %v", back, err)
+	}
+}
