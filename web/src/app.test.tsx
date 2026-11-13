@@ -40,6 +40,8 @@ const ebook = vi.hoisted(() => ({
 	marked: [] as (string | null)[],
 	drawn: [] as { cfi: string; color: string }[],
 	cleared: 0,
+	/** Whether the open reader has asked to hear of selections. */
+	listening: false,
 	/** Selects text in the open book, as the person would. */
 	select: (_selection: { cfi: string; text: string; fraction?: number; chapter?: string } | undefined) => {},
 	/** Taps a highlight in the open book. */
@@ -172,6 +174,7 @@ vi.mock("@/reader/ebook", () => ({
 			next: () => turn(1),
 			onSelection: (listener: (s: unknown) => void) => {
 				ebook.select = listener;
+				ebook.listening = true;
 				return () => {};
 			},
 			clearSelection: () => {
@@ -202,6 +205,8 @@ beforeEach(() => {
 	ebook.marked.length = 0;
 	ebook.drawn = [];
 	ebook.cleared = 0;
+	ebook.listening = false;
+	ebook.select = () => {};
 	spoken.said.length = 0;
 	spoken.cancelled = 0;
 	vi.unstubAllGlobals();
@@ -9183,6 +9188,8 @@ describe("highlights and notes", () => {
 		expect(router.state.location.pathname).toBe("/books/book-1/read/file-1");
 		await screen.findByText("0%");
 		expect(screen.queryByRole("form", { name: "Highlight the selected text" })).toBeNull();
+		// The reader listens once it knows who reads, which may come after the page.
+		await waitFor(() => expect(ebook.listening).toBe(true));
 
 		act(() =>
 			ebook.select({
@@ -9229,6 +9236,7 @@ describe("highlights and notes", () => {
 		withEpub();
 		renderApp("/books/book-1/read/file-1");
 		await screen.findByText("0%");
+		await waitFor(() => expect(ebook.listening).toBe(true));
 		act(() => ebook.select({ cfi: "epubcfi(/6/2)", text: "first words" }));
 		const bar = await screen.findByRole("form", { name: "Highlight the selected text" });
 		act(() => ebook.select(undefined));
