@@ -21,7 +21,7 @@ import { QuickSearch } from "@/books/quick-search";
 import { Dialog } from "@/components/dialog";
 import { Celebration } from "@/components/gopher";
 import { Wordmark } from "@/components/wordmark";
-import { panel } from "@/components/ui";
+import { InPageLink, panel } from "@/components/ui";
 import { LanguageSelect, ThemeSelect } from "@/components/preferences";
 import { useServerVersion, VersionFooter } from "@/components/version-footer";
 import { useUpdate } from "@/system/update";
@@ -297,12 +297,12 @@ export function Shell({ user }: { user: CurrentUser }) {
 		<PlayerProvider>
 			{isDemo && !fullScreen && <DemoBanner />}
 			<div className="flex min-h-dvh flex-col max-lg:pt-safe lg:gap-4 lg:p-4">
-				<a
-					href="#content"
+				<InPageLink
+					to="content"
 					className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2 focus:text-slate-900"
 				>
 					{t("nav.skip")}
-				</a>
+				</InPageLink>
 				<header
 					className={`${panel} z-30 max-lg:rounded-none max-lg:border-x-0 max-lg:border-t-0 lg:sticky lg:top-4`}
 				>
@@ -347,7 +347,8 @@ export function Shell({ user }: { user: CurrentUser }) {
 					>
 						<main
 							id="content"
-							className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
+							tabIndex={-1}
+							className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none"
 						>
 							{notInTheDemo(pathname) ? <DemoNote /> : <Outlet />}
 						</main>

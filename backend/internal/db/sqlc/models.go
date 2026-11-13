@@ -67,6 +67,7 @@ type Book struct {
 	Placeholder        bool
 	TitleAddition      bool
 	TitleSeries        *string
+	AgeRating          *int16
 }
 
 type BookChunk struct {
@@ -303,6 +304,8 @@ type CurationRun struct {
 	UndoSeesAll     bool
 	UndoCursorAt    *time.Time
 	UndoCursorID    *uuid.UUID
+	OrganiseLibrary *uuid.UUID
+	OrganisePattern *string
 }
 
 type Delivery struct {
@@ -467,6 +470,8 @@ type Library struct {
 	JoinFormats      bool
 	Watch            bool
 	Fulltext         bool
+	OrganiseEnabled  bool
+	OrganisePattern  *string
 }
 
 type LibraryMember struct {
@@ -804,6 +809,7 @@ type User struct {
 	UpdatedAt        time.Time
 	HistoryLibraryID *uuid.UUID
 	KindleAddress    *string
+	MaxAgeRating     *int16
 }
 
 type UserBook struct {

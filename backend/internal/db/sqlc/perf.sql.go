@@ -18,7 +18,7 @@ JOIN authors a ON a.id = c.author_id
 JOIN books b ON b.id = c.book_id
 WHERE c.role = 'author' AND b.deleted_at IS NULL AND NOT b.placeholder
   AND a.name_key <> ALL($1::text[])
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 GROUP BY a.id
 ORDER BY count(*) DESC, a.id
 LIMIT 1
@@ -43,7 +43,7 @@ const perfBook = `-- name: PerfBook :one
 SELECT b.id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 ORDER BY b.id
 LIMIT 1
 `
@@ -64,7 +64,7 @@ const perfBookWithVectors = `-- name: PerfBookWithVectors :one
 SELECT b.id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content' AND v.model = $3::text)
   AND EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata' AND v.model = $3::text)
 ORDER BY b.id
@@ -105,7 +105,7 @@ WITH vb AS (
     SELECT b.id, b.series_id
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 )
 SELECT (SELECT count(*) FROM vb)::bigint AS books,
        (SELECT count(*) FROM book_files f JOIN vb ON vb.id = f.book_id WHERE f.trashed_at IS NULL)::bigint AS files,
@@ -152,7 +152,7 @@ const perfLanguage = `-- name: PerfLanguage :one
 SELECT lower(split_part(replace(b.language, '_', '-'), '-', 1))::text AS language
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder AND b.language IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY 1
 ORDER BY count(*) DESC, 1
 LIMIT 1
@@ -174,7 +174,7 @@ const perfLibrary = `-- name: PerfLibrary :one
 SELECT b.library_id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY b.library_id
 ORDER BY count(*) DESC, b.library_id
 LIMIT 1
@@ -197,7 +197,7 @@ SELECT f.id
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder AND f.chunked_at IS NOT NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 ORDER BY md5(b.id::text)
 LIMIT $3::int
 `
@@ -235,7 +235,7 @@ SELECT s.name_key::text AS name_key
 FROM books b
 JOIN series s ON s.id = b.series_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY s.id
 ORDER BY count(*) DESC, s.id
 LIMIT 1
@@ -274,7 +274,7 @@ FROM book_tags bt
 JOIN tags t ON t.id = bt.tag_id
 JOIN books b ON b.id = bt.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY t.id
 ORDER BY count(*) DESC, t.id
 LIMIT 1
@@ -298,7 +298,7 @@ FROM (
     SELECT w AS word, count(*) AS n
     FROM books b, unnest(string_to_array(b.title_key, ' ')) w
     WHERE b.deleted_at IS NULL AND NOT b.placeholder AND length(w) >= 4
-      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
     GROUP BY w
     ORDER BY n DESC, w
     LIMIT 40

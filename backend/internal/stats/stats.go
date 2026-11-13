@@ -204,7 +204,7 @@ FROM river_job j
 JOIN books b ON b.id = (j.args->>'bookId')::uuid
 WHERE j.kind IN ('` + lookupKind + `', '` + checkKind + `')
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2))
+  AND b.library_id IN (SELECT * FROM visible_library_ids($1, $2)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1, $2)))
   AND ($3::uuid IS NULL OR b.library_id = $3)
 GROUP BY j.kind`
 

@@ -119,8 +119,9 @@ JOIN books b ON b.id = p.book_b
 JOIN duplicate_evidence e ON e.pair_id = p.id
 WHERE p.state = 'open'
   AND a.library_id = b.library_id
-  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (a.age_rating IS NULL OR a.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR a.library_id = $3::uuid)
+  AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND a.deleted_at IS NULL AND b.deleted_at IS NULL AND NOT a.placeholder AND NOT b.placeholder
   AND ($4::uuid IS NULL OR p.id > $4::uuid)
   AND EXISTS (SELECT 1 FROM duplicate_evidence x WHERE x.pair_id = p.id AND x.kind IN ('sha256', 'content', 'overlap'))

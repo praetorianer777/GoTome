@@ -272,6 +272,22 @@ export function useChangePassword() {
 	});
 }
 
+export function useSetMaxAgeRating() {
+	return useMutation({
+		mutationFn: async ({
+			id,
+			maxAgeRating,
+		}: { id: string; maxAgeRating: number | null }) =>
+			(
+				await api.PUT("/users/{userId}/max-age-rating", {
+					params: { path: { userId: id } },
+					body: { maxAgeRating },
+				})
+			).data,
+		onSuccess: useInvalidate(usersQuery.queryKey),
+	});
+}
+
 export function useSetQuota() {
 	return useMutation({
 		mutationFn: async ({ id, quotaBytes }: { id: string; quotaBytes: number | null }) =>

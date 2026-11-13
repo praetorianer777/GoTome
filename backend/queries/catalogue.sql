@@ -41,7 +41,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: CreateBookFile :one
 INSERT INTO book_files (
@@ -113,7 +113,7 @@ SELECT b.*
 FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 FOR UPDATE;
 
 -- name: SetBookLocks :exec
@@ -167,7 +167,7 @@ FROM books b
 WHERE b.id = $1
   AND b.deleted_at IS NULL
   AND b.cover_key IS NOT NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: RefreshAuthorSort :exec
 UPDATE books b
@@ -190,7 +190,7 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: ListAudioFiles :many
 -- A book's audio files that are there to be played: the parts of an
@@ -216,3 +216,23 @@ UPDATE book_files SET text_print_isbn = $2 WHERE id = $1 AND text_print_isbn IS 
 SELECT DISTINCT text_print_isbn::text FROM book_files
 WHERE book_id = $1 AND text_print_isbn IS NOT NULL AND trashed_at IS NULL
 ORDER BY 1;
+
+-- name: SetBookAgeRating :exec
+-- The age rating and where it came from; NULL takes both away.
+UPDATE books
+SET age_rating    = sqlc.narg(rating)::smallint,
+    field_sources = CASE WHEN sqlc.narg(rating)::smallint IS NULL THEN field_sources - 'ageRating'
+                         ELSE jsonb_set(field_sources, '{ageRating}', to_jsonb(sqlc.arg(source)::text)) END,
+    updated_at    = now()
+WHERE id = sqlc.arg(id);
+
+-- name: GetBookAgeState :one
+SELECT age_rating, COALESCE(field_sources->>'ageRating', '')::text AS source, 'ageRating' = ANY(locked_fields) AS locked
+FROM books WHERE id = $1;
+
+-- name: ListBookTagNames :many
+SELECT t.name FROM book_tags bt JOIN tags t ON t.id = bt.tag_id WHERE bt.book_id = $1;
+
+-- name: AgeRatingVisible :one
+-- Whether the viewer may see books of this rating.
+SELECT sqlc.arg(rating)::smallint <= age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean) AS visible;

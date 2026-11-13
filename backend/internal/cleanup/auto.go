@@ -103,7 +103,7 @@ func (s *Service) decideSeries(ctx context.Context, scope library.Scope, sg Sugg
 	err := s.pool.QueryRow(ctx, `
 SELECT EXISTS (SELECT 1 FROM series s JOIN books b ON b.series_id = s.id
                WHERE s.name_key = $1 AND b.deleted_at IS NULL
-                 AND b.library_id IN (SELECT * FROM visible_library_ids($2, $3)))`,
+                 AND b.library_id IN (SELECT * FROM visible_library_ids($2, $3)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2, $3))))`,
 		key, scope.Viewer, scope.SeesAll).Scan(&known)
 	if err != nil {
 		return "", false, err

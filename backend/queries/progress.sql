@@ -56,7 +56,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND s.started_at >= sqlc.arg(since)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
@@ -73,7 +73,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY s.medium
 ORDER BY s.medium;
 
@@ -87,7 +87,7 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = sqlc.arg(user_id)
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY 1
 ORDER BY 1 DESC;
 
@@ -100,7 +100,7 @@ JOIN books b ON b.id = ub.book_id
 WHERE ub.user_id = sqlc.arg(user_id)
   AND ub.status = 'completed'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)))
   AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id);
 
 -- name: ReadingHistory :many
@@ -123,7 +123,7 @@ JOIN LATERAL (
     SELECT bk.title
     FROM books bk
     WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean))
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit(sqlc.arg(user_id)::uuid, sqlc.arg(sees_all)::boolean)))
     OFFSET 0
 ) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title

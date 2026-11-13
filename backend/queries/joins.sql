@@ -41,7 +41,7 @@ SELECT j.id, j.into_book, j.from_book, j.file_ids
 FROM book_joins j
 JOIN books b ON b.id = j.into_book
 WHERE j.id = sqlc.arg(id) AND j.undone_at IS NULL AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 FOR UPDATE OF j;
 
 -- name: ListBookJoins :many
@@ -94,5 +94,5 @@ FROM book_relations r
 JOIN books o ON o.id = CASE WHEN r.book_a = sqlc.arg(book_id) THEN r.book_b ELSE r.book_a END
 WHERE sqlc.arg(book_id) IN (r.book_a, r.book_b) AND r.kind = 'format'
   AND o.deleted_at IS NULL
-  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (o.age_rating IS NULL OR o.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY o.title, o.id;

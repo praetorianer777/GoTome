@@ -57,7 +57,7 @@ LEFT JOIN (
     GROUP BY book_id
 ) v ON v.book_id = b.id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
   AND ($5::uuid IS NULL OR b.library_id = $5::uuid)
 `
 
@@ -108,7 +108,7 @@ SELECT v.model, v.model_version,
 FROM book_vectors v
 JOIN books b ON b.id = v.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY v.model, v.model_version
 `
 
@@ -360,7 +360,7 @@ SELECT n.book_id,
 FROM near n
 JOIN books b ON b.id = n.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 ORDER BY score DESC, n.book_id
 LIMIT $5::int OFFSET $4::int
@@ -555,7 +555,7 @@ SELECT n.book_id,
 FROM near n
 JOIN books b ON b.id = n.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND NOT EXISTS (
       SELECT 1 FROM duplicate_pairs p
       WHERE (p.book_a, p.book_b) IN ((n.book_id, $3::uuid), ($3::uuid, n.book_id)))

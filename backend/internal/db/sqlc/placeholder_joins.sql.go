@@ -154,7 +154,7 @@ JOIN book_contributors c ON c.author_id = a.id AND c.role = 'author'
 JOIN books b ON b.id = c.book_id
 WHERE a.person_key = ANY($1::text[])
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
   AND similarity(b.title_key, $4::text) >= $5::real
 GROUP BY b.id, b.title_key, b.created_at
 ORDER BY max(similarity(b.title_key, $4::text)) DESC, b.created_at, b.id

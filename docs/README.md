@@ -51,6 +51,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   import.
 - [Moving from Calibre](moving-from-calibre.md): reading a Calibre library's
   `metadata.db` in place, what is taken from it, and running it again.
+- [Organising a library's files](organising-files.md): renaming and
+  sorting files into folders by a pattern, with a preview and undo.
 - [Resolving duplicates by themselves](duplicates.md): the classes of
   duplicate pairs the rules merge or link, dry runs, undo, and measuring
   them with `gotome duplicate-check`.
@@ -69,4 +71,4 @@ For people who run GOtome or use it. Start with **Getting started**.
   timing the views on your own library.
 - [The demo](demo.md): the Pages build, its sample data and the books it fetches.
 - [Decision records](decisions/): the search engine, the text store, the
-  embedding runtime, the MOBI reader, passage vectors.
+  embedding runtime, the MOBI reader, passage vectors, genre detection.

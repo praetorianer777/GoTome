@@ -63,6 +63,7 @@ UPDATE books s SET
     series_index        = CASE WHEN 'series' = ANY($1::text[]) THEN l.series_index ELSE s.series_index END,
     page_count          = CASE WHEN 'pageCount' = ANY($1::text[]) THEN l.page_count ELSE s.page_count END,
     cover_key           = CASE WHEN 'cover' = ANY($1::text[]) THEN l.cover_key ELSE s.cover_key END,
+    age_rating          = CASE WHEN 'ageRating' = ANY($1::text[]) THEN l.age_rating ELSE s.age_rating END,
     field_sources       = s.field_sources || coalesce(
         (SELECT jsonb_object_agg(k, v) FROM jsonb_each(l.field_sources) AS e(k, v) WHERE k = ANY($1::text[])),
         '{}'::jsonb),
@@ -196,7 +197,7 @@ FROM book_relations r
 JOIN books o ON o.id = CASE WHEN r.book_a = $1 THEN r.book_b ELSE r.book_a END
 WHERE $1 IN (r.book_a, r.book_b) AND r.kind = 'recording'
   AND o.deleted_at IS NULL
-  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND o.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (o.age_rating IS NULL OR o.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY o.title, o.id
 `
 
@@ -264,7 +265,7 @@ const lockBooksForMerge = `-- name: LockBooksForMerge :many
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
 WHERE b.id = ANY($1::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY b.id
 FOR UPDATE OF b
 `
@@ -528,6 +529,26 @@ WHERE p.book_id = $1 AND p.locator NOT LIKE 'fraction:%'
 // far: a locator means nothing in another file, a fraction does.
 func (q *Queries) ProgressByFraction(ctx context.Context, bookID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, progressByFraction, bookID)
+	return err
+}
+
+const raiseAgeRating = `-- name: RaiseAgeRating :exec
+UPDATE books s SET age_rating = l.age_rating, updated_at = now(),
+    field_sources = jsonb_set(s.field_sources, '{ageRating}', coalesce(l.field_sources->'ageRating', '"tags"'::jsonb))
+FROM books l
+WHERE s.id = $1 AND l.id = $2
+  AND l.age_rating IS NOT NULL AND (s.age_rating IS NULL OR s.age_rating < l.age_rating)
+`
+
+type RaiseAgeRatingParams struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// A merge never lowers what keeps a book from someone: the surviving book
+// takes the higher rating of the two.
+func (q *Queries) RaiseAgeRating(ctx context.Context, arg RaiseAgeRatingParams) error {
+	_, err := q.db.Exec(ctx, raiseAgeRating, arg.IntoBook, arg.FromBook)
 	return err
 }
 

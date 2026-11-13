@@ -47,6 +47,7 @@ FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1
   AND f.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND EXISTS (SELECT 1 FROM books b WHERE b.id = f.book_id AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean))))
 `
 
 type GetFileToFixParams struct {

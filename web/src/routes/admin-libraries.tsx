@@ -16,6 +16,7 @@ import {
 	useUpdateLibrary,
 } from "@/libraries/api";
 import { searchStatusQuery } from "@/jobs/search-index";
+import { OrganiseFiles } from "@/libraries/organise";
 import { ScanStatus } from "@/libraries/scan";
 import { usersQuery } from "@/users/api";
 
@@ -276,6 +277,7 @@ function LibraryRow({ library }: { library: Library }) {
 			{Object.keys(errors).length === 0 && (
 				<FormError error={update.error ?? remove.error} />
 			)}
+			<OrganiseFiles library={library} />
 			{library.visibility === "private" && <LibraryMembers library={library} />}
 		</li>
 	);

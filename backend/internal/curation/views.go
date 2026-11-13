@@ -234,6 +234,11 @@ func (s *Service) actionsOf(ctx context.Context, rows []sqlc.ListCurationActions
 		}
 		for _, b := range r.Books {
 			bc := BookChange{ID: b, Title: titles[b]}
+			if r.Kind == ActionOrganise {
+				bc.Fields = movedFiles(r.Before)
+				a.Books = append(a.Books, bc)
+				continue
+			}
 			bc.Fields, err = Changes(snaps[i].before, snaps[i].after, b, names, titles)
 			if err != nil {
 				return nil, err
@@ -243,6 +248,22 @@ func (s *Service) actionsOf(ctx context.Context, rows []sqlc.ListCurationActions
 		out[i] = a
 	}
 	return out, nil
+}
+
+// movedFiles lists the moves an organise action made, as the "path" of
+// each file.
+func movedFiles(before []byte) []FieldChange {
+	var snap struct {
+		Organise []struct{ From, To string } `json:"organise"`
+	}
+	if err := jsonUnmarshal(before, &snap); err != nil {
+		return nil
+	}
+	out := make([]FieldChange, len(snap.Organise))
+	for i, m := range snap.Organise {
+		out[i] = FieldChange{Field: "path", Before: m.From, After: m.To}
+	}
+	return out
 }
 
 // namedIDs are the IDs in a snapshot that stand for a name.

@@ -152,7 +152,7 @@ func TestASettingOfChoicesSaysThemAndTakesNoOther(t *testing.T) {
 	}
 
 	status, body, _ = a.call(admin, http.MethodPatch, "/settings", map[string]any{"values": map[string]any{
-		settings.Providers: "openlibrary,google", settings.AutoMatch: "sometimes",
+		settings.Providers: "openlibrary,amazon", settings.AutoMatch: "sometimes",
 	}})
 	if status != 422 || fieldError(body, settings.Providers) == "" || fieldError(body, settings.AutoMatch) == "" {
 		t.Errorf("refused: %d %v", status, body)

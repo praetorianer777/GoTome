@@ -199,7 +199,7 @@ SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before,
 FROM curation_actions a
 JOIN curation_runs r ON r.id = a.run_id
 WHERE a.id = $1
-  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND books_age_visible(a.books, $2::uuid, $3::boolean)
 FOR UPDATE OF a
 `
 
@@ -251,15 +251,15 @@ const getCurationRun = `-- name: GetCurationRun :one
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
        r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
-         WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS actions,
+         WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))::int AS actions,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.state = 'undone'
-           AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS undone
+           AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))::int AS undone
 FROM curation_runs r
 LEFT JOIN users u ON u.id = r.started_by
 WHERE r.id = $3
   AND (EXISTS (SELECT 1 FROM curation_actions a
-               WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
+               WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))
        OR (r.started_by = $1::uuid AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)))
 `
 
@@ -478,7 +478,7 @@ const listCurationActionIDsToUndo = `-- name: ListCurationActionIDsToUndo :many
 SELECT a.id, a.created_at FROM curation_actions a
 WHERE a.run_id = $1 AND a.state = 'done'
   AND NOT EXISTS (SELECT 1 FROM curation_runs r WHERE r.id = a.run_id AND r.dry_run)
-  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND books_age_visible(a.books, $2::uuid, $3::boolean)
   AND ($4::timestamptz IS NULL OR (a.created_at, a.id) < ($4::timestamptz, $5::uuid))
 ORDER BY a.created_at DESC, a.id DESC
 LIMIT $6
@@ -532,7 +532,7 @@ SELECT a.id, a.run_id, a.library_id, a.kind, a.rule, a.reason, a.books, a.trashe
        a.state, a.note, a.created_at, a.undone_at
 FROM curation_actions a
 WHERE a.run_id = $1
-  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND books_age_visible(a.books, $2::uuid, $3::boolean)
   AND ($4::timestamptz IS NULL OR (a.created_at, a.id) > ($4::timestamptz, $5::uuid))
 ORDER BY a.created_at, a.id
 LIMIT $6
@@ -674,14 +674,14 @@ const listCurationRuns = `-- name: ListCurationRuns :many
 SELECT r.id, r.kind, r.rule, r.started_by, u.username AS started_by_name, r.dry_run, r.automatic, r.state,
        r.created_at, r.finished_at, r.confirmed_at, r.undone_at, r.skipped, (r.undo_requested_at IS NOT NULL)::boolean AS undoing,
        (SELECT count(*) FROM curation_actions a
-         WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS actions,
+         WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))::int AS actions,
        (SELECT count(*) FROM curation_actions a
          WHERE a.run_id = r.id AND a.state = 'undone'
-           AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))::int AS undone
+           AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))::int AS undone
 FROM curation_runs r
 LEFT JOIN users u ON u.id = r.started_by
 WHERE (EXISTS (SELECT 1 FROM curation_actions a
-               WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
+               WHERE a.run_id = r.id AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND books_age_visible(a.books, $1::uuid, $2::boolean))
        OR (r.started_by = $1::uuid AND NOT EXISTS (SELECT 1 FROM curation_actions a WHERE a.run_id = r.id)))
   AND ($3::text IS NULL OR r.kind = $3::text)
   AND ($4::text IS NULL OR r.state = $4::text)

@@ -5,7 +5,8 @@ SELECT f.id, f.book_id, f.library_id, f.rel_path, f.missing_at, f.trashed_at,
 FROM book_files f
 JOIN libraries l ON l.id = f.library_id
 WHERE f.id = sqlc.arg(id)
-  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean));
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND EXISTS (SELECT 1 FROM books b WHERE b.id = f.book_id AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))));
 
 -- name: SetFileTrashed :exec
 UPDATE book_files
@@ -26,7 +27,7 @@ JOIN books b ON b.id = f.book_id
 JOIN libraries l ON l.id = f.library_id
 LEFT JOIN users u ON u.id = f.trashed_by
 WHERE f.trashed_at IS NOT NULL
-  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND f.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (sqlc.narg(library_id)::uuid IS NULL OR f.library_id = sqlc.narg(library_id)::uuid)
 ORDER BY f.trashed_at DESC, f.id DESC;
 

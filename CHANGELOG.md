@@ -6,6 +6,34 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Rename and sort a library's files by their books' details: under Libraries,
+  a library's "Organise files" section holds a pattern (by default
+  `{author}/[{series}/][{series_index} - ]{title}.{ext}`), a preview of what
+  would move and a button that moves it. Names are made safe and short
+  enough, a name that is taken gets a number, an audiobook's parts stay
+  together in order, and a cover or KOReader folder beside a file moves with
+  it. Managed libraries may always be organised; an existing folder only
+  when it is writable and you switch it on. A run is listed under Changes and
+  can be undone ([organising files](docs/organising-files.md)).
+- Google Books as a source of book details, by ISBN, title and author:
+  descriptions, page counts, dates, categories and covers. It works without
+  a key within Google's anonymous quota; an API key can be set under
+  Settings. A source whose quota is used up is left alone for a while and
+  lookups go on afterwards instead of failing ([metadata](docs/metadata.md)).
+- Age ratings and content restriction per account. A book can be rated 0, 6,
+  12, 16 or 18 (adult) in its editor, or gets a rating from tags such as
+  "Erotica" or "FSK 16"; on the Users page an administrator limits an
+  account to books up to a rating. Books above it are hidden everywhere, as
+  if they did not exist ([people, roles and
+  libraries](docs/users-and-libraries.md#age-ratings)).
+
+### Fixed
+
+- The section links of the settings page and "Skip to the content" stay on
+  the page instead of opening the library.
+
 ## [0.24.0] - 2026-11-12
 
 ### Added
@@ -1296,6 +1324,12 @@ What changes for someone who runs or uses GOtome. The format follows
   administrator may give a contact e-mail address in Settings, which
   CrossRef serves faster. Installations that chose their sources keep
   their choice; add `crossref` to use it.
+- Google Books is asked for book details beside OpenLibrary, with the
+  small quota Google gives anyone, or with your own once an administrator
+  gives a Google Books API key in Settings (a key of a Google Cloud
+  project with the Books API enabled). When the quota is used up, GOtome
+  waits rather than failing. Installations that chose their sources keep
+  their choice; add `google` to use it.
 - Hardcover is asked for book details beside OpenLibrary once an
   administrator gives a Hardcover API token in Settings (from your
   Hardcover account settings). It knows series and their order, which

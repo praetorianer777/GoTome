@@ -3892,7 +3892,8 @@
                 "duplicates",
                 "cleanup",
                 "matches",
-                "placeholders"
+                "placeholders",
+                "organise"
               ]
             }
           },
@@ -7593,6 +7594,126 @@
         "x-permission": "storage:manage"
       }
     },
+    "/libraries/{libraryId}/organise": {
+      "post": {
+        "operationId": "organiseLibrary",
+        "summary": "Rename and sort a library's files by a pattern, as a run that can be undone",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "libraryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganiseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganiseStarted"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
+    "/libraries/{libraryId}/organise/preview": {
+      "post": {
+        "operationId": "previewOrganise",
+        "summary": "What renaming a library's files by a pattern would move, without moving anything",
+        "tags": [
+          "libraries"
+        ],
+        "parameters": [
+          {
+            "name": "libraryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganiseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisePreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "storage:manage"
+      }
+    },
     "/libraries/{libraryId}/scans": {
       "post": {
         "operationId": "scanLibrary",
@@ -11224,6 +11345,66 @@
         "x-permission": "users:manage"
       }
     },
+    "/users/{userId}/max-age-rating": {
+      "put": {
+        "operationId": "setUserMaxAgeRating",
+        "summary": "Set the highest age rating of a book an account sees; null is no limit",
+        "tags": [
+          "users"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMaxAgeRatingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "users:manage"
+      }
+    },
     "/users/{userId}/quota": {
       "put": {
         "operationId": "setUserQuota",
@@ -11680,6 +11861,9 @@
       "AcceptMatchRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -11753,6 +11937,9 @@
           "lastSeenAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "maxAgeRating": {
+            "type": "integer"
           },
           "quotaBytes": {
             "type": "integer"
@@ -11883,6 +12070,9 @@
       "ApplyCandidateRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -12202,6 +12392,9 @@
           "addedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "ageRating": {
+            "type": "integer"
           },
           "contributors": {
             "type": "array",
@@ -14903,6 +15096,9 @@
       "EditBookRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {
@@ -16297,6 +16493,12 @@
           "name": {
             "type": "string"
           },
+          "organiseEnabled": {
+            "type": "boolean"
+          },
+          "organisePattern": {
+            "type": "string"
+          },
           "ownerId": {
             "type": "string",
             "format": "uuid"
@@ -16329,6 +16531,8 @@
           "joinFormats",
           "watch",
           "fulltext",
+          "organiseEnabled",
+          "organisePattern",
           "visibility",
           "createdAt",
           "filesPending",
@@ -16932,6 +17136,138 @@
             }
           }
         }
+      },
+      "OrganiseMoveItem": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "collision": {
+            "type": "boolean"
+          },
+          "from": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "from",
+          "to",
+          "collision"
+        ]
+      },
+      "OrganisePreview": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "blocked": {
+            "type": "string"
+          },
+          "books": {
+            "type": "integer"
+          },
+          "collisions": {
+            "type": "integer"
+          },
+          "defaultPattern": {
+            "type": "string"
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganiseMoveItem"
+            }
+          },
+          "files": {
+            "type": "integer"
+          },
+          "left": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganiseSkipItem"
+            }
+          },
+          "moves": {
+            "type": "integer"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "unchanged": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pattern",
+          "defaultPattern",
+          "allowed",
+          "files",
+          "books",
+          "unchanged",
+          "moves",
+          "collisions",
+          "skipped",
+          "examples",
+          "left"
+        ]
+      },
+      "OrganiseRequest": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          }
+        }
+      },
+      "OrganiseSkipItem": {
+        "type": "object",
+        "properties": {
+          "bookId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookId",
+          "title",
+          "path",
+          "reason"
+        ]
+      },
+      "OrganiseStarted": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "runId"
+        ]
       },
       "PairFormats": {
         "type": "object",
@@ -18257,6 +18593,20 @@
           "current"
         ]
       },
+      "SetMaxAgeRatingRequest": {
+        "type": "object",
+        "properties": {
+          "maxAgeRating": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "maxAgeRating"
+        ]
+      },
       "SetQuotaRequest": {
         "type": "object",
         "properties": {
@@ -19098,6 +19448,12 @@
           "name": {
             "type": "string"
           },
+          "organiseEnabled": {
+            "type": "boolean"
+          },
+          "organisePattern": {
+            "type": "string"
+          },
           "visibility": {
             "type": "string"
           },
@@ -19493,6 +19849,9 @@
       "WishRequest": {
         "type": "object",
         "properties": {
+          "ageRating": {
+            "type": "integer"
+          },
           "contributors": {
             "type": "array",
             "items": {

@@ -181,9 +181,11 @@ type Book struct {
 	Series             string
 	SeriesIndex        *float64
 	PageCount          *int32
-	Contributors       []Contributor
-	Tags               []string
-	Identifiers        []BookIdentifier
+	// AgeRating is one of AgeRatings; nil is unrated.
+	AgeRating    *int16
+	Contributors []Contributor
+	Tags         []string
+	Identifiers  []BookIdentifier
 	// PrintISBNs are ISBNs the text of the book's files names beside a print
 	// edition. They are another edition's, not the book's: a lookup asks about
 	// them when the book has no ISBN, and nothing stores them.
@@ -313,6 +315,9 @@ func CreateBookTx(ctx context.Context, tx pgx.Tx, in NewBook) (uuid.UUID, error)
 		return uuid.Nil, err
 	}
 	if err := addTags(ctx, q, book.ID, in.Tags); err != nil {
+		return uuid.Nil, err
+	}
+	if err := RefreshAgeRating(ctx, q, book.ID); err != nil {
 		return uuid.Nil, err
 	}
 	for _, ident := range in.Identifiers {
@@ -451,7 +456,7 @@ func get(ctx context.Context, q *sqlc.Queries, scope library.Scope, id uuid.UUID
 		ID: row.ID, LibraryID: row.LibraryID, Title: row.Title, SortTitle: row.SortTitle,
 		Subtitle: deref(row.Subtitle), Description: deref(row.Description), Language: deref(row.Language),
 		PublishedOn: row.PublishedOn, PublishedPrecision: deref(row.PublishedPrecision),
-		SeriesIndex: row.SeriesIndex, PageCount: row.PageCount,
+		SeriesIndex: row.SeriesIndex, PageCount: row.PageCount, AgeRating: row.AgeRating,
 		CoverKey: deref(row.CoverKey), AddedAt: row.CreatedAt, Locked: row.LockedFields, Placeholder: row.Placeholder,
 	}
 	if err := json.Unmarshal(row.FieldSources, &book.Sources); err != nil {

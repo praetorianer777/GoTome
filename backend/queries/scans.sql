@@ -216,7 +216,8 @@ JOIN libraries l ON l.id = f.library_id
 WHERE f.id = $1;
 
 -- name: LockFileHash :one
-SELECT sha256 FROM book_files WHERE id = $1 FOR UPDATE;
+-- The file's hash and path, locked: organising the library moves files.
+SELECT sha256, rel_path FROM book_files WHERE id = $1 FOR UPDATE;
 
 -- name: SetFileWritten :exec
 -- The file as GOtome wrote it. original_sha256 stays what arrived, and

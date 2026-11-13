@@ -32,6 +32,8 @@ Administration, **Users**:
 - **Sign out everywhere**: ends every session of the account.
 - **Upload quota in GB**: how much a person's uploads may take up. Empty is
   no limit. Each person sees on their profile how much they use.
+- **Books this account sees**: the highest age rating of a book the account
+  sees (see [Age ratings](#age-ratings)). Not offered for administrators.
 
 With single sign-on, accounts can also be made when someone first signs
 in, and their roles taken from the identity provider's groups
@@ -40,6 +42,41 @@ in, and their roles taken from the identity provider's groups
 Each person's profile has their password, their sessions (to end one on a
 lost device), their e-readers, their notifications and, with single
 sign-on, the account at the identity provider linked to theirs.
+
+## Age ratings
+
+For families and shared servers, some accounts may see only suitable books.
+
+A book has an optional age rating on the German FSK steps: **0** (all ages),
+**6**, **12**, **16** and **18** (adult). It comes from three sources, the
+last one winning:
+
+1. **Tags.** A short list of tags rates a book by itself: `erotica`,
+   `erotic fiction`, `Erotik`, `erotische Literatur`, `adult fiction`,
+   `adults only`, `pornography` and `hentai` mean 18, and tags such as
+   `FSK 16`, `ab 12` or `ab 6 Jahre` mean that age. Tags of a hierarchy
+   (`Belletristik/Erotik`) count by their parts' names. If several apply,
+   the highest wins. Taking the tag off takes the rating off.
+2. **Metadata providers.** None of the three providers (Open Library,
+   CrossRef, Hardcover) gives an age rating, so nothing is taken from them.
+   A rating a provider gave would only ever raise a rating, never lower one.
+3. **A person.** An editor sets **Age rating** in the book's editor (or
+   "Unrated"). Like other fields it is then locked: tags and later lookups
+   leave it alone until the lock is taken off. An editor limited to a
+   maximum cannot rate a book above it.
+
+An administrator sets **Books this account sees** per account on the Users
+page: "All books" (the default) or up to 0, 6, 12, 16 or 18. A book rated
+higher than that is, for the account, a book that does not exist: it is
+not in the library, searches, counts, facets, similar books, shelves,
+recommendations, OPDS feeds, devices, covers or downloads, and its address
+answers "not found". Books without a rating are shown. Administrators see
+every book, and an account cannot change its own limit. When two books are
+merged, the survivor keeps the higher rating.
+
+What the rule does not cover: the number of books a scan added in a
+notification is counted before ratings, and the name of a library or its
+folder is not a book's.
 
 ## Libraries and who sees them
 
@@ -86,7 +123,9 @@ What GOtome writes into a library it may change:
   folder, from where **Restore** brings it back until it is deleted for
   good (after `trash.retentionDays`, 30 days by default);
 - **Fix** for e-readers, which replaces an EPUB with a lighter one and
-  moves the original into the trash.
+  moves the original into the trash;
+- **Organise files**, which renames files and moves them into folders by a
+  pattern, when you ask for it ([organising files](organising-files.md)).
 
 GOtome checks that it can write to the folder when **GOtome may change
 files here** is turned on, by making a dot file there and removing it

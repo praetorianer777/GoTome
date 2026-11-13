@@ -5,6 +5,7 @@ import { ApiError } from "@/api/client";
 import { type BookDetail, bookQuery } from "@/books/api";
 import { Cover } from "@/books/cover";
 import {
+	AGE_RATINGS,
 	type BookEdit,
 	type FieldState,
 	LOCKABLE,
@@ -53,6 +54,8 @@ interface Draft {
 	seriesName: string;
 	seriesIndex: string;
 	pageCount: string;
+	/** "" is unrated. */
+	ageRating: string;
 	contributors: { name: string; role: Role }[];
 	tags: string[];
 	/** The book's own identifiers; those of its files are not edited here. */
@@ -70,6 +73,7 @@ function draftOf(book: BookDetail): Draft {
 		seriesName: book.series ?? "",
 		seriesIndex: book.seriesIndex != null ? String(book.seriesIndex) : "",
 		pageCount: book.pageCount != null ? String(book.pageCount) : "",
+		ageRating: book.ageRating != null ? String(book.ageRating) : "",
 		contributors: book.contributors.map((c) => ({
 			name: c.name,
 			role: c.role,
@@ -114,6 +118,9 @@ function changes(base: Draft, draft: Draft): BookEdit {
 	if (draft.pageCount.trim() !== base.pageCount.trim()) {
 		edit.pageCount =
 			draft.pageCount.trim() === "" ? 0 : Number(draft.pageCount);
+	}
+	if (draft.ageRating !== base.ageRating) {
+		edit.ageRating = draft.ageRating === "" ? -1 : Number(draft.ageRating);
 	}
 	const people = draft.contributors.filter((c) => c.name.trim() !== "");
 	if (!same(people, base.contributors)) {
@@ -354,6 +361,23 @@ function EditForm({ book }: { book: BookDetail }) {
 						onChange={(e) => change("pageCount", e.target.value, "pageCount")}
 						className={`${inputClass} max-w-32`}
 					/>
+				))}
+				{row("ageRating", "edit.field.ageRating", (id, about) => (
+					<select
+						id={id}
+						aria-describedby={about}
+						aria-invalid={errors.ageRating ? true : undefined}
+						value={draft.ageRating}
+						onChange={(e) => change("ageRating", e.target.value, "ageRating")}
+						className={`${inputClass} max-w-48`}
+					>
+						<option value="">{t("ageRating.unrated")}</option>
+						{AGE_RATINGS.map((r) => (
+							<option key={r} value={String(r)}>
+								{t(`ageRating.${r}`)}
+							</option>
+						))}
+					</select>
 				))}
 				{row(
 					"tags",
