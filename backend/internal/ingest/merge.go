@@ -180,6 +180,12 @@ func (s *Service) mergeTx(ctx context.Context, tx pgx.Tx, scope library.Scope, i
 			return err
 		}
 	}
+	if err := q.RaiseAgeRating(ctx, sqlc.RaiseAgeRatingParams{IntoBook: into, FromBook: from}); err != nil {
+		return err
+	}
+	if err := catalog.RefreshAgeRating(ctx, q, into); err != nil {
+		return err
+	}
 	steps := []func() error{
 		func() error {
 			return q.MoveFileIdentifiers(ctx, sqlc.MoveFileIdentifiersParams{ToBook: into, FromBook: from})

@@ -109,7 +109,9 @@ function Run({ run, open: opened }: { run: CurationRun; open: boolean }) {
 	const who =
 		run.rule === "auto-duplicates"
 			? t("curation.ruleDuplicates")
-			: run.rule === "join-placeholder"
+			: run.rule === "organise"
+				? t("curation.byOrganise", { who: run.startedByName ?? "" })
+				: run.rule === "join-placeholder"
 				? t("curation.ruleJoinPlaceholder")
 				: run.rule
 				? t("curation.byRule", { what: kind, rule: run.rule })
@@ -248,15 +250,17 @@ function tableLabel(table: string): string {
 function ActionRow({ action, dry }: { action: CurationAction; dry: boolean }) {
 	const undo = useUndoAction();
 	const title = action.books[0]?.title ?? "";
+	const label =
+		action.kind === "skip" && action.rule === "organise"
+			? t("curation.action.notMoved")
+			: t(key("curation.action.", action.kind));
 	return (
 		<li
-			aria-label={`${t(key("curation.action.", action.kind))} ${title}`}
+			aria-label={`${label} ${title}`}
 			className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
 		>
 			<div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-				<span className="font-medium">
-					{t(key("curation.action.", action.kind))}
-				</span>
+				<span className="font-medium">{label}</span>
 				{action.reason && (
 					<span className="text-slate-600 dark:text-slate-400">{action.reason}</span>
 				)}
@@ -284,7 +288,7 @@ function ActionRow({ action, dry }: { action: CurationAction; dry: boolean }) {
 						<table className="w-full text-left">
 							<tbody>
 								{b.changes.map((c) => (
-									<tr key={c.field} className="align-top">
+									<tr key={`${c.field}:${c.before}`} className="align-top">
 										<th scope="row" className="w-32 pr-3 font-normal text-slate-600 dark:text-slate-400">
 											{t(key("curation.field.", c.field))}
 										</th>
@@ -314,7 +318,7 @@ function ActionRow({ action, dry }: { action: CurationAction; dry: boolean }) {
 				</p>
 			)}
 			<FormError error={undo.error} />
-			{action.state === "done" && !dry && (
+			{action.state === "done" && !dry && action.kind !== "skip" && (
 				<button
 					type="button"
 					disabled={undo.isPending}

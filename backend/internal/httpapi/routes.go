@@ -221,6 +221,18 @@ func (s *Server) routes() []Route {
 			Permission: auth.IndexRebuild, Handler: s.scanLibrary,
 		},
 		{
+			Method: http.MethodPost, Path: "/libraries/{libraryId}/organise/preview", ID: "previewOrganise",
+			Summary: "What renaming a library's files by a pattern would move, without moving anything", Tag: "libraries",
+			Request: organiseRequest{}, Response: organisePreview{},
+			Permission: auth.StorageManage, Handler: s.previewOrganise,
+		},
+		{
+			Method: http.MethodPost, Path: "/libraries/{libraryId}/organise", ID: "organiseLibrary",
+			Summary: "Rename and sort a library's files by a pattern, as a run that can be undone", Tag: "libraries",
+			Request: organiseRequest{}, Response: organiseStarted{}, Status: http.StatusAccepted,
+			Permission: auth.StorageManage, Handler: s.startOrganise,
+		},
+		{
 			Method: http.MethodPost, Path: "/libraries/{libraryId}/uploads", ID: "uploadFile",
 			Summary: "Store one book file in a managed library, or point to the book that already has it", Tag: "libraries",
 			Consumes: "multipart/form-data", Request: uploadForm{}, Response: ingest.Uploaded{},
@@ -423,6 +435,11 @@ func (s *Server) routes() []Route {
 			Method: http.MethodPut, Path: "/users/{userId}/quota", ID: "setUserQuota",
 			Summary: "Set how much an account may upload; null is no limit", Tag: "users",
 			Request: setQuotaRequest{}, Response: account{}, Permission: auth.StorageManage, Handler: s.setQuota,
+		},
+		{
+			Method: http.MethodPut, Path: "/users/{userId}/max-age-rating", ID: "setUserMaxAgeRating",
+			Summary: "Set the highest age rating of a book an account sees; null is no limit", Tag: "users",
+			Request: setMaxAgeRatingRequest{}, Response: account{}, Permission: auth.UsersManage, Handler: s.setMaxAgeRating,
 		},
 		{
 			Method: http.MethodDelete, Path: "/users/{userId}/sessions", ID: "endUserSessions",

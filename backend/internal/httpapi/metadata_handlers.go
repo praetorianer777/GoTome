@@ -36,6 +36,9 @@ type editBookRequest struct {
 	// Identifiers replace the book's own; those its files carry stay. An
 	// ISBN is checked.
 	Identifiers *[]identifier `json:"identifiers,omitempty"`
+	// AgeRating is 0, 6, 12, 16 or 18 (adult); -1 removes it. An account
+	// with a maximum cannot rate a book above it.
+	AgeRating *int16 `json:"ageRating,omitempty" enum:"-1,0,6,12,16,18"`
 	// Locks puts the lock on a field (true) or takes it off (false), whether
 	// or not the request changes it.
 	Locks map[string]bool `json:"locks,omitempty"`
@@ -63,7 +66,7 @@ func (s *Server) editBook(w http.ResponseWriter, r *http.Request) error {
 func (req editBookRequest) edit() catalog.Edit {
 	e := catalog.Edit{
 		Title: req.Title, Subtitle: req.Subtitle, Description: req.Description, Language: req.Language,
-		Published: req.Published, Publisher: req.Publisher, PageCount: req.PageCount, Tags: req.Tags,
+		Published: req.Published, Publisher: req.Publisher, PageCount: req.PageCount, Tags: req.Tags, AgeRating: req.AgeRating,
 		Locks: req.Locks,
 	}
 	if req.Series != nil {

@@ -25,6 +25,6 @@ WHERE (f.koreader_md5 = sqlc.arg(md5)::text
        OR f.sha256 IN (SELECT c.source_sha256 FROM device_copies c WHERE c.koreader_md5 = sqlc.arg(md5)::text))
   AND f.trashed_at IS NULL
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY f.id DESC
 LIMIT 1;

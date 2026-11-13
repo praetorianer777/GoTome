@@ -120,6 +120,7 @@ func (b background) registrations() []registration {
 		worker(&devicecopy.TrimWorker{Service: b.copies}),
 		worker(&webhooks.DeliverWorker{Service: b.hooks}),
 		worker(&webhooks.TrimWorker{Service: b.hooks}),
+		worker(&ingest.OrganiseWorker{Service: b.scans}),
 		worker(&ingest.PurgeTrashWorker{Service: b.scans, Retention: b.trashRetention}),
 	}
 }

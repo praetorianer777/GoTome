@@ -1,0 +1,1958 @@
+{
+ "name": "adapted",
+ "genres": [
+  "crime",
+  "fantasy",
+  "historical",
+  "romance",
+  "science-fiction"
+ ],
+ "testBooks": 221,
+ "support": {
+  "crime": 103,
+  "fantasy": 35,
+  "historical": 21,
+  "romance": 44,
+  "science-fiction": 32
+ },
+ "rows": [
+  {
+   "method": "tfidf",
+   "precision": 0.7476635514018691,
+   "recall": 0.6808510638297872,
+   "f1": 0.7126948775055678,
+   "macroF1": 0.6702732685753034,
+   "given": 0.8868778280542986,
+   "bestSingleThresholdF1": 0.7413793103448275,
+   "bestSingleThreshold": 0.35,
+   "bestP": 0.7510917030567685,
+   "bestR": 0.7319148936170212,
+   "bestGiven": 0.9230769230769231,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.801980198019802,
+     "recall": 0.7864077669902912,
+     "f1": 0.7941176470588236
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.3333333333333333,
+     "recall": 0.3142857142857143,
+     "f1": 0.3235294117647059
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 1,
+     "recall": 0.47619047619047616,
+     "f1": 0.6451612903225806
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7954545454545454,
+     "recall": 0.7954545454545454,
+     "f1": 0.7954545454545455
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.8846153846153846,
+     "recall": 0.71875,
+     "f1": 0.7931034482758621
+    }
+   ]
+  },
+  {
+   "method": "tfidf1000",
+   "precision": 0.6903553299492385,
+   "recall": 0.5787234042553191,
+   "f1": 0.6296296296296297,
+   "macroF1": 0.5364644547946256,
+   "given": 0.6742081447963801,
+   "bestSingleThresholdF1": 0.48469387755102045,
+   "bestSingleThreshold": 0.3,
+   "bestP": 0.3460837887067395,
+   "bestR": 0.8085106382978723,
+   "bestGiven": 0.9909502262443439,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.9397590361445783,
+     "recall": 0.7572815533980582,
+     "f1": 0.8387096774193548
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.25,
+     "recall": 0.2857142857142857,
+     "f1": 0.26666666666666666
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 1,
+     "recall": 0.5714285714285714,
+     "f1": 0.7272727272727273
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.5517241379310345,
+     "recall": 0.7272727272727273,
+     "f1": 0.6274509803921569
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 1,
+     "recall": 0.125,
+     "f1": 0.2222222222222222
+    }
+   ]
+  },
+  {
+   "method": "mean",
+   "precision": 0.784688995215311,
+   "recall": 0.6978723404255319,
+   "f1": 0.7387387387387387,
+   "macroF1": 0.6683446226975638,
+   "given": 0.8552036199095022,
+   "bestSingleThresholdF1": 0.7815126050420169,
+   "bestSingleThreshold": 0.35,
+   "bestP": 0.7717842323651453,
+   "bestR": 0.7914893617021277,
+   "bestGiven": 0.9457013574660633,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8947368421052632,
+     "recall": 0.8252427184466019,
+     "f1": 0.8585858585858587
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.6666666666666666,
+     "recall": 0.2857142857142857,
+     "f1": 0.4
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8,
+     "recall": 0.5714285714285714,
+     "f1": 0.6666666666666666
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8048780487804879,
+     "recall": 0.75,
+     "f1": 0.7764705882352942
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.5581395348837209,
+     "recall": 0.75,
+     "f1": 0.6399999999999999
+    }
+   ]
+  },
+  {
+   "method": "passages-topk",
+   "precision": 0.8391608391608392,
+   "recall": 0.5106382978723404,
+   "f1": 0.634920634920635,
+   "macroF1": 0.407089430894309,
+   "given": 0.6380090497737556,
+   "bestSingleThresholdF1": 0.7239263803680981,
+   "bestSingleThreshold": 0.95,
+   "bestP": 0.6968503937007874,
+   "bestR": 0.7531914893617021,
+   "bestGiven": 0.9140271493212669,
+   "genresAbstaining": 1,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8529411764705882,
+     "recall": 0.8446601941747572,
+     "f1": 0.848780487804878
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 1,
+     "recall": 0.047619047619047616,
+     "f1": 0.0909090909090909
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8636363636363636,
+     "recall": 0.4318181818181818,
+     "f1": 0.5757575757575758
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.7222222222222222,
+     "recall": 0.40625,
+     "f1": 0.52
+    }
+   ]
+  },
+  {
+   "method": "passages-share",
+   "precision": 0.7771428571428571,
+   "recall": 0.5787234042553191,
+   "f1": 0.6634146341463414,
+   "macroF1": 0.5513677725006348,
+   "given": 0.755656108597285,
+   "bestSingleThresholdF1": 0.7591836734693876,
+   "bestSingleThreshold": 0.45,
+   "bestP": 0.7294117647058823,
+   "bestR": 0.7914893617021277,
+   "bestGiven": 0.9547511312217195,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.851063829787234,
+     "recall": 0.7766990291262136,
+     "f1": 0.8121827411167513
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.75,
+     "recall": 0.17142857142857143,
+     "f1": 0.2790697674418604
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8571428571428571,
+     "recall": 0.2857142857142857,
+     "f1": 0.42857142857142855
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7741935483870968,
+     "recall": 0.5454545454545454,
+     "f1": 0.64
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.5714285714285714,
+     "recall": 0.625,
+     "f1": 0.5970149253731343
+    }
+   ]
+  },
+  {
+   "method": "passages-mean",
+   "precision": 0.7835051546391752,
+   "recall": 0.6468085106382979,
+   "f1": 0.7086247086247087,
+   "macroF1": 0.6022446757091096,
+   "given": 0.8144796380090498,
+   "bestSingleThresholdF1": 0.764705882352941,
+   "bestSingleThreshold": 0.45,
+   "bestP": 0.7090909090909091,
+   "bestR": 0.8297872340425532,
+   "bestGiven": 0.9728506787330317,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8514851485148515,
+     "recall": 0.8349514563106796,
+     "f1": 0.8431372549019608
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.75,
+     "recall": 0.17142857142857143,
+     "f1": 0.2790697674418604
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8,
+     "recall": 0.38095238095238093,
+     "f1": 0.5161290322580645
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8055555555555556,
+     "recall": 0.6590909090909091,
+     "f1": 0.7250000000000001
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.5897435897435898,
+     "recall": 0.71875,
+     "f1": 0.6478873239436619
+    }
+   ]
+  },
+  {
+   "method": "meta",
+   "precision": 0.6756756756756757,
+   "recall": 0.10638297872340426,
+   "f1": 0.1838235294117647,
+   "macroF1": 0.2148933849083774,
+   "given": 0.16289592760180996,
+   "bestSingleThresholdF1": 0.5009861932938855,
+   "bestSingleThreshold": 0.25,
+   "bestP": 0.46691176470588236,
+   "bestR": 0.5404255319148936,
+   "bestGiven": 0.8868778280542986,
+   "genresAbstaining": 1,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.5,
+     "recall": 0.02857142857142857,
+     "f1": 0.05405405405405405
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.4,
+     "recall": 0.09523809523809523,
+     "f1": 0.15384615384615385
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7142857142857143,
+     "recall": 0.22727272727272727,
+     "f1": 0.3448275862068965
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.8571428571428571,
+     "recall": 0.375,
+     "f1": 0.5217391304347825
+    }
+   ]
+  },
+  {
+   "method": "neighbours",
+   "precision": 0.7947019867549668,
+   "recall": 0.5106382978723404,
+   "f1": 0.6217616580310881,
+   "macroF1": 0.550037037037037,
+   "given": 0.665158371040724,
+   "bestSingleThresholdF1": 0.7096774193548386,
+   "bestSingleThreshold": 0.4,
+   "bestP": 0.6743295019157088,
+   "bestR": 0.7489361702127659,
+   "bestGiven": 0.9864253393665159,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8051948051948052,
+     "recall": 0.6019417475728155,
+     "f1": 0.6888888888888889
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.8461538461538461,
+     "recall": 0.3142857142857143,
+     "f1": 0.45833333333333337
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.6666666666666666,
+     "recall": 0.19047619047619047,
+     "f1": 0.2962962962962963
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7297297297297297,
+     "recall": 0.6136363636363636,
+     "f1": 0.6666666666666666
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.8888888888888888,
+     "recall": 0.5,
+     "f1": 0.64
+    }
+   ]
+  },
+  {
+   "method": "ens-all",
+   "precision": 0.7448559670781894,
+   "recall": 0.7702127659574468,
+   "f1": 0.7573221757322176,
+   "macroF1": 0.7302401661490707,
+   "given": 0.9321266968325792,
+   "bestSingleThresholdF1": 0.7914893617021276,
+   "bestSingleThreshold": 0.7,
+   "bestP": 0.7914893617021277,
+   "bestR": 0.7914893617021277,
+   "bestGiven": 0.9321266968325792,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.83,
+     "recall": 0.8058252427184466,
+     "f1": 0.8177339901477833
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.46153846153846156,
+     "recall": 0.5142857142857142,
+     "f1": 0.48648648648648646
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8235294117647058,
+     "recall": 0.6666666666666666,
+     "f1": 0.7368421052631577
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7959183673469388,
+     "recall": 0.8863636363636364,
+     "f1": 0.8387096774193548
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.7105263157894737,
+     "recall": 0.84375,
+     "f1": 0.7714285714285714
+    }
+   ]
+  },
+  {
+   "method": "ens-text",
+   "precision": 0.7510729613733905,
+   "recall": 0.7446808510638298,
+   "f1": 0.7478632478632478,
+   "macroF1": 0.7095127972604424,
+   "given": 0.918552036199095,
+   "bestSingleThresholdF1": 0.7835497835497834,
+   "bestSingleThreshold": 0.75,
+   "bestP": 0.7973568281938326,
+   "bestR": 0.7702127659574468,
+   "bestGiven": 0.9321266968325792,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.84,
+     "recall": 0.8155339805825242,
+     "f1": 0.8275862068965517
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.47368421052631576,
+     "recall": 0.5142857142857142,
+     "f1": 0.4931506849315068
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8,
+     "recall": 0.5714285714285714,
+     "f1": 0.6666666666666666
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.7954545454545454,
+     "recall": 0.7954545454545454,
+     "f1": 0.7954545454545455
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.7222222222222222,
+     "recall": 0.8125,
+     "f1": 0.7647058823529411
+    }
+   ]
+  },
+  {
+   "method": "ens-embed",
+   "precision": 0.7767857142857143,
+   "recall": 0.7404255319148936,
+   "f1": 0.7581699346405227,
+   "macroF1": 0.7073413714072027,
+   "given": 0.9004524886877828,
+   "bestSingleThresholdF1": 0.794701986754967,
+   "bestSingleThreshold": 0.75,
+   "bestP": 0.8256880733944955,
+   "bestR": 0.7659574468085106,
+   "bestGiven": 0.9095022624434389,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8571428571428571,
+     "recall": 0.8155339805825242,
+     "f1": 0.835820895522388
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.6086956521739131,
+     "recall": 0.4,
+     "f1": 0.48275862068965525
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8,
+     "recall": 0.5714285714285714,
+     "f1": 0.6666666666666666
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8222222222222222,
+     "recall": 0.8409090909090909,
+     "f1": 0.8314606741573033
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.627906976744186,
+     "recall": 0.84375,
+     "f1": 0.72
+    }
+   ]
+  },
+  {
+   "method": "ens-light",
+   "precision": 0.7914438502673797,
+   "recall": 0.6297872340425532,
+   "f1": 0.7014218009478673,
+   "macroF1": 0.5657379066611972,
+   "given": 0.7737556561085973,
+   "bestSingleThresholdF1": 0.7766179540709813,
+   "bestSingleThreshold": 0.7,
+   "bestP": 0.7622950819672131,
+   "bestR": 0.7914893617021277,
+   "bestGiven": 0.9276018099547512,
+   "genresAbstaining": 1,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8469387755102041,
+     "recall": 0.8058252427184466,
+     "f1": 0.8258706467661691
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.75,
+     "recall": 0.42857142857142855,
+     "f1": 0.5454545454545454
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8095238095238095,
+     "recall": 0.7727272727272727,
+     "f1": 0.7906976744186046
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.6470588235294118,
+     "recall": 0.6875,
+     "f1": 0.6666666666666667
+    }
+   ]
+  },
+  {
+   "method": "ens-nopassages",
+   "precision": 0.75,
+   "recall": 0.7659574468085106,
+   "f1": 0.7578947368421053,
+   "macroF1": 0.7298612317245465,
+   "given": 0.9276018099547512,
+   "bestSingleThresholdF1": 0.7795918367346938,
+   "bestSingleThreshold": 0.6,
+   "bestP": 0.7490196078431373,
+   "bestR": 0.8127659574468085,
+   "bestGiven": 0.9638009049773756,
+   "genresAbstaining": 0,
+   "genres": [
+    {
+     "genre": "crime",
+     "support": 103,
+     "precision": 0.8469387755102041,
+     "recall": 0.8058252427184466,
+     "f1": 0.8258706467661691
+    },
+    {
+     "genre": "fantasy",
+     "support": 35,
+     "precision": 0.45,
+     "recall": 0.5142857142857142,
+     "f1": 0.48
+    },
+    {
+     "genre": "historical",
+     "support": 21,
+     "precision": 0.8235294117647058,
+     "recall": 0.6666666666666666,
+     "f1": 0.7368421052631577
+    },
+    {
+     "genre": "romance",
+     "support": 44,
+     "precision": 0.8085106382978723,
+     "recall": 0.8636363636363636,
+     "f1": 0.8351648351648351
+    },
+    {
+     "genre": "science-fiction",
+     "support": 32,
+     "precision": 0.7105263157894737,
+     "recall": 0.84375,
+     "f1": 0.7714285714285714
+    }
+   ]
+  }
+ ],
+ "byLang": {
+  "de": [
+   {
+    "method": "tfidf",
+    "precision": 0.7476635514018691,
+    "recall": 0.6808510638297872,
+    "f1": 0.7126948775055678,
+    "macroF1": 0.6702732685753034,
+    "given": 0.8868778280542986,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.801980198019802,
+      "recall": 0.7864077669902912,
+      "f1": 0.7941176470588236
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.3333333333333333,
+      "recall": 0.3142857142857143,
+      "f1": 0.3235294117647059
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 1,
+      "recall": 0.47619047619047616,
+      "f1": 0.6451612903225806
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.7954545454545454,
+      "recall": 0.7954545454545454,
+      "f1": 0.7954545454545455
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.8846153846153846,
+      "recall": 0.71875,
+      "f1": 0.7931034482758621
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.784688995215311,
+    "recall": 0.6978723404255319,
+    "f1": 0.7387387387387387,
+    "macroF1": 0.6683446226975638,
+    "given": 0.8552036199095022,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.8947368421052632,
+      "recall": 0.8252427184466019,
+      "f1": 0.8585858585858587
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.6666666666666666,
+      "recall": 0.2857142857142857,
+      "f1": 0.4
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.8,
+      "recall": 0.5714285714285714,
+      "f1": 0.6666666666666666
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.8048780487804879,
+      "recall": 0.75,
+      "f1": 0.7764705882352942
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.5581395348837209,
+      "recall": 0.75,
+      "f1": 0.6399999999999999
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.6756756756756757,
+    "recall": 0.10638297872340426,
+    "f1": 0.1838235294117647,
+    "macroF1": 0.2148933849083774,
+    "given": 0.16289592760180996,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.5,
+      "recall": 0.02857142857142857,
+      "f1": 0.05405405405405405
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.4,
+      "recall": 0.09523809523809523,
+      "f1": 0.15384615384615385
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.7142857142857143,
+      "recall": 0.22727272727272727,
+      "f1": 0.3448275862068965
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.8571428571428571,
+      "recall": 0.375,
+      "f1": 0.5217391304347825
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.7448559670781894,
+    "recall": 0.7702127659574468,
+    "f1": 0.7573221757322176,
+    "macroF1": 0.7302401661490707,
+    "given": 0.9321266968325792,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.83,
+      "recall": 0.8058252427184466,
+      "f1": 0.8177339901477833
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.46153846153846156,
+      "recall": 0.5142857142857142,
+      "f1": 0.48648648648648646
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.8235294117647058,
+      "recall": 0.6666666666666666,
+      "f1": 0.7368421052631577
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.7959183673469388,
+      "recall": 0.8863636363636364,
+      "f1": 0.8387096774193548
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.7105263157894737,
+      "recall": 0.84375,
+      "f1": 0.7714285714285714
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.7510729613733905,
+    "recall": 0.7446808510638298,
+    "f1": 0.7478632478632478,
+    "macroF1": 0.7095127972604424,
+    "given": 0.918552036199095,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.84,
+      "recall": 0.8155339805825242,
+      "f1": 0.8275862068965517
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.47368421052631576,
+      "recall": 0.5142857142857142,
+      "f1": 0.4931506849315068
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.8,
+      "recall": 0.5714285714285714,
+      "f1": 0.6666666666666666
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.7954545454545454,
+      "recall": 0.7954545454545454,
+      "f1": 0.7954545454545455
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.7222222222222222,
+      "recall": 0.8125,
+      "f1": 0.7647058823529411
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.7767857142857143,
+    "recall": 0.7404255319148936,
+    "f1": 0.7581699346405227,
+    "macroF1": 0.7073413714072027,
+    "given": 0.9004524886877828,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.8571428571428571,
+      "recall": 0.8155339805825242,
+      "f1": 0.835820895522388
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.6086956521739131,
+      "recall": 0.4,
+      "f1": 0.48275862068965525
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.8,
+      "recall": 0.5714285714285714,
+      "f1": 0.6666666666666666
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.8222222222222222,
+      "recall": 0.8409090909090909,
+      "f1": 0.8314606741573033
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.627906976744186,
+      "recall": 0.84375,
+      "f1": 0.72
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.7914438502673797,
+    "recall": 0.6297872340425532,
+    "f1": 0.7014218009478673,
+    "macroF1": 0.5657379066611972,
+    "given": 0.7737556561085973,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.8469387755102041,
+      "recall": 0.8058252427184466,
+      "f1": 0.8258706467661691
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.75,
+      "recall": 0.42857142857142855,
+      "f1": 0.5454545454545454
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.8095238095238095,
+      "recall": 0.7727272727272727,
+      "f1": 0.7906976744186046
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.6470588235294118,
+      "recall": 0.6875,
+      "f1": 0.6666666666666667
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.75,
+    "recall": 0.7659574468085106,
+    "f1": 0.7578947368421053,
+    "macroF1": 0.7298612317245465,
+    "given": 0.9276018099547512,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 103,
+      "precision": 0.8469387755102041,
+      "recall": 0.8058252427184466,
+      "f1": 0.8258706467661691
+     },
+     {
+      "genre": "fantasy",
+      "support": 35,
+      "precision": 0.45,
+      "recall": 0.5142857142857142,
+      "f1": 0.48
+     },
+     {
+      "genre": "historical",
+      "support": 21,
+      "precision": 0.8235294117647058,
+      "recall": 0.6666666666666666,
+      "f1": 0.7368421052631577
+     },
+     {
+      "genre": "romance",
+      "support": 44,
+      "precision": 0.8085106382978723,
+      "recall": 0.8636363636363636,
+      "f1": 0.8351648351648351
+     },
+     {
+      "genre": "science-fiction",
+      "support": 32,
+      "precision": 0.7105263157894737,
+      "recall": 0.84375,
+      "f1": 0.7714285714285714
+     }
+    ]
+   }
+  ],
+  "desc": [
+   {
+    "method": "tfidf",
+    "precision": 0.6220472440944882,
+    "recall": 0.5642857142857143,
+    "f1": 0.5917602996254682,
+    "macroF1": 0.5784512095611813,
+    "given": 0.8828125,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.631578947368421,
+      "recall": 0.5333333333333333,
+      "f1": 0.5783132530120482
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.12,
+      "recall": 0.17647058823529413,
+      "f1": 0.14285714285714282
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 1,
+      "recall": 0.5,
+      "f1": 0.6666666666666666
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.7272727272727273,
+      "recall": 0.75,
+      "f1": 0.7384615384615384
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.8571428571428571,
+      "recall": 0.6923076923076923,
+      "f1": 0.7659574468085107
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.7155172413793104,
+    "recall": 0.5928571428571429,
+    "f1": 0.6484375,
+    "macroF1": 0.5978703947756558,
+    "given": 0.828125,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.7777777777777778,
+      "recall": 0.6222222222222222,
+      "f1": 0.6913580246913581
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.42857142857142855,
+      "recall": 0.17647058823529413,
+      "f1": 0.25
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.7857142857142857,
+      "recall": 0.55,
+      "f1": 0.6470588235294117
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.8148148148148148,
+      "recall": 0.6875,
+      "f1": 0.7457627118644067
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.59375,
+      "recall": 0.7307692307692307,
+      "f1": 0.6551724137931033
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.8214285714285714,
+    "recall": 0.16428571428571428,
+    "f1": 0.2738095238095238,
+    "macroF1": 0.25300446323702136,
+    "given": 0.2109375,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 1,
+      "recall": 0.058823529411764705,
+      "f1": 0.1111111111111111
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 1,
+      "recall": 0.1,
+      "f1": 0.18181818181818182
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.7272727272727273,
+      "recall": 0.25,
+      "f1": 0.37209302325581395
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.8571428571428571,
+      "recall": 0.46153846153846156,
+      "f1": 0.6
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.6575342465753424,
+    "recall": 0.6857142857142857,
+    "f1": 0.6713286713286712,
+    "macroF1": 0.65743195654243,
+    "given": 0.921875,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.7027027027027027,
+      "recall": 0.5777777777777777,
+      "f1": 0.6341463414634145
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.2222222222222222,
+      "recall": 0.35294117647058826,
+      "f1": 0.27272727272727276
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.8235294117647058,
+      "recall": 0.7,
+      "f1": 0.7567567567567567
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.7777777777777778,
+      "recall": 0.875,
+      "f1": 0.823529411764706
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.7586206896551724,
+      "recall": 0.8461538461538461,
+      "f1": 0.8
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.6521739130434783,
+    "recall": 0.6428571428571429,
+    "f1": 0.6474820143884892,
+    "macroF1": 0.6315678585966759,
+    "given": 0.8984375,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.7105263157894737,
+      "recall": 0.6,
+      "f1": 0.6506024096385543
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.23076923076923078,
+      "recall": 0.35294117647058826,
+      "f1": 0.2790697674418605
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.8,
+      "recall": 0.6,
+      "f1": 0.6857142857142857
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.7777777777777778,
+      "recall": 0.8076923076923077,
+      "f1": 0.7924528301886792
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.7,
+    "recall": 0.65,
+    "f1": 0.6740740740740739,
+    "macroF1": 0.6338360499222425,
+    "given": 0.890625,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.7297297297297297,
+      "recall": 0.6,
+      "f1": 0.6585365853658536
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.3076923076923077,
+      "recall": 0.23529411764705882,
+      "f1": 0.26666666666666666
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.8,
+      "recall": 0.6,
+      "f1": 0.6857142857142857
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.8125,
+      "recall": 0.8125,
+      "f1": 0.8125
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.6666666666666666,
+      "recall": 0.8461538461538461,
+      "f1": 0.7457627118644068
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.7289719626168224,
+    "recall": 0.5571428571428572,
+    "f1": 0.631578947368421,
+    "macroF1": 0.5364739298032055,
+    "given": 0.75,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.717948717948718,
+      "recall": 0.6222222222222222,
+      "f1": 0.6666666666666666
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.9,
+      "recall": 0.45,
+      "f1": 0.6
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.8,
+      "recall": 0.75,
+      "f1": 0.7741935483870969
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.6296296296296297,
+      "recall": 0.6538461538461539,
+      "f1": 0.6415094339622641
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.6551724137931034,
+    "recall": 0.6785714285714286,
+    "f1": 0.6666666666666666,
+    "macroF1": 0.6551503166137312,
+    "given": 0.921875,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 45,
+      "precision": 0.7027027027027027,
+      "recall": 0.5777777777777777,
+      "f1": 0.6341463414634145
+     },
+     {
+      "genre": "fantasy",
+      "support": 17,
+      "precision": 0.21428571428571427,
+      "recall": 0.35294117647058826,
+      "f1": 0.26666666666666666
+     },
+     {
+      "genre": "historical",
+      "support": 20,
+      "precision": 0.8235294117647058,
+      "recall": 0.7,
+      "f1": 0.7567567567567567
+     },
+     {
+      "genre": "romance",
+      "support": 32,
+      "precision": 0.7941176470588235,
+      "recall": 0.84375,
+      "f1": 0.8181818181818182
+     },
+     {
+      "genre": "science-fiction",
+      "support": 26,
+      "precision": 0.7586206896551724,
+      "recall": 0.8461538461538461,
+      "f1": 0.8
+     }
+    ]
+   }
+  ],
+  "nodesc": [
+   {
+    "method": "tfidf",
+    "precision": 0.9310344827586207,
+    "recall": 0.8526315789473684,
+    "f1": 0.8901098901098902,
+    "macroF1": 0.8557865059841345,
+    "given": 0.8924731182795699,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9047619047619048,
+      "recall": 0.9827586206896551,
+      "f1": 0.9421487603305785
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.4444444444444444,
+      "f1": 0.6153846153846153
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 1,
+      "recall": 0.9166666666666666,
+      "f1": 0.9565217391304348
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 1,
+      "recall": 0.8333333333333334,
+      "f1": 0.9090909090909091
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.8709677419354839,
+    "recall": 0.8526315789473684,
+    "f1": 0.8617021276595744,
+    "macroF1": 0.7368024132730016,
+    "given": 0.8924731182795699,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9661016949152542,
+      "recall": 0.9827586206896551,
+      "f1": 0.9743589743589743
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 0.875,
+      "recall": 0.3888888888888889,
+      "f1": 0.5384615384615385
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.7857142857142857,
+      "recall": 0.9166666666666666,
+      "f1": 0.8461538461538461
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.45454545454545453,
+      "recall": 0.8333333333333334,
+      "f1": 0.5882352941176471
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.2222222222222222,
+    "recall": 0.021052631578947368,
+    "f1": 0.03846153846153846,
+    "macroF1": 0.06666666666666667,
+    "given": 0.0967741935483871,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.6666666666666666,
+      "recall": 0.16666666666666666,
+      "f1": 0.26666666666666666
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.8762886597938144,
+    "recall": 0.8947368421052632,
+    "f1": 0.8854166666666666,
+    "macroF1": 0.8222038567493113,
+    "given": 0.946236559139785,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9047619047619048,
+      "recall": 0.9827586206896551,
+      "f1": 0.9421487603305785
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.8461538461538461,
+      "recall": 0.9166666666666666,
+      "f1": 0.8799999999999999
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.5555555555555556,
+      "recall": 0.8333333333333334,
+      "f1": 0.6666666666666667
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.8947368421052632,
+    "recall": 0.8947368421052632,
+    "f1": 0.8947368421052632,
+    "macroF1": 0.8333333333333333,
+    "given": 0.946236559139785,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9193548387096774,
+      "recall": 0.9827586206896551,
+      "f1": 0.95
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.9166666666666666,
+      "recall": 0.9166666666666666,
+      "f1": 0.9166666666666666
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.5555555555555556,
+      "recall": 0.8333333333333334,
+      "f1": 0.6666666666666667
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.8829787234042553,
+    "recall": 0.8736842105263158,
+    "f1": 0.8783068783068785,
+    "macroF1": 0.7943172268907562,
+    "given": 0.9139784946236559,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9344262295081968,
+      "recall": 0.9827586206896551,
+      "f1": 0.9579831932773109
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.5555555555555556,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.8461538461538461,
+      "recall": 0.9166666666666666,
+      "f1": 0.8799999999999999
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.5,
+      "recall": 0.8333333333333334,
+      "f1": 0.625
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.875,
+    "recall": 0.7368421052631579,
+    "f1": 0.7999999999999999,
+    "macroF1": 0.6356837606837606,
+    "given": 0.8064516129032258,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9322033898305084,
+      "recall": 0.9482758620689655,
+      "f1": 0.94017094017094
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.8333333333333334,
+      "recall": 0.8333333333333334,
+      "f1": 0.8333333333333334
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.7142857142857143,
+      "recall": 0.8333333333333334,
+      "f1": 0.7692307692307692
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.8947368421052632,
+    "recall": 0.8947368421052632,
+    "f1": 0.8947368421052632,
+    "macroF1": 0.8261624649859944,
+    "given": 0.9354838709677419,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "crime",
+      "support": 58,
+      "precision": 0.9344262295081968,
+      "recall": 0.9827586206896551,
+      "f1": 0.9579831932773109
+     },
+     {
+      "genre": "fantasy",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "historical",
+      "support": 1,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 12,
+      "precision": 0.8461538461538461,
+      "recall": 0.9166666666666666,
+      "f1": 0.8799999999999999
+     },
+     {
+      "genre": "science-fiction",
+      "support": 6,
+      "precision": 0.5555555555555556,
+      "recall": 0.8333333333333334,
+      "f1": 0.6666666666666667
+     }
+    ]
+   }
+  ]
+ },
+ "seconds": 43.97332826,
+ "costs": {
+  "mean": {
+   "trainSecondsPerFit": 0.06092780020000001,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.0073264705882352945
+  },
+  "meta": {
+   "trainSecondsPerFit": 0.0465703324,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.0029555972850678733
+  },
+  "neighbours": {
+   "trainSecondsPerFit": 0.0019226107999999998,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.1897293665158371
+  },
+  "passages-mean": {
+   "trainSecondsPerFit": 0.280456163,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.015427339366515837
+  },
+  "passages-share": {
+   "trainSecondsPerFit": 0.280456163,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.015427339366515837
+  },
+  "passages-topk": {
+   "trainSecondsPerFit": 0.280456163,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.015427339366515837
+  },
+  "tfidf": {
+   "trainSecondsPerFit": 0.5504924122,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.3632156561085973
+  },
+  "tfidf1000": {
+   "trainSecondsPerFit": 0.5504924122,
+   "trainDocsPerFit": 468,
+   "predictMsPerDoc": 0.3632156561085973
+  }
+ }
+}

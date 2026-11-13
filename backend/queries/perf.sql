@@ -7,7 +7,7 @@ WITH vb AS (
     SELECT b.id, b.series_id
     FROM books b
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 )
 SELECT (SELECT count(*) FROM vb)::bigint AS books,
        (SELECT count(*) FROM book_files f JOIN vb ON vb.id = f.book_id WHERE f.trashed_at IS NULL)::bigint AS files,
@@ -25,7 +25,7 @@ JOIN authors a ON a.id = c.author_id
 JOIN books b ON b.id = c.book_id
 WHERE c.role = 'author' AND b.deleted_at IS NULL AND NOT b.placeholder
   AND a.name_key <> ALL(sqlc.arg(placeholders)::text[])
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY a.id
 ORDER BY count(*) DESC, a.id
 LIMIT 1;
@@ -35,7 +35,7 @@ SELECT s.name_key::text AS name_key
 FROM books b
 JOIN series s ON s.id = b.series_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY s.id
 ORDER BY count(*) DESC, s.id
 LIMIT 1;
@@ -46,7 +46,7 @@ FROM book_tags bt
 JOIN tags t ON t.id = bt.tag_id
 JOIN books b ON b.id = bt.book_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY t.id
 ORDER BY count(*) DESC, t.id
 LIMIT 1;
@@ -55,7 +55,7 @@ LIMIT 1;
 SELECT lower(split_part(replace(b.language, '_', '-'), '-', 1))::text AS language
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder AND b.language IS NOT NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY 1
 ORDER BY count(*) DESC, 1
 LIMIT 1;
@@ -64,7 +64,7 @@ LIMIT 1;
 SELECT b.library_id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 GROUP BY b.library_id
 ORDER BY count(*) DESC, b.library_id
 LIMIT 1;
@@ -73,7 +73,7 @@ LIMIT 1;
 SELECT b.id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY b.id
 LIMIT 1;
 
@@ -82,7 +82,7 @@ LIMIT 1;
 SELECT b.id::text AS id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'content' AND v.model = sqlc.arg(model)::text)
   AND EXISTS (SELECT 1 FROM book_vectors v WHERE v.book_id = b.id AND v.kind = 'metadata' AND v.model = sqlc.arg(model)::text)
 ORDER BY b.id
@@ -111,7 +111,7 @@ FROM (
     SELECT w AS word, count(*) AS n
     FROM books b, unnest(string_to_array(b.title_key, ' ')) w
     WHERE b.deleted_at IS NULL AND NOT b.placeholder AND length(w) >= 4
-      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     GROUP BY w
     ORDER BY n DESC, w
     LIMIT 40
@@ -125,7 +125,7 @@ SELECT f.id
 FROM books b
 JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE b.deleted_at IS NULL AND NOT b.placeholder AND f.chunked_at IS NOT NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY md5(b.id::text)
 LIMIT sqlc.arg(n)::int;
 

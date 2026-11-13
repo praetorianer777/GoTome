@@ -43,7 +43,7 @@ JOIN books b ON b.id = c.book_id
 LEFT JOIN series s ON s.id = b.series_id
 WHERE c.role = 'author' AND b.deleted_at IS NULL
   AND (a.person_key = ANY($1::text[]) OR a.name_key = ANY($2::text[]))
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
 ORDER BY b.sort_title, b.id, c.position
 `
 
@@ -104,7 +104,7 @@ FROM metadata_matches m
 JOIN books b ON b.id = m.book_id
 WHERE m.book_id = ANY($1::uuid[]) AND m.state <> 'dismissed'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 ORDER BY m.book_id, m.score DESC, m.provider, m.record_id
 `
 

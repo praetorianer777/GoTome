@@ -18,7 +18,7 @@ FROM notifications n
 LEFT JOIN books b ON b.id = n.book_id
 WHERE n.user_id = $1::uuid AND n.read_at IS NULL
   AND (n.book_id IS NULL OR (b.deleted_at IS NULL
-       AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))))
+       AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))))
   AND (n.library_id IS NULL
        OR n.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
 `
@@ -139,7 +139,7 @@ FROM notifications n
 LEFT JOIN books b ON b.id = n.book_id
 WHERE n.user_id = $1::uuid
   AND (n.book_id IS NULL OR (b.deleted_at IS NULL
-       AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))))
+       AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))))
   AND (n.library_id IS NULL
        OR n.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)))
   AND ($3::timestamptz IS NULL OR (n.created_at, n.id) < ($3::timestamptz, $4::uuid))

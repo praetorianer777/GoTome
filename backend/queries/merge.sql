@@ -4,7 +4,7 @@
 SELECT b.id, b.library_id, b.placeholder
 FROM books b
 WHERE b.id = ANY(sqlc.arg(ids)::uuid[]) AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY b.id
 FOR UPDATE OF b;
 
@@ -25,6 +25,7 @@ UPDATE books s SET
     series_index        = CASE WHEN 'series' = ANY(sqlc.arg(fields)::text[]) THEN l.series_index ELSE s.series_index END,
     page_count          = CASE WHEN 'pageCount' = ANY(sqlc.arg(fields)::text[]) THEN l.page_count ELSE s.page_count END,
     cover_key           = CASE WHEN 'cover' = ANY(sqlc.arg(fields)::text[]) THEN l.cover_key ELSE s.cover_key END,
+    age_rating          = CASE WHEN 'ageRating' = ANY(sqlc.arg(fields)::text[]) THEN l.age_rating ELSE s.age_rating END,
     field_sources       = s.field_sources || coalesce(
         (SELECT jsonb_object_agg(k, v) FROM jsonb_each(l.field_sources) AS e(k, v) WHERE k = ANY(sqlc.arg(fields)::text[])),
         '{}'::jsonb),
@@ -241,7 +242,7 @@ FROM book_relations r
 JOIN books o ON o.id = CASE WHEN r.book_a = sqlc.arg(book_id) THEN r.book_b ELSE r.book_a END
 WHERE sqlc.arg(book_id) IN (r.book_a, r.book_b) AND r.kind = 'recording'
   AND o.deleted_at IS NULL
-  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND o.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (o.age_rating IS NULL OR o.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY o.title, o.id;
 
 -- name: AddMissingContributors :exec
@@ -273,3 +274,12 @@ ON CONFLICT (user_id, book_id) DO UPDATE SET
     private    = n.private OR EXCLUDED.private,
     created_at = least(n.created_at, EXCLUDED.created_at),
     updated_at = greatest(n.updated_at, EXCLUDED.updated_at);
+
+-- name: RaiseAgeRating :exec
+-- A merge never lowers what keeps a book from someone: the surviving book
+-- takes the higher rating of the two.
+UPDATE books s SET age_rating = l.age_rating, updated_at = now(),
+    field_sources = jsonb_set(s.field_sources, '{ageRating}', coalesce(l.field_sources->'ageRating', '"tags"'::jsonb))
+FROM books l
+WHERE s.id = sqlc.arg(into_book) AND l.id = sqlc.arg(from_book)
+  AND l.age_rating IS NOT NULL AND (s.age_rating IS NULL OR s.age_rating < l.age_rating);

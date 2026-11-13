@@ -24,7 +24,7 @@ JOIN books b ON b.id = s.book_id
 LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $1
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
 GROUP BY s.medium
 ORDER BY s.medium
 `
@@ -112,7 +112,7 @@ LEFT JOIN book_files f ON f.id = b.primary_text_file_id
 WHERE s.user_id = $2
   AND s.started_at >= $3
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $4::boolean)))
 GROUP BY 1, 2
 ORDER BY 1, 2
 `
@@ -228,7 +228,7 @@ FROM reading_finishes rf
 JOIN books b ON b.id = rf.book_id
 WHERE rf.user_id = $2
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 GROUP BY 1
 ORDER BY 1 DESC
 `
@@ -436,7 +436,7 @@ JOIN LATERAL (
     SELECT bk.title
     FROM books bk
     WHERE bk.id = h.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit($1::uuid, $3::boolean)))
     OFFSET 0
 ) b ON true
 ORDER BY h.day DESC, h.event DESC, b.title
@@ -525,7 +525,7 @@ JOIN books b ON b.id = ub.book_id
 WHERE ub.user_id = $1
   AND ub.status = 'completed'
   AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND NOT EXISTS (SELECT 1 FROM reading_finishes rf WHERE rf.user_id = ub.user_id AND rf.book_id = ub.book_id)
 `
 

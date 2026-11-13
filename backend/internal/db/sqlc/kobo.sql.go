@@ -73,7 +73,7 @@ JOIN books b ON b.id = dl.book_id
 LEFT JOIN reading_progress p ON p.book_id = b.id AND p.user_id = $1::uuid AND p.medium = 'ebook'
 WHERE dl.device_id = $2
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $3::boolean)))
   AND EXISTS (SELECT 1 FROM book_files f
               WHERE f.book_id = b.id AND f.format = 'epub'
                 AND f.trashed_at IS NULL AND f.missing_at IS NULL)

@@ -17,7 +17,7 @@ FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
 GROUP BY g.genre
 `
@@ -61,7 +61,7 @@ SET state = $1::text, decided_by = $2::uuid, updated_at = now()
 FROM books b
 WHERE g.book_id = $3::uuid AND g.genre = $4::text
   AND b.id = g.book_id AND b.deleted_at IS NULL
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $5::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $5::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $5::boolean)))
 `
 
 type DecideGenreParams struct {
@@ -413,7 +413,7 @@ FROM book_genres g
 JOIN books b ON b.id = g.book_id
 WHERE g.source = 'automatic' AND g.state = 'suggested'
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND ($3::uuid IS NULL OR b.library_id = $3::uuid)
   AND ($4::text IS NULL OR g.genre = $4::text)
   AND ($5::float8 IS NULL

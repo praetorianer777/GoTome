@@ -16,7 +16,7 @@ UPDATE users SET history_library_id = $2 WHERE id = $1 AND history_library_id IS
 SELECT b.library_id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND ((sqlc.arg(series_key)::text <> '' AND EXISTS (SELECT 1 FROM series s WHERE s.id = b.series_id AND s.name_key = sqlc.arg(series_key)::text))
     OR EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                WHERE c.book_id = b.id AND c.role = 'author'
@@ -74,7 +74,7 @@ JOIN LATERAL (
     SELECT bk.id, bk.title_key
     FROM books bk
     WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     OFFSET 0
 ) b ON true
 WHERE ub.user_id = sqlc.arg(viewer)::uuid
@@ -103,7 +103,7 @@ JOIN LATERAL (
     SELECT 1
     FROM books bk
     WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND bk.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
     OFFSET 0
 ) b ON true
 WHERE ub.user_id = sqlc.arg(viewer)::uuid AND ub.status IN ('reading', 'completed', 'abandoned')
@@ -120,7 +120,7 @@ SELECT b.id,
 FROM books b
 WHERE b.deleted_at IS NULL
   AND (sqlc.arg(with_placeholders)::boolean OR NOT b.placeholder)
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND (
     EXISTS (SELECT 1 FROM book_identifiers i
             WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY(sqlc.arg(isbns)::text[]))

@@ -37,6 +37,11 @@ ever in the compose file or an environment variable. init only adds what is miss
   #15 chose ONNX Runtime directly, with a tokenizer of GOtome's own, int8
   weights, 16 passages per book prefixed `query: `
   (`docs/decisions/embedding-runtime.md`); its harness is `spikes/embed`.
+  #451 chose an ensemble of word weights, heads on the content vector, the
+  metadata vector and neighbours, calibrated per genre, shipped for the genres
+  Gutenberg has and adapted per library (`docs/decisions/genre-detection.md`);
+  its harness is `spikes/genres`. No genre feature work starts from it before
+  the follow-ups it lists are filed.
 
 ## Layout and toolchain
 
@@ -282,6 +287,25 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   that returns anything belonging to a library filters through it, with the two
   arguments from `library.ScopeOf(user)`. Do not restate the rule in Go or in
   another query.
+- The age rating (#426) is the second half of the rule, written once in
+  `age_limit(viewer, sees_all)` (and `books_age_visible(ids, ...)`
+  for rows that name several books, such as curation actions): a book above
+  the viewer's `users.max_age_rating` is hidden, answered as a book that does not
+  exist; unrated books and administrators (`sees_all`) pass. Wherever a query
+  filters `b.library_id IN (SELECT * FROM visible_library_ids(V, S))` on books
+  it adds `AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(V, S)))` with the same arguments
+  (files and chunks through their book); `visibleBooks` does it for the Go-built
+  lists. `TestEveryVisibilityQueryAppliesTheRating` fails for a query that
+  names `visible_library_ids` without it, and
+  `TestEveryReadRouteKeepsToTheCallersRatings` is the visibility test's twin
+  for ratings. A SQL function written in a migration (the clean-up ones) needs
+  the same line. A book's rating is `books.age_rating` (0, 6, 12, 16, 18;
+  `catalog.AgeRatings`), field `ageRating` in `field_sources` and
+  `locked_fields`: a person's edit (`Edit.AgeRating`, -1 removes) is `manual`
+  and locked, tags (`catalog.TagAgeRating`, `RefreshAgeRating`, source `tags`)
+  rate it where nobody has, and a merge keeps the higher (`RaiseAgeRating`).
+  An account is limited with `PUT /users/{id}/max-age-rating` (`users:manage`,
+  not for administrators); a limited editor cannot rate above their own limit.
 - Something the viewer may not see is answered exactly like something that does not
   exist: 404, same body.
 - Every GET route says what it reads (`Route.Reads`); the router refuses to
@@ -626,6 +650,32 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   again for devices that had it. `POST /files/{id}/fix` and the bulk
   action `fix` (`FixBook`) call it.
 
+## Organising files
+
+- `internal/organise` (#414) is the pure part: `Parse` a pattern
+  (`{author}`, `{series}`, ..., `[optional groups]`, must end in `{ext}`),
+  `Layout` renders it for a book's values, `Segment`/`Clean` make a name safe
+  (NFC, no separators or Windows-unsafe characters, no leading dot, byte
+  limits), `Layout.Rel(n)` adds the collision number and keeps the limits.
+  `docs/organising-files.md` is the user's word for it.
+- `ingest.Service.PlanOrganise` / `planOrganise` works out the moves with no
+  side effect (paths held by any file record stay taken, even by a file that
+  moves away: a repeat settles it). `RequestOrganise` makes a curation run of
+  kind `organise` (`curation_runs.organise_library`, `organise_pattern`) and
+  queues `ingest.organise_files` (`WorkOrganise`, queue `metadata`): a
+  transaction per book under `HoldLibrary` and `LockLibraryFiles`, the
+  records first, the renames last (put back on any failure, folders GOtome
+  made removed), one `organise` action with the moves as `before["organise"]`.
+  A book that fails is a `skip` action with the reason, so the run does not
+  retry it. An external library needs `libraries.organise_enabled` as well
+  as `writable`; a managed one always may.
+- Sidecars (`name.sdr`, same-name images and `.opf`) move along unless
+  another book file shares the name. Writers that rename onto a path they read
+  earlier (`WriteBack`, `Fix`, `Convert`) compare `rel_path` under
+  `LockFileHash`.
+- Undo is `ingest.Service.UndoOrganiseTx` (the hook `Hooks.UndoOrganiseTx`):
+  the rows are put back only if every file is where the action left it.
+
 ## Chunks
 
 - A book's text is cut into `book_chunks`, read from its primary text file
@@ -943,7 +993,13 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   its book, as Hardcover answers three levels deep at most; the book gives
   the series and its position. Its tests take the token from
   `GOTOME_HARDCOVER_TOKEN`, which `make record-fixtures` and
-  `make contract-test` pass on by name). All three are in
+  `make contract-test` pass on by name); `google` (Google Books, 500 ms;
+  the secret `metadata.googleBooksKey` as `key` in `SecretQuery`, without
+  it Google's small anonymous quota. Google says a used-up quota as a 403
+  with a reason, which `Request.Busy` turns into a back-off like a 429;
+  `Request.Reason` puts the message of any other refusal into the error.
+  Its tests take the key from `GOTOME_GOOGLE_BOOKS_KEY`, and skip a request
+  with no recorded answer). Hardcover, CrossRef, Open Library and Google are in
   `metadata.providers` by default.
 - `internal/enrich` looks new books up: `ingest.Service.OnExtracted` queues an
   `enrich.match_book` job (unique, 30 s later) when a file is read and

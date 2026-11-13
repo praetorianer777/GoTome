@@ -18,7 +18,7 @@ func TestASettingOfChoicesTakesOnlyThem(t *testing.T) {
 		{key: AutoMatch, value: "yes", refused: true},
 		{key: OIDCDefaultRole, value: "none", want: "none"},
 		{key: Providers, value: "Hardcover, openlibrary,hardcover", want: "hardcover,openlibrary"},
-		{key: Providers, value: "openlibrary,google", refused: true},
+		{key: Providers, value: "openlibrary,nonesuch", refused: true},
 		{key: Providers, value: " , ", refused: true},
 		{key: EmbeddingModel, value: "nonesuch", refused: true},
 	} {

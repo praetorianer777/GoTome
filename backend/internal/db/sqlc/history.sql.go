@@ -281,7 +281,7 @@ const libraryHoldingMost = `-- name: LibraryHoldingMost :one
 SELECT b.library_id
 FROM books b
 WHERE b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
   AND (($3::text <> '' AND EXISTS (SELECT 1 FROM series s WHERE s.id = b.series_id AND s.name_key = $3::text))
     OR EXISTS (SELECT 1 FROM book_contributors c JOIN authors a ON a.id = c.author_id
                WHERE c.book_id = b.id AND c.role = 'author'
@@ -332,7 +332,7 @@ JOIN LATERAL (
     SELECT bk.id, bk.title_key
     FROM books bk
     WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
     OFFSET 0
 ) b ON true
 WHERE ub.user_id = $1::uuid
@@ -462,7 +462,7 @@ SELECT b.id,
 FROM books b
 WHERE b.deleted_at IS NULL
   AND ($2::boolean OR NOT b.placeholder)
-  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean))
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($3::uuid, $4::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($3::uuid, $4::boolean)))
   AND (
     EXISTS (SELECT 1 FROM book_identifiers i
             WHERE i.book_id = b.id AND i.type = 'isbn' AND i.value = ANY($1::text[]))
@@ -615,7 +615,7 @@ JOIN LATERAL (
     SELECT 1
     FROM books bk
     WHERE bk.id = ub.book_id AND bk.deleted_at IS NULL
-      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean))
+      AND bk.library_id IN (SELECT visible_library_ids FROM visible_library_ids($1::uuid, $2::boolean)) AND (bk.age_rating IS NULL OR bk.age_rating <= (SELECT age_limit($1::uuid, $2::boolean)))
     OFFSET 0
 ) b ON true
 WHERE ub.user_id = $1::uuid AND ub.status IN ('reading', 'completed', 'abandoned')

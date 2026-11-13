@@ -15,7 +15,7 @@ FROM (
 JOIN books b ON b.id = ub.book_id AND b.deleted_at IS NULL AND (sqlc.arg(unowned)::boolean OR NOT b.placeholder)
 JOIN book_vectors v ON v.book_id = ub.book_id
     AND v.model = sqlc.arg(model)::text AND v.model_version = sqlc.arg(model_version)::text
-WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+WHERE b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
 ORDER BY ub.book_id, v.kind;
 
 -- name: ListRecommended :many
@@ -49,7 +49,7 @@ first_open AS MATERIALIZED (
     FROM books e
     WHERE e.series_id IN (SELECT series_id FROM read_series)
       AND e.series_index IS NOT NULL AND e.deleted_at IS NULL AND NOT e.placeholder
-      AND e.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+      AND e.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (e.age_rating IS NULL OR e.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
       AND NOT EXISTS (
           SELECT 1 FROM user_books eu
           WHERE eu.user_id = sqlc.arg(viewer)::uuid AND eu.book_id = e.id
@@ -71,7 +71,7 @@ eligible AS MATERIALIZED (
     FROM books b
     LEFT JOIN first_open f ON sqlc.arg(series_rule)::boolean AND f.series_id = b.series_id
     WHERE b.deleted_at IS NULL AND NOT b.placeholder
-      AND b.library_id IN (SELECT * FROM visible)
+      AND b.library_id IN (SELECT * FROM visible) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
       AND (b.id = ANY(sqlc.arg(keep)::uuid[]) OR b.id NOT IN (SELECT book_id FROM taken))
       AND b.id NOT IN (SELECT book_id FROM dismissed)
       AND (f.series_index IS NULL OR b.series_index IS NULL OR f.series_index >= b.series_index)

@@ -25,9 +25,15 @@ type libraryResponse struct {
 	// Watch: the folder is watched, and scanned soon after files in it change.
 	Watch bool `json:"watch"`
 	// Fulltext: the library's books are searched by their text.
-	Fulltext   bool      `json:"fulltext"`
-	Visibility string    `json:"visibility"`
-	CreatedAt  time.Time `json:"createdAt"`
+	Fulltext bool `json:"fulltext"`
+	// OrganiseEnabled: GOtome may rename and sort the files of this library
+	// by a pattern. A managed library always may, an external writable one
+	// only when this is on.
+	OrganiseEnabled bool `json:"organiseEnabled"`
+	// OrganisePattern is the pattern the library's files are named by.
+	OrganisePattern string    `json:"organisePattern"`
+	Visibility      string    `json:"visibility"`
+	CreatedAt       time.Time `json:"createdAt"`
 	// RootPath and OwnerID are for those who manage storage. Where the files
 	// lie on the server is nothing a reader needs to be told.
 	RootPath *string    `json:"rootPath,omitempty"`
@@ -104,13 +110,18 @@ type updateLibraryRequest struct {
 	// Fulltext, off, leaves the library out of full-text search and takes
 	// its books out of the index; on, reads its texts again for it.
 	Fulltext *bool `json:"fulltext,omitempty"`
+	// OrganiseEnabled lets GOtome rename and sort the files of an external
+	// writable library by the pattern; a managed library always may.
+	OrganiseEnabled *bool `json:"organiseEnabled,omitempty"`
+	// OrganisePattern names the files of the library; empty is the default.
+	OrganisePattern *string `json:"organisePattern,omitempty"`
 }
 
 func toLibraryResponse(l library.Library, viewer *auth.User, scans scanState) libraryResponse {
 	out := libraryResponse{
 		ID: l.ID, Name: l.Name, Mode: l.Mode, Writable: l.Writable,
 		Visibility: l.Visibility, CreatedAt: l.CreatedAt, FilesPending: scans.pending[l.ID],
-		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, Fulltext: l.Fulltext, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
+		FilesFailed: scans.failed[l.ID], JoinFormats: l.JoinFormats, Watch: l.Watch, Fulltext: l.Fulltext, OrganiseEnabled: l.OrganiseEnabled, OrganisePattern: l.OrganisePattern, UnwritableSince: l.UnwritableSince, UnwritableReason: l.UnwritableReason,
 	}
 	if scan, ok := scans.latest[l.ID]; ok {
 		out.LastScan = &scan
@@ -242,7 +253,7 @@ func (s *Server) updateLibrary(w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return err
 	}
-	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch, Fulltext: req.Fulltext})
+	l, err := s.Libraries.Update(r.Context(), id, library.Changes{Name: req.Name, Visibility: req.Visibility, Writable: req.Writable, JoinFormats: req.JoinFormats, Watch: req.Watch, Fulltext: req.Fulltext, OrganiseEnabled: req.OrganiseEnabled, OrganisePattern: req.OrganisePattern})
 	if err != nil {
 		return libraryError(err)
 	}

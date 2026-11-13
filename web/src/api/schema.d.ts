@@ -2439,6 +2439,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/libraries/{libraryId}/organise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rename and sort a library's files by a pattern, as a run that can be undone */
+        post: operations["organiseLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/libraries/{libraryId}/organise/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What renaming a library's files by a pattern would move, without moving anything */
+        post: operations["previewOrganise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/libraries/{libraryId}/scans": {
         parameters: {
             query?: never;
@@ -3590,6 +3624,23 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/users/{userId}/max-age-rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the highest age rating of a book an account sees; null is no limit */
+        put: operations["setUserMaxAgeRating"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}/quota": {
         parameters: {
             query?: never;
@@ -3728,6 +3779,7 @@ export interface components {
             canUpload?: boolean;
         };
         AcceptMatchRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -3753,6 +3805,7 @@ export interface components {
             id: string;
             /** Format: date-time */
             lastSeenAt?: string;
+            maxAgeRating?: number;
             quotaBytes?: number;
             /** @enum {string} */
             role: "admin" | "editor" | "reader";
@@ -3840,6 +3893,7 @@ export interface components {
             scopes: string[];
         };
         ApplyCandidateRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -3924,6 +3978,7 @@ export interface components {
         BookDetail: {
             /** Format: date-time */
             addedAt: string;
+            ageRating?: number;
             contributors: components["schemas"]["Contributor"][];
             coverKey?: string;
             description?: string;
@@ -4703,6 +4758,7 @@ export interface components {
             runId: string;
         };
         EditBookRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             description?: string;
             identifiers?: components["schemas"]["Identifier"][];
@@ -5066,6 +5122,8 @@ export interface components {
             lastScan?: components["schemas"]["Scan"];
             mode: string;
             name: string;
+            organiseEnabled: boolean;
+            organisePattern: string;
             /** Format: uuid */
             ownerId?: string;
             rootPath?: string;
@@ -5233,6 +5291,42 @@ export interface components {
         NotificationsRead: {
             all?: boolean;
             ids?: string[];
+        };
+        OrganiseMoveItem: {
+            /** Format: uuid */
+            bookId: string;
+            collision: boolean;
+            from: string;
+            title: string;
+            to: string;
+        };
+        OrganisePreview: {
+            allowed: boolean;
+            blocked?: string;
+            books: number;
+            collisions: number;
+            defaultPattern: string;
+            examples: components["schemas"]["OrganiseMoveItem"][];
+            files: number;
+            left: components["schemas"]["OrganiseSkipItem"][];
+            moves: number;
+            pattern: string;
+            skipped: number;
+            unchanged: number;
+        };
+        OrganiseRequest: {
+            pattern?: string;
+        };
+        OrganiseSkipItem: {
+            /** Format: uuid */
+            bookId: string;
+            path: string;
+            reason: string;
+            title: string;
+        };
+        OrganiseStarted: {
+            /** Format: uuid */
+            runId: string;
         };
         OwnReview: {
             body: string;
@@ -5619,6 +5713,9 @@ export interface components {
             lastSeenAt: string;
             userAgent: string;
         };
+        SetMaxAgeRatingRequest: {
+            maxAgeRating: number | null;
+        };
         SetQuotaRequest: {
             quotaBytes: number | null;
         };
@@ -5863,6 +5960,8 @@ export interface components {
             fulltext?: boolean;
             joinFormats?: boolean;
             name?: string;
+            organiseEnabled?: boolean;
+            organisePattern?: string;
             visibility?: string;
             watch?: boolean;
             writable?: boolean;
@@ -5974,6 +6073,7 @@ export interface components {
             };
         };
         WishRequest: {
+            ageRating?: number;
             contributors?: components["schemas"]["Contributor"][];
             coverToken?: string;
             description?: string;
@@ -8712,7 +8812,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only runs of this kind. */
-                kind?: "duplicates" | "cleanup" | "matches" | "placeholders";
+                kind?: "duplicates" | "cleanup" | "matches" | "placeholders" | "organise";
                 /** @description Only runs in this state. */
                 state?: "planned" | "running" | "done" | "confirmed" | "undone";
                 /** @description Where the page before ended, as its nextCursor says; runs come newest first. */
@@ -11194,6 +11294,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    organiseLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganiseRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganiseStarted"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    previewOrganise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                libraryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganiseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisePreview"];
+                };
             };
             /** @description The request failed. */
             default: {
@@ -13688,6 +13858,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setUserMaxAgeRating: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMaxAgeRatingRequest"];
             };
         };
         responses: {

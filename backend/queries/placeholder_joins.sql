@@ -51,7 +51,7 @@ JOIN book_contributors c ON c.author_id = a.id AND c.role = 'author'
 JOIN books b ON b.id = c.book_id
 WHERE a.person_key = ANY(sqlc.arg(person_keys)::text[])
   AND b.deleted_at IS NULL AND NOT b.placeholder
-  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
   AND similarity(b.title_key, sqlc.arg(title_key)::text) >= sqlc.arg(min_similarity)::real
 GROUP BY b.id, b.title_key, b.created_at
 ORDER BY max(similarity(b.title_key, sqlc.arg(title_key)::text)) DESC, b.created_at, b.id

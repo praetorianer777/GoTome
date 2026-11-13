@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -221,6 +222,14 @@ func readCases() map[string][]readCase {
 // same call about something that does not exist.
 var twinned = []string{"book", "file", "library", "title", "author", "tag", "series", "person"}
 
+// twinnedByRating are the placeholders that name the secret when it is
+// hidden by its rating: the library is one every caller sees.
+var twinnedByRating = []string{"book", "file", "title", "author", "tag", "series", "person"}
+
+// libraryRoutes read the library and nothing of its books, which a rating
+// does not hide.
+var libraryRoutes = []string{"listLibraries", "getLibrary", "listLibraryMembers", "searchStatus", "getLibraryFigures", "getWorkProgress"}
+
 var requestIDs = regexp.MustCompile(`"requestId":"[^"]*"`)
 
 // get calls a path and returns the status and the body, whatever it is; of
@@ -248,6 +257,19 @@ func (a *app) get(c *http.Client, path string) (int, []byte) {
 
 func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	t.Parallel()
+	everyReadRouteKeeps(t, false)
+}
+
+// A book above an account's maximum age rating (#426) is answered like a
+// book that does not exist, by every route that reads books: the secret is
+// an adult book of a library everyone sees; the stranger's maximum is 12
+// from the start, the former member's is set after they have seen it.
+func TestEveryReadRouteKeepsToTheCallersRatings(t *testing.T) {
+	t.Parallel()
+	everyReadRouteKeeps(t, true)
+}
+
+func everyReadRouteKeeps(t *testing.T, byRating bool) {
 	a := newApp(t)
 	a.withProvider()
 	a.matcher()
@@ -255,14 +277,32 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	admin, adminID := a.signedIn("admin", "admin")
 	insider, insiderID := a.signedIn("insider", "editor")
 	former, formerID := a.signedIn("former", "editor")
-	stranger, _ := a.signedIn("stranger", "reader")
+	stranger, strangerID := a.signedIn("stranger", "reader")
+	setMax := func(id string, rating any) {
+		t.Helper()
+		if status, out, _ := a.call(admin, http.MethodPut, "/users/"+id+"/max-age-rating", map[string]any{"maxAgeRating": rating}); status != 200 {
+			t.Fatalf("max age rating: %d %v", status, out)
+		}
+	}
+	twinned := twinned
+	if byRating {
+		twinned = twinnedByRating
+		setMax(strangerID, 12)
+	}
 	mark := strings.ReplaceAll(uuid.NewString(), "-", "")[:10]
 	twinMark := strings.ReplaceAll(uuid.NewString(), "-", "")[:10]
 
 	open := a.library(admin, "Open "+mark, "shared")
 	vaultName := "Vault " + mark
-	vault := a.library(admin, vaultName, "private")
+	vaultVisibility := "private"
+	if byRating {
+		vaultVisibility = "shared"
+	}
+	vault := a.library(admin, vaultName, vaultVisibility)
 	for _, id := range []string{insiderID, formerID} {
+		if byRating {
+			break
+		}
 		if status, out, _ := a.call(admin, http.MethodPut, "/libraries/"+vault+"/members/"+id, nil); status != 204 {
 			t.Fatalf("membership: %d %v", status, out)
 		}
@@ -293,6 +333,11 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		"tags":         []string{secret["tag"]},
 	}); status != 200 {
 		t.Fatalf("edit: %d %v", status, out)
+	}
+	if byRating {
+		if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+book, map[string]any{"ageRating": 18}); status != 200 || out["ageRating"] != 18.0 {
+			t.Fatalf("rating: %d %v", status, out)
+		}
 	}
 	if status, out := a.putCover(admin, book, squarePNG(t)); status != 200 {
 		t.Fatalf("cover: %d %v", status, out)
@@ -337,6 +382,11 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	}); status != 200 {
 		t.Fatalf("edit: %d %v", status, out)
 	}
+	if byRating {
+		if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+other["bookId"].(string), map[string]any{"ageRating": 18}); status != 200 {
+			t.Fatalf("rating: %d %v", status, out)
+		}
+	}
 	// A trashed file of the secret, for the trash to list.
 	if _, err := a.pool.Exec(ctx, `INSERT INTO book_files (book_id, library_id, kind, format, rel_path, size_bytes, modified_at, trashed_at)
 		VALUES ($1, $2, 'ebook', 'pdf', 'old secret.pdf', 1, now(), now())`, book, vault); err != nil {
@@ -367,6 +417,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 	// The list of people shows either spelling of the secret's author, by how
 	// the mark sorts.
 	markers := []string{secret["title"], secret["author"], mark + ", Abditus", secret["tag"], secret["series"], book, secret["file"], vault, vaultName}
+	if byRating {
+		markers = markers[:7]
+	}
 
 	// What the insider and the former member do with the book while both
 	// may see it: reading, rating, shelving, changing it in bulk.
@@ -484,7 +537,15 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 		}
 	}
 	cases := readCases()
+	if byRating {
+		for _, id := range libraryRoutes {
+			delete(cases, id)
+		}
+	}
 	for id := range routes {
+		if byRating && slices.Contains(libraryRoutes, id) {
+			continue
+		}
 		if len(cases[id]) == 0 {
 			t.Errorf("%s reads from libraries, but this test does not say how to call it about a private one", id)
 		}
@@ -503,7 +564,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 			}
 		}
 	}
-	if status, _, _ := a.call(admin, http.MethodDelete, "/libraries/"+vault+"/members/"+formerID, nil); status != 204 {
+	if byRating {
+		setMax(formerID, 12)
+	} else if status, _, _ := a.call(admin, http.MethodDelete, "/libraries/"+vault+"/members/"+formerID, nil); status != 204 {
 		t.Fatalf("removing the former member: %d", status)
 	}
 
@@ -517,7 +580,9 @@ func TestEveryReadRouteKeepsToTheCallersLibraries(t *testing.T) {
 				if !auth.Allows(auth.RoleEditor, rt.Permission) {
 					control = admin
 				}
-				if !reaches(control, rc) {
+				// A count names no book; TestAnAccountSeesNoBookAboveItsMaximumRating
+				// holds it to the rating.
+				if !reaches(control, rc) && !(byRating && rt.ID == "countBooks" && !usesTwin(rc)) {
 					t.Errorf("%s: the control does not see the book, so the call proves nothing", name)
 				}
 			case rc.control == "" && rc.why == "":

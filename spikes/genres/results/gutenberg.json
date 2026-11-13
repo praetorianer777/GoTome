@@ -1,0 +1,7178 @@
+{
+ "name": "gutenberg",
+ "genres": [
+  "adventure",
+  "arts",
+  "biography",
+  "children",
+  "crime",
+  "drama",
+  "fantasy",
+  "historical",
+  "history",
+  "humour",
+  "myths",
+  "nature",
+  "philosophy",
+  "poetry",
+  "psychology",
+  "religion",
+  "romance",
+  "science",
+  "science-fiction",
+  "self-help",
+  "short-stories",
+  "society",
+  "travel",
+  "war",
+  "western"
+ ],
+ "testBooks": 1171,
+ "support": {
+  "adventure": 29,
+  "arts": 30,
+  "biography": 79,
+  "children": 131,
+  "crime": 86,
+  "drama": 77,
+  "fantasy": 19,
+  "historical": 50,
+  "history": 25,
+  "humour": 52,
+  "myths": 47,
+  "nature": 28,
+  "philosophy": 30,
+  "poetry": 97,
+  "psychology": 32,
+  "religion": 66,
+  "romance": 100,
+  "science": 37,
+  "science-fiction": 61,
+  "self-help": 50,
+  "short-stories": 238,
+  "society": 25,
+  "travel": 97,
+  "war": 30,
+  "western": 110
+ },
+ "rows": [
+  {
+   "method": "tfidf",
+   "precision": 0.7777777777777778,
+   "recall": 0.5338253382533825,
+   "f1": 0.6331145149525893,
+   "macroF1": 0.47037167868344426,
+   "given": 0.6823228010247652,
+   "bestSingleThresholdF1": 0.6638763683193818,
+   "bestSingleThreshold": 0.3,
+   "bestP": 0.6966216216216217,
+   "bestR": 0.6340713407134071,
+   "bestGiven": 0.8104184457728437,
+   "genresAbstaining": 1,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0.16666666666666666,
+     "recall": 0.034482758620689655,
+     "f1": 0.05714285714285715
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 1,
+     "recall": 0.13333333333333333,
+     "f1": 0.23529411764705882
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.8064516129032258,
+     "recall": 0.31645569620253167,
+     "f1": 0.4545454545454545
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7603305785123967,
+     "recall": 0.7022900763358778,
+     "f1": 0.7301587301587302
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7951807228915663,
+     "recall": 0.7674418604651163,
+     "f1": 0.7810650887573964
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.821917808219178,
+     "recall": 0.7792207792207793,
+     "f1": 0.7999999999999999
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.75,
+     "recall": 0.36,
+     "f1": 0.48648648648648657
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 1,
+     "recall": 0.08,
+     "f1": 0.14814814814814814
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0.5,
+     "recall": 0.019230769230769232,
+     "f1": 0.037037037037037035
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.7368421052631579,
+     "recall": 0.2978723404255319,
+     "f1": 0.4242424242424243
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.8,
+     "recall": 0.14285714285714285,
+     "f1": 0.24242424242424243
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.7,
+     "recall": 0.23333333333333334,
+     "f1": 0.35
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7926829268292683,
+     "recall": 0.6701030927835051,
+     "f1": 0.7262569832402234
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7142857142857143,
+     "recall": 0.78125,
+     "f1": 0.7462686567164178
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.8,
+     "recall": 0.6060606060606061,
+     "f1": 0.689655172413793
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.7419354838709677,
+     "recall": 0.23,
+     "f1": 0.35114503816793896
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.5833333333333334,
+     "recall": 0.1891891891891892,
+     "f1": 0.28571428571428575
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7941176470588235,
+     "recall": 0.8852459016393442,
+     "f1": 0.8372093023255813
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.375,
+     "recall": 0.06,
+     "f1": 0.10344827586206896
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.7875647668393783,
+     "recall": 0.6386554621848739,
+     "f1": 0.7053364269141531
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.7857142857142857,
+     "recall": 0.44,
+     "f1": 0.5641025641025641
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.797979797979798,
+     "recall": 0.8144329896907216,
+     "f1": 0.8061224489795918
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.6666666666666666,
+     "recall": 0.2,
+     "f1": 0.30769230769230765
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8074074074074075,
+     "recall": 0.990909090909091,
+     "f1": 0.889795918367347
+    }
+   ]
+  },
+  {
+   "method": "tfidf1000",
+   "precision": 0.7537012113055181,
+   "recall": 0.34440344403444034,
+   "f1": 0.47277332207682565,
+   "macroF1": 0.3531701185915109,
+   "given": 0.511528608027327,
+   "bestSingleThresholdF1": 0.4268087492989344,
+   "bestSingleThreshold": 0.5,
+   "bestP": 0.3922680412371134,
+   "bestR": 0.46801968019680196,
+   "bestGiven": 0.8223740392826644,
+   "genresAbstaining": 3,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 1,
+     "recall": 0.06666666666666667,
+     "f1": 0.125
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.75,
+     "recall": 0.0759493670886076,
+     "f1": 0.13793103448275862
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7878787878787878,
+     "recall": 0.1984732824427481,
+     "f1": 0.3170731707317073
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7926829268292683,
+     "recall": 0.7558139534883721,
+     "f1": 0.7738095238095238
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.7761194029850746,
+     "recall": 0.6753246753246753,
+     "f1": 0.7222222222222222
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.04,
+     "f1": 0.07692307692307693
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7777777777777778,
+     "recall": 0.28,
+     "f1": 0.4117647058823529
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0.25,
+     "recall": 0.019230769230769232,
+     "f1": 0.03571428571428572
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.7142857142857143,
+     "recall": 0.2127659574468085,
+     "f1": 0.32786885245901637
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.5714285714285714,
+     "recall": 0.14285714285714285,
+     "f1": 0.2285714285714286
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7571428571428571,
+     "recall": 0.5463917525773195,
+     "f1": 0.6347305389221557
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7857142857142857,
+     "recall": 0.6875,
+     "f1": 0.7333333333333334
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7659574468085106,
+     "recall": 0.5454545454545454,
+     "f1": 0.6371681415929202
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.7692307692307693,
+     "recall": 0.2,
+     "f1": 0.31746031746031744
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.4,
+     "recall": 0.10810810810810811,
+     "f1": 0.1702127659574468
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7333333333333333,
+     "recall": 0.9016393442622951,
+     "f1": 0.8088235294117647
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.375,
+     "recall": 0.06,
+     "f1": 0.10344827586206896
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.6,
+     "recall": 0.025210084033613446,
+     "f1": 0.04838709677419355
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 1,
+     "recall": 0.4,
+     "f1": 0.5714285714285715
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7613636363636364,
+     "recall": 0.6907216494845361,
+     "f1": 0.7243243243243243
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.03333333333333333,
+     "f1": 0.0625
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.7659574468085106,
+     "recall": 0.9818181818181818,
+     "f1": 0.8605577689243028
+    }
+   ]
+  },
+  {
+   "method": "mean",
+   "precision": 0.7522727272727273,
+   "recall": 0.4071340713407134,
+   "f1": 0.5283320031923384,
+   "macroF1": 0.3812083374543013,
+   "given": 0.6199829205807003,
+   "bestSingleThresholdF1": 0.6181932640856154,
+   "bestSingleThreshold": 0.6,
+   "bestP": 0.6331399097356544,
+   "bestR": 0.6039360393603936,
+   "bestGiven": 0.856532877882152,
+   "genresAbstaining": 4,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.06666666666666667,
+     "f1": 0.11764705882352941
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.6363636363636364,
+     "recall": 0.17721518987341772,
+     "f1": 0.27722772277227725
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7605633802816901,
+     "recall": 0.4122137404580153,
+     "f1": 0.5346534653465347
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7471264367816092,
+     "recall": 0.7558139534883721,
+     "f1": 0.7514450867052023
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.7790697674418605,
+     "recall": 0.8701298701298701,
+     "f1": 0.8220858895705522
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.631578947368421,
+     "recall": 0.24,
+     "f1": 0.34782608695652173
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.5,
+     "recall": 0.04,
+     "f1": 0.07407407407407407
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.7333333333333333,
+     "recall": 0.23404255319148937,
+     "f1": 0.3548387096774194
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.5,
+     "recall": 0.14285714285714285,
+     "f1": 0.22222222222222224
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.4444444444444444,
+     "recall": 0.13333333333333333,
+     "f1": 0.20512820512820512
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7804878048780488,
+     "recall": 0.6597938144329897,
+     "f1": 0.7150837988826815
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7666666666666667,
+     "recall": 0.71875,
+     "f1": 0.7419354838709677
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7272727272727273,
+     "recall": 0.36363636363636365,
+     "f1": 0.4848484848484849
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.6666666666666666,
+     "recall": 0.02,
+     "f1": 0.038834951456310676
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.6785714285714286,
+     "recall": 0.5135135135135135,
+     "f1": 0.5846153846153848
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.8095238095238095,
+     "recall": 0.8360655737704918,
+     "f1": 0.8225806451612904
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.7349397590361446,
+     "recall": 0.25630252100840334,
+     "f1": 0.38006230529595014
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.625,
+     "recall": 0.2,
+     "f1": 0.30303030303030304
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7912087912087912,
+     "recall": 0.7422680412371134,
+     "f1": 0.7659574468085107
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.3333333333333333,
+     "recall": 0.06666666666666667,
+     "f1": 0.1111111111111111
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8076923076923077,
+     "recall": 0.9545454545454546,
+     "f1": 0.875
+    }
+   ]
+  },
+  {
+   "method": "passages-topk",
+   "precision": 0.8012048192771084,
+   "recall": 0.24538745387453875,
+   "f1": 0.37570621468926557,
+   "macroF1": 0.23589548247150888,
+   "given": 0.3842869342442357,
+   "bestSingleThresholdF1": 0.5501120717259046,
+   "bestSingleThreshold": 0.95,
+   "bestP": 0.5738142952571811,
+   "bestR": 0.528290282902829,
+   "bestGiven": 0.7677198975234842,
+   "genresAbstaining": 10,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7538461538461538,
+     "recall": 0.37404580152671757,
+     "f1": 0.5
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.8333333333333334,
+     "recall": 0.5232558139534884,
+     "f1": 0.6428571428571428
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8571428571428571,
+     "recall": 0.7792207792207793,
+     "f1": 0.8163265306122449
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.06,
+     "f1": 0.11320754716981131
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.8,
+     "recall": 0.16,
+     "f1": 0.26666666666666666
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 1,
+     "recall": 0.0425531914893617,
+     "f1": 0.08163265306122448
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.6666666666666666,
+     "recall": 0.07142857142857142,
+     "f1": 0.12903225806451613
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7719298245614035,
+     "recall": 0.4536082474226804,
+     "f1": 0.5714285714285714
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.9285714285714286,
+     "recall": 0.40625,
+     "f1": 0.5652173913043478
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7692307692307693,
+     "recall": 0.15151515151515152,
+     "f1": 0.25316455696202533
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.5,
+     "recall": 0.01,
+     "f1": 0.0196078431372549
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.625,
+     "recall": 0.13513513513513514,
+     "f1": 0.22222222222222224
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7,
+     "recall": 0.11475409836065574,
+     "f1": 0.1971830985915493
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7887323943661971,
+     "recall": 0.5773195876288659,
+     "f1": 0.6666666666666666
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8166666666666667,
+     "recall": 0.8909090909090909,
+     "f1": 0.8521739130434782
+    }
+   ]
+  },
+  {
+   "method": "passages-share",
+   "precision": 0.771509167842031,
+   "recall": 0.33640836408364083,
+   "f1": 0.4685224839400428,
+   "macroF1": 0.3078049430965286,
+   "given": 0.4893253629376601,
+   "bestSingleThresholdF1": 0.5890778871978515,
+   "bestSingleThreshold": 0.55,
+   "bestP": 0.5721739130434783,
+   "bestR": 0.6070110701107011,
+   "bestGiven": 0.8650725875320239,
+   "genresAbstaining": 5,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.4,
+     "recall": 0.05063291139240506,
+     "f1": 0.0898876404494382
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7,
+     "recall": 0.32061068702290074,
+     "f1": 0.43979057591623033
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7741935483870968,
+     "recall": 0.5581395348837209,
+     "f1": 0.6486486486486487
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8194444444444444,
+     "recall": 0.7662337662337663,
+     "f1": 0.7919463087248323
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.04,
+     "f1": 0.07692307692307693
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7142857142857143,
+     "recall": 0.2,
+     "f1": 0.3125
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.75,
+     "recall": 0.06382978723404255,
+     "f1": 0.11764705882352941
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.6666666666666666,
+     "recall": 0.14285714285714285,
+     "f1": 0.23529411764705882
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.03333333333333333,
+     "f1": 0.0625
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7746478873239436,
+     "recall": 0.5670103092783505,
+     "f1": 0.6547619047619047
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7916666666666666,
+     "recall": 0.59375,
+     "f1": 0.6785714285714286
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.5862068965517241,
+     "recall": 0.25757575757575757,
+     "f1": 0.35789473684210527
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.7777777777777778,
+     "recall": 0.07,
+     "f1": 0.12844036697247707
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.631578947368421,
+     "recall": 0.32432432432432434,
+     "f1": 0.42857142857142855
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7727272727272727,
+     "recall": 0.2786885245901639,
+     "f1": 0.40963855421686746
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.06,
+     "f1": 0.11320754716981131
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8315789473684211,
+     "recall": 0.3319327731092437,
+     "f1": 0.47447447447447444
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.797752808988764,
+     "recall": 0.7319587628865979,
+     "f1": 0.7634408602150536
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.03333333333333333,
+     "f1": 0.0625
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8099173553719008,
+     "recall": 0.8909090909090909,
+     "f1": 0.8484848484848484
+    }
+   ]
+  },
+  {
+   "method": "passages-mean",
+   "precision": 0.7621419676214197,
+   "recall": 0.3763837638376384,
+   "f1": 0.5039110745162618,
+   "macroF1": 0.3658640102592047,
+   "given": 0.5764304013663536,
+   "bestSingleThresholdF1": 0.6147049542442412,
+   "bestSingleThreshold": 0.55,
+   "bestP": 0.6312378483473753,
+   "bestR": 0.5990159901599016,
+   "bestGiven": 0.8232280102476516,
+   "genresAbstaining": 4,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.3333333333333333,
+     "recall": 0.06666666666666667,
+     "f1": 0.1111111111111111
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.4666666666666667,
+     "recall": 0.08860759493670886,
+     "f1": 0.14893617021276595
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7578947368421053,
+     "recall": 0.549618320610687,
+     "f1": 0.6371681415929203
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7916666666666666,
+     "recall": 0.6627906976744186,
+     "f1": 0.7215189873417721
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8,
+     "recall": 0.8311688311688312,
+     "f1": 0.8152866242038217
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.6875,
+     "recall": 0.22,
+     "f1": 0.3333333333333333
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7272727272727273,
+     "recall": 0.32,
+     "f1": 0.4444444444444444
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.6666666666666666,
+     "recall": 0.0851063829787234,
+     "f1": 0.1509433962264151
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.6666666666666666,
+     "recall": 0.14285714285714285,
+     "f1": 0.23529411764705882
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.13333333333333333,
+     "f1": 0.2105263157894737
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7674418604651163,
+     "recall": 0.6804123711340206,
+     "f1": 0.7213114754098361
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.8214285714285714,
+     "recall": 0.71875,
+     "f1": 0.7666666666666666
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7352941176470589,
+     "recall": 0.3787878787878788,
+     "f1": 0.5
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.7058823529411765,
+     "recall": 0.12,
+     "f1": 0.20512820512820512
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.6363636363636364,
+     "recall": 0.3783783783783784,
+     "f1": 0.4745762711864407
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.8444444444444444,
+     "recall": 0.6229508196721312,
+     "f1": 0.7169811320754719
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.6,
+     "recall": 0.06,
+     "f1": 0.1090909090909091
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8076923076923077,
+     "recall": 0.08823529411764706,
+     "f1": 0.15909090909090912
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7717391304347826,
+     "recall": 0.7319587628865979,
+     "f1": 0.7513227513227513
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.03333333333333333,
+     "f1": 0.0625
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8015267175572519,
+     "recall": 0.9545454545454546,
+     "f1": 0.8713692946058093
+    }
+   ]
+  },
+  {
+   "method": "meta",
+   "precision": 0.7023809523809523,
+   "recall": 0.1814268142681427,
+   "f1": 0.2883675464320626,
+   "macroF1": 0.22875043011233323,
+   "given": 0.33561058923996584,
+   "bestSingleThresholdF1": 0.42101624611130317,
+   "bestSingleThreshold": 0.75,
+   "bestP": 0.48066298342541436,
+   "bestR": 0.37453874538745385,
+   "bestGiven": 0.7463706233988044,
+   "genresAbstaining": 8,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.25,
+     "recall": 0.03333333333333333,
+     "f1": 0.058823529411764705
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.6521739130434783,
+     "recall": 0.189873417721519,
+     "f1": 0.29411764705882354
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.875,
+     "recall": 0.08139534883720931,
+     "f1": 0.14893617021276595
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.6206896551724138,
+     "recall": 0.23376623376623376,
+     "f1": 0.33962264150943394
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.06,
+     "f1": 0.11320754716981131
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.55,
+     "recall": 0.23404255319148937,
+     "f1": 0.3283582089552239
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.6666666666666666,
+     "recall": 0.35714285714285715,
+     "f1": 0.46511627906976744
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.6,
+     "recall": 0.2,
+     "f1": 0.3
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7647058823529411,
+     "recall": 0.26804123711340205,
+     "f1": 0.3969465648854962
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.6451612903225806,
+     "recall": 0.625,
+     "f1": 0.634920634920635
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.5769230769230769,
+     "recall": 0.22727272727272727,
+     "f1": 0.3260869565217391
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.5,
+     "recall": 0.02702702702702703,
+     "f1": 0.05128205128205129
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.375,
+     "recall": 0.012605042016806723,
+     "f1": 0.024390243902439025
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 1,
+     "recall": 0.48,
+     "f1": 0.6486486486486487
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.75,
+     "recall": 0.5257731958762887,
+     "f1": 0.6181818181818183
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.375,
+     "recall": 0.1,
+     "f1": 0.15789473684210528
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.7815126050420168,
+     "recall": 0.8454545454545455,
+     "f1": 0.8122270742358079
+    }
+   ]
+  },
+  {
+   "method": "neighbours",
+   "precision": 0.8176,
+   "recall": 0.31426814268142683,
+   "f1": 0.4540204353620614,
+   "macroF1": 0.2615456652490042,
+   "given": 0.4466268146883006,
+   "bestSingleThresholdF1": 0.5519733185102835,
+   "bestSingleThreshold": 0.3,
+   "bestP": 0.5035496957403651,
+   "bestR": 0.6107011070110702,
+   "bestGiven": 0.9760888129803587,
+   "genresAbstaining": 11,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.3333333333333333,
+     "recall": 0.012658227848101266,
+     "f1": 0.024390243902439022
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.875,
+     "recall": 0.32061068702290074,
+     "f1": 0.46927374301675984
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.8870967741935484,
+     "recall": 0.6395348837209303,
+     "f1": 0.7432432432432433
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.864406779661017,
+     "recall": 0.6623376623376623,
+     "f1": 0.75
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.5,
+     "recall": 0.04,
+     "f1": 0.07407407407407407
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.8225806451612904,
+     "recall": 0.5257731958762887,
+     "f1": 0.6415094339622642
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7777777777777778,
+     "recall": 0.4375,
+     "f1": 0.56
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.8333333333333334,
+     "recall": 0.5303030303030303,
+     "f1": 0.6481481481481481
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.5,
+     "recall": 0.13513513513513514,
+     "f1": 0.21276595744680854
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7142857142857143,
+     "recall": 0.2459016393442623,
+     "f1": 0.36585365853658536
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 1,
+     "recall": 0.02,
+     "f1": 0.0392156862745098
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.7857142857142857,
+     "recall": 0.3697478991596639,
+     "f1": 0.5028571428571429
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.8225806451612904,
+     "recall": 0.5257731958762887,
+     "f1": 0.6415094339622642
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8264462809917356,
+     "recall": 0.9090909090909091,
+     "f1": 0.8658008658008658
+    }
+   ]
+  },
+  {
+   "method": "ens-all",
+   "precision": 0.7866435385949696,
+   "recall": 0.557810578105781,
+   "f1": 0.6527527887729399,
+   "macroF1": 0.5142204446924129,
+   "given": 0.7216054654141759,
+   "bestSingleThresholdF1": 0.6883075953356446,
+   "bestSingleThreshold": 0.85,
+   "bestP": 0.7058823529411765,
+   "bestR": 0.6715867158671587,
+   "bestGiven": 0.8411614005123825,
+   "genresAbstaining": 3,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.7142857142857143,
+     "recall": 0.16666666666666666,
+     "f1": 0.2702702702702703
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.717948717948718,
+     "recall": 0.35443037974683544,
+     "f1": 0.4745762711864407
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7768595041322314,
+     "recall": 0.7175572519083969,
+     "f1": 0.746031746031746
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.8117647058823529,
+     "recall": 0.8023255813953488,
+     "f1": 0.8070175438596492
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8160919540229885,
+     "recall": 0.922077922077922,
+     "f1": 0.8658536585365854
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.68,
+     "recall": 0.34,
+     "f1": 0.4533333333333334
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7777777777777778,
+     "recall": 0.28,
+     "f1": 0.4117647058823529
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.8,
+     "recall": 0.3404255319148936,
+     "f1": 0.47761194029850745
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.8,
+     "recall": 0.2857142857142857,
+     "f1": 0.4210526315789473
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.6470588235294118,
+     "recall": 0.36666666666666664,
+     "f1": 0.46808510638297873
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7934782608695652,
+     "recall": 0.7525773195876289,
+     "f1": 0.7724867724867726
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.6944444444444444,
+     "recall": 0.78125,
+     "f1": 0.7352941176470588
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7719298245614035,
+     "recall": 0.6666666666666666,
+     "f1": 0.7154471544715446
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.6,
+     "recall": 0.09,
+     "f1": 0.1565217391304348
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.7692307692307693,
+     "recall": 0.5405405405405406,
+     "f1": 0.6349206349206349
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7887323943661971,
+     "recall": 0.9180327868852459,
+     "f1": 0.8484848484848485
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.5294117647058824,
+     "recall": 0.18,
+     "f1": 0.26865671641791045
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8284023668639053,
+     "recall": 0.5882352941176471,
+     "f1": 0.6879606879606881
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.8571428571428571,
+     "recall": 0.48,
+     "f1": 0.6153846153846153
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.8210526315789474,
+     "recall": 0.8041237113402062,
+     "f1": 0.8125
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.6666666666666666,
+     "recall": 0.2,
+     "f1": 0.30769230769230765
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8320610687022901,
+     "recall": 0.990909090909091,
+     "f1": 0.9045643153526971
+    }
+   ]
+  },
+  {
+   "method": "ens-text",
+   "precision": 0.7808695652173913,
+   "recall": 0.5522755227552275,
+   "f1": 0.6469740634005764,
+   "macroF1": 0.5054954869513782,
+   "given": 0.7233134073441503,
+   "bestSingleThresholdF1": 0.6794952681388012,
+   "bestSingleThreshold": 0.85,
+   "bestP": 0.697538860103627,
+   "bestR": 0.6623616236162362,
+   "bestGiven": 0.8437233134073442,
+   "genresAbstaining": 2,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.7,
+     "recall": 0.23333333333333334,
+     "f1": 0.35
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.6829268292682927,
+     "recall": 0.35443037974683544,
+     "f1": 0.4666666666666667
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7739130434782608,
+     "recall": 0.6793893129770993,
+     "f1": 0.7235772357723576
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7931034482758621,
+     "recall": 0.8023255813953488,
+     "f1": 0.7976878612716762
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8117647058823529,
+     "recall": 0.8961038961038961,
+     "f1": 0.8518518518518517
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.6296296296296297,
+     "recall": 0.34,
+     "f1": 0.4415584415584416
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7142857142857143,
+     "recall": 0.2,
+     "f1": 0.3125
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 1,
+     "recall": 0.019230769230769232,
+     "f1": 0.03773584905660378
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.75,
+     "recall": 0.3829787234042553,
+     "f1": 0.5070422535211269
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.8571428571428571,
+     "recall": 0.21428571428571427,
+     "f1": 0.34285714285714286
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.6875,
+     "recall": 0.36666666666666664,
+     "f1": 0.47826086956521735
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.8045977011494253,
+     "recall": 0.7216494845360825,
+     "f1": 0.7608695652173912
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7272727272727273,
+     "recall": 0.75,
+     "f1": 0.7384615384615384
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7735849056603774,
+     "recall": 0.6212121212121212,
+     "f1": 0.689075630252101
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.75,
+     "recall": 0.15,
+     "f1": 0.24999999999999997
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.75,
+     "recall": 0.4864864864864865,
+     "f1": 0.5901639344262296
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.8115942028985508,
+     "recall": 0.9180327868852459,
+     "f1": 0.8615384615384616
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.5714285714285714,
+     "recall": 0.16,
+     "f1": 0.25
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8125,
+     "recall": 0.6008403361344538,
+     "f1": 0.6908212560386473
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.75,
+     "recall": 0.48,
+     "f1": 0.5853658536585366
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7959183673469388,
+     "recall": 0.8041237113402062,
+     "f1": 0.8
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.5,
+     "recall": 0.13333333333333333,
+     "f1": 0.2105263157894737
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8257575757575758,
+     "recall": 0.990909090909091,
+     "f1": 0.9008264462809917
+    }
+   ]
+  },
+  {
+   "method": "ens-embed",
+   "precision": 0.7794822627037392,
+   "recall": 0.5,
+   "f1": 0.609216935181716,
+   "macroF1": 0.48942967248932717,
+   "given": 0.6883005977796754,
+   "bestSingleThresholdF1": 0.6630607699650017,
+   "bestSingleThreshold": 0.85,
+   "bestP": 0.6868820039551747,
+   "bestR": 0.6408364083640836,
+   "bestGiven": 0.8377455166524338,
+   "genresAbstaining": 3,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.7,
+     "recall": 0.23333333333333334,
+     "f1": 0.35
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.6451612903225806,
+     "recall": 0.25316455696202533,
+     "f1": 0.36363636363636365
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7551020408163265,
+     "recall": 0.5648854961832062,
+     "f1": 0.646288209606987
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7640449438202247,
+     "recall": 0.7906976744186046,
+     "f1": 0.7771428571428571
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8414634146341463,
+     "recall": 0.8961038961038961,
+     "f1": 0.8679245283018868
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.6190476190476191,
+     "recall": 0.26,
+     "f1": 0.36619718309859156
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.7,
+     "recall": 0.28,
+     "f1": 0.4
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.7368421052631579,
+     "recall": 0.2978723404255319,
+     "f1": 0.4242424242424243
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.8181818181818182,
+     "recall": 0.32142857142857145,
+     "f1": 0.46153846153846156
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.5789473684210527,
+     "recall": 0.36666666666666664,
+     "f1": 0.44897959183673464
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7840909090909091,
+     "recall": 0.711340206185567,
+     "f1": 0.745945945945946
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.6857142857142857,
+     "recall": 0.75,
+     "f1": 0.7164179104477612
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.8070175438596491,
+     "recall": 0.696969696969697,
+     "f1": 0.7479674796747967
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.8,
+     "recall": 0.04,
+     "f1": 0.07619047619047618
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.8,
+     "recall": 0.6486486486486487,
+     "f1": 0.7164179104477612
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.819672131147541,
+     "recall": 0.819672131147541,
+     "f1": 0.819672131147541
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.7,
+     "recall": 0.14,
+     "f1": 0.23333333333333336
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8151260504201681,
+     "recall": 0.40756302521008403,
+     "f1": 0.5434173669467787
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.9230769230769231,
+     "recall": 0.48,
+     "f1": 0.631578947368421
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.78,
+     "recall": 0.8041237113402062,
+     "f1": 0.7918781725888325
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.5714285714285714,
+     "recall": 0.13333333333333333,
+     "f1": 0.21621621621621623
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.828125,
+     "recall": 0.9636363636363636,
+     "f1": 0.8907563025210083
+    }
+   ]
+  },
+  {
+   "method": "ens-light",
+   "precision": 0.7566938300349243,
+   "recall": 0.3997539975399754,
+   "f1": 0.5231388329979879,
+   "macroF1": 0.40471077595903127,
+   "given": 0.6046114432109309,
+   "bestSingleThresholdF1": 0.6300884955752213,
+   "bestSingleThreshold": 0.8,
+   "bestP": 0.6054421768707483,
+   "bestR": 0.6568265682656826,
+   "bestGiven": 0.8855678906917165,
+   "genresAbstaining": 4,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.625,
+     "recall": 0.16666666666666666,
+     "f1": 0.2631578947368421
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.696969696969697,
+     "recall": 0.2911392405063291,
+     "f1": 0.41071428571428575
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7816091954022989,
+     "recall": 0.5190839694656488,
+     "f1": 0.6238532110091743
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7681159420289855,
+     "recall": 0.6162790697674418,
+     "f1": 0.6838709677419355
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8266666666666667,
+     "recall": 0.8051948051948052,
+     "f1": 0.8157894736842106
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.7058823529411765,
+     "recall": 0.24,
+     "f1": 0.3582089552238806
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.625,
+     "recall": 0.2,
+     "f1": 0.30303030303030304
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0.25,
+     "recall": 0.019230769230769232,
+     "f1": 0.03571428571428572
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.6470588235294118,
+     "recall": 0.23404255319148937,
+     "f1": 0.34375
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.7272727272727273,
+     "recall": 0.2857142857142857,
+     "f1": 0.4102564102564102
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.5833333333333334,
+     "recall": 0.23333333333333334,
+     "f1": 0.33333333333333337
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.7525773195876289,
+     "recall": 0.7525773195876289,
+     "f1": 0.752577319587629
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.6857142857142857,
+     "recall": 0.75,
+     "f1": 0.7164179104477612
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.75,
+     "recall": 0.5909090909090909,
+     "f1": 0.6610169491525425
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.7096774193548387,
+     "recall": 0.5945945945945946,
+     "f1": 0.6470588235294118
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.8536585365853658,
+     "recall": 0.5737704918032787,
+     "f1": 0.6862745098039217
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.5,
+     "recall": 0.06,
+     "f1": 0.10714285714285712
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.7222222222222222,
+     "recall": 0.0546218487394958,
+     "f1": 0.1015625
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.75,
+     "recall": 0.12,
+     "f1": 0.20689655172413793
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.7959183673469388,
+     "recall": 0.8041237113402062,
+     "f1": 0.8
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.7777777777777778,
+     "recall": 0.9545454545454546,
+     "f1": 0.8571428571428572
+    }
+   ]
+  },
+  {
+   "method": "ens-nopassages",
+   "precision": 0.7848990342405618,
+   "recall": 0.5498154981549815,
+   "f1": 0.6466546112115732,
+   "macroF1": 0.4985880673785305,
+   "given": 0.7164816396242528,
+   "bestSingleThresholdF1": 0.6865104496516782,
+   "bestSingleThreshold": 0.85,
+   "bestP": 0.7075718015665796,
+   "bestR": 0.6666666666666666,
+   "bestGiven": 0.8343296327924851,
+   "genresAbstaining": 3,
+   "genres": [
+    {
+     "genre": "adventure",
+     "support": 29,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "arts",
+     "support": 30,
+     "precision": 0.7142857142857143,
+     "recall": 0.16666666666666666,
+     "f1": 0.2702702702702703
+    },
+    {
+     "genre": "biography",
+     "support": 79,
+     "precision": 0.7297297297297297,
+     "recall": 0.34177215189873417,
+     "f1": 0.46551724137931033
+    },
+    {
+     "genre": "children",
+     "support": 131,
+     "precision": 0.7863247863247863,
+     "recall": 0.7022900763358778,
+     "f1": 0.7419354838709677
+    },
+    {
+     "genre": "crime",
+     "support": 86,
+     "precision": 0.7816091954022989,
+     "recall": 0.7906976744186046,
+     "f1": 0.7861271676300577
+    },
+    {
+     "genre": "drama",
+     "support": 77,
+     "precision": 0.8235294117647058,
+     "recall": 0.9090909090909091,
+     "f1": 0.8641975308641976
+    },
+    {
+     "genre": "fantasy",
+     "support": 19,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "historical",
+     "support": 50,
+     "precision": 0.72,
+     "recall": 0.36,
+     "f1": 0.4799999999999999
+    },
+    {
+     "genre": "history",
+     "support": 25,
+     "precision": 0.5,
+     "recall": 0.08,
+     "f1": 0.13793103448275865
+    },
+    {
+     "genre": "humour",
+     "support": 52,
+     "precision": 0,
+     "recall": 0,
+     "f1": 0
+    },
+    {
+     "genre": "myths",
+     "support": 47,
+     "precision": 0.75,
+     "recall": 0.3191489361702128,
+     "f1": 0.4477611940298508
+    },
+    {
+     "genre": "nature",
+     "support": 28,
+     "precision": 0.875,
+     "recall": 0.25,
+     "f1": 0.3888888888888889
+    },
+    {
+     "genre": "philosophy",
+     "support": 30,
+     "precision": 0.6470588235294118,
+     "recall": 0.36666666666666664,
+     "f1": 0.46808510638297873
+    },
+    {
+     "genre": "poetry",
+     "support": 97,
+     "precision": 0.8202247191011236,
+     "recall": 0.7525773195876289,
+     "f1": 0.7849462365591398
+    },
+    {
+     "genre": "psychology",
+     "support": 32,
+     "precision": 0.7027027027027027,
+     "recall": 0.8125,
+     "f1": 0.7536231884057971
+    },
+    {
+     "genre": "religion",
+     "support": 66,
+     "precision": 0.7678571428571429,
+     "recall": 0.6515151515151515,
+     "f1": 0.7049180327868853
+    },
+    {
+     "genre": "romance",
+     "support": 100,
+     "precision": 0.6,
+     "recall": 0.09,
+     "f1": 0.1565217391304348
+    },
+    {
+     "genre": "science",
+     "support": 37,
+     "precision": 0.7777777777777778,
+     "recall": 0.5675675675675675,
+     "f1": 0.65625
+    },
+    {
+     "genre": "science-fiction",
+     "support": 61,
+     "precision": 0.7777777777777778,
+     "recall": 0.9180327868852459,
+     "f1": 0.8421052631578947
+    },
+    {
+     "genre": "self-help",
+     "support": 50,
+     "precision": 0.5555555555555556,
+     "recall": 0.2,
+     "f1": 0.29411764705882354
+    },
+    {
+     "genre": "short-stories",
+     "support": 238,
+     "precision": 0.8224852071005917,
+     "recall": 0.5840336134453782,
+     "f1": 0.683046683046683
+    },
+    {
+     "genre": "society",
+     "support": 25,
+     "precision": 0.8571428571428571,
+     "recall": 0.48,
+     "f1": 0.6153846153846153
+    },
+    {
+     "genre": "travel",
+     "support": 97,
+     "precision": 0.8125,
+     "recall": 0.8041237113402062,
+     "f1": 0.8082901554404145
+    },
+    {
+     "genre": "war",
+     "support": 30,
+     "precision": 0.6666666666666666,
+     "recall": 0.13333333333333333,
+     "f1": 0.2222222222222222
+    },
+    {
+     "genre": "western",
+     "support": 110,
+     "precision": 0.8181818181818182,
+     "recall": 0.9818181818181818,
+     "f1": 0.8925619834710744
+    }
+   ]
+  }
+ ],
+ "byLang": {
+  "de": [
+   {
+    "method": "tfidf",
+    "precision": 0.7510204081632653,
+    "recall": 0.44552058111380144,
+    "f1": 0.5592705167173253,
+    "macroF1": 0.3605459162012754,
+    "given": 0.6083086053412463,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.26666666666666666,
+      "f1": 0.4210526315789474
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.8461538461538461,
+      "recall": 0.44,
+      "f1": 0.5789473684210525
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.64,
+      "recall": 0.47058823529411764,
+      "f1": 0.5423728813559322
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.7636363636363637,
+      "recall": 0.9333333333333333,
+      "f1": 0.84
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.875,
+      "recall": 0.4666666666666667,
+      "f1": 0.608695652173913
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0.5,
+      "recall": 0.05555555555555555,
+      "f1": 0.09999999999999999
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.6428571428571429,
+      "recall": 0.36,
+      "f1": 0.4615384615384615
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 1,
+      "recall": 0.1,
+      "f1": 0.18181818181818182
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.5,
+      "recall": 0.09090909090909091,
+      "f1": 0.15384615384615385
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.7291666666666666,
+      "recall": 0.7142857142857143,
+      "f1": 0.7216494845360826
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.7727272727272727,
+      "recall": 0.8947368421052632,
+      "f1": 0.8292682926829269
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.6666666666666666,
+      "recall": 0.26666666666666666,
+      "f1": 0.3809523809523809
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.5555555555555556,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.8461538461538461,
+      "recall": 0.7857142857142857,
+      "f1": 0.8148148148148148
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.7069767441860465,
+    "recall": 0.36803874092009686,
+    "f1": 0.48407643312101917,
+    "macroF1": 0.3368469613270646,
+    "given": 0.5608308605341247,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.13333333333333333,
+      "f1": 0.23529411764705882
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.625,
+      "recall": 0.2,
+      "f1": 0.30303030303030304
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.6666666666666666,
+      "recall": 0.29411764705882354,
+      "f1": 0.40816326530612246
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 1,
+      "recall": 0.3333333333333333,
+      "f1": 0.5
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.8,
+      "recall": 0.8888888888888888,
+      "f1": 0.8421052631578948
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.6666666666666666,
+      "recall": 0.4,
+      "f1": 0.5
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.7272727272727273,
+      "recall": 0.32,
+      "f1": 0.4444444444444444
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 0.5,
+      "recall": 0.2,
+      "f1": 0.28571428571428575
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.5,
+      "recall": 0.09090909090909091,
+      "f1": 0.15384615384615385
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.6666666666666666,
+      "recall": 0.5714285714285714,
+      "f1": 0.6153846153846153
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.7777777777777778,
+      "recall": 0.7368421052631579,
+      "f1": 0.7567567567567567
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.5,
+      "recall": 0.3333333333333333,
+      "f1": 0.4
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.42857142857142855,
+      "recall": 0.13333333333333333,
+      "f1": 0.20338983050847456
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.4444444444444444,
+      "f1": 0.6153846153846153
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.8,
+      "recall": 0.7142857142857143,
+      "f1": 0.7547169811320756
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.7285714285714285,
+    "recall": 0.2469733656174334,
+    "f1": 0.3688969258589512,
+    "macroF1": 0.29096555575923444,
+    "given": 0.3768545994065282,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.6666666666666666,
+      "recall": 0.24,
+      "f1": 0.3529411764705882
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.7727272727272727,
+      "recall": 0.37777777777777777,
+      "f1": 0.5074626865671642
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.13333333333333333,
+      "f1": 0.23529411764705882
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.6666666666666666,
+      "recall": 0.4,
+      "f1": 0.5
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 1,
+      "recall": 0.7,
+      "f1": 0.8235294117647058
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.25,
+      "recall": 0.09090909090909091,
+      "f1": 0.13333333333333333
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.8333333333333334,
+      "recall": 0.30612244897959184,
+      "f1": 0.44776119402985076
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.6521739130434783,
+      "recall": 0.7894736842105263,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 0.5,
+      "recall": 0.2,
+      "f1": 0.28571428571428575
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.75,
+      "recall": 0.6428571428571429,
+      "f1": 0.6923076923076924
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 0.75,
+      "recall": 0.375,
+      "f1": 0.5
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.7664233576642335,
+    "recall": 0.5084745762711864,
+    "f1": 0.6113537117903931,
+    "macroF1": 0.445005907855074,
+    "given": 0.6735905044510386,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.26666666666666666,
+      "f1": 0.4210526315789474
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.75,
+      "recall": 0.48,
+      "f1": 0.5853658536585366
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.6875,
+      "recall": 0.6470588235294118,
+      "f1": 0.6666666666666667
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.7678571428571429,
+      "recall": 0.9555555555555556,
+      "f1": 0.8514851485148515
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.9,
+      "recall": 0.6,
+      "f1": 0.7200000000000001
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.7857142857142857,
+      "recall": 0.44,
+      "f1": 0.5641025641025641
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 0.8,
+      "recall": 0.4,
+      "f1": 0.5333333333333333
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.6666666666666666,
+      "recall": 0.18181818181818182,
+      "f1": 0.28571428571428575
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.7407407407407407,
+      "recall": 0.8163265306122449,
+      "f1": 0.7766990291262137
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.6956521739130435,
+      "recall": 0.8421052631578947,
+      "f1": 0.761904761904762
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.6666666666666666,
+      "recall": 0.2222222222222222,
+      "f1": 0.3333333333333333
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.7368421052631579,
+      "recall": 0.3111111111111111,
+      "f1": 0.4375
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.88,
+      "recall": 0.7857142857142857,
+      "f1": 0.830188679245283
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.7313432835820896,
+    "recall": 0.4745762711864407,
+    "f1": 0.5756240822320118,
+    "macroF1": 0.4314645331241865,
+    "given": 0.6795252225519288,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 0.8571428571428571,
+      "recall": 0.4,
+      "f1": 0.5454545454545455
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.7142857142857143,
+      "recall": 0.4,
+      "f1": 0.5128205128205129
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.6206896551724138,
+      "recall": 0.5294117647058824,
+      "f1": 0.5714285714285715
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.7368421052631579,
+      "recall": 0.9333333333333333,
+      "f1": 0.8235294117647058
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.75,
+      "recall": 0.6,
+      "f1": 0.6666666666666665
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 1,
+      "recall": 0.05555555555555555,
+      "f1": 0.10526315789473684
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.7058823529411765,
+      "recall": 0.48,
+      "f1": 0.5714285714285713
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.75,
+      "recall": 0.2727272727272727,
+      "f1": 0.39999999999999997
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.7142857142857143,
+      "recall": 0.7142857142857143,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.75,
+      "recall": 0.7894736842105263,
+      "f1": 0.7692307692307692
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.6666666666666666,
+      "recall": 0.2222222222222222,
+      "f1": 0.3333333333333333
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.5789473684210527,
+      "recall": 0.24444444444444444,
+      "f1": 0.34375
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.84,
+      "recall": 0.75,
+      "f1": 0.7924528301886793
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.7480314960629921,
+    "recall": 0.4600484261501211,
+    "f1": 0.5697151424287857,
+    "macroF1": 0.443078821108454,
+    "given": 0.6409495548961425,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 0.8571428571428571,
+      "recall": 0.4,
+      "f1": 0.5454545454545455
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.6363636363636364,
+      "recall": 0.28,
+      "f1": 0.3888888888888889
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.6521739130434783,
+      "recall": 0.4411764705882353,
+      "f1": 0.5263157894736842
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.8235294117647058,
+      "recall": 0.9333333333333333,
+      "f1": 0.8749999999999999
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.8888888888888888,
+      "recall": 0.5333333333333333,
+      "f1": 0.6666666666666667
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.25,
+      "f1": 0.4
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.7692307692307693,
+      "recall": 0.4,
+      "f1": 0.5263157894736842
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 0.8571428571428571,
+      "recall": 0.6,
+      "f1": 0.7058823529411764
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.18181818181818182,
+      "f1": 0.23529411764705885
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.6862745098039216,
+      "recall": 0.7142857142857143,
+      "f1": 0.7000000000000001
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.6521739130434783,
+      "recall": 0.7894736842105263,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.8,
+      "recall": 0.4444444444444444,
+      "f1": 0.5714285714285714
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.75,
+      "recall": 0.2,
+      "f1": 0.31578947368421056
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.8076923076923077,
+      "recall": 0.75,
+      "f1": 0.7777777777777779
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.7405857740585774,
+    "recall": 0.42857142857142855,
+    "f1": 0.5429447852760736,
+    "macroF1": 0.37053699291791325,
+    "given": 0.6023738872403561,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 0.8333333333333334,
+      "recall": 0.3333333333333333,
+      "f1": 0.47619047619047616
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.7692307692307693,
+      "recall": 0.4,
+      "f1": 0.5263157894736842
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.7272727272727273,
+      "recall": 0.47058823529411764,
+      "f1": 0.5714285714285714
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.8297872340425532,
+      "recall": 0.8666666666666667,
+      "f1": 0.8478260869565217
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.5333333333333333,
+      "f1": 0.6956521739130436
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.6666666666666666,
+      "recall": 0.32,
+      "f1": 0.43243243243243246
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 0.8571428571428571,
+      "recall": 0.6,
+      "f1": 0.7058823529411764
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.6,
+      "recall": 0.2727272727272727,
+      "f1": 0.37499999999999994
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.6785714285714286,
+      "recall": 0.7755102040816326,
+      "f1": 0.7238095238095238
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.6521739130434783,
+      "recall": 0.7894736842105263,
+      "f1": 0.7142857142857143
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.6,
+      "recall": 0.3333333333333333,
+      "f1": 0.42857142857142855
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 1,
+      "recall": 0.022222222222222223,
+      "f1": 0.04347826086956522
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 0.5,
+      "recall": 0.1111111111111111,
+      "f1": 0.1818181818181818
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.8518518518518519,
+      "recall": 0.8214285714285714,
+      "f1": 0.8363636363636364
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.7686567164179104,
+    "recall": 0.49878934624697335,
+    "f1": 0.604992657856094,
+    "macroF1": 0.4272616191670864,
+    "given": 0.6706231454005934,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 7,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 15,
+      "precision": 1,
+      "recall": 0.26666666666666666,
+      "f1": 0.4210526315789474
+     },
+     {
+      "genre": "biography",
+      "support": 25,
+      "precision": 0.7333333333333333,
+      "recall": 0.44,
+      "f1": 0.5499999999999999
+     },
+     {
+      "genre": "children",
+      "support": 34,
+      "precision": 0.7241379310344828,
+      "recall": 0.6176470588235294,
+      "f1": 0.6666666666666667
+     },
+     {
+      "genre": "crime",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "drama",
+      "support": 45,
+      "precision": 0.7678571428571429,
+      "recall": 0.9555555555555556,
+      "f1": 0.8514851485148515
+     },
+     {
+      "genre": "fantasy",
+      "support": 5,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 15,
+      "precision": 0.9,
+      "recall": 0.6,
+      "f1": 0.7200000000000001
+     },
+     {
+      "genre": "history",
+      "support": 8,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 18,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 25,
+      "precision": 0.7142857142857143,
+      "recall": 0.4,
+      "f1": 0.5128205128205129
+     },
+     {
+      "genre": "nature",
+      "support": 10,
+      "precision": 1,
+      "recall": 0.3,
+      "f1": 0.4615384615384615
+     },
+     {
+      "genre": "philosophy",
+      "support": 11,
+      "precision": 0.6666666666666666,
+      "recall": 0.18181818181818182,
+      "f1": 0.28571428571428575
+     },
+     {
+      "genre": "poetry",
+      "support": 49,
+      "precision": 0.7592592592592593,
+      "recall": 0.8367346938775511,
+      "f1": 0.796116504854369
+     },
+     {
+      "genre": "psychology",
+      "support": 19,
+      "precision": 0.7083333333333334,
+      "recall": 0.8947368421052632,
+      "f1": 0.7906976744186046
+     },
+     {
+      "genre": "religion",
+      "support": 5,
+      "precision": 1,
+      "recall": 0.2,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "romance",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 9,
+      "precision": 0.6666666666666666,
+      "recall": 0.2222222222222222,
+      "f1": 0.3333333333333333
+     },
+     {
+      "genre": "science-fiction",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 3,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 45,
+      "precision": 0.7222222222222222,
+      "recall": 0.28888888888888886,
+      "f1": 0.4126984126984127
+     },
+     {
+      "genre": "society",
+      "support": 9,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+     },
+     {
+      "genre": "travel",
+      "support": 28,
+      "precision": 0.8461538461538461,
+      "recall": 0.7857142857142857,
+      "f1": 0.8148148148148148
+     },
+     {
+      "genre": "war",
+      "support": 8,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 0,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     }
+    ]
+   }
+  ],
+  "en": [
+   {
+    "method": "tfidf",
+    "precision": 0.7857142857142857,
+    "recall": 0.5964444444444444,
+    "f1": 0.6781202627589692,
+    "macroF1": 0.48079983250785463,
+    "given": 0.7672872340425532,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0.16666666666666666,
+      "recall": 0.047619047619047616,
+      "f1": 0.07407407407407407
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.7777777777777778,
+      "recall": 0.30434782608695654,
+      "f1": 0.43750000000000006
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.7916666666666666,
+      "recall": 0.8260869565217391,
+      "f1": 0.8085106382978724
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7951807228915663,
+      "recall": 0.8048780487804879,
+      "f1": 0.8
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 1,
+      "recall": 0.6428571428571429,
+      "f1": 0.782608695652174
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.6666666666666666,
+      "recall": 0.2857142857142857,
+      "f1": 0.4
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 1,
+      "recall": 0.125,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 1,
+      "recall": 0.2631578947368421,
+      "f1": 0.4166666666666667
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.75,
+      "recall": 0.1875,
+      "f1": 0.3
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.75,
+      "recall": 0.35294117647058826,
+      "f1": 0.48
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.8823529411764706,
+      "recall": 0.6818181818181818,
+      "f1": 0.7692307692307693
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.6153846153846154,
+      "recall": 0.6666666666666666,
+      "f1": 0.64
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.8,
+      "recall": 0.7142857142857143,
+      "f1": 0.7547169811320756
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.7419354838709677,
+      "recall": 0.27710843373493976,
+      "f1": 0.40350877192982454
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.6363636363636364,
+      "recall": 0.2916666666666667,
+      "f1": 0.4
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.7941176470588235,
+      "recall": 0.9310344827586207,
+      "f1": 0.8571428571428571
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.375,
+      "recall": 0.06666666666666667,
+      "f1": 0.11320754716981134
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8081395348837209,
+      "recall": 0.776536312849162,
+      "f1": 0.7920227920227921
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 0.6666666666666666,
+      "recall": 0.46153846153846156,
+      "f1": 0.5454545454545455
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7619047619047619,
+      "recall": 0.8421052631578947,
+      "f1": 0.8
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.625,
+      "recall": 0.22727272727272727,
+      "f1": 0.3333333333333333
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8074074074074075,
+      "recall": 0.990909090909091,
+      "f1": 0.889795918367347
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.7781350482315113,
+    "recall": 0.43022222222222223,
+    "f1": 0.5540927303949628,
+    "macroF1": 0.36990208890477355,
+    "given": 0.6648936170212766,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.6363636363636364,
+      "recall": 0.15217391304347827,
+      "f1": 0.2456140350877193
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.8,
+      "recall": 0.4782608695652174,
+      "f1": 0.5986394557823128
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7441860465116279,
+      "recall": 0.7804878048780488,
+      "f1": 0.761904761904762
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 0.8333333333333334,
+      "recall": 0.8928571428571429,
+      "f1": 0.8620689655172413
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.5,
+      "recall": 0.14285714285714285,
+      "f1": 0.22222222222222224
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.75,
+      "recall": 0.15789473684210525,
+      "f1": 0.2608695652173913
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.5,
+      "recall": 0.125,
+      "f1": 0.2
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6,
+      "recall": 0.17647058823529413,
+      "f1": 0.2727272727272727
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.918918918918919,
+      "recall": 0.7727272727272727,
+      "f1": 0.8395061728395061
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.7,
+      "recall": 0.375,
+      "f1": 0.48837209302325574
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.6666666666666666,
+      "recall": 0.024096385542168676,
+      "f1": 0.046511627906976744
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.7222222222222222,
+      "recall": 0.5416666666666666,
+      "f1": 0.619047619047619
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.8360655737704918,
+      "recall": 0.8793103448275862,
+      "f1": 0.8571428571428572
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8153846153846154,
+      "recall": 0.29608938547486036,
+      "f1": 0.43442622950819676
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.8076923076923077,
+      "recall": 0.7368421052631579,
+      "f1": 0.7706422018348624
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.3333333333333333,
+      "recall": 0.09090909090909091,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8076923076923077,
+      "recall": 0.9545454545454546,
+      "f1": 0.875
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.6992481203007519,
+    "recall": 0.16533333333333333,
+    "f1": 0.2674335010783609,
+    "macroF1": 0.1847071295034742,
+    "given": 0.3351063829787234,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.6363636363636364,
+      "recall": 0.15217391304347827,
+      "f1": 0.2456140350877193
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.875,
+      "recall": 0.08536585365853659,
+      "f1": 0.15555555555555559
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 0.14285714285714285,
+      "recall": 0.03571428571428571,
+      "f1": 0.05714285714285715
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.2,
+      "recall": 0.05263157894736842,
+      "f1": 0.08333333333333333
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.375,
+      "recall": 0.1875,
+      "f1": 0.25
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.8333333333333334,
+      "recall": 0.29411764705882354,
+      "f1": 0.4347826086956522
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.6875,
+      "recall": 0.25,
+      "f1": 0.36666666666666664
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.625,
+      "recall": 0.4166666666666667,
+      "f1": 0.5
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.6086956521739131,
+      "recall": 0.25,
+      "f1": 0.35443037974683544
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 1,
+      "recall": 0.041666666666666664,
+      "f1": 0.07999999999999999
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.42857142857142855,
+      "recall": 0.01675977653631285,
+      "f1": 0.03225806451612903
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 1,
+      "recall": 0.46153846153846156,
+      "f1": 0.631578947368421
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7631578947368421,
+      "recall": 0.5087719298245614,
+      "f1": 0.6105263157894737
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.788135593220339,
+      "recall": 0.8454545454545455,
+      "f1": 0.8157894736842106
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.7962529274004684,
+    "recall": 0.6044444444444445,
+    "f1": 0.6872157655381507,
+    "macroF1": 0.5222264735855872,
+    "given": 0.788563829787234,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.09090909090909091,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.7272727272727273,
+      "recall": 0.34782608695652173,
+      "f1": 0.4705882352941176
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.8089887640449438,
+      "recall": 0.782608695652174,
+      "f1": 0.7955801104972375
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.8117647058823529,
+      "recall": 0.8414634146341463,
+      "f1": 0.8263473053892215
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 0.9629629629629629,
+      "recall": 0.9285714285714286,
+      "f1": 0.9454545454545454
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.45454545454545453,
+      "recall": 0.17857142857142858,
+      "f1": 0.25641025641025644
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0.75,
+      "recall": 0.375,
+      "f1": 0.5
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.8333333333333334,
+      "recall": 0.2631578947368421,
+      "f1": 0.39999999999999997
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.8,
+      "recall": 0.25,
+      "f1": 0.38095238095238093
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6428571428571429,
+      "recall": 0.5294117647058824,
+      "f1": 0.5806451612903226
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.868421052631579,
+      "recall": 0.75,
+      "f1": 0.8048780487804879
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.6923076923076923,
+      "recall": 0.75,
+      "f1": 0.7199999999999999
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.7678571428571429,
+      "recall": 0.7678571428571429,
+      "f1": 0.7678571428571429
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.6,
+      "recall": 0.10843373493975904,
+      "f1": 0.18367346938775508
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.7727272727272727,
+      "recall": 0.7083333333333334,
+      "f1": 0.7391304347826088
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.7887323943661971,
+      "recall": 0.9655172413793104,
+      "f1": 0.8682170542635659
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.5294117647058824,
+      "recall": 0.2,
+      "f1": 0.2903225806451613
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8493150684931506,
+      "recall": 0.6927374301675978,
+      "f1": 0.7630769230769231
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 0.75,
+      "recall": 0.46153846153846156,
+      "f1": 0.5714285714285714
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7966101694915254,
+      "recall": 0.8245614035087719,
+      "f1": 0.8103448275862069
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.625,
+      "recall": 0.22727272727272727,
+      "f1": 0.3333333333333333
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8320610687022901,
+      "recall": 0.990909090909091,
+      "f1": 0.9045643153526971
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.7997658079625293,
+    "recall": 0.6071111111111112,
+    "f1": 0.6902475997978779,
+    "macroF1": 0.5150611431033782,
+    "given": 0.7845744680851063,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.09090909090909091,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.6923076923076923,
+      "recall": 0.391304347826087,
+      "f1": 0.5
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.8255813953488372,
+      "recall": 0.7717391304347826,
+      "f1": 0.797752808988764
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7931034482758621,
+      "recall": 0.8414634146341463,
+      "f1": 0.8165680473372782
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 1,
+      "recall": 0.8928571428571429,
+      "f1": 0.9433962264150945
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.45454545454545453,
+      "recall": 0.17857142857142858,
+      "f1": 0.25641025641025644
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0.6666666666666666,
+      "recall": 0.25,
+      "f1": 0.36363636363636365
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.8571428571428571,
+      "recall": 0.3157894736842105,
+      "f1": 0.46153846153846156
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.8,
+      "recall": 0.25,
+      "f1": 0.38095238095238093
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6666666666666666,
+      "recall": 0.47058823529411764,
+      "f1": 0.5517241379310345
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.9210526315789473,
+      "recall": 0.7954545454545454,
+      "f1": 0.8536585365853658
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.6923076923076923,
+      "recall": 0.75,
+      "f1": 0.7199999999999999
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.7692307692307693,
+      "recall": 0.7142857142857143,
+      "f1": 0.7407407407407408
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.75,
+      "recall": 0.18072289156626506,
+      "f1": 0.2912621359223301
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.75,
+      "recall": 0.625,
+      "f1": 0.6818181818181818
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.8115942028985508,
+      "recall": 0.9655172413793104,
+      "f1": 0.8818897637795277
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.5714285714285714,
+      "recall": 0.17777777777777778,
+      "f1": 0.2711864406779661
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8533333333333334,
+      "recall": 0.7150837988826816,
+      "f1": 0.7781155015197568
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 0.6,
+      "recall": 0.46153846153846156,
+      "f1": 0.5217391304347826
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7868852459016393,
+      "recall": 0.8421052631578947,
+      "f1": 0.8135593220338982
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.42857142857142855,
+      "recall": 0.13636363636363635,
+      "f1": 0.20689655172413793
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8257575757575758,
+      "recall": 0.990909090909091,
+      "f1": 0.9008264462809917
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.7986666666666666,
+    "recall": 0.5324444444444445,
+    "f1": 0.6389333333333334,
+    "macroF1": 0.4823060144947155,
+    "given": 0.7393617021276596,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.09090909090909091,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.7058823529411765,
+      "recall": 0.2608695652173913,
+      "f1": 0.380952380952381
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.7972972972972973,
+      "recall": 0.6413043478260869,
+      "f1": 0.7108433734939757
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7640449438202247,
+      "recall": 0.8292682926829268,
+      "f1": 0.7953216374269005
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 0.9259259259259259,
+      "recall": 0.8928571428571429,
+      "f1": 0.9090909090909091
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.2857142857142857,
+      "recall": 0.07142857142857142,
+      "f1": 0.1142857142857143
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0.625,
+      "recall": 0.3125,
+      "f1": 0.4166666666666667
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.6666666666666666,
+      "recall": 0.21052631578947367,
+      "f1": 0.32
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.75,
+      "recall": 0.1875,
+      "f1": 0.3
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6923076923076923,
+      "recall": 0.5294117647058824,
+      "f1": 0.5999999999999999
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.9142857142857143,
+      "recall": 0.7272727272727273,
+      "f1": 0.810126582278481
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.7962962962962963,
+      "recall": 0.7678571428571429,
+      "f1": 0.7818181818181819
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.8,
+      "recall": 0.04819277108433735,
+      "f1": 0.09090909090909091
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.8095238095238095,
+      "recall": 0.7083333333333334,
+      "f1": 0.7555555555555556
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.819672131147541,
+      "recall": 0.8620689655172413,
+      "f1": 0.8403361344537814
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.7,
+      "recall": 0.15555555555555556,
+      "f1": 0.2545454545454545
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8446601941747572,
+      "recall": 0.4860335195530726,
+      "f1": 0.6170212765957447
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 1,
+      "recall": 0.38461538461538464,
+      "f1": 0.5555555555555556
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7741935483870968,
+      "recall": 0.8421052631578947,
+      "f1": 0.8067226890756302
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.5,
+      "recall": 0.13636363636363635,
+      "f1": 0.21428571428571427
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.828125,
+      "recall": 0.9636363636363636,
+      "f1": 0.8907563025210083
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.7696245733788396,
+    "recall": 0.4008888888888889,
+    "f1": 0.5271770894213911,
+    "macroF1": 0.38091088798987116,
+    "given": 0.6276595744680851,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.6875,
+      "recall": 0.2391304347826087,
+      "f1": 0.3548387096774194
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.8125,
+      "recall": 0.5652173913043478,
+      "f1": 0.6666666666666667
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7681159420289855,
+      "recall": 0.6463414634146342,
+      "f1": 0.7019867549668874
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 0.875,
+      "recall": 0.75,
+      "f1": 0.8076923076923077
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.2,
+      "recall": 0.03571428571428571,
+      "f1": 0.06060606060606061
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0.5714285714285714,
+      "recall": 0.25,
+      "f1": 0.34782608695652173
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 1,
+      "recall": 0.03125,
+      "f1": 0.06060606060606061
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.6,
+      "recall": 0.15789473684210525,
+      "f1": 0.25
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.5,
+      "recall": 0.125,
+      "f1": 0.2
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6666666666666666,
+      "recall": 0.23529411764705882,
+      "f1": 0.3478260869565218
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.8461538461538461,
+      "recall": 0.75,
+      "f1": 0.7951807228915662
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.75,
+      "recall": 0.6964285714285714,
+      "f1": 0.7222222222222223
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.7391304347826086,
+      "recall": 0.7083333333333334,
+      "f1": 0.723404255319149
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.8536585365853658,
+      "recall": 0.603448275862069,
+      "f1": 0.7070707070707071
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.75,
+      "recall": 0.0670391061452514,
+      "f1": 0.12307692307692308
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 1,
+      "recall": 0.07692307692307693,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7758620689655172,
+      "recall": 0.7894736842105263,
+      "f1": 0.7826086956521741
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.7835820895522388,
+      "recall": 0.9545454545454546,
+      "f1": 0.860655737704918
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.7924528301886793,
+    "recall": 0.5973333333333334,
+    "f1": 0.6811961479979726,
+    "macroF1": 0.5078272840534055,
+    "given": 0.7845744680851063,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 21,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.09090909090909091,
+      "f1": 0.14285714285714288
+     },
+     {
+      "genre": "biography",
+      "support": 46,
+      "precision": 0.7619047619047619,
+      "recall": 0.34782608695652173,
+      "f1": 0.4776119402985074
+     },
+     {
+      "genre": "children",
+      "support": 92,
+      "precision": 0.8068181818181818,
+      "recall": 0.7717391304347826,
+      "f1": 0.7888888888888889
+     },
+     {
+      "genre": "crime",
+      "support": 82,
+      "precision": 0.7816091954022989,
+      "recall": 0.8292682926829268,
+      "f1": 0.8047337278106508
+     },
+     {
+      "genre": "drama",
+      "support": 28,
+      "precision": 1,
+      "recall": 0.8928571428571429,
+      "f1": 0.9433962264150945
+     },
+     {
+      "genre": "fantasy",
+      "support": 14,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 28,
+      "precision": 0.5,
+      "recall": 0.21428571428571427,
+      "f1": 0.3
+     },
+     {
+      "genre": "history",
+      "support": 16,
+      "precision": 0.5,
+      "recall": 0.125,
+      "f1": 0.2
+     },
+     {
+      "genre": "humour",
+      "support": 32,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 19,
+      "precision": 0.8333333333333334,
+      "recall": 0.2631578947368421,
+      "f1": 0.39999999999999997
+     },
+     {
+      "genre": "nature",
+      "support": 16,
+      "precision": 0.8,
+      "recall": 0.25,
+      "f1": 0.38095238095238093
+     },
+     {
+      "genre": "philosophy",
+      "support": 17,
+      "precision": 0.6428571428571429,
+      "recall": 0.5294117647058824,
+      "f1": 0.5806451612903226
+     },
+     {
+      "genre": "poetry",
+      "support": 44,
+      "precision": 0.9142857142857143,
+      "recall": 0.7272727272727273,
+      "f1": 0.810126582278481
+     },
+     {
+      "genre": "psychology",
+      "support": 12,
+      "precision": 0.6923076923076923,
+      "recall": 0.75,
+      "f1": 0.7199999999999999
+     },
+     {
+      "genre": "religion",
+      "support": 56,
+      "precision": 0.7636363636363637,
+      "recall": 0.75,
+      "f1": 0.7567567567567568
+     },
+     {
+      "genre": "romance",
+      "support": 83,
+      "precision": 0.6,
+      "recall": 0.10843373493975904,
+      "f1": 0.18367346938775508
+     },
+     {
+      "genre": "science",
+      "support": 24,
+      "precision": 0.782608695652174,
+      "recall": 0.75,
+      "f1": 0.7659574468085107
+     },
+     {
+      "genre": "science-fiction",
+      "support": 58,
+      "precision": 0.7777777777777778,
+      "recall": 0.9655172413793104,
+      "f1": 0.8615384615384615
+     },
+     {
+      "genre": "self-help",
+      "support": 45,
+      "precision": 0.5555555555555556,
+      "recall": 0.2222222222222222,
+      "f1": 0.31746031746031744
+     },
+     {
+      "genre": "short-stories",
+      "support": 179,
+      "precision": 0.8445945945945946,
+      "recall": 0.6983240223463687,
+      "f1": 0.764525993883792
+     },
+     {
+      "genre": "society",
+      "support": 13,
+      "precision": 0.75,
+      "recall": 0.46153846153846156,
+      "f1": 0.5714285714285714
+     },
+     {
+      "genre": "travel",
+      "support": 57,
+      "precision": 0.7966101694915254,
+      "recall": 0.8245614035087719,
+      "f1": 0.8103448275862069
+     },
+     {
+      "genre": "war",
+      "support": 22,
+      "precision": 0.6,
+      "recall": 0.13636363636363635,
+      "f1": 0.22222222222222218
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8181818181818182,
+      "recall": 0.9818181818181818,
+      "f1": 0.8925619834710744
+     }
+    ]
+   }
+  ],
+  "nodesc": [
+   {
+    "method": "tfidf",
+    "precision": 0.7777777777777778,
+    "recall": 0.5338253382533825,
+    "f1": 0.6331145149525893,
+    "macroF1": 0.47037167868344426,
+    "given": 0.6823228010247652,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0.16666666666666666,
+      "recall": 0.034482758620689655,
+      "f1": 0.05714285714285715
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 1,
+      "recall": 0.13333333333333333,
+      "f1": 0.23529411764705882
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.8064516129032258,
+      "recall": 0.31645569620253167,
+      "f1": 0.4545454545454545
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7603305785123967,
+      "recall": 0.7022900763358778,
+      "f1": 0.7301587301587302
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7951807228915663,
+      "recall": 0.7674418604651163,
+      "f1": 0.7810650887573964
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.821917808219178,
+      "recall": 0.7792207792207793,
+      "f1": 0.7999999999999999
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.75,
+      "recall": 0.36,
+      "f1": 0.48648648648648657
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 1,
+      "recall": 0.08,
+      "f1": 0.14814814814814814
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0.5,
+      "recall": 0.019230769230769232,
+      "f1": 0.037037037037037035
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.7368421052631579,
+      "recall": 0.2978723404255319,
+      "f1": 0.4242424242424243
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.8,
+      "recall": 0.14285714285714285,
+      "f1": 0.24242424242424243
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.7,
+      "recall": 0.23333333333333334,
+      "f1": 0.35
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7926829268292683,
+      "recall": 0.6701030927835051,
+      "f1": 0.7262569832402234
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.7142857142857143,
+      "recall": 0.78125,
+      "f1": 0.7462686567164178
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.8,
+      "recall": 0.6060606060606061,
+      "f1": 0.689655172413793
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.7419354838709677,
+      "recall": 0.23,
+      "f1": 0.35114503816793896
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.5833333333333334,
+      "recall": 0.1891891891891892,
+      "f1": 0.28571428571428575
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.7941176470588235,
+      "recall": 0.8852459016393442,
+      "f1": 0.8372093023255813
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.375,
+      "recall": 0.06,
+      "f1": 0.10344827586206896
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.7875647668393783,
+      "recall": 0.6386554621848739,
+      "f1": 0.7053364269141531
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.7857142857142857,
+      "recall": 0.44,
+      "f1": 0.5641025641025641
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.797979797979798,
+      "recall": 0.8144329896907216,
+      "f1": 0.8061224489795918
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.6666666666666666,
+      "recall": 0.2,
+      "f1": 0.30769230769230765
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8074074074074075,
+      "recall": 0.990909090909091,
+      "f1": 0.889795918367347
+     }
+    ]
+   },
+   {
+    "method": "mean",
+    "precision": 0.7522727272727273,
+    "recall": 0.4071340713407134,
+    "f1": 0.5283320031923384,
+    "macroF1": 0.3812083374543013,
+    "given": 0.6199829205807003,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.6363636363636364,
+      "recall": 0.17721518987341772,
+      "f1": 0.27722772277227725
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7605633802816901,
+      "recall": 0.4122137404580153,
+      "f1": 0.5346534653465347
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7471264367816092,
+      "recall": 0.7558139534883721,
+      "f1": 0.7514450867052023
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.7790697674418605,
+      "recall": 0.8701298701298701,
+      "f1": 0.8220858895705522
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.631578947368421,
+      "recall": 0.24,
+      "f1": 0.34782608695652173
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.5,
+      "recall": 0.04,
+      "f1": 0.07407407407407407
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.7333333333333333,
+      "recall": 0.23404255319148937,
+      "f1": 0.3548387096774194
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.5,
+      "recall": 0.14285714285714285,
+      "f1": 0.22222222222222224
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.4444444444444444,
+      "recall": 0.13333333333333333,
+      "f1": 0.20512820512820512
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7804878048780488,
+      "recall": 0.6597938144329897,
+      "f1": 0.7150837988826815
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.7666666666666667,
+      "recall": 0.71875,
+      "f1": 0.7419354838709677
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.7272727272727273,
+      "recall": 0.36363636363636365,
+      "f1": 0.4848484848484849
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.6666666666666666,
+      "recall": 0.02,
+      "f1": 0.038834951456310676
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.6785714285714286,
+      "recall": 0.5135135135135135,
+      "f1": 0.5846153846153848
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.8095238095238095,
+      "recall": 0.8360655737704918,
+      "f1": 0.8225806451612904
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.7349397590361446,
+      "recall": 0.25630252100840334,
+      "f1": 0.38006230529595014
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.625,
+      "recall": 0.2,
+      "f1": 0.30303030303030304
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.7912087912087912,
+      "recall": 0.7422680412371134,
+      "f1": 0.7659574468085107
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.3333333333333333,
+      "recall": 0.06666666666666667,
+      "f1": 0.1111111111111111
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8076923076923077,
+      "recall": 0.9545454545454546,
+      "f1": 0.875
+     }
+    ]
+   },
+   {
+    "method": "meta",
+    "precision": 0.7023809523809523,
+    "recall": 0.1814268142681427,
+    "f1": 0.2883675464320626,
+    "macroF1": 0.22875043011233323,
+    "given": 0.33561058923996584,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.25,
+      "recall": 0.03333333333333333,
+      "f1": 0.058823529411764705
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.6521739130434783,
+      "recall": 0.189873417721519,
+      "f1": 0.29411764705882354
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.875,
+      "recall": 0.08139534883720931,
+      "f1": 0.14893617021276595
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.6206896551724138,
+      "recall": 0.23376623376623376,
+      "f1": 0.33962264150943394
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 1,
+      "recall": 0.06,
+      "f1": 0.11320754716981131
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.55,
+      "recall": 0.23404255319148937,
+      "f1": 0.3283582089552239
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.6666666666666666,
+      "recall": 0.35714285714285715,
+      "f1": 0.46511627906976744
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.6,
+      "recall": 0.2,
+      "f1": 0.3
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7647058823529411,
+      "recall": 0.26804123711340205,
+      "f1": 0.3969465648854962
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.6451612903225806,
+      "recall": 0.625,
+      "f1": 0.634920634920635
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.5769230769230769,
+      "recall": 0.22727272727272727,
+      "f1": 0.3260869565217391
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.5,
+      "recall": 0.02702702702702703,
+      "f1": 0.05128205128205129
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.375,
+      "recall": 0.012605042016806723,
+      "f1": 0.024390243902439025
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 1,
+      "recall": 0.48,
+      "f1": 0.6486486486486487
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.75,
+      "recall": 0.5257731958762887,
+      "f1": 0.6181818181818183
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.375,
+      "recall": 0.1,
+      "f1": 0.15789473684210528
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.7815126050420168,
+      "recall": 0.8454545454545455,
+      "f1": 0.8122270742358079
+     }
+    ]
+   },
+   {
+    "method": "ens-all",
+    "precision": 0.7866435385949696,
+    "recall": 0.557810578105781,
+    "f1": 0.6527527887729399,
+    "macroF1": 0.5142204446924129,
+    "given": 0.7216054654141759,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.7142857142857143,
+      "recall": 0.16666666666666666,
+      "f1": 0.2702702702702703
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.717948717948718,
+      "recall": 0.35443037974683544,
+      "f1": 0.4745762711864407
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7768595041322314,
+      "recall": 0.7175572519083969,
+      "f1": 0.746031746031746
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.8117647058823529,
+      "recall": 0.8023255813953488,
+      "f1": 0.8070175438596492
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.8160919540229885,
+      "recall": 0.922077922077922,
+      "f1": 0.8658536585365854
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.68,
+      "recall": 0.34,
+      "f1": 0.4533333333333334
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.7777777777777778,
+      "recall": 0.28,
+      "f1": 0.4117647058823529
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.8,
+      "recall": 0.3404255319148936,
+      "f1": 0.47761194029850745
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.8,
+      "recall": 0.2857142857142857,
+      "f1": 0.4210526315789473
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.6470588235294118,
+      "recall": 0.36666666666666664,
+      "f1": 0.46808510638297873
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7934782608695652,
+      "recall": 0.7525773195876289,
+      "f1": 0.7724867724867726
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.6944444444444444,
+      "recall": 0.78125,
+      "f1": 0.7352941176470588
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.7719298245614035,
+      "recall": 0.6666666666666666,
+      "f1": 0.7154471544715446
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.6,
+      "recall": 0.09,
+      "f1": 0.1565217391304348
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.7692307692307693,
+      "recall": 0.5405405405405406,
+      "f1": 0.6349206349206349
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.7887323943661971,
+      "recall": 0.9180327868852459,
+      "f1": 0.8484848484848485
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.5294117647058824,
+      "recall": 0.18,
+      "f1": 0.26865671641791045
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.8284023668639053,
+      "recall": 0.5882352941176471,
+      "f1": 0.6879606879606881
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.8571428571428571,
+      "recall": 0.48,
+      "f1": 0.6153846153846153
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.8210526315789474,
+      "recall": 0.8041237113402062,
+      "f1": 0.8125
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.6666666666666666,
+      "recall": 0.2,
+      "f1": 0.30769230769230765
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8320610687022901,
+      "recall": 0.990909090909091,
+      "f1": 0.9045643153526971
+     }
+    ]
+   },
+   {
+    "method": "ens-text",
+    "precision": 0.7808695652173913,
+    "recall": 0.5522755227552275,
+    "f1": 0.6469740634005764,
+    "macroF1": 0.5054954869513782,
+    "given": 0.7233134073441503,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.7,
+      "recall": 0.23333333333333334,
+      "f1": 0.35
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.6829268292682927,
+      "recall": 0.35443037974683544,
+      "f1": 0.4666666666666667
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7739130434782608,
+      "recall": 0.6793893129770993,
+      "f1": 0.7235772357723576
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7931034482758621,
+      "recall": 0.8023255813953488,
+      "f1": 0.7976878612716762
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.8117647058823529,
+      "recall": 0.8961038961038961,
+      "f1": 0.8518518518518517
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.6296296296296297,
+      "recall": 0.34,
+      "f1": 0.4415584415584416
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.7142857142857143,
+      "recall": 0.2,
+      "f1": 0.3125
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 1,
+      "recall": 0.019230769230769232,
+      "f1": 0.03773584905660378
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.75,
+      "recall": 0.3829787234042553,
+      "f1": 0.5070422535211269
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.8571428571428571,
+      "recall": 0.21428571428571427,
+      "f1": 0.34285714285714286
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.6875,
+      "recall": 0.36666666666666664,
+      "f1": 0.47826086956521735
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.8045977011494253,
+      "recall": 0.7216494845360825,
+      "f1": 0.7608695652173912
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.7272727272727273,
+      "recall": 0.75,
+      "f1": 0.7384615384615384
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.7735849056603774,
+      "recall": 0.6212121212121212,
+      "f1": 0.689075630252101
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.75,
+      "recall": 0.15,
+      "f1": 0.24999999999999997
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.75,
+      "recall": 0.4864864864864865,
+      "f1": 0.5901639344262296
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.8115942028985508,
+      "recall": 0.9180327868852459,
+      "f1": 0.8615384615384616
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.5714285714285714,
+      "recall": 0.16,
+      "f1": 0.25
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.8125,
+      "recall": 0.6008403361344538,
+      "f1": 0.6908212560386473
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.75,
+      "recall": 0.48,
+      "f1": 0.5853658536585366
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.7959183673469388,
+      "recall": 0.8041237113402062,
+      "f1": 0.8
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.5,
+      "recall": 0.13333333333333333,
+      "f1": 0.2105263157894737
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8257575757575758,
+      "recall": 0.990909090909091,
+      "f1": 0.9008264462809917
+     }
+    ]
+   },
+   {
+    "method": "ens-embed",
+    "precision": 0.7794822627037392,
+    "recall": 0.5,
+    "f1": 0.609216935181716,
+    "macroF1": 0.48942967248932717,
+    "given": 0.6883005977796754,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.7,
+      "recall": 0.23333333333333334,
+      "f1": 0.35
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.6451612903225806,
+      "recall": 0.25316455696202533,
+      "f1": 0.36363636363636365
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7551020408163265,
+      "recall": 0.5648854961832062,
+      "f1": 0.646288209606987
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7640449438202247,
+      "recall": 0.7906976744186046,
+      "f1": 0.7771428571428571
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.8414634146341463,
+      "recall": 0.8961038961038961,
+      "f1": 0.8679245283018868
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.6190476190476191,
+      "recall": 0.26,
+      "f1": 0.36619718309859156
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.7,
+      "recall": 0.28,
+      "f1": 0.4
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.7368421052631579,
+      "recall": 0.2978723404255319,
+      "f1": 0.4242424242424243
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.8181818181818182,
+      "recall": 0.32142857142857145,
+      "f1": 0.46153846153846156
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.5789473684210527,
+      "recall": 0.36666666666666664,
+      "f1": 0.44897959183673464
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7840909090909091,
+      "recall": 0.711340206185567,
+      "f1": 0.745945945945946
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.6857142857142857,
+      "recall": 0.75,
+      "f1": 0.7164179104477612
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.8070175438596491,
+      "recall": 0.696969696969697,
+      "f1": 0.7479674796747967
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.8,
+      "recall": 0.04,
+      "f1": 0.07619047619047618
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.8,
+      "recall": 0.6486486486486487,
+      "f1": 0.7164179104477612
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.819672131147541,
+      "recall": 0.819672131147541,
+      "f1": 0.819672131147541
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.7,
+      "recall": 0.14,
+      "f1": 0.23333333333333336
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.8151260504201681,
+      "recall": 0.40756302521008403,
+      "f1": 0.5434173669467787
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.9230769230769231,
+      "recall": 0.48,
+      "f1": 0.631578947368421
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.78,
+      "recall": 0.8041237113402062,
+      "f1": 0.7918781725888325
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.5714285714285714,
+      "recall": 0.13333333333333333,
+      "f1": 0.21621621621621623
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.828125,
+      "recall": 0.9636363636363636,
+      "f1": 0.8907563025210083
+     }
+    ]
+   },
+   {
+    "method": "ens-light",
+    "precision": 0.7566938300349243,
+    "recall": 0.3997539975399754,
+    "f1": 0.5231388329979879,
+    "macroF1": 0.40471077595903127,
+    "given": 0.6046114432109309,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.625,
+      "recall": 0.16666666666666666,
+      "f1": 0.2631578947368421
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.696969696969697,
+      "recall": 0.2911392405063291,
+      "f1": 0.41071428571428575
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7816091954022989,
+      "recall": 0.5190839694656488,
+      "f1": 0.6238532110091743
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7681159420289855,
+      "recall": 0.6162790697674418,
+      "f1": 0.6838709677419355
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.8266666666666667,
+      "recall": 0.8051948051948052,
+      "f1": 0.8157894736842106
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.7058823529411765,
+      "recall": 0.24,
+      "f1": 0.3582089552238806
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.625,
+      "recall": 0.2,
+      "f1": 0.30303030303030304
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0.25,
+      "recall": 0.019230769230769232,
+      "f1": 0.03571428571428572
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.6470588235294118,
+      "recall": 0.23404255319148937,
+      "f1": 0.34375
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.7272727272727273,
+      "recall": 0.2857142857142857,
+      "f1": 0.4102564102564102
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.5833333333333334,
+      "recall": 0.23333333333333334,
+      "f1": 0.33333333333333337
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.7525773195876289,
+      "recall": 0.7525773195876289,
+      "f1": 0.752577319587629
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.6857142857142857,
+      "recall": 0.75,
+      "f1": 0.7164179104477612
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.75,
+      "recall": 0.5909090909090909,
+      "f1": 0.6610169491525425
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.7096774193548387,
+      "recall": 0.5945945945945946,
+      "f1": 0.6470588235294118
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.8536585365853658,
+      "recall": 0.5737704918032787,
+      "f1": 0.6862745098039217
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.5,
+      "recall": 0.06,
+      "f1": 0.10714285714285712
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.7222222222222222,
+      "recall": 0.0546218487394958,
+      "f1": 0.1015625
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.75,
+      "recall": 0.12,
+      "f1": 0.20689655172413793
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.7959183673469388,
+      "recall": 0.8041237113402062,
+      "f1": 0.8
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.7777777777777778,
+      "recall": 0.9545454545454546,
+      "f1": 0.8571428571428572
+     }
+    ]
+   },
+   {
+    "method": "ens-nopassages",
+    "precision": 0.7848990342405618,
+    "recall": 0.5498154981549815,
+    "f1": 0.6466546112115732,
+    "macroF1": 0.4985880673785305,
+    "given": 0.7164816396242528,
+    "bestSingleThresholdF1": 0,
+    "bestSingleThreshold": 0,
+    "bestP": 0,
+    "bestR": 0,
+    "bestGiven": 0,
+    "genresAbstaining": 0,
+    "genres": [
+     {
+      "genre": "adventure",
+      "support": 29,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "arts",
+      "support": 30,
+      "precision": 0.7142857142857143,
+      "recall": 0.16666666666666666,
+      "f1": 0.2702702702702703
+     },
+     {
+      "genre": "biography",
+      "support": 79,
+      "precision": 0.7297297297297297,
+      "recall": 0.34177215189873417,
+      "f1": 0.46551724137931033
+     },
+     {
+      "genre": "children",
+      "support": 131,
+      "precision": 0.7863247863247863,
+      "recall": 0.7022900763358778,
+      "f1": 0.7419354838709677
+     },
+     {
+      "genre": "crime",
+      "support": 86,
+      "precision": 0.7816091954022989,
+      "recall": 0.7906976744186046,
+      "f1": 0.7861271676300577
+     },
+     {
+      "genre": "drama",
+      "support": 77,
+      "precision": 0.8235294117647058,
+      "recall": 0.9090909090909091,
+      "f1": 0.8641975308641976
+     },
+     {
+      "genre": "fantasy",
+      "support": 19,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "historical",
+      "support": 50,
+      "precision": 0.72,
+      "recall": 0.36,
+      "f1": 0.4799999999999999
+     },
+     {
+      "genre": "history",
+      "support": 25,
+      "precision": 0.5,
+      "recall": 0.08,
+      "f1": 0.13793103448275865
+     },
+     {
+      "genre": "humour",
+      "support": 52,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0
+     },
+     {
+      "genre": "myths",
+      "support": 47,
+      "precision": 0.75,
+      "recall": 0.3191489361702128,
+      "f1": 0.4477611940298508
+     },
+     {
+      "genre": "nature",
+      "support": 28,
+      "precision": 0.875,
+      "recall": 0.25,
+      "f1": 0.3888888888888889
+     },
+     {
+      "genre": "philosophy",
+      "support": 30,
+      "precision": 0.6470588235294118,
+      "recall": 0.36666666666666664,
+      "f1": 0.46808510638297873
+     },
+     {
+      "genre": "poetry",
+      "support": 97,
+      "precision": 0.8202247191011236,
+      "recall": 0.7525773195876289,
+      "f1": 0.7849462365591398
+     },
+     {
+      "genre": "psychology",
+      "support": 32,
+      "precision": 0.7027027027027027,
+      "recall": 0.8125,
+      "f1": 0.7536231884057971
+     },
+     {
+      "genre": "religion",
+      "support": 66,
+      "precision": 0.7678571428571429,
+      "recall": 0.6515151515151515,
+      "f1": 0.7049180327868853
+     },
+     {
+      "genre": "romance",
+      "support": 100,
+      "precision": 0.6,
+      "recall": 0.09,
+      "f1": 0.1565217391304348
+     },
+     {
+      "genre": "science",
+      "support": 37,
+      "precision": 0.7777777777777778,
+      "recall": 0.5675675675675675,
+      "f1": 0.65625
+     },
+     {
+      "genre": "science-fiction",
+      "support": 61,
+      "precision": 0.7777777777777778,
+      "recall": 0.9180327868852459,
+      "f1": 0.8421052631578947
+     },
+     {
+      "genre": "self-help",
+      "support": 50,
+      "precision": 0.5555555555555556,
+      "recall": 0.2,
+      "f1": 0.29411764705882354
+     },
+     {
+      "genre": "short-stories",
+      "support": 238,
+      "precision": 0.8224852071005917,
+      "recall": 0.5840336134453782,
+      "f1": 0.683046683046683
+     },
+     {
+      "genre": "society",
+      "support": 25,
+      "precision": 0.8571428571428571,
+      "recall": 0.48,
+      "f1": 0.6153846153846153
+     },
+     {
+      "genre": "travel",
+      "support": 97,
+      "precision": 0.8125,
+      "recall": 0.8041237113402062,
+      "f1": 0.8082901554404145
+     },
+     {
+      "genre": "war",
+      "support": 30,
+      "precision": 0.6666666666666666,
+      "recall": 0.13333333333333333,
+      "f1": 0.2222222222222222
+     },
+     {
+      "genre": "western",
+      "support": 110,
+      "precision": 0.8181818181818182,
+      "recall": 0.9818181818181818,
+      "f1": 0.8925619834710744
+     }
+    ]
+   }
+  ]
+ },
+ "seconds": 271.851879045,
+ "costs": {
+  "mean": {
+   "trainSecondsPerFit": 0.4649951624,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.01587456874466268
+  },
+  "meta": {
+   "trainSecondsPerFit": 0.3688205292,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.011909909479077711
+  },
+  "neighbours": {
+   "trainSecondsPerFit": 0.0040321936,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.4058121929974381
+  },
+  "passages-mean": {
+   "trainSecondsPerFit": 2.122417869,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.0699420853970965
+  },
+  "passages-share": {
+   "trainSecondsPerFit": 2.122417869,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.0699420853970965
+  },
+  "passages-topk": {
+   "trainSecondsPerFit": 2.122417869,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.0699420853970965
+  },
+  "tfidf": {
+   "trainSecondsPerFit": 2.4963907553999998,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.6598854449188728
+  },
+  "tfidf1000": {
+   "trainSecondsPerFit": 2.4963907553999998,
+   "trainDocsPerFit": 936,
+   "predictMsPerDoc": 0.6598854449188728
+  }
+ }
+}

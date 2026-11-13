@@ -83,16 +83,16 @@ config-reference-check: | $(GO_CACHE) go-toolchain ## Fail when docs/configurati
 .PHONY: check-go
 check-go: fmt-check vet test-go openapi-check sqlc-check config-reference-check ## The backend gate: formatting, vet, race-checked tests, OpenAPI and sqlc drift, the configuration reference
 
-# Both reach the internet, which nothing in the gate does. A provider's token
-# in the environment, GOTOME_HARDCOVER_TOKEN, is passed on by name, so its
-# value shows in no command line.
+# Both reach the internet, which nothing in the gate does. Providers' keys in
+# the environment, GOTOME_HARDCOVER_TOKEN and GOTOME_GOOGLE_BOOKS_KEY, are
+# passed on by name, so their values show in no command line.
 .PHONY: record-fixtures
 record-fixtures: | $(GO_CACHE) go-toolchain ## Record the provider answers their tests replay that are missing (asks the live APIs)
-	$(call go_run,-e GOTOME_RECORD_FIXTURES=1 -e GOTOME_HARDCOVER_TOKEN) go test -count=1 ./internal/metadata/...
+	$(call go_run,-e GOTOME_RECORD_FIXTURES=1 -e GOTOME_HARDCOVER_TOKEN -e GOTOME_GOOGLE_BOOKS_KEY) go test -count=1 ./internal/metadata/...
 
 .PHONY: contract-test
 contract-test: | $(GO_CACHE) go-toolchain ## Ask the live metadata providers whether they still answer as the fixtures say
-	$(call go_run,-e GOTOME_LIVE=1 -e GOTOME_HARDCOVER_TOKEN) go test -count=1 -run Live -v ./internal/metadata/...
+	$(call go_run,-e GOTOME_LIVE=1 -e GOTOME_HARDCOVER_TOKEN -e GOTOME_GOOGLE_BOOKS_KEY) go test -count=1 -run Live -v ./internal/metadata/...
 
 .PHONY: test-koplugin
 test-koplugin: | $(GO_CACHE) go-toolchain ## Run the KOReader plugin's tests in LuaJIT, as KOReader runs it

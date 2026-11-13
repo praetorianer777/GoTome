@@ -202,7 +202,10 @@ func ApplyFileMetadataTx(ctx context.Context, tx pgx.Tx, fileID uuid.UUID, m Fil
 	if update.FieldSources, err = json.Marshal(sources); err != nil {
 		return err
 	}
-	return q.UpdateBookDescribed(ctx, update)
+	if err := q.UpdateBookDescribed(ctx, update); err != nil {
+		return err
+	}
+	return RefreshAgeRating(ctx, q, book.ID)
 }
 
 // CoverKey returns the key of the cover of a book the scope may see, or

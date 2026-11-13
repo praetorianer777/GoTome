@@ -49,7 +49,7 @@ type Outcome struct {
 	Conflicts []Conflict `json:"conflicts,omitempty"`
 }
 
-type move struct{ from, to string }
+type move struct{ from, to, stop string }
 
 // UndoAction puts the books of an action the scope sees back as they were
 // before it, in one transaction, unless something about them changed since
@@ -84,6 +84,32 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 		}
 
 		var moves []move
+		if a.Kind == ActionOrganise {
+			if s.Hooks.UndoOrganiseTx == nil {
+				return stop(OutcomeNotUndoable, "Files cannot be moved here.", nil)
+			}
+			if err := q.LockLibraryFiles(ctx, a.LibraryID); err != nil {
+				return err
+			}
+			files, state, message, err := s.Hooks.UndoOrganiseTx(ctx, tx, a.LibraryID, a.Before)
+			if err != nil {
+				return err
+			}
+			if state != "" {
+				return stop(state, message, nil)
+			}
+			for _, f := range files {
+				moves = append(moves, move{from: f.From, to: f.To, stop: f.Stop})
+			}
+			if err := q.SetCurationActionUndone(ctx, sqlc.SetCurationActionUndoneParams{ID: id, By: &scope.Viewer}); err != nil {
+				return err
+			}
+			if err := q.SettleCurationRun(ctx, a.RunID); err != nil {
+				return err
+			}
+			out.State = OutcomeUndone
+			return moveFiles(moves, &made)
+		}
 		if len(a.TrashedFiles) > 0 {
 			if err := q.LockLibraryFiles(ctx, a.LibraryID); err != nil {
 				return err
@@ -141,16 +167,7 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 		}
 		out.State = OutcomeUndone
 		// Last, so that nothing after them can fail but the commit.
-		for _, m := range moves {
-			made = append(made, m)
-			if err := os.MkdirAll(filepath.Dir(m.to), 0o755); err != nil {
-				return err
-			}
-			if err := os.Rename(m.from, m.to); err != nil {
-				return err
-			}
-		}
-		return nil
+		return moveFiles(moves, &made)
 	})
 	if err != nil {
 		for _, m := range made {
@@ -169,10 +186,40 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 	}
 	if out.State == OutcomeUndone {
 		for _, m := range made {
-			_ = os.Remove(filepath.Dir(m.from))
+			removeEmptyFolders(filepath.Dir(m.from), m.stop)
 		}
 	}
 	return out, nil
+}
+
+// moveFiles renames the files, making their folders, and notes each in made
+// before it tries, so that a failure can take it back.
+func moveFiles(moves []move, made *[]move) error {
+	for _, m := range moves {
+		*made = append(*made, m)
+		if err := os.MkdirAll(filepath.Dir(m.to), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(m.from, m.to); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// removeEmptyFolders removes a folder if it is empty, and, when stop names
+// the folder to stay inside, the empty folders above it, up to but not
+// including stop. Without stop it is the one folder.
+func removeEmptyFolders(dir, stop string) {
+	for {
+		if stop != "" && (dir == stop || !strings.HasPrefix(dir, stop+string(filepath.Separator))) {
+			return
+		}
+		if err := os.Remove(dir); err != nil || stop == "" {
+			return
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 // filesToRestore checks that the files an action trashed are still in the

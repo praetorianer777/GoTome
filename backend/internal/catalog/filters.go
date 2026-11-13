@@ -344,6 +344,7 @@ func visibleBooksIn(registry filter.Registry, scope library.Scope, libraryID *uu
 	where := []string{
 		"b.deleted_at IS NULL",
 		"b.library_id IN (SELECT * FROM visible_library_ids(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + "))",
+		"(b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(" + arg(scope.Viewer) + ", " + arg(scope.SeesAll) + ")))",
 	}
 	if libraryID != nil {
 		where = append(where, "b.library_id = "+arg(*libraryID))

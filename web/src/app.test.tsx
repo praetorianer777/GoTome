@@ -1056,6 +1056,62 @@ describe("libraries", () => {
 		});
 	});
 
+	it("previews what organising a library's files would move, and moves them", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("Novels");
+		renderApp("/admin/libraries");
+
+		const row = within(await screen.findByRole("listitem", { name: "Novels" }));
+		const pattern = row.getByLabelText("Pattern");
+		expect(pattern).toHaveValue("{author}/[{series}/][{series_index} - ]{title}.{ext}");
+		expect(row.queryByRole("button", { name: /^Move \d+ files$/ })).not.toBeInTheDocument();
+
+		await person.click(row.getByRole("button", { name: "Preview" }));
+		expect(
+			await row.findByText(/^2 of 3 files would move, 1 are in place, 1 get a number/),
+		).toBeInTheDocument();
+		const moves = within(row.getByRole("list", { name: "Moves" }));
+		expect(moves.getAllByRole("listitem")).toHaveLength(2);
+		expect(moves.getByText("Jane Austen/Emma (2).epub", { exact: false })).toBeInTheDocument();
+		expect(moves.getByText("numbered")).toBeInTheDocument();
+
+		await person.type(pattern, "x");
+		expect(row.getByText(/The pattern changed since the preview/)).toBeInTheDocument();
+		expect(row.getByRole("button", { name: "Move 2 files" })).toBeDisabled();
+		await person.type(pattern, "{Backspace}");
+		await person.click(row.getByRole("button", { name: "Move 2 files" }));
+
+		expect(await row.findByText("The files are being moved in the background.")).toBeInTheDocument();
+		expect(server.organiseRuns).toEqual([
+			{ library: "lib-1", pattern: "{author}/[{series}/][{series_index} - ]{title}.{ext}" },
+		]);
+		expect(row.getByRole("link", { name: "Follow the run under Changes" })).toBeInTheDocument();
+	});
+
+	it("organises an external library only after it is writable and opted in", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.signedInAs("Steve")
+			.withLibrary("NAS", { mode: "external", writable: false, rootPath: "/books" });
+		renderApp("/admin/libraries");
+
+		const nas = within(await screen.findByRole("listitem", { name: "NAS" }));
+		expect(nas.getByText(/Turn on "GOtome may change files here" first/)).toBeInTheDocument();
+		expect(nas.getByRole("checkbox", { name: /rename and sort the files/ })).toBeDisabled();
+		expect(nas.queryByLabelText("Pattern")).not.toBeInTheDocument();
+
+		await person.click(nas.getByRole("checkbox", { name: "GOtome may change files here" }));
+		await waitFor(() => expect(server.libraries[0]?.writable).toBe(true));
+		expect(nas.queryByLabelText("Pattern")).not.toBeInTheDocument();
+		await person.click(nas.getByRole("checkbox", { name: /rename and sort the files/ }));
+		await waitFor(() => expect(server.libraries[0]?.organiseEnabled).toBe(true));
+		expect(await nas.findByLabelText("Pattern")).toBeInTheDocument();
+	});
+
 	it("shows a scan that is under way and one that failed", async () => {
 		const scan = {
 			id: "scan-1",
@@ -2037,7 +2093,7 @@ describe("settings", () => {
 	it("offers each setting of a few values as a choice, in sections", async () => {
 		const person = userEvent.setup();
 		server.withAccount("Steve", "a long password").signedInAs("Steve");
-		renderApp("/admin/settings");
+		const { router } = renderApp("/admin/settings");
 
 		const sections = within(
 			await screen.findByRole("navigation", { name: "Sections" }),
@@ -2052,6 +2108,18 @@ describe("settings", () => {
 			"href",
 			"#settings-genres",
 		);
+		// The page's <base href="/"> would take a bare "#…" to the start page
+		// (#521): the link scrolls and focuses within the page instead.
+		const scroll = vi.fn();
+		Element.prototype.scrollIntoView = scroll;
+		try {
+			await person.click(sections.getByRole("link", { name: "Genres" }));
+			expect(scroll).toHaveBeenCalled();
+			expect(screen.getByRole("region", { name: "Genres" })).toHaveFocus();
+			expect(router.state.location.pathname).toBe("/admin/settings");
+		} finally {
+			delete (Element.prototype as Partial<Element>).scrollIntoView;
+		}
 		const signIn = within(screen.getByRole("region", { name: "Sign-in" }));
 		const passwords = signIn.getByRole("switch", {
 			name: "Sign in with a password",
@@ -2792,6 +2860,36 @@ describe("profile", () => {
 	});
 });
 
+describe("age ratings of accounts", () => {
+	it("lets an administrator limit an account to books up to a rating", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Steve", "a long password")
+			.withAccount("Edith", "a long password", "reader")
+			.signedInAs("Steve");
+		renderApp("/admin/users");
+
+		const edith = within(
+			await screen.findByRole("listitem", { name: "Edith" }),
+		);
+		expect(edith.getByLabelText("Books this account sees")).toHaveValue("");
+		await person.selectOptions(
+			edith.getByLabelText("Books this account sees"),
+			"Up to age rating 12",
+		);
+		await person.click(edith.getByRole("button", { name: "Set the limit" }));
+		await waitFor(() =>
+			expect(server.accounts.get("edith")?.maxAgeRating).toBe(12),
+		);
+		const steve = within(
+			await screen.findByRole("listitem", { name: "Steve" }),
+		);
+		expect(
+			steve.queryByLabelText("Books this account sees"),
+		).not.toBeInTheDocument();
+	});
+});
+
 describe("quotas", () => {
 	it("lets an administrator set a quota, which the uploader sees and meets", async () => {
 		const person = userEvent.setup();
@@ -3068,6 +3166,29 @@ describe("editing a book", () => {
 		await person.click(screen.getByRole("button", { name: "Save" }));
 		await waitFor(() => expect(edits()).toHaveLength(2));
 		expect(edits()[1]).toEqual({ locks: { title: false } });
+	});
+
+	it("rates a book by age and takes the rating off again", async () => {
+		const person = userEvent.setup();
+		withBook();
+		const { unmount } = renderApp("/books/book-1/edit");
+		const rating = await screen.findByRole("combobox", { name: "Age rating" });
+		expect(rating).toHaveValue("");
+		await person.selectOptions(rating, "From 16");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(edits()).toHaveLength(1));
+		expect(edits()[0]).toEqual({ ageRating: 16 });
+		expect(server.books[0]?.ageRating).toBe(16);
+		unmount();
+
+		renderApp("/books/book-1/edit");
+		const again = await screen.findByRole("combobox", { name: "Age rating" });
+		await waitFor(() => expect(again).toHaveValue("16"));
+		expect(screen.getByRole("checkbox", { name: "Lock Age rating" })).toBeChecked();
+		await person.selectOptions(again, "Unrated");
+		await person.click(screen.getByRole("button", { name: "Save" }));
+		await waitFor(() => expect(edits()).toHaveLength(2));
+		expect(edits()[1]).toEqual({ ageRating: -1 });
 	});
 
 	it("offers names already in use and shows the server's word at its field", async () => {

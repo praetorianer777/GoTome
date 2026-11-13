@@ -89,6 +89,15 @@ database with `random_page_cost = 1.1` as the compose file sets it:
 | overview of a library | 40 ms | 40 ms | counts every book and file |
 | overview: work | 166 ms | 145 ms | counts every book and file |
 
+The age rating of accounts (#426) is part of every list's visibility rule.
+The scale test rates a third of the books and gives the member a maximum, so
+that the rule is worked out for every row; it is written as a comparison
+with a once-per-statement `(SELECT age_limit(viewer, sees_all))` because a
+function of the row would be called for every row (the filter views took
+1.8 seconds that way) and a `COALESCE` on the column would hide it from the
+planner's statistics (the filtered facets took 400 ms instead of 50). The
+views stay where they were.
+
 The duplicate rules (#466) are a job, not a view. The scale test counts the
 classes of the seed's open pairs (`resolvable duplicates`, 24 ms) and runs a
 dry run over 907 of them, 20 pairs of each class mixed, on two CPUs: 21
