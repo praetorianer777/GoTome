@@ -2146,6 +2146,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/kobo/{token}/v1/products/{bookId}/rating/{rating}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** The stars a Kobo reader gives a book: the person's own rating, 0 for none */
+        put: operations["koboRatePut"];
+        /** The stars a Kobo reader gives a book: the person's own rating, 0 for none */
+        post: operations["koboRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kobo/{token}/v1/products/{productId}/nextread": {
         parameters: {
             query?: never;
@@ -10751,6 +10769,68 @@ export interface operations {
             path: {
                 token: string;
                 listId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRatePut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                rating: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                rating: string;
             };
             cookie?: never;
         };

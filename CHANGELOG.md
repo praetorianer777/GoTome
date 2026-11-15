@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Stars given to a book on a Kobo reader ("Rate this book") are now your own
+  rating of the book in GOtome. A reader asks GOtome for where to send them
+  at its next sync; ratings given before went to Kobo's store and need giving
+  again ([Kobo readers](docs/tolino-kobo-mode.md#4-point-the-reader-at-gotome)).
+
 ## [0.26.0] - 2026-11-13
 
 ### Added
