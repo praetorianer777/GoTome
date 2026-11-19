@@ -5,7 +5,9 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -170,9 +172,15 @@ func TestTheMatchScoreIsLearnedMeasuredExportedAndImported(t *testing.T) {
 	if status != 200 || !strings.Contains(string(exported), `"featureVersion": 1`) {
 		t.Fatalf("export: %d %s", status, exported)
 	}
+	words, numbers := exportedParts(t, exported)
 	for _, private := range []string{"Lamp", "Ada", "Quill", "Someone", "978", lib.String()} {
-		if strings.Contains(string(exported), private) {
+		if strings.Contains(words, private) {
 			t.Errorf("the export names %q:\n%s", private, exported)
+		}
+	}
+	for _, n := range numbers {
+		if math.Abs(n) >= 1e9 {
+			t.Errorf("the export holds %v, as large as an ISBN:\n%s", n, exported)
 		}
 	}
 
@@ -257,4 +265,37 @@ func TestALibraryInGermanRanksWithTheShippedWeightsOnceLearnedOnesAreChosen(t *t
 	if got := using(); got != "handSet" {
 		t.Errorf("the hand-set weights, when chosen: %q", got)
 	}
+}
+
+// exportedParts splits an export into its keys and strings, where a name or
+// an ISBN would be written, and its numbers, whose digits may hold "978" by
+// chance.
+func exportedParts(t *testing.T, exported []byte) (string, []float64) {
+	t.Helper()
+	var v any
+	if err := json.Unmarshal(exported, &v); err != nil {
+		t.Fatalf("the export is no JSON: %v", err)
+	}
+	var words strings.Builder
+	var numbers []float64
+	var walk func(any)
+	walk = func(v any) {
+		switch v := v.(type) {
+		case map[string]any:
+			for k, x := range v {
+				words.WriteString(k + "\n")
+				walk(x)
+			}
+		case []any:
+			for _, x := range v {
+				walk(x)
+			}
+		case string:
+			words.WriteString(v + "\n")
+		case float64:
+			numbers = append(numbers, v)
+		}
+	}
+	walk(v)
+	return words.String(), numbers
 }
