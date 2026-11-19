@@ -19,7 +19,11 @@ func PrintCheck(w io.Writer, r CheckReport, precision float64) {
 	fmt.Fprintf(w, "  with a vector              %d (%s)\n", r.Embedded, pct(r.Embedded, r.Books))
 	fmt.Fprintf(w, "  with tags                  %d (%s)\n", r.Tagged, pct(r.Tagged, r.Books))
 	fmt.Fprintf(w, "  with a genre from tags     %d (%s)\n", r.FromTags, pct(r.FromTags, r.Books))
-	fmt.Fprintf(w, "Tagged books asked about     %d\n\n", r.Sample)
+	fmt.Fprintf(w, "Tagged books asked about     %d\n", r.Sample)
+	if r.TrainedGenres > 0 {
+		fmt.Fprintf(w, "Ensemble trained out of fold on %d books a fold, %d genres\n", r.Trained, r.TrainedGenres)
+	}
+	fmt.Fprintln(w)
 
 	t := tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
 	fmt.Fprintln(t, "Genre\tBooks from tags\t")
@@ -41,6 +45,15 @@ func PrintCheck(w io.Writer, r CheckReport, precision float64) {
 		fmt.Fprintf(w, "\n== %s\n", m.Method)
 		fmt.Fprintf(w, "With the thresholds now: precision %.2f, recall %.2f, F1 %.2f, books given a genre %.0f%%\n",
 			m.Current.Precision, m.Current.Recall, m.Current.F1, 100*m.Current.Covered)
+		if len(m.Decided) > 0 {
+			fmt.Fprintln(w, "Per genre, at the thresholds it calibrated itself (a genre it never gave has no precision):")
+			t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
+			fmt.Fprintln(t, "genre\tbooks\tprecision\trecall\tF1\t")
+			for _, g := range m.Decided {
+				fmt.Fprintf(t, "%s\t%d\t%.2f\t%.2f\t%.2f\t\n", g.Genre, g.Positives, g.Precision, g.Recall, g.F1)
+			}
+			t.Flush()
+		}
 		if len(m.Sweep) > 0 {
 			fmt.Fprintf(w, "One threshold for every genre, at most %d a book:\n", MaxGenres)
 			t = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/praetorianer777/gotome/backend/internal/db/sqlc"
 	"github.com/praetorianer777/gotome/backend/internal/similar"
+	"github.com/praetorianer777/gotome/backend/internal/wordcount"
 )
 
 // Methods a check measures: the zero-shot score from the content vector
@@ -32,6 +33,12 @@ type CheckOptions struct {
 	// Neighbours asks for each book's nearest books too, a look at the
 	// vectors of its library per book.
 	Neighbours bool
+	// Ensemble measures the ensemble too, trained out of fold, and each of
+	// its inputs beside it.
+	Ensemble bool
+	// Train is how many tagged books the ensemble is trained on, the
+	// sample among them; at least Books.
+	Train int
 }
 
 // CheckReport is what a check found.
@@ -51,8 +58,12 @@ type CheckReport struct {
 	// Spellings first.
 	Unmapped []TagCount `json:"unmapped"`
 	// Sample is how many tagged books were asked about.
-	Sample  int            `json:"sample"`
-	Methods []MethodReport `json:"methods"`
+	Sample int `json:"sample"`
+	// Trained is how many books the ensembles of the folds were trained
+	// on on average, and TrainedGenres how many genres had enough of them.
+	Trained       int            `json:"trained,omitempty"`
+	TrainedGenres int            `json:"trainedGenres,omitempty"`
+	Methods       []MethodReport `json:"methods"`
 }
 
 // TagCount is a tag and how many books have it.
@@ -74,6 +85,9 @@ type MethodReport struct {
 	// precision asked for with the most recall, or failing that the best
 	// F1.
 	Genres []GenreResult `json:"genres,omitempty"`
+	// Decided is per genre what the method gave at the thresholds it
+	// chose itself, for the ensemble.
+	Decided []GenreResult `json:"decided,omitempty"`
 }
 
 // Point is a method's precision and recall at a threshold, micro-averaged
@@ -103,6 +117,21 @@ type GenreResult struct {
 type sampled struct {
 	truth  []string
 	scores map[string]map[string]float64
+	// given is what a method decided itself, where it has thresholds of
+	// its own.
+	given map[string][]string
+}
+
+// loaded is a book read for a check: the training pool is made of them,
+// and the sample is those of them that are measured.
+type loaded struct {
+	id      uuid.UUID
+	truth   []string
+	vectors Vectors
+	lang    string
+	counts  wordcount.Counts
+	shares  map[string]float64
+	one     *sampled
 }
 
 // Check measures how well each method finds the genres the tags of a
@@ -175,14 +204,18 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 	slices.SortFunc(r.Unmapped, func(a, b TagCount) int { return cmp.Or(b.Books-a.Books, cmp.Compare(a.Tag, b.Tag)) })
 	r.Unmapped = r.Unmapped[:min(len(r.Unmapped), 40)]
 	slices.SortFunc(candidates, func(a, b candidate) int { return cmp.Compare(a.hash, b.hash) })
-	candidates = candidates[:min(len(candidates), opts.Books)]
+	pool := candidates[:min(len(candidates), max(opts.Books, opts.Train))]
+	if !opts.Ensemble {
+		pool = pool[:min(len(pool), opts.Books)]
+	}
 
 	genreVecs, err := s.genreVectors(ctx, spec)
 	if err != nil {
 		return CheckReport{}, err
 	}
+	var loadedBooks []*loaded
 	var sample []sampled
-	for _, c := range candidates {
+	for i, c := range pool {
 		book, library, err := s.bookVectors(ctx, spec, c.id)
 		if err != nil {
 			return CheckReport{}, err
@@ -198,7 +231,17 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			}
 			book.Metadata = vecs[0]
 		}
-		one := sampled{truth: truth[c.id], scores: map[string]map[string]float64{}}
+		lb := &loaded{id: c.id, truth: truth[c.id], vectors: book}
+		if opts.Ensemble {
+			if lb.lang, lb.counts, err = s.words(ctx, c.id); err != nil {
+				return CheckReport{}, err
+			}
+		}
+		loadedBooks = append(loadedBooks, lb)
+		if i >= opts.Books {
+			continue
+		}
+		one := sampled{truth: lb.truth, scores: map[string]map[string]float64{}, given: map[string][]string{}}
 		for method, v := range map[string]Vectors{
 			CheckContent: {Content: book.Content}, CheckMetadata: {Metadata: book.Metadata}, MethodVector: book,
 		} {
@@ -216,14 +259,29 @@ func (s *Service) Check(ctx context.Context, opts CheckOptions) (CheckReport, er
 			}
 			if shares := Shares(near); shares != nil {
 				one.scores[MethodNeighbours] = shares
+				lb.shares = shares
 			}
 		}
-		sample = append(sample, one)
+		lb.one = &one
+	}
+	if opts.Ensemble {
+		r.Trained, r.TrainedGenres = judgeOutOfFold(loadedBooks, spec.Model.Name)
+	}
+	for _, lb := range loadedBooks {
+		if lb.one != nil {
+			sample = append(sample, *lb.one)
+		}
 	}
 	r.Sample = len(sample)
 	methods := []string{CheckContent, CheckMetadata, MethodVector}
 	if opts.Neighbours {
 		methods = append(methods, MethodNeighbours, MethodCombined)
+	}
+	if opts.Ensemble {
+		methods = append(methods, MethodEnsemble)
+		for _, name := range InputNames {
+			methods = append(methods, inputMethod(name))
+		}
 	}
 	for _, m := range methods {
 		r.Methods = append(r.Methods, measure(sample, m, opts.Precision))
@@ -236,6 +294,9 @@ func thresholdOf(method string) func(string) float64 {
 	if method == MethodNeighbours {
 		return func(string) float64 { return NeighbourShare }
 	}
+	if isInputMethod(method) {
+		return func(string) float64 { return 0.5 }
+	}
 	return func(key string) float64 {
 		g, _ := Get(key)
 		return g.threshold()
@@ -247,6 +308,9 @@ func thresholdOf(method string) func(string) float64 {
 // genres and the vector's else, at the thresholds in the code, as Suggest
 // does.
 func predict(b sampled, method string, threshold func(string) float64) []string {
+	if got, ok := b.given[method]; ok {
+		return got
+	}
 	if method == MethodCombined {
 		if _, ok := b.scores[MethodNeighbours]; ok {
 			return predict(b, MethodNeighbours, thresholdOf(MethodNeighbours))
@@ -300,12 +364,56 @@ func share(n, of int) float64 {
 	return float64(n) / float64(of)
 }
 
+// withoutGiven is the sample with what the method decided itself taken
+// off, so that the sweep runs on its scores.
+func withoutGiven(sample []sampled, method string) []sampled {
+	out := make([]sampled, len(sample))
+	for i, b := range sample {
+		out[i] = b
+		out[i].given = nil
+	}
+	return out
+}
+
+// decided is each genre's precision and recall at what the method gave.
+func decided(sample []sampled, method string) []GenreResult {
+	var out []GenreResult
+	for _, g := range List {
+		var positives, right, given int
+		for _, b := range sample {
+			want := slices.Contains(b.truth, g.Key)
+			if want {
+				positives++
+			}
+			if slices.Contains(b.given[method], g.Key) {
+				given++
+				if want {
+					right++
+				}
+			}
+		}
+		if positives == 0 && given == 0 {
+			continue
+		}
+		p := rates(right, given, positives, 0, 0)
+		out = append(out, GenreResult{
+			Genre: g.Key, Positives: positives, Precision: p.Precision, Recall: p.Recall, F1: p.F1,
+			Reached: given > 0 && p.Precision >= TargetPrecision,
+		})
+	}
+	return out
+}
+
 // measure is a method's report: at the thresholds now, swept over
 // thresholds taken from its scores, and the best threshold per genre.
 func measure(sample []sampled, method string, precision float64) MethodReport {
 	r := MethodReport{Method: method, Current: point(sample, method, thresholdOf(method))}
 	if method == MethodCombined {
 		return r
+	}
+	if method == MethodEnsemble {
+		r.Decided = decided(sample, method)
+		sample = withoutGiven(sample, method)
 	}
 	steps := sweep(sample, method)
 	for _, t := range steps {
@@ -364,6 +472,9 @@ func measure(sample []sampled, method string, precision float64) MethodReport {
 func sweep(sample []sampled, method string) []float64 {
 	if method == MethodNeighbours {
 		return []float64{0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1}
+	}
+	if method == MethodEnsemble || isInputMethod(method) {
+		return []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9}
 	}
 	var all []float64
 	for _, b := range sample {
