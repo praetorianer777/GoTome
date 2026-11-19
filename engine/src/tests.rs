@@ -154,6 +154,22 @@ fn only_the_libraries_and_books_named_are_searched() {
 }
 
 #[test]
+fn excluded_books_are_never_found_however_well_they_match() {
+    let dir = TempDir::new("exclude");
+    let e = Engine::open(&dir.0, 20_000_000).unwrap();
+    fill(&e);
+    let mut q = search(&[LIB_A, LIB_B]);
+    q.words = "whale".into();
+    let all = ids(e.search(&q).unwrap());
+    assert!(all.contains(&4));
+    q.exclude_books = vec![BOOK_3.into()];
+    let rest = ids(e.search(&q).unwrap());
+    assert!(!rest.contains(&4) && !rest.is_empty());
+    q.limit = 1;
+    assert_eq!(ids(e.search(&q).unwrap()).len(), 1);
+}
+
+#[test]
 fn deletes_take_chunks_books_and_libraries_out() {
     let dir = TempDir::new("deletes");
     let e = Engine::open(&dir.0, 20_000_000).unwrap();

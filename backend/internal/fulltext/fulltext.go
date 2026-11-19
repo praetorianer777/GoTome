@@ -53,6 +53,9 @@ type Query struct {
 	Variants  [][]string  `json:"variants,omitempty"`
 	Libraries []uuid.UUID `json:"libraries"`
 	Books     []uuid.UUID `json:"books"`
+	// ExcludeBooks are never found: the best chunks are taken among the
+	// others, so what is left out cannot crowd the window.
+	ExcludeBooks []uuid.UUID `json:"exclude_books,omitempty"`
 	// Limit is how many of the best chunks are returned.
 	Limit int `json:"limit"`
 }
