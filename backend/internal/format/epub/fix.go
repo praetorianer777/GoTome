@@ -82,12 +82,9 @@ func Fix(r io.ReaderAt, size int64, w io.Writer, findings []string, modified tim
 			return Fixed{}, fmt.Errorf("no fix for %q", f)
 		}
 	}
-	zr, err := zip.NewReader(r, size)
+	zr, err := openZip(r, size, DefaultLimits)
 	if err != nil {
-		return Fixed{}, fmt.Errorf("%w: %v", ErrNotEPUB, err)
-	}
-	if len(zr.File) > DefaultLimits.MaxEntries {
-		return Fixed{}, fmt.Errorf("%w: %d entries", ErrTooLarge, len(zr.File))
+		return Fixed{}, err
 	}
 	a := newArchive(zr, DefaultLimits)
 	opfPath, err := a.packagePath()

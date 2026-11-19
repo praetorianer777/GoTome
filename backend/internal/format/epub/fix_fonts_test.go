@@ -2,6 +2,7 @@ package epub
 
 import (
 	"crypto/sha1"
+	"math/rand"
 	"slices"
 	"strings"
 	"testing"
@@ -171,7 +172,9 @@ func TestFixSubsetsObfuscatedFontsAndObfuscatesThemAgain(t *testing.T) {
 }
 
 func TestFixLeavesAFontItCannotSubsetAndRemovesItOnlyWhileTooLarge(t *testing.T) {
-	cff := "OTTO" + strings.Repeat("c", 1_100_000)
+	filler := make([]byte, 1_100_000)
+	rand.New(rand.NewSource(1)).Read(filler)
+	cff := "OTTO" + string(filler)
 	data := fontEPUB(t, []entry{
 		{"OEBPS/fonts/serif.ttf", string(fontsubset.Synthetic(8000))},
 		{"OEBPS/fonts/other.ttf", cff},
