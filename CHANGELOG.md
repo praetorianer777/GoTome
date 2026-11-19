@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The tags "Fantasy Fiction", "Murder", "Police", "Humoristische
+  Darstellung" and "Erlebnisbericht" now give a book its genre (fantasy,
+  crime, humour, biography) ([Genres](docs/genres.md)).
+
 ### Fixed
 
 - Books read while the search index was catching up could be missing from
@@ -19,6 +25,10 @@ What changes for someone who runs or uses GOtome. The format follows
   or brings back highlights you deleted since; it only moves them back to
   their book.
 
+- A file moved to the trash while GOtome was writing an edit into it no
+  longer comes back at its old place, which made restoring it fail with
+  "path taken".
+
 ### Security
 
 - An account made by single sign-on no longer keeps an e-mail address the
@@ -30,11 +40,11 @@ What changes for someone who runs or uses GOtome. The format follows
   catalogue feeds, downloads or the device's queue; the device token itself
   still does.
 
-### Changed
+- A link in a book now opens in a new tab only for web addresses, and the
+  page it opens can no longer reach or redirect GOtome's tab.
 
-- The tags "Fantasy Fiction", "Murder", "Police", "Humoristische
-  Darstellung" and "Erlebnisbericht" now give a book its genre (fantasy,
-  crime, humour, biography) ([Genres](docs/genres.md)).
+- The history of clean-ups and merges no longer names a book of a library
+  you cannot see.
 
 ## [0.27.0] - 2026-11-19
 
