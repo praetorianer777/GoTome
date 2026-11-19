@@ -1628,6 +1628,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `DELETE /deliveries/{id}` takes one off while it waits, or off a Kobo
   reader, whose next sync removes it. Other devices keep what they
   downloaded, so it is not offered there.
+- A device follows shelves (`internal/deliveries/sources.go`, #545):
+  `device_sources` (collection, smart shelf, or the owner's `reading` /
+  `wishlist` status), set by `PUT /devices/{id}/sources`. The job
+  `deliveries.sync_sources` (every ten minutes, and queued by
+  `shelves.Service.OnChange` after any shelf change; args with a user ID, or
+  none for everyone's) runs `Sources.SyncUser`: each source's books as the
+  owner sees them (`shelves.Get`, `SmartBookIDs`, `catalog.Select`) are
+  queued with `deliveries.manual = false` and recorded in `delivery_origins`;
+  an origin the book left is dropped; a delivery that is not `manual` and
+  has no origin goes, as `TakeBack` would (queued, or on a Kobo). A send by
+  hand (`QueueDeliveries`) sets `manual`, so it stays. A source that cannot
+  be read this time is left alone. `GET /devices/{id}/books` names each
+  book's origins.
+
 - The KOReader plugin (#197) is `backend/internal/koplugin/gotome.koplugin`
   (Lua), embedded so that `GET /koreader/plugin.zip` hands it out with
   `gotome_server.lua` naming the address the browser used. It reads the

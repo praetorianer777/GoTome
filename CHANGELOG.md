@@ -20,6 +20,12 @@ What changes for someone who runs or uses GOtome. The format follows
   collections of others and smart shelves are read only there
   ([Kobo readers](docs/tolino-kobo-mode.md#collections)).
 
+- A device can follow collections, smart shelves and your Reading and Want to
+  read lists: every book on them with an ebook is sent to it, and taken off
+  again when it leaves the shelf, unless you sent it by hand. Set it on the
+  device's page, which also says which shelf a book came from
+  ([E-readers](docs/devices.md)).
+
 ### Changed
 
 - The genres GOtome suggests out of the box are trained again from Project

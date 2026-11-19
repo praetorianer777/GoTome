@@ -149,3 +149,20 @@ func lockSmart(ctx context.Context, id uuid.UUID) func(*sqlc.Queries) (sqlc.Lock
 		return sqlc.LockCollectionRow(r), err
 	}
 }
+
+// SmartBookIDs is the IDs of the books on a smart shelf the scope may look
+// at that the scope sees, or catalog.ErrTooMany.
+func (s *Service) SmartBookIDs(ctx context.Context, scope library.Scope, id uuid.UUID) ([]uuid.UUID, error) {
+	r, err := sqlc.New(s.pool).GetSmartShelf(ctx, sqlc.GetSmartShelfParams{ID: id, Viewer: scope.Viewer})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	tree, err := filter.Parse(r.Filter)
+	if err != nil {
+		return nil, err
+	}
+	return s.books.Select(ctx, scope, nil, tree, nil)
+}

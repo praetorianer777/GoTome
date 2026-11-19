@@ -1492,6 +1492,12 @@ export const en = {
 	"deviceBooks.takeOff": "Take off this device",
 	"deviceBooks.takeOffNamed": "Take {title} off this device",
 	"deviceBooks.more": "Show more",
+	"deviceBooks.from": "From {shelves}",
+	"devices.follow.title": "Keep stocked from",
+	"devices.follow.hint": "Every book on these shelves that has an ebook is sent to this e-reader, and taken off again when it leaves them, unless you sent it by hand.",
+	"devices.follow.reading": "Reading",
+	"devices.follow.wishlist": "Want to read",
+	"devices.follow.smart": "{name} (smart shelf)",
 	"profile.agent": "{browser} on {system}",
 	"profile.agentUnknown": "An unknown browser",
 

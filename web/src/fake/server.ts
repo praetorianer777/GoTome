@@ -185,7 +185,10 @@ export class FakeServer {
 		/** When a Kobo reader's sync told it of the book. */
 		syncedAt?: string;
 		sentFixed?: boolean;
+		origins?: { kind: string; name?: string }[];
 	}[] = [];
+	/** What each e-reader follows, by device ID. */
+	deviceSources: Record<string, { kind: string; shelf?: string }[]> = {};
 	/** Sending to a Kindle: the mail server's state, and what was sent. */
 	kindle = {
 		available: false,
@@ -1096,6 +1099,23 @@ export class FakeServer {
 				deliveries: this.deliveries.filter((d) => d.bookId === bookDeliveries[1]),
 			});
 		}
+		const following = /^\/devices\/([^/]+)\/sources$/.exec(path);
+		if (following) {
+			const id = following[1] ?? "";
+			if (request.method === "PUT") {
+				this.deviceSources[id] = (
+					body as { sources: { kind: string; shelf?: string }[] }
+				).sources;
+			}
+			return Response.json({
+				sources: (this.deviceSources[id] ?? []).map((src) => ({
+					...src,
+					name:
+						this.collections.find((c) => c.id === src.shelf)?.name ??
+						this.smartShelves.find((x) => x.id === src.shelf)?.name,
+				})),
+			});
+		}
 		const sending = /^\/devices\/([^/]+)\/books$/.exec(path);
 		if (sending && request.method === "GET") {
 			const device = this.devices.find((d) => d.id === sending[1]);
@@ -1114,6 +1134,7 @@ export class FakeServer {
 						book: summaryOf(book), deliveryId: d.id, state, queuedAt: d.queuedAt,
 						deliveredAt: d.deliveredAt, syncedAt: d.syncedAt,
 						removable: !d.deliveredAt || !!d.syncedAt, sentFixed: !!d.sentFixed,
+						origins: d.origins ?? [],
 					}];
 				});
 			return Response.json({ device: { ...device, kepub: !!device.kepub }, books });

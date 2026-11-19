@@ -1,14 +1,19 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
+import { collectionsQuery } from "@/books/collections";
 import { Cover } from "@/books/cover";
+import { smartShelvesQuery } from "@/books/smart-shelves";
 import { FormError } from "@/components/form";
 import { Loading } from "@/components/ui";
 import { t } from "@/i18n";
 import { formatDate } from "@/lib/format";
 import {
 	type DeviceBook,
+	type DeviceSource,
 	deviceBooksQuery,
+	deviceSourcesQuery,
+	useSetDeviceSources,
 	useSetDeviceKepub,
 	useTakeOffDevice,
 } from "@/users/api";
@@ -66,6 +71,7 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 					</p>
 				</div>
 			)}
+			{device && <Follows deviceId={device.id} />}
 			<FormError error={pages.error ?? takeOff.error ?? setKepub.error} />
 			{pages.isPending && <Loading />}
 			{pages.isSuccess && books.length === 0 && (
@@ -101,8 +107,15 @@ export function DevicePage({ deviceId }: { deviceId: string }) {
 									)}
 								</span>
 							</Link>
-							<span className="text-sm text-slate-600 dark:text-slate-400">
-								{stateText(b)}
+							<span className="flex flex-col text-sm text-slate-600 dark:text-slate-400">
+								<span>{stateText(b)}</span>
+								{b.origins.length > 0 && (
+									<span>
+										{t("deviceBooks.from", {
+											shelves: b.origins.map(originName).join(", "),
+										})}
+									</span>
+								)}
 							</span>
 							{b.removable && (
 								<button
@@ -148,4 +161,58 @@ function stateText(b: DeviceBook): string {
 		default:
 			return t("deviceBooks.waiting", { date: formatDate(b.queuedAt) });
 	}
+}
+
+function originName(o: { kind: string; name?: string }): string {
+	if (o.kind === "reading") return t("devices.follow.reading");
+	if (o.kind === "wishlist") return t("devices.follow.wishlist");
+	return o.name ?? "";
+}
+
+/** The collections, smart shelves and lists a device is kept stocked from. */
+function Follows({ deviceId }: { deviceId: string }) {
+	const sources = useQuery(deviceSourcesQuery(deviceId));
+	const collections = useQuery(collectionsQuery());
+	const smart = useQuery(smartShelvesQuery);
+	const set = useSetDeviceSources(deviceId);
+	const followed = sources.data ?? [];
+	const follows = (kind: string, shelf?: string) =>
+		followed.some((s) => s.kind === kind && s.shelf === shelf);
+	const toggle = (kind: DeviceSource["kind"], shelf: string | undefined, on: boolean) =>
+		set.mutate(
+			on
+				? [...followed, { kind, shelf }]
+				: followed.filter((s) => !(s.kind === kind && s.shelf === shelf)),
+		);
+	const choices: { key: string; kind: DeviceSource["kind"]; shelf?: string; label: string }[] = [
+		{ key: "reading", kind: "reading", label: t("devices.follow.reading") },
+		{ key: "wishlist", kind: "wishlist", label: t("devices.follow.wishlist") },
+		...(collections.data ?? []).map((c) => ({
+			key: `c-${c.id}`, kind: "collection" as const, shelf: c.id, label: c.name,
+		})),
+		...(smart.data ?? []).map((x) => ({
+			key: `s-${x.id}`, kind: "smart" as const, shelf: x.id,
+			label: t("devices.follow.smart", { name: x.name }),
+		})),
+	];
+	return (
+		<fieldset className="flex flex-col gap-1" disabled={sources.isPending}>
+			<legend className="font-medium">{t("devices.follow.title")}</legend>
+			<p className="text-sm text-slate-600 dark:text-slate-400">
+				{t("devices.follow.hint")}
+			</p>
+			{choices.map((c) => (
+				<label key={c.key} className="flex items-center gap-2">
+					<input
+						type="checkbox"
+						checked={follows(c.kind, c.shelf)}
+						disabled={set.isPending}
+						onChange={(e) => toggle(c.kind, c.shelf, e.target.checked)}
+					/>
+					{c.label}
+				</label>
+			))}
+			<FormError error={set.error} />
+		</fieldset>
+	);
 }

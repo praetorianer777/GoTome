@@ -119,6 +119,8 @@ type Server struct {
 	Kobo *kobo.Service
 	// Deliveries sends books to people's devices.
 	Deliveries *deliveries.Service
+	// DeviceSources keeps devices stocked from shelves they follow.
+	DeviceSources *deliveries.Sources
 	// Copies are the fixed copies of EPUBs that devices are sent (#501).
 	Copies *devicecopy.Service
 	// Reviews keeps what people share of the books they rated and reviewed.

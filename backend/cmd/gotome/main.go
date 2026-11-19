@@ -110,8 +110,9 @@ const (
 	// New and changed ebook files get the MD5 KOReader names them by.
 	koreaderHashInterval = 10 * time.Minute
 	// EPUBs read before measuring was, or changed since, are measured.
-	measureInterval  = 10 * time.Minute
-	copyTrimInterval = 6 * time.Hour
+	measureInterval       = 10 * time.Minute
+	copyTrimInterval      = 6 * time.Hour
+	deviceSourcesInterval = 10 * time.Minute
 
 	webhookTrimInterval = 6 * time.Hour
 	// Deletes reach the full-text index's outbox through a trigger, which
@@ -282,6 +283,13 @@ func serve() error {
 	}
 	matches := enrich.NewService(pool, meta, scans, coverStore, settingStore, log)
 	books := catalog.NewService(pool)
+	shelfService := shelves.NewService(pool, books)
+	deviceSources := deliveries.NewSources(pool, books, shelfService, log)
+	shelfService.OnChange = func(ctx context.Context) {
+		if err := deviceSources.Request(ctx, uuid.Nil); err != nil {
+			log.Warn("queueing a pass over the devices' shelves", "error", err)
+		}
+	}
 	duplicates := dedupe.NewService(pool, books, log)
 	events := &notify.Events{Pool: pool}
 	scans.Events = events
@@ -418,7 +426,7 @@ func serve() error {
 		searchIndex: searchIndex, textIndex: textIndex, duplicates: duplicates, curations: curations, autoDupes: autoDupes,
 		vectors: vectors, genres: genreService, passages: passageVectors,
 		events: events, follows: follows, discoveries: discoveries, sync: progressSync, updates: updateChecks, imports: histories, calibre: calibreImports,
-		trashRetention: settingStore.TrashRetention, automatic: autoCurate, hooks: hooks,
+		trashRetention: settingStore.TrashRetention, automatic: autoCurate, hooks: hooks, deviceSources: deviceSources,
 	}.workers()
 	runner, err := jobs.New(pool, jobs.Config{Logger: log, Workers: workers, Periodic: schedules(cfg.ScanInterval)})
 	if err != nil {
@@ -426,6 +434,7 @@ func serve() error {
 	}
 	scans.Queue = runner
 	copies.Queue = runner
+	deviceSources.Queue = runner
 	mailing.Queue = runner
 	matches.Queue = runner
 	meta.Queue = runner
@@ -536,6 +545,7 @@ func serve() error {
 			log.Warn("queueing fixed copies", "error", err)
 		}
 	}
+	deviceSources.OnQueued = sentDeliveries.OnQueued
 	server := &httpapi.Server{
 		Webhooks:       hooks,
 		Log:            log,
@@ -556,7 +566,8 @@ func serve() error {
 		Annotations:    annotations.NewService(pool),
 		Imports:        histories,
 		Calibre:        calibreImports,
-		Shelves:        shelves.NewService(pool, books),
+		Shelves:        shelfService,
+		DeviceSources:  deviceSources,
 		Search:         search.NewTantivySearch(pool, books, textIndex.Index()),
 		Duplicates:     duplicates,
 		Similar:        vectors,

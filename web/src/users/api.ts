@@ -196,6 +196,39 @@ export function deviceBooksQuery(deviceId: string) {
 	});
 }
 
+export type DeviceSource = components["schemas"]["DeviceSource"];
+
+/** What one of the person's devices follows, kept stocked from. */
+export function deviceSourcesQuery(deviceId: string) {
+	return queryOptions({
+		queryKey: ["device-sources", deviceId],
+		queryFn: async (): Promise<DeviceSource[]> =>
+			(
+				await api.GET("/devices/{deviceId}/sources", {
+					params: { path: { deviceId } },
+				})
+			).data?.sources ?? [],
+	});
+}
+
+/** Sets everything a device follows; its books are queued by a job. */
+export function useSetDeviceSources(deviceId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async (sources: DeviceSource[]) =>
+			(
+				await api.PUT("/devices/{deviceId}/sources", {
+					params: { path: { deviceId } },
+					body: { sources: sources.map(({ kind, shelf }) => ({ kind, shelf })) },
+				})
+			).data,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["device-sources", deviceId] });
+			queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+		},
+	});
+}
+
 /** Takes a book off a device: out of its queue, or off a Kobo reader. */
 export function useTakeOffDevice() {
 	const queryClient = useQueryClient();

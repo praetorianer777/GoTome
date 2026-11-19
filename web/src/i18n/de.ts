@@ -1512,6 +1512,12 @@ export const de: Record<MessageKey, string> = {
 	"deviceBooks.takeOff": "Von diesem Gerät nehmen",
 	"deviceBooks.takeOffNamed": "{title} von diesem Gerät nehmen",
 	"deviceBooks.more": "Mehr anzeigen",
+	"deviceBooks.from": "Aus {shelves}",
+	"devices.follow.title": "Bestücken aus",
+	"devices.follow.hint": "Jedes Buch dieser Regale, das ein E-Book hat, wird an diesen E-Reader geschickt und wieder abgenommen, wenn es sie verlässt, außer du hast es von Hand gesendet.",
+	"devices.follow.reading": "Am Lesen",
+	"devices.follow.wishlist": "Will ich lesen",
+	"devices.follow.smart": "{name} (intelligentes Regal)",
 	"profile.agent": "{browser} unter {system}",
 	"profile.agentUnknown": "Ein unbekannter Browser",
 
