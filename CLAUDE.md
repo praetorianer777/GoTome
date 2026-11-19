@@ -1561,6 +1561,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   kept, no books), which `Encode`/`DecodeWordTable` store, `Score` applies and
   `Explain` reasons from. Nothing suggests from it yet (`spikes/genres port`
   checks it against the spike).
+- Adaptation (#530, `adapt.go`): `genres.adapt` (queue `embed`, hourly check,
+  trains daily or when `book_genres` rows of tags and accepted suggestions
+  change by a fifth, the shipped `Ensemble.Version` or the model changes)
+  merges the library's heads and word tables into the shipped ones
+  (`TrainEnsemble` with `EnsembleOptions.Base`: per genre by positives, the
+  shipped document frequencies and counts added, no shipped books), fits
+  stackers out of fold for sets of inputs with 100 labelled books and keeps
+  the shipped stacker (with its own `Prior`) for the others. One row,
+  `genre_adaptation`, keyed on the shipped version, derived and in
+  backup.sh's list; its version is a hash of its numbers. `Service.Ensemble`
+  is the base; passes use `current`, which prefers the adapted one. Reading
+  books resumes across snoozes from memory (`gathering`), at most
+  `MaxTrainBooks` a language; nothing is stored before training is whole.
 - `gotome genre-check` (`Service.Check`, `make genre-check`) measures
   precision and recall per method and genre on a sample of tagged books,
   their metadata embedded again without tags, thresholds swept. Its

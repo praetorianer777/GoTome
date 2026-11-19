@@ -529,3 +529,149 @@ func TestTheGenreReviewPagesWithoutRepeatingOrSkipping(t *testing.T) {
 		}
 	}
 }
+
+func (a *app) adaptedVersion() (shipped, version string, ok bool) {
+	a.t.Helper()
+	err := a.pool.QueryRow(context.Background(), `SELECT shipped_version, version FROM genre_adaptation`).Scan(&shipped, &version)
+	return shipped, version, err == nil
+}
+
+func (a *app) adaptGenres(deadline time.Time) bool {
+	a.t.Helper()
+	done, err := a.server.Genres.Adapt(context.Background(), deadline)
+	if err != nil {
+		a.t.Fatal(err)
+	}
+	return done
+}
+
+// adaptation plants a library whose tagged books sit where the shipped
+// stand-in knows nothing of, and untagged books of a second library at the
+// same places, which only neighbours in their own library could place.
+func (a *app) adaptation(admin *http.Client, tagged bool) (asked map[string]uuid.UUID) {
+	a.t.Helper()
+	lib := uuid.MustParse(a.library(admin, "Tagged", "shared"))
+	other := uuid.MustParse(a.library(admin, "Untagged", "shared"))
+	books := catalog.NewService(a.pool)
+	ctx := context.Background()
+	spots := map[string]int{"crime": 10, "fantasy": 11, "horror": 12}
+	tags := map[string]string{"crime": "Krimi", "fantasy": "Fantasy", "horror": "Horror"}
+	asked = map[string]uuid.UUID{}
+	for _, key := range []string{"crime", "fantasy", "horror"} {
+		for i := range 44 {
+			v := direction(map[int]float32{spots[key]: 1, 100 + i%9: 0.1, 200 + i: 0.05})
+			if i < 40 {
+				var t []string
+				if tagged {
+					t = []string{tags[key]}
+				}
+				id, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: lib, Title: key + strconv.Itoa(i), Tags: t})
+				if err != nil {
+					a.t.Fatal(err)
+				}
+				a.putVector(id, similar.KindContent, v)
+				continue
+			}
+			id, err := books.CreateBook(ctx, catalog.NewBook{LibraryID: other, Title: "asked " + key + strconv.Itoa(i)})
+			if err != nil {
+				a.t.Fatal(err)
+			}
+			a.putVector(id, similar.KindContent, v)
+			asked[key+strconv.Itoa(i)] = id
+		}
+	}
+	return asked
+}
+
+func (a *app) rightGenres(asked map[string]uuid.UUID) (right int, all map[string][]string) {
+	a.t.Helper()
+	all = map[string][]string{}
+	for name, id := range asked {
+		got := a.genresOf(id)
+		all[name] = got
+		key := strings.TrimRight(name, "0123456789")
+		if slices.Equal(got, []string{"automatic:suggested:" + key}) {
+			right++
+		}
+	}
+	return right, all
+}
+
+func TestTheEnsembleLearnsFromTheTagsOfTheLibrary(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	asked := a.adaptation(admin, true)
+	a.useEnsemble("crime", "fantasy", "horror")
+	a.setGenreMode(admin, genres.MethodEnsemble)
+	a.suggestGenres()
+	before, _ := a.rightGenres(asked)
+
+	// Reading the books stops at the deadline and goes on; nothing is
+	// stored until the training is whole.
+	if a.adaptGenres(time.Now().Add(-time.Second)) {
+		t.Fatal("a run past its deadline said it was done")
+	}
+	if _, _, ok := a.adaptedVersion(); ok {
+		t.Fatal("an ensemble was stored before the books were read")
+	}
+	if !a.adaptGenres(time.Now().Add(time.Minute)) {
+		t.Fatal("the run did not finish")
+	}
+	shipped, version, ok := a.adaptedVersion()
+	if !ok || shipped != "test" || !strings.HasPrefix(version, "test+") {
+		t.Fatalf("stored for %q as %q (%v)", shipped, version, ok)
+	}
+	a.suggestGenres()
+	after, got := a.rightGenres(asked)
+	if after <= before || after < len(asked)*3/4 {
+		t.Errorf("right before %d, after %d of %d: %v", before, after, len(asked), got)
+	}
+
+	// Trained again on the same books, it is the same: no book is looked at
+	// again for it.
+	if _, err := a.pool.Exec(context.Background(), `UPDATE genre_adaptation SET trained_at = now() - interval '2 days'`); err != nil {
+		t.Fatal(err)
+	}
+	if !a.adaptGenres(time.Now().Add(time.Minute)) {
+		t.Fatal("the second run did not finish")
+	}
+	if _, again, _ := a.adaptedVersion(); again != version {
+		t.Errorf("the same books gave %q, then %q", version, again)
+	}
+
+	// Another shipped ensemble is not the one this was trained beside: it is
+	// used alone until the job has trained again.
+	base := a.server.Genres.Ensemble
+	a.server.Genres.Ensemble = func() (*genres.Ensemble, error) {
+		e, err := base()
+		c := *e
+		c.Version = "test2"
+		return &c, err
+	}
+	a.adaptGenres(time.Now().Add(time.Minute))
+	if shipped, _, _ := a.adaptedVersion(); shipped != "test2" {
+		t.Errorf("after a new default it was trained beside %q", shipped)
+	}
+}
+
+func TestALibraryWithoutGenresKeepsTheShippedEnsemble(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	asked := a.adaptation(admin, false)
+	a.useEnsemble("crime", "fantasy", "horror")
+	a.setGenreMode(admin, genres.MethodEnsemble)
+	a.suggestGenres()
+	_, before := a.rightGenres(asked)
+	if !a.adaptGenres(time.Now().Add(time.Minute)) {
+		t.Fatal("the run did not finish")
+	}
+	if _, _, ok := a.adaptedVersion(); ok {
+		t.Error("an ensemble was adapted to a library with no genres")
+	}
+	a.suggestGenres()
+	if _, after := a.rightGenres(asked); !maps.EqualFunc(before, after, slices.Equal) {
+		t.Errorf("suggestions changed from %v to %v", before, after)
+	}
+}

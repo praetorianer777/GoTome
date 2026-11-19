@@ -55,6 +55,10 @@ type EnsembleOptions struct {
 	WordLangs []string
 	Words     WordOptions
 	Workers   int
+	// Base is an ensemble trained elsewhere whose heads and word tables the
+	// books' own are merged into, and whose stackers stand for the sets of
+	// inputs the books are too few to fit one for (#530).
+	Base *Ensemble
 }
 
 // TrainEnsemble trains the ensemble on the books for the genres given; books
@@ -141,6 +145,9 @@ func TrainEnsemble(books []TrainBook, genres []string, opt EnsembleOptions) *Ens
 		st.Books = len(rows)
 		e.Stackers = append(e.Stackers, st)
 	}
+	if opt.Base != nil {
+		keepBaseStackers(e, opt.Base)
+	}
 	return e
 }
 
@@ -191,6 +198,9 @@ func trainInputs(docs []TrainBook, genres []string, opt EnsembleOptions) *Ensemb
 	if h := trainHead(docs, y, func(d TrainBook) []float32 { return d.Metadata }, opt.Workers); h != nil {
 		e.Metadata[opt.Model] = h
 	}
+	if opt.Base != nil {
+		mergeBase(e, opt.Base, opt.Model)
+	}
 	return e
 }
 
@@ -208,7 +218,7 @@ func trainHead(docs []TrainBook, y [][]bool, vec func(TrainBook) []float32, work
 	}
 	G := len(y[0])
 	mean, inv := standardiser(x)
-	h := &Head{Mean: mean, Inv: inv, Weights: make([][]float32, G)}
+	h := &Head{Mean: mean, Inv: inv, Weights: make([][]float32, G), Positives: make([]int, G)}
 	z := standardise(x, mean, inv)
 	parallel(G, workers, func(g int) {
 		col := make([]bool, len(z))
@@ -219,6 +229,7 @@ func trainHead(docs []TrainBook, y [][]bool, vec func(TrainBook) []float32, work
 				p++
 			}
 		}
+		h.Positives[g] = p
 		if p < headMin || len(z)-p < headMin {
 			return
 		}

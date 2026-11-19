@@ -54,3 +54,41 @@ func (w *SuggestWorker) Work(ctx context.Context, _ *river.Job[SuggestArgs]) err
 	complete, err := w.Service.Suggest(ctx, time.Now().Add(passBudget))
 	return similar.PassResult(w.Service.log, "genres are not suggested", complete, err)
 }
+
+// AdaptArgs is the job that trains the ensemble on the installation's own
+// labelled books when it is due (Service.Adapt).
+type AdaptArgs struct{}
+
+const adaptKind = "genres.adapt"
+
+func (AdaptArgs) Kind() string { return adaptKind }
+
+var adaptOpts = jobs.InsertOpts{Queue: jobs.QueueEmbed, Unique: true, MaxAttempts: 5}
+
+// EnqueueAdapt asks for a look at whether the ensemble is due; one waiting
+// or running is enough.
+func (s *Service) EnqueueAdapt(ctx context.Context) error {
+	_, err := s.Queue.Insert(ctx, AdaptArgs{}, adaptOpts)
+	return err
+}
+
+// AdaptPeriodic looks hourly at whether the ensemble is a day old, or its
+// labelled books a fifth more or fewer, and trains it then.
+func AdaptPeriodic(interval time.Duration) jobs.Schedule {
+	return jobs.Every(interval, true, AdaptArgs{}, jobs.QueueEmbed)
+}
+
+// AdaptWorker runs AdaptArgs.
+type AdaptWorker struct {
+	river.WorkerDefaults[AdaptArgs]
+	Service *Service
+}
+
+func (w *AdaptWorker) Timeout(*river.Job[AdaptArgs]) time.Duration {
+	return passBudget + 30*time.Minute
+}
+
+func (w *AdaptWorker) Work(ctx context.Context, _ *river.Job[AdaptArgs]) error {
+	complete, err := w.Service.Adapt(ctx, time.Now().Add(passBudget))
+	return similar.PassResult(w.Service.log, "the genre ensemble is not adapted", complete, err)
+}

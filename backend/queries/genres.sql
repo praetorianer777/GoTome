@@ -165,3 +165,37 @@ WHERE b.deleted_at IS NULL AND NOT b.placeholder;
 -- name: GetUntaggedMetadataText :one
 -- What the book's metadata vector is made from, without its tags.
 SELECT coalesce(book_metadata_text(sqlc.arg(book_id)::uuid, false), '')::text;
+
+-- name: CountGenreLabelled :one
+-- How many books have a genre a person or their tags gave: those of tags,
+-- and the suggestions a person accepted.
+SELECT count(DISTINCT g.book_id)::int
+FROM book_genres g
+JOIN books b ON b.id = g.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND (g.state = 'accepted' OR (g.source = 'tags' AND g.state = 'suggested'));
+
+-- name: ListGenreLabels :many
+-- The genres of those books, a row each.
+SELECT g.book_id, g.genre
+FROM book_genres g
+JOIN books b ON b.id = g.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND (g.state = 'accepted' OR (g.source = 'tags' AND g.state = 'suggested'))
+ORDER BY g.book_id, g.genre;
+
+-- name: GetGenreAdaptation :one
+SELECT shipped_version, model, version, labelled, books, trained_at, ensemble, words
+FROM genre_adaptation;
+
+-- name: PutGenreAdaptation :exec
+INSERT INTO genre_adaptation (singleton, shipped_version, model, version, labelled, books, trained_at, ensemble, words)
+VALUES (true, sqlc.arg(shipped_version)::text, sqlc.arg(model)::text, sqlc.arg(version)::text,
+        sqlc.arg(labelled)::int, sqlc.arg(books)::int, now(), sqlc.arg(ensemble)::bytea, sqlc.arg(words)::bytea)
+ON CONFLICT (singleton) DO UPDATE
+SET shipped_version = excluded.shipped_version, model = excluded.model, version = excluded.version,
+    labelled = excluded.labelled, books = excluded.books, trained_at = excluded.trained_at,
+    ensemble = excluded.ensemble, words = excluded.words;
+
+-- name: DeleteGenreAdaptation :exec
+DELETE FROM genre_adaptation;
