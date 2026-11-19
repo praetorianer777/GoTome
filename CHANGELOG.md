@@ -15,6 +15,10 @@ What changes for someone who runs or uses GOtome. The format follows
 - Full-text search for an account limited to an age rating no longer comes
   back short or empty when the best matches are in books above the limit.
 
+- Undoing a merge no longer changes highlights back to their old note or colour,
+  or brings back highlights you deleted since; it only moves them back to
+  their book.
+
 ### Security
 
 - An account made by single sign-on no longer keeps an e-mail address the
