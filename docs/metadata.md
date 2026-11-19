@@ -175,7 +175,10 @@ learned score side by side: what comes first, what each threshold takes
 and how much of it is right, and the calibration. The weights it keeps
 are then fitted on all of the sample, and stored in the database (not in
 a file), per installation. Without enough right candidates (30) or
-books to hold some out (10) it keeps nothing.
+books to hold some out (10) it keeps nothing. `-ridge` sets how strongly
+the weights are pulled towards zero, so that rare features do not take
+chance for a rule; `-export file.json` writes the learned weights for
+sharing (below) instead of learning.
 
 The same two commands are on the settings page, under **Book details**:
 **Measure** (`match-check`) and **Learn from my library** (`match-train`)

@@ -32,14 +32,17 @@ GOtome keeps running. The folder then holds:
 
 - `database.dump`: the database in `pg_dump`'s custom format. Where the
   books' text is (`book_chunks`, `search_words`, `fulltext_outbox`), the
-  duplicate signatures (`file_signatures`, `file_lsh`), the vectors
-  (`book_vectors`, and `passage_files`, which says whose passages have
-  them), the cache of what metadata sources answered (`provider_records`)
-  which books were looked at for genres (`book_genre_checks`) and the
-  last run of a match measure (`match_runs`) and the notes of the copies
-  made for devices (`device_copies`) are
-  left out: GOtome makes them again from the
-  files, and they are most of the database.
+  words counted for genres (`file_words`) and the genre ensemble trained on
+  the library (`genre_adaptation`), the duplicate signatures
+  (`file_signatures`, `file_lsh`), the vectors (`book_vectors`, and
+  `passage_files`, which says whose passages have them), the cache of what
+  metadata sources answered (`provider_records`), which books were looked at
+  for genres (`book_genre_checks`), the last run of a match measure
+  (`match_runs`), which ISBNs of imprint pages were looked up
+  (`text_isbn_lookups`), the notes of the copies made for devices
+  (`device_copies`), the log of webhook deliveries and what Discover found
+  for each person (what they dismissed stays) are left out: GOtome makes
+  them again from the files, and they are most of the database.
 - `data.tar`: covers and managed libraries, without the full-text index
   (`search/`), the passages' vectors (`passages/`) and the fixed copies
   made for devices (`device-copies/`), which GOtome makes

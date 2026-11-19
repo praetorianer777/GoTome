@@ -123,6 +123,18 @@ collection as the queue: sign in again with a device token. The books already
 on the Tolino stay and are told to GOtome; the collection is left as it is,
 and adding books to it no longer sends them.
 
+## Books already on the Tolino
+
+The store has a tab "Nicht in GOtome" ("Not in GOtome" in English) with the
+DRM-free EPUBs and PDFs on the Tolino that GOtome does not have, each with
+"Zu GOtome hochladen" ("Upload to GOtome"). The ones GOtome has count as on
+the Tolino, so their reading progress arrives.
+
+Uploading needs a device added with "Allow this device to upload books" on
+your profile and an account that may upload books. The file goes into a
+managed library you own, within your storage quota; the tab says what is
+missing when it is not possible. A book already in GOtome is not stored twice.
+
 ## Updates
 
 Each GOtome release carries the app as `gotome-tolino-<version>.apk`, signed

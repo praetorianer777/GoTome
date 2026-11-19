@@ -81,8 +81,8 @@ last one winning:
    `FSK 16`, `ab 12` or `ab 6 Jahre` mean that age. Tags of a hierarchy
    (`Belletristik/Erotik`) count by their parts' names. If several apply,
    the highest wins. Taking the tag off takes the rating off.
-2. **Metadata providers.** None of the three providers (Open Library,
-   CrossRef, Hardcover) gives an age rating, so nothing is taken from them.
+2. **Metadata providers.** None of the sources (Open Library,
+   CrossRef, Hardcover, Google Books, the Deutsche Nationalbibliothek) gives an age rating, so nothing is taken from them.
    A rating a provider gave would only ever raise a rating, never lower one.
 3. **A person.** An editor sets **Age rating** in the book's editor (or
    "Unrated"). Like other fields it is then locked: tags and later lookups

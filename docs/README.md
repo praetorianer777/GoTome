@@ -25,7 +25,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   and Administrator; shared and private libraries; managed and existing
   folders; what GOtome writes.
 - [Book details from metadata sources](metadata.md): Open Library,
-  CrossRef and Hardcover, their keys, automatic lookups and review.
+  CrossRef, Hardcover, Google Books and the Deutsche Nationalbibliothek,
+  their keys, automatic lookups, learned scores and review.
 - [Notifications and new books](notifications.md): what people are told
   of, and following authors, series and feeds.
 - [Single sign-on](single-sign-on.md): OpenID Connect with Authentik,
@@ -38,8 +39,8 @@ For people who run GOtome or use it. Start with **Getting started**.
   with a log of what was sent.
 - [Metrics](metrics.md): a Prometheus endpoint with a scrape example and
   a note on Grafana.
-- [E-readers](devices.md): which way for which device, adding one, and
-  sending books.
+- [E-readers](devices.md): which way for which device, adding one, sending
+  books, keeping a device stocked from shelves, KEPUBs and fixed copies.
   - [KOReader and OPDS](koreader.md)
   - [Kobo, and Tolinos on the Kobo-based firmware](tolino-kobo-mode.md)
   - [GOtome for Tolino](../clients/android/README.md), for Tolinos on
