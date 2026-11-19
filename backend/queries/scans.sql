@@ -217,7 +217,8 @@ WHERE f.id = $1;
 
 -- name: LockFileHash :one
 -- The file's hash and path, locked: organising the library moves files.
-SELECT sha256, rel_path FROM book_files WHERE id = $1 FOR UPDATE;
+-- Trashed and missing say the file is no longer where a writer would put it.
+SELECT sha256, rel_path, trashed_at, missing_at FROM book_files WHERE id = $1 FOR UPDATE;
 
 -- name: SetFileWritten :exec
 -- The file as GOtome wrote it. original_sha256 stays what arrived, and

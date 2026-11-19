@@ -40,6 +40,10 @@ var ErrNotWritten = errors.New("the metadata cannot be written into this file")
 // next attempt starts from what that one left.
 var errWrittenMeanwhile = errors.New("the file was written by another job meanwhile")
 
+// errNoLongerThere is a file trashed or marked missing while it was
+// rewritten: the new copy must not be put where the record no longer lives.
+var errNoLongerThere = errors.New("the file is trashed or missing")
+
 // Edit changes how a book is described, as catalog.EditTx does, and has the
 // change written into the book's EPUBs in libraries GOtome may change, so
 // that it travels with the files, and the book's duplicates looked for
@@ -223,7 +227,11 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 		return fmt.Errorf("%w: %v", ErrNotWritten, err)
 	}
 
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	if s.AfterRewrite != nil {
+		s.AfterRewrite()
+	}
+
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if err := q.HoldLibrariesOfFiles(ctx, []uuid.UUID{fileID}); err != nil {
 			return err
@@ -231,6 +239,9 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 		current, err := q.LockFileHash(ctx, fileID)
 		if err != nil {
 			return err
+		}
+		if current.TrashedAt != nil || current.MissingAt != nil {
+			return errNoLongerThere
 		}
 		if !bytes.Equal(current.Sha256, file.Sha256) || current.RelPath != file.RelPath {
 			return errWrittenMeanwhile
@@ -250,6 +261,10 @@ func (s *Service) WriteBack(ctx context.Context, fileID uuid.UUID) error {
 			ID: fileID, Sha256: sum.Sum(nil), SizeBytes: written.n, ModifiedAt: storedTime(after.ModTime()),
 		})
 	})
+	if errors.Is(err, errNoLongerThere) {
+		return nil
+	}
+	return err
 }
 
 // sameContent checks that a written file reads as an EPUB with the content
