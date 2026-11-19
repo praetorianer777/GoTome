@@ -110,7 +110,12 @@ SELECT DISTINCT unnest(a.books)::uuid AS book_id FROM curation_actions a
 WHERE a.run_id = $1 AND a.state = 'done';
 
 -- name: ListCurationTitles :many
-SELECT id, title FROM books WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+-- The titles of those of the books the viewer sees; an action may hold
+-- books of libraries they do not.
+SELECT b.id, b.title FROM books b
+WHERE b.id = ANY(sqlc.arg(ids)::uuid[])
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: ListCurationNames :many
 -- What the ids of authors, series, publishers and tags are called.

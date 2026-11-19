@@ -768,16 +768,27 @@ func (q *Queries) ListCurationRuns(ctx context.Context, arg ListCurationRunsPara
 }
 
 const listCurationTitles = `-- name: ListCurationTitles :many
-SELECT id, title FROM books WHERE id = ANY($1::uuid[])
+SELECT b.id, b.title FROM books b
+WHERE b.id = ANY($1::uuid[])
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean))
+  AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
 `
+
+type ListCurationTitlesParams struct {
+	Ids     []uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
 
 type ListCurationTitlesRow struct {
 	ID    uuid.UUID
 	Title string
 }
 
-func (q *Queries) ListCurationTitles(ctx context.Context, ids []uuid.UUID) ([]ListCurationTitlesRow, error) {
-	rows, err := q.db.Query(ctx, listCurationTitles, ids)
+// The titles of those of the books the viewer sees; an action may hold
+// books of libraries they do not.
+func (q *Queries) ListCurationTitles(ctx context.Context, arg ListCurationTitlesParams) ([]ListCurationTitlesRow, error) {
+	rows, err := q.db.Query(ctx, listCurationTitles, arg.Ids, arg.Viewer, arg.SeesAll)
 	if err != nil {
 		return nil, err
 	}
