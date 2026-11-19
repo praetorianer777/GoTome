@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
+	"github.com/praetorianer777/gotome/backend/internal/library"
 )
 
 // writableLibrary is an external library GOtome may change files in.
@@ -226,5 +227,46 @@ func TestAFailedWriteLeavesTheOriginal(t *testing.T) {
 	}
 	if now, _ := os.ReadFile(path); !bytes.Equal(now, changed) {
 		t.Error("a file changed outside GOtome was written over")
+	}
+}
+
+func TestAFileTrashedWhileItIsRewrittenStaysInTheTrash(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, adminID := a.signedIn("admin", "admin")
+	editor, _ := a.signedIn("editor", "editor")
+	root := t.TempDir()
+	path := filepath.Join(root, "Emma.epub")
+	writeEPUB(t, path, emmaMetadata, nil, "Emma Woodhouse.")
+	a.scanNow(a.writableLibrary(admin, "Shelf", root))
+	emma := a.shelfFiles()["Emma.epub"]
+	a.extract(emma.ID)
+	a.call(editor, http.MethodPatch, "/books/"+emma.BookID.String(), map[string]any{"title": "Changed"})
+	original, _ := os.ReadFile(path)
+	before := a.hashes(emma.ID)
+
+	scope := library.Scope{Viewer: uuid.MustParse(adminID), SeesAll: true}
+	a.scans.AfterRewrite = func() {
+		if err := a.scans.Trash(context.Background(), scope, emma.ID); err != nil {
+			t.Error(err)
+		}
+	}
+	err := a.writeBack(emma.ID)
+	a.scans.AfterRewrite = nil
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("something lies at the old path: %v", err)
+	}
+	kept, _ := os.ReadFile(filepath.Join(root, ".trash", emma.ID.String(), "Emma.epub"))
+	if !bytes.Equal(kept, original) {
+		t.Error("the trash does not hold the original")
+	}
+	if !bytes.Equal(a.hashes(emma.ID).sha, before.sha) {
+		t.Error("the trashed record took a new hash")
+	}
+	if err := a.scans.Restore(context.Background(), scope, emma.ID); err != nil {
+		t.Errorf("restore: %v", err)
 	}
 }

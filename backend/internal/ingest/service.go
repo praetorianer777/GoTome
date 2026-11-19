@@ -109,6 +109,9 @@ type Service struct {
 	// Queue is set once the job runner exists: the runner is built from the
 	// workers, and the workers from this service.
 	Queue Queue
+	// AfterRewrite is for tests: it runs after WriteBack has rewritten a
+	// file and before the transaction that puts it in place.
+	AfterRewrite func()
 	// UploadLimit is the largest file Upload takes, in bytes.
 	UploadLimit int64
 	// OnExtracted, when set, runs in the transaction that records what a
