@@ -156,6 +156,32 @@ genre):
 | neighbours, share 0.5 | P 0.79, R 0.35, F1 0.49, 50% given | |
 | neighbours, share 0.4 | P 0.74, R 0.43, F1 0.54, 62% given | (now `NeighbourShare`) |
 
+With the ensemble (v0.27.0, 2026-11-19; 48,536 books, 16,487 tagged,
+11,183 with a genre from their tags), `genre-check -n 300 -train 1000`
+gave, the ensemble trained out of fold on about 1,500 books a fold:
+
+| Method | Precision | Recall | F1 | Given a genre |
+|---|---|---|---|---|
+| neighbours, share 0.4 | 0.66 | 0.53 | 0.59 | 83% |
+| combined | 0.62 | 0.54 | 0.57 | 86% |
+| ensemble, at its calibrated thresholds | 0.74 | 0.38 | 0.51 | 59% |
+| ensemble, one threshold of 0.8 | 0.57 | 0.60 | 0.58 | 92% |
+| ensemble-words, at 0.5 | 0.63 | 0.44 | 0.52 | 69% |
+| ensemble-neighbours, at 0.5 | 0.74 | 0.47 | 0.57 | 73% |
+| ensemble-content, at 0.5 | 0.39 | 0.39 | 0.39 | 82% |
+| ensemble-metadata, at 0.5 | 0.37 | 0.39 | 0.38 | 82% |
+| vector (zero-shot) | 0.18 | 0.39 | 0.24 | 100% |
+
+The ensemble is the most precise but abstains for most genres, as few
+reach `TargetPrecision` on so small a training set, so its F1 stays under
+the neighbours'. The neighbours and the word table carry it; the heads on
+the vectors do less here than on Gutenberg. Crime, romance, science
+fiction, horror and historical fiction reach an F1 of 0.6 to 0.8; genres
+with a handful of books in the sample are found by no method. The daily
+adaptation trains on more books than this check (up to `MaxTrainBooks` a
+language, beside the shipped part), so `ensemble` stays the default until
+it is measured again on an adapted installation (#555).
+
 `neighbours` was the method to use before the ensemble. `combined`
 took the neighbours' answer wherever at least `MinNeighbours` of the
 nearest books have genres, so on a library with tags it gave what
