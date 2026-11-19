@@ -984,7 +984,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   does not download from outside. The gate never reaches a provider.
 - Each provider has a `TestLiveContract`, skipped unless `GOTOME_LIVE` is
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
-  It is not a check on pull requests.
+  It is not a check on pull requests. Their Web, `metadata.LiveWeb`, asks
+  again after a busy answer or a broken connection (`patientWeb`), so only a
+  provider down for minutes, or one that answers otherwise, fails it.
 - Providers: `openlibrary` (no key, 400 ms between requests); `crossref`
   (no key, 350 ms; DOI and ISBN lookups, bibliographic search; the setting
   `metadata.contactEmail` goes as `mailto` in `SecretQuery`, which puts

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
@@ -155,8 +156,13 @@ func NewService(pool *pgxpool.Pool, providers []Provider, opts Options) *Service
 	return s
 }
 
-// LiveWeb is a provider's Web without a cache, for recording fixtures.
-func LiveWeb(p Provider) Web { return newWeb(p, newClient(false), nil) }
+// LiveWeb is a provider's Web without a cache, for recording fixtures and
+// the contract tests. It asks again after a busy answer or a broken
+// connection, so a provider's passing hiccup does not read as a changed
+// contract.
+func LiveWeb(p Provider) Web {
+	return &patientWeb{web: newWeb(p, newClient(false), nil), waits: liveWaits, sleep: sleep, log: log.Printf}
+}
 
 func newWeb(p Provider, client *http.Client, pool *pgxpool.Pool) *web {
 	return &web{provider: p.Name(), client: client, pool: pool, limit: &spacer{interval: p.Limits().Interval}}
@@ -292,7 +298,7 @@ func (w *web) get(ctx context.Context, r Request, asked *bool) ([]byte, error) {
 		if errors.As(err, &uerr) {
 			err = uerr.Err
 		}
-		return nil, fmt.Errorf("%s %s: %w", method, r.URL, err)
+		return nil, fmt.Errorf("%s %s: %w", method, r.URL, &connectionError{err})
 	}
 	defer resp.Body.Close()
 	limit := r.MaxBytes
