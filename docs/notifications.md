@@ -43,8 +43,9 @@ Each book is marked **In your library** where a library you see has it
 already.
 
 GOtome asks the sources once a day about each subject someone follows
-(Hardcover for authors and series, Open Library for authors), so a
-Hardcover token ([metadata.md](metadata.md)) makes series work. Books in
+(Hardcover and the Deutsche Nationalbibliothek for authors and series, Open
+Library for authors), so a Hardcover token or `dnb` among the sources
+([metadata.md](metadata.md)) makes series work. Books in
 the language of `metadata.language`, in English, and those of no stated
 language are kept.
 

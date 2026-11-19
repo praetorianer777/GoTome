@@ -12,15 +12,21 @@ your household, each person with their own reading state.
 
 - Libraries of folders you already have, or of uploads GOtome arranges;
   a Calibre library moves in with its metadata, covers and ratings
-- Details from Open Library, CrossRef and Hardcover; editing, writing them
-  back into EPUBs, bulk changes and a review queue
-- Exact and near-duplicate detection, with merging and replacing
+- Details from Open Library, CrossRef, Hardcover, Google Books and the
+  Deutsche Nationalbibliothek; editing, writing them back into EPUBs, bulk
+  changes and a review queue; renaming files by a pattern
+- Exact and near-duplicate detection, with merging and replacing, and rules
+  that resolve them by themselves
 - Filters, smart shelves, collections, a wishlist; typo-tolerant full-text
   search inside the books' text, and search by description
 - In-browser EPUB, Kindle and PDF reader and audiobook player, with the
   reading place kept in step across devices; reading statistics
-- Similar books, worked out from what books are about
-- Following authors and series for new books, with notifications
+- Similar books and suggested genres, worked out from what books are about;
+  Discover, for books beyond your libraries
+- Highlights and notes; the web app installs on a phone and keeps books
+  offline
+- Following authors and series for new books, with notifications and
+  webhooks
 - KOReader (OPDS and progress sync), Kobo, and Tolino
 - Readers, editors and administrators; shared and private libraries;
   single sign-on through OpenID Connect
@@ -88,7 +94,10 @@ vectors for every book, on 2 CPUs and 14.5 GiB of memory:
 | Facets of quick-search matches | 1.8 s |
 | Phrase search | 1.3 s |
 
-The last three are being worked on ([#456](https://github.com/praetorianer777/GoTome/issues/456)).
+Since then ([#456](https://github.com/praetorianer777/GoTome/issues/456)),
+similar books take 269 ms and the facets of quick-search matches 53 ms on
+the 50,000-book test seed (712 and 194 ms before); the phrase search is
+unchanged and the table is not measured again. [docs/performance.md](docs/performance.md) has the figures.
 
 ## Running it in detail
 
