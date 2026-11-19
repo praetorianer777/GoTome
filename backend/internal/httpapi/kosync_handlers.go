@@ -48,7 +48,7 @@ func (s *Server) kosyncRoutes() []Route {
 		{
 			Method: http.MethodGet, Path: "/kosync/users/auth", ID: "kosyncAuth",
 			Summary: "KOReader's progress sync checks its sign-in: the user name in x-auth-user, the MD5 of a device token in x-auth-key", Tag: "kosync",
-			Response: kosyncAuthorized{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Devices: true, Handler: s.kosyncAuth,
+			Response: kosyncAuthorized{}, Reads: ReadsNoLibrary, Permission: auth.SignedIn, Devices: true, SyncKey: true, Handler: s.kosyncAuth,
 		},
 		{
 			Method: http.MethodPost, Path: "/kosync/users/create", ID: "kosyncRegister",
@@ -58,12 +58,12 @@ func (s *Server) kosyncRoutes() []Route {
 		{
 			Method: http.MethodPut, Path: "/kosync/syncs/progress", ID: "kosyncPush",
 			Summary: "KOReader reports where the person is in a document, named by its partial MD5", Tag: "kosync",
-			Request: kosyncProgress{}, Response: kosyncSaved{}, Permission: auth.PersonalManage, Devices: true, Handler: s.kosyncPush,
+			Request: kosyncProgress{}, Response: kosyncSaved{}, Permission: auth.PersonalManage, Devices: true, SyncKey: true, Handler: s.kosyncPush,
 		},
 		{
 			Method: http.MethodGet, Path: "/kosync/syncs/progress/{document}", ID: "kosyncPull",
 			Summary: "Where the person is in a document, as KOReader goes to it; empty where no place can be given", Tag: "kosync",
-			Response: kosyncPosition{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, Handler: s.kosyncPull,
+			Response: kosyncPosition{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Devices: true, SyncKey: true, Handler: s.kosyncPull,
 		},
 	}
 }

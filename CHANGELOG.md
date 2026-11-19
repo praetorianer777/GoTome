@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- The key KOReader's progress sync sends with every sync (the MD5 of a device
+  token) now signs in only to the progress sync. It no longer opens the
+  catalogue feeds, downloads or the device's queue; the device token itself
+  still does.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

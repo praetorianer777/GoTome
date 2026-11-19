@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/praetorianer777/gotome/backend/internal/auth"
 )
@@ -17,7 +18,7 @@ import (
 func as(t *testing.T, role string, permission auth.Permission) int {
 	t.Helper()
 	reached := false
-	h := handle(require(permission, false, false, func(w http.ResponseWriter, _ *http.Request) error {
+	h := handle(require(permission, false, false, false, func(w http.ResponseWriter, _ *http.Request) error {
 		reached = true
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -138,7 +139,7 @@ func TestSessionRoutesOverHTTP(t *testing.T) {
 
 func asKey(t *testing.T, role string, scopes []string, permission auth.Permission, keys bool) int {
 	t.Helper()
-	h := handle(require(permission, false, keys, func(w http.ResponseWriter, _ *http.Request) error {
+	h := handle(require(permission, false, false, keys, func(w http.ResponseWriter, _ *http.Request) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}))
@@ -211,6 +212,35 @@ func TestOnlyTheRoutesAboutTheAccountThatSaySoAreOpenToKeys(t *testing.T) {
 		}
 		if hasKey != rt.keyReaches() {
 			t.Errorf("%s %s: the document says key %v, the router %v", rt.Method, rt.Path, hasKey, rt.keyReaches())
+		}
+	}
+}
+
+func TestASyncKeyReachesOnlyTheRoutesThatTakeOne(t *testing.T) {
+	for _, c := range []struct {
+		name            string
+		syncKey, bySync bool
+		want            int
+	}{
+		{"the key on a route that takes it", true, true, http.StatusNoContent},
+		{"the key elsewhere", false, true, http.StatusUnauthorized},
+		{"a device token on a route that takes the key", true, false, http.StatusNoContent},
+		{"a device token elsewhere", false, false, http.StatusNoContent},
+	} {
+		h := handle(require(auth.LibraryRead, true, c.syncKey, false, func(w http.ResponseWriter, _ *http.Request) error {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}))
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.WithValue(r.Context(), userKey, &auth.User{Username: "reader", Role: auth.RoleReader})
+		ctx = context.WithValue(ctx, deviceKey, uuid.New())
+		if c.bySync {
+			ctx = context.WithValue(ctx, syncKeyKey, true)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r.WithContext(ctx))
+		if rec.Code != c.want {
+			t.Errorf("%s: status %d, want %d", c.name, rec.Code, c.want)
 		}
 	}
 }
