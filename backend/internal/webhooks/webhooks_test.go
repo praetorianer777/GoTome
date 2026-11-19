@@ -71,6 +71,28 @@ func TestAPayloadHoldsNoNames(t *testing.T) {
 	}
 }
 
+func TestNoProducersNameReachesAPayload(t *testing.T) {
+	s := &Service{}
+	lib := uuid.New()
+	events := []notify.Event{
+		{Kind: notify.KindFilesUnreadable, Libraries: []uuid.UUID{lib}, Data: map[string]any{"file": "Secret Memoir.epub", "title": "Secret Title"}},
+		{Kind: notify.KindScanFailed, Libraries: []uuid.UUID{lib}, Data: map[string]any{"library": "Private Shelf", "error": "boom"}},
+		{Kind: notify.KindBooksAdded, Libraries: []uuid.UUID{lib}, Data: map[string]any{"library": "Private Shelf", "count": 4}},
+		{Kind: notify.KindLibraryUnwritable, Libraries: []uuid.UUID{lib}, Data: map[string]any{"library": "Private Shelf", "error": "ro"}},
+	}
+	for _, ev := range events {
+		raw, _ := json.Marshal(s.payloadOf(ev))
+		for _, leak := range []string{"Secret", "Private Shelf", "boom"} {
+			if strings.Contains(string(raw), leak) {
+				t.Errorf("%s payload holds %q: %s", ev.Kind, leak, raw)
+			}
+		}
+		if !strings.Contains(string(raw), lib.String()) {
+			t.Errorf("%s payload lacks the library ID: %s", ev.Kind, raw)
+		}
+	}
+}
+
 func TestInputIsChecked(t *testing.T) {
 	good := "0123456789abcdef"
 	ok := Input{Name: "n", URL: "https://example.org/hook", Secret: &good, Kinds: []string{"books.added", "books.added"}}
