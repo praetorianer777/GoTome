@@ -201,7 +201,7 @@ See [discover.md](discover.md).
 
 | Key | On the page | Default | What it does |
 |---|---|---|---|
-| `recommendations.discover` | Discover books beyond the libraries | `off` | `on` lets GOtome look for books no library holds from each person's taste, once a day for those who asked on the **Discover** page. This is the one place a person's taste leaves the server in the form of questions: the metadata sources (Open Library, Hardcover; all that are enabled under `metadata.providers`) are asked for the works of authors the person rated highly, for the volumes of series they read and for books of the genres they read most. They see those author, series and genre names and your server's address, never the person, their ratings or their library. Nothing is asked in offline mode (`GOTOME_OFFLINE`). |
+| `recommendations.discover` | Discover books beyond the libraries | `off` | `on` lets GOtome look for books no library holds from each person's taste, once a day for those who asked on the **Discover** page. This is the one place a person's taste leaves the server in the form of questions: the metadata sources (Open Library, Hardcover and the Deutsche Nationalbibliothek, those of them enabled under `metadata.providers`) are asked for the works of authors the person rated highly, for the volumes of series they read and for books of the genres they read most. They see those author, series and genre names and your server's address, never the person, their ratings or their library. Nothing is asked in offline mode (`GOTOME_OFFLINE`). |
 
 ### Genres
 
