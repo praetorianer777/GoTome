@@ -232,7 +232,7 @@ func callbackURL(r *http.Request) string {
 // API.
 func appPath(p string) string {
 	if len(p) > 512 || !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.HasPrefix(p, "/\\") ||
-		strings.HasPrefix(p, APIPrefix) || strings.ContainsAny(p, "\r\n") {
+		strings.HasPrefix(p, APIPrefix) || strings.ContainsFunc(p, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
 		return "/"
 	}
 	return p
