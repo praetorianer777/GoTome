@@ -6,7 +6,7 @@
 #   spikes/genres/run.sh gutenberg   records of the public corpus
 #   spikes/genres/run.sh eval        the measurements on it (results/)
 #   spikes/genres/run.sh shipped     the size and top words of a default model
-#   spikes/genres/run.sh ship [-eval]  the ensemble the app ships, written
+#   spikes/genres/run.sh ship [-eval]  the ensemble the app ships (needs gutenberg first), written
 #                                    into backend/internal/genres/shipped
 #   spikes/genres/run.sh library DIR N   records of N books of a library, read
 #                                        only, folder by folder; then
@@ -15,6 +15,8 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cache=$root/.cache
+# A worktree has no corpus of its own either.
+corpus=${CORPUS_DIR:-$cache/corpus}
 # A worktree keeps the embedding spike's files in the main checkout.
 embedcache=${EMBED_CACHE:-$cache/embed}
 work=${GENRES_WORK:-$cache/genres}
@@ -31,7 +33,7 @@ threads=${THREADS:-2}
 
 case ${1:?step} in
 gutenberg)
-	"$genres" gutenberg -chunks "$cache/corpus/chunks.jsonl.gz" \
+	"$genres" gutenberg -chunks "$corpus/chunks.jsonl.gz" \
 		-vectors "$embedcache/vectors-direct-int8-16-passage.gob" \
 		-model-root "$work/model-root" -ort "$ort" -threads "$threads" -out "$work/gutenberg.gob"
 	;;
@@ -48,8 +50,13 @@ shipped)
 	"$genres" shipped -gutenberg "$work/gutenberg.gob" -out "$root/spikes/genres/results/shipped.json" -workers "$threads"
 	;;
 ship)
-	# The ensemble the app ships (#528); -eval measures instead of writing.
+	# The ensemble the app ships (#528, #529); -eval measures instead of
+	# writing. Needs the records of the gutenberg step. Heads are trained for
+	# multilingual-e5-small only: another model needs its vectors of the
+	# corpus's passages (the fp32, 16 a book, prefix "query: " file of the
+	# embedding spike) and an entry in the harness's model list.
 	"$genres" ship -gutenberg "$work/gutenberg.gob" -vectors "$embedcache/vectors-direct-fp32-16-query.gob" \
+		-corpus "$corpus/chunks.jsonl.gz,$embedcache/vectors-direct-fp32-16-query.gob" \
 		-out "$root/backend/internal/genres/shipped" -workers "$threads" "${@:2}"
 	;;
 stats)

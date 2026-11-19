@@ -127,6 +127,11 @@ type Ensemble struct {
 	Stackers []*Stacker       `json:"stackers"`
 	// Books is how many labelled books it was trained on.
 	Books int `json:"books"`
+	// Corpus names the training corpus (a hash of its files) and Trained
+	// counts its books per genre; both are numbers about the training and
+	// say nothing of any book.
+	Corpus  string         `json:"corpus,omitempty"`
+	Trained map[string]int `json:"trained,omitempty"`
 	// Words are the word tables by language, kept apart from the rest.
 	Words map[string]*WordTable `json:"-"`
 }

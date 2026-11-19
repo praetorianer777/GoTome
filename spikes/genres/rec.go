@@ -17,6 +17,9 @@ type Rec struct {
 	// Terms are the lower-cased words of the whole text and how often each
 	// occurs.
 	Terms map[string]uint16
+	// Words are the counts the app stores (wordcount.Count): Project
+	// Gutenberg's header and licence left out, words under MinCount dropped.
+	Words map[string]uint32
 	// Vecs are the vectors of the sampled passages (prefix "passage: ").
 	Vecs [][]float32
 	// Meta is the vector of the title, authors and, where the file has one,

@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/genres"
@@ -26,6 +28,7 @@ func runShip(args []string) error {
 	vectors := fs.String("vectors", ".cache/embed/vectors-direct-fp32-16-query.gob", "16 vectors a book, prefix query:")
 	out := fs.String("out", "backend/internal/genres/shipped", "")
 	workers := fs.Int("workers", 3, "")
+	corpus := fs.String("corpus", "", "comma-separated files the records came from, hashed into the corpus revision")
 	eval := fs.Bool("eval", false, "measure on a held-out fifth instead of writing")
 	_ = fs.Parse(args)
 	recs, err := loadRecs(*gut)
@@ -44,11 +47,10 @@ func runShip(args []string) error {
 	var books []genres.TrainBook
 	for _, r := range recs {
 		b := genres.TrainBook{ID: r.ID, Lang: r.Lang, Counts: wordcount.Counts{}, Metadata: r.Meta, Labels: r.Labels}
-		for w, n := range r.Terms {
-			if n >= wordcount.MinCount {
-				b.Counts[w] = uint32(n)
-			}
+		if len(r.Words) == 0 {
+			return fmt.Errorf("book %s has no counted words: run the gutenberg step again", r.ID)
 		}
+		b.Counts = r.Words
 		var id int
 		fmt.Sscan(r.ID, &id)
 		if v := vecs[id]; len(v) > 0 {
@@ -61,6 +63,17 @@ func runShip(args []string) error {
 		return evalShip(recs, books, keys, opt)
 	}
 	e := genres.TrainEnsemble(books, keys, opt)
+	if e.Corpus, err = corpusRevision(*corpus); err != nil {
+		return err
+	}
+	e.Trained = map[string]int{}
+	for _, b := range books {
+		for _, l := range b.Labels {
+			if slices.Contains(keys, l) {
+				e.Trained[l]++
+			}
+		}
+	}
 	words := e.Words["en"].Encode()
 	body, err := e.Encode()
 	if err != nil {
@@ -90,6 +103,27 @@ func runShip(args []string) error {
 		fmt.Printf("stacker %04b: %d books, %d of %d genres decide\n", st.Mask, st.Books, n, len(keys))
 	}
 	return nil
+}
+
+// corpusRevision is a hash of the files the training read, so that a changed
+// corpus gives another version; the files themselves are never written.
+func corpusRevision(list string) (string, error) {
+	h := sha256.New()
+	for _, p := range strings.Split(list, ",") {
+		if p == "" {
+			continue
+		}
+		f, err := os.Open(p)
+		if err != nil {
+			return "", err
+		}
+		_, err = io.Copy(h, f)
+		f.Close()
+		if err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12], nil
 }
 
 // evalShip trains on the books of four folds and decides the fifth as the

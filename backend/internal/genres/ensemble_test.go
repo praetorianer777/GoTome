@@ -216,3 +216,18 @@ func TestThresholdsTakeTheLowestScoreAtThePrecision(t *testing.T) {
 		t.Errorf("four books set a threshold %v", th[0])
 	}
 }
+
+func TestShippedNamesItsTraining(t *testing.T) {
+	e, err := Shipped()
+	if err != nil || e == nil {
+		t.Fatalf("shipped: %v, %v", e, err)
+	}
+	if e.Version == "" || ShippedVersion() != e.Version || e.Corpus == "" {
+		t.Fatalf("version %q, corpus %q", e.Version, e.Corpus)
+	}
+	for _, g := range e.Genres {
+		if e.Trained[g] < 15 {
+			t.Errorf("genre %s shipped with %d books", g, e.Trained[g])
+		}
+	}
+}

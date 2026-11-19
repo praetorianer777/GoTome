@@ -6,6 +6,10 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The genres GOtome suggests out of the box are trained again from Project Gutenberg with its header and licence left out, so words such as "etext" no longer weigh in.
+
 ## [0.26.0] - 2026-11-13
 
 ### Added

@@ -16,6 +16,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/embed"
 	"github.com/praetorianer777/gotome/backend/internal/format/epub"
 	"github.com/praetorianer777/gotome/backend/internal/textproc"
+	"github.com/praetorianer777/gotome/backend/internal/wordcount"
 )
 
 func openEmbedder(ctx context.Context, modelRoot, ort string, threads int) (*embed.Onnx, error) {
@@ -87,6 +88,7 @@ func extractGutenberg(args []string) error {
 			r.Chars += len(c)
 			countTerms(r.Terms, c)
 		}
+		r.Words = wordcount.Count(b.Chunks)
 		r.TokenizeNS = time.Since(t).Nanoseconds()
 		t = time.Now()
 		m, err := embedAll(ctx, e, []string{metaText(b.Title, b.Authors, "")})

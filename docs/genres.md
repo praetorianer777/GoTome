@@ -71,8 +71,23 @@ words). On a fifth of the corpus held out, the ensemble gave P 0.78, R
 0.56, F1 0.65 and a genre to 72% of books; the content vector alone P
 0.73, R 0.42. On a modern German library it was 0.6 to 0.7 precise
 (the decision record): suggestions only wait for review, so that costs
-review time and changes nothing by itself. `spikes/genres/run.sh ship`
-trains it again, the same numbers every time.
+review time and changes nothing by itself.
+
+A genre with fewer than 15 Gutenberg books is not shipped: horror,
+thriller, contemporary, classics, dystopia, erotica, young adult, family
+saga and comics have too few for a head or a threshold, so they come from
+tags and from what a library learns itself. `spikes/genres/run.sh ship`
+(after `run.sh gutenberg`, which makes the records with Project Gutenberg's
+header and licence left out) trains the whole default again from the public
+corpus: heads, stackers, thresholds and the English word table, with fixed
+orders and no random numbers, so two runs, on any number of threads, write
+the same bytes. About 30 seconds on four threads once the records exist, and
+about two minutes to make them. The files carry a `version` (a hash of the
+numbers), the hash of the corpus files it was trained on and the books it
+used per genre; they hold no title, author or text. Only multilingual-e5-small
+has heads: another model needs the corpus's 16 passages embedded with it, and
+an entry in the harness. An installation that finds a new shipped `version`
+replaces the shipped part and keeps what it learned itself.
 
 ## Measuring before switching suggestions on
 
