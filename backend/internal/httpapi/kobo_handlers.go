@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -138,6 +139,7 @@ func (s *Server) koboInitialization(w http.ResponseWriter, r *http.Request) erro
 		"post_analytics_event":       "/v1/analytics/event",
 		"device_auth":                "/v1/auth/device",
 		"device_refresh":             "/v1/auth/refresh",
+		"rating":                     "/v1/products/{ProductId}/rating/{Rating}",
 		"image_url_template":         "/{ImageId}/{Width}/{Height}/false/image.jpg",
 		"image_url_quality_template": "/{ImageId}/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg",
 	} {
@@ -674,6 +676,8 @@ func (s *Server) koboSpan(ctx context.Context, device, book uuid.UUID, st koboSt
 
 // koboFraction is how far into the book a reading state says the person
 // is: its bookmark's percentage, or the end for a book marked finished.
+// "ReadyToRead" ("Mark as unread") changes no status: a reader says it of
+// a book it never opened too, and would undo a status set elsewhere (#542).
 func koboFraction(st koboStateIn) (float64, bool) {
 	if st.StatusInfo != nil && st.StatusInfo.Status == "Finished" {
 		return 1, true
@@ -703,6 +707,32 @@ func (s *Server) koboArchive(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// koboRate keeps the stars a reader gives a book as the device owner's own
+// rating, as if given on the book's page; 0 takes it away. Whatever the
+// reader sends with them, such as a review, is not read.
+func (s *Server) koboRate(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "bookId", "book")
+	if err != nil {
+		return err
+	}
+	stars, err := strconv.ParseInt(chi.URLParam(r, "rating"), 10, 16)
+	if err != nil {
+		return ErrValidation(map[string]string{"rating": fmt.Sprintf("A rating is 1 to %d stars, or 0 for none.", catalog.MaxRating)})
+	}
+	rating := int16(stars)
+	n, err := s.Books.SetReading(r.Context(), library.ScopeOf(*UserFrom(r.Context())), []uuid.UUID{id}, catalog.ReadingChange{Rating: &rating})
+	var invalid catalog.EditError
+	switch {
+	case errors.As(err, &invalid):
+		return ErrValidation(invalid)
+	case err != nil:
+		return err
+	case n == 0:
+		return ErrNotFound("There is no such book.")
+	}
+	return s.koboNothing(w, r)
 }
 
 // koboCover sends a book's cover in the size nearest what the reader asks.
@@ -794,6 +824,15 @@ func (s *Server) koboRoutes() []Route {
 			Summary: "A Kobo reader archives a book: it leaves the device", Tag: tag,
 			Status: http.StatusNoContent, Permission: auth.PersonalManage, Devices: true, Handler: s.koboArchive,
 		},
+	}
+	// Which method the firmware rates with is not recorded yet (#542), so
+	// both are taken.
+	for _, p := range []struct{ method, id string }{{http.MethodPost, "koboRate"}, {http.MethodPut, "koboRatePut"}} {
+		routes = append(routes, Route{
+			Method: p.method, Path: "/kobo/{token}/v1/products/{bookId}/rating/{rating}", ID: p.id,
+			Summary: "The stars a Kobo reader gives a book: the person's own rating, 0 for none", Tag: tag,
+			Permission: auth.PersonalManage, Devices: true, Handler: s.koboRate,
+		})
 	}
 	for _, p := range []struct{ path, id, summary string }{
 		{"/v1/auth/device", "koboAuthDevice", "Store tokens a Kobo reader asks for; GOtome signs it in by its address"},
