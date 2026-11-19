@@ -146,8 +146,10 @@ type Service struct {
 	queries queries
 	// compared remembers the vectors CompareToBook made.
 	compared comparedTexts
-	// WaitForModel makes CompareToBook wait for a model that is loading
-	// instead of answering ErrLoading, for a command that measures.
+	// WaitForModel makes EmbedQueries and CompareToBook wait for a model
+	// that is loading instead of answering ErrLoading, for a command that
+	// measures: each run opens the model anew, which takes longer than a
+	// request may wait.
 	WaitForModel bool
 	// Passages reads a file's chunks at positions from the file, which is
 	// where their text is kept (ingest.Service.Passages).

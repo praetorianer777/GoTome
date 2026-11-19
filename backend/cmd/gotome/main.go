@@ -744,6 +744,7 @@ func similarCheck(args []string) error {
 		return err
 	}
 	vectors := checkVectors(cfg, pool, store, log)
+	vectors.WaitForModel = true
 	if *describe != "" {
 		titles, err := vectors.DescribeTitles(ctx, *describe, *k)
 		if err != nil {
@@ -821,6 +822,7 @@ func genreCheck(args []string) error {
 		return err
 	}
 	vectors := checkVectors(cfg, pool, store, log)
+	vectors.WaitForModel = true
 	r, err := genres.NewService(pool, vectors, nil, log).Check(ctx, genres.CheckOptions{
 		Books: *n, Precision: *precision, Neighbours: *neighbours, Ensemble: *ensemble, Train: *train,
 	})

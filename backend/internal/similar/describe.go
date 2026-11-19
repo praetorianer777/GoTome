@@ -251,11 +251,15 @@ func (s *Service) EmbedQueries(ctx context.Context, spec embed.Spec, texts []str
 			done = s.startOpen(spec)
 		}
 		s.queries.mu.Unlock()
+		var gaveUp <-chan time.Time
+		if !s.WaitForModel {
+			gaveUp = time.After(loadWait)
+		}
 		select {
 		case <-done:
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(loadWait):
+		case <-gaveUp:
 			return nil, ErrLoading
 		}
 	}

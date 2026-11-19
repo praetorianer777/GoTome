@@ -35,6 +35,12 @@ What changes for someone who runs or uses GOtome. The format follows
   fold, beside each of its inputs: precision, recall, F1 and the share of
   books given a genre, per genre.
 
+### Fixed
+
+- `gotome genre-check` and `gotome similar-check -describe` wait for the
+  embedding model to load instead of stopping with "the embedding model is
+  loading".
+
 ## [0.26.0] - 2026-11-13
 
 ### Added
