@@ -34,6 +34,7 @@ var Spellings = map[string][]string{
 		"Mystery", "Mysteries", "Mystery & detective", "Mystery and detective", "Crime", "Crime fiction", "Cozy mystery",
 		"Police procedural", "Whodunit", "Krimikomödie", "Skandinavien-Krimi", "Schwedenkrimi", "Ostfrieslandkrimi",
 		"Mord", "Historischer Krimi", "Historische Krimis", "Historische Kriminalromane", "Historical mystery",
+		"Murder", "Police",
 	},
 	"thriller": {
 		"Thriller", "Thrillers", "Psychothriller", "Psychothriller & Spannung", "Spannung", "Spannungsroman",
@@ -56,7 +57,7 @@ var Spellings = map[string][]string{
 	"fantasy": {
 		"Fantasy", "Fantastik", "Fantasyroman", "High Fantasy", "Epic fantasy", "Urban Fantasy", "Dark Fantasy",
 		"Sword and sorcery", "Romantasy", "Magie", "Magic", "Drachen", "Dragons", "Elfen", "Science Fiction & Fantasy",
-		"Fantasy & Magic", "Fantasy & Science Fiction", "Scheibenwelt",
+		"Fantasy & Magic", "Fantasy & Science Fiction", "Scheibenwelt", "Fantasy Fiction",
 	},
 	"dystopia": {
 		"Dystopie", "Dystopia", "Dystopian", "Dystopian fiction", "Endzeit", "Postapokalypse", "Post-apocalyptic",
@@ -92,7 +93,7 @@ var Spellings = map[string][]string{
 	"western": {"Western", "Westerns", "Wildwest", "Wild West", "Westernroman"},
 	"humour": {
 		"Humor", "Humour", "Humorous", "Humorous fiction", "Satire", "Komödie", "Comedy", "Lustiges",
-		"Belletristik/Humor", "Humoristische Romane", "Parodie", "Scheibenwelt",
+		"Belletristik/Humor", "Humoristische Romane", "Parodie", "Scheibenwelt", "Humoristische Darstellung",
 	},
 	"short-stories": {
 		"Erzählungen", "Kurzgeschichten", "Short stories", "Short story", "Novellen", "Anthologie", "Anthologies",
@@ -121,7 +122,7 @@ var Spellings = map[string][]string{
 	"biography": {
 		"Biografie", "Biographie", "Biografien", "Biographien", "Autobiografie", "Autobiographie", "Memoiren",
 		"Erinnerungen", "Biography", "Biographies", "Biography & autobiography", "Autobiography", "Memoir", "Memoirs",
-		"Lebenserinnerungen", "Briefe", "Tagebücher", "Diaries", "Letters",
+		"Lebenserinnerungen", "Briefe", "Tagebücher", "Diaries", "Letters", "Erlebnisbericht",
 	},
 	"true-crime": {"True Crime", "Wahre Verbrechen", "Kriminalfälle", "Kriminalfall"},
 	"history": {

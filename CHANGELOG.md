@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The tags "Fantasy Fiction", "Murder", "Police", "Humoristische
+  Darstellung" and "Erlebnisbericht" now give a book its genre (fantasy,
+  crime, humour, biography) ([Genres](docs/genres.md)).
+
 ## [0.27.0] - 2026-11-19
 
 ### Added
