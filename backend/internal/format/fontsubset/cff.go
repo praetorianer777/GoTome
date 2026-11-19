@@ -863,7 +863,7 @@ func (f *cffFont) keepStrings(keep map[int]bool) [][]byte {
 			}
 		}
 	}
-	sidOps := map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 0x0C15: 1, 0x0C16: 1, 0x0C1E: 2, 0x0C26: 1}
+	sidOps := map[int]int{0: 1, 0x0C00: 1, 0x0C01: 1, 1: 1, 2: 1, 3: 1, 4: 1, 0x0C15: 1, 0x0C16: 1, 0x0C1E: 2, 0x0C26: 1}
 	mark(f.top, sidOps)
 	for _, d := range f.fontDicts {
 		mark(d, sidOps)

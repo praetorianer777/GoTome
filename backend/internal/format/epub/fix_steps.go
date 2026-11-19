@@ -187,12 +187,71 @@ func (fx *fixer) scaleImages() error {
 	return nil
 }
 
+// jpegOrientation is the EXIF orientation of a JPEG, 1 where it names none.
+// Re-encoding drops it, so an image that is turned for display is left as
+// it is, whatever its size.
+func jpegOrientation(data []byte) int {
+	if len(data) < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+		return 1
+	}
+	for at := 2; at+4 <= len(data) && data[at] == 0xFF; {
+		marker := data[at+1]
+		if marker == 0xD9 || marker == 0xDA {
+			break
+		}
+		size := int(data[at+2])<<8 | int(data[at+3])
+		if size < 2 || at+2+size > len(data) {
+			break
+		}
+		seg := data[at+4 : at+2+size]
+		if marker == 0xE1 && bytes.HasPrefix(seg, []byte("Exif\x00\x00")) {
+			return tiffOrientation(seg[6:])
+		}
+		at += 2 + size
+	}
+	return 1
+}
+
+func tiffOrientation(t []byte) int {
+	if len(t) < 8 {
+		return 1
+	}
+	var u16 func([]byte) int
+	var u32 func([]byte) int
+	switch string(t[:2]) {
+	case "II":
+		u16 = func(b []byte) int { return int(b[0]) | int(b[1])<<8 }
+		u32 = func(b []byte) int { return int(b[0]) | int(b[1])<<8 | int(b[2])<<16 | int(b[3])<<24 }
+	case "MM":
+		u16 = func(b []byte) int { return int(b[0])<<8 | int(b[1]) }
+		u32 = func(b []byte) int { return int(b[0])<<24 | int(b[1])<<16 | int(b[2])<<8 | int(b[3]) }
+	default:
+		return 1
+	}
+	ifd := u32(t[4:])
+	if ifd < 8 || ifd+2 > len(t) {
+		return 1
+	}
+	n := u16(t[ifd:])
+	for i := 0; i < n && ifd+2+12*(i+1) <= len(t); i++ {
+		e := t[ifd+2+12*i:]
+		if u16(e) == 0x0112 {
+			return u16(e[8:])
+		}
+	}
+	return 1
+}
+
 // shrinkImage returns the image scaled down to MaxImageSide, or for one
 // that fits but is large, recompressed; false when neither helps or the
-// image does not decode.
+// image does not decode. A result that is not smaller is dropped, unless
+// the image is past MaxImagePixels, where fewer pixels is the point.
 func shrinkImage(data []byte, isJPEG bool) ([]byte, bool) {
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxDecodePixels {
+		return nil, false
+	}
+	if isJPEG && jpegOrientation(data) > 1 {
 		return nil, false
 	}
 	tooLarge := max(cfg.Width, cfg.Height) > MaxImageSide
@@ -237,7 +296,7 @@ func shrinkImage(data []byte, isJPEG bool) ([]byte, bool) {
 	} else {
 		err = (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&out, img)
 	}
-	if err != nil || (!tooLarge && out.Len() >= len(data)) {
+	if err != nil || (out.Len() >= len(data) && cfg.Width*cfg.Height <= MaxImagePixels) {
 		return nil, false
 	}
 	return out.Bytes(), true

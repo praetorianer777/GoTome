@@ -391,7 +391,7 @@ func TestFixScalesImagesDown(t *testing.T) {
 		entry{"OEBPS/nav.xhtml", `<html xmlns="http://www.w3.org/1999/xhtml"><body><nav/></body></html>`},
 		entry{"OEBPS/toc.ncx", `<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/"><navMap/></ncx>`},
 		entry{"OEBPS/text/book.xhtml", xhtmlHead + `<body><p id="c2"><img src="../images/map.png" alt="Karte"/></p></body></html>`},
-		entry{"OEBPS/images/map.png", imageOf(t, "png", 1800, 100, false)},
+		entry{"OEBPS/images/map.png", imageOf(t, "png", 1800, 100, true)},
 		entry{"OEBPS/images/cover.jpg", imageOf(t, "jpeg", 100, 1800, false)},
 		entry{"OEBPS/images/heavy.jpeg", smallButHeavy},
 		entry{"OEBPS/images/small.png", imageOf(t, "png", 300, 200, false)},
@@ -478,5 +478,42 @@ func TestFixRefuses(t *testing.T) {
 	}
 	if _, err := Fix(bytes.NewReader(encrypted), int64(len(encrypted)), io.Discard, []string{"subset-fonts"}, modified); err == nil {
 		t.Error("an unknown fix was taken")
+	}
+}
+
+func withOrientation(t *testing.T, jpegData []byte, orientation int) []byte {
+	t.Helper()
+	tiff := []byte{'M', 'M', 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, byte(orientation), 0, 0, 0, 0, 0, 0}
+	seg := append([]byte("Exif\x00\x00"), tiff...)
+	n := len(seg) + 2
+	out := []byte{0xFF, 0xD8, 0xFF, 0xE1, byte(n >> 8), byte(n)}
+	out = append(out, seg...)
+	return append(out, jpegData[2:]...)
+}
+
+func TestShrinkImageLeavesAJPEGThatIsTurnedByItsOrientation(t *testing.T) {
+	big := []byte(imageOf(t, "jpeg", 100, 1800, false))
+	if _, ok := shrinkImage(withOrientation(t, big, 1), true); !ok {
+		t.Error("an upright JPEG is not scaled")
+	}
+	if got := jpegOrientation(withOrientation(t, big, 6)); got != 6 {
+		t.Fatalf("orientation read as %d", got)
+	}
+	if _, ok := shrinkImage(withOrientation(t, big, 6), true); ok {
+		t.Error("a JPEG turned by its orientation was re-encoded")
+	}
+}
+
+func TestShrinkImageKeepsTheOriginalThatIsNotLarger(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 1700, 8))
+	for i := range img.Pix {
+		img.Pix[i] = uint8(i / 40)
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if out, ok := shrinkImage(buf.Bytes(), true); ok {
+		t.Errorf("a larger re-encoding replaced the original: %d bytes for %d", len(out), buf.Len())
 	}
 }
