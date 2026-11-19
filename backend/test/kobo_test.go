@@ -448,6 +448,11 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 	}
 
 	exactly("koboTags", http.MethodGet, "/v1/library/tags", nil, "[]")
+	call("koboTagCreate", http.MethodPost, "/v1/library/tags", map[string]any{"Name": ""}, 422)
+	call("koboTagUpdate", http.MethodPut, "/v1/library/tags/"+nobody, map[string]any{"Name": "x"}, 404)
+	call("koboTagDelete", http.MethodDelete, "/v1/library/tags/"+nobody, nil, 404)
+	call("koboTagAddItems", http.MethodPost, "/v1/library/tags/"+nobody+"/items", map[string]any{"Items": []any{}}, 404)
+	call("koboTagRemoveItems", http.MethodPost, "/v1/library/tags/"+nobody+"/items/delete", map[string]any{"Items": []any{}}, 404)
 	exactly("koboWishlist", http.MethodGet, "/v1/user/wishlist", nil, "[]")
 	exactly("koboRecommendations", http.MethodGet, "/v1/user/recommendations", nil, "[]")
 	exactly("koboProfile", http.MethodGet, "/v1/user/profile", nil, "{}")

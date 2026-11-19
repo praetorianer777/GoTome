@@ -564,6 +564,14 @@ type KoboReadingTime struct {
 	Minutes  int32
 }
 
+type KoboTag struct {
+	DeviceID uuid.UUID
+	TagID    uuid.UUID
+	Name     string
+	BookIds  []uuid.UUID
+	SyncedAt time.Time
+}
+
 type Library struct {
 	ID               uuid.UUID
 	Name             string

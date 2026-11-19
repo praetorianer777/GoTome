@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A Kobo reader synced with GOtome shows your collections, other people's
+  shared ones and your smart shelves as collections with the books on the
+  reader, and what you do with your own collections on the reader (make,
+  rename, delete, add and remove books) changes them in GOtome. Shared
+  collections of others and smart shelves are read only there.
+
 ## [0.26.0] - 2026-11-13
 
 ### Added
