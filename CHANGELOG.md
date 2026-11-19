@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Full-text search for an account limited to an age rating no longer comes
+  back short or empty when the best matches are in books above the limit.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

@@ -200,7 +200,7 @@ impl Engine {
     }
 
     /// The best chunks that match the query in one of the language fields,
-    /// among the libraries and, when named, the books.
+    /// among the libraries and, when named, the books, never in those excluded.
     pub fn search(&self, q: &Search) -> Res<Vec<Hit>> {
         if q.libraries.is_empty() || q.books.as_ref().is_some_and(|b| b.is_empty()) || q.limit == 0
         {
@@ -210,6 +210,9 @@ impl Engine {
         must.push((Occur::Must, set(self.library, &q.libraries)));
         if let Some(books) = &q.books {
             must.push((Occur::Must, set(self.book, books)));
+        }
+        if !q.exclude_books.is_empty() {
+            must.push((Occur::MustNot, set(self.book, &q.exclude_books)));
         }
         let query = BooleanQuery::new(must);
         let searcher = self.reader.searcher();
@@ -376,6 +379,7 @@ pub struct Search {
     pub variants: Vec<Vec<String>>,
     pub libraries: Vec<String>,
     pub books: Option<Vec<String>>,
+    pub exclude_books: Vec<String>,
     pub limit: usize,
 }
 

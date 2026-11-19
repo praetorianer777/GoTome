@@ -1,10 +1,12 @@
 package search
 
 import (
+	"cmp"
 	"context"
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -23,6 +25,9 @@ type TantivySearch struct {
 	pool  *pgxpool.Pool
 	books *catalog.Service
 	index *fulltext.Index
+	// Window is how many of the best chunks one search takes; zero is the
+	// default. Tests make it small.
+	Window int
 }
 
 // NewTantivySearch returns the Searcher on the index.
@@ -87,7 +92,12 @@ func (s *TantivySearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope
 		return nil, err
 	}
 	iq := indexQuery(p)
-	iq.Libraries, iq.Books, iq.Limit = libs, books, window
+	iq.Libraries, iq.Books, iq.Limit = libs, books, cmp.Or(s.Window, window)
+	if books == nil {
+		if iq.ExcludeBooks, err = aboveAgeLimit(ctx, tx, scope, libs); err != nil {
+			return nil, err
+		}
+	}
 	hits, err := s.index.Search(iq)
 	if err != nil || len(hits) == 0 {
 		return nil, err
@@ -117,6 +127,23 @@ func (s *TantivySearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope
 		var f found
 		return f, r.Scan(&f.id, &f.bookID, &f.score)
 	})
+}
+
+// aboveAgeLimit names the books of the libraries that the viewer's age limit
+// hides. The index holds no ratings, which a tag or an edit changes at any
+// time, so they are left out of its query, not its schema: otherwise the best
+// window could be all books the outer conditions then drop. A search whose
+// books are named already has the limit through catalog.Service.Select.
+func aboveAgeLimit(ctx context.Context, tx pgx.Tx, scope library.Scope, libs []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT b.id FROM books b
+		WHERE b.library_id = ANY($1::uuid[])
+		  AND b.age_rating IS NOT NULL AND b.age_rating > (SELECT age_limit($2, $3))`,
+		libs, scope.Viewer, scope.SeesAll)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
 }
 
 // passages reads the chunks again from their files and makes their
