@@ -193,6 +193,27 @@ func (q *Queries) FirstActiveAdmin(ctx context.Context) (uuid.UUID, error) {
 	return id, err
 }
 
+const getCurationActionBooks = `-- name: GetCurationActionBooks :one
+SELECT a.books FROM curation_actions a
+WHERE a.id = $1
+  AND a.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND books_age_visible(a.books, $2::uuid, $3::boolean)
+`
+
+type GetCurationActionBooksParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+// The books of an action in a library the viewer sees, unlocked: the
+// libraries are held before the action is (HoldLibrariesOfBooks).
+func (q *Queries) GetCurationActionBooks(ctx context.Context, arg GetCurationActionBooksParams) ([]uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getCurationActionBooks, arg.ID, arg.Viewer, arg.SeesAll)
+	var books []uuid.UUID
+	err := row.Scan(&books)
+	return books, err
+}
+
 const getCurationActionForUpdate = `-- name: GetCurationActionForUpdate :one
 SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before, a.after, a.state, a.created_at,
        r.automatic, r.state AS run_state, r.dry_run

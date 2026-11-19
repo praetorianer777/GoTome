@@ -35,6 +35,15 @@ INSERT INTO book_joins (into_book, from_book, file_ids)
 VALUES (sqlc.arg(into_book), sqlc.arg(from_book), sqlc.arg(file_ids)::uuid[])
 RETURNING id;
 
+-- name: GetJoinBooks :one
+-- The two books of a join not taken back yet, unlocked: the libraries are
+-- held before the join is (HoldLibrariesOfBooks).
+SELECT j.into_book, j.from_book
+FROM book_joins j
+JOIN books b ON b.id = j.into_book
+WHERE j.id = sqlc.arg(id) AND j.undone_at IS NULL AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
+
 -- name: GetJoinForUpdate :one
 -- A join not taken back yet, if the viewer sees the surviving book's library.
 SELECT j.id, j.into_book, j.from_book, j.file_ids

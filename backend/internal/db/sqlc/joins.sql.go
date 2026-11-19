@@ -33,6 +33,34 @@ func (q *Queries) AddNarrators(ctx context.Context, arg AddNarratorsParams) erro
 	return err
 }
 
+const getJoinBooks = `-- name: GetJoinBooks :one
+SELECT j.into_book, j.from_book
+FROM book_joins j
+JOIN books b ON b.id = j.into_book
+WHERE j.id = $1 AND j.undone_at IS NULL AND b.deleted_at IS NULL
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
+`
+
+type GetJoinBooksParams struct {
+	ID      uuid.UUID
+	Viewer  uuid.UUID
+	SeesAll bool
+}
+
+type GetJoinBooksRow struct {
+	IntoBook uuid.UUID
+	FromBook uuid.UUID
+}
+
+// The two books of a join not taken back yet, unlocked: the libraries are
+// held before the join is (HoldLibrariesOfBooks).
+func (q *Queries) GetJoinBooks(ctx context.Context, arg GetJoinBooksParams) (GetJoinBooksRow, error) {
+	row := q.db.QueryRow(ctx, getJoinBooks, arg.ID, arg.Viewer, arg.SeesAll)
+	var i GetJoinBooksRow
+	err := row.Scan(&i.IntoBook, &i.FromBook)
+	return i, err
+}
+
 const getJoinForUpdate = `-- name: GetJoinForUpdate :one
 SELECT j.id, j.into_book, j.from_book, j.file_ids
 FROM book_joins j

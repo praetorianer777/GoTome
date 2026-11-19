@@ -83,6 +83,16 @@ var ErrNoJoin = errors.New("no such join")
 func (s *Service) Unjoin(ctx context.Context, scope library.Scope, id uuid.UUID) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		books, err := q.GetJoinBooks(ctx, sqlc.GetJoinBooksParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNoJoin
+		}
+		if err != nil {
+			return err
+		}
+		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{books.IntoBook, books.FromBook}); err != nil {
+			return err
+		}
 		join, err := q.GetJoinForUpdate(ctx, sqlc.GetJoinForUpdateParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoJoin
@@ -90,8 +100,8 @@ func (s *Service) Unjoin(ctx context.Context, scope library.Scope, id uuid.UUID)
 		if err != nil {
 			return err
 		}
-		if err := q.HoldLibrariesOfBooks(ctx, []uuid.UUID{join.IntoBook, join.FromBook}); err != nil {
-			return err
+		if join.IntoBook != books.IntoBook || join.FromBook != books.FromBook {
+			return errors.New("the join's books changed while it was being taken back")
 		}
 		steps := []func() error{
 			func() error { return q.RestoreMergedBook(ctx, join.FromBook) },
