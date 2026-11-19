@@ -156,7 +156,9 @@ var nonPublic = []netip.Prefix{
 	netip.MustParsePrefix("192.0.0.0/24"),
 	netip.MustParsePrefix("198.18.0.0/15"),
 	netip.MustParsePrefix("240.0.0.0/4"),
+	netip.MustParsePrefix("64:ff9b::/96"), // NAT64 reaches any IPv4 address, private ones too
 	netip.MustParsePrefix("64:ff9b:1::/48"),
+	netip.MustParsePrefix("2002::/16"), // 6to4
 }
 
 // Public reports whether an address is on the public internet.

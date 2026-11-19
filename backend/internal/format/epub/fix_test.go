@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fixPackage is a package document with the items and itemrefs given.
@@ -478,5 +479,17 @@ func TestFixRefuses(t *testing.T) {
 	}
 	if _, err := Fix(bytes.NewReader(encrypted), int64(len(encrypted)), io.Discard, []string{"subset-fonts"}, modified); err == nil {
 		t.Error("an unknown fix was taken")
+	}
+}
+
+func TestFixRefusesAnArchiveZipsafeRefuses(t *testing.T) {
+	data := build(t,
+		entry{"mimetype", "application/epub+zip"},
+		entry{"../escape.txt", "x"},
+	)
+	var out bytes.Buffer
+	_, err := Fix(bytes.NewReader(data), int64(len(data)), &out, []string{LargeDocument}, time.Time{})
+	if !errors.Is(err, ErrUnsafe) {
+		t.Fatalf("Fix of an archive with an entry leaving it: %v", err)
 	}
 }

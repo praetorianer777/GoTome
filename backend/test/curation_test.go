@@ -4,11 +4,13 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -713,5 +715,54 @@ func TestUndoingAMergeLeavesHighlightsEditedOrDeletedSince(t *testing.T) {
 	}
 	if len(got) != 2 || got[ids[0]] != [2]string{s.gone, "rewritten"} || got[ids[2]] != [2]string{s.gone, "three"} {
 		t.Errorf("annotations after the undo: %v", got)
+	}
+}
+
+func TestHistoryNamesOnlyTheBooksTheViewerSees(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, adminID := a.signedIn("admin", "admin")
+	reader, readerID := a.signedIn("rita", "editor")
+	shared := a.library(admin, "Shelf", "shared")
+	private := a.library(admin, "Mine", "private")
+	a.call(admin, http.MethodPut, "/libraries/"+shared+"/members/"+readerID, nil)
+	book := a.libraryBook(t, uuid.MustParse(shared), "Ironbridge Revised", "Ivo Marek")
+	hidden := a.libraryBook(t, uuid.MustParse(private), "Secret Placeholder", "Ivo Marek")
+	if _, err := a.pool.Exec(context.Background(), `UPDATE books SET placeholder = true WHERE id = $1`, hidden); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(context.Background(), `INSERT INTO user_books (user_id, book_id, status) VALUES ($1, $2, 'wishlist')`, adminID, hidden); err != nil {
+		t.Fatal(err)
+	}
+	status, joined, _ := a.call(admin, http.MethodPost, "/books/"+hidden.String()+"/join-library-book", map[string]any{"book": book.String()})
+	if status != 200 {
+		t.Fatalf("join: %d %v", status, joined)
+	}
+	runs := a.runs(reader)
+	if len(runs) != 1 {
+		t.Fatalf("the reader sees %d runs: %v", len(runs), runs)
+	}
+	status, body, _ := a.call(reader, http.MethodGet, "/curation/runs/"+runs[0]["id"].(string), nil)
+	if status != 200 {
+		t.Fatalf("run: %d %v", status, body)
+	}
+	actions := body["actions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("actions: %v", actions)
+	}
+	listed := actions[0].(map[string]any)["books"].([]any)
+	if len(listed) != 1 || listed[0].(map[string]any)["id"] != book.String() {
+		t.Errorf("the books of the action as the reader sees them: %v", listed)
+	}
+	for _, b := range listed {
+		for _, c := range b.(map[string]any)["changes"].([]any) {
+			if strings.Contains(fmt.Sprint(c), "Secret Placeholder") {
+				t.Errorf("a hidden title in %v", c)
+			}
+		}
+	}
+	_, adminBody, _ := a.call(admin, http.MethodGet, "/curation/runs/"+runs[0]["id"].(string), nil)
+	if got := adminBody["actions"].([]any)[0].(map[string]any)["books"].([]any); len(got) != 2 {
+		t.Errorf("the administrator sees both books: %v", got)
 	}
 }

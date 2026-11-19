@@ -67,6 +67,13 @@ WHERE a.run_id = sqlc.arg(run_id)
 ORDER BY a.created_at, a.id
 LIMIT sqlc.arg(max_rows);
 
+-- name: GetCurationActionBooks :one
+-- The books of an action in a library the viewer sees, unlocked: the
+-- libraries are held before the action is (HoldLibrariesOfBooks).
+SELECT a.books FROM curation_actions a
+WHERE a.id = sqlc.arg(id)
+  AND a.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND books_age_visible(a.books, sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean);
+
 -- name: GetCurationActionForUpdate :one
 -- An action in a library the viewer sees, locked.
 SELECT a.id, a.run_id, a.library_id, a.kind, a.books, a.trashed_files, a.before, a.after, a.state, a.created_at,
@@ -110,7 +117,12 @@ SELECT DISTINCT unnest(a.books)::uuid AS book_id FROM curation_actions a
 WHERE a.run_id = $1 AND a.state = 'done';
 
 -- name: ListCurationTitles :many
-SELECT id, title FROM books WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+-- The titles of those of the books the viewer sees; an action may hold
+-- books of libraries they do not.
+SELECT b.id, b.title FROM books b
+WHERE b.id = ANY(sqlc.arg(ids)::uuid[])
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean))
+  AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)));
 
 -- name: ListCurationNames :many
 -- What the ids of authors, series, publishers and tags are called.

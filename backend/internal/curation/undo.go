@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -60,12 +61,25 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 	var made []move
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		books, err := q.GetCurationActionBooks(ctx, sqlc.GetCurationActionBooksParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if err := q.HoldLibrariesOfBooks(ctx, books); err != nil {
+			return err
+		}
 		a, err := q.GetCurationActionForUpdate(ctx, sqlc.GetCurationActionForUpdateParams{ID: id, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
+		}
+		if !slices.Equal(a.Books, books) {
+			return errors.New("the action's books changed while it was being undone")
 		}
 		if a.State != "done" {
 			out.State = OutcomeAlready
@@ -74,9 +88,6 @@ func (s *Service) UndoAction(ctx context.Context, scope library.Scope, id uuid.U
 		if a.DryRun {
 			out.State, out.Message = OutcomeNotUndoable, "A dry run changed nothing."
 			return nil
-		}
-		if err := q.HoldLibrariesOfBooks(ctx, a.Books); err != nil {
-			return err
 		}
 		stop := func(state, message string, conflicts []Conflict) error {
 			out.State, out.Message, out.Conflicts = state, message, conflicts

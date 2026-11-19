@@ -184,12 +184,13 @@ func (s *Service) GetRun(ctx context.Context, scope library.Scope, id uuid.UUID,
 		rows = rows[:limit]
 		next = makeCursor(rows[limit-1].CreatedAt, rows[limit-1].ID)
 	}
-	actions, err := s.actionsOf(ctx, rows)
+	actions, err := s.actionsOf(ctx, scope, rows)
 	return run, actions, next, err
 }
 
-// actionsOf works out what each action changed, with the books' titles.
-func (s *Service) actionsOf(ctx context.Context, rows []sqlc.ListCurationActionsRow) ([]Action, error) {
+// actionsOf works out what each action changed, with the titles of the
+// books the scope sees; the others are left out.
+func (s *Service) actionsOf(ctx context.Context, scope library.Scope, rows []sqlc.ListCurationActionsRow) ([]Action, error) {
 	q := sqlc.New(s.pool)
 	var books, named []uuid.UUID
 	type pair struct{ before, after Snapshot }
@@ -211,7 +212,7 @@ func (s *Service) actionsOf(ctx context.Context, rows []sqlc.ListCurationActions
 		}
 	}
 	titles := map[uuid.UUID]string{}
-	ts, err := q.ListCurationTitles(ctx, books)
+	ts, err := q.ListCurationTitles(ctx, sqlc.ListCurationTitlesParams{Ids: books, Viewer: scope.Viewer, SeesAll: scope.SeesAll})
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +234,9 @@ func (s *Service) actionsOf(ctx context.Context, rows []sqlc.ListCurationActions
 			State: r.State, Note: r.Note, CreatedAt: r.CreatedAt, UndoneAt: r.UndoneAt,
 		}
 		for _, b := range r.Books {
+			if _, seen := titles[b]; !seen {
+				continue
+			}
 			bc := BookChange{ID: b, Title: titles[b]}
 			if r.Kind == ActionOrganise {
 				bc.Fields = movedFiles(r.Before)
