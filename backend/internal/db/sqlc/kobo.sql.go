@@ -26,6 +26,20 @@ func (q *Queries) DropKoboBook(ctx context.Context, arg DropKoboBookParams) erro
 	return err
 }
 
+const dropKoboTag = `-- name: DropKoboTag :exec
+DELETE FROM kobo_tags WHERE device_id = $1 AND tag_id = $2
+`
+
+type DropKoboTagParams struct {
+	DeviceID uuid.UUID
+	TagID    uuid.UUID
+}
+
+func (q *Queries) DropKoboTag(ctx context.Context, arg DropKoboTagParams) error {
+	_, err := q.db.Exec(ctx, dropKoboTag, arg.DeviceID, arg.TagID)
+	return err
+}
+
 const forgetKoboBooks = `-- name: ForgetKoboBooks :exec
 DELETE FROM kobo_books WHERE device_id = $1
 `
@@ -33,6 +47,15 @@ DELETE FROM kobo_books WHERE device_id = $1
 // A reader that syncs from the start, after a reset, is told everything again.
 func (q *Queries) ForgetKoboBooks(ctx context.Context, deviceID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, forgetKoboBooks, deviceID)
+	return err
+}
+
+const forgetKoboTags = `-- name: ForgetKoboTags :exec
+DELETE FROM kobo_tags WHERE device_id = $1
+`
+
+func (q *Queries) ForgetKoboTags(ctx context.Context, deviceID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, forgetKoboTags, deviceID)
 	return err
 }
 
@@ -121,6 +144,36 @@ func (q *Queries) ListKoboLibrary(ctx context.Context, arg ListKoboLibraryParams
 	return items, nil
 }
 
+const listKoboTags = `-- name: ListKoboTags :many
+SELECT tag_id, name, book_ids FROM kobo_tags WHERE device_id = $1
+`
+
+type ListKoboTagsRow struct {
+	TagID   uuid.UUID
+	Name    string
+	BookIds []uuid.UUID
+}
+
+func (q *Queries) ListKoboTags(ctx context.Context, deviceID uuid.UUID) ([]ListKoboTagsRow, error) {
+	rows, err := q.db.Query(ctx, listKoboTags, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListKoboTagsRow{}
+	for rows.Next() {
+		var i ListKoboTagsRow
+		if err := rows.Scan(&i.TagID, &i.Name, &i.BookIds); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockKoboReadingTime = `-- name: LockKoboReadingTime :one
 SELECT minutes FROM kobo_reading_time WHERE device_id = $1 AND book_id = $2 FOR UPDATE
 `
@@ -157,6 +210,30 @@ func (q *Queries) PutKoboBook(ctx context.Context, arg PutKoboBookParams) error 
 		arg.BookID,
 		arg.SyncedAt,
 		arg.ProgressAt,
+	)
+	return err
+}
+
+const putKoboTag = `-- name: PutKoboTag :exec
+INSERT INTO kobo_tags (device_id, tag_id, name, book_ids)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (device_id, tag_id) DO UPDATE
+SET name = EXCLUDED.name, book_ids = EXCLUDED.book_ids, synced_at = now()
+`
+
+type PutKoboTagParams struct {
+	DeviceID uuid.UUID
+	TagID    uuid.UUID
+	Name     string
+	BookIds  []uuid.UUID
+}
+
+func (q *Queries) PutKoboTag(ctx context.Context, arg PutKoboTagParams) error {
+	_, err := q.db.Exec(ctx, putKoboTag,
+		arg.DeviceID,
+		arg.TagID,
+		arg.Name,
+		arg.BookIds,
 	)
 	return err
 }

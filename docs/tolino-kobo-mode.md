@@ -165,8 +165,8 @@ store, not to GOtome: give it again on the book's page, or on the reader
 once it has synced again.
 
 The store's pages, its search and purchases stay Kobo's, as the reader's
-Kobo account has them. Collections, notes and highlights are not synced
-yet.
+Kobo account has them. Collections sync as told under
+[Collections](#collections); notes and highlights are not synced yet.
 
 ### Reading time and statistics
 
@@ -181,6 +181,38 @@ reset) goes on from the lower one and adds no time. Firmware that sends no
 count still makes a session of the places it sends, with no time to speak
 of. The reader's `RemainingTimeMinutes` and its analytics events are not
 used: the events are taken and kept nowhere.
+
+### Collections
+
+Kobo calls a collection a "tag". The sync carries them both ways (#543):
+
+- Your own collections, other people's shared ones and your smart shelves
+  reach the reader as collections holding the books on it. Each is told
+  once (`NewTag`), again when its name or its books change (`ChangedTag`),
+  and as `DeletedTag` once it is gone or you may no longer see it. A shared
+  collection of someone else's carries its owner's name, "Name (owner)".
+  Books of a library you no longer see are not named.
+- What you do with your own collections on the reader changes them in
+  GOtome: making one (`POST /v1/library/tags`, a private collection), renaming
+  it (`PUT /v1/library/tags/{id}`), deleting it (`DELETE`), putting books on
+  it and taking them off (`POST .../items`, `POST .../items/delete`). The
+  reader names books by their `RevisionId`, which is the book's ID.
+- A shared collection of someone else's and a smart shelf are only read on
+  the device. A change the reader makes to one is refused with 403, and the
+  next sync sends the collection as it is in GOtome again.
+- Only the books the reader holds are on a collection there. A collection
+  made on the reader names books GOtome may not know of or you may not see;
+  those are left out.
+
+The shapes follow Calibre-Web's Kobo sync: a sync entry
+`{"NewTag": {"Tag": {"Created", "Id", "Items": [{"RevisionId", "Type":
+"ProductRevisionTagItem"}], "LastModified", "Name", "Type": "UserTag"}}}`
+(`ChangedTag` alike, `DeletedTag` with only `Id` and `LastModified`),
+`POST /v1/library/tags` with `{"Name", "Items"}` answering the new ID as a
+JSON string with 201, and `{"Items": [...]}` for the item calls (201 for
+adding, 200 otherwise). They have not been seen against real firmware
+here; a recording from a reader (make a collection, rename it, add and
+remove a book, delete it, then sync) should confirm them.
 
 ### What GOtome answers and what stays Kobo's
 
@@ -230,6 +262,10 @@ the table under "What was checked"):
    `POST` (or `PUT`) to `v1/products/<book>/rating/<stars>` with status
    200, and the book's page in GOtome shows the stars. Report the method
    and status: which one the firmware uses has not been seen yet (#542).
+8. Make a collection in GOtome, put a book on the device on it and sync:
+   the reader lists the collection with the book. Make another on the
+   reader, add and remove a book, rename it, delete it: GOtome follows.
+   Report the requests the reader sent if it differs from the shapes above.
 
 Watch the requests before GOtome answers them: a plain HTTP server that
 logs, such as `python3 -m http.server <port>` run in an empty directory,

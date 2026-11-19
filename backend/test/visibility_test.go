@@ -203,6 +203,7 @@ func readCases() map[string][]readCase {
 		"downloadOpdsDeviceFile": {{path: "/opds/device/files/{file}", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"listDeviceQueue":        {{path: "/device/books", why: "only a device's token reaches it; TestABookSentToADeviceArrivesOnceAndOnlyWhileSeen proves it"}},
 		"koboSync":               {{path: "/kobo/not-a-token/v1/library/sync", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
+		"koboTags":               {{path: "/kobo/not-a-token/v1/library/tags", why: "only a device's token in the address reaches it; TestCollectionsGoToAKoboReaderAndBack proves a library lost leaves the tags"}},
 		"koboMetadata":           {{path: "/kobo/not-a-token/v1/library/{book}/metadata", why: "only a device's token in the address reaches it; TestAKoboReaderSyncsItsBooksAndReadingPlaces proves it"}},
 		"koboReadingState":       {{path: "/kobo/not-a-token/v1/library/{book}/state", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},
 		"koboCover":              {{path: "/kobo/not-a-token/{book}/300/400/false/image.jpg", why: "only a device's token in the address reaches it; TestEveryKoboRouteAnswersAReaderWithItsToken proves it"}},

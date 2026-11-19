@@ -261,6 +261,9 @@ type koboSyncItem struct {
 	NewEntitlement      *koboBookChange  `json:"NewEntitlement,omitempty"`
 	ChangedEntitlement  *koboBookChange  `json:"ChangedEntitlement,omitempty"`
 	ChangedReadingState *koboStateChange `json:"ChangedReadingState,omitempty"`
+	NewTag              *koboTagChange   `json:"NewTag,omitempty"`
+	ChangedTag          *koboTagChange   `json:"ChangedTag,omitempty"`
+	DeletedTag          *koboTagChange   `json:"DeletedTag,omitempty"`
 }
 
 type koboBookChange struct {
@@ -372,6 +375,11 @@ func (s *Server) koboSync(w http.ResponseWriter, r *http.Request) error {
 			out = append(out, koboSyncItem{ChangedReadingState: &koboStateChange{ReadingState: *state}})
 		}
 	}
+	tagItems, err := s.koboTagSync(r.Context(), scope, device, now)
+	if err != nil {
+		return err
+	}
+	out = append(out, tagItems...)
 	w.Header().Set("x-kobo-synctoken", koboSyncToken)
 	if more {
 		w.Header().Set("x-kobo-sync", "continue")
@@ -793,7 +801,7 @@ func (s *Server) koboRoutes() []Route {
 		read("/v1/library/sync", "koboSync", "The changes to a Kobo reader's library since its last sync: books sent to it, their details and reading places, and books taken off it", ReadsLibraries, s.koboSync),
 		read("/v1/library/{bookId}/metadata", "koboMetadata", "A book's details as a Kobo reader shows them", ReadsLibraries, s.koboMetadata),
 		read("/v1/library/{bookId}/state", "koboReadingState", "Where the person is in a book, as a Kobo reader keeps it", ReadsLibraries, s.koboGetState),
-		read("/v1/library/tags", "koboTags", "A Kobo reader's collections: none yet", ReadsNoLibrary, s.koboEmptyList),
+		read("/v1/library/tags", "koboTags", "A Kobo reader's collections: the person's, shared ones and smart shelves, with the books on the device", ReadsLibraries, s.koboTags),
 		read("/v1/user/profile", "koboProfile", "The store profile a Kobo reader asks for: nothing", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/loyalty/benefits", "koboBenefits", "The store's loyalty benefits: none", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/wishlist", "koboWishlist", "The store's wishlist: empty", ReadsNoLibrary, s.koboEmptyList),
@@ -856,5 +864,6 @@ func (s *Server) koboRoutes() []Route {
 			Permission: auth.LibraryRead, Devices: true, Handler: h,
 		})
 	}
+	routes = append(routes, s.koboTagRoutes()...)
 	return append(routes, s.koboStoreRoutes()...)
 }

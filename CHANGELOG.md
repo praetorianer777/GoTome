@@ -13,6 +13,13 @@ What changes for someone who runs or uses GOtome. The format follows
   at its next sync; ratings given before went to Kobo's store and need giving
   again ([Kobo readers](docs/tolino-kobo-mode.md#4-point-the-reader-at-gotome)).
 
+- A Kobo reader synced with GOtome shows your collections, other people's
+  shared ones and your smart shelves as collections with the books on the
+  reader, and what you do with your own collections on the reader (make,
+  rename, delete, add and remove books) changes them in GOtome. Shared
+  collections of others and smart shelves are read only there
+  ([Kobo readers](docs/tolino-kobo-mode.md#collections)).
+
 ### Changed
 
 - The genres GOtome suggests out of the box are trained again from Project

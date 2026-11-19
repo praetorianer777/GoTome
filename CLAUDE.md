@@ -1655,7 +1655,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   time with `x-kobo-sync: continue`; a sync without `x-kobo-synctoken`
   starts over. A reading state it sends is saved as `fraction:<f>` under
   #44's rule with `basedOn` the place it was last told of; archiving takes
-  the book off the device.
+  the book off the device. Collections are Kobo "tags" (#543,
+  `httpapi/kobo_tags.go`): `kobo_tags` records per device the name and the
+  device's books each was told with, so the sync sends `NewTag`,
+  `ChangedTag` and `DeletedTag` once (`kobo.Service.SyncTags`). The person's
+  collections, others' shared ones and smart shelves go across, with the
+  books the reader holds that the scope sees; `POST/PUT/DELETE
+  /v1/library/tags` and `.../items[/delete]` change only the person's own
+  collections, and refuse others' shared ones and smart shelves with 403,
+  forgetting the tag so the next sync sends it as it is.
 - KOReader's progress sync (`internal/kosync`, #198) is served under
   `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
   its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched

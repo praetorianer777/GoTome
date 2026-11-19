@@ -7,6 +7,7 @@ package kobo
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,6 +49,9 @@ func (s *Service) Sync(ctx context.Context, scope library.Scope, deviceID uuid.U
 		q := sqlc.New(tx)
 		if fresh {
 			if err := q.ForgetKoboBooks(ctx, deviceID); err != nil {
+				return err
+			}
+			if err := q.ForgetKoboTags(ctx, deviceID); err != nil {
 				return err
 			}
 		}
@@ -157,4 +161,102 @@ func (s *Service) ReadingMinutes(ctx context.Context, deviceID, bookID uuid.UUID
 		return q.SetKoboReadingTime(ctx, sqlc.SetKoboReadingTimeParams{DeviceID: deviceID, BookID: bookID, Minutes: int32(total)})
 	})
 	return delta, err
+}
+
+// Tag is a collection as the reader holds it: a Kobo "tag", with the books
+// on it that are on the device.
+type Tag struct {
+	ID               uuid.UUID
+	Name             string
+	Created, Updated time.Time
+	Books            []uuid.UUID
+}
+
+// TagChange is what a sync tells the reader of one tag: new, changed (its
+// name or its books), or, for Deleted, gone, with only the ID set.
+type TagChange struct {
+	Tag     Tag
+	New     bool
+	Deleted bool
+}
+
+// OnDevice is the books the reader was told it holds.
+func (s *Service) OnDevice(ctx context.Context, deviceID uuid.UUID) ([]uuid.UUID, error) {
+	told, err := sqlc.New(s.pool).ListKoboBooks(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]uuid.UUID, len(told))
+	for i, t := range told {
+		out[i] = t.BookID
+	}
+	return out, nil
+}
+
+// SyncTags compares the tags the reader should hold with those it was told
+// of and records the difference as told: each change once. A tag it was
+// told of that is not wanted any more is deleted.
+func (s *Service) SyncTags(ctx context.Context, deviceID uuid.UUID, wanted []Tag) ([]TagChange, error) {
+	var out []TagChange
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		told, err := q.ListKoboTags(ctx, deviceID)
+		if err != nil {
+			return err
+		}
+		known := make(map[uuid.UUID]sqlc.ListKoboTagsRow, len(told))
+		for _, t := range told {
+			known[t.TagID] = t
+		}
+		for _, w := range wanted {
+			t, ok := known[w.ID]
+			delete(known, w.ID)
+			if ok && t.Name == w.Name && sameBooks(t.BookIds, w.Books) {
+				continue
+			}
+			if err := q.PutKoboTag(ctx, sqlc.PutKoboTagParams{DeviceID: deviceID, TagID: w.ID, Name: w.Name, BookIds: nonNil(w.Books)}); err != nil {
+				return err
+			}
+			out = append(out, TagChange{Tag: w, New: !ok})
+		}
+		for id := range known {
+			if err := q.DropKoboTag(ctx, sqlc.DropKoboTagParams{DeviceID: deviceID, TagID: id}); err != nil {
+				return err
+			}
+			out = append(out, TagChange{Tag: Tag{ID: id}, Deleted: true})
+		}
+		return nil
+	})
+	return out, err
+}
+
+// RecordTag notes that the reader holds the tag as given, after a change
+// it sent itself, so that the sync does not send it back.
+func (s *Service) RecordTag(ctx context.Context, deviceID uuid.UUID, t Tag) error {
+	return sqlc.New(s.pool).PutKoboTag(ctx, sqlc.PutKoboTagParams{DeviceID: deviceID, TagID: t.ID, Name: t.Name, BookIds: nonNil(t.Books)})
+}
+
+// ForgetTag drops what the reader was told of a tag, so the next sync tells
+// it anew: how a change the reader made to a tag it may not change is undone.
+func (s *Service) ForgetTag(ctx context.Context, deviceID, tagID uuid.UUID) error {
+	return sqlc.New(s.pool).DropKoboTag(ctx, sqlc.DropKoboTagParams{DeviceID: deviceID, TagID: tagID})
+}
+
+func nonNil(ids []uuid.UUID) []uuid.UUID {
+	if ids == nil {
+		return []uuid.UUID{}
+	}
+	return ids
+}
+
+func sameBooks(a, b []uuid.UUID) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, id := range a {
+		if !slices.Contains(b, id) {
+			return false
+		}
+	}
+	return true
 }
