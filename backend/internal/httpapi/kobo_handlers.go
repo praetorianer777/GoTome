@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -138,6 +139,7 @@ func (s *Server) koboInitialization(w http.ResponseWriter, r *http.Request) erro
 		"post_analytics_event":       "/v1/analytics/event",
 		"device_auth":                "/v1/auth/device",
 		"device_refresh":             "/v1/auth/refresh",
+		"rating":                     "/v1/products/{ProductId}/rating/{Rating}",
 		"image_url_template":         "/{ImageId}/{Width}/{Height}/false/image.jpg",
 		"image_url_quality_template": "/{ImageId}/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg",
 	} {
@@ -259,6 +261,9 @@ type koboSyncItem struct {
 	NewEntitlement      *koboBookChange  `json:"NewEntitlement,omitempty"`
 	ChangedEntitlement  *koboBookChange  `json:"ChangedEntitlement,omitempty"`
 	ChangedReadingState *koboStateChange `json:"ChangedReadingState,omitempty"`
+	NewTag              *koboTagChange   `json:"NewTag,omitempty"`
+	ChangedTag          *koboTagChange   `json:"ChangedTag,omitempty"`
+	DeletedTag          *koboTagChange   `json:"DeletedTag,omitempty"`
 }
 
 type koboBookChange struct {
@@ -370,6 +375,11 @@ func (s *Server) koboSync(w http.ResponseWriter, r *http.Request) error {
 			out = append(out, koboSyncItem{ChangedReadingState: &koboStateChange{ReadingState: *state}})
 		}
 	}
+	tagItems, err := s.koboTagSync(r.Context(), scope, device, now)
+	if err != nil {
+		return err
+	}
+	out = append(out, tagItems...)
 	w.Header().Set("x-kobo-synctoken", koboSyncToken)
 	if more {
 		w.Header().Set("x-kobo-sync", "continue")
@@ -674,6 +684,8 @@ func (s *Server) koboSpan(ctx context.Context, device, book uuid.UUID, st koboSt
 
 // koboFraction is how far into the book a reading state says the person
 // is: its bookmark's percentage, or the end for a book marked finished.
+// "ReadyToRead" ("Mark as unread") changes no status: a reader says it of
+// a book it never opened too, and would undo a status set elsewhere (#542).
 func koboFraction(st koboStateIn) (float64, bool) {
 	if st.StatusInfo != nil && st.StatusInfo.Status == "Finished" {
 		return 1, true
@@ -703,6 +715,32 @@ func (s *Server) koboArchive(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// koboRate keeps the stars a reader gives a book as the device owner's own
+// rating, as if given on the book's page; 0 takes it away. Whatever the
+// reader sends with them, such as a review, is not read.
+func (s *Server) koboRate(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "bookId", "book")
+	if err != nil {
+		return err
+	}
+	stars, err := strconv.ParseInt(chi.URLParam(r, "rating"), 10, 16)
+	if err != nil {
+		return ErrValidation(map[string]string{"rating": fmt.Sprintf("A rating is 1 to %d stars, or 0 for none.", catalog.MaxRating)})
+	}
+	rating := int16(stars)
+	n, err := s.Books.SetReading(r.Context(), library.ScopeOf(*UserFrom(r.Context())), []uuid.UUID{id}, catalog.ReadingChange{Rating: &rating})
+	var invalid catalog.EditError
+	switch {
+	case errors.As(err, &invalid):
+		return ErrValidation(invalid)
+	case err != nil:
+		return err
+	case n == 0:
+		return ErrNotFound("There is no such book.")
+	}
+	return s.koboNothing(w, r)
 }
 
 // koboCover sends a book's cover in the size nearest what the reader asks.
@@ -763,7 +801,7 @@ func (s *Server) koboRoutes() []Route {
 		read("/v1/library/sync", "koboSync", "The changes to a Kobo reader's library since its last sync: books sent to it, their details and reading places, and books taken off it", ReadsLibraries, s.koboSync),
 		read("/v1/library/{bookId}/metadata", "koboMetadata", "A book's details as a Kobo reader shows them", ReadsLibraries, s.koboMetadata),
 		read("/v1/library/{bookId}/state", "koboReadingState", "Where the person is in a book, as a Kobo reader keeps it", ReadsLibraries, s.koboGetState),
-		read("/v1/library/tags", "koboTags", "A Kobo reader's collections: none yet", ReadsNoLibrary, s.koboEmptyList),
+		read("/v1/library/tags", "koboTags", "A Kobo reader's collections: the person's, shared ones and smart shelves, with the books on the device", ReadsLibraries, s.koboTags),
 		read("/v1/user/profile", "koboProfile", "The store profile a Kobo reader asks for: nothing", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/loyalty/benefits", "koboBenefits", "The store's loyalty benefits: none", ReadsNoLibrary, s.koboNothing),
 		read("/v1/user/wishlist", "koboWishlist", "The store's wishlist: empty", ReadsNoLibrary, s.koboEmptyList),
@@ -795,6 +833,15 @@ func (s *Server) koboRoutes() []Route {
 			Status: http.StatusNoContent, Permission: auth.PersonalManage, Devices: true, Handler: s.koboArchive,
 		},
 	}
+	// Which method the firmware rates with is not recorded yet (#542), so
+	// both are taken.
+	for _, p := range []struct{ method, id string }{{http.MethodPost, "koboRate"}, {http.MethodPut, "koboRatePut"}} {
+		routes = append(routes, Route{
+			Method: p.method, Path: "/kobo/{token}/v1/products/{bookId}/rating/{rating}", ID: p.id,
+			Summary: "The stars a Kobo reader gives a book: the person's own rating, 0 for none", Tag: tag,
+			Permission: auth.PersonalManage, Devices: true, Handler: s.koboRate,
+		})
+	}
 	for _, p := range []struct{ path, id, summary string }{
 		{"/v1/auth/device", "koboAuthDevice", "Store tokens a Kobo reader asks for; GOtome signs it in by its address"},
 		{"/v1/auth/refresh", "koboAuthRefresh", "Store tokens a Kobo reader renews"},
@@ -817,5 +864,6 @@ func (s *Server) koboRoutes() []Route {
 			Permission: auth.LibraryRead, Devices: true, Handler: h,
 		})
 	}
+	routes = append(routes, s.koboTagRoutes()...)
 	return append(routes, s.koboStoreRoutes()...)
 }

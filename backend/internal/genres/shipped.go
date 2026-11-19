@@ -48,3 +48,15 @@ var Shipped = sync.OnceValues(func() (*Ensemble, error) {
 	}
 	return DecodeEnsemble(data, words)
 })
+
+// ShippedVersion is the Version of the default ensemble in the binary, empty
+// when there is none. An installation compares it with the version its
+// stored, shipped part was taken from: where they differ it replaces that
+// part and keeps what it learned itself.
+func ShippedVersion() string {
+	e, err := Shipped()
+	if err != nil || e == nil {
+		return ""
+	}
+	return e.Version
+}

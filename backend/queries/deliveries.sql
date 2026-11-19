@@ -13,8 +13,10 @@ WHERE d.id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
   AND EXISTS (SELECT 1 FROM book_files f
               WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
 ON CONFLICT (device_id, book_id) DO UPDATE
-SET queued_at = now(), delivered_at = NULL
-WHERE deliveries.delivered_at IS NOT NULL;
+SET manual = true,
+    queued_at = CASE WHEN deliveries.delivered_at IS NOT NULL THEN now() ELSE deliveries.queued_at END,
+    delivered_at = NULL
+WHERE deliveries.delivered_at IS NOT NULL OR NOT deliveries.manual;
 
 -- name: OwnsDevice :one
 SELECT EXISTS (SELECT 1 FROM devices WHERE id = $1 AND user_id = $2);
@@ -117,3 +119,105 @@ WITH hits AS (
     RETURNING book_id
 )
 SELECT hits.hash::bytea AS hash, hits.book_id, hits.file_id FROM hits;
+
+-- name: ListDeviceSources :many
+-- The sources of one of the user's devices, with the name of the shelf.
+SELECT s.id, s.kind, s.collection_id, s.smart_shelf_id,
+       coalesce(c.name, ss.name, '')::text AS name
+FROM device_sources s
+JOIN devices d ON d.id = s.device_id
+LEFT JOIN collections c ON c.id = s.collection_id
+LEFT JOIN smart_shelves ss ON ss.id = s.smart_shelf_id
+WHERE s.device_id = $1 AND d.user_id = $2
+ORDER BY s.created_at, s.id;
+
+-- name: ClearDeviceSources :exec
+DELETE FROM device_sources s USING devices d
+WHERE s.device_id = $1 AND d.id = s.device_id AND d.user_id = $2;
+
+-- name: AddDeviceSource :exec
+INSERT INTO device_sources (device_id, kind, collection_id, smart_shelf_id)
+SELECT d.id, sqlc.arg(kind), sqlc.narg(collection_id), sqlc.narg(smart_shelf_id)
+FROM devices d WHERE d.id = sqlc.arg(device_id) AND d.user_id = sqlc.arg(viewer)::uuid
+ON CONFLICT DO NOTHING;
+
+-- name: DeleteDeviceSourcesNotIn :exec
+DELETE FROM device_sources s USING devices d
+WHERE s.device_id = $1 AND d.id = s.device_id AND d.user_id = $2 AND NOT (s.id = ANY(sqlc.arg(keep)::uuid[]));
+
+-- name: ListUsersWithDeviceSources :many
+SELECT DISTINCT d.user_id FROM device_sources s JOIN devices d ON d.id = s.device_id;
+
+-- name: ListUserDeviceSources :many
+-- Every source of the user's devices, for a pass.
+SELECT s.id, s.device_id, s.kind, s.collection_id, s.smart_shelf_id
+FROM device_sources s JOIN devices d ON d.id = s.device_id
+WHERE d.user_id = $1
+ORDER BY s.created_at, s.id;
+
+-- name: SourceDeliveries :exec
+-- Queues the books among ids the viewer may see, with an ebook on disk, for
+-- the device as the source's, and records the source as their origin; and
+-- drops the source's origin from every other book of the device.
+WITH wanted AS (
+    SELECT b.id
+    FROM unnest(sqlc.arg(ids)::uuid[]) AS n(id)
+    JOIN books b ON b.id = n.id
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+      AND EXISTS (SELECT 1 FROM book_files f
+                  WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
+), queued AS (
+    INSERT INTO deliveries (device_id, book_id, manual)
+    SELECT sqlc.arg(device_id), w.id, false FROM wanted w
+    ON CONFLICT (device_id, book_id) DO NOTHING
+), dropped AS (
+    DELETE FROM delivery_origins o USING deliveries dl
+    WHERE o.source_id = sqlc.arg(source_id) AND dl.id = o.delivery_id
+      AND dl.book_id NOT IN (SELECT id FROM wanted)
+)
+SELECT 1;
+
+-- name: SourceOrigins :execrows
+-- Records the source as the origin of the device's deliveries of the books
+-- among ids that are on its list.
+INSERT INTO delivery_origins (delivery_id, source_id)
+SELECT dl.id, sqlc.arg(source_id)
+FROM deliveries dl
+JOIN books b ON b.id = dl.book_id
+WHERE dl.device_id = sqlc.arg(device_id) AND dl.book_id = ANY(sqlc.arg(ids)::uuid[])
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT * FROM visible_library_ids(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit(sqlc.arg(viewer)::uuid, sqlc.arg(sees_all)::boolean)))
+  AND EXISTS (SELECT 1 FROM book_files f
+              WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
+ON CONFLICT DO NOTHING;
+
+-- name: DropUnsourcedDeliveries :execrows
+-- Takes off the user's devices what only a source put there and none holds
+-- any more: out of the queue, or off a Kobo reader at its next sync.
+-- Others keep what they downloaded.
+DELETE FROM deliveries dl USING devices d
+WHERE d.id = dl.device_id AND d.user_id = $1
+  AND NOT dl.manual
+  AND NOT EXISTS (SELECT 1 FROM delivery_origins o WHERE o.delivery_id = dl.id)
+  AND (dl.delivered_at IS NULL
+       OR EXISTS (SELECT 1 FROM kobo_books k WHERE k.device_id = dl.device_id AND k.book_id = dl.book_id));
+
+-- name: ListDeliveryOrigins :many
+-- Where each of the deliveries among ids came from: the shelf's name, or
+-- the list. A shelf the viewer may no longer look at is not named.
+SELECT dl.id AS delivery_id, s.kind, coalesce(c.name, ss.name, '')::text AS name
+FROM deliveries dl
+JOIN delivery_origins o ON o.delivery_id = dl.id
+JOIN device_sources s ON s.id = o.source_id
+LEFT JOIN collections c ON c.id = s.collection_id
+LEFT JOIN smart_shelves ss ON ss.id = s.smart_shelf_id
+WHERE dl.id = ANY(sqlc.arg(ids)::uuid[])
+  AND (c.id IS NULL OR c.owner_id = sqlc.arg(viewer)::uuid OR c.visibility = 'shared')
+  AND (ss.id IS NULL OR ss.owner_id = sqlc.arg(viewer)::uuid OR ss.visibility = 'shared')
+ORDER BY dl.id, s.created_at;
+
+-- name: GetSourceUser :one
+-- The role of an active account, for the scope its devices' sources are
+-- worked out in.
+SELECT role FROM users WHERE id = $1 AND disabled_at IS NULL;

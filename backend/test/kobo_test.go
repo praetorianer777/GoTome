@@ -358,6 +358,7 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 	for key, path := range map[string]string{
 		"tags": "/v1/library/tags", "user_wishlist": "/v1/user/wishlist", "device_auth": "/v1/auth/device",
 		"device_refresh": "/v1/auth/refresh", "post_analytics_event": "/v1/analytics/event", "reading_state": "/v1/library/{Ids}/state",
+		"rating": "/v1/products/{ProductId}/rating/{Rating}",
 	} {
 		if got := init.Resources[key]; !strings.HasSuffix(got, "/kobo/"+token+path) {
 			t.Errorf("%s is %q", key, got)
@@ -419,6 +420,26 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 		t.Errorf("a finished book: %+v", st)
 	}
 
+	rating := func() any {
+		t.Helper()
+		_, b, _ := a.call(reader, http.MethodGet, "/books/"+emma, nil)
+		return b["reading"].(map[string]any)["rating"]
+	}
+	exactly("koboRate", http.MethodPost, "/v1/products/"+emma+"/rating/5", map[string]any{"Review": "Loved it."}, "{}")
+	if got := rating(); got != 5.0 {
+		t.Errorf("rated 5 on the reader, GOtome says %v", got)
+	}
+	exactly("koboRatePut", http.MethodPut, "/v1/products/"+emma+"/rating/3", nil, "{}")
+	if got := rating(); got != 3.0 {
+		t.Errorf("rated 3 on the reader, GOtome says %v", got)
+	}
+	call("koboRate", http.MethodPost, "/v1/products/"+emma+"/rating/6", nil, 422)
+	call("koboRate", http.MethodPost, "/v1/products/"+emma+"/rating/many", nil, 422)
+	exactly("koboRate", http.MethodPost, "/v1/products/"+emma+"/rating/0", nil, "{}")
+	if got := rating(); got != nil {
+		t.Errorf("a rating of 0 left %v", got)
+	}
+
 	cover := func(id, path, size string) {
 		t.Helper()
 		called[id] = true
@@ -445,9 +466,15 @@ func TestEveryKoboRouteAnswersAReaderWithItsToken(t *testing.T) {
 		call("koboReadingState", http.MethodGet, "/v1/library/"+book+"/state", nil, 404)
 		call("koboCover", http.MethodGet, "/"+book+"/150/200/false/image.jpg", nil, 404)
 		call("koboCoverQuality", http.MethodGet, "/"+book+"/150/200/80/false/image.jpg", nil, 404)
+		call("koboRate", http.MethodPost, "/v1/products/"+book+"/rating/4", nil, 404)
 	}
 
 	exactly("koboTags", http.MethodGet, "/v1/library/tags", nil, "[]")
+	call("koboTagCreate", http.MethodPost, "/v1/library/tags", map[string]any{"Name": ""}, 422)
+	call("koboTagUpdate", http.MethodPut, "/v1/library/tags/"+nobody, map[string]any{"Name": "x"}, 404)
+	call("koboTagDelete", http.MethodDelete, "/v1/library/tags/"+nobody, nil, 404)
+	call("koboTagAddItems", http.MethodPost, "/v1/library/tags/"+nobody+"/items", map[string]any{"Items": []any{}}, 404)
+	call("koboTagRemoveItems", http.MethodPost, "/v1/library/tags/"+nobody+"/items/delete", map[string]any{"Items": []any{}}, 404)
 	exactly("koboWishlist", http.MethodGet, "/v1/user/wishlist", nil, "[]")
 	exactly("koboRecommendations", http.MethodGet, "/v1/user/recommendations", nil, "[]")
 	exactly("koboProfile", http.MethodGet, "/v1/user/profile", nil, "{}")

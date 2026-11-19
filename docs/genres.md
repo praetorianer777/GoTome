@@ -71,8 +71,23 @@ words). On a fifth of the corpus held out, the ensemble gave P 0.78, R
 0.56, F1 0.65 and a genre to 72% of books; the content vector alone P
 0.73, R 0.42. On a modern German library it was 0.6 to 0.7 precise
 (the decision record): suggestions only wait for review, so that costs
-review time and changes nothing by itself. `spikes/genres/run.sh ship`
-trains it again, the same numbers every time.
+review time and changes nothing by itself.
+
+A genre with fewer than 15 Gutenberg books is not shipped: horror,
+thriller, contemporary, classics, dystopia, erotica, young adult, family
+saga and comics have too few for a head or a threshold, so they come from
+tags and from what a library learns itself. `spikes/genres/run.sh ship`
+(after `run.sh gutenberg`, which makes the records with Project Gutenberg's
+header and licence left out) trains the whole default again from the public
+corpus: heads, stackers, thresholds and the English word table, with fixed
+orders and no random numbers, so two runs, on any number of threads, write
+the same bytes. About 30 seconds on four threads once the records exist, and
+about two minutes to make them. The files carry a `version` (a hash of the
+numbers), the hash of the corpus files it was trained on and the books it
+used per genre; they hold no title, author or text. Only multilingual-e5-small
+has heads: another model needs the corpus's 16 passages embedded with it, and
+an entry in the harness. An installation that finds a new shipped `version`
+replaces the shipped part and keeps what it learned itself.
 
 ## Measuring before switching suggestions on
 
@@ -95,12 +110,36 @@ docker compose exec app gotome genre-check -n 300
 (`make genre-check ARGS="-n 300"` for a development stack.) Options:
 `-n` books in the sample, `-precision` the precision a genre's threshold
 must reach (0.8), `-neighbours=false` to leave out the look at the
-library's vectors, `-json` for the whole report.
+library's vectors, `-ensemble=false` to leave out the ensemble, `-train`
+how many tagged books the ensemble is trained on (1,000, the sample among
+them), `-json` for the whole report.
+
+The ensemble is measured as it runs: a genre is given where its calibrated
+threshold is reached, at most three a book, and a genre it has no threshold
+for abstains. The tagged books are cut into five folds by a hash of their
+ID, and each fold is judged by an ensemble trained, as the shipped one is
+(`TrainEnsemble`), on the other four, so no book is judged by a model that
+has seen it. The sample is the first `-n` books by that hash. The report
+gives the ensemble's precision, recall, F1 and the share of books given a
+genre per genre as it decided and with one threshold swept, and each input
+alone (`ensemble-words`, `-content`, `-metadata`, `-neighbours`, at 0.5 and
+swept) beside it. Only genres with at least 20 training books are trained,
+a language needs 100 for a word table, and what the report names is genre
+keys and numbers, never a book.
 
 The report gives the share of books with a genre from their tags (before)
 and, per method, the share of the sample given one at each threshold
 (after). From it, set `DefaultThreshold`, each `Genre.Threshold` and
 `NeighbourShare`, choose the method, and only then switch the setting on.
+
+The figures `genre-check` should come near on the shipped training's
+corpus (the spike's, a fifth held out; `genre-detection.md`), and on any
+other library what its own run gives:
+
+| Method | Precision | Recall | F1 | Given a genre |
+|---|---|---|---|---|
+| ensemble | 0.78 | 0.56 | 0.65 | 72% |
+| ensemble-content | 0.73 | 0.42 | | |
 
 ## What was measured
 
@@ -186,3 +225,25 @@ one CPU) and goes on where it stopped. Project Gutenberg's header and licence
 are left out; words are counted as written, not stemmed, so a stem can be
 chosen later without reading anything again. Changing the rule means raising
 `wordcount.Version`, which counts every file again.
+
+### Adapting to the library
+
+Once the library has at least 20 books with a genre (from tags, or a
+suggestion a person accepted), a background job trains the ensemble on them
+(`genres.adapt`, `Service.Adapt`, `adapt.go`): every day, and sooner when
+the number of such books changed by a fifth, the shipped default changed
+or another embedding model was chosen. The heads and the word tables of the
+books' languages (at most 4,000 books a language) are merged with the
+shipped ones, each genre weighed by the books that taught it; what ships
+keeps its document frequencies and counts, not its books. A set of inputs
+with at least 100 labelled books gets its own stacker and thresholds,
+calibrated on books the models had not seen; the other sets keep the shipped
+ones. A library without genres keeps the shipped ensemble exactly.
+
+The result is one row, `genre_adaptation`, for the shipped version it was
+trained beside: when that changes, the row is not used until the job has
+trained again. It is derived and not in a backup. The same books give the
+same numbers, and a book is looked at again only when they change. Reading
+the books stops at the job's time and goes on in the next run; nothing is
+stored before the training is whole.
+

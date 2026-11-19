@@ -71,6 +71,25 @@ A device's page, reached from your profile, lists the books sent to it:
 waiting, synced, or delivered. A book still waiting can be taken back; on
 a Kobo, taking a book back removes it at the next sync.
 
+## Keeping a device stocked from shelves
+
+Instead of sending each book, let a device follow shelves. On the device's
+page, under "Keep stocked from", tick collections (yours and shared ones),
+smart shelves and your Reading and Want to read lists. Every book on them
+that has an ebook and that you may see is sent to the device. A book that
+leaves the shelf (or stops matching the smart shelf, or sits in a library you
+no longer see) is taken off again: out of the queue, or off a Kobo reader at
+its next sync. A book you sent by hand, or that another followed shelf still
+holds, stays. The device's list says "From <shelf>" for each book a shelf put
+there. This works for every kind of device that takes sent books: Kobo,
+KOReader and the Tolino app.
+
+A job brings the device up to date when a shelf changes and every ten
+minutes. A change in your reading status shows within those ten minutes. A
+book you take off by hand while its shelf still holds it comes back at the
+next pass: untick the shelf instead. A device that is not a Kobo keeps the
+books it already downloaded; only a book still waiting is taken back.
+
 ## KEPUB for Kobo readers
 
 A Kobo reader reads its own format, KEPUB, with better reading statistics

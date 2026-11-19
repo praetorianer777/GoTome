@@ -346,6 +346,12 @@ type Delivery struct {
 	BookID      uuid.UUID
 	QueuedAt    time.Time
 	DeliveredAt *time.Time
+	Manual      bool
+}
+
+type DeliveryOrigin struct {
+	DeliveryID uuid.UUID
+	SourceID   uuid.UUID
 }
 
 type Device struct {
@@ -390,6 +396,15 @@ type DeviceSend struct {
 	BookID   uuid.UUID
 	Fixed    bool
 	SentAt   time.Time
+}
+
+type DeviceSource struct {
+	ID           uuid.UUID
+	DeviceID     uuid.UUID
+	Kind         string
+	CollectionID *uuid.UUID
+	SmartShelfID *uuid.UUID
+	CreatedAt    time.Time
 }
 
 type DiscoverAsk struct {
@@ -532,6 +547,18 @@ type FulltextOutbox struct {
 	DeleteLibraries []uuid.UUID
 }
 
+type GenreAdaptation struct {
+	Singleton      bool
+	ShippedVersion string
+	Model          string
+	Version        string
+	Labelled       int32
+	Books          int32
+	TrainedAt      time.Time
+	Ensemble       []byte
+	Words          []byte
+}
+
 type IndexVersion struct {
 	Name      string
 	Version   string
@@ -562,6 +589,14 @@ type KoboReadingTime struct {
 	DeviceID uuid.UUID
 	BookID   uuid.UUID
 	Minutes  int32
+}
+
+type KoboTag struct {
+	DeviceID uuid.UUID
+	TagID    uuid.UUID
+	Name     string
+	BookIds  []uuid.UUID
+	SyncedAt time.Time
 }
 
 type Library struct {

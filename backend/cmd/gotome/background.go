@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/gotome/backend/internal/calibre"
 	"github.com/praetorianer777/gotome/backend/internal/curation"
 	"github.com/praetorianer777/gotome/backend/internal/dedupe"
+	"github.com/praetorianer777/gotome/backend/internal/deliveries"
 	"github.com/praetorianer777/gotome/backend/internal/devicecopy"
 	"github.com/praetorianer777/gotome/backend/internal/discover"
 	"github.com/praetorianer777/gotome/backend/internal/enrich"
@@ -35,30 +36,31 @@ import (
 
 // background is what the workers of serve work with.
 type background struct {
-	accounts    *auth.Service
-	matches     *enrich.Service
-	meta        *metadata.Service
-	changes     *bulk.Service
-	scans       *ingest.Service
-	searchIndex *search.Index
-	textIndex   *fulltext.Service
-	duplicates  *dedupe.Service
-	curations   *curation.Service
-	autoDupes   *autodupe.Service
-	vectors     *similar.Service
-	genres      *genres.Service
-	passages    *passages.Service
-	events      *notify.Events
-	follows     *releases.Service
-	discoveries *discover.Service
-	sync        *kosync.Service
-	updates     *updates.Service
-	imports     *readimport.Service
-	calibre     *calibre.Service
-	kindle      *kindle.Service
-	copies      *devicecopy.Service
-	automatic   *autocurate.Service
-	hooks       *webhooks.Service
+	accounts      *auth.Service
+	matches       *enrich.Service
+	meta          *metadata.Service
+	changes       *bulk.Service
+	scans         *ingest.Service
+	searchIndex   *search.Index
+	textIndex     *fulltext.Service
+	duplicates    *dedupe.Service
+	curations     *curation.Service
+	autoDupes     *autodupe.Service
+	vectors       *similar.Service
+	genres        *genres.Service
+	passages      *passages.Service
+	events        *notify.Events
+	follows       *releases.Service
+	discoveries   *discover.Service
+	sync          *kosync.Service
+	updates       *updates.Service
+	imports       *readimport.Service
+	calibre       *calibre.Service
+	kindle        *kindle.Service
+	copies        *devicecopy.Service
+	automatic     *autocurate.Service
+	hooks         *webhooks.Service
+	deviceSources *deliveries.Sources
 	// trashRetention is how long the trash keeps a file, as the settings say.
 	trashRetention func(context.Context) (time.Duration, error)
 }
@@ -108,6 +110,7 @@ func (b background) registrations() []registration {
 		worker(&similar.EmbedWorker{Service: b.vectors}),
 		worker(&similar.RemoveWorker{Service: b.vectors}),
 		worker(&genres.SuggestWorker{Service: b.genres}),
+		worker(&genres.AdaptWorker{Service: b.genres}),
 		worker(&passages.EmbedWorker{Service: b.passages}),
 		worker(&notify.FlushWorker{Events: b.events}),
 		worker(&releases.PollWorker{Service: b.follows}),
@@ -119,6 +122,7 @@ func (b background) registrations() []registration {
 		worker(&ingest.MeasureWorker{Service: b.scans}),
 		worker(&devicecopy.MakeWorker{Service: b.copies}),
 		worker(&devicecopy.TrimWorker{Service: b.copies}),
+		worker(&deliveries.SyncWorker{Sources: b.deviceSources}),
 		worker(&webhooks.DeliverWorker{Service: b.hooks}),
 		worker(&webhooks.TrimWorker{Service: b.hooks}),
 		worker(&ingest.OrganiseWorker{Service: b.scans}),
@@ -146,6 +150,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		similar.Periodic(embedInterval),
 		similar.RemovePeriodic(removeModelsInterval),
 		genres.Periodic(genreInterval),
+		genres.AdaptPeriodic(genreInterval),
 		passages.Periodic(embedInterval),
 		releases.Periodic(releasePollInterval),
 		releases.FeedsPeriodic(feedFetchInterval),
@@ -154,6 +159,7 @@ func schedules(scanInterval time.Duration) []jobs.Schedule {
 		kosync.Periodic(koreaderHashInterval),
 		ingest.MeasurePeriodic(measureInterval),
 		devicecopy.TrimPeriodic(copyTrimInterval),
+		deliveries.SyncPeriodic(deviceSourcesInterval),
 		webhooks.TrimPeriodic(webhookTrimInterval),
 		fulltext.Periodic(outboxInterval),
 		autocurate.Periodic(curationInterval),

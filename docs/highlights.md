@@ -51,7 +51,7 @@ book each keep their own copy of a highlight.
 
 A Kobo reader keeps its highlights on the device and sends them to Kobo's
 own store account. GOtome's Kobo sync (the line the profile shows for a
-reader) carries books, reading places and shelves, but has no endpoint for
+reader) carries books, reading places and collections, but has no endpoint for
 annotations, and a reader synced with GOtome does not send them, so they
 are not brought across. A Kobo reader that runs KOReader with the GOtome
 plugin sends them like any other.

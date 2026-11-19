@@ -23,10 +23,22 @@ fixture_main() {
   git branch -q --set-upstream-to=origin/main main
 }
 
+# The hooks and settings as they are now, without the agents' worktrees,
+# which hold gigabytes of build caches.
+copy_claude() {
+  tar -C "$SRC" --exclude=.claude/worktrees -cf - .claude | tar -xf -
+}
+
+# Go makes its module cache read-only; a fixture must still go.
+cleanup() {
+  chmod -R u+w "$@" 2>/dev/null
+  rm -rf "$@"
+}
+
 W=$(mktemp -d)
-trap 'rm -rf "$W"' EXIT
+trap 'cleanup "$W"' EXIT
 git clone -q "$SRC" "$W/r" && cd "$W/r"
-fixture_main && cp -r "$SRC/.claude" . && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
 export CLAUDE_PROJECT_DIR="$W/r"
 G="git"; C="commit"
 fail=0
@@ -133,9 +145,9 @@ true
 
 # ── Worktrees (#27) ──────────────────────────────────────
 W2=$(mktemp -d)
-trap 'rm -rf "$W" "$W2"' EXIT
+trap 'cleanup "$W" "$W2"' EXIT
 git clone -q "$SRC" "$W2/r" && cd "$W2/r"
-fixture_main && cp -r "$SRC/.claude" . && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
 export CLAUDE_PROJECT_DIR="$W2/r"
 G="git"; C="commit"
 

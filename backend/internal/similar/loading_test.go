@@ -53,3 +53,16 @@ func TestAModelThatFailsToOpenIsReportedOnceAndAskedAgain(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestACommandThatMeasuresWaitsForTheModel(t *testing.T) {
+	loadWait = 20 * time.Millisecond
+	t.Cleanup(func() { loadWait = 5 * time.Second })
+	s := NewService(nil, nil, func(_ context.Context, spec embed.Spec) (embed.Embedder, error) {
+		time.Sleep(10 * loadWait)
+		return &embed.Fake{Dim: spec.Model.Dim}, nil
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	s.WaitForModel = true
+	if vecs, err := s.EmbedQueries(context.Background(), embed.E5Small, []string{"a"}); err != nil || len(vecs) != 1 {
+		t.Fatalf("got %d vectors, %v", len(vecs), err)
+	}
+}

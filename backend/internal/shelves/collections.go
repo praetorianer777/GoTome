@@ -108,6 +108,9 @@ func (d *Details) check() error {
 type Service struct {
 	pool  *pgxpool.Pool
 	books *catalog.Service
+	// OnChange, when set, hears that a collection or smart shelf was
+	// changed or deleted, once the change is committed: devices follow them.
+	OnChange func(ctx context.Context)
 }
 
 // NewService returns a Service on the pool; books works out what is on a
@@ -286,7 +289,7 @@ func (s *Service) owned(ctx context.Context, scope library.Scope, id uuid.UUID, 
 
 // ownedBy is owned for anything lock finds an owner and a visibility of.
 func (s *Service) ownedBy(ctx context.Context, scope library.Scope, lock func(*sqlc.Queries) (sqlc.LockCollectionRow, error), change func(*sqlc.Queries) error) error {
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		c, err := lock(q)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -303,4 +306,8 @@ func (s *Service) ownedBy(ctx context.Context, scope library.Scope, lock func(*s
 		}
 		return change(q)
 	})
+	if err == nil && s.OnChange != nil {
+		s.OnChange(ctx)
+	}
+	return err
 }

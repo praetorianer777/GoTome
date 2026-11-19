@@ -152,12 +152,21 @@ to an e-reader** on a book, or from a list), with their covers and details,
 and the reading place both ways: reading on the reader moves the book's
 place in GOtome, and reading further elsewhere moves it on the reader at
 its next sync. A book taken back before the reader has it leaves the
-reader; one archived on the reader leaves the device in GOtome. Revoking
-the device on the profile cuts the reader off.
+reader; one archived on the reader leaves the device in GOtome. Stars given
+on the reader ("Rate this book") become your own rating of the book in
+GOtome, as if given on its page; a rating given in GOtome is not shown on
+the reader. **Mark as unread** on the reader changes nothing in GOtome:
+the reader says the same of a book it has never opened, so taking it as a
+reset would undo a status set on the book's page. Revoking the device on
+the profile cuts the reader off.
+
+A rating given on a reader synced before this version went to Kobo's
+store, not to GOtome: give it again on the book's page, or on the reader
+once it has synced again.
 
 The store's pages, its search and purchases stay Kobo's, as the reader's
-Kobo account has them. Collections, notes and highlights are not synced
-yet.
+Kobo account has them. Collections sync as told under
+[Collections](#collections); notes and highlights are not synced yet.
 
 ### Reading time and statistics
 
@@ -173,13 +182,46 @@ count still makes a session of the places it sends, with no time to speak
 of. The reader's `RemainingTimeMinutes` and its analytics events are not
 used: the events are taken and kept nowhere.
 
+### Collections
+
+Kobo calls a collection a "tag". The sync carries them both ways (#543):
+
+- Your own collections, other people's shared ones and your smart shelves
+  reach the reader as collections holding the books on it. Each is told
+  once (`NewTag`), again when its name or its books change (`ChangedTag`),
+  and as `DeletedTag` once it is gone or you may no longer see it. A shared
+  collection of someone else's carries its owner's name, "Name (owner)".
+  Books of a library you no longer see are not named.
+- What you do with your own collections on the reader changes them in
+  GOtome: making one (`POST /v1/library/tags`, a private collection), renaming
+  it (`PUT /v1/library/tags/{id}`), deleting it (`DELETE`), putting books on
+  it and taking them off (`POST .../items`, `POST .../items/delete`). The
+  reader names books by their `RevisionId`, which is the book's ID.
+- A shared collection of someone else's and a smart shelf are only read on
+  the device. A change the reader makes to one is refused with 403, and the
+  next sync sends the collection as it is in GOtome again.
+- Only the books the reader holds are on a collection there. A collection
+  made on the reader names books GOtome may not know of or you may not see;
+  those are left out.
+
+The shapes follow Calibre-Web's Kobo sync: a sync entry
+`{"NewTag": {"Tag": {"Created", "Id", "Items": [{"RevisionId", "Type":
+"ProductRevisionTagItem"}], "LastModified", "Name", "Type": "UserTag"}}}`
+(`ChangedTag` alike, `DeletedTag` with only `Id` and `LastModified`),
+`POST /v1/library/tags` with `{"Name", "Items"}` answering the new ID as a
+JSON string with 201, and `{"Items": [...]}` for the item calls (201 for
+adding, 200 otherwise). They have not been seen against real firmware
+here; a recording from a reader (make a collection, rename it, add and
+remove a book, delete it, then sync) should confirm them.
+
 ### What GOtome answers and what stays Kobo's
 
 The resource map (`GET /v1/initialization`) sends the library, its details,
-reading places, covers, profile, wishlist, tags, deals, analytics and the
-sign-in tokens to GOtome. Everything else stays at Kobo, because the reader
+reading places, covers, ratings given on the reader (`rating`), profile,
+wishlist, tags, deals, analytics and the sign-in tokens to GOtome. Everything else stays at Kobo, because the reader
 needs real pages there and GOtome has none to give: store home and search,
-book detail and checkout pages, categories, reviews, ratings, the account
+book detail and checkout pages, categories, reviews, the ratings the reader
+reads back (`user_ratings`), the account
 and sign-in pages, dictionaries (`dictionary_host`) and the user guide. Kobo
 mode needs a Kobo account for the activation, and the reader keeps asking
 for it; the account cannot be left out.
@@ -216,6 +258,14 @@ the table under "What was checked"):
    from Kobo, so they need the reader's Kobo account and its internet.
 6. The reader's "next read" suggestions at the end of a book show nothing,
    and no error.
+7. Finish a book and give it stars when the reader asks. The log shows a
+   `POST` (or `PUT`) to `v1/products/<book>/rating/<stars>` with status
+   200, and the book's page in GOtome shows the stars. Report the method
+   and status: which one the firmware uses has not been seen yet (#542).
+8. Make a collection in GOtome, put a book on the device on it and sync:
+   the reader lists the collection with the book. Make another on the
+   reader, add and remove a book, rename it, delete it: GOtome follows.
+   Report the requests the reader sent if it differs from the shapes above.
 
 Watch the requests before GOtome answers them: a plain HTTP server that
 logs, such as `python3 -m http.server <port>` run in an empty directory,

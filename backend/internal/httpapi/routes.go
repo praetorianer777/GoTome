@@ -343,6 +343,16 @@ func (s *Server) routes() []Route {
 			Query: deviceBooksQuery{}, Response: deviceBookList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listDeviceBooks,
 		},
 		{
+			Method: http.MethodGet, Path: "/devices/{deviceId}/sources", ID: "listDeviceSources",
+			Summary: "The collections, smart shelves and lists one of the caller's devices follows", Tag: "auth",
+			Response: deviceSourceList{}, Reads: ReadsNoLibrary, Permission: auth.PersonalManage, Handler: s.listDeviceSources,
+		},
+		{
+			Method: http.MethodPut, Path: "/devices/{deviceId}/sources", ID: "setDeviceSources",
+			Summary: "Set what one of the caller's devices follows: its books are queued, and taken off when they leave", Tag: "auth",
+			Request: setDeviceSourcesRequest{}, Response: deviceSourceList{}, Permission: auth.PersonalManage, Handler: s.setDeviceSources,
+		},
+		{
 			Method: http.MethodGet, Path: "/books/{bookId}/deliveries", ID: "listBookDeliveries",
 			Summary: "The book's deliveries to the caller's devices, waiting or done", Tag: "books",
 			Response: deliveryList{}, Reads: ReadsLibraries, Permission: auth.PersonalManage, Handler: s.listBookDeliveries,

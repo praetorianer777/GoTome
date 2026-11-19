@@ -8636,6 +8636,60 @@ describe("sending to an e-reader", () => {
 		expect(server.deliveries.map((d) => d.id)).toEqual(["dl-1", "dl-2"]);
 	});
 
+	it("keeps a device stocked from the shelves it follows and says where a book came from", async () => {
+		const person = userEvent.setup();
+		server
+			.withAccount("Rita", "a long password", "reader")
+			.signedInAs("Rita")
+			.withBook("Persuasion", { files: [epub] });
+		server.devices = [
+			{ id: "d-1", name: "Kobo", createdAt: "2026-01-04T08:00:00Z" },
+		];
+		server.collections = [
+			{
+				id: "col-1",
+				name: "Holiday",
+				description: "",
+				visibility: "private",
+				ownerId: "u-1",
+				ownerName: "Rita",
+				mine: true,
+				updatedAt: "2026-01-01T08:00:00Z",
+				books: ["book-1"],
+			},
+		];
+		server.deliveries = [
+			{
+				id: "dl-1",
+				bookId: "book-1",
+				deviceId: "d-1",
+				deviceName: "Kobo",
+				queuedAt: "2026-01-05T08:00:00Z",
+				origins: [{ kind: "collection", name: "Holiday" }],
+			},
+		];
+		renderApp("/devices/d-1");
+		const list = within(
+			await screen.findByRole("list", { name: "Books on this e-reader" }),
+		);
+		expect(list.getByText("From Holiday")).toBeInTheDocument();
+		const holiday = await screen.findByRole("checkbox", { name: "Holiday" });
+		expect(holiday).not.toBeChecked();
+		await person.click(holiday);
+		await waitFor(() => expect(holiday).toBeChecked());
+		await person.click(screen.getByRole("checkbox", { name: "Reading" }));
+		await waitFor(() =>
+			expect(server.deviceSources["d-1"]).toEqual([
+				{ kind: "collection", shelf: "col-1" },
+				{ kind: "reading" },
+			]),
+		);
+		await person.click(holiday);
+		await waitFor(() =>
+			expect(server.deviceSources["d-1"]).toEqual([{ kind: "reading" }]),
+		);
+	});
+
 	it("says a device that is not one's own is not there", async () => {
 		server.withAccount("Rita", "a long password", "reader").signedInAs("Rita");
 		renderApp("/devices/d-9");

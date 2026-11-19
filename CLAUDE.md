@@ -984,7 +984,9 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   does not download from outside. The gate never reaches a provider.
 - Each provider has a `TestLiveContract`, skipped unless `GOTOME_LIVE` is
   set; `make contract-test` and the nightly `contract.yml` workflow run them.
-  It is not a check on pull requests.
+  It is not a check on pull requests. Their Web, `metadata.LiveWeb`, asks
+  again after a busy answer or a broken connection (`patientWeb`), so only a
+  provider down for minutes, or one that answers otherwise, fails it.
 - Providers: `openlibrary` (no key, 400 ms between requests); `crossref`
   (no key, 350 ms; DOI and ISBN lookups, bibliographic search; the setting
   `metadata.contactEmail` goes as `mailto` in `SecretQuery`, which puts
@@ -1559,6 +1561,19 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   kept, no books), which `Encode`/`DecodeWordTable` store, `Score` applies and
   `Explain` reasons from. Nothing suggests from it yet (`spikes/genres port`
   checks it against the spike).
+- Adaptation (#530, `adapt.go`): `genres.adapt` (queue `embed`, hourly check,
+  trains daily or when `book_genres` rows of tags and accepted suggestions
+  change by a fifth, the shipped `Ensemble.Version` or the model changes)
+  merges the library's heads and word tables into the shipped ones
+  (`TrainEnsemble` with `EnsembleOptions.Base`: per genre by positives, the
+  shipped document frequencies and counts added, no shipped books), fits
+  stackers out of fold for sets of inputs with 100 labelled books and keeps
+  the shipped stacker (with its own `Prior`) for the others. One row,
+  `genre_adaptation`, keyed on the shipped version, derived and in
+  backup.sh's list; its version is a hash of its numbers. `Service.Ensemble`
+  is the base; passes use `current`, which prefers the adapted one. Reading
+  books resumes across snoozes from memory (`gathering`), at most
+  `MaxTrainBooks` a language; nothing is stored before training is whole.
 - `gotome genre-check` (`Service.Check`, `make genre-check`) measures
   precision and recall per method and genre on a sample of tagged books,
   their metadata embedded again without tags, thresholds swept. Its
@@ -1613,6 +1628,20 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   `DELETE /deliveries/{id}` takes one off while it waits, or off a Kobo
   reader, whose next sync removes it. Other devices keep what they
   downloaded, so it is not offered there.
+- A device follows shelves (`internal/deliveries/sources.go`, #545):
+  `device_sources` (collection, smart shelf, or the owner's `reading` /
+  `wishlist` status), set by `PUT /devices/{id}/sources`. The job
+  `deliveries.sync_sources` (every ten minutes, and queued by
+  `shelves.Service.OnChange` after any shelf change; args with a user ID, or
+  none for everyone's) runs `Sources.SyncUser`: each source's books as the
+  owner sees them (`shelves.Get`, `SmartBookIDs`, `catalog.Select`) are
+  queued with `deliveries.manual = false` and recorded in `delivery_origins`;
+  an origin the book left is dropped; a delivery that is not `manual` and
+  has no origin goes, as `TakeBack` would (queued, or on a Kobo). A send by
+  hand (`QueueDeliveries`) sets `manual`, so it stays. A source that cannot
+  be read this time is left alone. `GET /devices/{id}/books` names each
+  book's origins.
+
 - The KOReader plugin (#197) is `backend/internal/koplugin/gotome.koplugin`
   (Lua), embedded so that `GET /koreader/plugin.zip` hands it out with
   `gotome_server.lua` naming the address the browser used. It reads the
@@ -1640,7 +1669,15 @@ The hook has its own tests in `.claude/hooks/tests/`; run them after changing a 
   time with `x-kobo-sync: continue`; a sync without `x-kobo-synctoken`
   starts over. A reading state it sends is saved as `fraction:<f>` under
   #44's rule with `basedOn` the place it was last told of; archiving takes
-  the book off the device.
+  the book off the device. Collections are Kobo "tags" (#543,
+  `httpapi/kobo_tags.go`): `kobo_tags` records per device the name and the
+  device's books each was told with, so the sync sends `NewTag`,
+  `ChangedTag` and `DeletedTag` once (`kobo.Service.SyncTags`). The person's
+  collections, others' shared ones and smart shelves go across, with the
+  books the reader holds that the scope sees; `POST/PUT/DELETE
+  /v1/library/tags` and `.../items[/delete]` change only the person's own
+  collections, and refuse others' shared ones and smart shelves with 403,
+  forgetting the tag so the next sync sends it as it is.
 - KOReader's progress sync (`internal/kosync`, #198) is served under
   `/api/v1/kosync` (`users/auth`, `syncs/progress`): `authenticate` takes
   its `x-auth-user` and `x-auth-key` (the MD5 of a device token, matched

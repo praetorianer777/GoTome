@@ -63,6 +63,31 @@ type deviceBook struct {
 	// SentFixed says the device downloaded the book as a fixed copy, with
 	// its e-reader findings fixed, not as the library's file lies.
 	SentFixed bool `json:"sentFixed"`
+	// Origins name the shelves and lists that put the book on the device;
+	// none for a book sent by hand.
+	Origins []deviceOrigin `json:"origins"`
+}
+
+type deviceOrigin struct {
+	Kind string `json:"kind" enum:"collection,smart,reading,wishlist"`
+	// Name is the shelf's; left out for the Reading and Want to read lists.
+	Name string `json:"name,omitempty"`
+}
+
+type deviceSource struct {
+	Kind string `json:"kind" enum:"collection,smart,reading,wishlist"`
+	// Shelf is the collection's or smart shelf's ID; left out for the lists.
+	Shelf *uuid.UUID `json:"shelf,omitempty"`
+	// Name is the shelf's, as the caller sees it.
+	Name string `json:"name,omitempty"`
+}
+
+type deviceSourceList struct {
+	Sources []deviceSource `json:"sources"`
+}
+
+type setDeviceSourcesRequest struct {
+	Sources []deviceSource `json:"sources"`
 }
 
 type deviceBookList struct {
@@ -191,6 +216,14 @@ func (s *Server) listDeviceBooks(w http.ResponseWriter, r *http.Request) error {
 	for _, b := range summaries {
 		byID[b.ID] = b
 	}
+	deliveryIDs := make([]uuid.UUID, len(list))
+	for i, b := range list {
+		deliveryIDs[i] = b.ID
+	}
+	origins, err := s.DeviceSources.OriginsOf(r.Context(), user.ID, deliveryIDs)
+	if err != nil {
+		return err
+	}
 	out := deviceBookList{Device: viewOf(devices[i]), Books: make([]deviceBook, 0, len(list))}
 	for _, b := range list {
 		summary, ok := byID[b.BookID]
@@ -200,6 +233,7 @@ func (s *Server) listDeviceBooks(w http.ResponseWriter, r *http.Request) error {
 		out.Books = append(out.Books, deviceBook{
 			Book: summaryOf(summary), DeliveryID: b.ID, State: b.State(), QueuedAt: b.QueuedAt,
 			DeliveredAt: b.DeliveredAt, SyncedAt: b.SyncedAt, Removable: b.Removable(), SentFixed: b.SentFixed,
+			Origins: originsOf(origins[b.ID]),
 		})
 	}
 	if next != nil {
@@ -207,6 +241,58 @@ func (s *Server) listDeviceBooks(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, r, http.StatusOK, out)
 	return nil
+}
+
+func originsOf(list []deliveries.Origin) []deviceOrigin {
+	out := make([]deviceOrigin, len(list))
+	for i, o := range list {
+		out[i] = deviceOrigin{Kind: o.Kind, Name: o.Name}
+	}
+	return out
+}
+
+func (s *Server) listDeviceSources(w http.ResponseWriter, r *http.Request) error {
+	deviceID, err := pathID(r, "deviceId", "device")
+	if err != nil {
+		return err
+	}
+	user := UserFrom(r.Context())
+	list, err := s.DeviceSources.Of(r.Context(), user.ID, deviceID)
+	if err != nil {
+		return err
+	}
+	out := deviceSourceList{Sources: make([]deviceSource, len(list))}
+	for i, src := range list {
+		out.Sources[i] = deviceSource{Kind: src.Kind, Shelf: src.Shelf, Name: src.Name}
+	}
+	writeJSON(w, r, http.StatusOK, out)
+	return nil
+}
+
+func (s *Server) setDeviceSources(w http.ResponseWriter, r *http.Request) error {
+	deviceID, err := pathID(r, "deviceId", "device")
+	if err != nil {
+		return err
+	}
+	var req setDeviceSourcesRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return err
+	}
+	want := make([]deliveries.Source, len(req.Sources))
+	for i, src := range req.Sources {
+		want[i] = deliveries.Source{Kind: src.Kind, Shelf: src.Shelf}
+	}
+	user := UserFrom(r.Context())
+	err = s.DeviceSources.Set(r.Context(), library.ScopeOf(*user), deviceID, want)
+	switch {
+	case errors.Is(err, deliveries.ErrNoDevice):
+		return ErrNotFound("There is no such device.")
+	case errors.Is(err, deliveries.ErrBadSource):
+		return ErrValidation(map[string]string{"sources": fmt.Sprintf("Name at most %d shelves you may look at, or the Reading or Want to read list.", deliveries.MaxSources)})
+	case err != nil:
+		return err
+	}
+	return s.listDeviceSources(w, r)
 }
 
 func (s *Server) takeBackDelivery(w http.ResponseWriter, r *http.Request) error {

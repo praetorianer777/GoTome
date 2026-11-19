@@ -6,6 +6,47 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Stars given to a book on a Kobo reader ("Rate this book") are now your own
+  rating of the book in GOtome. A reader asks GOtome for where to send them
+  at its next sync; ratings given before went to Kobo's store and need giving
+  again ([Kobo readers](docs/tolino-kobo-mode.md#4-point-the-reader-at-gotome)).
+
+- A Kobo reader synced with GOtome shows your collections, other people's
+  shared ones and your smart shelves as collections with the books on the
+  reader, and what you do with your own collections on the reader (make,
+  rename, delete, add and remove books) changes them in GOtome. Shared
+  collections of others and smart shelves are read only there
+  ([Kobo readers](docs/tolino-kobo-mode.md#collections)).
+
+- A device can follow collections, smart shelves and your Reading and Want to
+  read lists: every book on them with an ebook is sent to it, and taken off
+  again when it leaves the shelf, unless you sent it by hand. Set it on the
+  device's page, which also says which shelf a book came from
+  ([E-readers](docs/devices.md)).
+
+### Changed
+
+- The genres GOtome suggests out of the box are trained again from Project
+  Gutenberg with its header and licence left out, so words such as "etext"
+  no longer weigh in.
+
+- Suggested genres adapt to your library: once at least 20 books have a genre
+  from their tags or one you accepted, GOtome trains the suggestions on them
+  too, every day and when those books change by a fifth. A library without
+  genres is suggested to as before ([Genres](docs/genres.md)).
+
+- `gotome genre-check` measures the genre ensemble as it runs, trained out of
+  fold, beside each of its inputs: precision, recall, F1 and the share of
+  books given a genre, per genre.
+
+### Fixed
+
+- `gotome genre-check` and `gotome similar-check -describe` wait for the
+  embedding model to load instead of stopping with "the embedding model is
+  loading".
+
 ## [0.26.0] - 2026-11-13
 
 ### Added

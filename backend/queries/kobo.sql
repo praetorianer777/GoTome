@@ -43,3 +43,18 @@ SELECT minutes FROM kobo_reading_time WHERE device_id = $1 AND book_id = $2 FOR 
 
 -- name: SetKoboReadingTime :exec
 UPDATE kobo_reading_time SET minutes = $3 WHERE device_id = $1 AND book_id = $2;
+
+-- name: ListKoboTags :many
+SELECT tag_id, name, book_ids FROM kobo_tags WHERE device_id = $1;
+
+-- name: PutKoboTag :exec
+INSERT INTO kobo_tags (device_id, tag_id, name, book_ids)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (device_id, tag_id) DO UPDATE
+SET name = EXCLUDED.name, book_ids = EXCLUDED.book_ids, synced_at = now();
+
+-- name: DropKoboTag :exec
+DELETE FROM kobo_tags WHERE device_id = $1 AND tag_id = $2;
+
+-- name: ForgetKoboTags :exec
+DELETE FROM kobo_tags WHERE device_id = $1;

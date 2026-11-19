@@ -1447,6 +1447,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/devices/{deviceId}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The collections, smart shelves and lists one of the caller's devices follows */
+        get: operations["listDeviceSources"];
+        /** Set what one of the caller's devices follows: its books are queued, and taken off when they leave */
+        put: operations["setDeviceSources"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/duplicates": {
         parameters: {
             query?: never;
@@ -2033,10 +2051,63 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A Kobo reader's collections: none yet */
+        /** A Kobo reader's collections: the person's, shared ones and smart shelves, with the books on the device */
         get: operations["koboTags"];
         put?: never;
+        /** A Kobo reader makes a collection: a private one of the person's, with the books named */
+        post: operations["koboTagCreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** A Kobo reader renames one of the person's collections; another's and smart shelves are refused */
+        put: operations["koboTagUpdate"];
         post?: never;
+        /** A Kobo reader deletes one of the person's collections; another's and smart shelves are refused */
+        delete: operations["koboTagDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/tags/{tagId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A Kobo reader puts books on one of the person's collections */
+        post: operations["koboTagAddItems"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/library/tags/{tagId}/items/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A Kobo reader takes books off one of the person's collections */
+        post: operations["koboTagRemoveItems"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2140,6 +2211,24 @@ export interface paths {
         get: operations["koboFeaturedList"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/kobo/{token}/v1/products/{bookId}/rating/{rating}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** The stars a Kobo reader gives a book: the person's own rating, 0 for none */
+        put: operations["koboRatePut"];
+        /** The stars a Kobo reader gives a book: the person's own rating, 0 for none */
+        post: operations["koboRate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4649,6 +4738,7 @@ export interface components {
             deliveredAt?: string;
             /** Format: uuid */
             deliveryId: string;
+            origins: components["schemas"]["DeviceOrigin"][];
             /** Format: date-time */
             queuedAt: string;
             removable: boolean;
@@ -4682,6 +4772,10 @@ export interface components {
         DeviceList: {
             devices: components["schemas"]["DeviceView"][];
         };
+        DeviceOrigin: {
+            kind: string;
+            name?: string;
+        };
         DeviceRequestCreate: {
             deviceName: string;
             username: string;
@@ -4699,6 +4793,15 @@ export interface components {
             expiresAt: string;
             /** Format: uuid */
             id: string;
+        };
+        DeviceSource: {
+            kind: string;
+            name?: string;
+            /** Format: uuid */
+            shelf?: string;
+        };
+        DeviceSourceList: {
+            sources: components["schemas"]["DeviceSource"][];
         };
         DeviceTicket: {
             code: string;
@@ -5824,6 +5927,9 @@ export interface components {
             /** Format: date-time */
             lastSeenAt: string;
             userAgent: string;
+        };
+        SetDeviceSourcesRequest: {
+            sources: components["schemas"]["DeviceSource"][];
         };
         SetMaxAgeRatingRequest: {
             maxAgeRating: number | null;
@@ -9439,6 +9545,72 @@ export interface operations {
             };
         };
     };
+    listDeviceSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceSourceList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDeviceSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDeviceSourcesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceSourceList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listDuplicates: {
         parameters: {
             query?: {
@@ -10560,6 +10732,155 @@ export interface operations {
             };
         };
     };
+    koboTagCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboTagUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboTagDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboTagAddItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboTagRemoveItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     koboArchive: {
         parameters: {
             query?: never;
@@ -10751,6 +11072,68 @@ export interface operations {
             path: {
                 token: string;
                 listId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRatePut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                rating: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    koboRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                bookId: string;
+                rating: string;
             };
             cookie?: never;
         };
