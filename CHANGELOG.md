@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-19
+
 ### Added
 
 - Stars given to a book on a Kobo reader ("Rate this book") are now your own
