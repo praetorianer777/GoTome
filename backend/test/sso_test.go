@@ -282,6 +282,25 @@ func TestWhoMayGetAnAccountIsTheSettingsChoice(t *testing.T) {
 	}
 }
 
+func TestAnUnverifiedAddressIsNotStoredAtSignUp(t *testing.T) {
+	a := newSSOApp(t, map[string]string{"oidc.linkByEmail": "on"})
+	mallory := a.browser()
+	a.signInVia(mallory, map[string]any{
+		"sub": "mallory-1", "preferred_username": "mallory", "email": "alice@example.org", "email_verified": false,
+		"groups": []string{"bookworms"},
+	})
+	malloryID := a.me(mallory)["id"]
+	if n := a.countRows("SELECT count(*) FROM users WHERE email IS NOT NULL AND email = 'alice@example.org'"); n != 0 {
+		t.Fatalf("an unverified address was stored on %d accounts", n)
+	}
+
+	victim := a.browser()
+	a.signInVia(victim, alice)
+	if me := a.me(victim); me == nil || me["id"] == malloryID {
+		t.Errorf("the address's owner landed in the account of whoever signed up with it: %v", me)
+	}
+}
+
 func TestAnIdentityIsLinkedAndUnlinkedFromTheProfile(t *testing.T) {
 	a := newSSOApp(t, nil)
 	reader, readerID := a.signedIn("reader", "reader")

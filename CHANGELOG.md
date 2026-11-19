@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- An account made by single sign-on no longer keeps an e-mail address the
+  identity provider did not verify, so signing up with someone else's
+  address cannot take their place when they first sign in.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

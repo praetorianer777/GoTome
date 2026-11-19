@@ -157,7 +157,12 @@ func (s *Service) accountFor(ctx context.Context, q *sqlc.Queries, id Identity, 
 	if err != nil {
 		return sqlc.User{}, err
 	}
-	email := id.Email
+	// An address the provider did not verify may be someone else's, and a
+	// later verified sign-in with it would link that person to this account.
+	var email *string
+	if id.EmailVerified {
+		email = id.Email
+	}
 	if email != nil {
 		// Another account's address stays that account's.
 		if _, err := q.GetUserByEmail(ctx, email); err == nil {
