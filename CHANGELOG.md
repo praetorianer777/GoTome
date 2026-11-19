@@ -12,6 +12,11 @@ What changes for someone who runs or uses GOtome. The format follows
   Darstellung" and "Erlebnisbericht" now give a book its genre (fantasy,
   crime, humour, biography) ([Genres](docs/genres.md)).
 
+### Fixed
+
+- Send to Kindle names the attached book as an EPUB on every server; where
+  the server knew no type for .epub, Amazon could refuse the mail.
+
 ## [0.27.0] - 2026-11-19
 
 ### Added
