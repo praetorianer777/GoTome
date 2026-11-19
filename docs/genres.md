@@ -95,12 +95,36 @@ docker compose exec app gotome genre-check -n 300
 (`make genre-check ARGS="-n 300"` for a development stack.) Options:
 `-n` books in the sample, `-precision` the precision a genre's threshold
 must reach (0.8), `-neighbours=false` to leave out the look at the
-library's vectors, `-json` for the whole report.
+library's vectors, `-ensemble=false` to leave out the ensemble, `-train`
+how many tagged books the ensemble is trained on (1,000, the sample among
+them), `-json` for the whole report.
+
+The ensemble is measured as it runs: a genre is given where its calibrated
+threshold is reached, at most three a book, and a genre it has no threshold
+for abstains. The tagged books are cut into five folds by a hash of their
+ID, and each fold is judged by an ensemble trained, as the shipped one is
+(`TrainEnsemble`), on the other four, so no book is judged by a model that
+has seen it. The sample is the first `-n` books by that hash. The report
+gives the ensemble's precision, recall, F1 and the share of books given a
+genre per genre as it decided and with one threshold swept, and each input
+alone (`ensemble-words`, `-content`, `-metadata`, `-neighbours`, at 0.5 and
+swept) beside it. Only genres with at least 20 training books are trained,
+a language needs 100 for a word table, and what the report names is genre
+keys and numbers, never a book.
 
 The report gives the share of books with a genre from their tags (before)
 and, per method, the share of the sample given one at each threshold
 (after). From it, set `DefaultThreshold`, each `Genre.Threshold` and
 `NeighbourShare`, choose the method, and only then switch the setting on.
+
+The figures `genre-check` should come near on the shipped training's
+corpus (the spike's, a fifth held out; `genre-detection.md`), and on any
+other library what its own run gives:
+
+| Method | Precision | Recall | F1 | Given a genre |
+|---|---|---|---|---|
+| ensemble | 0.78 | 0.56 | 0.65 | 72% |
+| ensemble-content | 0.73 | 0.42 | | |
 
 ## What was measured
 

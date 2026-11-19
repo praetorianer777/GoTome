@@ -250,6 +250,15 @@ func TestTheSimilarAndGenreChecksMeasureTheLibrary(t *testing.T) {
 	if genreReport.Books != 6 || genreReport.Tagged != 6 || genreReport.Embedded != 6 || genreReport.Sample != 6 {
 		t.Errorf("genre-check: %+v", genreReport)
 	}
+	text, err := command(t, "", "genre-check", "-n", "10", "-neighbours=false")
+	if err != nil || !strings.Contains(text, "== ensemble") {
+		t.Fatalf("genre-check as text: %v\n%s", err, text)
+	}
+	for _, title := range []string{"Schreiberin", "Archiv", "Weidner", "Berndt", "Silberweberin", "Domherrin"} {
+		if strings.Contains(text, title) {
+			t.Errorf("the genre check names %q", title)
+		}
+	}
 }
 
 func TestTheMatchCheckFindsTheBooksAgainWithoutTheirISBNs(t *testing.T) {

@@ -791,6 +791,8 @@ func genreCheck(args []string) error {
 	n := flags.Int("n", 300, "how many tagged books to ask about")
 	precision := flags.Float64("precision", 0.8, "the precision a genre's threshold must reach")
 	neighbours := flags.Bool("neighbours", true, "measure the neighbours too, a look at a library's vectors per book")
+	ensemble := flags.Bool("ensemble", true, "measure the ensemble and its inputs, trained out of fold")
+	train := flags.Int("train", 1000, "how many tagged books the ensemble is trained on, the sample among them")
 	asJSON := flags.Bool("json", false, "print the report as JSON")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -820,7 +822,7 @@ func genreCheck(args []string) error {
 	}
 	vectors := checkVectors(cfg, pool, store, log)
 	r, err := genres.NewService(pool, vectors, nil, log).Check(ctx, genres.CheckOptions{
-		Books: *n, Precision: *precision, Neighbours: *neighbours,
+		Books: *n, Precision: *precision, Neighbours: *neighbours, Ensemble: *ensemble, Train: *train,
 	})
 	if err != nil {
 		return err

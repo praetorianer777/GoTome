@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `gotome genre-check` measures the genre ensemble as it runs, trained out of
+  fold, beside each of its inputs: precision, recall, F1 and the share of
+  books given a genre, per genre.
+
 ## [0.26.0] - 2026-11-13
 
 ### Added
