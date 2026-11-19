@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Undoing a merge no longer changes highlights back to their old note or colour,
+  or brings back highlights you deleted since; it only moves them back to
+  their book.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

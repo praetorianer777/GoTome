@@ -197,12 +197,12 @@ func Conflicts(ctx context.Context, tx pgx.Tx, books []uuid.UUID, left Snapshot)
 		w, h := settled(want), settled(have)
 		n := 0
 		for k, r := range w {
-			if other, ok := h[k]; !ok || !reflect.DeepEqual(r, other) {
+			if other, ok := h[k]; !t.Loose && !ok || ok && !reflect.DeepEqual(r, other) {
 				n++
 			}
 		}
 		for k := range h {
-			if _, ok := w[k]; !ok {
+			if _, ok := w[k]; !ok && !t.Loose {
 				n++
 			}
 		}
