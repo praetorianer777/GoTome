@@ -6,6 +6,14 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A device can follow collections, smart shelves and your Reading and Want to
+  read lists: every book on them with an ebook is sent to it, and taken off
+  again when it leaves the shelf, unless you sent it by hand. Set it on the
+  device's page, which also says which shelf a book came from
+  ([E-readers](docs/devices.md)).
+
 ## [0.26.0] - 2026-11-13
 
 ### Added

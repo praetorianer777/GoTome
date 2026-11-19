@@ -5162,6 +5162,114 @@
         "x-permission": "personal:manage"
       }
     },
+    "/devices/{deviceId}/sources": {
+      "get": {
+        "operationId": "listDeviceSources",
+        "summary": "The collections, smart shelves and lists one of the caller's devices follows",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSourceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      },
+      "put": {
+        "operationId": "setDeviceSources",
+        "summary": "Set what one of the caller's devices follows: its books are queued, and taken off when they leave",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDeviceSourcesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSourceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "The request failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "x-permission": "personal:manage"
+      }
+    },
     "/duplicates": {
       "get": {
         "operationId": "listDuplicates",
@@ -16028,6 +16136,12 @@
             "type": "string",
             "format": "uuid"
           },
+          "origins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceOrigin"
+            }
+          },
           "queuedAt": {
             "type": "string",
             "format": "date-time"
@@ -16057,7 +16171,8 @@
           "state",
           "queuedAt",
           "removable",
-          "sentFixed"
+          "sentFixed",
+          "origins"
         ]
       },
       "DeviceBookList": {
@@ -16155,6 +16270,20 @@
           "devices"
         ]
       },
+      "DeviceOrigin": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "DeviceRequestCreate": {
         "type": "object",
         "properties": {
@@ -16216,6 +16345,38 @@
           "address",
           "createdAt",
           "expiresAt"
+        ]
+      },
+      "DeviceSource": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shelf": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "DeviceSourceList": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceSource"
+            }
+          }
+        },
+        "required": [
+          "sources"
         ]
       },
       "DeviceTicket": {
@@ -20466,6 +20627,20 @@
           "createdAt",
           "lastSeenAt",
           "current"
+        ]
+      },
+      "SetDeviceSourcesRequest": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceSource"
+            }
+          }
+        },
+        "required": [
+          "sources"
         ]
       },
       "SetMaxAgeRatingRequest": {

@@ -1447,6 +1447,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/devices/{deviceId}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The collections, smart shelves and lists one of the caller's devices follows */
+        get: operations["listDeviceSources"];
+        /** Set what one of the caller's devices follows: its books are queued, and taken off when they leave */
+        put: operations["setDeviceSources"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/duplicates": {
         parameters: {
             query?: never;
@@ -4649,6 +4667,7 @@ export interface components {
             deliveredAt?: string;
             /** Format: uuid */
             deliveryId: string;
+            origins: components["schemas"]["DeviceOrigin"][];
             /** Format: date-time */
             queuedAt: string;
             removable: boolean;
@@ -4682,6 +4701,10 @@ export interface components {
         DeviceList: {
             devices: components["schemas"]["DeviceView"][];
         };
+        DeviceOrigin: {
+            kind: string;
+            name?: string;
+        };
         DeviceRequestCreate: {
             deviceName: string;
             username: string;
@@ -4699,6 +4722,15 @@ export interface components {
             expiresAt: string;
             /** Format: uuid */
             id: string;
+        };
+        DeviceSource: {
+            kind: string;
+            name?: string;
+            /** Format: uuid */
+            shelf?: string;
+        };
+        DeviceSourceList: {
+            sources: components["schemas"]["DeviceSource"][];
         };
         DeviceTicket: {
             code: string;
@@ -5824,6 +5856,9 @@ export interface components {
             /** Format: date-time */
             lastSeenAt: string;
             userAgent: string;
+        };
+        SetDeviceSourcesRequest: {
+            sources: components["schemas"]["DeviceSource"][];
         };
         SetMaxAgeRatingRequest: {
             maxAgeRating: number | null;
@@ -9426,6 +9461,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendResult"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listDeviceSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceSourceList"];
+                };
+            };
+            /** @description The request failed. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    setDeviceSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDeviceSourcesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceSourceList"];
                 };
             };
             /** @description The request failed. */

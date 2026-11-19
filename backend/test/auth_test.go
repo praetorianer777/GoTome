@@ -254,6 +254,7 @@ func newAppOn(t *testing.T, pool *pgxpool.Pool) *app {
 	a.server.Resources.DataDir = a.dataDir
 	a.server.Resources.Embedding, a.server.Resources.Server = a.settings.Embedding, a.settings.EmbeddingServer
 	a.server.Deliveries = deliveries.NewService(a.pool)
+	a.server.DeviceSources = deliveries.NewSources(a.pool, a.server.Books, a.server.Shelves, slog.New(slog.DiscardHandler))
 	a.copies = devicecopy.NewService(a.pool, a.dataDir, quiet)
 	a.copies.Queue = queue
 	a.copies.Enabled = a.settings.DeviceFixOnSend

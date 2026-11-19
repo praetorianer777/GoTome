@@ -346,6 +346,12 @@ type Delivery struct {
 	BookID      uuid.UUID
 	QueuedAt    time.Time
 	DeliveredAt *time.Time
+	Manual      bool
+}
+
+type DeliveryOrigin struct {
+	DeliveryID uuid.UUID
+	SourceID   uuid.UUID
 }
 
 type Device struct {
@@ -390,6 +396,15 @@ type DeviceSend struct {
 	BookID   uuid.UUID
 	Fixed    bool
 	SentAt   time.Time
+}
+
+type DeviceSource struct {
+	ID           uuid.UUID
+	DeviceID     uuid.UUID
+	Kind         string
+	CollectionID *uuid.UUID
+	SmartShelfID *uuid.UUID
+	CreatedAt    time.Time
 }
 
 type DiscoverAsk struct {

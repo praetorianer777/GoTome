@@ -12,6 +12,83 @@ import (
 	"github.com/google/uuid"
 )
 
+const addDeviceSource = `-- name: AddDeviceSource :exec
+INSERT INTO device_sources (device_id, kind, collection_id, smart_shelf_id)
+SELECT d.id, $1, $2, $3
+FROM devices d WHERE d.id = $4 AND d.user_id = $5::uuid
+ON CONFLICT DO NOTHING
+`
+
+type AddDeviceSourceParams struct {
+	Kind         string
+	CollectionID *uuid.UUID
+	SmartShelfID *uuid.UUID
+	DeviceID     uuid.UUID
+	Viewer       uuid.UUID
+}
+
+func (q *Queries) AddDeviceSource(ctx context.Context, arg AddDeviceSourceParams) error {
+	_, err := q.db.Exec(ctx, addDeviceSource,
+		arg.Kind,
+		arg.CollectionID,
+		arg.SmartShelfID,
+		arg.DeviceID,
+		arg.Viewer,
+	)
+	return err
+}
+
+const clearDeviceSources = `-- name: ClearDeviceSources :exec
+DELETE FROM device_sources s USING devices d
+WHERE s.device_id = $1 AND d.id = s.device_id AND d.user_id = $2
+`
+
+type ClearDeviceSourcesParams struct {
+	DeviceID uuid.UUID
+	UserID   uuid.UUID
+}
+
+func (q *Queries) ClearDeviceSources(ctx context.Context, arg ClearDeviceSourcesParams) error {
+	_, err := q.db.Exec(ctx, clearDeviceSources, arg.DeviceID, arg.UserID)
+	return err
+}
+
+const deleteDeviceSourcesNotIn = `-- name: DeleteDeviceSourcesNotIn :exec
+DELETE FROM device_sources s USING devices d
+WHERE s.device_id = $1 AND d.id = s.device_id AND d.user_id = $2 AND NOT (s.id = ANY($3::uuid[]))
+`
+
+type DeleteDeviceSourcesNotInParams struct {
+	DeviceID uuid.UUID
+	UserID   uuid.UUID
+	Keep     []uuid.UUID
+}
+
+func (q *Queries) DeleteDeviceSourcesNotIn(ctx context.Context, arg DeleteDeviceSourcesNotInParams) error {
+	_, err := q.db.Exec(ctx, deleteDeviceSourcesNotIn, arg.DeviceID, arg.UserID, arg.Keep)
+	return err
+}
+
+const dropUnsourcedDeliveries = `-- name: DropUnsourcedDeliveries :execrows
+DELETE FROM deliveries dl USING devices d
+WHERE d.id = dl.device_id AND d.user_id = $1
+  AND NOT dl.manual
+  AND NOT EXISTS (SELECT 1 FROM delivery_origins o WHERE o.delivery_id = dl.id)
+  AND (dl.delivered_at IS NULL
+       OR EXISTS (SELECT 1 FROM kobo_books k WHERE k.device_id = dl.device_id AND k.book_id = dl.book_id))
+`
+
+// Takes off the user's devices what only a source put there and none holds
+// any more: out of the queue, or off a Kobo reader at its next sync.
+// Others keep what they downloaded.
+func (q *Queries) DropUnsourcedDeliveries(ctx context.Context, userID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, dropUnsourcedDeliveries, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const forgetOnDevice = `-- name: ForgetOnDevice :exec
 DELETE FROM deliveries WHERE device_id = $1 AND book_id = $2
 `
@@ -25,6 +102,19 @@ type ForgetOnDeviceParams struct {
 func (q *Queries) ForgetOnDevice(ctx context.Context, arg ForgetOnDeviceParams) error {
 	_, err := q.db.Exec(ctx, forgetOnDevice, arg.DeviceID, arg.BookID)
 	return err
+}
+
+const getSourceUser = `-- name: GetSourceUser :one
+SELECT role FROM users WHERE id = $1 AND disabled_at IS NULL
+`
+
+// The role of an active account, for the scope its devices' sources are
+// worked out in.
+func (q *Queries) GetSourceUser(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getSourceUser, id)
+	var role string
+	err := row.Scan(&role)
+	return role, err
 }
 
 const listBookDeliveries = `-- name: ListBookDeliveries :many
@@ -65,6 +155,52 @@ func (q *Queries) ListBookDeliveries(ctx context.Context, arg ListBookDeliveries
 			&i.QueuedAt,
 			&i.DeliveredAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeliveryOrigins = `-- name: ListDeliveryOrigins :many
+SELECT dl.id AS delivery_id, s.kind, coalesce(c.name, ss.name, '')::text AS name
+FROM deliveries dl
+JOIN delivery_origins o ON o.delivery_id = dl.id
+JOIN device_sources s ON s.id = o.source_id
+LEFT JOIN collections c ON c.id = s.collection_id
+LEFT JOIN smart_shelves ss ON ss.id = s.smart_shelf_id
+WHERE dl.id = ANY($1::uuid[])
+  AND (c.id IS NULL OR c.owner_id = $2::uuid OR c.visibility = 'shared')
+  AND (ss.id IS NULL OR ss.owner_id = $2::uuid OR ss.visibility = 'shared')
+ORDER BY dl.id, s.created_at
+`
+
+type ListDeliveryOriginsParams struct {
+	Ids    []uuid.UUID
+	Viewer uuid.UUID
+}
+
+type ListDeliveryOriginsRow struct {
+	DeliveryID uuid.UUID
+	Kind       string
+	Name       string
+}
+
+// Where each of the deliveries among ids came from: the shelf's name, or
+// the list. A shelf the viewer may no longer look at is not named.
+func (q *Queries) ListDeliveryOrigins(ctx context.Context, arg ListDeliveryOriginsParams) ([]ListDeliveryOriginsRow, error) {
+	rows, err := q.db.Query(ctx, listDeliveryOrigins, arg.Ids, arg.Viewer)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeliveryOriginsRow{}
+	for rows.Next() {
+		var i ListDeliveryOriginsRow
+		if err := rows.Scan(&i.DeliveryID, &i.Kind, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -146,6 +282,57 @@ func (q *Queries) ListDeviceBooks(ctx context.Context, arg ListDeviceBooksParams
 	return items, nil
 }
 
+const listDeviceSources = `-- name: ListDeviceSources :many
+SELECT s.id, s.kind, s.collection_id, s.smart_shelf_id,
+       coalesce(c.name, ss.name, '')::text AS name
+FROM device_sources s
+JOIN devices d ON d.id = s.device_id
+LEFT JOIN collections c ON c.id = s.collection_id
+LEFT JOIN smart_shelves ss ON ss.id = s.smart_shelf_id
+WHERE s.device_id = $1 AND d.user_id = $2
+ORDER BY s.created_at, s.id
+`
+
+type ListDeviceSourcesParams struct {
+	DeviceID uuid.UUID
+	UserID   uuid.UUID
+}
+
+type ListDeviceSourcesRow struct {
+	ID           uuid.UUID
+	Kind         string
+	CollectionID *uuid.UUID
+	SmartShelfID *uuid.UUID
+	Name         string
+}
+
+// The sources of one of the user's devices, with the name of the shelf.
+func (q *Queries) ListDeviceSources(ctx context.Context, arg ListDeviceSourcesParams) ([]ListDeviceSourcesRow, error) {
+	rows, err := q.db.Query(ctx, listDeviceSources, arg.DeviceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDeviceSourcesRow{}
+	for rows.Next() {
+		var i ListDeviceSourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.CollectionID,
+			&i.SmartShelfID,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQueuedBooks = `-- name: ListQueuedBooks :many
 SELECT dl.book_id
 FROM deliveries dl
@@ -178,6 +365,72 @@ func (q *Queries) ListQueuedBooks(ctx context.Context, arg ListQueuedBooksParams
 			return nil, err
 		}
 		items = append(items, book_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserDeviceSources = `-- name: ListUserDeviceSources :many
+SELECT s.id, s.device_id, s.kind, s.collection_id, s.smart_shelf_id
+FROM device_sources s JOIN devices d ON d.id = s.device_id
+WHERE d.user_id = $1
+ORDER BY s.created_at, s.id
+`
+
+type ListUserDeviceSourcesRow struct {
+	ID           uuid.UUID
+	DeviceID     uuid.UUID
+	Kind         string
+	CollectionID *uuid.UUID
+	SmartShelfID *uuid.UUID
+}
+
+// Every source of the user's devices, for a pass.
+func (q *Queries) ListUserDeviceSources(ctx context.Context, userID uuid.UUID) ([]ListUserDeviceSourcesRow, error) {
+	rows, err := q.db.Query(ctx, listUserDeviceSources, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserDeviceSourcesRow{}
+	for rows.Next() {
+		var i ListUserDeviceSourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Kind,
+			&i.CollectionID,
+			&i.SmartShelfID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithDeviceSources = `-- name: ListUsersWithDeviceSources :many
+SELECT DISTINCT d.user_id FROM device_sources s JOIN devices d ON d.id = s.device_id
+`
+
+func (q *Queries) ListUsersWithDeviceSources(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listUsersWithDeviceSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -303,8 +556,10 @@ WHERE d.id = $2 AND d.user_id = $3::uuid
   AND EXISTS (SELECT 1 FROM book_files f
               WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
 ON CONFLICT (device_id, book_id) DO UPDATE
-SET queued_at = now(), delivered_at = NULL
-WHERE deliveries.delivered_at IS NOT NULL
+SET manual = true,
+    queued_at = CASE WHEN deliveries.delivered_at IS NOT NULL THEN now() ELSE deliveries.queued_at END,
+    delivered_at = NULL
+WHERE deliveries.delivered_at IS NOT NULL OR NOT deliveries.manual
 `
 
 type QueueDeliveriesParams struct {
@@ -353,6 +608,86 @@ func (q *Queries) RecordOnDevice(ctx context.Context, arg RecordOnDeviceParams) 
 	result, err := q.db.Exec(ctx, recordOnDevice,
 		arg.DeviceID,
 		arg.BookID,
+		arg.Viewer,
+		arg.SeesAll,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const sourceDeliveries = `-- name: SourceDeliveries :exec
+WITH wanted AS (
+    SELECT b.id
+    FROM unnest($1::uuid[]) AS n(id)
+    JOIN books b ON b.id = n.id
+    WHERE b.deleted_at IS NULL AND NOT b.placeholder
+      AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($2::uuid, $3::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($2::uuid, $3::boolean)))
+      AND EXISTS (SELECT 1 FROM book_files f
+                  WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
+), queued AS (
+    INSERT INTO deliveries (device_id, book_id, manual)
+    SELECT $4, w.id, false FROM wanted w
+    ON CONFLICT (device_id, book_id) DO NOTHING
+), dropped AS (
+    DELETE FROM delivery_origins o USING deliveries dl
+    WHERE o.source_id = $5 AND dl.id = o.delivery_id
+      AND dl.book_id NOT IN (SELECT id FROM wanted)
+)
+SELECT 1
+`
+
+type SourceDeliveriesParams struct {
+	Ids      []uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+	DeviceID uuid.UUID
+	SourceID uuid.UUID
+}
+
+// Queues the books among ids the viewer may see, with an ebook on disk, for
+// the device as the source's, and records the source as their origin; and
+// drops the source's origin from every other book of the device.
+func (q *Queries) SourceDeliveries(ctx context.Context, arg SourceDeliveriesParams) error {
+	_, err := q.db.Exec(ctx, sourceDeliveries,
+		arg.Ids,
+		arg.Viewer,
+		arg.SeesAll,
+		arg.DeviceID,
+		arg.SourceID,
+	)
+	return err
+}
+
+const sourceOrigins = `-- name: SourceOrigins :execrows
+INSERT INTO delivery_origins (delivery_id, source_id)
+SELECT dl.id, $1
+FROM deliveries dl
+JOIN books b ON b.id = dl.book_id
+WHERE dl.device_id = $2 AND dl.book_id = ANY($3::uuid[])
+  AND b.deleted_at IS NULL AND NOT b.placeholder
+  AND b.library_id IN (SELECT visible_library_ids FROM visible_library_ids($4::uuid, $5::boolean)) AND (b.age_rating IS NULL OR b.age_rating <= (SELECT age_limit($4::uuid, $5::boolean)))
+  AND EXISTS (SELECT 1 FROM book_files f
+              WHERE f.book_id = b.id AND f.kind = 'ebook' AND f.trashed_at IS NULL AND f.missing_at IS NULL)
+ON CONFLICT DO NOTHING
+`
+
+type SourceOriginsParams struct {
+	SourceID uuid.UUID
+	DeviceID uuid.UUID
+	Ids      []uuid.UUID
+	Viewer   uuid.UUID
+	SeesAll  bool
+}
+
+// Records the source as the origin of the device's deliveries of the books
+// among ids that are on its list.
+func (q *Queries) SourceOrigins(ctx context.Context, arg SourceOriginsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, sourceOrigins,
+		arg.SourceID,
+		arg.DeviceID,
+		arg.Ids,
 		arg.Viewer,
 		arg.SeesAll,
 	)
