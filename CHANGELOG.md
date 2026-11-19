@@ -6,6 +6,11 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- A link in a book now opens in a new tab only for web addresses, and the
+  page it opens can no longer reach or redirect GOtome's tab.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

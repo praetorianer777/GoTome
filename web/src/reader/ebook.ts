@@ -2,6 +2,7 @@ import { Overlayer } from "foliate-js/overlayer.js";
 import "foliate-js/view.js";
 import type { FoliateTocItem, View } from "foliate-js/view.js";
 import { closest, type Found } from "@/reader/passage";
+import { guardExternalLinks } from "@/reader/external-link";
 import { type Sentence, type Source, moveGuard, sentenceSpans } from "@/reader/speech";
 
 export type Flow = "paginated" | "scrolled";
@@ -232,6 +233,7 @@ export async function openEbook(
 			chapter: at?.tocItem?.label?.trim() || undefined,
 		};
 	};
+	guardExternalLinks(view);
 	view.addEventListener("load", (e) => {
 		const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
 		doc.addEventListener("keydown", options.onKey);

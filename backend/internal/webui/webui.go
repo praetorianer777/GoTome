@@ -71,6 +71,10 @@ func NewAt(dist fs.FS, base string) http.Handler {
 	files := http.FileServerFS(dist)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", ContentSecurityPolicy)
+		// A page the app opens, or a book's link, gets no handle on this tab
+		// (window.opener); sign-in at a provider is a top-level navigation,
+		// which the policy leaves alone.
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
