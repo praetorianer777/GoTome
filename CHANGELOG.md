@@ -15,6 +15,12 @@ What changes for someone who runs or uses GOtome. The format follows
 - Full-text search for an account limited to an age rating no longer comes
   back short or empty when the best matches are in books above the limit.
 
+### Security
+
+- An account made by single sign-on no longer keeps an e-mail address the
+  identity provider did not verify, so signing up with someone else's
+  address cannot take their place when they first sign in.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische
