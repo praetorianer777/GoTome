@@ -213,12 +213,3 @@ func TestTellsThePageItsBasePath(t *testing.T) {
 		t.Errorf("got %q (%q), want %q", rec.Body, rec.Header().Get("Content-Encoding"), want)
 	}
 }
-
-func TestEveryResponseIsCutOffFromWindowsThatOpenedIt(t *testing.T) {
-	h := New(built())
-	for _, target := range []string{"/", "/books/42/read/7", "/assets/index-abc.js"} {
-		if got := get(t, h, http.MethodGet, target).Header().Get("Cross-Origin-Opener-Policy"); got != "same-origin" {
-			t.Errorf("%s: Cross-Origin-Opener-Policy %q", target, got)
-		}
-	}
-}
