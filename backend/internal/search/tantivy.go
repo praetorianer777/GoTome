@@ -135,11 +135,20 @@ func (s *TantivySearch) best(ctx context.Context, tx pgx.Tx, scope library.Scope
 // window could be all books the outer conditions then drop. A search whose
 // books are named already has the limit through catalog.Service.Select.
 func aboveAgeLimit(ctx context.Context, tx pgx.Tx, scope library.Scope, libs []uuid.UUID) ([]uuid.UUID, error) {
+	var limit int
+	if err := tx.QueryRow(ctx, `SELECT age_limit($1, $2)`, scope.Viewer, scope.SeesAll).Scan(&limit); err != nil {
+		return nil, err
+	}
+	// No rating is above the highest, so an account without a limit asks
+	// nothing, and the search stays off the books table.
+	if limit >= int(catalog.AgeRatings[len(catalog.AgeRatings)-1]) {
+		return nil, nil
+	}
 	rows, err := tx.Query(ctx, `
 		SELECT b.id FROM books b
 		WHERE b.library_id = ANY($1::uuid[])
-		  AND b.age_rating IS NOT NULL AND b.age_rating > (SELECT age_limit($2, $3))`,
-		libs, scope.Viewer, scope.SeesAll)
+		  AND b.age_rating IS NOT NULL AND b.age_rating > $2`,
+		libs, limit)
 	if err != nil {
 		return nil, err
 	}
