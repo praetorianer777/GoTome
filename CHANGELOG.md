@@ -6,6 +6,12 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Books read while the search index was catching up could be missing from
+  full-text search until it was rebuilt; the index now keeps every change
+  until it has applied it.
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische

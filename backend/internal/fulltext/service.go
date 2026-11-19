@@ -44,6 +44,9 @@ type Service struct {
 	// the same rows could interleave a delete and an add of one chunk.
 	apply sync.Mutex
 	Queue *jobs.Runner
+	// AfterCommit, when set, runs after a page is committed to the index and
+	// before its rows are deleted; tests use it to commit a row in between.
+	AfterCommit func()
 }
 
 // Dir is where the index of the data folder lives.
@@ -119,7 +122,9 @@ func (s *Service) Drain(ctx context.Context, deadline time.Time) (bool, error) {
 		if err != nil || len(rows) == 0 {
 			return false, err
 		}
+		ids := make([]int64, 0, len(rows))
 		for _, r := range rows {
+			ids = append(ids, r.ID)
 			b := Batch{DeleteChunks: r.Deletes, DeleteLibraries: r.DeleteLibraries}
 			if err := json.Unmarshal(r.Docs, &b.Add); err != nil {
 				return false, fmt.Errorf("outbox row %d: %w", r.ID, err)
@@ -134,7 +139,12 @@ func (s *Service) Drain(ctx context.Context, deadline time.Time) (bool, error) {
 		if err := s.index.Commit(); err != nil {
 			return false, err
 		}
-		if err := q.DeleteOutbox(ctx, rows[len(rows)-1].ID); err != nil {
+		if s.AfterCommit != nil {
+			s.AfterCommit()
+		}
+		// Exactly the rows applied: a row with a lower id may have become
+		// visible since the list, and the next page applies it.
+		if err := q.DeleteOutbox(ctx, ids); err != nil {
 			return false, err
 		}
 		if time.Now().After(deadline) {

@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -314,5 +315,51 @@ func TestPassagesAreReadAgainFromTheirFiles(t *testing.T) {
 	}
 	if text, ok := got[refs[len(refs)-1].ChunkID]; ok {
 		t.Errorf("a gone file gave %.80q", text)
+	}
+}
+
+func TestOutboxRowCommittedDuringADrainIsStillApplied(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	ctx := context.Background()
+	s := a.text
+	lib, book := uuid.New(), uuid.New()
+	doc := func(id int64, text string) []byte {
+		b, _ := json.Marshal([]fulltext.Doc{{ID: id, BookID: book, LibraryID: lib, Lang: "en", Text: text}})
+		return b
+	}
+
+	// The slow transaction takes the lower id but commits after the drain
+	// has listed its page.
+	slow, err := a.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer slow.Rollback(ctx)
+	if _, err := slow.Exec(ctx, "INSERT INTO fulltext_outbox (docs) VALUES ($1)", doc(900001, "zeppelin hangar")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, "INSERT INTO fulltext_outbox (docs) VALUES ($1)", doc(900002, "quokka burrow")); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	s.AfterCommit = func() {
+		if calls++; calls == 1 {
+			if err := slow.Commit(ctx); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	t.Cleanup(func() { s.AfterCommit = nil })
+	a.drain(s)
+
+	if got := indexFinds(t, s, lib, "zeppelin"); !slices.Equal(got, []int64{900001}) {
+		t.Errorf("the row that committed during the drain is in the index as %v", got)
+	}
+	if got := indexFinds(t, s, lib, "quokka"); !slices.Equal(got, []int64{900002}) {
+		t.Errorf("the first row is in the index as %v", got)
+	}
+	if n := a.countRows("SELECT count(*) FROM fulltext_outbox"); n != 0 {
+		t.Errorf("%d outbox rows left", n)
 	}
 }

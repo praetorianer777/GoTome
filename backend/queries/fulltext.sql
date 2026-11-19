@@ -9,7 +9,7 @@ SELECT id, deletes, delete_libraries, docs FROM fulltext_outbox ORDER BY id LIMI
 INSERT INTO fulltext_outbox (delete_libraries) VALUES (ARRAY[sqlc.arg(library_id)::uuid]);
 
 -- name: DeleteOutbox :exec
-DELETE FROM fulltext_outbox WHERE id <= $1;
+DELETE FROM fulltext_outbox WHERE id = ANY(sqlc.arg(ids)::bigint[]);
 
 -- name: SetFileIndexed :exec
 UPDATE book_files SET indexed_at = now() WHERE id = $1;
