@@ -532,6 +532,18 @@ type FulltextOutbox struct {
 	DeleteLibraries []uuid.UUID
 }
 
+type GenreAdaptation struct {
+	Singleton      bool
+	ShippedVersion string
+	Model          string
+	Version        string
+	Labelled       int32
+	Books          int32
+	TrainedAt      time.Time
+	Ensemble       []byte
+	Words          []byte
+}
+
 type IndexVersion struct {
 	Name      string
 	Version   string

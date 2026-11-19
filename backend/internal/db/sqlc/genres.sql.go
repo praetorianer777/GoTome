@@ -7,9 +7,27 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
+
+const countGenreLabelled = `-- name: CountGenreLabelled :one
+SELECT count(DISTINCT g.book_id)::int
+FROM book_genres g
+JOIN books b ON b.id = g.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND (g.state = 'accepted' OR (g.source = 'tags' AND g.state = 'suggested'))
+`
+
+// How many books have a genre a person or their tags gave: those of tags,
+// and the suggestions a person accepted.
+func (q *Queries) CountGenreLabelled(ctx context.Context) (int32, error) {
+	row := q.db.QueryRow(ctx, countGenreLabelled)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
 
 const countGenreSuggestions = `-- name: CountGenreSuggestions :many
 SELECT g.genre, count(*)::int AS waiting
@@ -87,6 +105,15 @@ func (q *Queries) DecideGenre(ctx context.Context, arg DecideGenreParams) (int64
 	return result.RowsAffected(), nil
 }
 
+const deleteGenreAdaptation = `-- name: DeleteGenreAdaptation :exec
+DELETE FROM genre_adaptation
+`
+
+func (q *Queries) DeleteGenreAdaptation(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteGenreAdaptation)
+	return err
+}
+
 const dropStaleGenres = `-- name: DropStaleGenres :exec
 DELETE FROM book_genres
 WHERE book_id = $1::uuid AND state = 'suggested' AND NOT (genre = ANY($2::text[]))
@@ -102,6 +129,38 @@ type DropStaleGenresParams struct {
 func (q *Queries) DropStaleGenres(ctx context.Context, arg DropStaleGenresParams) error {
 	_, err := q.db.Exec(ctx, dropStaleGenres, arg.BookID, arg.Keep)
 	return err
+}
+
+const getGenreAdaptation = `-- name: GetGenreAdaptation :one
+SELECT shipped_version, model, version, labelled, books, trained_at, ensemble, words
+FROM genre_adaptation
+`
+
+type GetGenreAdaptationRow struct {
+	ShippedVersion string
+	Model          string
+	Version        string
+	Labelled       int32
+	Books          int32
+	TrainedAt      time.Time
+	Ensemble       []byte
+	Words          []byte
+}
+
+func (q *Queries) GetGenreAdaptation(ctx context.Context) (GetGenreAdaptationRow, error) {
+	row := q.db.QueryRow(ctx, getGenreAdaptation)
+	var i GetGenreAdaptationRow
+	err := row.Scan(
+		&i.ShippedVersion,
+		&i.Model,
+		&i.Version,
+		&i.Labelled,
+		&i.Books,
+		&i.TrainedAt,
+		&i.Ensemble,
+		&i.Words,
+	)
+	return i, err
 }
 
 const getGenreVectors = `-- name: GetGenreVectors :many
@@ -361,6 +420,41 @@ func (q *Queries) ListGenreEvidence(ctx context.Context, ids []uuid.UUID) ([]Lis
 	return items, nil
 }
 
+const listGenreLabels = `-- name: ListGenreLabels :many
+SELECT g.book_id, g.genre
+FROM book_genres g
+JOIN books b ON b.id = g.book_id
+WHERE b.deleted_at IS NULL AND NOT b.placeholder
+  AND (g.state = 'accepted' OR (g.source = 'tags' AND g.state = 'suggested'))
+ORDER BY g.book_id, g.genre
+`
+
+type ListGenreLabelsRow struct {
+	BookID uuid.UUID
+	Genre  string
+}
+
+// The genres of those books, a row each.
+func (q *Queries) ListGenreLabels(ctx context.Context) ([]ListGenreLabelsRow, error) {
+	rows, err := q.db.Query(ctx, listGenreLabels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGenreLabelsRow{}
+	for rows.Next() {
+		var i ListGenreLabelsRow
+		if err := rows.Scan(&i.BookID, &i.Genre); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGenreNeighbours = `-- name: ListGenreNeighbours :many
 WITH near AS (
     SELECT v.book_id,
@@ -552,6 +646,39 @@ func (q *Queries) PutAutomaticGenre(ctx context.Context, arg PutAutomaticGenrePa
 		arg.Method,
 		arg.Score,
 		arg.Reasons,
+	)
+	return err
+}
+
+const putGenreAdaptation = `-- name: PutGenreAdaptation :exec
+INSERT INTO genre_adaptation (singleton, shipped_version, model, version, labelled, books, trained_at, ensemble, words)
+VALUES (true, $1::text, $2::text, $3::text,
+        $4::int, $5::int, now(), $6::bytea, $7::bytea)
+ON CONFLICT (singleton) DO UPDATE
+SET shipped_version = excluded.shipped_version, model = excluded.model, version = excluded.version,
+    labelled = excluded.labelled, books = excluded.books, trained_at = excluded.trained_at,
+    ensemble = excluded.ensemble, words = excluded.words
+`
+
+type PutGenreAdaptationParams struct {
+	ShippedVersion string
+	Model          string
+	Version        string
+	Labelled       int32
+	Books          int32
+	Ensemble       []byte
+	Words          []byte
+}
+
+func (q *Queries) PutGenreAdaptation(ctx context.Context, arg PutGenreAdaptationParams) error {
+	_, err := q.db.Exec(ctx, putGenreAdaptation,
+		arg.ShippedVersion,
+		arg.Model,
+		arg.Version,
+		arg.Labelled,
+		arg.Books,
+		arg.Ensemble,
+		arg.Words,
 	)
 	return err
 }

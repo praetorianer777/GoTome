@@ -186,3 +186,25 @@ one CPU) and goes on where it stopped. Project Gutenberg's header and licence
 are left out; words are counted as written, not stemmed, so a stem can be
 chosen later without reading anything again. Changing the rule means raising
 `wordcount.Version`, which counts every file again.
+
+### Adapting to the library
+
+Once the library has at least 20 books with a genre (from tags, or a
+suggestion a person accepted), a background job trains the ensemble on them
+(`genres.adapt`, `Service.Adapt`, `adapt.go`): every day, and sooner when
+the number of such books changed by a fifth, the shipped default changed
+or another embedding model was chosen. The heads and the word tables of the
+books' languages (at most 4,000 books a language) are merged with the
+shipped ones, each genre weighed by the books that taught it; what ships
+keeps its document frequencies and counts, not its books. A set of inputs
+with at least 100 labelled books gets its own stacker and thresholds,
+calibrated on books the models had not seen; the other sets keep the shipped
+ones. A library without genres keeps the shipped ensemble exactly.
+
+The result is one row, `genre_adaptation`, for the shipped version it was
+trained beside: when that changes, the row is not used until the job has
+trained again. It is derived and not in a backup. The same books give the
+same numbers, and a book is looked at again only when they change. Reading
+the books stops at the job's time and goes on in the next run; nothing is
+stored before the training is whole.
+

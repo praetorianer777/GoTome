@@ -48,6 +48,9 @@ type Head struct {
 	Mean    []float32   `json:"mean"`
 	Inv     []float32   `json:"inv"`
 	Weights [][]float32 `json:"weights"`
+	// Positives is how many training books each genre had; absent in a
+	// head that ships, whose counts the prior of its ensemble tells.
+	Positives []int `json:"positives,omitempty"`
 }
 
 // Score is the probability of each genre for the vector, NaN where the head
@@ -80,6 +83,16 @@ type Stacker struct {
 	Thresholds []float64 `json:"thresholds"`
 	// Books is how many training books it was fitted and calibrated on.
 	Books int `json:"books"`
+	// Prior replaces the ensemble's where the stacker was fitted under
+	// another one, as the shipped stackers an adapted ensemble keeps are.
+	Prior []float64 `json:"prior,omitempty"`
+}
+
+func (st *Stacker) priorOf(e *Ensemble, g int) float64 {
+	if st.Prior != nil {
+		return st.Prior[g]
+	}
+	return e.Prior[g]
 }
 
 func (st *Stacker) score(in *[numInputs][]float64, prior float64, g int) float64 {
@@ -184,7 +197,7 @@ func (e *Ensemble) Judge(in Input) Judgement {
 	}
 	j.Scores = make([]float64, len(e.Genres))
 	for g := range e.Genres {
-		j.Scores[g] = j.stacker.score(&j.Inputs, e.Prior[g], g)
+		j.Scores[g] = j.stacker.score(&j.Inputs, j.stacker.priorOf(e, g), g)
 	}
 	return j
 }
@@ -316,7 +329,8 @@ func DecodeEnsemble(data []byte, words map[string]*WordTable) (*Ensemble, error)
 	for _, st := range e.Stackers {
 		n := 3*bitsOf(st.Mask) + 1
 		if st.Mask <= 0 || st.Mask >= 1<<numInputs || len(st.Thresholds) != G ||
-			len(st.Mean) != n || len(st.Inv) != n || len(st.Weights) != n+1 {
+			len(st.Mean) != n || len(st.Inv) != n || len(st.Weights) != n+1 ||
+			(st.Prior != nil && len(st.Prior) != G) {
 			return nil, errBadEnsemble
 		}
 	}

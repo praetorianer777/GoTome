@@ -6,6 +6,13 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Suggested genres adapt to your library: once at least 20 books have a genre
+  from their tags or one you accepted, GOtome trains the suggestions on them
+  too, every day and when those books change by a fifth. A library without
+  genres is suggested to as before ([Genres](docs/genres.md)).
+
 ## [0.26.0] - 2026-11-13
 
 ### Added

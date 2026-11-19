@@ -47,13 +47,16 @@ type Service struct {
 	vectors *similar.Service
 	mode    func(ctx context.Context) (string, error)
 	Queue   Queue
-	// Ensemble gives the ensemble suggestions are made with: the shipped
-	// one, unless a test sets another.
+	// Ensemble gives the base ensemble: the shipped one, unless a test sets
+	// another. Suggestions use the one adapted to the installation's books
+	// where there is one trained beside it (Adapt).
 	Ensemble func() (*Ensemble, error)
 
-	mu     sync.Mutex
-	model  embed.Model
-	genres [][]float32
+	mu      sync.Mutex
+	adapted *Ensemble
+	gather  *gathering
+	model   embed.Model
+	genres  [][]float32
 }
 
 // NewService returns the Service; mode reads the setting genres.suggest.
@@ -129,7 +132,7 @@ func (s *Service) Suggest(ctx context.Context, deadline time.Time) (complete boo
 		p.mode = MethodEnsemble
 	}
 	if p.mode == MethodEnsemble {
-		if p.ensemble, err = s.Ensemble(); err != nil {
+		if p.ensemble, err = s.current(ctx, spec.Model.Name); err != nil {
 			return false, err
 		}
 		if p.ensemble == nil {
