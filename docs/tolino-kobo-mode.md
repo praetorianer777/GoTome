@@ -155,7 +155,10 @@ its next sync. A book taken back before the reader has it leaves the
 reader; one archived on the reader leaves the device in GOtome. Stars given
 on the reader ("Rate this book") become your own rating of the book in
 GOtome, as if given on its page; a rating given in GOtome is not shown on
-the reader. Revoking the device on the profile cuts the reader off.
+the reader. **Mark as unread** on the reader changes nothing in GOtome:
+the reader says the same of a book it has never opened, so taking it as a
+reset would undo a status set on the book's page. Revoking the device on
+the profile cuts the reader off.
 
 A rating given on a reader synced before this version went to Kobo's
 store, not to GOtome: give it again on the book's page, or on the reader

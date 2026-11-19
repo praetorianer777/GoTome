@@ -676,6 +676,8 @@ func (s *Server) koboSpan(ctx context.Context, device, book uuid.UUID, st koboSt
 
 // koboFraction is how far into the book a reading state says the person
 // is: its bookmark's percentage, or the end for a book marked finished.
+// "ReadyToRead" ("Mark as unread") changes no status: a reader says it of
+// a book it never opened too, and would undo a status set elsewhere (#542).
 func koboFraction(st koboStateIn) (float64, bool) {
 	if st.StatusInfo != nil && st.StatusInfo.Status == "Finished" {
 		return 1, true
