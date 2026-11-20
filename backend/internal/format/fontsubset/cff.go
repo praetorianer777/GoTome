@@ -253,6 +253,8 @@ func parseCharset(cff []byte, off, n int) (sids []uint16, length int, err error)
 			sids[g] = uint16(g)
 		}
 		return sids, 0, nil
+	case off < 0:
+		return nil, 0, ErrCorrupt
 	case off <= 2:
 		return nil, 0, nil
 	}
@@ -293,7 +295,7 @@ func parseCharset(cff []byte, off, n int) (sids []uint16, length int, err error)
 }
 
 func parseFDSelect(cff []byte, off, n int) (fds []uint8, length int, err error) {
-	if off+1 > len(cff) {
+	if off < 0 || off+1 > len(cff) {
 		return nil, 0, ErrCorrupt
 	}
 	fds = make([]uint8, n)
@@ -385,7 +387,7 @@ func parseCFF(b []byte) (*cffFont, error) {
 		return nil, ErrUnsupported
 	}
 	cs, ok := intsOf(f.top, opCharStrings)
-	if !ok || len(cs) != 1 {
+	if !ok || len(cs) != 1 || cs[0] < 0 {
 		return nil, ErrCorrupt
 	}
 	if f.charstrings, _, err = readIndex(b, cs[0]); err != nil {
@@ -420,6 +422,9 @@ func parseCFF(b []byte) (*cffFont, error) {
 			return p, err
 		}
 		if so, ok := intsOf(p.entries, opSubrs); ok && len(so) == 1 {
+			if so[0] < 0 {
+				return p, ErrCorrupt
+			}
 			p.hasSubrs = true
 			if p.subrs, _, err = readIndex(b, v[1]+so[0]); err != nil {
 				return p, err
@@ -437,7 +442,7 @@ func parseCFF(b []byte) (*cffFont, error) {
 	}
 	fa, ok := intsOf(f.top, opFDArray)
 	fs, ok2 := intsOf(f.top, opFDSelect)
-	if !ok || !ok2 || len(fa) != 1 || len(fs) != 1 {
+	if !ok || !ok2 || len(fa) != 1 || len(fs) != 1 || fa[0] < 0 || fs[0] < 0 {
 		return nil, ErrCorrupt
 	}
 	dicts, _, err := readIndex(b, fa[0])
@@ -863,7 +868,7 @@ func (f *cffFont) keepStrings(keep map[int]bool) [][]byte {
 			}
 		}
 	}
-	sidOps := map[int]int{0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 0x0C15: 1, 0x0C16: 1, 0x0C1E: 2, 0x0C26: 1}
+	sidOps := map[int]int{0: 1, 0x0C00: 1, 0x0C01: 1, 1: 1, 2: 1, 3: 1, 4: 1, 0x0C15: 1, 0x0C16: 1, 0x0C1E: 2, 0x0C26: 1}
 	mark(f.top, sidOps)
 	for _, d := range f.fontDicts {
 		mark(d, sidOps)

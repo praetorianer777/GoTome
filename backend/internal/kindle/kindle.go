@@ -10,8 +10,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
-	"mime"
 	"net"
 	"net/mail"
 	"os"
@@ -399,11 +399,7 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID, last bool) error {
 		return fail("The EPUB is larger than the 50 MB Amazon takes by e-mail.")
 	}
 	_, domain, _ := strings.Cut(srv.Sender, "@")
-	err = srv.Send(ctx, Message{
-		To: row.Address, ID: id.String() + "@" + domain, Subject: row.Title,
-		Body:     "Sent by GOtome: " + row.Title,
-		Filename: filepath.Base(info.Name), ContentType: mime.TypeByExtension(".epub"), Attachment: f,
-	})
+	err = srv.Send(ctx, epubMessage(row.Address, id.String()+"@"+domain, row.Title, filepath.Base(info.Name), f))
 	var sendErr *SendError
 	switch {
 	case err == nil:
@@ -445,4 +441,15 @@ func (s *Service) finish(ctx context.Context, id uuid.UUID, state, message strin
 		_, err = notify.CreateTx(ctx, tx, row.UserID, n)
 		return err
 	})
+}
+
+// epubType is fixed, not looked up by extension: mime.TypeByExtension reads
+// the host's tables and answers nothing where they lack .epub.
+const epubType = "application/epub+zip"
+
+func epubMessage(to, id, title, filename string, book io.Reader) Message {
+	return Message{
+		To: to, ID: id, Subject: title, Body: "Sent by GOtome: " + title,
+		Filename: filename, ContentType: epubType, Attachment: book,
+	}
 }

@@ -38,14 +38,14 @@ people are notified of it. The body is JSON:
   "libraryIds": ["0195a1c2-..."],
   "bookId": "0195a1c3-...",
   "link": "https://books.example.org/?library=0195a1c2-...",
-  "data": {"count": 12, "library": "0195a1c2-..."}
+  "data": {"count": 12}
 }
 ```
 
 Only IDs, counts, versions and a link are sent: never a title, an author, a
-file name, an error text or any text of a book. `link` is absolute when
+file or library name, an error text or any text of a book. `link` is absolute when
 `GOTOME_PUBLIC_URLS` names an address, else it is a path on your server.
-`data` holds, where the event has them, `count`, `library`, `file`,
+`data` holds, where the event has them, `count`,
 `component`, `version`, `current`, `security`, `date` and `precision`.
 
 The request is a `POST` with `Content-Type: application/json` and these
