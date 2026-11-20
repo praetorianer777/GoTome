@@ -356,3 +356,36 @@ func TestDictBytesWritesEachDictOnItsOwn(t *testing.T) {
 		t.Errorf("%v %v", back, err)
 	}
 }
+
+func TestCFFWithNegativeOffsetsIsCorrupt(t *testing.T) {
+	font := cidFont(t, fdselFormat0)
+	tables, _, err := readFont(font)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, op := range []int{opFDSelect, opFDArray, opCharStrings, opCharset} {
+		cff := bytes.Clone(tables.data["CFF "])
+		at := bytes.Index(cff, append([]byte{29, 0, 0, 0, 0}, opBytes(op)...))
+		if at < 0 {
+			at = bytes.Index(cff, opBytes(op))
+			if at < 5 || cff[at-5] != 29 {
+				t.Fatalf("operator %x not found", op)
+			}
+			at -= 5
+		}
+		copy(cff[at+1:], []byte{0xFF, 0xFF, 0xFF, 0xFF})
+		if _, err := parseCFF(cff); !errors.Is(err, ErrCorrupt) {
+			t.Errorf("operator %x with offset -1: %v, want ErrCorrupt", op, err)
+		}
+	}
+	if _, _, err := parseFDSelect(fdselFormat0, -1, 6); !errors.Is(err, ErrCorrupt) {
+		t.Errorf("parseFDSelect at -1: %v", err)
+	}
+}
+
+func opBytes(op int) []byte {
+	if op > 0xFF {
+		return []byte{byte(op >> 8), byte(op)}
+	}
+	return []byte{byte(op)}
+}
