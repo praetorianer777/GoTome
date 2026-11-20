@@ -61,6 +61,10 @@ type Route struct {
 	// Devices lets a device's token (HTTP Basic auth) sign in to the route,
 	// as well as a browser's session; no other route takes one.
 	Devices bool
+	// SyncKey lets KOReader's progress sync sign in to the route with the
+	// MD5 of a device token (x-auth-user, x-auth-key). That key is sent
+	// with every sync, often over plain HTTP, so it reaches nothing else.
+	SyncKey bool
 	// Keys lets an API key reach a route that declares SignedIn. Routes with
 	// any other permission are reached through the key's scopes; the others
 	// that concern the caller's account stay closed to keys.

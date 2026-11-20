@@ -164,6 +164,43 @@ func key(t Table, row map[string]any) string {
 	return strings.Join(parts, "|")
 }
 
+// differing counts the rows that are not as an action left them. A table
+// that names its Columns is compared on those alone: an action recorded
+// before the table did holds whole rows, and they are as left when the
+// columns it now restores are.
+func differing(t Table, want, have []map[string]any) int {
+	settled := func(rows []map[string]any) map[string]map[string]any {
+		m := map[string]map[string]any{}
+		for _, r := range rows {
+			if t.Settled != nil && !t.Settled(r) {
+				continue
+			}
+			if len(t.Columns) > 0 {
+				kept := make(map[string]any, len(t.Columns))
+				for _, c := range t.Columns {
+					kept[c] = r[c]
+				}
+				r = kept
+			}
+			m[key(t, r)] = r
+		}
+		return m
+	}
+	w, h := settled(want), settled(have)
+	n := 0
+	for k, r := range w {
+		if other, ok := h[k]; !t.Loose && !ok || ok && !reflect.DeepEqual(r, other) {
+			n++
+		}
+	}
+	for k := range h {
+		if _, ok := w[k]; !ok && !t.Loose {
+			n++
+		}
+	}
+	return n
+}
+
 // Conflicts compares the books' rows now with what an action left, in the
 // tables the snapshot holds, leaving out the tables that are Quiet.
 func Conflicts(ctx context.Context, tx pgx.Tx, books []uuid.UUID, left Snapshot) ([]Conflict, error) {
@@ -185,28 +222,7 @@ func Conflicts(ctx context.Context, tx pgx.Tx, books []uuid.UUID, left Snapshot)
 		if err != nil {
 			return nil, err
 		}
-		settled := func(rows []map[string]any) map[string]map[string]any {
-			m := map[string]map[string]any{}
-			for _, r := range rows {
-				if t.Settled == nil || t.Settled(r) {
-					m[key(t, r)] = r
-				}
-			}
-			return m
-		}
-		w, h := settled(want), settled(have)
-		n := 0
-		for k, r := range w {
-			if other, ok := h[k]; !ok || !reflect.DeepEqual(r, other) {
-				n++
-			}
-		}
-		for k := range h {
-			if _, ok := w[k]; !ok {
-				n++
-			}
-		}
-		if n > 0 {
+		if n := differing(t, want, have); n > 0 {
 			out = append(out, Conflict{Table: t.Name, Rows: n})
 		}
 	}

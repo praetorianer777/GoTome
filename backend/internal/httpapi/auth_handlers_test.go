@@ -159,6 +159,9 @@ func TestAppPathStaysInTheApp(t *testing.T) {
 		"https://evil.example": "/",
 		"/api/v1/setup":        "/",
 		"/a\r\nSet-Cookie:":    "/",
+		"/\t/evil.example":     "/",
+		"/a\x00b":              "/",
+		"/a\x7fb":              "/",
 	} {
 		if got := appPath(in); got != want {
 			t.Errorf("appPath(%q) = %q, want %q", in, got, want)

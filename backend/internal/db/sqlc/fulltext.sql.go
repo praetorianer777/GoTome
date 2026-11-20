@@ -48,11 +48,11 @@ func (q *Queries) ClearLibraryIndexed(ctx context.Context, libraryID uuid.UUID) 
 }
 
 const deleteOutbox = `-- name: DeleteOutbox :exec
-DELETE FROM fulltext_outbox WHERE id <= $1
+DELETE FROM fulltext_outbox WHERE id = ANY($1::bigint[])
 `
 
-func (q *Queries) DeleteOutbox(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteOutbox, id)
+func (q *Queries) DeleteOutbox(ctx context.Context, ids []int64) error {
+	_, err := q.db.Exec(ctx, deleteOutbox, ids)
 	return err
 }
 

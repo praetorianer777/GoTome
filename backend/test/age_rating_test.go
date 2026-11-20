@@ -4,7 +4,12 @@ package test
 
 import (
 	"net/http"
+	"net/url"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/praetorianer777/gotome/backend/internal/search"
 )
 
 func TestAnAgeRatingFollowsTagsUntilAPersonSetsIt(t *testing.T) {
@@ -171,5 +176,51 @@ func TestMergingKeepsTheHigherRating(t *testing.T) {
 	}
 	if _, book, _ := a.call(admin, http.MethodGet, "/books/"+ids[0], nil); book["ageRating"] != 16.0 {
 		t.Fatalf("the merged book is rated %v, not 16", book["ageRating"])
+	}
+}
+
+func TestSearchFindsAllowedBooksWhenTheBestChunksAreInBooksAboveTheLimit(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, readerID := a.signedIn("reader", "reader")
+	books := t.TempDir()
+	meta := func(title string) string {
+		return `<dc:identifier id="uid">urn:uuid:` + title + `</dc:identifier>
+    <dc:title>` + title + `</dc:title>
+    <dc:creator opf:role="aut">Anna Autor</dc:creator>
+    <dc:language>en</dc:language>`
+	}
+	dense := strings.Repeat("The whale, the whale, always the whale. ", 600)
+	filler := strings.Repeat("Nothing much happened in the town that week, and the weather was mild. ", 150)
+	writeEPUB(t, filepath.Join(books, "Dark One.epub"), meta("Dark One"), nil, dense)
+	writeEPUB(t, filepath.Join(books, "Dark Two.epub"), meta("Dark Two"), nil, dense)
+	writeEPUB(t, filepath.Join(books, "Gentle.epub"), meta("Gentle"), nil, filler, "A small whale swam by. "+filler)
+	lib := a.externalLibrary(admin, "Shelf", "shared", books)
+	a.scanNow(lib)
+	for _, f := range a.shelfFiles() {
+		a.extract(f.ID)
+	}
+	status, all := a.searchText(admin, url.Values{"q": {"whale"}})
+	if status != 200 || len(all.Books) != 3 {
+		t.Fatalf("the administrator finds %d: %v", len(all.Books), titles(all))
+	}
+	for _, b := range all.Books {
+		if strings.HasPrefix(b.Book.Title, "Dark") {
+			if status, out, _ := a.call(admin, http.MethodPatch, "/books/"+b.Book.ID, map[string]any{"ageRating": 18}); status != 200 {
+				t.Fatalf("rate: %d %v", status, out)
+			}
+		}
+	}
+	if status, out, _ := a.call(admin, http.MethodPut, "/users/"+readerID+"/max-age-rating", map[string]any{"maxAgeRating": 12}); status != 200 {
+		t.Fatalf("limit: %d %v", status, out)
+	}
+
+	ts := search.NewTantivySearch(a.pool, a.server.Books, a.text.Index())
+	ts.Window = 2
+	a.server.Search = drainingSearch{a.text, ts}
+	status, got := a.searchText(reader, url.Values{"q": {"whale"}})
+	if status != 200 || strings.Join(titles(got), ",") != "Gentle" {
+		t.Fatalf("the limited reader finds %d %v, want Gentle", status, titles(got))
 	}
 }

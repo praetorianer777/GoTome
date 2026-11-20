@@ -27,6 +27,9 @@ type Table struct {
 	// Quiet means other jobs change the table after an action as a matter
 	// of course, so that it never counts as a conflict.
 	Quiet bool
+	// Loose means only a row present before and now, and different, is a
+	// conflict: rows that are new or gone since are other people's business.
+	Loose bool
 	// Settled, when set, says which rows count as a conflict: those that
 	// a person or an action made, not those a pass of suggestions did.
 	Settled func(row map[string]any) bool
@@ -72,7 +75,10 @@ var Tables = []Table{
 	byBook("collection_items", "collection_id", "book_id"),
 	byBook("deliveries", "id"),
 	byBook("play_queue", "user_id", "book_id"),
-	func() Table { t := byBook("annotations", "id"); t.Keep, t.Quiet = true, true; return t }(),
+	{
+		Name: "annotations", Where: "t.book_id = ANY($1)", PK: []string{"id"}, Keep: true, Loose: true,
+		Columns: []string{"id", "book_id", "file_id"},
+	},
 	{Name: "book_relations", Where: "t.book_a = ANY($1) OR t.book_b = ANY($1)", PK: []string{"book_a", "book_b"}},
 	{
 		Name: "notifications", Where: "t.book_id = ANY($1)", PK: []string{"id"}, Keep: true, Quiet: true,

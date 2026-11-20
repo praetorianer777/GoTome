@@ -223,7 +223,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 				writeError(w, r, ErrUnauthorized("The address holds no device token."))
 				return
 			}
-			s.authenticateDevice(w, r, next, "kobo", device, s.Auth.AuthenticateDeviceToken)
+			s.authenticateDevice(w, r, next, "kobo", device, false, s.Auth.AuthenticateDeviceToken)
 			return
 		}
 		if key, ok := bearerToken(r); ok {
@@ -232,13 +232,13 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		}
 		if token == "" {
 			if name, secret, ok := r.BasicAuth(); ok {
-				s.authenticateDevice(w, r, next, name, secret, s.Auth.AuthenticateDevice)
+				s.authenticateDevice(w, r, next, name, secret, false, s.Auth.AuthenticateDevice)
 				return
 			}
 			// KOReader's progress sync sends its own headers: the user name,
 			// and the MD5 of the device token.
 			if name, key := r.Header.Get("x-auth-user"), r.Header.Get("x-auth-key"); name != "" && key != "" {
-				s.authenticateDevice(w, r, next, name, key, s.Auth.AuthenticateSyncKey)
+				s.authenticateDevice(w, r, next, name, key, true, s.Auth.AuthenticateSyncKey)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -259,8 +259,9 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 }
 
 // authenticateDevice signs a device in by its token, or what KOReader
-// sends for it, limited as password sign-ins are.
-func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string,
+// sends for it, limited as password sign-ins are. A sign-in by sync key is
+// marked, and require lets it reach only the routes that take one.
+func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next http.Handler, name, secret string, syncKey bool,
 	check func(context.Context, string, string) (auth.User, uuid.UUID, error)) {
 	address := clientAddress(r)
 	account := strings.ToLower(strings.TrimSpace(name)) + "|" + address
@@ -282,7 +283,18 @@ func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request, next
 	}
 	s.Logins.perAccount.Reset(account)
 	ctx := context.WithValue(r.Context(), userKey, &user)
-	next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, deviceKey, device)))
+	ctx = context.WithValue(ctx, deviceKey, device)
+	if syncKey {
+		ctx = context.WithValue(ctx, syncKeyKey, true)
+	}
+	next.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// signedBySyncKey says the request was signed in with the MD5 of a device
+// token, which KOReader keeps in its settings and sends in the clear.
+func signedBySyncKey(ctx context.Context) bool {
+	by, _ := ctx.Value(syncKeyKey).(bool)
+	return by
 }
 
 // bearerToken is the token of an "Authorization: Bearer" header.
@@ -349,7 +361,7 @@ func askForDevice(w http.ResponseWriter) {
 // An API key reaches a route only through its scopes, and only what its
 // owner's role also holds: the routes about the caller's own account, which
 // declare SignedIn, are closed to it unless they say keys (/auth/me).
-func require(permission auth.Permission, devices, keys bool, next HandlerFunc) HandlerFunc {
+func require(permission auth.Permission, devices, syncKey, keys bool, next HandlerFunc) HandlerFunc {
 	if permission == auth.Public {
 		return next
 	}
@@ -357,6 +369,10 @@ func require(permission auth.Permission, devices, keys bool, next HandlerFunc) H
 		user := UserFrom(r.Context())
 		if user != nil && !devices && DeviceFrom(r.Context()) != uuid.Nil {
 			return ErrUnauthorized("A device token signs in only to the catalogue for devices.")
+		}
+		if user != nil && signedBySyncKey(r.Context()) && !syncKey {
+			askForDevice(w)
+			return ErrUnauthorized("")
 		}
 		if user == nil {
 			if devices {

@@ -12,6 +12,40 @@ What changes for someone who runs or uses GOtome. The format follows
   Darstellung" and "Erlebnisbericht" now give a book its genre (fantasy,
   crime, humour, biography) ([Genres](docs/genres.md)).
 
+### Fixed
+
+- Books read while the search index was catching up could be missing from
+  full-text search until it was rebuilt; the index now keeps every change
+  until it has applied it.
+
+- Full-text search for an account limited to an age rating no longer comes
+  back short or empty when the best matches are in books above the limit.
+
+- Undoing a merge no longer changes highlights back to their old note or colour,
+  or brings back highlights you deleted since; it only moves them back to
+  their book.
+
+- A file moved to the trash while GOtome was writing an edit into it no
+  longer comes back at its old place, which made restoring it fail with
+  "path taken".
+
+### Security
+
+- An account made by single sign-on no longer keeps an e-mail address the
+  identity provider did not verify, so signing up with someone else's
+  address cannot take their place when they first sign in.
+
+- The key KOReader's progress sync sends with every sync (the MD5 of a device
+  token) now signs in only to the progress sync. It no longer opens the
+  catalogue feeds, downloads or the device's queue; the device token itself
+  still does.
+
+- A link in a book now opens in a new tab only for web addresses, and the
+  page it opens can no longer reach or redirect GOtome's tab.
+
+- The history of clean-ups and merges no longer names a book of a library
+  you cannot see.
+
 ## [0.27.0] - 2026-11-19
 
 ### Added

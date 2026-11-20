@@ -155,3 +155,42 @@ func TestKOReaderSyncsTheProgressOfBooksThePersonSees(t *testing.T) {
 		t.Errorf("the MD5 of a changed file: cleared %v, %v", cleared, err)
 	}
 }
+
+func TestTheSyncKeyReachesNothingButTheProgressSync(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, _ := a.signedIn("admin", "admin")
+	reader, _ := a.signedIn("reader", "reader")
+	shared := a.library(admin, "Shared", "shared")
+	_, up := a.upload(admin, shared, "Emma.epub", []byte("PK\x03\x04 an epub of sorts"))
+	_, made, _ := a.call(reader, http.MethodPost, "/auth/devices", map[string]any{"name": "Tolino"})
+	token := made["token"].(string)
+	device := deviceClient("reader", token)
+
+	withKey := func(path string) int {
+		req, _ := http.NewRequest(http.MethodGet, a.url+httpapi.APIPrefix+path, nil)
+		req.Header.Set("x-auth-user", "reader")
+		req.Header.Set("x-auth-key", auth.SyncKey(token))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		return resp.StatusCode
+	}
+	fileID := up["fileId"].(string)
+	if status := withKey("/kosync/users/auth"); status != 200 {
+		t.Errorf("the sync key on the progress sync: %d", status)
+	}
+	for _, path := range []string{"/opds/device", "/opds/device/files/" + fileID, "/files/" + fileID + "/download", "/device", "/device/books", "/books"} {
+		if status := withKey(path); status != 401 {
+			t.Errorf("the sync key on %s: %d, want 401", path, status)
+		}
+		if path == "/files/"+fileID+"/download" || path == "/opds/device/files/"+fileID {
+			continue
+		}
+		if status, _, _ := a.fetch(device, httpapi.APIPrefix+path); status != 200 {
+			t.Errorf("the device token on %s: %d", path, status)
+		}
+	}
+}

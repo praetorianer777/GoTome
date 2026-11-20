@@ -4,11 +4,13 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -664,5 +666,103 @@ func TestRunsAndTheActionsOfARunPageWithoutRepeatingOrSkipping(t *testing.T) {
 		if status, out, _ := a.call(admin, http.MethodGet, path, nil); status != 422 {
 			t.Errorf("%s: %d %v", path, status, out)
 		}
+	}
+}
+
+func TestUndoingAMergeLeavesHighlightsEditedOrDeletedSince(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	s := a.richPair()
+	ctx := context.Background()
+	var readerID string
+	if err := a.pool.QueryRow(ctx, `SELECT id FROM users WHERE username = 'rita'`).Scan(&readerID); err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, n := range []string{"one", "two", "three"} {
+		var id string
+		if err := a.pool.QueryRow(ctx, `INSERT INTO annotations (user_id, book_id, locator_kind, locator, passage, note, client_id, client_key)
+			VALUES ($1, $2, 'cfi', $3, $3, $3, 'web', $3) RETURNING id`, readerID, s.gone, n).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	if status, out, _ := a.call(s.admin, http.MethodPost, "/books/"+s.keep+"/merge", map[string]any{"from": s.gone, "take": []string{"title"}}); status != 200 {
+		t.Fatalf("merge: %d %v", status, out)
+	}
+	if _, err := a.pool.Exec(ctx, `UPDATE annotations SET note = 'rewritten' WHERE id = $1`, ids[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(ctx, `DELETE FROM annotations WHERE id = $1`, ids[1]); err != nil {
+		t.Fatal(err)
+	}
+	run := a.runs(s.admin)[0]["id"].(string)
+	if outcomes := a.undoRun(s.admin, run); len(outcomes) != 1 || outcomes[0].(map[string]any)["state"] != "undone" {
+		t.Fatalf("undo: %v", outcomes)
+	}
+	rows, err := a.pool.Query(ctx, `SELECT id, book_id, coalesce(note, '') FROM annotations WHERE user_id = $1`, readerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	got := map[string][2]string{}
+	for rows.Next() {
+		var id, book, note string
+		if err := rows.Scan(&id, &book, &note); err != nil {
+			t.Fatal(err)
+		}
+		got[id] = [2]string{book, note}
+	}
+	if len(got) != 2 || got[ids[0]] != [2]string{s.gone, "rewritten"} || got[ids[2]] != [2]string{s.gone, "three"} {
+		t.Errorf("annotations after the undo: %v", got)
+	}
+}
+
+func TestHistoryNamesOnlyTheBooksTheViewerSees(t *testing.T) {
+	t.Parallel()
+	a := newApp(t)
+	admin, adminID := a.signedIn("admin", "admin")
+	reader, readerID := a.signedIn("rita", "editor")
+	shared := a.library(admin, "Shelf", "shared")
+	private := a.library(admin, "Mine", "private")
+	a.call(admin, http.MethodPut, "/libraries/"+shared+"/members/"+readerID, nil)
+	book := a.libraryBook(t, uuid.MustParse(shared), "Ironbridge Revised", "Ivo Marek")
+	hidden := a.libraryBook(t, uuid.MustParse(private), "Secret Placeholder", "Ivo Marek")
+	if _, err := a.pool.Exec(context.Background(), `UPDATE books SET placeholder = true WHERE id = $1`, hidden); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.pool.Exec(context.Background(), `INSERT INTO user_books (user_id, book_id, status) VALUES ($1, $2, 'wishlist')`, adminID, hidden); err != nil {
+		t.Fatal(err)
+	}
+	status, joined, _ := a.call(admin, http.MethodPost, "/books/"+hidden.String()+"/join-library-book", map[string]any{"book": book.String()})
+	if status != 200 {
+		t.Fatalf("join: %d %v", status, joined)
+	}
+	runs := a.runs(reader)
+	if len(runs) != 1 {
+		t.Fatalf("the reader sees %d runs: %v", len(runs), runs)
+	}
+	status, body, _ := a.call(reader, http.MethodGet, "/curation/runs/"+runs[0]["id"].(string), nil)
+	if status != 200 {
+		t.Fatalf("run: %d %v", status, body)
+	}
+	actions := body["actions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("actions: %v", actions)
+	}
+	listed := actions[0].(map[string]any)["books"].([]any)
+	if len(listed) != 1 || listed[0].(map[string]any)["id"] != book.String() {
+		t.Errorf("the books of the action as the reader sees them: %v", listed)
+	}
+	for _, b := range listed {
+		for _, c := range b.(map[string]any)["changes"].([]any) {
+			if strings.Contains(fmt.Sprint(c), "Secret Placeholder") {
+				t.Errorf("a hidden title in %v", c)
+			}
+		}
+	}
+	_, adminBody, _ := a.call(admin, http.MethodGet, "/curation/runs/"+runs[0]["id"].(string), nil)
+	if got := adminBody["actions"].([]any)[0].(map[string]any)["books"].([]any); len(got) != 2 {
+		t.Errorf("the administrator sees both books: %v", got)
 	}
 }
