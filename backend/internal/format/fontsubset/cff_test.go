@@ -389,3 +389,17 @@ func opBytes(op int) []byte {
 	}
 	return []byte{byte(op)}
 }
+
+func TestKeepStringsKeepsTheCopyrightOfTheTopDict(t *testing.T) {
+	f := &cffFont{
+		top: []dictEntry{
+			{op: 0x0C00, operands: [][]byte{putInt5(391 + 1)}},
+			{op: 0, operands: [][]byte{putInt5(391 + 2)}},
+		},
+		strs: [][]byte{[]byte("glyph"), []byte("(c) Foundry"), []byte("Version")},
+	}
+	got := f.keepStrings(map[int]bool{})
+	if string(got[1]) != "(c) Foundry" || string(got[2]) != "Version" || len(got[0]) != 0 {
+		t.Errorf("kept strings %q", got)
+	}
+}
