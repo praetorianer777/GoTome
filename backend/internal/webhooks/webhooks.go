@@ -345,9 +345,9 @@ type Payload struct {
 }
 
 // dataKeys are the keys of an event's data that go out. Everything else an
-// event holds (titles, authors, series, feed names, error texts) stays in
-// GOtome.
-var dataKeys = []string{"library", "file", "count", "component", "version", "current", "security", "date", "precision"}
+// event holds (titles, authors, series, feed names, library and file names,
+// error texts) stays in GOtome; the libraries go as IDs in the payload.
+var dataKeys = []string{"count", "component", "version", "current", "security", "date", "precision"}
 
 func (s *Service) payloadOf(ev notify.Event) Payload {
 	p := Payload{Kind: ev.Kind, Time: s.clock().UTC().Truncate(time.Second), Libraries: ev.Libraries,

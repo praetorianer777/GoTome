@@ -46,6 +46,10 @@ What changes for someone who runs or uses GOtome. The format follows
 - The history of clean-ups and merges no longer names a book of a library
   you cannot see.
 
+- Webhooks no longer send the name of a library or of an unreadable file,
+  which a library's private members alone were to see; the libraries still
+  go as IDs ([Webhooks](docs/webhooks.md)).
+
 ## [0.27.0] - 2026-11-19
 
 ### Added
