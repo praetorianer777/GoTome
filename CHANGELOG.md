@@ -6,6 +6,8 @@ What changes for someone who runs or uses GOtome. The format follows
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-20
+
 ### Changed
 
 - The tags "Fantasy Fiction", "Murder", "Police", "Humoristische
