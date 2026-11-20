@@ -176,3 +176,32 @@ func TestCleanAddressTakesOnlyAKindle(t *testing.T) {
 		}
 	}
 }
+
+func TestAnEpubGoesOutAsAnEpub(t *testing.T) {
+	srv := smtptest.New(t, smtptest.Options{User: "u", Password: "p"})
+	s := serverFor(srv, STARTTLS)
+	s.User, s.Password = "u", "p"
+	m := epubMessage("reader@kindle.com", "abc@example.org", "Dusk", "Dusk.epub", strings.NewReader("book"))
+	if err := s.Send(context.Background(), m); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := mail.ReadMessage(strings.NewReader(srv.Mails()[0].Data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, params, _ := mime.ParseMediaType(parsed.Header.Get("Content-Type"))
+	mr := multipart.NewReader(parsed.Body, params["boundary"])
+	for {
+		p, err := mr.NextPart()
+		if err != nil {
+			t.Fatal("no attachment part")
+		}
+		if p.FileName() == "" {
+			continue
+		}
+		if got := p.Header.Get("Content-Type"); !strings.HasPrefix(got, "application/epub+zip") {
+			t.Fatalf("attachment type %q", got)
+		}
+		return
+	}
+}

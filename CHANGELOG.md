@@ -29,6 +29,9 @@ What changes for someone who runs or uses GOtome. The format follows
   longer comes back at its old place, which made restoring it fail with
   "path taken".
 
+- Send to Kindle names the attached book as an EPUB on every server; where
+  the server knew no type for .epub, Amazon could refuse the mail.
+
 ### Security
 
 - An account made by single sign-on no longer keeps an e-mail address the
